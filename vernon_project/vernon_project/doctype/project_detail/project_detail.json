@@ -1,0 +1,380 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-01-15 12:01:19.932603",
+ "description": "PD-.{project}.-.#####",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "title",
+  "latest_deadline",
+  "column_break_ufyp",
+  "project",
+  "project_deadline",
+  "column_break_ttcm",
+  "is_pending",
+  "status",
+  "completed_date",
+  "section_break_iqqe",
+  "grouping",
+  "glossaries",
+  "project_analysis_section",
+  "current_condition",
+  "column_break_yvdj",
+  "expected_outcome",
+  "todo_tab",
+  "todo_section",
+  "todo",
+  "section_break_cysd",
+  "todo_count",
+  "todo_without_estimation",
+  "total_estimated",
+  "total_remaining_estimated",
+  "column_break_zyhs",
+  "latest_todo",
+  "sow_tab",
+  "keterangan_di_sow",
+  "section_break_qhxe",
+  "price",
+  "column_break_bbol",
+  "discount",
+  "column_break_xnzg",
+  "total"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project_analysis_section",
+   "fieldtype": "Section Break",
+   "label": "Project Analysis"
+  },
+  {
+   "fieldname": "column_break_ufyp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "project.deadline",
+   "fieldname": "project_deadline",
+   "fieldtype": "Date",
+   "label": "Project Deadline",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "current_condition",
+   "fieldtype": "Text Editor",
+   "label": "Current Condition"
+  },
+  {
+   "fieldname": "expected_outcome",
+   "fieldtype": "Text Editor",
+   "label": "Expected Outcome"
+  },
+  {
+   "fieldname": "todo",
+   "fieldtype": "Table",
+   "label": "Todo",
+   "options": "Project Todo"
+  },
+  {
+   "fieldname": "sow_tab",
+   "fieldtype": "Tab Break",
+   "label": "SOW"
+  },
+  {
+   "fieldname": "keterangan_di_sow",
+   "fieldtype": "Text Editor",
+   "label": "Keterangan di SOW"
+  },
+  {
+   "fieldname": "section_break_iqqe",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "glossaries",
+   "fieldtype": "Table MultiSelect",
+   "label": "Glossaries",
+   "options": "Project Glossary"
+  },
+  {
+   "fieldname": "grouping",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Grouping",
+   "options": "Glossary",
+   "search_index": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "PD-.{project}.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_yvdj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "todo_tab",
+   "fieldtype": "Tab Break",
+   "label": "TODO"
+  },
+  {
+   "fieldname": "todo_section",
+   "fieldtype": "Section Break",
+   "label": "TODO"
+  },
+  {
+   "fieldname": "section_break_qhxe",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_bbol",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "discount",
+   "fieldtype": "Currency",
+   "label": "Discount",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_xnzg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "price",
+   "fieldtype": "Currency",
+   "label": "Price (Rp)",
+   "non_negative": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "todo_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Todo",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_cysd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_zyhs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nOngoing\nCompleted",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ttcm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "latest_deadline",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Project Detail Deadline"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_pending",
+   "fieldtype": "Check",
+   "label": "Pending Project Detail",
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "latest_todo",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Latest Todo",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_date",
+   "fieldtype": "Date",
+   "label": "Completed Date",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "todo_without_estimation",
+   "fieldtype": "Int",
+   "label": "Todo without Estimation",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "total_estimated",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Estimated",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "total_remaining_estimated",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Remaining Estimated",
+   "non_negative": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-06 08:06:37.816669",
+ "modified_by": "mo@vernon.id",
+ "module": "Vernon Project",
+ "name": "Project Detail",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Owner",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Leader",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Team",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 9,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Owner",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 9,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Leader",
+   "select": 1,
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 9,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Team",
+   "select": 1,
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Yellow",
+   "title": "Pending"
+  },
+  {
+   "color": "Blue",
+   "title": "Ongoing"
+  },
+  {
+   "color": "Green",
+   "title": "Completed"
+  }
+ ],
+ "title_field": "title",
+ "track_changes": 1
+}

@@ -1,0 +1,21 @@
+{
+ "cards": [],
+ "charts": [
+  {
+   "chart": "Project Progress",
+   "width": "Full"
+  }
+ ],
+ "creation": "2026-02-17 19:24:47.419132",
+ "dashboard_name": "Project",
+ "docstatus": 0,
+ "doctype": "Dashboard",
+ "idx": 0,
+ "is_default": 1,
+ "is_standard": 1,
+ "modified": "2026-02-17 19:24:47.419132",
+ "modified_by": "mo@vernon.id",
+ "module": "Vernon Project",
+ "name": "Project",
+ "owner": "mo@vernon.id"
+}

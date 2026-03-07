@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/vernon_project/css/vernon_project.css"
-# app_include_js = "/assets/vernon_project/js/vernon_project.js"
+app_include_js = "/assets/vernon_project/js/desk_navbar.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/vernon_project/css/vernon_project.css"
@@ -117,13 +117,16 @@ app_license = "mit"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+	"Project": "vernon_project.vernon_project.doctype.project.project.get_permission_query_conditions",
+	"Project Detail": "vernon_project.vernon_project.doctype.project_detail.project_detail.get_permission_query_conditions",
+}
+
+has_permission = {
+	"Project": "vernon_project.vernon_project.doctype.project.project.has_permission",
+	"Project Detail": "vernon_project.vernon_project.doctype.project_detail.project_detail.has_permission",
+	"Project Todo": "vernon_project.vernon_project.doctype.project_todo.project_todo.has_permission",
+}
 
 # DocType Class
 # ---------------
@@ -137,13 +140,11 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	# "Project Todo": {
+	# 	"on_change": "vernon_project.vernon_project.doctype.project_.project_todo.update_project_details",
+	# }
+}
 
 # Scheduled Tasks
 # ---------------
