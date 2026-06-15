@@ -19,6 +19,7 @@
   "section_break_gwge",
   "project_owner",
   "project_leader",
+  "project_admin",
   "column_break_zwia",
   "team_members",
   "section_break_madv",
@@ -82,6 +83,15 @@
    "label": "Project Leader",
    "options": "User",
    "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "project_admin",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Project Admin",
+   "options": "User",
    "search_index": 1
   },
   {
@@ -165,6 +175,7 @@
   },
   {
    "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "if_owner": 1,
@@ -183,6 +194,17 @@
    "read": 1,
    "report": 1,
    "role": "Project Leader",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Admin",
    "select": 1,
    "share": 1
   },

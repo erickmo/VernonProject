@@ -16,6 +16,9 @@ class Project(Document):
 			if getdate(self.start_date) > getdate(self.deadline):
 				frappe.throw("Start Date cannot be after Deadline.")
 
+		# Edit scope + owner-only reassignment (updates only)
+		self.validate_edit_permission()
+
 	def before_save(self):
 		self.add_owner_and_leader_to_team()
 		self.remove_duplicate_team_members()
@@ -32,6 +35,9 @@ class Project(Document):
 		if self.project_leader and self.project_leader not in team_users:
 			self.append("team_members", {"user": self.project_leader})
 
+		if self.project_admin and self.project_admin not in team_users:
+			self.append("team_members", {"user": self.project_admin})
+
 	def remove_duplicate_team_members(self):
 		seen_users = set()
 		unique_team_members = []
@@ -42,6 +48,36 @@ class Project(Document):
 				unique_team_members.append(member)
 
 		self.team_members = unique_team_members
+
+	def validate_edit_permission(self):
+		if self.is_new():
+			return
+		user = frappe.session.user
+		if "System Manager" in frappe.get_roles(user):
+			return
+		if user not in (self.project_owner, self.project_leader):
+			frappe.throw(
+				"Only the Project Owner or Project Leader can edit this project.",
+				frappe.PermissionError,
+			)
+		old = self.get_doc_before_save()
+		if old and (old.project_owner != self.project_owner or old.project_leader != self.project_leader):
+			if user != old.project_owner:
+				frappe.throw(
+					"Only the Project Owner can change the owner or leader.",
+					frappe.PermissionError,
+				)
+
+	def on_trash(self):
+		user = frappe.session.user
+		if "System Manager" not in frappe.get_roles(user):
+			if user != self.project_owner:
+				frappe.throw(
+					"Only the Project Owner can delete this project.",
+					frappe.PermissionError,
+				)
+		if frappe.db.exists("Project Detail", {"project": self.name}):
+			frappe.throw("Cannot delete a project that has work items.")
 @staticmethod
 def get_permission_query_conditions(user):
 	if not user or user == "Guest":
@@ -69,22 +105,18 @@ def get_permission_query_conditions(user):
 	"""
 
 def has_permission(doc, ptype, user):
-	# Admin/full role bisa bypass kalau mau
 	if "System Manager" in frappe.get_roles(user):
 		return True
 
-	# Project Owner: boleh create, dan akses yg dia owner / jadi team
-	if "Project Owner" in frappe.get_roles(user):
+	roles = frappe.get_roles(user)
 
-		# Create: cukup role permission di Role Permissions Manager
-		if ptype == "create":
-			return True
+	if ptype == "create":
+		return any(r in roles for r in ("Project Owner", "Project Leader"))
 
-		# Read/Write/Delete: owner atau anggota team
-		if user == doc.owner:
-			return True
+	if user in (doc.project_owner, doc.project_leader, doc.project_admin):
+		return True
 
-		if any(t.user == user for t in doc.team_members):
-			return True
+	if any(t.user == user for t in doc.team_members):
+		return True
 
 	return False
