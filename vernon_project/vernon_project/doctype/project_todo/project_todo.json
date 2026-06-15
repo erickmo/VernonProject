@@ -12,6 +12,31 @@
       "deadline",
       "estimated",
       "notes",
+      "time_estimation_section",
+      "estimated_planned_to_done",
+      "estimated_done_to_checked",
+      "estimated_checked_to_completed",
+      "column_break_time_est",
+      "total_estimated_hours",
+      "phase_tracking_section",
+      "planned_started_at",
+      "done_started_at",
+      "column_break_phase",
+      "checked_started_at",
+      "phase_completed_at",
+      "actual_time_section",
+      "actual_planned_to_done",
+      "actual_done_to_checked",
+      "column_break_actual",
+      "actual_checked_to_completed",
+      "total_actual_hours",
+      "recurring_section",
+      "is_recurring",
+      "recurring_frequency",
+      "recurring_until",
+      "column_break_recurring",
+      "next_occurrence",
+      "original_todo",
       "progress_section",
       "status",
       "action",
@@ -73,6 +98,172 @@
          "label": "Estimated (minutes)",
          "non_negative": 1,
          "search_index": 1
+      },
+      {
+         "fieldname": "time_estimation_section",
+         "fieldtype": "Section Break",
+         "label": "Time Estimation Per Phase",
+         "collapsible": 1
+      },
+      {
+         "fieldname": "estimated_planned_to_done",
+         "fieldtype": "Float",
+         "label": "Estimated: Planned → Done (hours)",
+         "description": "Estimasi waktu dari status Planned ke Done",
+         "non_negative": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "estimated_done_to_checked",
+         "fieldtype": "Float",
+         "label": "Estimated: Done → Checked By PL (hours)",
+         "description": "Estimasi waktu dari status Done ke Checked By PL",
+         "non_negative": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "estimated_checked_to_completed",
+         "fieldtype": "Float",
+         "label": "Estimated: Checked → Completed (hours)",
+         "description": "Estimasi waktu dari status Checked By PL ke Completed",
+         "non_negative": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "column_break_time_est",
+         "fieldtype": "Column Break"
+      },
+      {
+         "fieldname": "total_estimated_hours",
+         "fieldtype": "Float",
+         "label": "Total Estimated Hours",
+         "description": "Total estimasi waktu dari semua fase",
+         "read_only": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "phase_tracking_section",
+         "fieldtype": "Section Break",
+         "label": "Phase Timestamps",
+         "collapsible": 1
+      },
+      {
+         "fieldname": "planned_started_at",
+         "fieldtype": "Datetime",
+         "label": "Planned Started At",
+         "description": "Timestamp saat todo dibuat dengan status Planned",
+         "read_only": 1
+      },
+      {
+         "fieldname": "done_started_at",
+         "fieldtype": "Datetime",
+         "label": "Done Started At",
+         "description": "Timestamp saat todo berubah ke status Done",
+         "read_only": 1
+      },
+      {
+         "fieldname": "column_break_phase",
+         "fieldtype": "Column Break"
+      },
+      {
+         "fieldname": "checked_started_at",
+         "fieldtype": "Datetime",
+         "label": "Checked Started At",
+         "description": "Timestamp saat todo berubah ke status Checked By PL",
+         "read_only": 1
+      },
+      {
+         "fieldname": "phase_completed_at",
+         "fieldtype": "Datetime",
+         "label": "Phase Completed At",
+         "description": "Timestamp saat todo berubah ke status Completed",
+         "read_only": 1
+      },
+      {
+         "fieldname": "actual_time_section",
+         "fieldtype": "Section Break",
+         "label": "Actual Time Per Phase",
+         "collapsible": 1
+      },
+      {
+         "fieldname": "actual_planned_to_done",
+         "fieldtype": "Float",
+         "label": "Actual: Planned → Done (hours)",
+         "description": "Waktu aktual dari Planned ke Done",
+         "read_only": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "actual_done_to_checked",
+         "fieldtype": "Float",
+         "label": "Actual: Done → Checked By PL (hours)",
+         "description": "Waktu aktual dari Done ke Checked By PL",
+         "read_only": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "column_break_actual",
+         "fieldtype": "Column Break"
+      },
+      {
+         "fieldname": "actual_checked_to_completed",
+         "fieldtype": "Float",
+         "label": "Actual: Checked → Completed (hours)",
+         "description": "Waktu aktual dari Checked By PL ke Completed",
+         "read_only": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "total_actual_hours",
+         "fieldtype": "Float",
+         "label": "Total Actual Hours",
+         "description": "Total waktu aktual dari semua fase",
+         "read_only": 1,
+         "precision": "2"
+      },
+      {
+         "fieldname": "recurring_section",
+         "fieldtype": "Section Break",
+         "label": "Recurring Settings",
+         "collapsible": 1
+      },
+      {
+         "default": "0",
+         "fieldname": "is_recurring",
+         "fieldtype": "Check",
+         "label": "Is Recurring"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_frequency",
+         "fieldtype": "Select",
+         "label": "Recurring Frequency",
+         "options": "\nDaily\nWeekly\nMonthly"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_until",
+         "fieldtype": "Date",
+         "label": "Recurring Until"
+      },
+      {
+         "fieldname": "column_break_recurring",
+         "fieldtype": "Column Break"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "next_occurrence",
+         "fieldtype": "Date",
+         "label": "Next Occurrence",
+         "read_only": 1
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "original_todo",
+         "fieldtype": "Data",
+         "label": "Original Todo",
+         "read_only": 1,
+         "hidden": 1
       },
       {
          "columns": 1,
@@ -155,7 +346,56 @@
    "module": "Vernon Project",
    "name": "Project Todo",
    "owner": "Administrator",
-   "permissions": [],
+   "permissions": [
+      {
+         "create": 1,
+         "delete": 1,
+         "email": 1,
+         "export": 1,
+         "print": 1,
+         "read": 1,
+         "report": 1,
+         "role": "System Manager",
+         "share": 1,
+         "write": 1
+      },
+      {
+         "create": 1,
+         "email": 1,
+         "export": 1,
+         "print": 1,
+         "read": 1,
+         "report": 1,
+         "role": "Project Owner",
+         "share": 1,
+         "write": 1
+      },
+      {
+         "create": 1,
+         "email": 1,
+         "export": 1,
+         "print": 1,
+         "read": 1,
+         "report": 1,
+         "role": "Project Leader",
+         "share": 1,
+         "write": 1
+      },
+      {
+         "email": 1,
+         "export": 1,
+         "print": 1,
+         "read": 1,
+         "report": 1,
+         "role": "Project Admin",
+         "share": 1,
+         "write": 1
+      },
+      {
+         "read": 1,
+         "role": "Project Team"
+      }
+   ],
    "row_format": "Dynamic",
    "sort_field": "modified",
    "sort_order": "DESC",
