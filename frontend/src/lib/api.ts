@@ -156,3 +156,82 @@ export async function logout(): Promise<void> {
     /* ignore */
   }
 }
+
+// --- Native resource API (/api/resource) ----------------------------------
+const RESOURCE = '/api/resource/'
+
+async function resourceRequest<T>(
+  path: string,
+  opts: {
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+    params?: Record<string, unknown>
+    body?: unknown
+  } = {},
+): Promise<T> {
+  const { method = 'GET', params, body } = opts
+  let url = RESOURCE + path
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  let payload: string | undefined
+
+  if (method === 'GET') {
+    if (params) {
+      const qs = new URLSearchParams()
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === null) continue
+        qs.set(k, typeof v === 'string' ? v : JSON.stringify(v))
+      }
+      const s = qs.toString()
+      if (s) url += '?' + s
+    }
+  } else {
+    headers['Content-Type'] = 'application/json'
+    headers['X-Frappe-CSRF-Token'] = csrf()
+    if (body !== undefined) payload = JSON.stringify(body)
+  }
+
+  const res = await fetch(url, { method, headers, body: payload, credentials: 'same-origin' })
+
+  // Only 401 means "not logged in" (drives the in-app login). A 403 here is a
+  // real permission denial we want to surface with its message.
+  if (res.status === 401) throw new ApiError('Not authenticated', 401)
+
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) ||
+      `Request failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Request failed', res.status)
+  }
+
+  return (data?.data ?? data?.message ?? data) as T
+}
+
+const enc = (s: string) => encodeURIComponent(s)
+
+export const resource = {
+  get: <T>(doctype: string, name: string) =>
+    resourceRequest<T>(`${enc(doctype)}/${enc(name)}`),
+  list: <T>(
+    doctype: string,
+    opts: { filters?: unknown; fields?: string[]; limit?: number } = {},
+  ) =>
+    resourceRequest<T>(enc(doctype), {
+      params: {
+        filters: opts.filters,
+        fields: opts.fields,
+        limit_page_length: opts.limit ?? 0,
+      },
+    }),
+  create: <T>(doctype: string, doc: Record<string, unknown>) =>
+    resourceRequest<T>(enc(doctype), { method: 'POST', body: doc }),
+  update: <T>(doctype: string, name: string, doc: Record<string, unknown>) =>
+    resourceRequest<T>(`${enc(doctype)}/${enc(name)}`, { method: 'PUT', body: doc }),
+  remove: (doctype: string, name: string) =>
+    resourceRequest<{ name?: string }>(`${enc(doctype)}/${enc(name)}`, { method: 'DELETE' }),
+}

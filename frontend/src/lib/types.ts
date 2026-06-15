@@ -138,6 +138,11 @@ export interface ProjectDetail {
   deadline: string | null
   owner_name: string
   leader_name: string
+  project_owner: string
+  project_leader: string
+  project_admin: string | null
+  project_group: string
+  groupings: string[]
   work_items: WorkItemSummary[]
   team: TeamMember[]
 }
@@ -153,4 +158,37 @@ export interface WorkItem {
   todos: Todo[]
   can_create: boolean
   team: { user: string; name: string; image: string | null }[]
+}
+
+export interface Opt2 {
+  value: string
+  label: string
+}
+
+export interface FormOptions {
+  customers: Opt2[]
+  users: Opt2[]
+  project_groups: Opt2[]
+}
+
+export interface ProjectInput {
+  project_name: string
+  customer: string
+  project_owner: string
+  project_leader: string
+  project_admin?: string | null
+  project_group: string
+  start_date: string
+  deadline: string
+  goal?: string
+  status: string
+  team_members?: { user: string }[]
+}
+
+export interface WorkItemInput {
+  project: string
+  title: string
+  project_deadline: string
+  grouping: string
+  status?: string
 }
