@@ -415,6 +415,13 @@ def get_project(project):
 		"deadline": str(doc.deadline) if doc.deadline else None,
 		"owner_name": (name_map.get(doc.project_owner) or {}).get("full_name") or doc.project_owner,
 		"leader_name": (name_map.get(doc.project_leader) or {}).get("full_name") or doc.project_leader,
+		"project_owner": doc.project_owner,
+		"project_leader": doc.project_leader,
+		"project_admin": doc.project_admin,
+		"project_group": doc.project_group,
+		"groupings": frappe.get_all(
+			"Glossary", filters={"project": doc.name}, pluck="glossary", limit_page_length=0
+		),
 		"work_items": sorted(items.values(), key=lambda w: w["title"] or ""),
 		"team": team,
 	}
