@@ -3,14 +3,18 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi } from '@/lib/api'
+import { mobileApi, resource } from '@/lib/api'
 import type {
   Boot,
   Dashboard,
+  FormOptions,
+  Opt2,
   ProjectCard,
   ProjectDetail,
+  ProjectInput,
   TodoDetail,
   WorkItem,
+  WorkItemInput,
 } from '@/lib/types'
 
 export const keys = {
@@ -145,5 +149,115 @@ export function useSaveNotes(todoId: string) {
       return res
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.todo(todoId) }),
+  })
+}
+
+export function permFlags(project: ProjectDetail, boot: Boot | undefined) {
+  const me = boot?.user
+  const isSM = !!boot?.roles.includes('System Manager')
+  const isOwner = !!me && me === project.project_owner
+  const isLeader = !!me && me === project.project_leader
+  return {
+    can_edit: isSM || isOwner || isLeader,
+    can_delete: isSM || isOwner,
+    can_reassign: isSM || isOwner,
+  }
+}
+
+export function canCreateProject(boot: Boot | undefined): boolean {
+  return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('Project Owner'))
+}
+
+const mapOpts = (rows: { name: string }[], label: (r: any) => string): Opt2[] =>
+  rows.map((r) => ({ value: r.name, label: label(r) || r.name }))
+
+export function useFormOptions() {
+  return useQuery({
+    queryKey: ['form-options'],
+    queryFn: async (): Promise<FormOptions> => {
+      const [customers, users, groups] = await Promise.all([
+        resource.list<any[]>('Customer', { fields: ['name', 'customer_name'] }),
+        resource.list<any[]>('User', {
+          filters: [['enabled', '=', 1]],
+          fields: ['name', 'full_name'],
+        }),
+        resource.list<any[]>('Project Group', { fields: ['name'] }),
+      ])
+      return {
+        customers: mapOpts(customers, (c) => c.customer_name),
+        users: mapOpts(users, (u) => u.full_name),
+        project_groups: mapOpts(groups, (g) => g.name),
+      }
+    },
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useCreateProject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ProjectInput) =>
+      resource.create<{ name: string }>('Project', input as unknown as Record<string, unknown>),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+export function useUpdateProject(project: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Partial<ProjectInput>) =>
+      resource.update<{ name: string }>('Project', project, input as Record<string, unknown>),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.project(project) })
+      qc.invalidateQueries({ queryKey: keys.projects })
+    },
+  })
+}
+
+export function useDeleteProject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (project: string) => resource.remove('Project', project),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+export function useCreateWorkItem(project: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: Omit<WorkItemInput, 'project'>) => {
+      const existing = await resource.list<{ name: string }[]>('Glossary', {
+        filters: [
+          ['glossary', '=', input.grouping],
+          ['project', '=', project],
+        ],
+        fields: ['name'],
+        limit: 1,
+      })
+      let groupingName = existing[0]?.name
+      if (!groupingName) {
+        const created = await resource.create<{ name: string }>('Glossary', {
+          glossary: input.grouping,
+          project,
+        })
+        groupingName = created.name
+      }
+      return resource.create<{ name: string }>('Project Detail', {
+        project,
+        title: input.title,
+        project_deadline: input.project_deadline,
+        grouping: groupingName,
+        ...(input.status ? { status: input.status } : {}),
+      })
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.project(project) })
+    },
   })
 }
