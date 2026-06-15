@@ -27,7 +27,7 @@ class ProjectDetail(Document):
 		# --------------------------------------------------------------------------
 		if self.todo:
 			latest_todo = max(
-				(todo.deadline for todo in self.todo if todo.deadline),
+				(getdate(todo.deadline) for todo in self.todo if todo.deadline),
 				default=None
 			)
 			self.latest_todo = latest_todo
@@ -42,6 +42,16 @@ class ProjectDetail(Document):
 		
 
 	def validate(self):
+		# --------------------------------------------------------------------------
+		# Run controller validation on each child Project Todo row.
+		# Frappe does not call a child doctype's controller validate() during a
+		# parent save, so the parent must delegate explicitly. Without this the
+		# Project Todo guards (create permission, done-field locking, phase
+		# tracking) never run when todos are saved through Project Detail.
+		# --------------------------------------------------------------------------
+		for todo in self.todo:
+			todo.validate()
+
 		# --------------------------------------------------------------------------
 		# grouping must be part of project
 		# --------------------------------------------------------------------------
@@ -107,9 +117,8 @@ class ProjectDetail(Document):
 		# --------------------------------------------------------------------------
 		if self.todo:
 			for todo in self.todo:
-				todo_doc = frappe.get_doc("Project Todo", todo.todo)
-				if todo_doc.status != "⚪️ Planned":
-					frappe.throw(f"Cannot delete Project Detail because Project Todo '{todo_doc.to_do}' is not in 'Scheduled' status.")
+				if todo.status != "⚪️ Planned":
+					frappe.throw(f"Cannot delete Project Detail because Project Todo '{todo.to_do}' is not in 'Scheduled' status.")
 
 	# --------------------------------------------------------------------------
 	# Validate 
@@ -136,9 +145,10 @@ class ProjectDetail(Document):
 		self.total_remaining_estimated = 0
 
 		for x in self.todo:
-			self.todo_without_estimation +=  0 if x.estimated > 0 else 1
-			self.total_estimated += x.estimated
-			self.total_remaining_estimated += x.estimated if x.status == "⚪️ Planned" else 0
+			est = x.estimated or 0
+			self.todo_without_estimation += 0 if est > 0 else 1
+			self.total_estimated += est
+			self.total_remaining_estimated += est if x.status == "⚪️ Planned" else 0
 
 		# Update Project Detail Status
 		if self.total_remaining_estimated == 0 and self.todo_count > 0:
@@ -165,6 +175,7 @@ def get_permission_query_conditions(user):
 	# Hanya tampilkan Project Detail yang project-nya:
 	# - project_owner = user
 	# - project_leader = user
+	# - project_admin = user
 	# - ATAU user ada di Project Team
 	return f"""
 		EXISTS (
@@ -174,6 +185,7 @@ def get_permission_query_conditions(user):
 				AND (
 					p.project_owner = {user_esc}
 					OR p.project_leader = {user_esc}
+					OR p.project_admin = {user_esc}
 					OR EXISTS (
 						SELECT 1
 						FROM `tabProject Team` pt
@@ -198,6 +210,9 @@ def has_permission(doc, ptype, user):
 		return True
 
 	if user == project.project_leader:
+		return True
+
+	if user == project.project_admin:
 		return True
 
 	if any(t.user == user for t in project.team_members):
