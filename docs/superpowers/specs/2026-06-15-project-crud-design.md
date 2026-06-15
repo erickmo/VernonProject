@@ -32,8 +32,8 @@ add work items + tasks from the mobile app.
 
 | Topic | Decision |
 |-------|----------|
-| Surface | Mobile PWA + backend methods |
-| Backend mechanism | Whitelisted `mobile.py` methods (no resource API) |
+| Surface | Mobile PWA + backend |
+| Backend mechanism | Frappe **native resource API** (`/api/resource`) for all CRUD; business rules enforced by `Project` controller guards; `Project` role perms broadened so the resource API role gate passes |
 | Create project | User holds `Project Owner` role, or System Manager |
 | Edit project | Project owner or leader of that project, or SM |
 | Reassign owner/leader | Owner (or SM) only — leader cannot reassign |
@@ -44,80 +44,97 @@ add work items + tasks from the mobile app.
 
 ## Architecture
 
-### Backend — new whitelisted methods in `vernon_project/api/mobile.py`
+### Backend — native resource API + controller guards
 
-All methods resolve the current user, perform explicit permission checks
-(`frappe.throw(..., frappe.PermissionError)` on failure), then save with
-`ignore_permissions=True`. A shared helper centralizes role/lead checks.
+No custom CRUD endpoints. The frontend calls Frappe's REST resource API
+(`/api/resource/<Doctype>`) directly. The resource API runs the full
+permission stack: **doctype role gate first** (a `has_permission` hook can only
+further restrict, never grant past the role gate), then the doctype's
+controller `validate`/`on_trash`. Business rules that depend on doc fields
+(this project's owner/leader, reassignment, delete-with-work-items) live in the
+`Project` controller, because role permissions cannot express them.
 
-```python
-def _is_sm(user):
-    return "System Manager" in frappe.get_roles(user)
+Current role perms (relevant): Project = SM`[CRWD]`, Project Owner`[CRW]`,
+Project Leader`[R]`. Project Detail & Glossary already grant Owner/Leader
+`[CRWD]`.
 
-def _project_leads(project):
-    """Return (owner, leader) for a project name."""
-    return frappe.get_value("Project", project, ["project_owner", "project_leader"])
-```
+**1. Broaden `Project` role permissions** (`project/project.json`) so the
+resource-API role gate passes for the intended actors:
+- `Project Leader`: add `write` (needed for leader edit).
+- `Project Owner`: add `delete` (needed for owner delete).
+The controller guards below then narrow these to the *specific* project.
 
-1. **`get_project_form_options()`** → `{customers, users, project_groups, statuses}`
-   where each list is `[{value, label}]`. `users` = enabled Users (for
-   owner/leader/admin/team pickers); `statuses` = `["Ongoing", "Closed"]`.
-   Whitelisted read.
+**2. `Project` controller guards** (`project/project.py`):
+- `validate()` — on update (`not self.is_new()`), unless
+  `"System Manager" in frappe.get_roles(user)`:
+  - **Edit scope:** require the acting `frappe.session.user` to be the project's
+    `project_owner` or `project_leader`; else `frappe.throw(..., PermissionError)`.
+    (Role gate lets any Project Owner/Leader *role* holder write; this restricts
+    to *this* project's leads.)
+  - **Owner-only reassign:** compare against `self.get_doc_before_save()`; if
+    `project_owner` or `project_leader` changed and the user is not the existing
+    owner (nor SM), throw.
+- `on_trash()` — unless SM: require user == `project_owner`; and if
+  `frappe.db.exists("Project Detail", {"project": self.name})`, throw
+  `"Cannot delete a project that has work items."`.
+- `has_permission(doc, ptype, user)` (existing hook) — leave granting read to
+  owner/leader/admin/team; it already returns True for owner/leader for all
+  ptypes, which is fine because the role gate + the guards above do the real
+  enforcement for write/delete.
 
-2. **`create_project(payload)`** — `payload` is a JSON string or dict with
-   `project_name, customer, project_owner, project_leader, project_admin,
-   project_group, start_date, deadline, goal, status, team_members` (list of
-   user emails).
-   - Permission: `_is_sm(user)` or `"Project Owner" in frappe.get_roles(user)`;
-     else throw.
-   - Insert `Project`; append `team_members` rows; `insert(ignore_permissions=True)`.
-   - Returns `{name}`.
+**3. CRUD via resource API (frontend):**
+- **Create project:** `POST /api/resource/Project` with the full doc, including
+  `team_members` as embedded child rows. Role gate: Project Owner role or SM.
+- **Edit prefill:** `GET /api/resource/Project/<name>` returns all raw fields
+  for the form.
+- **Update project:** `PUT /api/resource/Project/<name>` with changed fields
+  (PUT merges provided fields; sending `team_members` replaces the table).
+  Role gate: Owner/Leader role (after broadening); `validate` scopes it.
+- **Delete project:** `DELETE /api/resource/Project/<name>`. Role gate:
+  Owner/SM (after broadening); `on_trash` guards.
+- **Create work item:** two steps — resolve grouping then create the detail:
+  1. `GET /api/resource/Glossary?filters=[["glossary","=",g],["project","=",p]]`.
+     If empty, `POST /api/resource/Glossary {glossary:g, project:p}`.
+  2. `POST /api/resource/Project Detail {project, title, project_deadline,
+     grouping:<glossary name>, status}`.
+  Glossary & Project Detail role perms already permit Owner/Leader.
+- **Create task:** unchanged (existing `CreateTaskSheet` → `frappe.client.insert`
+  of `Project Todo`, already permitted via its role perms + validate guard).
 
-3. **`update_project(project, payload)`** — updates an existing project.
-   - Permission: `_is_sm(user)` or `user in _project_leads(project)`; else throw.
-   - Reassignment guard: if `payload` changes `project_owner` or
-     `project_leader`, require `_is_sm(user)` or `user == owner`; a leader who
-     is not the owner cannot change these (throw).
-   - Apply allowed fields; replace `team_members` if provided;
-     `save(ignore_permissions=True)`. Returns `{name}`.
+**4. Option lists via resource API:** `GET /api/resource/Customer`,
+`/api/resource/User?filters=[["enabled","=",1]]`, `/api/resource/Project Group`
+with `fields`/`limit_page_length=0`. Project status options are a static
+frontend constant (`["Ongoing","Closed"]`). No `get_project_form_options`
+endpoint.
 
-4. **`delete_project(project)`** —
-   - Permission: `_is_sm(user)` or `user == owner`; else throw.
-   - Guard: if `frappe.db.exists("Project Detail", {"project": project})`,
-     throw `"Cannot delete a project that has work items."`.
-   - `frappe.delete_doc("Project", project, ignore_permissions=True)`.
-     Returns `{status: "ok"}`.
-
-5. **`create_work_item(project, title, project_deadline, grouping, status=None)`** —
-   - Permission: `_is_sm(user)` or `user in _project_leads(project)`; else throw.
-   - Grouping resolution: look for a `Glossary` with `glossary == grouping` and
-     `project == project`. If none, create it
-     (`Glossary{glossary: grouping, project}`.insert(ignore_permissions=True)).
-     Use the resolved Glossary name as `grouping`.
-   - Insert `Project Detail{project, title, project_deadline, grouping,
-     status or default}` with `ignore_permissions=True`. Returns `{name}`.
-
-6. **Extend `get_project`** return with:
-   - `can_edit`: `_is_sm(user) or user in (owner, leader)`
-   - `can_delete`: `_is_sm(user) or user == owner`
-   - `can_reassign`: `_is_sm(user) or user == owner`
-   - Raw `project_owner`, `project_leader`, `project_admin`, `project_group`,
-     `team` user list (already present) — needed to prefill the edit form.
-
-7. **Extend `bootstrap`** with `can_create_project`:
-   `_is_sm(user) or "Project Owner" in frappe.get_roles(user)`.
+**5. Permission flags computed client-side** (no backend flag endpoints):
+- `can_create_project` = `boot.roles` includes `Project Owner`, or
+  `System Manager`.
+- `can_edit` = user is project owner/leader, or SM.
+- `can_delete` = user is project owner, or SM.
+- `can_reassign` = user is project owner, or SM.
+`get_project` is extended (read only) to also return the raw `project_owner`,
+`project_leader`, `project_admin`, `project_group` emails and the project's
+existing `groupings` (Glossary names) so the forms can prefill and the flags can
+be computed. `bootstrap` already returns `roles`.
 
 ### Frontend (PWA) — `frontend/src/`
 
-- **`lib/types.ts`**: add `can_edit/can_delete/can_reassign` + raw owner/leader/
-  admin/group fields to the project-detail type; add `can_create_project` to
-  `Boot`; add `ProjectFormOptions` and `WorkItemInput`/`ProjectInput` types.
-- **`lib/api.ts`** (`mobileApi`): `projectFormOptions()`, `createProject(payload)`,
-  `updateProject(project, payload)`, `deleteProject(project)`,
-  `createWorkItem(payload)` — all `api.post` to the new methods.
-- **`hooks/useData.ts`**: `useProjectFormOptions()`, `useCreateProject()`,
-  `useUpdateProject(project)`, `useDeleteProject()`, `useCreateWorkItem(project)`
-  — mutations invalidate `projects`, `project`, `dashboard` as appropriate.
+- **`lib/api.ts`**: add a small **resource-API client** alongside the existing
+  method client — `resource.get(doctype, name)`, `resource.list(doctype, {filters,
+  fields})`, `resource.create(doctype, doc)`, `resource.update(doctype, name,
+  doc)`, `resource.remove(doctype, name)` hitting `/api/resource/...` with the
+  `X-Frappe-CSRF-Token` header on mutations (reuse the existing `csrf()` +
+  `request` plumbing; resource responses wrap payload in `{data: ...}`).
+- **`lib/types.ts`**: add raw `project_owner/project_leader/project_admin/
+  project_group` + `groupings` to the project-detail type; `ProjectInput`,
+  `WorkItemInput`, and option types. Permission flags are derived, not typed on
+  the payload.
+- **`hooks/useData.ts`**: `useFormOptions()` (customers/users/groups via
+  `resource.list`), `useCreateProject()`, `useUpdateProject(project)`,
+  `useDeleteProject()`, `useCreateWorkItem(project)` — mutations call the
+  `resource.*` client and invalidate `projects`, `project`, `dashboard`. A
+  `permFlags(project, boot)` helper computes `can_edit/can_delete/can_reassign`.
 - **`components/ProjectFormSheet.tsx`**: bottom-sheet form used for both create
   and edit (mode prop). Fields: project_name, customer (select), project_owner
   (select), project_leader (select), project_admin (select, optional),
@@ -127,10 +144,11 @@ def _project_leads(project):
   validation for required fields.
 - **`components/WorkItemFormSheet.tsx`**: bottom sheet. Fields: title, grouping
   (combobox — datalist of existing project groupings, free text allowed),
-  project_deadline, status. Existing groupings come from `get_project`
-  (add a `groupings` list to its payload) or `get_project_form_options`.
+  project_deadline, status. Existing groupings come from the `groupings` list
+  added to the `get_project` payload (or `resource.list("Glossary", {filters})`).
 - **`pages/Projects.tsx`**: add a "+ New project" button (shown when
-  `boot.can_create_project`) opening `ProjectFormSheet` in create mode.
+  `can_create_project` is derived from `boot.roles`) opening `ProjectFormSheet`
+  in create mode.
 - **`pages/ProjectDetailPage.tsx`**: add Edit (if `can_edit`) and Delete (if
   `can_delete`, with confirm) actions; "Add work item" (if `can_edit`) opening
   `WorkItemFormSheet`; and "Add task" that lets the user pick a work item then
@@ -141,15 +159,20 @@ def _project_leads(project):
 ```
 Create project:
   Projects "+ New project" (visible if can_create_project)
-   → ProjectFormSheet → useCreateProject.mutate(payload)
-   → POST mobile.create_project (role check) → insert Project (+team)
+   → ProjectFormSheet → useCreateProject.mutate(doc)
+   → POST /api/resource/Project (role gate: Owner/SM) → Project.validate
    → invalidate projects/dashboard → list shows new project
+
+Update project:
+  ProjectDetailPage "Edit" (if can_edit) → ProjectFormSheet prefilled
+   → PUT /api/resource/Project/<name> (role gate write: Owner/Leader)
+   → Project.validate scopes to this project's leads + owner-only reassign
 
 Create work item + task:
   ProjectDetailPage "Add work item" (if can_edit)
-   → WorkItemFormSheet (grouping pick-or-type) → useCreateWorkItem.mutate
-   → POST mobile.create_work_item (lead check; create Glossary if needed)
-   → insert Project Detail → invalidate project
+   → WorkItemFormSheet (grouping pick-or-type)
+   → GET Glossary?filters=... ; POST Glossary if missing
+   → POST /api/resource/Project Detail → invalidate project
    → "Add task" → pick the work item → CreateTaskSheet (existing flow)
 ```
 
@@ -157,32 +180,52 @@ Create work item + task:
 
 | Case | Behavior |
 |------|----------|
-| Non-permitted user calls a method (UI bypass) | method throws PermissionError → ApiError → toast |
-| Leader tries to reassign owner/leader | `update_project` throws → toast |
-| Delete project with work items | `delete_project` throws guard message → toast |
+| Non-permitted user (UI bypass) | role gate / controller guard → resource API returns 403 → ApiError → toast |
+| Leader tries to reassign owner/leader | `Project.validate` throws PermissionError → toast |
+| Delete project with work items | `Project.on_trash` throws guard message → toast |
 | Missing required form field | client-side validation blocks submit |
-| New grouping typed | `create_work_item` creates the Glossary, then the work item |
+| New grouping typed | frontend POSTs a Glossary, then the Project Detail |
 | Network/CSRF failure | ApiError → toast, sheet stays open |
 
 ## Testing
 
-- **Backend unit tests** (`vernon_project/api/test_mobile_projects.py`):
-  - `create_project`: Project-Owner-role user succeeds; plain user rejected; SM succeeds.
-  - `update_project`: leader edits meta OK; leader reassign owner rejected; owner reassign OK.
-  - `delete_project`: blocked when work items exist; allowed when none; non-owner rejected.
-  - `create_work_item`: existing grouping reused; new grouping creates a Glossary; non-lead rejected.
-  - `get_project`/`bootstrap`: permission flags present and correct.
-  - Fixtures must satisfy mandatory schema (Project Group, Glossary grouping, title, project_deadline) — mirror the patterns in `test_mobile.py`.
+- **Backend unit tests** (`vernon_project/doctype/project/test_project.py`):
+  enforce the controller guards directly with `frappe.set_user` (guards run even
+  under `ignore_permissions`, since they check `frappe.session.user`):
+  - `validate` edit scope: a non-lead user saving the project is rejected; the
+    leader is allowed.
+  - reassign guard: the leader (not owner) changing `project_owner`/
+    `project_leader` is rejected; the owner changing them is allowed; SM allowed.
+  - `on_trash`: delete blocked when a work item exists; allowed when none;
+    non-owner rejected.
+  - role-perm presence: assert `project.json` grants Leader `write` and Owner
+    `delete` (so the resource gate passes).
+  - Fixtures must satisfy mandatory schema (Project Group, Glossary grouping,
+    title, project_deadline) — mirror the patterns in `test_mobile.py`.
+- **Resource-API smoke** (`bench execute` script, like last feature): as a
+  Project-Leader-role user who is the project's leader, PUT-edit succeeds and
+  DELETE is blocked by the work-item guard; a role-holder who is not this
+  project's lead is rejected — exercising the real role-gate + guard stack.
 - **Frontend**: `npx tsc --noEmit` + `npm run build`; manual PWA verification as
   owner, leader, and non-lead.
 
 ## Build order (phases within this plan)
 
-1. Backend project CRUD methods + `get_project`/`bootstrap` flags + tests.
-2. Frontend project create/edit/delete (types, api, hooks, ProjectFormSheet,
-   wiring in Projects + ProjectDetailPage).
-3. Work item create (backend `create_work_item` + grouping handling + tests;
-   `WorkItemFormSheet`; wiring) and task quick-add reusing `CreateTaskSheet`.
+1. Backend: broaden `Project` role perms (Leader `write`, Owner `delete`) +
+   `Project` controller guards (`validate` edit/reassign, `on_trash` delete) +
+   extend `get_project` read with raw lead emails + `groupings` + tests
+   (run `bench migrate` to apply the permission change).
+2. Frontend: `resource.*` API client + project create/edit/delete (types, hooks,
+   `permFlags`, `ProjectFormSheet`, wiring in Projects + ProjectDetailPage).
+3. Work item create (resource-API grouping resolve-or-create + `Project Detail`
+   create; `WorkItemFormSheet`; wiring) and task quick-add reusing
+   `CreateTaskSheet`.
+
+> **Security-model note:** Broadening `Project` role perms means any holder of
+> the `Project Leader` role can *write* (and `Project Owner` role can *delete*)
+> at the role-gate level for **any** project; the `Project.validate`/`on_trash`
+> guards are what restrict the action to the specific project's leads. This is
+> the trade-off of using the native resource API instead of whitelisted methods.
 
 ## Out of scope (YAGNI)
 
