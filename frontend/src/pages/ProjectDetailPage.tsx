@@ -181,7 +181,7 @@ export default function ProjectDetailPage() {
         project={data}
         canReassign={flags.can_reassign}
       />
-      <WorkItemFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings} />
+      <WorkItemFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings ?? []} />
       {taskFor && (
         <CreateTaskSheet open={!!taskFor} onClose={() => setTaskFor(null)} workItem={taskFor} team={data.team} />
       )}

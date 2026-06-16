@@ -14,7 +14,7 @@ interface Props {
 
 const STATUSES = ['Pending', 'Ongoing', 'Completed']
 
-export function WorkItemFormSheet({ open, onClose, project, groupings }: Props) {
+export function WorkItemFormSheet({ open, onClose, project, groupings = [] }: Props) {
   const toast = useToast()
   const create = useCreateWorkItem(project)
   const [title, setTitle] = useState('')
