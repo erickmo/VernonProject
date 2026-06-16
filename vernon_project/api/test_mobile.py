@@ -108,3 +108,36 @@ class TestMobileGetProjectExtras(unittest.TestCase):
 		self.assertEqual(r["project_leader"], "Administrator")
 		self.assertIn("project_group", r)
 		self.assertIn("Extras Grouping", r["groupings"])
+
+
+class TestMobileFormOptions(unittest.TestCase):
+	def setUp(self):
+		if not frappe.db.exists("Customer", "Test Customer"):
+			frappe.get_doc({"doctype": "Customer", "customer_name": "Test Customer",
+				"customer_type": "Company"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Project Group", "Test Project Group"):
+			frappe.get_doc({"doctype": "Project Group",
+				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("User", "fo_lead@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "fo_lead@example.com",
+				"first_name": "FO", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		frappe.get_doc("User", "fo_lead@example.com").add_roles("Project Owner")
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_form_options_for_non_system_manager(self):
+		from vernon_project.api.mobile import get_form_options
+		# A Project Owner (NOT System Manager) must still get the user list,
+		# even though /api/resource/User is System-Manager-only.
+		frappe.set_user("fo_lead@example.com")
+		try:
+			r = get_form_options()
+		finally:
+			frappe.set_user("Administrator")
+		self.assertIn("customers", r)
+		self.assertIn("project_groups", r)
+		self.assertTrue(len(r["users"]) > 0)
+		self.assertTrue(any(o["value"] == "fo_lead@example.com" for o in r["users"]))
+		self.assertTrue(all("value" in o and "label" in o for o in r["users"]))

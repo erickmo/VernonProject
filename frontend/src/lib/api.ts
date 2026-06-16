@@ -109,6 +109,7 @@ export const mobileApi = {
       }),
     }),
   reportOptions: () => api.get(M + 'get_report_options'),
+  formOptions: () => api.get(M + 'get_form_options'),
   runReport: (report: string, filters: Record<string, unknown>) =>
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
 }

@@ -8,7 +8,6 @@ import type {
   Boot,
   Dashboard,
   FormOptions,
-  Opt2,
   ProjectCard,
   ProjectDetail,
   ProjectInput,
@@ -168,27 +167,14 @@ export function canCreateProject(boot: Boot | undefined): boolean {
   return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('Project Owner'))
 }
 
-const mapOpts = (rows: { name: string }[], label: (r: any) => string): Opt2[] =>
-  rows.map((r) => ({ value: r.name, label: label(r) || r.name }))
-
 export function useFormOptions() {
   return useQuery({
     queryKey: ['form-options'],
-    queryFn: async (): Promise<FormOptions> => {
-      const [customers, users, groups] = await Promise.all([
-        resource.list<any[]>('Customer', { fields: ['name', 'customer_name'] }),
-        resource.list<any[]>('User', {
-          filters: [['enabled', '=', 1]],
-          fields: ['name', 'full_name'],
-        }),
-        resource.list<any[]>('Project Group', { fields: ['name'] }),
-      ])
-      return {
-        customers: mapOpts(customers, (c) => c.customer_name),
-        users: mapOpts(users, (u) => u.full_name),
-        project_groups: mapOpts(groups, (g) => g.name),
-      }
-    },
+    // Options come from a whitelisted method, not /api/resource: the User
+    // doctype is readable only by System Manager, so a raw resource list of
+    // users 403s for project leads. get_form_options uses frappe.get_all
+    // server-side, which bypasses the per-doctype read gate.
+    queryFn: () => mobileApi.formOptions() as Promise<FormOptions>,
     staleTime: 1000 * 60 * 10,
   })
 }

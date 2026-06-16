@@ -748,3 +748,35 @@ def run_report(report, filters=None):
 
 	rows = res.get("result") or res.get("data") or []
 	return {"columns": columns, "rows": rows[:300], "total": len(rows), "messages": messages}
+
+
+@frappe.whitelist()
+def get_form_options():
+	"""Option lists for the project create/edit form (customers, users, groups).
+
+	Uses ``frappe.get_all`` (no per-doctype read gate) so non-System-Manager
+	project leads get the User list too — ``/api/resource/User`` is restricted
+	to System Manager, which would 403 a raw resource list of users.
+	"""
+	customers = frappe.get_all("Customer", fields=["name", "customer_name"], limit_page_length=0)
+	users = frappe.get_all(
+		"User",
+		filters={"enabled": 1, "name": ["not in", ("Guest",)]},
+		fields=["name", "full_name"],
+		limit_page_length=0,
+	)
+	groups = frappe.get_all("Project Group", fields=["name"], limit_page_length=0)
+	return {
+		"customers": sorted(
+			[{"value": c["name"], "label": c.get("customer_name") or c["name"]} for c in customers],
+			key=lambda x: x["label"],
+		),
+		"users": sorted(
+			[{"value": u["name"], "label": u.get("full_name") or u["name"]} for u in users],
+			key=lambda x: x["label"],
+		),
+		"project_groups": sorted(
+			[{"value": g["name"], "label": g["name"]} for g in groups],
+			key=lambda x: x["label"],
+		),
+	}
