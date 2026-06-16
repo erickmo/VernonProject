@@ -6,6 +6,7 @@ import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { WorkItemFormSheet } from '@/components/WorkItemFormSheet'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
+import { GroupManagerSheet } from '@/components/GroupManagerSheet'
 import { useToast } from '@/components/Toast'
 import { useProject, useBoot, useDeleteProject, permFlags } from '@/hooks/useData'
 import { formatDate } from '@/lib/format'
@@ -20,6 +21,7 @@ export default function ProjectDetailPage() {
   const del = useDeleteProject()
   const [editOpen, setEditOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
+  const [groupsOpen, setGroupsOpen] = useState(false)
   const [taskFor, setTaskFor] = useState<string | null>(null)
 
   if (isLoading && !data) {
@@ -131,6 +133,10 @@ export default function ProjectDetailPage() {
           </h3>
           {flags.can_edit && (
             <div className="flex gap-2">
+              <button onClick={() => setGroupsOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
+                <Layers className="h-3.5 w-3.5" /> Groups
+              </button>
               <button onClick={() => setWiOpen(true)}
                 className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95">
                 <Plus className="h-3.5 w-3.5" /> Work item
@@ -182,6 +188,7 @@ export default function ProjectDetailPage() {
         canReassign={flags.can_reassign}
       />
       <WorkItemFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings ?? []} />
+      <GroupManagerSheet open={groupsOpen} onClose={() => setGroupsOpen(false)} project={data.name} />
       {taskFor && (
         <CreateTaskSheet open={!!taskFor} onClose={() => setTaskFor(null)} workItem={taskFor} team={data.team} />
       )}
