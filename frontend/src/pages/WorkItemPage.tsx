@@ -6,7 +6,7 @@ import { TodoCard } from '@/components/TodoCard'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useWorkItem } from '@/hooks/useData'
-import { stripHtml } from '@/lib/format'
+import { stripHtml, byDeadlineAsc } from '@/lib/format'
 
 export default function WorkItemPage() {
   const { name = '' } = useParams()
@@ -31,6 +31,7 @@ export default function WorkItemPage() {
 
   const condition = stripHtml(data.current_condition || '')
   const outcome = stripHtml(data.expected_outcome || '')
+  const todos = data.todos.slice().sort(byDeadlineAsc)
 
   return (
     <DetailScreen title={data.title}>
@@ -64,7 +65,7 @@ export default function WorkItemPage() {
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-            <ListChecks className="h-4 w-4" /> Tasks ({data.todos.length})
+            <ListChecks className="h-4 w-4" /> Tasks ({todos.length})
           </h3>
           {data.can_create && (
             <button
@@ -75,9 +76,9 @@ export default function WorkItemPage() {
             </button>
           )}
         </div>
-        {data.todos.length ? (
+        {todos.length ? (
           <div className="flex flex-col gap-2.5">
-            {data.todos.map((t) => (
+            {todos.map((t) => (
               <TodoCard key={t.name} todo={t} showProject={false} showAssignee />
             ))}
           </div>

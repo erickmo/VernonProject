@@ -46,7 +46,7 @@ export default function Projects() {
       (!filters.owner || p.project_owner === filters.owner) &&
       (!filters.leader || p.project_leader === filters.leader) &&
       (!q || p.project_name.toLowerCase().includes(q) || (p.customer || '').toLowerCase().includes(q)),
-  )
+  ).sort((a, b) => a.project_name.localeCompare(b.project_name))
 
   const advCount = ['brand', 'owner', 'leader'].filter((k) => filters[k]).length
 
