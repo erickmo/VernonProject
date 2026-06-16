@@ -1,18 +1,24 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { ListChecks, AlertCircle, Plus, Pencil, Trash2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
+import { WorkItemEditSheet } from '@/components/WorkItemEditSheet'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
-import { useWorkItem } from '@/hooks/useData'
+import { useToast } from '@/components/Toast'
+import { useWorkItem, useDeleteWorkItem } from '@/hooks/useData'
 import { stripHtml, byDeadlineAsc } from '@/lib/format'
 
 export default function WorkItemPage() {
   const { name = '' } = useParams()
   const id = decodeURIComponent(name)
   const { data, isLoading } = useWorkItem(id)
+  const navigate = useNavigate()
+  const toast = useToast()
+  const del = useDeleteWorkItem()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
@@ -43,6 +49,26 @@ export default function WorkItemPage() {
         <span className="mt-2 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
           {data.status}
         </span>
+
+        {data.can_edit && (
+          <div className="mt-3 flex gap-2">
+            <button onClick={() => setEditOpen(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-700 active:scale-95">
+              <Pencil className="h-4 w-4" /> Edit
+            </button>
+            <button
+              onClick={() => {
+                if (!confirm('Delete this work item?')) return
+                del.mutate(data.name, {
+                  onSuccess: () => { toast('success', 'Work item deleted'); navigate(`/project/${encodeURIComponent(data.project)}`) },
+                  onError: (e) => toast('error', (e as Error).message),
+                })
+              }}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-rose-600 active:scale-95">
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        )}
 
         {(condition || outcome) && (
           <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
@@ -93,6 +119,8 @@ export default function WorkItemPage() {
         workItem={data.name}
         team={data.team}
       />
+
+      <WorkItemEditSheet open={editOpen} onClose={() => setEditOpen(false)} workItem={data} />
     </DetailScreen>
   )
 }

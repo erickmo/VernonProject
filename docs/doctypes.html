@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DocType Reference · Vernon Project Docs</title>
+  <meta name="description" content="Complete field-by-field reference for every DocType in Vernon Project, with controller logic.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236d5efc'/><text x='16' y='23' font-size='20' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="iconbtn hamburger" id="hamburger" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a class="topbar__brand" href="index.html">
+      <span class="brand-mark">V</span>
+      <span>Vernon Project<small>Documentation</small></span>
+    </a>
+    <div class="topbar__spacer"></div>
+    <button class="searchbtn" data-search-open aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="stxt">Search docs</span>
+      <span class="kbd">&#8984; K</span>
+    </button>
+    <button class="iconbtn" id="themeToggle" aria-label="Toggle theme">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+    <a class="iconbtn" href="https://github.com" aria-label="Repository" title="Repository">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 0 0 8.84 21.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85V21c0 .27.16.59.67.5A10 10 0 0 0 12 2Z"/></svg>
+    </a>
+  </header>
+  <div class="scrim" id="scrim"></div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav>
+        <div class="nav-group">
+          <div class="nav-group__title">Getting Started</div>
+          <a class="nav-link" href="index.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Overview</span></a>
+          <a class="nav-link" href="getting-started.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg><span>Installation &amp; Setup</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Core Concepts</div>
+          <a class="nav-link" href="architecture.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Architecture</span></a>
+          <a class="nav-link active" href="doctypes.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>DocType Reference</span></a>
+          <a class="nav-link" href="workflow.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg><span>Todo Workflow</span></a>
+          <a class="nav-link" href="permissions.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Roles &amp; Permissions</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Reference</div>
+          <a class="nav-link" href="api.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>API Reference</span></a>
+          <a class="nav-link" href="reports.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Reports &amp; Dashboards</span></a>
+          <a class="nav-link" href="changelog.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg><span>Changelog &amp; Roadmap</span></a>
+        </div>
+</nav>
+    </aside>
+    <main class="content">
+<nav class="breadcrumb"><a href="index.html">Docs</a> <span>/</span> <span>DocType Reference</span></nav>
+<h1 class="page-title">DocType Reference</h1>
+<p class="page-lead">Field-by-field reference for all ten DocTypes in the Vernon Project app &mdash; three core work-management types and seven supporting types. Each entry lists its kind, naming, fields, controller logic, client scripts, and a pointer to the full permission matrix.</p>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">How to read these tables</div><p>Pure layout fields (Section Break, Column Break, Tab Break) are omitted. Required fields are marked <span class="req">required</span>. Fields written by the server or framework rather than the user are noted as <em>computed</em> or <em>auto-set</em>. Some labels and validation messages are in Indonesian and are quoted verbatim. For the complete role/permission grid see <a href="permissions.html">Permissions</a>.</p></div></div>
+
+<h2>Quick index</h2>
+<div class="card-grid cols-3">
+  <a class="card" href="#project"><div class="card__title">Project</div><p class="card__desc">Top-level project record. Calendar &amp; Gantt, team auto-population.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-detail"><div class="card__title">Project Detail</div><p class="card__desc">Work-breakdown under a project. Rolled-up todo stats, derived status, SOW pricing.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-todo"><div class="card__title">Project Todo</div><p class="card__desc">Child task with four-stage workflow, phase tracking, recurrence.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
+  <a class="card" href="#customer"><div class="card__title">Customer</div><p class="card__desc">Minimal client entity that projects link back to.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#glossary"><div class="card__title">Glossary</div><p class="card__desc">Project-scoped terminology term.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-group"><div class="card__title">Project Group</div><p class="card__desc">Hierarchical NestedSet tree for organizing projects.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-team"><div class="card__title">Project Team</div><p class="card__desc">Child table of team-member User links.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-glossary"><div class="card__title">Project Glossary</div><p class="card__desc">Child table attaching glossary terms to a detail.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#scope-of-work"><div class="card__title">Scope of Work</div><p class="card__desc">Submittable SOW record linked to a proposal.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-proposal"><div class="card__title">Project Proposal</div><p class="card__desc">Submittable proposal stub.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+</div>
+
+<h2>Core DocTypes</h2>
+<p>The three core types carry the app's work-management workflow: a <a href="#project">Project</a> contains many <a href="#project-detail">Project Detail</a> records, each of which owns a <a href="#project-todo">Project Todo</a> child table.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-8L9 5H5a2 2 0 0 0-2 2z"/></svg></div><div class="dt-head__meta"><h3 id="project">Project</h3><p>The top-level project record &mdash; name, customer, group, schedule, status, and the people responsible &mdash; linked from Project Detail and exposed in calendar/Gantt views.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Calendar &amp; Gantt</span><span class="badge badge--gray">Track Changes</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By Naming Series &mdash; <code>PRJ-.YY..MM.-.#####</code> (e.g. <code>PRJ-2606-00001</code>); title field <code>project_name</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>naming_series</code></td><td><span class="badge badge--purple">Select</span></td><td></td><td>Single option <code>PRJ-.YY..MM.-.#####</code>; drives autoname.</td></tr>
+<tr><td><code>project_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Shown in list view; the doctype's title field.</td></tr>
+<tr><td><code>project_group</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#project-group">Project Group</a>. Client filters options to non-group records (<code>is_group = 0</code>). Search-indexed.</td></tr>
+<tr><td><code>customer</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#customer">Customer</a>. Search-indexed.</td></tr>
+<tr><td><code>start_date</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Validated to be on/before <code>deadline</code>. Search-indexed.</td></tr>
+<tr><td><code>deadline</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Validated to be on/after <code>start_date</code>. Search-indexed.</td></tr>
+<tr><td><code>status</code></td><td><span class="badge badge--purple">Select</span></td><td><span class="req">required</span></td><td>Options <code>Ongoing</code>, <code>Closed</code>. Default <code>Ongoing</code>.</td></tr>
+<tr><td><code>project_owner</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target User. Auto-added to <code>team_members</code> on save. Allowed on submit; in list view and standard filter.</td></tr>
+<tr><td><code>project_leader</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target User. Auto-added to <code>team_members</code> on save. Search-indexed.</td></tr>
+<tr><td><code>project_admin</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Optional. Target User. Auto-added to <code>team_members</code> if set. Hard-blocked from advancing todo status (see <a href="#project-todo">Project Todo</a>).</td></tr>
+<tr><td><code>team_members</code></td><td><span class="badge badge--gray">Table</span></td><td></td><td>Child table of <a href="#project-team">Project Team</a> rows. Auto-populated with owner/leader/admin and de-duplicated by the controller.</td></tr>
+<tr><td><code>goal</code></td><td><span class="badge badge--gray">Small Text</span></td><td></td><td>Free-form project goal.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller logic</strong></p>
+<ul>
+  <li><code>validate</code> &mdash; when both dates are set, throws <code>Start Date cannot be after Deadline.</code> if <code>getdate(start_date) &gt; getdate(deadline)</code>.</li>
+  <li><code>before_save</code> &mdash; calls <code>add_owner_and_leader_to_team()</code> then <code>remove_duplicate_team_members()</code>.</li>
+  <li><code>add_owner_and_leader_to_team()</code> &mdash; appends owner, leader, and (if set) admin to <code>team_members</code> when not already present. It compares against a snapshot taken before the pass, so rows appended earlier in the same pass are not re-checked.</li>
+  <li><code>remove_duplicate_team_members()</code> &mdash; keeps the first occurrence of each <code>user</code> and drops the rest.</li>
+  <li>Module-level <code>get_permission_query_conditions(user)</code> and <code>has_permission(doc, ptype, user)</code> &mdash; wired in <code>hooks.py</code>; restrict Project Owners to projects they own or are a team member of. See <a href="permissions.html">Permissions</a>.</li>
+</ul>
+
+<p><strong>Client script</strong></p>
+<ul>
+  <li><code>refresh</code> sets a query on <code>project_group</code> returning <code>{is_group: 0}</code>, so only non-group Project Groups can be selected. No custom buttons, dialogs, or formatters.</li>
+</ul>
+
+<p><strong>Permissions:</strong> roles are System Manager, Project Owner, Project Leader, Project Admin, and Project Team; the Project Owner row is <code>if_owner</code>-restricted. Full matrix at <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="dt-head__meta"><h3 id="project-detail">Project Detail</h3><p>A work-breakdown record under a Project. Holds a Project Todo child table with rolled-up statistics, derives its status from those todos, and carries SOW pricing (price, discount, computed total).</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Rolled-up stats</span><span class="badge badge--gray">Derived status</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By Naming Series &mdash; <code>PD-.{project}.-.#####</code> (e.g. <code>PD-&lt;project&gt;-#####</code>); title field <code>title</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>naming_series</code></td><td><span class="badge badge--purple">Select</span></td><td><span class="req">required</span></td><td>Single option <code>PD-.{project}.-.#####</code>; drives autoname.</td></tr>
+<tr><td><code>title</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Title field; shown in link previews.</td></tr>
+<tr><td><code>latest_deadline</code></td><td><span class="badge badge--green">Date</span></td><td></td><td>Labeled <em>Project Detail Deadline</em>. Manually entered; the validation against <code>latest_todo</code> is commented out. In list view.</td></tr>
+<tr><td><code>project</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#project">Project</a>. Drives permissions, naming, and grouping/glossary filters. In list view, search-indexed.</td></tr>
+<tr><td><code>project_deadline</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td><em>Auto-set</em> via <code>fetch_from = project.deadline</code>. Read-only (<code>reqd: 1</code>).</td></tr>
+<tr><td><code>is_pending</code></td><td><span class="badge badge--slate">Check</span></td><td></td><td>When <code>1</code> (and not all-completed) forces <code>status = Pending</code>. Search-indexed.</td></tr>
+<tr><td><code>status</code></td><td><span class="badge badge--purple">Select</span></td><td><span class="req">required</span></td><td>Options <code>Pending</code>, <code>Ongoing</code>, <code>Completed</code>. Hidden, <em>computed</em> by <code>recalculate_totals()</code>. Backs document states (Pending=Yellow, Ongoing=Blue, Completed=Green).</td></tr>
+<tr><td><code>completed_date</code></td><td><span class="badge badge--green">Date</span></td><td></td><td>Read-only. Present in schema but <strong>not written</strong> by this controller.</td></tr>
+<tr><td><code>grouping</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#glossary">Glossary</a>. Enforced by <code>validate()</code> (throws <code>Grouping is required.</code>); its <code>Glossary.project</code> must equal this <code>project</code>. Client filters options by project.</td></tr>
+<tr><td><code>glossaries</code></td><td><span class="badge badge--gray">Table MultiSelect</span></td><td></td><td>Child doctype <a href="#project-glossary">Project Glossary</a>. Each selected glossary's <code>project</code> must match. Client filters options by project.</td></tr>
+<tr><td><code>current_condition</code></td><td><span class="badge badge--gray">Text Editor</span></td><td></td><td>Project analysis &mdash; current condition.</td></tr>
+<tr><td><code>expected_outcome</code></td><td><span class="badge badge--gray">Text Editor</span></td><td></td><td>Project analysis &mdash; expected outcome.</td></tr>
+<tr><td><code>todo</code></td><td><span class="badge badge--gray">Table</span></td><td></td><td>Child table of <a href="#project-todo">Project Todo</a>. Drives all statistics, status, and <code>latest_todo</code>. Client sorts rows and locks deletion of non-Planned rows.</td></tr>
+<tr><td><code>todo_count</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td><em>Computed</em> as <code>len(todo)</code> in <code>before_validate</code>. Read-only, in list view.</td></tr>
+<tr><td><code>todo_without_estimation</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td><em>Computed</em> count of todo rows whose <code>estimated</code> is not &gt; 0. Read-only.</td></tr>
+<tr><td><code>total_estimated</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td><em>Computed</em> sum of <code>todo.estimated</code>. Read-only, in list view.</td></tr>
+<tr><td><code>total_remaining_estimated</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td><em>Computed</em> sum of <code>estimated</code> for rows whose status is <code>⚪️ Planned</code>. Read-only, in list view.</td></tr>
+<tr><td><code>latest_todo</code></td><td><span class="badge badge--green">Date</span></td><td></td><td><em>Computed</em> max <code>deadline</code> among todo rows (None when no todos). Read-only, in list view.</td></tr>
+<tr><td><code>keterangan_di_sow</code></td><td><span class="badge badge--gray">Text Editor</span></td><td></td><td>SOW notes (Indonesian label: &ldquo;Notes in the SOW&rdquo;).</td></tr>
+<tr><td><code>price</code></td><td><span class="badge badge--amber">Currency</span></td><td></td><td>Labeled <em>Price (Rp)</em>. Used in <code>total = price - discount</code>; must be &ge; <code>discount</code>. Non-negative.</td></tr>
+<tr><td><code>discount</code></td><td><span class="badge badge--amber">Currency</span></td><td></td><td>Subtracted from <code>price</code>. Non-negative.</td></tr>
+<tr><td><code>total</code></td><td><span class="badge badge--amber">Currency</span></td><td></td><td><em>Computed</em> (server and client) as <code>price - discount</code>. Read-only, in list view.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller logic</strong></p>
+<ul>
+  <li><code>before_validate</code> &mdash; sets <code>todo_count</code>, computes <code>total = price - discount</code>, sets <code>latest_todo</code> to the max todo deadline, then calls <code>recalculate_totals()</code>.</li>
+  <li><code>recalculate_totals()</code> &mdash; rolls up <code>todo_without_estimation</code>, <code>total_estimated</code>, and <code>total_remaining_estimated</code> (Planned rows only), then sets <code>status</code>: <code>Completed</code> when <code>total_remaining_estimated == 0</code> and <code>todo_count &gt; 0</code>; else <code>Pending</code> when <code>is_pending == 1</code>; else <code>Ongoing</code>.</li>
+  <li><code>validate</code> &mdash; guards required fields (<code>Grouping is required.</code>, <code>Project is required.</code>), enforces that the grouping and each glossary belong to the selected project (<code>Grouping must be part of the selected Project.</code>, <code>Glossary &lt;name&gt; must be part of the selected Project.</code>), and that <code>price</code> &ge; <code>discount</code> (<code>Total SOW RP cannot be less than Total Discount.</code>).</li>
+  <li><code>validate</code> (delete-protection) &mdash; on existing docs, reloads the previous version and re-appends any todo whose status is not <code>⚪️ Planned</code>, then throws <code>Cannot delete Project Todo '&lt;to_do&gt;' unless its status is 'Scheduled'.</code></li>
+  <li><code>on_trash</code> &mdash; blocks deleting the detail if any todo is not <code>⚪️ Planned</code>: <code>Cannot delete Project Detail because Project Todo '&lt;to_do&gt;' is not in 'Scheduled' status.</code></li>
+  <li><code>validate_assigned_to_team_member()</code> &mdash; a helper that would reject assignees outside the project team, but it is <strong>not invoked</strong> by any controller hook in this file.</li>
+  <li>Module-level <code>get_permission_query_conditions</code> / <code>has_permission</code> &mdash; restrict access to the linked project's owner, leader, admin, or team members. See <a href="permissions.html">Permissions</a>.</li>
+</ul>
+
+<div class="callout callout--warn"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><div class="callout__body"><div class="callout__title">&ldquo;Scheduled&rdquo; means Planned</div><p>The delete-protection messages reference status <code>'Scheduled'</code>, but the only deletable status value in the codebase is <code>⚪️ Planned</code>. The wording is a known source quirk &mdash; read &ldquo;Scheduled&rdquo; as &ldquo;Planned&rdquo;.</p></div></div>
+
+<p><strong>Client script</strong></p>
+<ul>
+  <li><code>refresh</code> filters <code>grouping</code> and <code>glossaries</code> options by <code>{project}</code>, sorts the <code>todo</code> rows in place (deadline asc, then estimated asc, then assigned_to asc), and triggers the <code>project</code> handler to apply the assignee filter.</li>
+  <li><code>refresh</code> binds <code>grid-row-render</code> on the todo grid: it sets each row's <code>allow_delete = false</code> when status is not <code>⚪️ Planned</code> (disabling the per-row delete button).</li>
+  <li><code>project</code> resets <code>grouping</code>/<code>glossaries</code> when the project changes, then calls <code>vernon_project.api.project.get_project_team_members</code> and filters the todo grid's <code>assigned_to</code> options to project team emails.</li>
+  <li><code>price</code> / <code>discount</code> recompute <code>total</code> client-side via <code>calculate_total</code>.</li>
+  <li>Inline Project Todo child events &mdash; <code>action</code> advances a row's status through a confirmation dialog (<code>Yakin ubah status &lt;to_do&gt; ke &lt;action&gt;?</code> &mdash; &ldquo;Confirm changing the status of &lt;to_do&gt; to &lt;action&gt;?&rdquo;) by calling <code>update_status</code>; <code>before_todo_remove</code> throws <code>Cannot delete Project Todo unless its status is 'Scheduled'.</code> for non-Planned rows. See <a href="workflow.html">Workflow</a> for the full lifecycle.</li>
+</ul>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Stray debug alert</div><p>The <code>grid-row-render</code> handler calls <code>alert(status)</code> for <em>every</em> todo row it renders &mdash; a leftover debug statement that pops a browser alert on form load. The <code>action</code> switch also assigns to an undeclared global <code>action</code> (no <code>let</code>/<code>var</code>). Both are harmless quirks worth knowing when debugging.</p></div></div>
+
+<p><strong>Permissions:</strong> System Manager, Project Owner, Project Leader, Project Admin (no delete), and Project Team (read-only). Permlevel-9 rows exist for the project roles but currently gate no fields. Full matrix at <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="dt-head__meta"><h3 id="project-todo">Project Todo</h3><p>An individual task embedded in a Project Detail's <code>todo</code> table. Tracks assignment, deadline, estimate, a four-stage status workflow, per-phase time estimates and actuals, phase timestamps, progress sign-off, and optional recurrence.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Four-stage workflow</span><span class="badge badge--gray">Phase tracking</span><span class="badge badge--gray">Recurring</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Child Table (<code>istable: 1</code>) &mdash; lives inside Project Detail &rarr; Project</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None &mdash; child rows get framework hash names</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<p>The four-stage status workflow drives phase timestamps, actual-time calculations, recurrence, and the parent save. Status values carry emoji prefixes that must match exactly:</p>
+
+<div class="flow">
+  <div class="flow__node flow__node--planned"><div class="flow__emoji">⚪️</div><div class="flow__name">Planned</div><div class="flow__who">default</div></div>
+  <div class="flow__arrow">&rarr;</div>
+  <div class="flow__node flow__node--done"><div class="flow__emoji">🟠</div><div class="flow__name">Done</div><div class="flow__who">assignee / leader / owner</div></div>
+  <div class="flow__arrow">&rarr;</div>
+  <div class="flow__node flow__node--checked"><div class="flow__emoji">🔷</div><div class="flow__name">Checked By PL</div><div class="flow__who">leader / owner</div></div>
+  <div class="flow__arrow">&rarr;</div>
+  <div class="flow__node flow__node--completed"><div class="flow__emoji">✅</div><div class="flow__name">Completed</div><div class="flow__who">owner only</div></div>
+</div>
+
+<p>Fields are grouped below by the form's collapsible sections.</p>
+
+<p><em>Core task fields</em></p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>ongoing</code></td><td><span class="badge badge--slate">Check</span></td><td></td><td>In list view. No controller logic acts on it.</td></tr>
+<tr><td><code>to_do</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>The task description. In list view.</td></tr>
+<tr><td><code>assigned_to</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target User. Locked once status is Done/Completed. In list view.</td></tr>
+<tr><td><code>deadline</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Task deadline and base date for recurrence. Locked once status is Done/Completed. In list view.</td></tr>
+<tr><td><code>estimated</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Estimated effort in minutes. Non-negative. Locked once status is Done/Completed. In list view, search-indexed.</td></tr>
+<tr><td><code>notes</code></td><td><span class="badge badge--gray">Text Editor</span></td><td></td><td>Free-form notes.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Time Estimation Per Phase</em> (collapsible)</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>estimated_planned_to_done</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Estimated hours Planned &rarr; Done. Non-negative, precision 2. Summed into <code>total_estimated_hours</code>.</td></tr>
+<tr><td><code>estimated_done_to_checked</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Estimated hours Done &rarr; Checked By PL. Non-negative, precision 2.</td></tr>
+<tr><td><code>estimated_checked_to_completed</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Estimated hours Checked &rarr; Completed. Non-negative, precision 2.</td></tr>
+<tr><td><code>total_estimated_hours</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td><em>Computed</em> by <code>calculate_total_estimated_hours()</code> as the sum of the three estimates above. Read-only.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Phase Timestamps</em> (collapsible, all read-only / auto-set)</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>planned_started_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td><em>Auto-set</em> to <code>now_datetime()</code> for a new Planned todo. Start point for <code>actual_planned_to_done</code>.</td></tr>
+<tr><td><code>done_started_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td><em>Auto-set</em> when status changes to <code>🟠 Done</code>, if empty.</td></tr>
+<tr><td><code>checked_started_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td><em>Auto-set</em> when status changes to <code>🔷 Checked By PL</code>, if empty.</td></tr>
+<tr><td><code>phase_completed_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td><em>Auto-set</em> when status changes to <code>✅ Completed</code>, if empty.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Actual Time Per Phase</em> (collapsible, all read-only / computed)</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>actual_planned_to_done</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td><em>Computed</em> on the move to Done as the hours between <code>planned_started_at</code> and <code>done_started_at</code>. Precision 2.</td></tr>
+<tr><td><code>actual_done_to_checked</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td><em>Computed</em> on the move to Checked By PL.</td></tr>
+<tr><td><code>actual_checked_to_completed</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td><em>Computed</em> on the move to Completed.</td></tr>
+<tr><td><code>total_actual_hours</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td><em>Computed</em> by <code>calculate_total_actual_hours()</code> as the sum of the three actuals above. Read-only.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Recurring Settings</em> (collapsible)</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>is_recurring</code></td><td><span class="badge badge--slate">Check</span></td><td></td><td>Enables recurrence fields and on-completion creation of the next occurrence.</td></tr>
+<tr><td><code>recurring_frequency</code></td><td><span class="badge badge--purple">Select</span></td><td></td><td>Options (leading blank): <code>Daily</code>, <code>Weekly</code>, <code>Monthly</code>. Shown when <code>is_recurring == 1</code>.</td></tr>
+<tr><td><code>recurring_until</code></td><td><span class="badge badge--green">Date</span></td><td></td><td>Recurrence stops once a computed next date would exceed this. Shown when <code>is_recurring == 1</code>.</td></tr>
+<tr><td><code>next_occurrence</code></td><td><span class="badge badge--green">Date</span></td><td></td><td><em>Auto-set</em> in <code>validate()</code> via <code>calculate_next_occurrence(deadline)</code> when recurring and not already set. Read-only.</td></tr>
+<tr><td><code>original_todo</code></td><td><span class="badge badge--blue">Data</span></td><td></td><td><em>Auto-set</em> when a recurring child is created (carries the source row's <code>original_todo</code> or name). Read-only, hidden.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Progress &amp; sign-off</em></p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>status</code></td><td><span class="badge badge--purple">Select</span></td><td><span class="req">required</span></td><td>Workflow status: <code>⚪️ Planned</code> (default), <code>🟠 Done</code>, <code>🔷 Checked By PL</code>, <code>✅ Completed</code>. Read-only, in list view; transitions drive timestamps, actuals, recurrence, and the parent save.</td></tr>
+<tr><td><code>action</code></td><td><span class="badge badge--slate">Button</span></td><td></td><td>Button labeled <em>Next</em>, shown in the grid. No handler is defined in this doctype's folder; the advance logic lives on the parent Project Detail form.</td></tr>
+<tr><td><code>developed_by</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target User who developed the task. Editable.</td></tr>
+<tr><td><code>developed_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td>Read-only sign-off timestamp; <strong>not</strong> auto-populated by this controller.</td></tr>
+<tr><td><code>tested_by</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target User who tested the task. Editable.</td></tr>
+<tr><td><code>tested_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td>Read-only; <strong>not</strong> auto-populated by this controller.</td></tr>
+<tr><td><code>completed_by</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target User who completed the task. Editable.</td></tr>
+<tr><td><code>completed_at</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td>Read-only; <strong>not</strong> auto-populated by this controller (distinct from <code>phase_completed_at</code>).</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller logic</strong> (summarized &mdash; see <a href="workflow.html#phase-tracking">Workflow &middot; Phase tracking</a> for depth)</p>
+<ul>
+  <li><code>validate</code> &mdash; runs in order: <code>validate_done_todo_fields()</code>, <code>validate_project_admin_status_update()</code>, <code>calculate_total_estimated_hours()</code>, <code>track_phase_changes()</code>, then sets <code>next_occurrence</code> when recurring.</li>
+  <li><code>validate_done_todo_fields()</code> &mdash; once status is <code>🟠 Done</code> or <code>✅ Completed</code>, locks <code>assigned_to</code>, <code>estimated</code>, and <code>deadline</code>; editing them throws (title <code>Cannot Edit Completed Todo</code>) <code>Cannot modify &lt;labels&gt; when Todo status is '&lt;status&gt;'. These fields are locked once the todo is marked as Done or Completed.</code></li>
+  <li><code>validate_project_admin_status_update()</code> &mdash; if the current user is the linked project's <code>project_admin</code> (and not a System Manager), blocks status changes with <code>Project Admin tidak memiliki izin untuk mengupdate status todo. Silakan hubungi Project Owner atau Project Leader.</code> (&ldquo;Project Admin has no permission to update todo status. Please contact the Project Owner or Project Leader.&rdquo;)</li>
+  <li><code>track_phase_changes()</code> &mdash; sets the phase timestamp and computes the actual-hours field for each forward transition; calls <code>calculate_total_actual_hours()</code> at the end.</li>
+  <li><code>on_change</code> &mdash; when the status changed, saves the parent Project Detail (cascading recalculation); when status is <code>✅ Completed</code> and recurring, calls <code>create_next_occurrence()</code>.</li>
+  <li><code>create_next_occurrence()</code> &mdash; appends a new <code>⚪️ Planned</code> todo to the parent with the next computed deadline (stopping past <code>recurring_until</code>) and msgprints <code>Next recurring todo created with deadline: &lt;date&gt;</code>.</li>
+  <li><code>on_trash</code> &mdash; blocks deletion if linked to a Project Detail (<code>Cannot delete Project Todo as it is linked to a Project Detail.</code>) or if status is not Planned (<code>Cannot delete Project Todo unless its status is 'Scheduled'.</code>).</li>
+  <li>Module-level <code>has_permission</code> &mdash; resolves access through the parent's Project (owner, leader, admin, or team member). Note <code>permission_query_conditions</code> does not apply to child doctypes. See <a href="permissions.html">Permissions</a>.</li>
+</ul>
+
+<p><strong>Client script</strong></p>
+<ul>
+  <li>None &mdash; no <code>project_todo.js</code> exists in this doctype's folder. The <em>Next</em> button and status-advance UI are implemented on the parent <a href="#project-detail">Project Detail</a> form.</li>
+</ul>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Hooks note</div><p>The JSON <code>permissions</code> array is empty; access is governed at runtime by the module-level <code>has_permission</code> wired in <code>hooks.py</code>. The <code>on_change</code> entry in <code>doc_events</code> is commented out, but <code>validate</code>/<code>on_change</code>/<code>on_trash</code> are standard controller methods Frappe still invokes automatically.</p></div></div>
+
+<p><strong>Permissions:</strong> governed entirely by the runtime <code>has_permission</code> hook (no JSON permission rows). See <a href="permissions.html">Permissions</a> and the <a href="api.html">API reference</a> for <code>update_status</code>.</p>
+
+<h2>Supporting DocTypes</h2>
+<p>The supporting types provide reference data (Customer, Glossary, Project Group), child-table building blocks (Project Team, Project Glossary), and two submittable stubs (Scope of Work, Project Proposal).</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="dt-head__meta"><h3 id="customer">Customer</h3><p>A minimal client entity that Projects link back to via <code>Project.customer</code>. Holds only the customer's name, which doubles as its unique identifier.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By fieldname &mdash; <code>field:customer_name</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>customer_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Unique. Used as the document's name/identifier. In list view.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>customer.py</code> is <code>class Customer(Document): pass</code> and <code>customer.js</code> is the commented-out scaffold. Nothing is computed or auto-populated.</p>
+<p><strong>Permissions:</strong> only System Manager has delete; System Manager and Project Owner can create/write; Project Leader and Project Team are read-only. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="dt-head__meta"><h3 id="glossary">Glossary</h3><p>A glossary term scoped to a single Project, pairing a term with its project and an optional rich-text description.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Expression naming</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">Expression &mdash; <code>format:{project}-{glossary}</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>glossary</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>The term. Title field; used in the autoname expression. In list view.</td></tr>
+<tr><td><code>project</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#project">Project</a>. Used as the prefix in the autoname expression. In list view.</td></tr>
+<tr><td><code>description</code></td><td><span class="badge badge--gray">Text Editor</span></td><td></td><td>Optional rich-text description.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>glossary.py</code> is a <code>pass</code> controller and <code>glossary.js</code> is commented-out boilerplate.</p>
+<p><strong>Permissions:</strong> System Manager, Project Owner, and Project Leader have full read/write/create/delete; Project Team is read-only. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-5"/></svg></div><div class="dt-head__meta"><h3 id="project-group">Project Group</h3><p>A hierarchical grouping doctype used to organize Projects into nested groups, implemented as a Frappe NestedSet tree.</p><div class="pill-list"><span class="badge badge--brand">Tree</span><span class="badge badge--gray">NestedSet</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Tree (<code>is_tree=1</code>, default view Tree)</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By fieldname &mdash; <code>field:project_name</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>project_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Unique. Used as the document name. In list view.</td></tr>
+<tr><td><code>is_group</code></td><td><span class="badge badge--slate">Check</span></td><td></td><td>NestedSet flag: whether this node can have children (a branch vs. a leaf).</td></tr>
+<tr><td><code>parent_project_group</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Self-referential tree parent (<code>nsm_parent_field</code>). Target Project Group. Ignores user permissions.</td></tr>
+<tr><td><code>lft</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Nested-set left boundary. <em>Auto-set</em> by the framework. Read-only, hidden.</td></tr>
+<tr><td><code>rgt</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Nested-set right boundary. <em>Auto-set</em> by the framework. Read-only, hidden.</td></tr>
+<tr><td><code>old_parent</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Previous parent during reparenting. <em>Auto-set</em> by the framework. Target Project Group.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller logic</strong></p>
+<ul>
+  <li><code>class ProjectGroup(NestedSet): pass</code> &mdash; no custom code. All tree behavior (lft/rgt maintenance, cycle detection, reparenting, &ldquo;cannot be its own parent&rdquo; validation) is inherited from Frappe's <code>NestedSet</code>.</li>
+</ul>
+<p><strong>Client script:</strong> none &mdash; <code>project_group.js</code> is a commented-out stub.</p>
+<p><strong>Permissions:</strong> System Manager and Project Owner have full rights; Project Leader and Project Team are read-only. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="dt-head__meta"><h3 id="project-team">Project Team</h3><p>A child table whose rows each link a single User. Embedded as the <code>team_members</code> table on Project.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Child Table (<code>istable=1</code>)</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None &mdash; framework hash names</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>user</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target User. Entered manually (Project also auto-populates rows). In grid list view, search-indexed.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>project_team.py</code> is a <code>pass</code> controller and no <code>project_team.js</code> exists. The JSON permissions array is empty; access flows through the parent.</p>
+<p><strong>Permissions:</strong> inherited from the parent Project. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="dt-head__meta"><h3 id="project-glossary">Project Glossary</h3><p>A child table that attaches glossary terms to a parent document (the Project Detail <code>glossaries</code> MultiSelect). Each row links a Glossary entry with an optional note.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Child Table (<code>istable=1</code>)</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None &mdash; framework hash names</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>glossary</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#glossary">Glossary</a>. In grid list view.</td></tr>
+<tr><td><code>note</code></td><td><span class="badge badge--gray">Small Text</span></td><td></td><td>Optional free-text note.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>project_glossary.py</code> is a <code>pass</code> controller and no <code>project_glossary.js</code> exists. Both fields are user-entered.</p>
+<p><strong>Permissions:</strong> empty JSON permissions array; access flows through the parent Project Detail. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></div><div class="dt-head__meta"><h3 id="scope-of-work">Scope of Work</h3><p>A submittable record representing a scope of work, optionally linked to a Project Proposal and carrying a required date. The controller and client script are boilerplate.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--green">Submittable</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType (Submittable)</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None defined &mdash; default hash naming</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">Yes (supports amendment via <code>amended_from</code>)</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>amended_from</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target Scope of Work. <em>Auto-set</em> by Frappe's amendment workflow. Read-only, no-copy, print-hidden.</td></tr>
+<tr><td><code>proposal</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Optional. Target <a href="#project-proposal">Project Proposal</a>.</td></tr>
+<tr><td><code>date</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Required date. In list view, search-indexed.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>scope_of_work.py</code> is <code>class ScopeofWork(Document): pass</code> and <code>scope_of_work.js</code> is fully commented out.</p>
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Only System Manager has permissions</div><p>Despite being submittable, the permissions array lists only System Manager (with <code>submit</code>); the standard cancel/amend workflow is enabled by that submit permission.</p></div></div>
+<p><strong>Permissions:</strong> System Manager only. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg></div><div class="dt-head__meta"><h3 id="project-proposal">Project Proposal</h3><p>A submittable proposal record. As implemented it is a skeleton &mdash; a proposal date plus the standard amendment link, with no custom logic.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--green">Submittable</span><span class="badge badge--gray">Stub</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType (Submittable)</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None defined &mdash; default hash naming</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">Yes (Draft / Submitted / Cancelled + amendment)</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>amended_from</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target Project Proposal. <em>Auto-set</em> by Frappe's amendment workflow. Read-only, no-copy, print-hidden.</td></tr>
+<tr><td><code>proposal_date</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>The proposal date. In list view, search-indexed.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>project_proposal.py</code> is <code>class ProjectProposal(Document): pass</code> and <code>project_proposal.js</code> is commented out. The submit/cancel/amend workflow comes entirely from the submittable flag.</p>
+<p><strong>Permissions:</strong> System Manager only, with full rights including submit. See <a href="permissions.html">Permissions</a>.</p>
+      <nav class="pager"><a class="prev" href="architecture.html"><small>&larr; Previous</small><strong>Architecture</strong></a><a class="next" href="workflow.html"><small>Next &rarr;</small><strong>Todo Workflow</strong></a></nav>
+      <footer class="docfoot">
+        <span>Vernon Project &middot; v0.4.0 &middot; MIT License</span>
+        <span>Built for the Frappe Framework &middot; <a href="mailto:help@vernon.id">help@vernon.id</a></span>
+      </footer>
+    </main>
+    <aside class="toc" id="toc"></aside>
+  </div>
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-box">
+      <div class="search-box__input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Search the documentation..." autocomplete="off" spellcheck="false">
+        <span class="kbd">Esc</span>
+      </div>
+      <div class="search-box__results" id="searchResults"></div>
+      <div class="search-box__foot">
+        <span><span class="kbd">&#8593;</span><span class="kbd">&#8595;</span> navigate</span>
+        <span><span class="kbd">&#8629;</span> open</span>
+        <span><span class="kbd">Esc</span> close</span>
+      </div>
+    </div>
+  </div>
+  <script src="assets/search-index.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

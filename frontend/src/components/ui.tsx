@@ -1,0 +1,180 @@
+import clsx from 'clsx'
+import { Loader2 } from 'lucide-react'
+import { initials, colorFor } from '@/lib/format'
+
+export function Spinner({ className }: { className?: string }) {
+  return <Loader2 className={clsx('animate-spin', className)} />
+}
+
+export function FullScreenLoader({ label }: { label?: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 py-24 text-slate-400">
+      <Spinner className="h-7 w-7 text-brand-500" />
+      {label && <p className="text-sm">{label}</p>}
+    </div>
+  )
+}
+
+export function Avatar({
+  name,
+  image,
+  size = 36,
+}: {
+  name: string
+  image?: string | null
+  size?: number
+}) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt={name}
+        style={{ width: size, height: size }}
+        className="shrink-0 rounded-full object-cover ring-2 ring-white"
+      />
+    )
+  }
+  return (
+    <div
+      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      className={clsx(
+        'flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-white',
+        colorFor(name || '?'),
+      )}
+    >
+      {initials(name)}
+    </div>
+  )
+}
+
+export function ProgressBar({ value, className }: { value: number; className?: string }) {
+  return (
+    <div className={clsx('h-1.5 w-full overflow-hidden rounded-full bg-slate-200', className)}>
+      <div
+        className="h-full rounded-full bg-brand-500 transition-all duration-500"
+        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+      />
+    </div>
+  )
+}
+
+export function EmptyState({
+  icon: Icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  subtitle?: string
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 px-8 py-16 text-center">
+      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-card">
+        <Icon className="h-7 w-7 text-brand-400" />
+      </div>
+      <p className="font-semibold text-slate-700">{title}</p>
+      {subtitle && <p className="max-w-xs text-sm text-slate-400">{subtitle}</p>}
+    </div>
+  )
+}
+
+export function Pill({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <span
+      className={clsx(
+        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+export function FilterChips<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string; count?: number }[]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={clsx(
+              'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
+              active
+                ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                : 'border-slate-200 bg-white text-slate-600',
+            )}
+          >
+            {o.label}
+            {typeof o.count === 'number' && (
+              <span
+                className={clsx(
+                  'rounded-full px-1.5 text-[11px] font-semibold',
+                  active ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500',
+                )}
+              >
+                {o.count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string; badge?: number }[]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="flex gap-1 rounded-2xl bg-slate-100 p-1">
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={clsx(
+              'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500',
+            )}
+          >
+            {o.label}
+            {o.badge ? (
+              <span
+                className={clsx(
+                  'rounded-full px-1.5 text-[11px] font-semibold',
+                  active ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-500',
+                )}
+              >
+                {o.badge}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}

@@ -28,6 +28,24 @@ app_license = "mit"
 # app_include_css = "/assets/vernon_project/css/vernon_project.css"
 app_include_js = "/assets/vernon_project/js/desk_navbar.js"
 
+# Website
+# -------
+# The static HTML documentation lives in apps/vernon_project/docs and is exposed
+# under public/ via a symlink (public/docs -> ../../docs), so nginx serves it as
+# static files at /assets/vernon_project/docs/. This redirect gives it a clean
+# entry point at /docs. (Also added as a Website Route Redirect in Website
+# Settings so it is live without a worker restart.)
+website_redirects = [
+	{"source": r"/docs/?", "target": "/assets/vernon_project/docs/index.html"},
+]
+
+# Mobile PWA (React) — single-page app served at /m. The build copies its
+# index.html to www/m.html; this rule routes every /m/* path back to that page
+# so client-side routing (React Router) works on deep links and refreshes.
+website_route_rules = [
+	{"from_route": "/m/<path:app_path>", "to_route": "m"},
+]
+
 # include js, css files in header of web template
 # web_include_css = "/assets/vernon_project/css/vernon_project.css"
 # web_include_js = "/assets/vernon_project/js/vernon_project.js"
@@ -120,12 +138,14 @@ app_include_js = "/assets/vernon_project/js/desk_navbar.js"
 permission_query_conditions = {
 	"Project": "vernon_project.vernon_project.doctype.project.project.get_permission_query_conditions",
 	"Project Detail": "vernon_project.vernon_project.doctype.project_detail.project_detail.get_permission_query_conditions",
+	"Glossary": "vernon_project.vernon_project.doctype.glossary.glossary.get_permission_query_conditions",
 }
 
 has_permission = {
 	"Project": "vernon_project.vernon_project.doctype.project.project.has_permission",
 	"Project Detail": "vernon_project.vernon_project.doctype.project_detail.project_detail.has_permission",
 	"Project Todo": "vernon_project.vernon_project.doctype.project_todo.project_todo.has_permission",
+	"Glossary": "vernon_project.vernon_project.doctype.glossary.glossary.has_permission",
 }
 
 # DocType Class
@@ -149,23 +169,11 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"vernon_project.tasks.all"
-# 	],
-# 	"daily": [
-# 		"vernon_project.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"vernon_project.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"vernon_project.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"vernon_project.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"daily": [
+		"vernon_project.tasks.create_recurring_todos"
+	]
+}
 
 # Testing
 # -------

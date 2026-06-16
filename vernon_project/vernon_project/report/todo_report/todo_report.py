@@ -28,10 +28,14 @@ def execute(filters=None):
 	if filters and filters.get("assigned_to"):
 		filter_assigned_to = f" AND pt.assigned_to = '{filters.get('assigned_to')}' "
 
-	# Filter Status
+	# Filter Status (Project Detail status) — supports a single value or a list
 	filter_status = ""
 	if filters and filters.get("status"):
-		filter_status = f" AND pd.status = '{filters.get('status')}' "
+		st = filters.get("status")
+		st = st if isinstance(st, (list, tuple)) else [st]
+		st = [s for s in st if s]
+		if st:
+			filter_status = f" AND pd.status IN ({', '.join(frappe.db.escape(s) for s in st)}) "
 
 	# Filter Deadline From filter date_range
 	filter_deadline_from = ""
@@ -42,14 +46,19 @@ def execute(filters=None):
 			filter_deadline_from = f" AND pt.deadline >= '{date_range[0]}' "
 			filter_deadline_to = f" AND pt.deadline <= '{date_range[1]}' "
 
-	# Filter Todo Status
+	# Filter Todo Status — supports a single value or a list
 	filter_todo_status = ""
 	if filters and filters.get("todo_status"):
-		filter_todo_status = f" AND pt.status = '{filters.get('todo_status')}' "
+		ts = filters.get("todo_status")
+		ts = ts if isinstance(ts, (list, tuple)) else [ts]
+		ts = [s for s in ts if s]
+		if ts:
+			filter_todo_status = f" AND pt.status IN ({', '.join(frappe.db.escape(s) for s in ts)}) "
 
 	# Get todo data SQL
 	sql = f"""
 		SELECT
+			pt.name AS todo_id,
 			pt.to_do AS to_do,
 			pt.deadline AS todo_deadline,
 			pt.assigned_to AS assigned_to,

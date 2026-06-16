@@ -52,6 +52,7 @@ def execute(filters=None):
 	# ------------------------------------------------------
 	sql = f"""
 		SELECT
+			todo.name AS todo_id,
 			todo.to_do, todo.assigned_to, todo.deadline, todo.estimated, todo.status,
 			todo.developed_at, todo.tested_at, todo.completed_at,
 			detail.name AS detail_name, detail.title AS detail_title,
@@ -111,6 +112,7 @@ def execute(filters=None):
 		is_overdue = row_deadline and row_filter_date and row_filter_date > row_deadline
 
 		row_data = {
+			"todo_id": row.todo_id,
 			"todo": row.to_do,
 			"project": f"<a href='/app/project/{row.project_name}'>{row.project_project_name}</a>",
 			"detail_project": f"<a href='/app/project-detail/{row.detail_name}'>{row.detail_title}</a>",

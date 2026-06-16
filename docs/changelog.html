@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Changelog &amp; Roadmap · Vernon Project Docs</title>
+  <meta name="description" content="Release history from 0.0.1 to 0.4.0 and what is planned next.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236d5efc'/><text x='16' y='23' font-size='20' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="iconbtn hamburger" id="hamburger" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a class="topbar__brand" href="index.html">
+      <span class="brand-mark">V</span>
+      <span>Vernon Project<small>Documentation</small></span>
+    </a>
+    <div class="topbar__spacer"></div>
+    <button class="searchbtn" data-search-open aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="stxt">Search docs</span>
+      <span class="kbd">&#8984; K</span>
+    </button>
+    <button class="iconbtn" id="themeToggle" aria-label="Toggle theme">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+    <a class="iconbtn" href="https://github.com" aria-label="Repository" title="Repository">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 0 0 8.84 21.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85V21c0 .27.16.59.67.5A10 10 0 0 0 12 2Z"/></svg>
+    </a>
+  </header>
+  <div class="scrim" id="scrim"></div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav>
+        <div class="nav-group">
+          <div class="nav-group__title">Getting Started</div>
+          <a class="nav-link" href="index.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Overview</span></a>
+          <a class="nav-link" href="getting-started.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg><span>Installation &amp; Setup</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Core Concepts</div>
+          <a class="nav-link" href="architecture.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Architecture</span></a>
+          <a class="nav-link" href="doctypes.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>DocType Reference</span></a>
+          <a class="nav-link" href="workflow.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg><span>Todo Workflow</span></a>
+          <a class="nav-link" href="permissions.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Roles &amp; Permissions</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Reference</div>
+          <a class="nav-link" href="api.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>API Reference</span></a>
+          <a class="nav-link" href="reports.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Reports &amp; Dashboards</span></a>
+          <a class="nav-link active" href="changelog.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg><span>Changelog &amp; Roadmap</span></a>
+        </div>
+</nav>
+    </aside>
+    <main class="content">
+<nav class="breadcrumb"><a href="index.html">Docs</a> <span>/</span> <span>Changelog &amp; Roadmap</span></nav>
+<h1 class="page-title">Changelog &amp; Roadmap</h1>
+<p class="page-lead">Release history and planned work for the Vernon Project app. Versions run from the initial <code>0.0.1</code> baseline to <code>0.4.0</code>, which adds the Project Admin role. Every release in the source <code>CHANGELOG.md</code> is dated 2026-03-15.</p>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Note</div><p>The app's declared package version is <code>0.0.1</code>, while the changelog tracks feature milestones up to <code>0.4.0</code>. The dates below are taken verbatim from the source changelog.</p></div></div>
+
+<h2>Releases</h2>
+<p>Releases are listed newest first. Each entry lists the changes recorded in <code>CHANGELOG.md</code>.</p>
+
+<div class="card">
+<h3 id="v0-4-0">v0.4.0 — Project Admin role <span class="badge badge--brand">0.4.0</span> <span class="badge badge--green">2026-03-15</span></h3>
+<ul>
+<li>Added the <strong>Project Admin</strong> role and a <code>project_admin</code> field on Project; the admin is auto-added to team members.</li>
+<li>Project Admin can Read / Write / Create Project Detail and Project Todo, but <strong>cannot update todo status</strong>.</li>
+<li>Status-update block enforced at both the API (<code>update_status</code>) and DocType (<code>validate_project_admin_status_update</code>) levels.</li>
+<li>Project Admin added to <code>get_permission_query_conditions</code> and <code>has_permission</code> for consistent data filtering and document-level access.</li>
+<li>Security: multi-layer validation to prevent unauthorized status updates.</li>
+</ul>
+<p>See <a href="permissions.html">Permissions</a> for the full role model.</p>
+</div>
+
+<div class="card">
+<h3 id="v0-3-0">v0.3.0 — Per-phase time tracking <span class="badge badge--brand">0.3.0</span> <span class="badge badge--green">2026-03-15</span></h3>
+<ul>
+<li>Added per-phase time-estimation fields: <code>estimated_planned_to_done</code>, <code>estimated_done_to_checked</code>, <code>estimated_checked_to_completed</code> (hours), with an auto-calculated total.</li>
+<li>Added per-phase actual-time fields: <code>actual_planned_to_done</code>, <code>actual_done_to_checked</code>, <code>actual_checked_to_completed</code> (hours), with an auto-calculated total.</li>
+<li>Added phase-transition timestamps recorded automatically on each status change.</li>
+<li>Workflow now records estimated vs. actual time per phase, enabling reporting and analytics for efficiency and bottleneck identification.</li>
+<li>Added positive-value validation for estimates; the legacy <code>estimated</code> (minutes) field is retained for backward compatibility.</li>
+</ul>
+<p>See <a href="workflow.html#phase-tracking">phase tracking</a> for details.</p>
+</div>
+
+<div class="card">
+<h3 id="v0-2-0">v0.2.0 — Done-todo field locking <span class="badge badge--brand">0.2.0</span> <span class="badge badge--green">2026-03-15</span></h3>
+<ul>
+<li>Made <code>assigned_to</code>, <code>estimated</code>, and <code>deadline</code> read-only once a todo is <code>🟠 Done</code> or <code>✅ Completed</code>.</li>
+<li>Added DocType-level validation to reject changes to those protected fields.</li>
+<li>Security: improved data integrity and protection of historical todo data.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3 id="v0-1-0">v0.1.0 — Recurring todos <span class="badge badge--brand">0.1.0</span> <span class="badge badge--green">2026-03-15</span></h3>
+<ul>
+<li>Added the Recurring Todo feature: <code>is_recurring</code>, <code>recurring_frequency</code> (Daily / Weekly / Monthly), <code>recurring_until</code>, <code>next_occurrence</code>, and <code>original_todo</code> fields.</li>
+<li>Auto-create recurring todos on completion, plus a daily scheduled job (<code>create_recurring_todos</code>) for missed occurrences.</li>
+<li>Preserves todo details (<code>assigned_to</code>, <code>estimated</code>, <code>notes</code>) across the recurring chain.</li>
+<li>Extended Project Todo <code>on_change</code> logic and next-occurrence calculation / validation.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3 id="v0-0-1">v0.0.1 — Initial release <span class="badge badge--brand">0.0.1</span> <span class="badge badge--green">2026-03-15</span></h3>
+<ul>
+<li>Initial release of the Frappe-based project-management system.</li>
+<li>DocTypes: Project, Project Detail, Project Todo, Customer, Glossary, Project Group, Project Team, Project Glossary, plus basic Scope of Work and Project Proposal.</li>
+<li>Features: tree-based project grouping, the four-stage todo workflow, role-based team management, progress / estimate tracking, auto status updates, Calendar / Gantt views, business-logic validation, and duplicate team-member removal.</li>
+<li>API endpoints: <code>get_project_team_members</code>, <code>get_notes</code>, <code>update_status</code>, <code>save_notes</code>.</li>
+<li>Reports: Progress, Todo, Project Todo Deadline, Daily Assignment, Daily Performance.</li>
+<li>Permission system: System Manager / Project Owner / Project Leader / Project Team with user-based filtering and workflow validation.</li>
+<li>Utilities and helper / validation functions.</li>
+<li>Security: RBAC, team-membership permission filters, API permission checks, and workflow validation.</li>
+</ul>
+</div>
+
+<h2>Roadmap</h2>
+<p>The following items are listed as <strong>Unreleased</strong> / planned in the changelog. They are not yet implemented.</p>
+<ul>
+<li>&#9744; Full implementation of the Scope of Work DocType.</li>
+<li>&#9744; Full implementation of the Project Proposal DocType.</li>
+<li>&#9744; Project monitoring dashboard.</li>
+<li>&#9744; Deadline notifications for todos.</li>
+<li>&#9744; Project data export / import.</li>
+</ul>
+
+<h2 id="docs-vs-code">Documentation vs. implementation</h2>
+<p>The repository's <code>README.md</code> documents the <code>0.0.1</code> baseline, so a few points in older docs do not yet reflect the current code. This section reconciles those differences so readers know which description to trust.</p>
+
+<div class="callout callout--warn"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><div class="callout__body"><div class="callout__title">Known doc / code drift</div><p>Where the README and the implemented code disagree, the <strong>code is authoritative</strong>. The points below are factual differences, not bugs.</p></div></div>
+
+<ul>
+<li><strong>Features missing from the README.</strong> The README does not mention the Project Admin role / <code>project_admin</code> field (v0.4.0), the recurring-todo fields and the <code>create_recurring_todos</code> scheduled job (v0.1.0), the Done / Completed field-locking rule (v0.2.0), or the per-phase estimate and actual-time fields (v0.3.0) — even though these exist in <code>project.json</code>, <code>project_todo.json</code>, and <code>hooks.py</code>. It documents only the <code>0.0.1</code> baseline.</li>
+<li><strong>Audit-field naming mismatch.</strong> The README describes Project Todo audit fields named <code>developed_at</code> / <code>developed_by</code>, <code>tested_at</code> / <code>tested_by</code>, and <code>completed_at</code> / <code>completed_by</code>. The phase-tracking implementation instead uses <code>planned_started_at</code>, <code>done_started_at</code>, <code>checked_started_at</code>, and <code>phase_completed_at</code>, with no <code>*_by</code> user fields. The two documents describe different field sets for the same DocType.</li>
+<li><strong>Report status-filter wording.</strong> The README describes Progress Report as showing todos whose status is not <code>Scheduled</code> and Todo Report as <code>Ongoing</code> / <code>Scheduled</code> todos. Those values are not valid Project Todo statuses — the todo workflow uses <code>⚪️ Planned</code>, <code>🟠 Done</code>, <code>🔷 Checked By PL</code>, and <code>✅ Completed</code> (Pending / Ongoing / Completed are Project <em>Detail</em> statuses). The filter wording does not line up with the todo status model.</li>
+<li><strong>Incomplete update_status description.</strong> The README's <code>update_status</code> walkthrough does not mention the API-level Project Admin status-update block added in v0.4.0, so the documented workflow is incomplete versus the implemented permission checks.</li>
+</ul>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">For current behavior</div><p>See <a href="doctypes.html#project-todo">Project Todo</a> for the implemented fields, <a href="workflow.html#phase-tracking">Workflow</a> for phase tracking, and <a href="reports.html">Reports</a> for the actual report filters.</p></div></div>
+      <nav class="pager"><a class="prev" href="reports.html"><small>&larr; Previous</small><strong>Reports &amp; Dashboards</strong></a></nav>
+      <footer class="docfoot">
+        <span>Vernon Project &middot; v0.4.0 &middot; MIT License</span>
+        <span>Built for the Frappe Framework &middot; <a href="mailto:help@vernon.id">help@vernon.id</a></span>
+      </footer>
+    </main>
+    <aside class="toc" id="toc"></aside>
+  </div>
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-box">
+      <div class="search-box__input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Search the documentation..." autocomplete="off" spellcheck="false">
+        <span class="kbd">Esc</span>
+      </div>
+      <div class="search-box__results" id="searchResults"></div>
+      <div class="search-box__foot">
+        <span><span class="kbd">&#8593;</span><span class="kbd">&#8595;</span> navigate</span>
+        <span><span class="kbd">&#8629;</span> open</span>
+        <span><span class="kbd">Esc</span> close</span>
+      </div>
+    </div>
+  </div>
+  <script src="assets/search-index.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

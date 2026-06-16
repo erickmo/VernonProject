@@ -10,10 +10,10 @@ def get_notes(todo_id):
 def update_status(todo_id):
 	"""
 	Approves a project todo item by setting its status to 'Approved'.
-	
+
 	Args:
 			todo_id (str): The ID of the project todo item to approve.
-			
+
 	Returns:
 			dict: A dictionary containing the status of the operation.
 	"""
@@ -27,6 +27,11 @@ def update_status(todo_id):
 		user = frappe.session.user
 		project_leader = project.project_leader
 		project_owner = project.project_owner
+		project_admin = project.project_admin
+
+		# Validasi: Project Admin TIDAK boleh update status
+		if project_admin and user == project_admin:
+			return {"status": "error", "message": f"Project Admin tidak memiliki izin untuk mengupdate status todo. Silakan hubungi Project Owner atau Project Leader."}
 
 		# Check if todo is in 'Scheduled' status
 		if todo.status == "⚪️ Planned":

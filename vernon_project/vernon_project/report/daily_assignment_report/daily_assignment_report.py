@@ -19,8 +19,16 @@ def execute(filters=None):
 	# ------------------------------------------------------
 	# Get Project todo, column is date from first
 
-	sql = """
-		SELECT 
+	# Status filter — supports a single value or a list (multi-select)
+	st = filters.get("status") if filters else None
+	st = st if isinstance(st, (list, tuple)) else ([st] if st else [])
+	st = [s for s in st if s]
+	status_clause = (
+		f" AND todo.status IN ({', '.join(frappe.db.escape(s) for s in st)}) " if st else ""
+	)
+
+	sql = f"""
+		SELECT
 			todo.name as todo_name, todo.ongoing,
 			todo.to_do, todo.assigned_to, todo.deadline, todo.estimated, todo.status, todo.notes,
 			detail.name AS detail_name, detail.title AS detail_title,
@@ -33,7 +41,7 @@ def execute(filters=None):
 		WHERE
 			todo.deadline IS NOT NULL
 			AND detail.is_pending = 0
-			AND todo.status = %(status)s
+			{status_clause}
 			AND todo.assigned_to = %(assigned_to)s
 	"""
 
@@ -49,7 +57,6 @@ def execute(filters=None):
 	# Execute Query
 	# ------------------------------------------------------
 	sql_filter = {
-		"status": filters.get("status"),
 		"assigned_to": filters.get("assigned_to")
 	}
 	result = frappe.db.sql(sql, sql_filter, as_dict=True)
@@ -92,6 +99,7 @@ def execute(filters=None):
 		note_icon = "📝" if has_notes else "💬"
 		row_data = {
 			"ongoing": row.ongoing,
+			"todo_id": row.todo_name,
 			"todo_name": row.todo_name,
 			"assigned_to": row.assigned_to,
 			"project_owner": row.project_owner,

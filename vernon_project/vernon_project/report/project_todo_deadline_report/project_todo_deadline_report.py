@@ -20,8 +20,16 @@ def execute(filters=None):
 	# Get Project todo, column is date from first
 	
 
-	sql = """
-		SELECT 
+	# Status filter — supports a single value or a list (multi-select)
+	st = filters.get("status") if filters else None
+	st = st if isinstance(st, (list, tuple)) else ([st] if st else [])
+	st = [s for s in st if s]
+	status_clause = (
+		f" AND todo.status IN ({', '.join(frappe.db.escape(s) for s in st)}) " if st else ""
+	)
+
+	sql = f"""
+		SELECT
 			todo.name, todo.to_do, todo.assigned_to, todo.deadline, todo.estimated, todo.status,
 			detail.name AS detail_name, detail.project AS detail_project,
 			project.name AS project_name
@@ -32,7 +40,7 @@ def execute(filters=None):
 		WHERE
 			todo.deadline IS NOT NULL
 			AND project.name = %(project)s
-			AND todo.status = %(status)s
+			{status_clause}
 			AND detail.is_pending = 0
 	"""
 
@@ -51,7 +59,6 @@ def execute(filters=None):
 	# ------------------------------------------------------
 	sql_filter = {
 		"project": filters.get("project"),
-		"status": filters.get("status"),
 	}
 	if filters.get("assigned_to"):
 		sql_filter["assigned_to"] = filters.get("assigned_to")
@@ -89,6 +96,7 @@ def execute(filters=None):
 	# for each row, add a column for each deadline, if the deadline is equal to the column, check it
 	for row in result:
 		row_data = {
+			"todo_id": row.name,
 			"todo": row.to_do,
 			"project": f"{row.detail_name}",
 			"assigned_to": row.assigned_to,

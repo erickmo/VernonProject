@@ -37,6 +37,7 @@ def execute(filters=None):
 	# Get todo data SQL
 	sql = f"""
 		SELECT
+			pt.name AS todo_id,
 			pt.to_do AS to_do,
 			pt.deadline AS todo_deadline,
 			pt.assigned_to AS assigned_to,
@@ -76,6 +77,7 @@ def execute(filters=None):
 
 	for row in results:
 		data.append({
+			"todo_id": row.todo_id,
 			"to_do": row.to_do,
 			"todo_status": row.todo_status,
 			"todo_deadline": row.todo_deadline,

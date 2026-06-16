@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Reference · Vernon Project Docs</title>
+  <meta name="description" content="Whitelisted server endpoints for team members, todo notes and status workflow transitions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236d5efc'/><text x='16' y='23' font-size='20' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="iconbtn hamburger" id="hamburger" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a class="topbar__brand" href="index.html">
+      <span class="brand-mark">V</span>
+      <span>Vernon Project<small>Documentation</small></span>
+    </a>
+    <div class="topbar__spacer"></div>
+    <button class="searchbtn" data-search-open aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="stxt">Search docs</span>
+      <span class="kbd">&#8984; K</span>
+    </button>
+    <button class="iconbtn" id="themeToggle" aria-label="Toggle theme">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+    <a class="iconbtn" href="https://github.com" aria-label="Repository" title="Repository">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 0 0 8.84 21.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85V21c0 .27.16.59.67.5A10 10 0 0 0 12 2Z"/></svg>
+    </a>
+  </header>
+  <div class="scrim" id="scrim"></div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav>
+        <div class="nav-group">
+          <div class="nav-group__title">Getting Started</div>
+          <a class="nav-link" href="index.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Overview</span></a>
+          <a class="nav-link" href="getting-started.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg><span>Installation &amp; Setup</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Core Concepts</div>
+          <a class="nav-link" href="architecture.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Architecture</span></a>
+          <a class="nav-link" href="doctypes.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>DocType Reference</span></a>
+          <a class="nav-link" href="workflow.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg><span>Todo Workflow</span></a>
+          <a class="nav-link" href="permissions.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Roles &amp; Permissions</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Reference</div>
+          <a class="nav-link active" href="api.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>API Reference</span></a>
+          <a class="nav-link" href="reports.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Reports &amp; Dashboards</span></a>
+          <a class="nav-link" href="changelog.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg><span>Changelog &amp; Roadmap</span></a>
+        </div>
+</nav>
+    </aside>
+    <main class="content">
+<nav class="breadcrumb"><a href="index.html">Docs</a> <span>/</span> <span>API Reference</span></nav>
+<h1 class="page-title">API Reference</h1>
+<p class="page-lead">The four server-side endpoints Vernon Project exposes: one read on Project, two reads/writes on Project Todo, and the workflow-driving status updater. All are Frappe whitelisted methods callable from client JavaScript or over HTTP.</p>
+
+<h2>How these endpoints work</h2>
+<p>Every endpoint on this page is a Frappe <strong>whitelisted method</strong>. That means it can be invoked from server code, from client JavaScript via <code>frappe.call</code>, or directly over HTTP at <code>/api/method/&lt;dotted.path&gt;</code>. Because they are whitelisted, any logged-in user can <em>reach</em> them&mdash;authorization is decided inside each function, not by Frappe's route layer.</p>
+
+<p>The two read endpoints (<a href="#get-project-team-members"><code>get_project_team_members</code></a> and <a href="#get-notes"><code>get_notes</code></a>) perform no role checks at all. The two write endpoints (<a href="#update-status"><code>update_status</code></a> and <a href="#save-notes"><code>save_notes</code></a>) save their document with <code>ignore_permissions=True</code>, which bypasses Frappe's document-level permission system entirely. To compensate, each write endpoint runs its <strong>own manual role check</strong> against the parent project's roles before it touches anything, and returns an error dictionary instead of saving when the caller is not allowed.</p>
+
+<div class="callout callout--warn"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><div class="callout__body"><div class="callout__title">Writes bypass document permissions on purpose</div><p>Both write endpoints call <code>todo.save(ignore_permissions=True)</code>. The only thing standing between a caller and a saved change is the manual allow-list inside the function. If you extend these endpoints, keep the manual check in place&mdash;Frappe will not enforce DocType permissions on these saves.</p></div></div>
+
+<h2>Quick reference</h2>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Method (dotted path)</th><th>Purpose</th><th>Auth</th></tr></thead>
+<tbody>
+<tr>
+  <td><code>vernon_project.api.project.get_project_team_members</code> <span class="badge badge--green">read</span></td>
+  <td>List the <code>user</code> of every row in a project's team members table.</td>
+  <td>Any logged-in user</td>
+</tr>
+<tr>
+  <td><code>vernon_project.api.project_todo.get_notes</code> <span class="badge badge--green">read</span></td>
+  <td>Fetch the <code>notes</code> text of a single Project Todo.</td>
+  <td>Any logged-in user</td>
+</tr>
+<tr>
+  <td><code>vernon_project.api.project_todo.update_status</code> <span class="badge badge--amber">workflow</span></td>
+  <td>Advance a todo one step through the status state machine.</td>
+  <td>Per-transition role check</td>
+</tr>
+<tr>
+  <td><code>vernon_project.api.project_todo.save_notes</code> <span class="badge badge--amber">write</span></td>
+  <td>Overwrite the <code>notes</code> field of a Project Todo.</td>
+  <td>Assignee, Owner, or Leader</td>
+</tr>
+</tbody>
+</table></div>
+
+<h2 id="get-project-team-members">get_project_team_members</h2>
+<p>Returns the list of users assigned to a project's team. <span class="badge badge--green">read</span></p>
+<p>Defined in <code>vernon_project/api/project.py</code>. Loads the Project document and collects the <code>user</code> field from each row of its <code>team_members</code> child table.</p>
+
+<h3>Signature</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">python</span></div><pre><code data-lang="python">@frappe.whitelist()
+def get_project_team_members(project_name):
+    ...</code></pre></div>
+
+<h3>Parameters</h3>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>project_name</code></td><td><span class="badge badge--blue">str</span></td><td>The name (docname / primary key) of the Project document to look up. <span class="req">required</span></td></tr>
+</tbody>
+</table></div>
+
+<h3>Returns</h3>
+<p>A <strong>raw Python list of strings</strong>&mdash;the <code>user</code> value of each row in the project's <code>team_members</code> table, for example <code>["a@x.com", "b@x.com"]</code>. If the project does not exist, the function catches <code>frappe.DoesNotExistError</code> and returns an empty list <code>[]</code>.</p>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">No status wrapper</div><p>Unlike the Project Todo endpoints, this one returns the list <strong>directly</strong>&mdash;there is no <code>{"status": ...}</code> envelope and no <code>{"message": ...}</code> dict. A missing project and an empty team are indistinguishable: both yield <code>[]</code>.</p></div></div>
+
+<h3>Permissions</h3>
+<p>None. No role or permission check is performed; <code>ignore_permissions</code> is not passed and there is no gate on <code>project_leader</code>, <code>project_owner</code>, or <code>project_admin</code>. Because it is whitelisted, any logged-in user can call it.</p>
+
+<h3>Example</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">js</span></div><pre><code data-lang="js">frappe.call({
+  method: "vernon_project.api.project.get_project_team_members",
+  args: { project_name: "PRJ-25-06-00001" },
+  callback: (r) =&gt; {
+    // r.message is an array of user ids, e.g. ["a@x.com", "b@x.com"]
+    console.log(r.message);
+  },
+});</code></pre></div>
+
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">bash</span></div><pre><code data-lang="bash">curl -s "$SITE/api/method/vernon_project.api.project.get_project_team_members" \
+  -H "Authorization: token &lt;api_key&gt;:&lt;api_secret&gt;" \
+  -G --data-urlencode "project_name=PRJ-25-06-00001"
+# {"message": ["a@x.com", "b@x.com"]}</code></pre></div>
+
+<h2 id="get-notes">get_notes</h2>
+<p>Fetches the notes text of a single Project Todo. <span class="badge badge--green">read</span></p>
+<p>Defined in <code>vernon_project/api/project_todo.py</code>. Reads only the <code>notes</code> field straight from the database with <code>frappe.db.get_value</code>&mdash;it does not load the full document.</p>
+
+<h3>Signature</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">python</span></div><pre><code data-lang="python">@frappe.whitelist()
+def get_notes(todo_id):
+    ...</code></pre></div>
+
+<h3>Parameters</h3>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>todo_id</code></td><td><span class="badge badge--blue">str</span></td><td>The name / ID of the Project Todo record whose notes should be fetched. <span class="req">required</span></td></tr>
+</tbody>
+</table></div>
+
+<h3>Returns</h3>
+<p>Always a dict of the exact shape <code>{'notes': &lt;str&gt;}</code>. The value is the stored notes text, coerced to an empty string (<code>''</code>) when the stored value is falsy or <code>None</code>. There is no <code>status</code> key.</p>
+
+<p>Because it uses <code>frappe.db.get_value</code> (not <code>get_doc</code>), an unknown <code>todo_id</code> does not raise <code>DoesNotExistError</code>; <code>get_value</code> returns <code>None</code> and the function returns <code>{'notes': ''}</code>.</p>
+
+<h3>Permissions</h3>
+<p>None. The function is explicitly documented as accessible by <strong>all logged-in users</strong>. There is no owner, leader, or admin gating.</p>
+
+<h3>Example</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">js</span></div><pre><code data-lang="js">frappe.call({
+  method: "vernon_project.api.project_todo.get_notes",
+  args: { todo_id: cur_frm.doc.name },
+  callback: (r) =&gt; {
+    // r.message === { notes: "..." }
+    field.set_value(r.message.notes);
+  },
+});</code></pre></div>
+
+<h2 id="update-status">update_status</h2>
+<p>Advances a Project Todo one step through its four-stage status workflow. <span class="badge badge--amber">workflow</span></p>
+<p>Defined in <code>vernon_project/api/project_todo.py</code>. Loads the todo, its parent Project Detail, and the grandparent Project, then branches on the todo's current status and the calling user's project role to perform exactly one transition.</p>
+
+<h3>Signature</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">python</span></div><pre><code data-lang="python">@frappe.whitelist()
+def update_status(todo_id):
+    ...</code></pre></div>
+
+<h3>Parameters</h3>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>todo_id</code></td><td><span class="badge badge--blue">str</span></td><td>The ID / name of the Project Todo whose status should be advanced one step in the workflow. <span class="req">required</span></td></tr>
+</tbody>
+</table></div>
+
+<h3>Returns</h3>
+<p>Always a dict with the keys <code>status</code> and <code>message</code>. The <code>status</code> value is only ever <code>"error"</code> or <code>"info"</code>&mdash;there is no <code>"ok"</code> here.</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Case</th><th>Returned dict</th></tr></thead>
+<tbody>
+<tr>
+  <td>Successful advance</td>
+  <td><code>{"status": "info", "message": "Todo {to_do} is updated to {status}."}</code></td>
+</tr>
+<tr>
+  <td>Already <code>✅ Completed</code> (terminal)</td>
+  <td><code>{"status": "info", "message": "Todo {to_do} is already completed."}</code></td>
+</tr>
+<tr>
+  <td>Admin guard / permission denial / not found / generic error</td>
+  <td><code>{"status": "error", "message": &lt;reason&gt;}</code></td>
+</tr>
+</tbody>
+</table></div>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Success uses "info", not "ok"</div><p>A successful status advance returns <code>status: "info"</code>&mdash;<strong>not</strong> <code>"ok"</code>. This is inconsistent with <a href="#save-notes"><code>save_notes</code></a>, whose success returns <code>status: "ok"</code>. If your client code branches on the status string, treat <code>"info"</code> as success for <code>update_status</code> and <code>"ok"</code> as success for <code>save_notes</code>.</p></div></div>
+
+<p>One control-flow subtlety: on the admin guard and on permission denials the function <code>return</code>s <em>before</em> saving. On the terminal <code>✅ Completed</code> branch it returns the &ldquo;already completed&rdquo; info dict before saving too. On every genuine advance it calls <code>todo.save(ignore_permissions=True)</code> and then returns the success dict.</p>
+
+<h3>Permissions</h3>
+<p>The role check matches <code>frappe.session.user</code> against the parent project's <code>project_leader</code>, <code>project_owner</code>, <code>project_admin</code>, and the todo's <code>assigned_to</code>. The authority required narrows at each step:</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Transition</th><th>Who may advance</th></tr></thead>
+<tbody>
+<tr><td><code>⚪️ Planned</code> &rarr; <code>🟠 Done</code></td><td>Project Leader <strong>OR</strong> Project Owner <strong>OR</strong> the todo's Assigned To</td></tr>
+<tr><td><code>🟠 Done</code> &rarr; <code>🔷 Checked By PL</code></td><td>Project Leader <strong>OR</strong> Project Owner only <span class="badge badge--red">assigned to cannot</span></td></tr>
+<tr><td><code>🔷 Checked By PL</code> &rarr; <code>✅ Completed</code></td><td>Project Owner <strong>ONLY</strong> <span class="badge badge--red">leader cannot</span></td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Project Admin is hard-blocked.</strong> If the project's <code>project_admin</code> is set and the caller matches it, the function returns an error <em>before</em> evaluating any transition:</p>
+<p><code>Project Admin tidak memiliki izin untuk mengupdate status todo. Silakan hubungi Project Owner atau Project Leader.</code> (&ldquo;Project Admin does not have permission to update todo status. Please contact the Project Owner or Project Leader.&rdquo;)</p>
+
+<p>The per-transition denial messages are mostly Indonesian/mixed. The exact strings are:</p>
+<ul>
+<li><strong>Planned denial:</strong> <code>You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}, Project Leader {project_leader} atau Assigned To {todo.assigned_to}).</code></li>
+<li><strong>Done denial:</strong> <code>You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}, Project Leader {project_leader}).</code></li>
+<li><strong>Checked By PL denial:</strong> <code>You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}.</code></li>
+</ul>
+
+<div class="callout callout--warn"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><div class="callout__body"><div class="callout__title">Known source quirks</div><p>The Checked-By-PL denial message has an <strong>unbalanced parenthesis</strong> in the source&mdash;it opens <code>(</code> but never closes it. A missing todo returns <code>{"status": "error", "message": "Todo {todo_id} does not exist."}</code>, and any other unhandled exception returns <code>{"status": "error", "message": str(e)}</code>. The function uses error-return dicts throughout; it never calls <code>frappe.throw</code>.</p></div></div>
+
+<h3>Example</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">js</span></div><pre><code data-lang="js">frappe.call({
+  method: "vernon_project.api.project_todo.update_status",
+  args: { todo_id: row.name },
+  callback: (r) =&gt; {
+    const res = r.message; // { status: "info" | "error", message: "..." }
+    if (res.status === "error") {
+      frappe.msgprint(res.message);
+    } else {
+      // "info" means success (advanced) or already-completed
+      frappe.show_alert(res.message);
+    }
+  },
+});</code></pre></div>
+
+<h2 id="save-notes">save_notes</h2>
+<p>Overwrites the <code>notes</code> field of a Project Todo. <span class="badge badge--amber">write</span></p>
+<p>Defined in <code>vernon_project/api/project_todo.py</code>. Loads the todo, its parent Project Detail, and the grandparent Project, checks the caller against an allow-list, then assigns <code>todo.notes = notes</code> and saves.</p>
+
+<h3>Signature</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">python</span></div><pre><code data-lang="python">@frappe.whitelist()
+def save_notes(todo_id, notes):
+    ...</code></pre></div>
+
+<h3>Parameters</h3>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>todo_id</code></td><td><span class="badge badge--blue">str</span></td><td>The ID / name of the Project Todo whose notes field is to be updated. <span class="req">required</span></td></tr>
+<tr><td><code>notes</code></td><td><span class="badge badge--blue">str</span></td><td>The new notes text to store on the todo (assigned directly to <code>todo.notes</code>). <span class="req">required</span></td></tr>
+</tbody>
+</table></div>
+
+<h3>Returns</h3>
+<p>Always a dict with the keys <code>status</code> and <code>message</code>.</p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Case</th><th>Returned dict</th></tr></thead>
+<tbody>
+<tr><td>Success</td><td><code>{"status": "ok", "message": "Catatan berhasil disimpan."}</code></td></tr>
+<tr><td>Permission denied</td><td><code>{"status": "error", "message": &lt;Indonesian reason&gt;}</code></td></tr>
+<tr><td>Not found</td><td><code>{"status": "error", "message": "Todo {todo_id} tidak ditemukan."}</code></td></tr>
+<tr><td>Generic error</td><td><code>{"status": "error", "message": str(e)}</code></td></tr>
+</tbody>
+</table></div>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Success uses "ok" here&mdash;not "info"</div><p>Unlike <a href="#update-status"><code>update_status</code></a> (whose success is <code>"info"</code>), a successful <code>save_notes</code> returns <code>status: "ok"</code>. The success message is the Indonesian <code>Catatan berhasil disimpan.</code> (&ldquo;Note saved successfully.&rdquo;). Branch on the right success string per endpoint.</p></div></div>
+
+<h3>Permissions</h3>
+<p>The caller must be one of three roles: the todo's <code>assigned_to</code>, the project's <code>project_owner</code>, or the project's <code>project_leader</code>. Anyone else gets an error dict and nothing is saved. The save itself uses <code>ignore_permissions=True</code>, so this manual allow-list is the only thing governing access.</p>
+
+<div class="callout callout--warn"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><div class="callout__body"><div class="callout__title">Project Admin is not on the allow-list</div><p><code>project_admin</code> is <strong>not</strong> among the allowed roles, so a Project Admin cannot save notes unless they also happen to be the assignee, owner, or leader. The permission-denial message is: <code>Anda tidak punya izin mengubah catatan ini. Yang boleh: Assigned To ({todo.assigned_to}), Project Owner ({project.project_owner}), atau Project Leader ({project.project_leader}).</code> (&ldquo;You do not have permission to change this note. Allowed: Assigned To, Project Owner, or Project Leader.&rdquo;)</p></div></div>
+
+<h3>Example</h3>
+<div class="code"><div class="code__head"><span class="code__dot" style="background:#ff5f56"></span><span class="code__dot" style="background:#ffbd2e"></span><span class="code__dot" style="background:#27c93f"></span><span class="code__lang">js</span></div><pre><code data-lang="js">frappe.call({
+  method: "vernon_project.api.project_todo.save_notes",
+  args: { todo_id: row.name, notes: editor.get_value() },
+  callback: (r) =&gt; {
+    const res = r.message; // { status: "ok" | "error", message: "..." }
+    if (res.status === "ok") {
+      frappe.show_alert(res.message); // "Catatan berhasil disimpan."
+    } else {
+      frappe.msgprint(res.message);
+    }
+  },
+});</code></pre></div>
+
+<h2>Status workflow recap</h2>
+<p><a href="#update-status"><code>update_status</code></a> is the only API entry point into the Project Todo state machine. The full lifecycle&mdash;side effects, recurrence, field locking, and deletion rules&mdash;is documented on the <a href="workflow.html">Todo Workflow</a> page; this is the short version of who can push each gate.</p>
+
+<div class="flow">
+  <div class="flow__node flow__node--planned"><div class="flow__emoji">⚪️</div><div class="flow__name">Planned</div><div class="flow__who">created</div></div>
+  <div class="flow__arrow">&rarr;</div>
+  <div class="flow__node flow__node--done"><div class="flow__emoji">🟠</div><div class="flow__name">Done</div><div class="flow__who">assignee / leader / owner</div></div>
+  <div class="flow__arrow">&rarr;</div>
+  <div class="flow__node flow__node--checked"><div class="flow__emoji">🔷</div><div class="flow__name">Checked By PL</div><div class="flow__who">leader / owner</div></div>
+  <div class="flow__arrow">&rarr;</div>
+  <div class="flow__node flow__node--completed"><div class="flow__emoji">✅</div><div class="flow__name">Completed</div><div class="flow__who">owner only</div></div>
+</div>
+
+<p>Each <code>update_status</code> call advances the todo by <strong>exactly one step</strong>. The assignee, leader, or owner can push <code>⚪️ Planned</code> to <code>🟠 Done</code>; the leader or owner pushes <code>🟠 Done</code> to <code>🔷 Checked By PL</code>; and the owner alone pushes <code>🔷 Checked By PL</code> to <code>✅ Completed</code>. The escalation narrows toward the Project Owner at each gate, and the <strong>Project Admin can never advance status</strong>&mdash;they must contact the Owner or Leader. See <a href="workflow.html">Todo Workflow</a> for the transition side effects and <a href="permissions.html">Permissions</a> for the full role model.</p>
+      <nav class="pager"><a class="prev" href="permissions.html"><small>&larr; Previous</small><strong>Roles &amp; Permissions</strong></a><a class="next" href="reports.html"><small>Next &rarr;</small><strong>Reports &amp; Dashboards</strong></a></nav>
+      <footer class="docfoot">
+        <span>Vernon Project &middot; v0.4.0 &middot; MIT License</span>
+        <span>Built for the Frappe Framework &middot; <a href="mailto:help@vernon.id">help@vernon.id</a></span>
+      </footer>
+    </main>
+    <aside class="toc" id="toc"></aside>
+  </div>
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-box">
+      <div class="search-box__input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Search the documentation..." autocomplete="off" spellcheck="false">
+        <span class="kbd">Esc</span>
+      </div>
+      <div class="search-box__results" id="searchResults"></div>
+      <div class="search-box__foot">
+        <span><span class="kbd">&#8593;</span><span class="kbd">&#8595;</span> navigate</span>
+        <span><span class="kbd">&#8629;</span> open</span>
+        <span><span class="kbd">Esc</span> close</span>
+      </div>
+    </div>
+  </div>
+  <script src="assets/search-index.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
