@@ -3,6 +3,7 @@ import { X, Plus } from 'lucide-react'
 import { useCreateTask } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 interface CreateTaskSheetProps {
   open: boolean
@@ -79,12 +80,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
 
           <label className="text-sm font-medium text-slate-600">
             Assigned to<span className="text-red-500"> *</span>
-            <select className={field + ' mt-1'} value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-              <option value="">Select a team member…</option>
-              {team.map((m) => (
-                <option key={m.user} value={m.user}>{m.name}</option>
-              ))}
-            </select>
+            <SearchableSelect value={assignedTo} onChange={setAssignedTo} options={team.map((m) => ({ value: m.user, label: m.name }))} placeholder="Select a team member…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
@@ -111,11 +107,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
             <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-3">
               <label className="text-sm font-medium text-slate-600">
                 Frequency
-                <select className={field + ' mt-1'} value={frequency} onChange={(e) => setFrequency(e.target.value)}>
-                  <option value="Daily">Daily</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                </select>
+                <SearchableSelect value={frequency} onChange={setFrequency} options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))} />
               </label>
               <label className="text-sm font-medium text-slate-600">
                 Until

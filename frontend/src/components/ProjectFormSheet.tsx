@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react'
 import { useFormOptions, useCreateProject, useUpdateProject } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import type { ProjectDetail, ProjectInput } from '@/lib/types'
 
 interface Props {
@@ -94,42 +95,27 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
           <label className="text-sm font-medium text-slate-600">
             Customer<span className="text-red-500"> *</span>
-            <select className={field + ' mt-1'} value={f.customer} onChange={(e) => set('customer', e.target.value)}>
-              <option value="">Select…</option>
-              {(opts?.customers ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <SearchableSelect value={f.customer} onChange={(v) => set('customer', v)} options={opts?.customers ?? []} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
             Project group<span className="text-red-500"> *</span>
-            <select className={field + ' mt-1'} value={f.project_group} onChange={(e) => set('project_group', e.target.value)}>
-              <option value="">Select…</option>
-              {(opts?.project_groups ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <SearchableSelect value={f.project_group} onChange={(v) => set('project_group', v)} options={opts?.project_groups ?? []} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
             Owner<span className="text-red-500"> *</span>
-            <select className={field + ' mt-1'} value={f.project_owner} disabled={lockLeads} onChange={(e) => set('project_owner', e.target.value)}>
-              <option value="">Select…</option>
-              {users.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <SearchableSelect value={f.project_owner} onChange={(v) => set('project_owner', v)} options={users} disabled={lockLeads} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
             Leader<span className="text-red-500"> *</span>
-            <select className={field + ' mt-1'} value={f.project_leader} disabled={lockLeads} onChange={(e) => set('project_leader', e.target.value)}>
-              <option value="">Select…</option>
-              {users.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <SearchableSelect value={f.project_leader} onChange={(v) => set('project_leader', v)} options={users} disabled={lockLeads} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
             Admin
-            <select className={field + ' mt-1'} value={f.project_admin ?? ''} onChange={(e) => set('project_admin', e.target.value)}>
-              <option value="">None</option>
-              {users.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <SearchableSelect value={f.project_admin ?? ''} onChange={(v) => set('project_admin', v)} options={users} allowClear placeholder="None" />
           </label>
 
           <div className="flex gap-3">
@@ -145,9 +131,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
           <label className="text-sm font-medium text-slate-600">
             Status
-            <select className={field + ' mt-1'} value={f.status} onChange={(e) => set('status', e.target.value)}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <SearchableSelect value={f.status} onChange={(v) => set('status', v)} options={STATUSES.map((s) => ({ value: s, label: s }))} />
           </label>
 
           <label className="text-sm font-medium text-slate-600">

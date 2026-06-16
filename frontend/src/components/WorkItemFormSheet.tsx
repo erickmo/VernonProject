@@ -3,6 +3,7 @@ import { X, Plus } from 'lucide-react'
 import { useCreateWorkItem } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 interface Props {
   open: boolean
@@ -61,11 +62,7 @@ export function WorkItemFormSheet({ open, onClose, project, groupings }: Props) 
 
           <label className="text-sm font-medium text-slate-600">
             Grouping<span className="text-red-500"> *</span>
-            <input className={field + ' mt-1'} list="wi-groupings" value={grouping}
-              onChange={(e) => setGrouping(e.target.value)} placeholder="Pick or type a new grouping" />
-            <datalist id="wi-groupings">
-              {groupings.map((g) => <option key={g} value={g} />)}
-            </datalist>
+            <SearchableSelect value={grouping} onChange={setGrouping} options={groupings.map((g) => ({ value: g, label: g }))} allowCreate placeholder="Pick or type a new grouping" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
@@ -75,9 +72,7 @@ export function WorkItemFormSheet({ open, onClose, project, groupings }: Props) 
 
           <label className="text-sm font-medium text-slate-600">
             Status
-            <select className={field + ' mt-1'} value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <SearchableSelect value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: s }))} />
           </label>
 
           <button onClick={submit} disabled={create.isPending}
