@@ -8,6 +8,7 @@ import type {
   Boot,
   Dashboard,
   FormOptions,
+  Group,
   Opt2,
   ProjectCard,
   ProjectDetail,
@@ -258,6 +259,76 @@ export function useCreateWorkItem(project: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.project(project) })
+    },
+  })
+}
+
+export function useUpdateWorkItem(name: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (fields: Record<string, unknown>) =>
+      resource.update<{ name: string }>('Project Detail', name, fields),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.workItem(name) })
+      qc.invalidateQueries({ queryKey: ['project'] })
+    },
+  })
+}
+
+export function useDeleteWorkItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Project Detail', name),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+export function useGroups(project: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', project],
+    queryFn: () =>
+      resource.list<Group[]>('Glossary', {
+        filters: [['project', '=', project]],
+        fields: ['name', 'glossary', 'description'],
+      }),
+    enabled: !!project && enabled,
+  })
+}
+
+export function useCreateGroup(project: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { glossary: string; description?: string }) =>
+      resource.create<{ name: string }>('Glossary', { ...input, project }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['groups', project] })
+      qc.invalidateQueries({ queryKey: ['project'] })
+    },
+  })
+}
+
+export function useUpdateGroup(project: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, ...fields }: { name: string; glossary?: string; description?: string }) =>
+      resource.update<{ name: string }>('Glossary', name, fields),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['groups', project] })
+      qc.invalidateQueries({ queryKey: ['project'] })
+    },
+  })
+}
+
+export function useDeleteGroup(project: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Glossary', name),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['groups', project] })
+      qc.invalidateQueries({ queryKey: ['project'] })
     },
   })
 }

@@ -158,6 +158,15 @@ export interface WorkItem {
   todos: Todo[]
   can_create: boolean
   team: { user: string; name: string; image: string | null }[]
+  grouping: string
+  can_edit: boolean
+  groupings: string[]
+}
+
+export interface Group {
+  name: string
+  glossary: string
+  description: string | null
 }
 
 export interface Opt2 {
