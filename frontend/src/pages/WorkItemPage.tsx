@@ -57,6 +57,8 @@ export default function WorkItemPage() {
               <Pencil className="h-4 w-4" /> Edit
             </button>
             <button
+              disabled={todos.length > 0}
+              title={todos.length > 0 ? 'Remove all tasks before deleting this work item' : undefined}
               onClick={() => {
                 if (!confirm('Delete this work item?')) return
                 del.mutate(data.name, {
@@ -64,7 +66,7 @@ export default function WorkItemPage() {
                   onError: (e) => toast('error', (e as Error).message),
                 })
               }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-rose-600 active:scale-95">
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-rose-600 active:scale-95 disabled:cursor-not-allowed disabled:text-slate-300 disabled:active:scale-100">
               <Trash2 className="h-4 w-4" /> Delete
             </button>
           </div>

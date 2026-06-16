@@ -79,6 +79,8 @@ export default function ProjectDetailPage() {
           )}
           {flags.can_delete && (
             <button
+              disabled={data.work_items.length > 0}
+              title={data.work_items.length > 0 ? 'Remove all work items before deleting this project' : undefined}
               onClick={() => {
                 if (!confirm('Delete this project?')) return
                 del.mutate(data.name, {
@@ -86,7 +88,7 @@ export default function ProjectDetailPage() {
                   onError: (e) => toast('error', (e as Error).message),
                 })
               }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-sm font-semibold text-rose-600 shadow-card active:scale-95">
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-sm font-semibold text-rose-600 shadow-card active:scale-95 disabled:cursor-not-allowed disabled:text-slate-300 disabled:active:scale-100">
               <Trash2 className="h-4 w-4" /> Delete
             </button>
           )}
