@@ -433,7 +433,7 @@ def get_work_item(work_item):
 	user = frappe.session.user
 	detail = frappe.get_value(
 		"Project Detail", work_item,
-		["name", "title", "project", "status", "current_condition", "expected_outcome"],
+		["name", "title", "project", "status", "current_condition", "expected_outcome", "grouping"],
 		as_dict=True,
 	)
 	if not detail:
@@ -453,6 +453,10 @@ def get_work_item(work_item):
 	)
 	is_sm = "System Manager" in frappe.get_roles(user)
 	detail["can_create"] = is_sm or user in (owner, leader)
+	detail["can_edit"] = is_sm or user in (owner, leader)
+	detail["groupings"] = frappe.get_all(
+		"Glossary", filters={"project": detail["project"]}, pluck="glossary", limit_page_length=0
+	)
 
 	team_rows = frappe.get_all(
 		"Project Team", filters={"parent": detail["project"]}, fields=["user"],
