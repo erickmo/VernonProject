@@ -112,13 +112,9 @@ class ProjectDetail(Document):
 					frappe.throw(f"Cannot delete Project Todo '{todo_doc.to_do}' unless its status is 'Scheduled'.")
 		
 	def on_trash(self):
-		# --------------------------------------------------------------------------
-		# Cannot delete if todo child table has items not in 'Scheduled' status
-		# --------------------------------------------------------------------------
+		# Cannot delete a work item that still has tasks.
 		if self.todo:
-			for todo in self.todo:
-				if todo.status != "⚪️ Planned":
-					frappe.throw(f"Cannot delete Project Detail because Project Todo '{todo.to_do}' is not in 'Scheduled' status.")
+			frappe.throw("Cannot delete a work item that has tasks.")
 
 	# --------------------------------------------------------------------------
 	# Validate 
