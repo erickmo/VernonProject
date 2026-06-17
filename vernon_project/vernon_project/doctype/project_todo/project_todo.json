@@ -1,11 +1,13 @@
 {
    "actions": [],
    "allow_rename": 1,
+   "autoname": "hash",
    "creation": "2026-01-15 14:14:26.857159",
    "doctype": "DocType",
    "editable_grid": 1,
    "engine": "InnoDB",
    "field_order": [
+      "project_detail",
       "ongoing",
       "to_do",
       "assigned_to",
@@ -51,6 +53,15 @@
       "completed_by"
    ],
    "fields": [
+      {
+         "fieldname": "project_detail",
+         "fieldtype": "Link",
+         "label": "Work Item",
+         "options": "Project Detail",
+         "reqd": 1,
+         "in_standard_filter": 1,
+         "search_index": 1
+      },
       {
          "default": "0",
          "fieldname": "ongoing",
@@ -339,12 +350,13 @@
    ],
    "grid_page_length": 50,
    "index_web_pages_for_search": 1,
-   "istable": 1,
+   "istable": 0,
    "links": [],
    "modified": "2026-03-04 07:40:00.000000",
    "modified_by": "mo@vernon.id",
    "module": "Vernon Project",
    "name": "Project Todo",
+   "naming_rule": "Random",
    "owner": "Administrator",
    "permissions": [
       {
@@ -399,5 +411,6 @@
    "row_format": "Dynamic",
    "sort_field": "modified",
    "sort_order": "DESC",
-   "states": []
+   "states": [],
+   "title_field": "to_do"
 }
