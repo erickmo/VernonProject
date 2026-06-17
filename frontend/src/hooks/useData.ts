@@ -146,7 +146,7 @@ export function useCreateTask(workItem: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (fields: Record<string, unknown>) =>
-      mobileApi.createTask({ parent: workItem, ...fields }),
+      mobileApi.createTask({ project_detail: workItem, ...fields }),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.workItem(workItem) })
       qc.invalidateQueries({ queryKey: ['project'] })
