@@ -66,7 +66,7 @@ export default function ProjectScreen() {
         </div>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-100">
           <span>
-            {doneTasks}/{totalTasks} project items done
+            {doneTasks}/{totalTasks} todos done
           </span>
           {overdue > 0 && <span className="font-semibold text-rose-200">{overdue} overdue</span>}
           <span className="inline-flex items-center gap-1">
@@ -96,7 +96,7 @@ export default function ProjectScreen() {
           {flags.can_delete && (
             <button
               disabled={data.project_details.length > 0}
-              title={data.project_details.length > 0 ? 'Remove all project details before deleting this project' : undefined}
+              title={data.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
               onClick={() => {
                 if (!confirm('Delete this project?')) return
                 del.mutate(data.name, {
@@ -159,11 +159,11 @@ export default function ProjectScreen() {
         </section>
       )}
 
-      {/* Project Details */}
+      {/* Details */}
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-            <Layers className="h-4 w-4" /> Project Details
+            <Layers className="h-4 w-4" /> Details
           </h3>
           {flags.can_edit && (
             <div className="flex gap-2">
@@ -173,12 +173,12 @@ export default function ProjectScreen() {
               </button>
               <button onClick={() => setWiOpen(true)}
                 className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95">
-                <Plus className="h-3.5 w-3.5" /> Project Detail
+                <Plus className="h-3.5 w-3.5" /> Detail
               </button>
               {data.project_details.length > 0 && (
                 <button onClick={() => setItemFor(data.project_details[0].name)}
                   className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
-                  <ListPlus className="h-3.5 w-3.5" /> Project Item
+                  <ListPlus className="h-3.5 w-3.5" /> Todo
                 </button>
               )}
             </div>
@@ -211,7 +211,7 @@ export default function ProjectScreen() {
             ))}
           </div>
         ) : (
-          <EmptyState icon={Layers} title="No project details yet" />
+          <EmptyState icon={Layers} title="No details yet" />
         )}
       </section>
 

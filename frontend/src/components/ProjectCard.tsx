@@ -42,7 +42,7 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
       <div className="mt-3 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
           <span className="text-slate-500">
-            {p.item_done}/{p.item_total} project items
+            {p.item_done}/{p.item_total} todos
           </span>
           {p.overdue > 0 && (
             <span className="inline-flex items-center gap-1 font-medium text-rose-600">

@@ -267,7 +267,7 @@ export default function Today() {
                   {ownerApprovals > 0 && (
                     <ActionBanner
                       icon={ShieldCheck}
-                      text={`${ownerApprovals} project item${ownerApprovals > 1 ? 's' : ''} awaiting your final approval`}
+                      text={`${ownerApprovals} todo${ownerApprovals > 1 ? 's' : ''} awaiting your final approval`}
                       onClick={() => navigate('/review')}
                     />
                   )}
@@ -281,7 +281,7 @@ export default function Today() {
                   {leadChecks > 0 && (
                     <ActionBanner
                       icon={CheckCheck}
-                      text={`${leadChecks} project item${leadChecks > 1 ? 's' : ''} to check & approve`}
+                      text={`${leadChecks} todo${leadChecks > 1 ? 's' : ''} to check & approve`}
                       onClick={() => navigate('/review')}
                     />
                   )}

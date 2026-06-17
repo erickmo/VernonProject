@@ -118,7 +118,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow-card">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600">Edit project item</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600">Edit todo</p>
 
       <label className="mb-1 block text-xs font-medium text-slate-500">Title</label>
       <textarea
@@ -201,7 +201,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
         <label className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-sm font-medium text-slate-600">
-            <Repeat className="h-4 w-4 text-slate-400" /> Repeat this project item
+            <Repeat className="h-4 w-4 text-slate-400" /> Repeat this todo
           </span>
           <input
             type="checkbox"
@@ -231,7 +231,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       {locked && (
         <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
           <Lock className="h-3.5 w-3.5" />
-          Assignee, deadline &amp; estimate are locked once a project item is Done.
+          Assignee, deadline &amp; estimate are locked once a todo is Done.
         </p>
       )}
 
@@ -329,15 +329,15 @@ export default function ProjectItemScreen() {
 
   if (isLoading && !data) {
     return (
-      <DetailScreen title="Project Item">
+      <DetailScreen title="Todo">
         <FullScreenLoader />
       </DetailScreen>
     )
   }
   if (!data) {
     return (
-      <DetailScreen title="Project Item">
-        <EmptyState icon={AlertCircle} title="Couldn't load project item" />
+      <DetailScreen title="Todo">
+        <EmptyState icon={AlertCircle} title="Couldn't load todo" />
       </DetailScreen>
     )
   }
@@ -359,7 +359,7 @@ export default function ProjectItemScreen() {
     ) : null
 
   return (
-    <DetailScreen title="Project Item" right={editBtn}>
+    <DetailScreen title="Todo" right={editBtn}>
       {editing ? (
         <EditForm data={data} onClose={() => setEditing(false)} />
       ) : (

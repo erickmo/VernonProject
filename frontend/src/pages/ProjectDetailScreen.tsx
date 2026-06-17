@@ -22,15 +22,15 @@ export default function ProjectDetailScreen() {
 
   if (isLoading && !data) {
     return (
-      <DetailScreen title="Project Detail">
+      <DetailScreen title="Detail">
         <FullScreenLoader />
       </DetailScreen>
     )
   }
   if (!data) {
     return (
-      <DetailScreen title="Project Detail">
-        <EmptyState icon={AlertCircle} title="Couldn't load project detail" />
+      <DetailScreen title="Detail">
+        <EmptyState icon={AlertCircle} title="Couldn't load detail" />
       </DetailScreen>
     )
   }
@@ -58,9 +58,9 @@ export default function ProjectDetailScreen() {
             </button>
             <button
               disabled={projectItems.length > 0}
-              title={projectItems.length > 0 ? 'Remove all project items before deleting this project detail' : undefined}
+              title={projectItems.length > 0 ? 'Remove all todos before deleting this detail' : undefined}
               onClick={() => {
-                if (!confirm('Delete this project detail?')) return
+                if (!confirm('Delete this detail?')) return
                 del.mutate(data.name, {
                   onSuccess: () => { toast('success', 'Project detail deleted'); navigate(`/project/${encodeURIComponent(data.project)}`) },
                   onError: (e) => toast('error', (e as Error).message),
@@ -93,14 +93,14 @@ export default function ProjectDetailScreen() {
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-            <ListChecks className="h-4 w-4" /> Project Items ({projectItems.length})
+            <ListChecks className="h-4 w-4" /> Todos ({projectItems.length})
           </h3>
           {data.can_create && (
             <button
               onClick={() => setSheetOpen(true)}
               className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
             >
-              <Plus className="h-3.5 w-3.5" /> Add Project Item
+              <Plus className="h-3.5 w-3.5" /> Add Todo
             </button>
           )}
         </div>
@@ -139,7 +139,7 @@ export default function ProjectDetailScreen() {
             ))}
           </div>
         ) : (
-          <EmptyState icon={ListChecks} title="No project items in this project detail" />
+          <EmptyState icon={ListChecks} title="No todos in this detail" />
         )}
       </section>
 

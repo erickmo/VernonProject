@@ -66,7 +66,7 @@
       {
          "fieldname": "project_detail",
          "fieldtype": "Link",
-         "label": "Project Detail",
+         "label": "Detail",
          "options": "Project Detail",
          "reqd": 1,
          "in_standard_filter": 1,

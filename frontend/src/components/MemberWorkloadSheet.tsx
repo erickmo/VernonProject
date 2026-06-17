@@ -98,7 +98,7 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
             ))}
           </div>
         ) : (
-          <EmptyState icon={Layers} title="No project items" />
+          <EmptyState icon={Layers} title="No todos" />
         )}
       </div>
     </div>
