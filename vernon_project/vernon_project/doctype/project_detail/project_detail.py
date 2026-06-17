@@ -9,52 +9,16 @@ from frappe.utils import getdate
 class ProjectDetail(Document):
 
 	def before_validate(self):
-		# --------------------------------------------------------------------------
-		# Set Todo Count from length of todo child table
-		# --------------------------------------------------------------------------
-		self.todo_count = len(self.todo) if self.todo else 0
-
-		# --------------------------------------------------------------------------
-		# Calculate total
-		# --------------------------------------------------------------------------
-		# set latest deadline from latest in todo
+		# Total = price - discount
 		price = self.price if self.price else 0
 		discount = self.discount if self.discount else 0
 		self.total = price - discount
 
-		# --------------------------------------------------------------------------
-		# Set latest todo
-		# --------------------------------------------------------------------------
-		if self.todo:
-			latest_todo = max(
-				(getdate(todo.deadline) for todo in self.todo if todo.deadline),
-				default=None
-			)
-			self.latest_todo = latest_todo
-		else:
-			self.latest_todo = None
-
-		# --------------------------------------------------------------------------
-		# Calculate Statistics & Status
-		# --------------------------------------------------------------------------
-		self.recalculate_totals()
-
-		
+		# Rollups from the (now standalone) Project Todo rows.
+		self._apply_rollups()
 
 	def validate(self):
-		# --------------------------------------------------------------------------
-		# Run controller validation on each child Project Todo row.
-		# Frappe does not call a child doctype's controller validate() during a
-		# parent save, so the parent must delegate explicitly. Without this the
-		# Project Todo guards (create permission, done-field locking, phase
-		# tracking) never run when todos are saved through Project Detail.
-		# --------------------------------------------------------------------------
-		for todo in self.todo:
-			todo.validate()
-
-		# --------------------------------------------------------------------------
 		# grouping must be part of project
-		# --------------------------------------------------------------------------
 		if not self.grouping:
 			frappe.throw("Grouping is required.")
 
@@ -65,94 +29,103 @@ class ProjectDetail(Document):
 		if grouping_doc.project != self.project:
 			frappe.throw("Grouping must be part of the selected Project.")
 
-		# --------------------------------------------------------------------------
 		# glossaries must be part of grouping
-		# --------------------------------------------------------------------------
 		if self.glossaries:
 			for glossary in self.glossaries:
 				glossary_doc = frappe.get_doc("Glossary", glossary.glossary)
 				if glossary_doc.project != self.project:
-					frappe.throw(f"Glossary {glossary.glossary} must be part of the selected Project.")
+					frappe.throw(
+						f"Glossary {glossary.glossary} must be part of the selected Project."
+					)
 
-		# --------------------------------------------------------------------------
-		# price ≥ total_discount
-		# --------------------------------------------------------------------------
+		# price >= discount
 		if self.price and self.discount:
 			if self.price < self.discount:
 				frappe.throw("Total SOW RP cannot be less than Total Discount.")
 
-		# --------------------------------------------------------------------------
-		# Validate latest_todo <= latest_deadline
-		# --------------------------------------------------------------------------
-		# if self.latest_todo and self.latest_deadline:
-		# 	if getdate(self.latest_todo) > getdate(self.latest_deadline):
-		# 		frappe.msgprint(f"Ada Todo yg deadlinenya setelah deadline project detail '{self.latest_deadline}'.")
-
-		# --------------------------------------------------------------------------
-		# Cannot Save if there's deleted todo items that are not in 'Scheduled' status
-		# --------------------------------------------------------------------------
-		#1 Get Doc Before Updated
-		if not self.is_new():
-			previous_doc = frappe.get_doc("Project Detail", self.name)
-			previous_todo_names = {todo.name for todo in previous_doc.todo}
-			current_todo_names = {todo.name for todo in self.todo}
-			deleted_todo_names = previous_todo_names - current_todo_names
-
-			for todo_name in deleted_todo_names:
-				todo_doc = frappe.get_doc("Project Todo", todo_name)
-				if todo_doc.status != "⚪️ Planned":
-					# Restore deleted todo items
-					self.append("todo", {
-						"todo": todo_doc.name,
-						"to_do": todo_doc.to_do,
-						"assigned_to": todo_doc.assigned_to,
-						"deadline": todo_doc.deadline,
-						"status": todo_doc.status
-					})
-					frappe.throw(f"Cannot delete Project Todo '{todo_doc.to_do}' unless its status is 'Scheduled'.")
-		
 	def on_trash(self):
 		# Cannot delete a work item that still has tasks.
-		if self.todo:
+		if frappe.db.count("Project Todo", {"project_detail": self.name}) > 0:
 			frappe.throw("Cannot delete a work item that has tasks.")
 
-	# --------------------------------------------------------------------------
-	# Validate 
-	# --------------------------------------------------------------------------
-	def validate_assigned_to_team_member(self, team_member):
-		# 1 - Get Team Member from project
-		project_doc = frappe.get_doc("Project", self.project)
-		team_members = [member.user for member in project_doc.team_members]
-		
-		# 2 - Check if assigned_to is in team members
-		for todo in self.todo:
-			if todo.assigned_to and todo.assigned_to not in team_members:
-				frappe.throw(f"Assigned To '{todo.assigned_to}' in ToDo '{todo.to_do}' is not a member of the Project Team.")
-		
-	# --------------------------------------------------------------------------
-	# Action
-	# --------------------------------------------------------------------------
-	def recalculate_totals(self):
-		# --------------------------------------------------------------------------
-		# Update Statistics in Project
-		# --------------------------------------------------------------------------
-		self.todo_without_estimation = 0
-		self.total_estimated = 0
-		self.total_remaining_estimated = 0
+	def _apply_rollups(self):
+		"""Compute rollup fields onto self (in-memory) from linked Project Todos.
 
-		for x in self.todo:
-			est = x.estimated or 0
-			self.todo_without_estimation += 0 if est > 0 else 1
-			self.total_estimated += est
-			self.total_remaining_estimated += est if x.status == "⚪️ Planned" else 0
+		Used during the Project Detail's own save. The standalone equivalent for
+		out-of-band recompute (triggered by a Project Todo change) is the module
+		function ``recompute_detail_rollups`` below.
+		"""
+		stats = _todo_stats(self.name)
+		self.todo_count = stats["count"]
+		self.latest_todo = stats["latest_deadline"]
+		self.todo_without_estimation = stats["without_estimation"]
+		self.total_estimated = stats["total_estimated"]
+		self.total_remaining_estimated = stats["total_remaining"]
+		self.status = _derive_status(stats, self.is_pending)
 
-		# Update Project Detail Status
-		if self.total_remaining_estimated == 0 and self.todo_count > 0:
-			self.status = "Completed"
-		elif self.is_pending == 1:
-			self.status = "Pending"
-		else:
-			self.status = "Ongoing"
+
+def _todo_stats(detail_name):
+	"""Aggregate Project Todo rows for one Project Detail."""
+	rows = frappe.get_all(
+		"Project Todo",
+		filters={"project_detail": detail_name},
+		fields=["estimated", "status", "deadline"],
+	)
+	count = len(rows)
+	total_estimated = 0
+	without_estimation = 0
+	total_remaining = 0
+	deadlines = []
+	for r in rows:
+		est = r.estimated or 0
+		total_estimated += est
+		without_estimation += 0 if est > 0 else 1
+		if r.status == "⚪️ Planned":
+			total_remaining += est
+		if r.deadline:
+			deadlines.append(getdate(r.deadline))
+	return {
+		"count": count,
+		"total_estimated": total_estimated,
+		"without_estimation": without_estimation,
+		"total_remaining": total_remaining,
+		"latest_deadline": max(deadlines, default=None),
+	}
+
+
+def _derive_status(stats, is_pending):
+	if stats["total_remaining"] == 0 and stats["count"] > 0:
+		return "Completed"
+	if is_pending == 1:
+		return "Pending"
+	return "Ongoing"
+
+
+def recompute_detail_rollups(detail_name):
+	"""Recompute and persist Project Detail rollups from its Project Todos.
+
+	Called by Project Todo controller hooks (after_insert / on_update / on_trash)
+	so the parent stays in sync without a full parent save. Writes via a single
+	db.set_value with update_modified=False to avoid touching the modified stamp
+	and to avoid re-entering the Project Detail save cycle.
+	"""
+	if not detail_name or not frappe.db.exists("Project Detail", detail_name):
+		return
+	stats = _todo_stats(detail_name)
+	is_pending = frappe.db.get_value("Project Detail", detail_name, "is_pending")
+	frappe.db.set_value(
+		"Project Detail",
+		detail_name,
+		{
+			"todo_count": stats["count"],
+			"latest_todo": stats["latest_deadline"],
+			"todo_without_estimation": stats["without_estimation"],
+			"total_estimated": stats["total_estimated"],
+			"total_remaining_estimated": stats["total_remaining"],
+			"status": _derive_status(stats, is_pending),
+		},
+		update_modified=False,
+	)
 
 
 # --------------------------------------------------------------------------------

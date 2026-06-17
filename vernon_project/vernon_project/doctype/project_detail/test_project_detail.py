@@ -4,6 +4,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
+from vernon_project.vernon_project.doctype.project_detail.project_detail import recompute_detail_rollups
 
 
 def _ensure(doctype, name, doc):
@@ -61,3 +62,24 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 		d = self._make_detail(with_task=False)
 		frappe.delete_doc("Project Detail", d.name, ignore_permissions=True)
 		self.assertFalse(frappe.db.exists("Project Detail", d.name))
+
+	def test_recompute_rollups_counts_standalone_todos(self):
+		# _make_detail without embedded todo rows so we can insert standalone ones
+		d = self._make_detail(with_task=False)
+		team_user = "Administrator"
+		for i in range(3):
+			frappe.get_doc({
+				"doctype": "Project Todo",
+				"project_detail": d.name,
+				"to_do": f"task {i}",
+				"assigned_to": team_user,
+				"deadline": "2026-12-31",
+				"estimated": 60,
+				"status": "⚪️ Planned",
+			}).insert(ignore_permissions=True)
+
+		recompute_detail_rollups(d.name)
+		d.reload()
+		self.assertEqual(d.todo_count, 3)
+		self.assertEqual(d.total_estimated, 180)
+		self.assertEqual(d.total_remaining_estimated, 180)
