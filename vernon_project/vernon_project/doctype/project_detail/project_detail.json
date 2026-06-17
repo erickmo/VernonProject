@@ -26,7 +26,6 @@
   "expected_outcome",
   "todo_tab",
   "todo_section",
-  "todo",
   "section_break_cysd",
   "todo_count",
   "todo_without_estimation",
@@ -88,12 +87,6 @@
    "fieldname": "expected_outcome",
    "fieldtype": "Text Editor",
    "label": "Expected Outcome"
-  },
-  {
-   "fieldname": "todo",
-   "fieldtype": "Table",
-   "label": "Todo",
-   "options": "Project Todo"
   },
   {
    "fieldname": "sow_tab",

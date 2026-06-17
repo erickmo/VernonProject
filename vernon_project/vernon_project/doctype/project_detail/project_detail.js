@@ -19,41 +19,11 @@ frappe.ui.form.on("Project Detail", {
 			};
 		});
 
-		// Disable delete button from child table todo if status is not 'Scheduled'
-		frm.fields_dict["todo"].grid.wrapper.on("grid-row-render", function (e, row) {
-			let status = row.doc.status;
-			alert(status)
-			if (status !== "⚪️ Planned") {
-				row.grid.set_row_property(row.docname, "allow_delete", false);
-			} else {
-				row.grid.set_row_property(row.docname, "allow_delete", true);
-			}
-		});
-
 		// ------
 		// Set Filter Assigned To hanya yg ada di User Permission
 		// ------
 		frm.trigger("project");
 
-		// ------
-		// Sort Todo berdasarkan deadline ascending, estimated time ascending, assigned to ascending
-		// ------
-		if (frm.doc.todo) {
-			frm.doc.todo.sort((a, b) => {
-				let deadlineA = a.deadline ? new Date(a.deadline) : new Date("9999-12-31");
-				let deadlineB = b.deadline ? new Date(b.deadline) : new Date("9999-12-31");
-				if (deadlineA < deadlineB) return -1;
-				if (deadlineA > deadlineB) return 1;
-				// Jika deadline sama, sort berdasarkan estimated time
-				if (a.estimated < b.estimated) return -1;
-				if (a.estimated > b.estimated) return 1;
-				// Jika estimated time juga sama, sort berdasarkan assigned_to
-				if (a.assigned_to < b.assigned_to) return -1;
-				if (a.assigned_to > b.assigned_to) return 1;
-				return 0;
-			});
-			frm.refresh_field("todo");
-		}
 	},
 	
 	price(frm) {
@@ -81,16 +51,6 @@ frappe.ui.form.on("Project Detail", {
 			return;
 		}
 		
-		// Get Project Doc
-		frappe.call("vernon_project.api.project.get_project_team_members", {project_name: frm.doc.project}).then((r) => {
-			frm.set_query("assigned_to", "todo", function () {
-				return {
-					filters: {
-						email: ["in", r.message],
-					},
-				};
-			});
-		});
 	}
 
 	
