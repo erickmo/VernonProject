@@ -465,6 +465,36 @@ def get_project(project):
 
 
 @frappe.whitelist()
+def get_member_workload(project, user, include_completed=0):
+	"""One member's todos within a project. Open-only unless include_completed."""
+	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	include_completed = frappe.utils.cint(include_completed)
+	me = frappe.session.user
+	rows = [r for r in _fetch_todos([project]) if r["assigned_to"] == user]
+	name_map = _user_name_map({user})
+	out = []
+	for r in rows:
+		skey = _status_key(r["status"])
+		if not include_completed and skey == "completed":
+			continue
+		shaped = _shape_todo(r, me, name_map)
+		out.append({
+			"name": shaped["name"],
+			"to_do": shaped["to_do"],
+			"status": shaped["status"],
+			"status_key": shaped["status_key"],
+			"deadline": shaped["deadline"],
+			"deadline_human": shaped["deadline_human"],
+			"is_overdue": shaped["is_overdue"],
+			"work_item": shaped["work_item"],
+			"work_item_title": shaped["work_item_title"],
+		})
+	return out
+
+
+@frappe.whitelist()
 def get_work_item(work_item):
 	"""A Project Detail with its todos."""
 	user = frappe.session.user

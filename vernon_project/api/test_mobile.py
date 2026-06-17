@@ -249,3 +249,22 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		self.assertFalse(by_user["tm_assignee@example.com"]["is_member"])
 		# Owner is first in order.
 		self.assertEqual(r["team"][0]["user"], "Administrator")
+
+	def test_member_workload_open_only_by_default(self):
+		from vernon_project.api.mobile import get_member_workload
+		rows = get_member_workload(self.project.name, "tm_assignee@example.com")
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0]["to_do"], "Open task")
+		self.assertEqual(rows[0]["work_item"], self.detail.name)
+		self.assertEqual(rows[0]["status_key"], "planned")
+		# A member with no todos returns an empty list.
+		self.assertEqual(get_member_workload(self.project.name, "tm_member@example.com"), [])
+
+	def test_member_workload_permission(self):
+		from vernon_project.api.mobile import get_member_workload
+		frappe.set_user("tm_assignee@example.com")  # not on any visible project here
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				get_member_workload(self.project.name, "tm_assignee@example.com")
+		finally:
+			frappe.set_user("Administrator")
