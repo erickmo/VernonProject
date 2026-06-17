@@ -27,7 +27,7 @@ export default function ProjectScreen() {
   const [wiOpen, setWiOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
-  const [taskFor, setTaskFor] = useState<string | null>(null)
+  const [itemFor, setItemFor] = useState<string | null>(null)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
 
   if (isLoading && !data) {
@@ -176,7 +176,7 @@ export default function ProjectScreen() {
                 <Plus className="h-3.5 w-3.5" /> Project Detail
               </button>
               {data.project_details.length > 0 && (
-                <button onClick={() => setTaskFor(data.project_details[0].name)}
+                <button onClick={() => setItemFor(data.project_details[0].name)}
                   className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
                   <ListPlus className="h-3.5 w-3.5" /> Project Item
                 </button>
@@ -237,8 +237,8 @@ export default function ProjectScreen() {
         project={data.name}
         onClose={() => setWorkloadMember(null)}
       />
-      {taskFor && (
-        <CreateProjectItemSheet open={!!taskFor} onClose={() => setTaskFor(null)} projectDetail={taskFor} team={data.team} />
+      {itemFor && (
+        <CreateProjectItemSheet open={!!itemFor} onClose={() => setItemFor(null)} projectDetail={itemFor} team={data.team} />
       )}
     </DetailScreen>
   )
