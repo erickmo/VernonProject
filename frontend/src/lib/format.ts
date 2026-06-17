@@ -27,6 +27,30 @@ export function stripHtml(html: string): string {
   return (tmp.textContent || tmp.innerText || '').trim()
 }
 
+// Sanitize untrusted rich-text (e.g. Frappe comment HTML) for safe rendering:
+// drop dangerous elements, strip event-handler attributes and javascript: URLs,
+// and make links open safely in a new tab. Keeps formatting + clickable links.
+export function sanitizeHtml(html: string): string {
+  if (!html) return ''
+  const root = document.createElement('div')
+  root.innerHTML = html
+  root.querySelectorAll('script,style,iframe,object,embed,form,link,meta,base').forEach((n) => n.remove())
+  root.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase()
+      if (name.startsWith('on')) el.removeAttribute(attr.name)
+      else if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(attr.value)) {
+        el.removeAttribute(attr.name)
+      }
+    }
+    if (el.tagName === 'A' && el.getAttribute('href')) {
+      el.setAttribute('target', '_blank')
+      el.setAttribute('rel', 'noopener noreferrer')
+    }
+  })
+  return root.innerHTML
+}
+
 // A deterministic pastel color from a string (for avatars).
 export function colorFor(seed: string): string {
   const palette = [

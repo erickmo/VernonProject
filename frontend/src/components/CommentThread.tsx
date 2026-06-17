@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Send } from 'lucide-react'
 import { useComments, useAddComment } from '../hooks/useData'
 import { Spinner } from './ui'
-import { stripHtml } from '../lib/format'
+import { sanitizeHtml } from '../lib/format'
 
 export default function CommentThread({
   referenceDoctype,
@@ -34,9 +34,10 @@ export default function CommentThread({
                 <span className="text-sm font-medium text-gray-800">{c.by_name}</span>
                 <span className="text-xs text-gray-400">{c.at_human}</span>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">
-                {stripHtml(c.content.replace(/<\/(p|div)>|<br\s*\/?>/gi, '\n')).trim()}
-              </p>
+              <div
+                className="comment-body mt-1 text-sm text-gray-700 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline [&_p]:my-0"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.content) }}
+              />
             </li>
           ))}
           {comments && comments.length === 0 && (
