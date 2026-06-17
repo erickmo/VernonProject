@@ -100,7 +100,7 @@ export default function ProjectDetailScreen() {
               onClick={() => setSheetOpen(true)}
               className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
             >
-              <Plus className="h-3.5 w-3.5" /> Add Todo
+              <Plus className="h-3.5 w-3.5" /> Todo
             </button>
           )}
         </div>
