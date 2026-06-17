@@ -120,9 +120,8 @@ leader_earned =
 ```
 
 `completed_date` is the date of `completed_at` (set when status reaches Completed).
-`deadline` is the todo's existing `deadline` field. Earned values floored at 0 if
-penalties drive them negative? — **No flooring**; negatives are allowed and recorded
-(a very late todo can yield negative points). (Confirm during review if flooring desired.)
+`deadline` is the todo's existing `deadline` field. **No flooring**: earned values may
+go below 0 — a very late todo yields negative points, recorded as-is.
 
 ## Behavior / data flow
 
@@ -189,7 +188,7 @@ JSON before running patches.txt entries).
   recomputed unless the todo is re-saved while Completed.
 - **Reqd `group` on legacy todos**: backfilled by patch; any unmapped legacy todo must
   receive a group on its next edit.
-- **Negative earned**: permitted (see formula note). Flag for review.
+- **Negative earned**: permitted — no flooring; below-zero points recorded as-is.
 
 ## Testing
 
