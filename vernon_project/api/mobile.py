@@ -198,6 +198,27 @@ def _shape_todo(row, user, name_map, include_notes=False):
 	return out
 
 
+def _shape_item_row(row, user, name_map):
+	"""Lightweight project-item shape for link rows on the Project Detail screen.
+	Full detail loads via get_project_item."""
+	skey = _status_key(row["status"])
+	assignee = name_map.get(row["assigned_to"], {})
+	return {
+		"name": row["name"],
+		"to_do": row["to_do"],
+		"status": row["status"],
+		"status_key": skey,
+		"deadline": str(row["deadline"]) if row["deadline"] else None,
+		"deadline_human": _humanize_date(row["deadline"]),
+		"is_overdue": bool(
+			row["deadline"] and skey != "completed"
+			and getdate(row["deadline"]) < getdate(nowdate())
+		),
+		"assigned_to": row["assigned_to"],
+		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
+	}
+
+
 def _event(label, by, at, name_map):
 	if not at:
 		return None
@@ -512,7 +533,7 @@ def get_project_detail(project_detail):
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
 	detail["project_name"] = frappe.get_value("Project", detail["project"], "project_name")
-	detail["project_items"] = [_shape_todo(r, user, name_map) for r in rows]
+	detail["project_items"] = [_shape_item_row(r, user, name_map) for r in rows]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
 	owner, leader = frappe.get_value(

@@ -268,6 +268,26 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_project_detail_items_are_lightweight(self):
+		from vernon_project.api.mobile import get_project_detail
+		r = get_project_detail(self.detail.name)
+		self.assertIn("project_items", r)
+		self.assertEqual(len(r["project_items"]), 1)
+		item = r["project_items"][0]
+		# lightweight shape: link-row fields present, heavy fields absent
+		self.assertEqual(item["to_do"], "Open task")
+		self.assertIn("status_key", item)
+		self.assertIn("assigned_to_name", item)
+		self.assertNotIn("notes", item)
+		self.assertNotIn("timeline", item)
+
+	def test_project_item_links_to_its_detail(self):
+		from vernon_project.api.mobile import get_project_item
+		r = get_project_item(self.todo.name)
+		self.assertEqual(r["project_detail"], self.detail.name)
+		self.assertEqual(r["project_detail_title"], "Roster Detail")
+		self.assertEqual(r["project"], self.project.name)
+
 	def test_team_order_owner_then_leader(self):
 		from vernon_project.api.mobile import get_project
 		# Create a project where owner and leader are distinct users.
