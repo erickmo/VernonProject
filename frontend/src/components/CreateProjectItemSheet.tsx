@@ -50,7 +50,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
       if (until) fields.recurring_until = until
     }
     create.mutate(fields, {
-      onSuccess: () => { toast('success', 'Project item created'); close() },
+      onSuccess: () => { toast('success', 'Todo created'); close() },
       onError: (err) => toast('error', (err as Error).message),
     })
   }
@@ -66,7 +66,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">New project item</h3>
+          <h3 className="text-lg font-bold text-slate-900">New todo</h3>
           <button onClick={close} className="rounded-full p-1 text-slate-400 active:scale-95">
             <X className="h-5 w-5" />
           </button>
@@ -74,7 +74,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
 
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-slate-600">
-            Project item<span className="text-red-500"> *</span>
+            Todo<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder="What needs doing?" />
           </label>
 
@@ -122,7 +122,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
           >
             {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Create project item
+            Create todo
           </button>
         </div>
       </div>

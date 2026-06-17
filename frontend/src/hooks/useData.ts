@@ -72,7 +72,7 @@ export const useProjectItem = (name: string) =>
     enabled: !!name,
   })
 
-// Advance a project item's status one step. Returns the server message so the caller
+// Advance a todo's status one step. Returns the server message so the caller
 // can surface success/permission feedback via toast.
 export function useAdvanceStatus() {
   const qc = useQueryClient()

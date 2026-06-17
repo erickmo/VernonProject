@@ -48,7 +48,7 @@ export function ProjectDetailFormSheet({ open, onClose, project, groupings = [] 
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={close}>
       <div className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">New project detail</h3>
+          <h3 className="text-lg font-bold text-slate-900">New detail</h3>
           <button onClick={close} className="rounded-full p-1 text-slate-400 active:scale-95">
             <X className="h-5 w-5" />
           </button>
@@ -78,7 +78,7 @@ export function ProjectDetailFormSheet({ open, onClose, project, groupings = [] 
           <button onClick={submit} disabled={create.isPending}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">
             {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Create project detail
+            Create detail
           </button>
         </div>
       </div>

@@ -67,7 +67,7 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) 
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
       <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Edit project detail</h3>
+          <h3 className="text-lg font-bold text-slate-900">Edit detail</h3>
           <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
             <X className="h-5 w-5" />
           </button>
