@@ -126,7 +126,7 @@ def _fetch_todos(project_names):
 			t.ongoing, t.notes, t.is_recurring,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
-			pd.name AS work_item, pd.title AS work_item_title, pd.project,
+			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
 			p.project_name, p.project_owner, p.project_leader, p.project_admin,
 			p.customer
 		FROM `tabProject Todo` t
@@ -171,8 +171,8 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		"assigned_to": row["assigned_to"],
 		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
 		"assigned_to_image": assignee.get("user_image"),
-		"work_item": row["work_item"],
-		"work_item_title": row["work_item_title"],
+		"project_detail": row["project_detail"],
+		"project_detail_title": row["project_detail_title"],
 		"project": row["project"],
 		"project_name": row["project_name"],
 		"brand": row.get("customer"),
@@ -346,8 +346,8 @@ def get_projects():
 	name_map = _user_name_map({p["project_owner"] for p in plist} | {p["project_leader"] for p in plist})
 	for p in plist:
 		s = stats[p["name"]]
-		p["todo_total"] = s["total"]
-		p["todo_done"] = s["done"]
+		p["item_total"] = s["total"]
+		p["item_done"] = s["done"]
 		p["overdue"] = s["overdue"]
 		p["review"] = s["review"]
 		p["progress"] = round(s["done"] / s["total"] * 100) if s["total"] else 0
@@ -374,7 +374,7 @@ def get_project(project):
 	rows = _fetch_todos([project])
 	today = getdate(nowdate())
 
-	# Work-item rollups. Seed from every Project Detail so items with zero
+	# Project-detail rollups. Seed from every Project Detail so items with zero
 	# todos (e.g. a freshly added feature) still show up — _fetch_todos
 	# inner-joins todos and would otherwise drop them.
 	items = {}
@@ -395,8 +395,8 @@ def get_project(project):
 	workload = {}
 	for r in rows:
 		wi = items.setdefault(
-			r["work_item"],
-			{"name": r["work_item"], "title": r["work_item_title"], "total": 0, "done": 0, "overdue": 0},
+			r["project_detail"],
+			{"name": r["project_detail"], "title": r["project_detail_title"], "total": 0, "done": 0, "overdue": 0},
 		)
 		wi["total"] += 1
 		skey = _status_key(r["status"])
@@ -459,7 +459,7 @@ def get_project(project):
 		"groupings": frappe.get_all(
 			"Glossary", filters={"project": doc.name}, pluck="glossary", limit_page_length=0
 		),
-		"work_items": sorted(items.values(), key=lambda w: w["title"] or ""),
+		"project_details": sorted(items.values(), key=lambda w: w["title"] or ""),
 		"team": team,
 	}
 
@@ -488,18 +488,18 @@ def get_member_workload(project, user, include_completed=0):
 			"deadline": shaped["deadline"],
 			"deadline_human": shaped["deadline_human"],
 			"is_overdue": shaped["is_overdue"],
-			"work_item": shaped["work_item"],
-			"work_item_title": shaped["work_item_title"],
+			"project_detail": shaped["project_detail"],
+			"project_detail_title": shaped["project_detail_title"],
 		})
 	return out
 
 
 @frappe.whitelist()
-def get_work_item(work_item):
-	"""A Project Detail with its todos."""
+def get_project_detail(project_detail):
+	"""A Project Detail with its project items."""
 	user = frappe.session.user
 	detail = frappe.get_value(
-		"Project Detail", work_item,
+		"Project Detail", project_detail,
 		["name", "title", "project", "status", "current_condition", "expected_outcome", "grouping"],
 		as_dict=True,
 	)
@@ -508,11 +508,11 @@ def get_work_item(work_item):
 	if detail["project"] not in _visible_projects():
 		frappe.throw("Not permitted", frappe.PermissionError)
 
-	rows = [r for r in _fetch_todos([detail["project"]]) if r["work_item"] == work_item]
+	rows = [r for r in _fetch_todos([detail["project"]]) if r["project_detail"] == project_detail]
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
 	detail["project_name"] = frappe.get_value("Project", detail["project"], "project_name")
-	detail["todos"] = [_shape_todo(r, user, name_map) for r in rows]
+	detail["project_items"] = [_shape_todo(r, user, name_map) for r in rows]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
 	owner, leader = frappe.get_value(
@@ -542,17 +542,17 @@ def get_work_item(work_item):
 
 
 @frappe.whitelist()
-def get_todo(todo):
-	"""Full detail of one todo including notes + audit timeline + permission flags."""
+def get_project_item(project_item):
+	"""Full detail of one project item including notes + audit timeline + permission flags."""
 	user = frappe.session.user
-	project_detail = frappe.get_value("Project Todo", todo, "project_detail")
+	project_detail = frappe.get_value("Project Todo", project_item, "project_detail")
 	if not project_detail:
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	project = frappe.get_value("Project Detail", project_detail, "project")
 	if project not in _visible_projects():
 		frappe.throw("Not permitted", frappe.PermissionError)
 
-	rows = [r for r in _fetch_todos([project]) if r["name"] == todo]
+	rows = [r for r in _fetch_todos([project]) if r["name"] == project_item]
 	if not rows:
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	r = rows[0]
@@ -577,7 +577,7 @@ def get_todo(todo):
 	# Per-phase estimates + recurrence settings + occurrence history
 	extra = frappe.get_value(
 		"Project Todo",
-		todo,
+		project_item,
 		[
 			"estimated_planned_to_done",
 			"estimated_done_to_checked",
@@ -602,8 +602,8 @@ def get_todo(todo):
 		"until": str(extra.get("recurring_until")) if extra.get("recurring_until") else None,
 	}
 
-	# Occurrence history: all todos in this recurring series (root + children).
-	root = extra.get("original_todo") or todo
+	# Occurrence history: all project items in this recurring series (root + children).
+	root = extra.get("original_todo") or project_item
 	sib = frappe.db.sql(
 		"""
 		SELECT name, to_do, status, deadline FROM `tabProject Todo`
@@ -619,7 +619,7 @@ def get_todo(todo):
 			"status_key": _status_key(s["status"]),
 			"deadline": str(s["deadline"]) if s["deadline"] else None,
 			"deadline_human": _humanize_date(s["deadline"]),
-			"is_current": s["name"] == todo,
+			"is_current": s["name"] == project_item,
 		}
 		for s in sib
 	]
@@ -644,7 +644,7 @@ def get_todo(todo):
 
 @frappe.whitelist()
 def update_todo(
-	todo,
+	project_item,
 	to_do=None,
 	deadline=None,
 	estimated=None,
@@ -660,7 +660,7 @@ def update_todo(
 	show friendly feedback instead of a raw traceback."""
 	try:
 		user = frappe.session.user
-		project_detail = frappe.get_value("Project Todo", todo, "project_detail")
+		project_detail = frappe.get_value("Project Todo", project_item, "project_detail")
 		if not project_detail:
 			return {"status": "error", "message": "Task not found."}
 		detail_project = frappe.get_value("Project Detail", project_detail, "project")
@@ -670,7 +670,7 @@ def update_todo(
 		# does) runs the Project Todo controller — which sums per-phase estimates
 		# into total_estimated_hours, sets next_occurrence for recurring tasks, and
 		# enforces the locked-field rules. Saving via the parent would skip all that.
-		row = frappe.get_doc("Project Todo", todo)
+		row = frappe.get_doc("Project Todo", project_item)
 
 		is_sm = "System Manager" in frappe.get_roles(user)
 		if not (is_sm or user in (project.project_owner, project.project_leader, row.assigned_to)):

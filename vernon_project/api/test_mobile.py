@@ -4,7 +4,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
-from vernon_project.api.mobile import get_work_item
+from vernon_project.api.mobile import get_project_detail
 
 
 class TestMobileGetWorkItem(unittest.TestCase):
@@ -65,7 +65,7 @@ class TestMobileGetWorkItem(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_can_create_and_team_present(self):
-		result = get_work_item(self.detail.name)
+		result = get_project_detail(self.detail.name)
 		self.assertIn("can_create", result)
 		self.assertIn("team", result)
 		self.assertIsInstance(result["team"], list)
@@ -178,8 +178,8 @@ class TestMobileGetWorkItemExtras(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_get_work_item_has_edit_fields(self):
-		from vernon_project.api.mobile import get_work_item
-		r = get_work_item(self.detail.name)
+		from vernon_project.api.mobile import get_project_detail
+		r = get_project_detail(self.detail.name)
 		self.assertTrue(r["can_edit"])
 		self.assertEqual(r["grouping"], self.gl.name)
 		self.assertIn("WIX Grouping", r["groupings"])
@@ -253,7 +253,8 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		rows = get_member_workload(self.project.name, "tm_member@example.com")
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0]["to_do"], "Open task")
-		self.assertEqual(rows[0]["work_item"], self.detail.name)
+		self.assertEqual(rows[0]["project_detail"], self.detail.name)
+		self.assertEqual(rows[0]["project_detail_title"], "Roster Detail")
 		self.assertEqual(rows[0]["status_key"], "planned")
 		# A roster member with no todos returns an empty list.
 		self.assertEqual(get_member_workload(self.project.name, "Administrator"), [])
