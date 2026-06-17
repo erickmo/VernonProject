@@ -22,7 +22,7 @@ import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { useBoot, useDashboard, useProjects } from '@/hooks/useData'
 import { applyTaskFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byDeadlineAsc } from '@/lib/format'
-import type { ProjectCard as ProjectCardType, StatusKey, Todo } from '@/lib/types'
+import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
   const h = new Date().getHours()
@@ -62,7 +62,7 @@ const LENS_META: Record<Lens, { label: string; icon: React.ComponentType<{ class
   in: { label: "I'm in", icon: Users },
 }
 
-function Section({ title, todos, tone = 'slate' }: { title: string; todos: Todo[]; tone?: 'rose' | 'amber' | 'slate' }) {
+function Section({ title, todos, tone = 'slate' }: { title: string; todos: ProjectItem[]; tone?: 'rose' | 'amber' | 'slate' }) {
   if (!todos.length) return null
   const dot = { rose: 'bg-rose-500', amber: 'bg-amber-500', slate: 'bg-slate-300' }[tone]
   return (
@@ -267,7 +267,7 @@ export default function Today() {
                   {ownerApprovals > 0 && (
                     <ActionBanner
                       icon={ShieldCheck}
-                      text={`${ownerApprovals} task${ownerApprovals > 1 ? 's' : ''} awaiting your final approval`}
+                      text={`${ownerApprovals} project item${ownerApprovals > 1 ? 's' : ''} awaiting your final approval`}
                       onClick={() => navigate('/review')}
                     />
                   )}
@@ -281,7 +281,7 @@ export default function Today() {
                   {leadChecks > 0 && (
                     <ActionBanner
                       icon={CheckCheck}
-                      text={`${leadChecks} task${leadChecks > 1 ? 's' : ''} to check & approve`}
+                      text={`${leadChecks} project item${leadChecks > 1 ? 's' : ''} to check & approve`}
                       onClick={() => navigate('/review')}
                     />
                   )}

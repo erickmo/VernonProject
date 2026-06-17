@@ -30,9 +30,9 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
         ? 'Leader'
         : null
 
-  const goto = (workItem: string) => {
+  const goto = (projectDetail: string) => {
     onClose()
-    navigate(`/work-item/${encodeURIComponent(workItem)}`)
+    navigate(`/project-detail/${encodeURIComponent(projectDetail)}`)
   }
 
   return (
@@ -76,7 +76,7 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
             {data.map((t) => (
               <button
                 key={t.name}
-                onClick={() => goto(t.work_item)}
+                onClick={() => goto(t.project_detail)}
                 className="w-full rounded-2xl border border-slate-200 p-3 text-left active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -85,7 +85,7 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                   <span className="inline-flex items-center gap-1">
-                    <Layers className="h-3.5 w-3.5" /> {t.work_item_title}
+                    <Layers className="h-3.5 w-3.5" /> {t.project_detail_title}
                   </span>
                   {t.deadline_human && (
                     <span className={`inline-flex items-center gap-1 ${t.is_overdue ? 'font-semibold text-rose-600' : ''}`}>
@@ -98,7 +98,7 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
             ))}
           </div>
         ) : (
-          <EmptyState icon={Layers} title="No tasks" />
+          <EmptyState icon={Layers} title="No project items" />
         )}
       </div>
     </div>

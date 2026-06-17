@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X, Plus } from 'lucide-react'
-import { useCreateWorkItem } from '@/hooks/useData'
+import { useCreateProjectDetail } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -14,9 +14,9 @@ interface Props {
 
 const STATUSES = ['Pending', 'Ongoing', 'Completed']
 
-export function WorkItemFormSheet({ open, onClose, project, groupings = [] }: Props) {
+export function ProjectDetailFormSheet({ open, onClose, project, groupings = [] }: Props) {
   const toast = useToast()
-  const create = useCreateWorkItem(project)
+  const create = useCreateProjectDetail(project)
   const [title, setTitle] = useState('')
   const [grouping, setGrouping] = useState('')
   const [deadline, setDeadline] = useState('')
@@ -38,7 +38,7 @@ export function WorkItemFormSheet({ open, onClose, project, groupings = [] }: Pr
     create.mutate(
       { title: title.trim(), grouping: grouping.trim(), project_deadline: deadline, status },
       {
-        onSuccess: () => { toast('success', 'Work item created'); close() },
+        onSuccess: () => { toast('success', 'Project detail created'); close() },
         onError: (e) => toast('error', (e as Error).message),
       },
     )
@@ -48,7 +48,7 @@ export function WorkItemFormSheet({ open, onClose, project, groupings = [] }: Pr
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={close}>
       <div className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">New work item</h3>
+          <h3 className="text-lg font-bold text-slate-900">New project detail</h3>
           <button onClick={close} className="rounded-full p-1 text-slate-400 active:scale-95">
             <X className="h-5 w-5" />
           </button>
@@ -78,7 +78,7 @@ export function WorkItemFormSheet({ open, onClose, project, groupings = [] }: Pr
           <button onClick={submit} disabled={create.isPending}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">
             {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Create work item
+            Create project detail
           </button>
         </div>
       </div>

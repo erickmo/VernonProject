@@ -1,24 +1,24 @@
 import { useEffect, useState } from 'react'
 import { X, Check } from 'lucide-react'
-import { useUpdateWorkItem, useGroups } from '@/hooks/useData'
+import { useUpdateProjectDetail, useGroups } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { stripHtml } from '@/lib/format'
-import type { WorkItem } from '@/lib/types'
+import type { ProjectDetail } from '@/lib/types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  workItem: WorkItem
+  projectDetail: ProjectDetail
 }
 
 const STATUSES = ['Pending', 'Ongoing', 'Completed']
 
-export function WorkItemEditSheet({ open, onClose, workItem }: Props) {
+export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) {
   const toast = useToast()
-  const update = useUpdateWorkItem(workItem.name)
-  const { data: groups } = useGroups(workItem.project, open)
+  const update = useUpdateProjectDetail(projectDetail.name)
+  const { data: groups } = useGroups(projectDetail.project, open)
 
   const [title, setTitle] = useState('')
   const [status, setStatus] = useState('Pending')
@@ -28,13 +28,13 @@ export function WorkItemEditSheet({ open, onClose, workItem }: Props) {
 
   useEffect(() => {
     if (open) {
-      setTitle(workItem.title)
-      setStatus(workItem.status)
-      setGrouping(workItem.grouping)
-      setCondition(stripHtml(workItem.current_condition || ''))
-      setOutcome(stripHtml(workItem.expected_outcome || ''))
+      setTitle(projectDetail.title)
+      setStatus(projectDetail.status)
+      setGrouping(projectDetail.grouping)
+      setCondition(stripHtml(projectDetail.current_condition || ''))
+      setOutcome(stripHtml(projectDetail.expected_outcome || ''))
     }
-  }, [open, workItem])
+  }, [open, projectDetail])
 
   if (!open) return null
 
@@ -55,7 +55,7 @@ export function WorkItemEditSheet({ open, onClose, workItem }: Props) {
         expected_outcome: outcome,
       },
       {
-        onSuccess: () => { toast('success', 'Work item updated'); onClose() },
+        onSuccess: () => { toast('success', 'Project detail updated'); onClose() },
         onError: (e) => toast('error', (e as Error).message),
       },
     )
@@ -67,7 +67,7 @@ export function WorkItemEditSheet({ open, onClose, workItem }: Props) {
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
       <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Edit work item</h3>
+          <h3 className="text-lg font-bold text-slate-900">Edit project detail</h3>
           <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
             <X className="h-5 w-5" />
           </button>

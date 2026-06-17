@@ -4,12 +4,12 @@ import { useFormOptions, useUpdateProject } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Avatar, Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import type { ProjectDetail } from '@/lib/types'
+import type { ProjectFull } from '@/lib/types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  project: ProjectDetail
+  project: ProjectFull
   /** May the user reassign owner/leader? (permFlags().can_reassign) */
   canReassign: boolean
 }

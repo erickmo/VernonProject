@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { FolderKanban } from 'lucide-react'
 import { useBoot } from './hooks/useData'
 import { ApiError } from './lib/api'
@@ -10,9 +10,9 @@ import Reports from './pages/Reports'
 import ReportPage from './pages/ReportPage'
 import Review from './pages/Review'
 import Projects from './pages/Projects'
-import ProjectDetailPage from './pages/ProjectDetailPage'
-import WorkItemPage from './pages/WorkItemPage'
-import TodoPage from './pages/TodoPage'
+import ProjectScreen from './pages/ProjectScreen'
+import ProjectDetailScreen from './pages/ProjectDetailScreen'
+import ProjectItemScreen from './pages/ProjectItemScreen'
 import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 
@@ -27,6 +27,11 @@ function Splash() {
       <Spinner className="h-6 w-6 text-white/80" />
     </div>
   )
+}
+
+function LegacyRedirect({ to }: { to: string }) {
+  const { name } = useParams()
+  return <Navigate to={`/${to}/${name}`} replace />
 }
 
 export default function App() {
@@ -59,9 +64,12 @@ export default function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/report/:name" element={<ReportPage />} />
         <Route path="/projects" element={<Projects />} />
-        <Route path="/project/:name" element={<ProjectDetailPage />} />
-        <Route path="/work-item/:name" element={<WorkItemPage />} />
-        <Route path="/todo/:name" element={<TodoPage />} />
+        <Route path="/project/:name" element={<ProjectScreen />} />
+        <Route path="/project-detail/:name" element={<ProjectDetailScreen />} />
+        <Route path="/project-item/:name" element={<ProjectItemScreen />} />
+        {/* Legacy deep-link redirects (cached PWA links). Remove next release. */}
+        <Route path="/work-item/:name" element={<LegacyRedirect to="project-detail" />} />
+        <Route path="/todo/:name" element={<LegacyRedirect to="project-item" />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -284,7 +284,7 @@ export default function ReportPage() {
                     return (
                       <tr
                         key={ri}
-                        onClick={todoId ? () => navigate(`/todo/${encodeURIComponent(todoId)}`) : undefined}
+                        onClick={todoId ? () => navigate(`/project-item/${encodeURIComponent(todoId)}`) : undefined}
                         className={clsx(
                           'border-b border-slate-50 last:border-0',
                           todoId && 'cursor-pointer transition active:bg-brand-50',

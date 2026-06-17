@@ -4,7 +4,7 @@ import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil,
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
-import { WorkItemFormSheet } from '@/components/WorkItemFormSheet'
+import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
 import { GroupManagerSheet } from '@/components/GroupManagerSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
@@ -14,7 +14,7 @@ import { useProject, useBoot, useDeleteProject, permFlags } from '@/hooks/useDat
 import { formatDate } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
 
-export default function ProjectDetailPage() {
+export default function ProjectScreen() {
   const { name = '' } = useParams()
   const id = decodeURIComponent(name)
   const navigate = useNavigate()
@@ -46,9 +46,9 @@ export default function ProjectDetailPage() {
 
   const flags = permFlags(data, boot)
 
-  const totalTasks = data.work_items.reduce((s, w) => s + w.total, 0)
-  const doneTasks = data.work_items.reduce((s, w) => s + w.done, 0)
-  const overdue = data.work_items.reduce((s, w) => s + w.overdue, 0)
+  const totalTasks = data.project_details.reduce((s, w) => s + w.total, 0)
+  const doneTasks = data.project_details.reduce((s, w) => s + w.done, 0)
+  const overdue = data.project_details.reduce((s, w) => s + w.overdue, 0)
   const progress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
 
   return (
@@ -65,7 +65,7 @@ export default function ProjectDetailPage() {
         </div>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-100">
           <span>
-            {doneTasks}/{totalTasks} tasks done
+            {doneTasks}/{totalTasks} project items done
           </span>
           {overdue > 0 && <span className="font-semibold text-rose-200">{overdue} overdue</span>}
           <span className="inline-flex items-center gap-1">
@@ -94,8 +94,8 @@ export default function ProjectDetailPage() {
           )}
           {flags.can_delete && (
             <button
-              disabled={data.work_items.length > 0}
-              title={data.work_items.length > 0 ? 'Remove all work items before deleting this project' : undefined}
+              disabled={data.project_details.length > 0}
+              title={data.project_details.length > 0 ? 'Remove all project details before deleting this project' : undefined}
               onClick={() => {
                 if (!confirm('Delete this project?')) return
                 del.mutate(data.name, {
@@ -158,11 +158,11 @@ export default function ProjectDetailPage() {
         </section>
       )}
 
-      {/* Work items */}
+      {/* Project Details */}
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-            <Layers className="h-4 w-4" /> Work items
+            <Layers className="h-4 w-4" /> Project Details
           </h3>
           {flags.can_edit && (
             <div className="flex gap-2">
@@ -172,23 +172,23 @@ export default function ProjectDetailPage() {
               </button>
               <button onClick={() => setWiOpen(true)}
                 className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95">
-                <Plus className="h-3.5 w-3.5" /> Work item
+                <Plus className="h-3.5 w-3.5" /> Project Detail
               </button>
-              {data.work_items.length > 0 && (
-                <button onClick={() => setTaskFor(data.work_items[0].name)}
+              {data.project_details.length > 0 && (
+                <button onClick={() => setTaskFor(data.project_details[0].name)}
                   className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
-                  <ListPlus className="h-3.5 w-3.5" /> Task
+                  <ListPlus className="h-3.5 w-3.5" /> Project Item
                 </button>
               )}
             </div>
           )}
         </div>
-        {data.work_items.length ? (
+        {data.project_details.length ? (
           <div className="flex flex-col gap-2.5">
-            {data.work_items.map((w) => (
+            {data.project_details.map((w) => (
               <button
                 key={w.name}
-                onClick={() => navigate(`/work-item/${encodeURIComponent(w.name)}`)}
+                onClick={() => navigate(`/project-detail/${encodeURIComponent(w.name)}`)}
                 className="w-full rounded-2xl bg-white p-4 text-left shadow-card transition active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -210,7 +210,7 @@ export default function ProjectDetailPage() {
             ))}
           </div>
         ) : (
-          <EmptyState icon={Layers} title="No work items yet" />
+          <EmptyState icon={Layers} title="No project details yet" />
         )}
       </section>
 
@@ -220,7 +220,7 @@ export default function ProjectDetailPage() {
         project={data}
         canReassign={flags.can_reassign}
       />
-      <WorkItemFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings ?? []} />
+      <ProjectDetailFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings ?? []} />
       <GroupManagerSheet open={groupsOpen} onClose={() => setGroupsOpen(false)} project={data.name} />
       <TeamManagerSheet
         open={teamOpen}
