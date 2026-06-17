@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
+import CommentThread from '@/components/CommentThread'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
@@ -213,6 +214,8 @@ export default function ProjectScreen() {
           <EmptyState icon={Layers} title="No project details yet" />
         )}
       </section>
+
+      <CommentThread referenceDoctype="Project" referenceName={id} />
 
       <ProjectFormSheet
         open={editOpen}

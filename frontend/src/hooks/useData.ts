@@ -6,6 +6,7 @@ import {
 import { mobileApi, resource } from '@/lib/api'
 import type {
   Boot,
+  Comment,
   Dashboard,
   FormOptions,
   Group,
@@ -331,5 +332,21 @@ export function useDeleteGroup(project: string) {
       qc.invalidateQueries({ queryKey: ['groups', project] })
       qc.invalidateQueries({ queryKey: ['project'] })
     },
+  })
+}
+
+export function useComments(refDoctype: string, refName: string) {
+  return useQuery({
+    queryKey: ['comments', refDoctype, refName],
+    queryFn: () => mobileApi.getComments(refDoctype, refName) as Promise<Comment[]>,
+    enabled: !!refName,
+  })
+}
+
+export function useAddComment(refDoctype: string, refName: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) => mobileApi.addComment(refDoctype, refName, content),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', refDoctype, refName] }),
   })
 }

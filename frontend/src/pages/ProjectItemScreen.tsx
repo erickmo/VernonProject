@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
+import CommentThread from '@/components/CommentThread'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatEstimate, stripHtml } from '@/lib/format'
 import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo } from '@/hooks/useData'
@@ -364,8 +365,14 @@ export default function ProjectItemScreen() {
       ) : (
         <div className="rounded-2xl bg-white p-4 shadow-card">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            {data.project_name} · {data.project_detail_title}
+            {data.project_name}
           </p>
+          <Link
+            to={`/project-detail/${encodeURIComponent(data.project_detail)}`}
+            className="text-sm text-brand-600"
+          >
+            in {data.project_detail_title}
+          </Link>
           <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900">{data.to_do}</h2>
 
           {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0) && (
@@ -508,6 +515,8 @@ export default function ProjectItemScreen() {
           </ol>
         </div>
       )}
+
+      <CommentThread referenceDoctype="Project Todo" referenceName={id} />
     </DetailScreen>
   )
 }

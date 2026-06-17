@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, Pencil, Trash2 } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ListChecks, AlertCircle, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { TodoCard } from '@/components/TodoCard'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
 import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
+import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
@@ -105,15 +105,45 @@ export default function ProjectDetailScreen() {
           )}
         </div>
         {projectItems.length ? (
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-1.5">
             {projectItems.map((t) => (
-              <TodoCard key={t.name} todo={t} showProject={false} showAssignee />
+              <Link
+                key={t.name}
+                to={`/project-item/${encodeURIComponent(t.name)}`}
+                className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-card transition active:scale-[0.99]"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm font-medium ${t.is_overdue ? 'text-rose-700' : 'text-slate-800'}`}>
+                    {t.to_do}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                    <span>{t.status}</span>
+                    {t.deadline_human && (
+                      <>
+                        <span>·</span>
+                        <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
+                          {t.deadline_human}
+                        </span>
+                      </>
+                    )}
+                    {t.assigned_to_name && (
+                      <>
+                        <span>·</span>
+                        <span>{t.assigned_to_name}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+              </Link>
             ))}
           </div>
         ) : (
           <EmptyState icon={ListChecks} title="No project items in this project detail" />
         )}
       </section>
+
+      <CommentThread referenceDoctype="Project Detail" referenceName={id} />
 
       <CreateTaskSheet
         open={sheetOpen}
