@@ -20,7 +20,7 @@ def update_status(todo_id):
 	try:
 		# Get Todo, Detail, and Project
 		todo = frappe.get_doc("Project Todo", todo_id)
-		project_detail = frappe.get_doc("Project Detail", todo.parent)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
 		project = frappe.get_doc("Project", project_detail.project)
 
 		# Get user
@@ -80,7 +80,7 @@ def save_notes(todo_id, notes):
 	"""
 	try:
 		todo = frappe.get_doc("Project Todo", todo_id)
-		project_detail = frappe.get_doc("Project Detail", todo.parent)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
 		project = frappe.get_doc("Project", project_detail.project)
 
 		user = frappe.session.user

@@ -131,7 +131,7 @@ def _fetch_todos(project_names):
 			p.customer
 		FROM `tabProject Todo` t
 		JOIN `tabProject Detail` pd
-			ON t.parent = pd.name AND t.parenttype = 'Project Detail'
+			ON t.project_detail = pd.name
 		JOIN `tabProject` p ON pd.project = p.name
 		WHERE pd.project IN %(projects)s
 		ORDER BY t.deadline ASC
@@ -545,10 +545,10 @@ def get_work_item(work_item):
 def get_todo(todo):
 	"""Full detail of one todo including notes + audit timeline + permission flags."""
 	user = frappe.session.user
-	parent = frappe.get_value("Project Todo", todo, "parent")
-	if not parent:
+	project_detail = frappe.get_value("Project Todo", todo, "project_detail")
+	if not project_detail:
 		frappe.throw("Not found", frappe.DoesNotExistError)
-	project = frappe.get_value("Project Detail", parent, "project")
+	project = frappe.get_value("Project Detail", project_detail, "project")
 	if project not in _visible_projects():
 		frappe.throw("Not permitted", frappe.PermissionError)
 
@@ -660,10 +660,10 @@ def update_todo(
 	show friendly feedback instead of a raw traceback."""
 	try:
 		user = frappe.session.user
-		parent = frappe.get_value("Project Todo", todo, "parent")
-		if not parent:
+		project_detail = frappe.get_value("Project Todo", todo, "project_detail")
+		if not project_detail:
 			return {"status": "error", "message": "Task not found."}
-		detail_project = frappe.get_value("Project Detail", parent, "project")
+		detail_project = frappe.get_value("Project Detail", project_detail, "project")
 		project = frappe.get_doc("Project", detail_project)
 
 		# Load the task as its own document. Saving it directly (like update_status
