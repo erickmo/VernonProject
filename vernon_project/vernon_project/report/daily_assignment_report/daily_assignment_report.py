@@ -5,6 +5,11 @@ import frappe
 from datetime import timedelta
 from frappe.utils import getdate
 
+# Status strings — must match `tabProject Todo`.`status` exactly.
+STATUS_PLANNED = "⚪️ Planned"
+STATUS_DONE = "\U0001f7e0 Done"
+STATUS_CHECKED = "\U0001f537 Checked By PL"
+
 def execute(filters=None):
 	columns, data = [], []
 
@@ -17,7 +22,11 @@ def execute(filters=None):
 	# ------------------------------------------------------
 	# Query
 	# ------------------------------------------------------
-	# Get Project todo, column is date from first
+	# Daily allocation = per-role queue for the selected user X:
+	#   X's Planned tasks (own work)
+	#   + Done tasks where X is the project leader  (queue to approve as Leader)
+	#   + Checked tasks where X is the project owner (queue to approve as Owner)
+	# A Done task becomes the leader's to-do; a Checked task the owner's to-do.
 
 	# Status filter — supports a single value or a list (multi-select)
 	st = filters.get("status") if filters else None
@@ -31,6 +40,7 @@ def execute(filters=None):
 		SELECT
 			todo.name as todo_name, todo.ongoing,
 			todo.to_do, todo.assigned_to, todo.deadline, todo.estimated, todo.status, todo.notes,
+			todo.estimated_done_to_checked, todo.estimated_checked_to_completed,
 			detail.name AS detail_name, detail.title AS detail_title,
 			project.name AS project_name, project.project_name as project_project_name,
 			project.project_owner, project.project_leader
@@ -42,7 +52,11 @@ def execute(filters=None):
 			todo.deadline IS NOT NULL
 			AND detail.is_pending = 0
 			{status_clause}
-			AND todo.assigned_to = %(assigned_to)s
+			AND (
+				(todo.assigned_to = %(assigned_to)s AND todo.status = %(planned)s)
+				OR (project.project_leader = %(assigned_to)s AND todo.status = %(done)s)
+				OR (project.project_owner = %(assigned_to)s AND todo.status = %(checked)s)
+			)
 	"""
 
 	sql += """
@@ -57,7 +71,10 @@ def execute(filters=None):
 	# Execute Query
 	# ------------------------------------------------------
 	sql_filter = {
-		"assigned_to": filters.get("assigned_to")
+		"assigned_to": filters.get("assigned_to"),
+		"planned": STATUS_PLANNED,
+		"done": STATUS_DONE,
+		"checked": STATUS_CHECKED,
 	}
 	result = frappe.db.sql(sql, sql_filter, as_dict=True)
 
@@ -114,10 +131,21 @@ def execute(filters=None):
 			"note": f'<span class="note-cell" data-todo="{row.todo_name}" style="cursor:pointer;font-size:16px;display:block;text-align:center;">{note_icon}</span>',
 			"detail_name": row.detail_name,
 		}
+		# Allocation minutes for the day depends on which phase this row sits in:
+		#   Planned -> main estimate (Planned→Done work)
+		#   Done    -> Done→Checked estimate (Leader approval time)
+		#   Checked -> Checked→Completed estimate (Owner approval time)
+		if row.status == STATUS_DONE:
+			alloc = row.estimated_done_to_checked or 0
+		elif row.status == STATUS_CHECKED:
+			alloc = row.estimated_checked_to_completed or 0
+		else:
+			alloc = row.estimated or 0
+
 		# Find the right column and set the estimated time
 		for x in columns[8:]:  # Skip first 8 columns (ongoing, todo, project, detail_project, deadline, status, action, note)
 			if row.deadline and row.deadline.strftime("%d/%m") == x["fieldname"]:
-				row_data[x["fieldname"]] = row.estimated
+				row_data[x["fieldname"]] = alloc
 			else:
 				row_data[x["fieldname"]] = ''
 		data.append(row_data)

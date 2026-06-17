@@ -128,27 +128,25 @@
       },
       {
          "fieldname": "estimated_planned_to_done",
-         "fieldtype": "Float",
-         "label": "Estimated: Planned → Done (hours)",
-         "description": "Estimasi waktu dari status Planned ke Done",
+         "fieldtype": "Int",
+         "label": "Estimated: Planned → Done (minutes, deprecated)",
+         "description": "Deprecated: covered by Estimated (minutes). Kept for historical data.",
          "non_negative": 1,
-         "precision": "2"
+         "hidden": 1
       },
       {
          "fieldname": "estimated_done_to_checked",
-         "fieldtype": "Float",
-         "label": "Estimated: Done → Checked By PL (hours)",
-         "description": "Estimasi waktu dari status Done ke Checked By PL",
-         "non_negative": 1,
-         "precision": "2"
+         "fieldtype": "Int",
+         "label": "Estimated: Done → Checked By PL (minutes)",
+         "description": "Estimasi waktu (menit) dari status Done ke Checked By PL (approval Leader)",
+         "non_negative": 1
       },
       {
          "fieldname": "estimated_checked_to_completed",
-         "fieldtype": "Float",
-         "label": "Estimated: Checked → Completed (hours)",
-         "description": "Estimasi waktu dari status Checked By PL ke Completed",
-         "non_negative": 1,
-         "precision": "2"
+         "fieldtype": "Int",
+         "label": "Estimated: Checked → Completed (minutes)",
+         "description": "Estimasi waktu (menit) dari status Checked By PL ke Completed (approval Owner)",
+         "non_negative": 1
       },
       {
          "fieldname": "column_break_time_est",
@@ -156,11 +154,10 @@
       },
       {
          "fieldname": "total_estimated_hours",
-         "fieldtype": "Float",
-         "label": "Total Estimated Hours",
-         "description": "Total estimasi waktu dari semua fase",
-         "read_only": 1,
-         "precision": "2"
+         "fieldtype": "Int",
+         "label": "Total Estimated (minutes)",
+         "description": "Total estimasi waktu (menit): Estimated + Done→Checked + Checked→Completed",
+         "read_only": 1
       },
       {
          "fieldname": "phase_tracking_section",

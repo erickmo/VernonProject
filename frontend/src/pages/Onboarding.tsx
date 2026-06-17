@@ -12,7 +12,7 @@ const SLIDES = [
   {
     icon: MousePointerClick,
     title: 'Move work forward in one tap',
-    body: 'Tap the action on a task to advance it: Planned → Done → Checked by PL → Completed. You only see the steps you’re allowed to take.',
+    body: 'Tap the action to advance a task: Planned → Done → Leader approved → Owner approved. A team member marks it Done; the leader then the owner approve. You only see the steps you’re allowed to take.',
     accent: 'from-amber-500 to-orange-600',
   },
   {

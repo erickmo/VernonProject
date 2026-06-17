@@ -150,7 +150,7 @@ export default function ProjectScreen() {
                     <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">{role}</span>
                   )}
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                    {m.open_todos} open
+                    {m.open_todos} allocated
                   </span>
                 </button>
               )

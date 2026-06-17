@@ -25,14 +25,14 @@ export const STATUS: Record<StatusKey, StatusMeta> = {
     ring: 'border-amber-400',
   },
   checked: {
-    label: 'Checked by PL',
+    label: 'Leader approved',
     emoji: '🔷',
     pill: 'bg-sky-100 text-sky-700',
     dot: 'bg-sky-500',
     ring: 'border-sky-400',
   },
   completed: {
-    label: 'Completed',
+    label: 'Owner approved',
     emoji: '✅',
     pill: 'bg-emerald-100 text-emerald-700',
     dot: 'bg-emerald-500',

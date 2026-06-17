@@ -180,18 +180,16 @@ class ProjectTodo(Document):
 		recompute_detail_rollups(self.project_detail)
 
 	def calculate_total_estimated_hours(self):
-		"""Calculate total estimated hours from all phases"""
-		total = 0.0
+		"""Total estimated time in MINUTES across all phases.
 
-		if self.estimated_planned_to_done:
-			total += float(self.estimated_planned_to_done)
-
-		if self.estimated_done_to_checked:
-			total += float(self.estimated_done_to_checked)
-
-		if self.estimated_checked_to_completed:
-			total += float(self.estimated_checked_to_completed)
-
+		Planned→Done is the main `estimated` field (team member's work).
+		Done→Checked and Checked→Completed are the Leader/Owner approval phases.
+		(field name kept as total_estimated_hours for column stability; unit is minutes.)
+		"""
+		total = 0
+		total += int(self.estimated or 0)
+		total += int(self.estimated_done_to_checked or 0)
+		total += int(self.estimated_checked_to_completed or 0)
 		self.total_estimated_hours = total
 
 	def track_phase_changes(self):

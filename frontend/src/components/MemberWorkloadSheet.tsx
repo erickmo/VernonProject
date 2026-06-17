@@ -44,7 +44,7 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
             <div className="min-w-0">
               <p className="truncate text-base font-bold text-slate-900">{member.name}</p>
               <p className="text-xs text-slate-500">
-                {role ? `${role} · ` : ''}{member.open_todos} open
+                {role ? `${role} · ` : ''}{member.open_todos} allocated
               </p>
             </div>
           </div>

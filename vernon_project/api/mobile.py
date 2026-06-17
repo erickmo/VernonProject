@@ -37,8 +37,8 @@ NEXT_STATUS = {
 
 NEXT_LABEL = {
 	"planned": "Mark Done",
-	"done": "Check by PL",
-	"checked": "Complete",
+	"done": "Approve (Leader)",
+	"checked": "Approve (Owner)",
 	"completed": None,
 }
 
@@ -189,9 +189,9 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		out["timeline"] = [
 			t
 			for t in [
-				_event("Developed", row.get("developed_by"), row.get("developed_at"), name_map),
-				_event("Checked by PL", row.get("tested_by"), row.get("tested_at"), name_map),
-				_event("Completed", row.get("completed_by"), row.get("completed_at"), name_map),
+				_event("Marked Done", row.get("developed_by"), row.get("developed_at"), name_map),
+				_event("Approved by Leader", row.get("tested_by"), row.get("tested_at"), name_map),
+				_event("Approved by Owner", row.get("completed_by"), row.get("completed_at"), name_map),
 			]
 			if t
 		]
@@ -286,8 +286,9 @@ def get_dashboard():
 		if shaped["can_advance"] and skey in ("done", "checked"):
 			review.append(shaped)
 
-		# My personal work: assigned to me, not yet completed.
-		if shaped["is_mine"] and skey != "completed":
+		# My personal work = my Planned tasks (own to-do). Once I mark a task
+		# Done it leaves my queue and becomes the Leader's to-do (see Review).
+		if shaped["is_mine"] and skey == "planned":
 			if shaped["is_overdue"]:
 				overdue.append(shaped)
 			elif shaped["deadline"] and getdate(shaped["deadline"]) == today:
@@ -413,7 +414,14 @@ def get_project(project):
 			"overdue": 0,
 		}
 
+	# Daily allocation = per-role queue:
+	#   team member -> own Planned tasks (their work to do)
+	#   project leader -> + all Done tasks (queue to approve as Leader)
+	#   project owner  -> + all Checked tasks (queue to approve as Owner)
+	# A Done task becomes the leader's to-do; a Checked task the owner's to-do.
 	workload = {}
+	done_queue = 0
+	checked_queue = 0
 	for r in rows:
 		wi = items.setdefault(
 			r["project_detail"],
@@ -425,8 +433,17 @@ def get_project(project):
 			wi["done"] += 1
 		elif r["deadline"] and getdate(r["deadline"]) < today:
 			wi["overdue"] += 1
-		if r["assigned_to"] and skey != "completed":
+		if r["assigned_to"] and skey == "planned":
 			workload[r["assigned_to"]] = workload.get(r["assigned_to"], 0) + 1
+		elif skey == "done":
+			done_queue += 1
+		elif skey == "checked":
+			checked_queue += 1
+
+	if doc.project_leader:
+		workload[doc.project_leader] = workload.get(doc.project_leader, 0) + done_queue
+	if doc.project_owner:
+		workload[doc.project_owner] = workload.get(doc.project_owner, 0) + checked_queue
 
 	for wi in items.values():
 		wi["progress"] = round(wi["done"] / wi["total"] * 100) if wi["total"] else 0
@@ -799,14 +816,14 @@ def update_todo(
 		if recurring_until is not None:
 			row.recurring_until = recurring_until or None
 
-		# Per-phase estimates (controller sums these into total_estimated_hours)
+		# Per-phase estimates in MINUTES (controller sums into total_estimated_hours).
+		# planned_to_done is deprecated (covered by the main `estimated` field).
 		for fld, val in (
-			("estimated_planned_to_done", estimated_planned_to_done),
 			("estimated_done_to_checked", estimated_done_to_checked),
 			("estimated_checked_to_completed", estimated_checked_to_completed),
 		):
 			if val is not None and val != "":
-				row.set(fld, float(val))
+				row.set(fld, int(val))
 
 		# Re-arm the next occurrence when (re)enabling recurrence.
 		if row.is_recurring and row.recurring_frequency and not row.next_occurrence:
