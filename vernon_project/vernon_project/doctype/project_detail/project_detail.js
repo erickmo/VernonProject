@@ -19,9 +19,6 @@ frappe.ui.form.on("Project Detail", {
 			};
 		});
 
-		// ------
-		// Set Filter Assigned To hanya yg ada di User Permission
-		// ------
 		frm.trigger("project");
 
 	},
@@ -53,72 +50,5 @@ frappe.ui.form.on("Project Detail", {
 		
 	}
 
-	
-});
 
-
-frappe.ui.form.on("Project Todo", {
-	action: function (frm, cdt, cdn) {
-		let row = locals[cdt][cdn];
-
-		// If not save throw save first
-		if (frm.doc.__unsaved) {
-			frappe.throw({message: __("Please save the document before performing this action."), title: __("Error")});
-		}
-		
-		switch (row.status) {
-			case "⚪️ Planned":
-			action = "🟠 Done";
-			break;
-			
-			case "🟠 Done":
-			action = "🔷 Checked By PL";
-			break;
-			
-			case "🔷 Checked By PL":
-			action = "✅ Completed";
-			break;
-			
-			case "✅ Completed":
-			action = "";
-			break;
-		}
-		
-		if (!action) {
-			frappe.throw({ message: __("Project "+ row.to_do + " is already completed."), title: __("Error") });
-		}
-		frappe.confirm(
-			__("Yakin ubah status " + row.to_do + " ke " + action + "?"),
-			() => {
-				// user klik Yes
-				frappe.call({
-					method: "vernon_project.api.project_todo.update_status",
-					args: {
-						todo_id: row.name,
-					},
-					freeze: true,
-					freeze_message: __("Updating status...")
-				}).then((r) => {
-					frappe.msgprint({
-						title: __(r.message.status.charAt(0).toUpperCase() + r.message.status.slice(1)),
-						message: r.message.message,
-						indicator: r.message.status == "error" ? "red" : "green",
-					});
-					if (r.message.status == "error") {
-						return;
-					} else {
-						// Reload child table
-						frm.reload_doc();
-					}
-				})
-			}
-		);
-	},
-
-	before_todo_remove: function (frm, cdt, cdn) {
-		let row = locals[cdt][cdn];
-		if (row.status !== "⚪️ Planned") {
-			frappe.throw({message: __("Cannot delete Project Todo unless its status is 'Scheduled'."), title: __("Error")});
-		}
-	},
 });
