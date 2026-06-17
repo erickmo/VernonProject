@@ -5,3 +5,4 @@
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
 vernon_project.patches.v1_0.migrate_project_todo_to_standalone
+vernon_project.patches.v1_0.backfill_project_todo_project

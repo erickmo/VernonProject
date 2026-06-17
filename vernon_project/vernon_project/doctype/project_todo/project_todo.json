@@ -7,6 +7,7 @@
    "editable_grid": 1,
    "engine": "InnoDB",
    "field_order": [
+      "project",
       "project_detail",
       "ongoing",
       "to_do",
@@ -53,6 +54,15 @@
       "completed_by"
    ],
    "fields": [
+      {
+         "fieldname": "project",
+         "fieldtype": "Link",
+         "label": "Project",
+         "options": "Project",
+         "in_standard_filter": 1,
+         "search_index": 1,
+         "description": "Pick a project to filter the Work Item list."
+      },
       {
          "fieldname": "project_detail",
          "fieldtype": "Link",

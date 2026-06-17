@@ -3,6 +3,14 @@
 
 frappe.ui.form.on("Project Todo", {
 	refresh(frm) {
+		// Limit the Work Item (project_detail) searchable select to the chosen project.
+		frm.set_query("project_detail", function () {
+			if (!frm.doc.project) {
+				return {};
+			}
+			return { filters: { project: frm.doc.project } };
+		});
+
 		// Limit assigned_to to members of the work item's project team.
 		frm.set_query("assigned_to", function () {
 			if (!frm.doc.project_detail) {
@@ -12,6 +20,32 @@ frappe.ui.form.on("Project Todo", {
 				query: "vernon_project.vernon_project.doctype.project_todo.project_todo.assignable_users",
 				filters: { project_detail: frm.doc.project_detail },
 			};
+		});
+	},
+
+	project(frm) {
+		// Changing the project invalidates the current Work Item selection.
+		if (frm.doc.project_detail) {
+			const linked = frm.doc.__project_of_detail;
+			if (linked && linked !== frm.doc.project) {
+				frm.set_value("project_detail", null);
+			}
+		}
+	},
+
+	project_detail(frm) {
+		// Keep project in sync with the selected Work Item (and remember it so a
+		// later project change knows whether to clear the Work Item).
+		if (!frm.doc.project_detail) {
+			frm.doc.__project_of_detail = null;
+			return;
+		}
+		frappe.db.get_value("Project Detail", frm.doc.project_detail, "project").then((r) => {
+			const proj = r && r.message && r.message.project;
+			frm.doc.__project_of_detail = proj || null;
+			if (proj && proj !== frm.doc.project) {
+				frm.set_value("project", proj);
+			}
 		});
 	},
 	action(frm) {

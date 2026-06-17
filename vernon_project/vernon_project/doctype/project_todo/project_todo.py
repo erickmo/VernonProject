@@ -11,6 +11,7 @@ from datetime import datetime
 class ProjectTodo(Document):
 
 	def validate(self):
+		self.sync_project_from_detail()
 		self.validate_create_permission()
 		self.validate_assigned_to_team_member()
 		self.validate_done_todo_fields()
@@ -19,6 +20,16 @@ class ProjectTodo(Document):
 		self.track_phase_changes()
 		if self.is_recurring and self.recurring_frequency and not self.next_occurrence:
 			self.next_occurrence = self.calculate_next_occurrence(self.deadline)
+
+	def sync_project_from_detail(self):
+		"""Keep the denormalized `project` in sync with the linked Work Item.
+
+		`project` is a form helper that scopes the Work Item (project_detail)
+		searchable select; it must always match project_detail.project so it is
+		correct for docs created via API/mobile (which only set project_detail).
+		"""
+		if self.project_detail:
+			self.project = frappe.get_value("Project Detail", self.project_detail, "project")
 
 	def validate_assigned_to_team_member(self):
 		if not self.assigned_to or not self.project_detail:
