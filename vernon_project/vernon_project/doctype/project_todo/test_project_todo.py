@@ -150,7 +150,7 @@ class TestProjectTodo(unittest.TestCase):
 	def test_standalone_insert_links_to_detail(self):
 		todo = self._make_todo()
 		self.assertEqual(todo.project_detail, self.project_detail.name)
-		self.assertFalse(todo.parent)  # no child linkage
+		self.assertFalse(getattr(todo, "parent", None))  # standalone: no child parent linkage
 
 	def test_insert_recomputes_parent_rollup(self):
 		self._make_todo(estimated=120)
@@ -524,7 +524,10 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 	def test_done_timestamp_and_actual_time(self):
 		"""Test that done_started_at is set and actual time is calculated when moving to Done"""
-		sleep(1)
+		# Backdate planned_started_at so Planned→Done is a deterministic 1h gap
+		# (a real-time sleep rounds to 0.0 at 2-decimal hour precision).
+		frappe.db.set_value("Project Todo", self.todo.name, "planned_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
 		self.todo.reload()
 		self.todo.status = "🟠 Done"
@@ -548,7 +551,9 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		# Backdate done_started_at so Done→Checked is a deterministic 1h gap.
+		frappe.db.set_value("Project Todo", self.todo.name, "done_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
 		self.todo.reload()
 		self.todo.status = "🔷 Checked By PL"
@@ -572,14 +577,14 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
-
 		self.todo.reload()
 		self.todo.status = "🔷 Checked By PL"
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		# Backdate checked_started_at so Checked→Completed is a deterministic 1h gap.
+		frappe.db.set_value("Project Todo", self.todo.name, "checked_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
 		self.todo.reload()
 		self.todo.status = "✅ Completed"
@@ -598,19 +603,25 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 	def test_total_actual_hours_calculation(self):
 		"""Test that total actual hours are calculated correctly after going through all phases"""
+		# Backdate each phase start so every segment is a deterministic positive gap.
+		frappe.db.set_value("Project Todo", self.todo.name, "planned_started_at",
+			add_to_date(now_datetime(), hours=-3), update_modified=False)
+
 		self.todo.reload()
 		self.todo.status = "🟠 Done"
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		frappe.db.set_value("Project Todo", self.todo.name, "done_started_at",
+			add_to_date(now_datetime(), hours=-2), update_modified=False)
 
 		self.todo.reload()
 		self.todo.status = "🔷 Checked By PL"
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		frappe.db.set_value("Project Todo", self.todo.name, "checked_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
 		self.todo.reload()
 		self.todo.status = "✅ Completed"

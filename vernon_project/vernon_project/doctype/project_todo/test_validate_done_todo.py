@@ -13,7 +13,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_allows_new_documents(self):
 		"""Test that validation skips new documents"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=True)
 		todo.status = "🟠 Done"
 
@@ -29,7 +29,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_allows_planned_status(self):
 		"""Test that validation allows edits when status is Planned"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "⚪️ Planned"
 		todo.assigned_to = "user@example.com"
@@ -37,10 +37,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-20"
 
 		# Mock old document
-		old_doc = Mock()
-		old_doc.assigned_to = "olduser@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Should not raise any error
@@ -55,7 +52,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_blocks_assigned_to_when_done(self):
 		"""Test that validation blocks assigned_to changes when status is Done"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "🟠 Done"
 		todo.assigned_to = "newuser@example.com"
@@ -63,10 +60,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-15"
 
 		# Mock old document with different assigned_to
-		old_doc = Mock()
-		old_doc.assigned_to = "olduser@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Mock frappe.throw
@@ -81,7 +75,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_blocks_estimated_when_done(self):
 		"""Test that validation blocks estimated changes when status is Done"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "🟠 Done"
 		todo.assigned_to = "user@example.com"
@@ -89,10 +83,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-15"
 
 		# Mock old document with different estimated
-		old_doc = Mock()
-		old_doc.assigned_to = "user@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="user@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Mock frappe.throw
@@ -107,7 +98,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_blocks_deadline_when_done(self):
 		"""Test that validation blocks deadline changes when status is Done"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "🟠 Done"
 		todo.assigned_to = "user@example.com"
@@ -115,10 +106,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-20"  # Changed
 
 		# Mock old document with different deadline
-		old_doc = Mock()
-		old_doc.assigned_to = "user@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="user@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Mock frappe.throw
@@ -133,7 +121,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_blocks_when_completed(self):
 		"""Test that validation also works for Completed status"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "✅ Completed"
 		todo.assigned_to = "newuser@example.com"  # Changed
@@ -141,10 +129,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-15"
 
 		# Mock old document
-		old_doc = Mock()
-		old_doc.assigned_to = "olduser@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Mock frappe.throw
@@ -156,7 +141,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_allows_no_changes_when_done(self):
 		"""Test that validation allows saving without changes when status is Done"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "🟠 Done"
 		todo.assigned_to = "user@example.com"
@@ -164,10 +149,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-15"
 
 		# Mock old document with same values
-		old_doc = Mock()
-		old_doc.assigned_to = "user@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="user@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Should not raise any error
@@ -182,7 +164,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 	def test_validation_blocks_multiple_fields(self):
 		"""Test that validation shows all changed fields in error message"""
 		# Create mock todo
-		todo = ProjectTodo()
+		todo = frappe.new_doc("Project Todo")
 		todo.is_new = Mock(return_value=False)
 		todo.status = "🟠 Done"
 		todo.assigned_to = "newuser@example.com"  # Changed
@@ -190,10 +172,7 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.deadline = "2026-03-20"  # Changed
 
 		# Mock old document with all different values
-		old_doc = Mock()
-		old_doc.assigned_to = "olduser@example.com"
-		old_doc.estimated = 60
-		old_doc.deadline = "2026-03-15"
+		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Mock frappe.throw

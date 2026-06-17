@@ -211,17 +211,19 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		self.detail = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
 			"title": "Roster Detail", "grouping": self.gl.name,
 			"project_deadline": add_days(nowdate(), 20)})
-		# One open todo assigned to a NON-member assignee.
-		self.detail.append("todo", {"to_do": "Open task", "assigned_to": "tm_assignee@example.com",
-			"status": "⚪️ Planned", "deadline": add_days(nowdate(), 5)})
 		self.detail.insert(ignore_permissions=True)
+		# One open todo assigned to a formal team member (assignee must be a team
+		# member: Project Todo enforces validate_assigned_to_team_member).
+		self.todo = frappe.get_doc({"doctype": "Project Todo", "project_detail": self.detail.name,
+			"to_do": "Open task", "assigned_to": "tm_member@example.com",
+			"status": "⚪️ Planned", "deadline": add_days(nowdate(), 5)}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-		# Clear todos from the child table first so on_trash doesn't block.
+		# Delete linked Project Todos first so Project Detail.on_trash doesn't block.
 		if frappe.db.exists("Project Detail", self.detail.name):
-			frappe.db.delete("Project Todo", {"parent": self.detail.name})
+			frappe.db.delete("Project Todo", {"project_detail": self.detail.name})
 			frappe.delete_doc("Project Detail", self.detail.name, force=True, ignore_permissions=True)
 		if frappe.db.exists("Glossary", self.gl.name):
 			frappe.delete_doc("Glossary", self.gl.name, force=True, ignore_permissions=True)
@@ -239,26 +241,22 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		self.assertTrue(by_user["Administrator"]["is_leader"])
 		self.assertTrue(by_user["Administrator"]["is_member"])
 		self.assertEqual(by_user["Administrator"]["open_todos"], 0)
-		# Formal Project Team member with zero todos still appears.
+		# Formal Project Team member carrying the open todo appears with load.
 		self.assertIn("tm_member@example.com", by_user)
 		self.assertTrue(by_user["tm_member@example.com"]["is_member"])
-		self.assertEqual(by_user["tm_member@example.com"]["open_todos"], 0)
-		# Assignee who is NOT a formal member appears with load but is_member False.
-		self.assertIn("tm_assignee@example.com", by_user)
-		self.assertEqual(by_user["tm_assignee@example.com"]["open_todos"], 1)
-		self.assertFalse(by_user["tm_assignee@example.com"]["is_member"])
+		self.assertEqual(by_user["tm_member@example.com"]["open_todos"], 1)
 		# Owner is first in order.
 		self.assertEqual(r["team"][0]["user"], "Administrator")
 
 	def test_member_workload_open_only_by_default(self):
 		from vernon_project.api.mobile import get_member_workload
-		rows = get_member_workload(self.project.name, "tm_assignee@example.com")
+		rows = get_member_workload(self.project.name, "tm_member@example.com")
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0]["to_do"], "Open task")
 		self.assertEqual(rows[0]["work_item"], self.detail.name)
 		self.assertEqual(rows[0]["status_key"], "planned")
-		# A member with no todos returns an empty list.
-		self.assertEqual(get_member_workload(self.project.name, "tm_member@example.com"), [])
+		# A roster member with no todos returns an empty list.
+		self.assertEqual(get_member_workload(self.project.name, "Administrator"), [])
 
 	def test_member_workload_permission(self):
 		from vernon_project.api.mobile import get_member_workload
