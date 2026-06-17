@@ -10,7 +10,7 @@ class Glossary(Document):
 		if frappe.db.exists("Project Detail", {"grouping": self.name}) or frappe.db.exists(
 			"Project Glossary", {"glossary": self.name}
 		):
-			frappe.throw("Cannot delete a group that is in use by a work item.")
+			frappe.throw("Cannot delete a group that is in use by a project detail.")
 
 
 def has_permission(doc, ptype, user):

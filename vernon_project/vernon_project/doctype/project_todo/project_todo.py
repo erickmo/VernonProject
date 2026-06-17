@@ -22,9 +22,9 @@ class ProjectTodo(Document):
 			self.next_occurrence = self.calculate_next_occurrence(self.deadline)
 
 	def sync_project_from_detail(self):
-		"""Keep the denormalized `project` in sync with the linked Work Item.
+		"""Keep the denormalized `project` in sync with the linked Project Detail.
 
-		`project` is a form helper that scopes the Work Item (project_detail)
+		`project` is a form helper that scopes the Project Detail (project_detail)
 		searchable select; it must always match project_detail.project so it is
 		correct for docs created via API/mobile (which only set project_detail).
 		"""
@@ -67,10 +67,10 @@ class ProjectTodo(Document):
 		if "System Manager" in frappe.get_roles(user):
 			return
 		if not self.project_detail:
-			frappe.throw(_("Task must belong to a work item"), frappe.PermissionError)
+			frappe.throw(_("Task must belong to a project detail"), frappe.PermissionError)
 		project_name = frappe.get_value("Project Detail", self.project_detail, "project")
 		if not project_name:
-			frappe.throw(_("Work item has no project"), frappe.PermissionError)
+			frappe.throw(_("Project detail has no project"), frappe.PermissionError)
 		owner, leader = frappe.get_value(
 			"Project", project_name, ["project_owner", "project_leader"]
 		)

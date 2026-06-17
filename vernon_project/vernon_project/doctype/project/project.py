@@ -77,7 +77,7 @@ class Project(Document):
 					frappe.PermissionError,
 				)
 		if frappe.db.exists("Project Detail", {"project": self.name}):
-			frappe.throw("Cannot delete a project that has work items.")
+			frappe.throw("Cannot delete a project that has project details.")
 @staticmethod
 def get_permission_query_conditions(user):
 	if not user or user == "Guest":
