@@ -1,31 +1,18 @@
 import frappe
 
-# Recalculate todo count di project
+from vernon_project.vernon_project.doctype.project_detail.project_detail import (
+	recompute_detail_rollups,
+)
+
+
+# Recalculate rollup stats (todo_count, latest_todo, totals, status) on every
+# Project Detail from its linked Project Todos. Maintenance helper, run via:
+#   bench --site <site> execute vernon_project.utilities.project.recalculate_project_detail
+#
+# Project Todo is now a standalone doctype (no longer a child of Project Detail),
+# so rollups are derived by querying tabProject Todo via recompute_detail_rollups
+# rather than iterating an in-memory child table.
 def recalculate_project_detail():
-	# Loop each project detail
-	project_details = frappe.get_all("Project Detail", fields=["name"])
-
-	for detail in project_details:
-		detail_doc = frappe.get_doc("Project Detail", detail.name)
-		# --------------------------------------------------------------------------------
-		# TODO COUNT
-		# --------------------------------------------------------------------------------
-		todo_count = len(detail_doc.todo) if detail_doc.todo else 0
-		detail_doc.todo_count = todo_count
-
-		# --------------------------------------------------------------------------------	
-		# LATEST TODO
-		# --------------------------------------------------------------------------------	
-		if detail_doc.todo:
-			latest_todo = max(
-				(todo.deadline for todo in detail_doc.todo if todo.deadline),
-				default=None
-			)
-			detail_doc.latest_todo = latest_todo
-		else:
-			detail_doc.latest_todo = None
-
-		# --------------------------------------------------------------------------------	
-		# Save
-		# --------------------------------------------------------------------------------	
-		detail_doc.save(ignore_permissions=True)
+	for detail in frappe.get_all("Project Detail", pluck="name"):
+		recompute_detail_rollups(detail)
+	frappe.db.commit()
