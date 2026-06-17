@@ -62,8 +62,10 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
   const setAdminRole = (v: string) => { setAdmin(v); ensureMember(v) }
 
   const addMember = (email: string) => ensureMember(email)
-  const removeMember = (email: string) =>
+  const removeMember = (email: string) => {
+    if (email === owner || email === leader || (admin && email === admin)) return
     setMembers((m) => m.filter((u) => u !== email))
+  }
 
   const save = () => {
     if (!owner || !leader) {
