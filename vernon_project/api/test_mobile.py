@@ -183,3 +183,69 @@ class TestMobileGetWorkItemExtras(unittest.TestCase):
 		self.assertTrue(r["can_edit"])
 		self.assertEqual(r["grouping"], self.gl.name)
 		self.assertIn("WIX Grouping", r["groupings"])
+
+
+class TestMobileGetProjectTeam(unittest.TestCase):
+	def setUp(self):
+		if not frappe.db.exists("Customer", "Test Customer"):
+			frappe.get_doc({"doctype": "Customer", "customer_name": "Test Customer",
+				"customer_type": "Company"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Project Group", "Test Project Group"):
+			frappe.get_doc({"doctype": "Project Group",
+				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
+		for email in ("tm_member@example.com", "tm_assignee@example.com"):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email,
+					"first_name": email.split("@")[0], "send_welcome_email": 0}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Team Roster Project",
+			"customer": "Test Customer", "project_group": "Test Project Group",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "tm_member@example.com"}],
+		})
+		self.project.insert(ignore_permissions=True)
+		self.gl = frappe.get_doc({"doctype": "Glossary", "glossary": "Roster Grouping",
+			"project": self.project.name})
+		self.gl.insert(ignore_permissions=True)
+		self.detail = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
+			"title": "Roster Detail", "grouping": self.gl.name,
+			"project_deadline": add_days(nowdate(), 20)})
+		# One open todo assigned to a NON-member assignee.
+		self.detail.append("todo", {"to_do": "Open task", "assigned_to": "tm_assignee@example.com",
+			"status": "⚪️ Planned", "deadline": add_days(nowdate(), 5)})
+		self.detail.insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		# Clear todos from the child table first so on_trash doesn't block.
+		if frappe.db.exists("Project Detail", self.detail.name):
+			frappe.db.delete("Project Todo", {"parent": self.detail.name})
+			frappe.delete_doc("Project Detail", self.detail.name, force=True, ignore_permissions=True)
+		if frappe.db.exists("Glossary", self.gl.name):
+			frappe.delete_doc("Glossary", self.gl.name, force=True, ignore_permissions=True)
+		if frappe.db.exists("Project", self.project.name):
+			frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_team_includes_zero_load_members_and_flags(self):
+		from vernon_project.api.mobile import get_project
+		r = get_project(self.project.name)
+		by_user = {m["user"]: m for m in r["team"]}
+		# Owner/leader (Administrator) present, flagged, even though they have no load.
+		self.assertIn("Administrator", by_user)
+		self.assertTrue(by_user["Administrator"]["is_owner"])
+		self.assertTrue(by_user["Administrator"]["is_leader"])
+		self.assertTrue(by_user["Administrator"]["is_member"])
+		self.assertEqual(by_user["Administrator"]["open_todos"], 0)
+		# Formal Project Team member with zero todos still appears.
+		self.assertIn("tm_member@example.com", by_user)
+		self.assertTrue(by_user["tm_member@example.com"]["is_member"])
+		self.assertEqual(by_user["tm_member@example.com"]["open_todos"], 0)
+		# Assignee who is NOT a formal member appears with load but is_member False.
+		self.assertIn("tm_assignee@example.com", by_user)
+		self.assertEqual(by_user["tm_assignee@example.com"]["open_todos"], 1)
+		self.assertFalse(by_user["tm_assignee@example.com"]["is_member"])
+		# Owner is first in order.
+		self.assertEqual(r["team"][0]["user"], "Administrator")

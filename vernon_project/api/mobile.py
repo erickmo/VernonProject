@@ -410,16 +410,37 @@ def get_project(project):
 	for wi in items.values():
 		wi["progress"] = round(wi["done"] / wi["total"] * 100) if wi["total"] else 0
 
-	name_map = _user_name_map(set(workload.keys()) | {doc.project_owner, doc.project_leader})
+	# Effective roster: owner + leader + formal Project Team members, unioned
+	# with anyone carrying open-todo load (an assignee need not be a formal
+	# member). Everyone shows even with zero load.
+	member_users = set(
+		frappe.get_all(
+			"Project Team", filters={"parent": project}, pluck="user", limit_page_length=0
+		)
+	)
+	roster = set(member_users) | {doc.project_owner, doc.project_leader} | set(workload.keys())
+	roster.discard(None)
+
+	name_map = _user_name_map(roster)
 	team = [
 		{
 			"user": email,
 			"name": (name_map.get(email) or {}).get("full_name") or email,
 			"image": (name_map.get(email) or {}).get("user_image"),
-			"open_todos": count,
+			"open_todos": workload.get(email, 0),
+			"is_owner": email == doc.project_owner,
+			"is_leader": email == doc.project_leader,
+			"is_member": email in member_users or email in (doc.project_owner, doc.project_leader),
 		}
-		for email, count in sorted(workload.items(), key=lambda kv: -kv[1])
+		for email in roster
 	]
+
+	def _rank(m):
+		# Owner first, leader second, then heaviest load, then name.
+		role = 0 if m["is_owner"] else (1 if m["is_leader"] else 2)
+		return (role, -m["open_todos"], (m["name"] or "").lower())
+
+	team.sort(key=_rank)
 
 	return {
 		"name": doc.name,
