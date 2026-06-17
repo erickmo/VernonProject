@@ -382,6 +382,20 @@ class TestProjectTodo(unittest.TestCase):
 		frappe.delete_doc("Project", proj.name, force=True, ignore_permissions=True)
 		frappe.db.commit()
 
+	def test_scheduler_spawns_standalone_occurrence(self):
+		from vernon_project.tasks import create_recurring_todos
+		head = self._make_todo(
+			is_recurring=1,
+			recurring_frequency="Daily",
+			deadline=add_days(nowdate(), -1),
+		)
+		frappe.db.set_value("Project Todo", head.name, "next_occurrence", nowdate())
+		before = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+		create_recurring_todos()
+		after = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+		self.assertEqual(after, before + 1)
+		self.assertIsNone(frappe.db.get_value("Project Todo", head.name, "next_occurrence"))
+
 
 class TestProjectTodoPhaseTracking(unittest.TestCase):
 	"""Test cases for Phase Estimation and Time Tracking"""
