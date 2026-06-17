@@ -28,8 +28,9 @@ export function stripHtml(html: string): string {
 }
 
 // Sanitize untrusted rich-text (e.g. Frappe comment HTML) for safe rendering:
-// drop dangerous elements, strip event-handler attributes and javascript: URLs,
-// and make links open safely in a new tab. Keeps formatting + clickable links.
+// drop dangerous elements, strip event-handler attributes and javascript: URLs.
+// Links open in the same webview (no target=_blank) so they stay inside the
+// installed PWA instead of kicking out to an external browser. Keeps formatting.
 export function sanitizeHtml(html: string): string {
   if (!html) return ''
   const root = document.createElement('div')
@@ -43,9 +44,10 @@ export function sanitizeHtml(html: string): string {
         el.removeAttribute(attr.name)
       }
     }
-    if (el.tagName === 'A' && el.getAttribute('href')) {
-      el.setAttribute('target', '_blank')
-      el.setAttribute('rel', 'noopener noreferrer')
+    // Strip any author-supplied target so links don't force a new tab/window.
+    if (el.tagName === 'A') {
+      el.removeAttribute('target')
+      if (el.getAttribute('href')) el.setAttribute('rel', 'noopener noreferrer')
     }
   })
   return root.innerHTML
