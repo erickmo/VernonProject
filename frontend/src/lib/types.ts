@@ -44,7 +44,8 @@ export interface ProjectItemDetail extends ProjectItem {
   team: { user: string; name: string; image: string | null }[]
   timeline: TimelineEvent[]
   phase_estimates: {
-    planned_to_done: number
+    /** @deprecated covered by the main `estimated` field */
+    planned_to_done?: number
     done_to_checked: number
     checked_to_completed: number
     total: number

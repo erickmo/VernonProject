@@ -72,15 +72,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [assignee, setAssignee] = useState(data.assigned_to)
   const [deadline, setDeadline] = useState(data.deadline ?? '')
   const [estimated, setEstimated] = useState(String(data.estimated || ''))
-  const [pPD, setPPD] = useState(String(data.phase_estimates.planned_to_done || ''))
   const [pDC, setPDC] = useState(String(data.phase_estimates.done_to_checked || ''))
   const [pCC, setPCC] = useState(String(data.phase_estimates.checked_to_completed || ''))
   const [recurring, setRecurring] = useState(data.recurring.is_recurring)
   const [freq, setFreq] = useState(data.recurring.frequency || 'Weekly')
   const [until, setUntil] = useState(data.recurring.until ?? '')
 
-  const phaseTotal =
-    (Number(pPD) || 0) + (Number(pDC) || 0) + (Number(pCC) || 0)
+  const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
   const team =
     data.team.some((m) => m.user === data.assigned_to) || !data.assigned_to
@@ -95,8 +93,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       fields.deadline = deadline || null
       fields.estimated = estimated === '' ? 0 : Number(estimated)
     }
-    // Per-phase estimates (summed into the task total server-side)
-    fields.estimated_planned_to_done = Number(pPD) || 0
+    // Approval-phase estimates in minutes (summed into the task total server-side).
+    // Planned→Done is the main `estimated` field above.
     fields.estimated_done_to_checked = Number(pDC) || 0
     fields.estimated_checked_to_completed = Number(pCC) || 0
     // Recurring settings
@@ -167,27 +165,26 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </div>
       </div>
 
-      {/* Per-phase estimated time (hours) */}
+      {/* Approval time per phase (minutes) — Leader & Owner steps */}
       <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500">Estimated time per phase (hrs)</span>
+          <span className="text-xs font-semibold text-slate-500">Approval time per phase (min)</span>
           <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-bold text-brand-700">
-            Total {phaseTotal || 0}h
+            Total {phaseTotal || 0}m
           </span>
         </div>
         <div className="flex gap-2">
           {[
-            { label: '→ Done', v: pPD, set: setPPD },
-            { label: '→ Checked', v: pDC, set: setPDC },
-            { label: '→ Done✓', v: pCC, set: setPCC },
+            { label: 'Leader → Checked', v: pDC, set: setPDC },
+            { label: 'Owner → Completed', v: pCC, set: setPCC },
           ].map((p) => (
             <div key={p.label} className="flex-1">
               <label className="mb-1 block text-center text-[10px] font-medium text-slate-400">{p.label}</label>
               <input
                 type="number"
-                inputMode="decimal"
+                inputMode="numeric"
                 min={0}
-                step="0.5"
+                step="1"
                 value={p.v}
                 onChange={(e) => p.set(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
@@ -389,7 +386,7 @@ export default function ProjectItemScreen() {
               )}
               {data.phase_estimates.total > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700">
-                  <Clock className="h-3.5 w-3.5" /> {data.phase_estimates.total}h est.
+                  <Clock className="h-3.5 w-3.5" /> {formatEstimate(data.phase_estimates.total)} total
                 </span>
               )}
             </div>
