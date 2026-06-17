@@ -7,7 +7,7 @@ import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { useDashboard } from '@/hooks/useData'
 import { buildOptions } from '@/lib/filters'
 import { byDeadlineAsc } from '@/lib/format'
-import type { Todo } from '@/lib/types'
+import type { ProjectItem } from '@/lib/types'
 
 export default function Review() {
   const { data, isLoading, refetch } = useDashboard()
@@ -38,7 +38,7 @@ export default function Review() {
 
   // Group by project so a leader can clear one project at a time.
   const groups = useMemo(() => {
-    const map = new Map<string, { name: string; items: Todo[] }>()
+    const map = new Map<string, { name: string; items: ProjectItem[] }>()
     for (const t of filtered) {
       const g = map.get(t.project) || { name: t.project_name, items: [] }
       g.items.push(t)

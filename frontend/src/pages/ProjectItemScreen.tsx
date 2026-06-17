@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -17,11 +17,12 @@ import {
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
+import CommentThread from '@/components/CommentThread'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatEstimate, stripHtml } from '@/lib/format'
-import { useAdvanceStatus, useTodo, useSaveNotes, useUpdateTodo } from '@/hooks/useData'
+import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
-import type { TodoDetail } from '@/lib/types'
+import type { ProjectItemDetail } from '@/lib/types'
 
 function Stepper({ current }: { current: string }) {
   const idx = STATUS_ORDER.indexOf(current as any)
@@ -63,7 +64,7 @@ function Stepper({ current }: { current: string }) {
   )
 }
 
-function EditForm({ data, onClose }: { data: TodoDetail; onClose: () => void }) {
+function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => void }) {
   const update = useUpdateTodo(data.name)
   const toast = useToast()
   const locked = data.fields_locked
@@ -117,7 +118,7 @@ function EditForm({ data, onClose }: { data: TodoDetail; onClose: () => void }) 
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow-card">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600">Edit task</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600">Edit project item</p>
 
       <label className="mb-1 block text-xs font-medium text-slate-500">Title</label>
       <textarea
@@ -200,7 +201,7 @@ function EditForm({ data, onClose }: { data: TodoDetail; onClose: () => void }) 
       <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
         <label className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-sm font-medium text-slate-600">
-            <Repeat className="h-4 w-4 text-slate-400" /> Repeat this task
+            <Repeat className="h-4 w-4 text-slate-400" /> Repeat this project item
           </span>
           <input
             type="checkbox"
@@ -230,7 +231,7 @@ function EditForm({ data, onClose }: { data: TodoDetail; onClose: () => void }) 
       {locked && (
         <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
           <Lock className="h-3.5 w-3.5" />
-          Assignee, deadline & estimate are locked once a task is Done.
+          Assignee, deadline &amp; estimate are locked once a project item is Done.
         </p>
       )}
 
@@ -317,26 +318,26 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   )
 }
 
-export default function TodoPage() {
+export default function ProjectItemScreen() {
   const { name = '' } = useParams()
   const navigate = useNavigate()
   const id = decodeURIComponent(name)
-  const { data, isLoading } = useTodo(id)
+  const { data, isLoading } = useProjectItem(id)
   const advance = useAdvanceStatus()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
 
   if (isLoading && !data) {
     return (
-      <DetailScreen title="Task">
+      <DetailScreen title="Project Item">
         <FullScreenLoader />
       </DetailScreen>
     )
   }
   if (!data) {
     return (
-      <DetailScreen title="Task">
-        <EmptyState icon={AlertCircle} title="Couldn't load task" />
+      <DetailScreen title="Project Item">
+        <EmptyState icon={AlertCircle} title="Couldn't load project item" />
       </DetailScreen>
     )
   }
@@ -358,14 +359,20 @@ export default function TodoPage() {
     ) : null
 
   return (
-    <DetailScreen title="Task" right={editBtn}>
+    <DetailScreen title="Project Item" right={editBtn}>
       {editing ? (
         <EditForm data={data} onClose={() => setEditing(false)} />
       ) : (
         <div className="rounded-2xl bg-white p-4 shadow-card">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            {data.project_name} · {data.work_item_title}
+            {data.project_name}
           </p>
+          <Link
+            to={`/project-detail/${encodeURIComponent(data.project_detail)}`}
+            className="text-sm text-brand-600"
+          >
+            in {data.project_detail_title}
+          </Link>
           <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900">{data.to_do}</h2>
 
           {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0) && (
@@ -454,7 +461,7 @@ export default function TodoPage() {
               return (
                 <li key={o.name}>
                   <button
-                    onClick={() => !o.is_current && navigate(`/todo/${encodeURIComponent(o.name)}`)}
+                    onClick={() => !o.is_current && navigate(`/project-item/${encodeURIComponent(o.name)}`)}
                     className={clsx(
                       'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition',
                       o.is_current ? 'bg-brand-50 ring-1 ring-brand-200' : 'bg-slate-50 active:bg-slate-100',
@@ -508,6 +515,8 @@ export default function TodoPage() {
           </ol>
         </div>
       )}
+
+      <CommentThread referenceDoctype="Project Todo" referenceName={id} />
     </DetailScreen>
   )
 }

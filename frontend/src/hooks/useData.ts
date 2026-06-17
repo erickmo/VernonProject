@@ -6,16 +6,17 @@ import {
 import { mobileApi, resource } from '@/lib/api'
 import type {
   Boot,
+  Comment,
   Dashboard,
   FormOptions,
   Group,
   MemberTodo,
   ProjectCard,
   ProjectDetail,
+  ProjectDetailInput,
+  ProjectFull,
   ProjectInput,
-  TodoDetail,
-  WorkItem,
-  WorkItemInput,
+  ProjectItemDetail,
 } from '@/lib/types'
 
 export const keys = {
@@ -23,8 +24,8 @@ export const keys = {
   dashboard: ['dashboard'] as const,
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
-  workItem: (n: string) => ['work-item', n] as const,
-  todo: (n: string) => ['todo', n] as const,
+  projectDetail: (n: string) => ['project-detail', n] as const,
+  projectItem: (n: string) => ['project-item', n] as const,
   memberWorkload: (p: string, u: string, c: boolean) =>
     ['member-workload', p, u, c] as const,
 }
@@ -41,7 +42,7 @@ export const useProjects = () =>
 export const useProject = (name: string) =>
   useQuery({
     queryKey: keys.project(name),
-    queryFn: () => mobileApi.project(name) as Promise<ProjectDetail>,
+    queryFn: () => mobileApi.project(name) as Promise<ProjectFull>,
     enabled: !!name,
   })
 
@@ -57,21 +58,21 @@ export const useMemberWorkload = (
     enabled: !!project && !!user,
   })
 
-export const useWorkItem = (name: string) =>
+export const useProjectDetail = (name: string) =>
   useQuery({
-    queryKey: keys.workItem(name),
-    queryFn: () => mobileApi.workItem(name) as Promise<WorkItem>,
+    queryKey: keys.projectDetail(name),
+    queryFn: () => mobileApi.projectDetail(name) as Promise<ProjectDetail>,
     enabled: !!name,
   })
 
-export const useTodo = (name: string) =>
+export const useProjectItem = (name: string) =>
   useQuery({
-    queryKey: keys.todo(name),
-    queryFn: () => mobileApi.todo(name) as Promise<TodoDetail>,
+    queryKey: keys.projectItem(name),
+    queryFn: () => mobileApi.projectItem(name) as Promise<ProjectItemDetail>,
     enabled: !!name,
   })
 
-// Advance a todo's status one step. Returns the server message so the caller
+// Advance a project item's status one step. Returns the server message so the caller
 // can surface success/permission feedback via toast.
 export function useAdvanceStatus() {
   const qc = useQueryClient()
@@ -85,8 +86,8 @@ export function useAdvanceStatus() {
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
-      qc.invalidateQueries({ queryKey: ['work-item'] })
-      qc.invalidateQueries({ queryKey: ['todo'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
     },
   })
 }
@@ -133,9 +134,9 @@ export function useUpdateTodo(todoId: string) {
       return res
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.todo(todoId) })
+      qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
       qc.invalidateQueries({ queryKey: keys.dashboard })
-      qc.invalidateQueries({ queryKey: ['work-item'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.projects })
     },
@@ -148,7 +149,7 @@ export function useCreateTask(workItem: string) {
     mutationFn: (fields: Record<string, unknown>) =>
       mobileApi.createTask({ project_detail: workItem, ...fields }),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.workItem(workItem) })
+      qc.invalidateQueries({ queryKey: keys.projectDetail(workItem) })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.dashboard })
     },
@@ -163,11 +164,11 @@ export function useSaveNotes(todoId: string) {
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.todo(todoId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.projectItem(todoId) }),
   })
 }
 
-export function permFlags(project: ProjectDetail, boot: Boot | undefined) {
+export function permFlags(project: ProjectFull, boot: Boot | undefined) {
   const me = boot?.user
   const isSM = !!boot?.roles.includes('System Manager')
   const isOwner = !!me && me === project.project_owner
@@ -230,10 +231,10 @@ export function useDeleteProject() {
   })
 }
 
-export function useCreateWorkItem(project: string) {
+export function useCreateProjectDetail(project: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: Omit<WorkItemInput, 'project'>) => {
+    mutationFn: async (input: Omit<ProjectDetailInput, 'project'>) => {
       const existing = await resource.list<{ name: string }[]>('Glossary', {
         filters: [
           ['glossary', '=', input.grouping],
@@ -264,19 +265,19 @@ export function useCreateWorkItem(project: string) {
   })
 }
 
-export function useUpdateWorkItem(name: string) {
+export function useUpdateProjectDetail(name: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (fields: Record<string, unknown>) =>
       resource.update<{ name: string }>('Project Detail', name, fields),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.workItem(name) })
+      qc.invalidateQueries({ queryKey: keys.projectDetail(name) })
       qc.invalidateQueries({ queryKey: ['project'] })
     },
   })
 }
 
-export function useDeleteWorkItem() {
+export function useDeleteProjectDetail() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (name: string) => resource.remove('Project Detail', name),
@@ -331,5 +332,21 @@ export function useDeleteGroup(project: string) {
       qc.invalidateQueries({ queryKey: ['groups', project] })
       qc.invalidateQueries({ queryKey: ['project'] })
     },
+  })
+}
+
+export function useComments(refDoctype: string, refName: string) {
+  return useQuery({
+    queryKey: ['comments', refDoctype, refName],
+    queryFn: () => mobileApi.getComments(refDoctype, refName) as Promise<Comment[]>,
+    enabled: !!refName,
+  })
+}
+
+export function useAddComment(refDoctype: string, refName: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) => mobileApi.addComment(refDoctype, refName, content),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', refDoctype, refName] }),
   })
 }

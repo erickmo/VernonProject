@@ -6,10 +6,10 @@ import { formatEstimate } from '@/lib/format'
 import { Avatar, Pill, Spinner } from './ui'
 import { useAdvanceStatus } from '@/hooks/useData'
 import { useToast } from './Toast'
-import type { Todo } from '@/lib/types'
+import type { ProjectItem } from '@/lib/types'
 
 interface Props {
-  todo: Todo
+  todo: ProjectItem
   // show the assignee avatar (review/team contexts) vs. hide (my own lists)
   showAssignee?: boolean
   showProject?: boolean
@@ -32,7 +32,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
 
   return (
     <button
-      onClick={() => navigate(`/todo/${encodeURIComponent(todo.name)}`)}
+      onClick={() => navigate(`/project-item/${encodeURIComponent(todo.name)}`)}
       className={clsx(
         'group w-full rounded-2xl border-l-4 bg-white p-4 text-left shadow-card transition active:scale-[0.99]',
         todo.is_overdue ? 'border-rose-400' : meta.ring,
@@ -42,7 +42,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         <div className="min-w-0 flex-1">
           {showProject && (
             <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              {todo.project_name} · {todo.work_item_title}
+              {todo.project_name} · {todo.project_detail_title}
             </p>
           )}
           <p className="line-clamp-2 font-semibold leading-snug text-slate-800">{todo.to_do}</p>

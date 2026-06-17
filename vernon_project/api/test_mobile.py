@@ -4,7 +4,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
-from vernon_project.api.mobile import get_work_item
+from vernon_project.api.mobile import get_project_detail
 
 
 class TestMobileGetWorkItem(unittest.TestCase):
@@ -65,7 +65,7 @@ class TestMobileGetWorkItem(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_can_create_and_team_present(self):
-		result = get_work_item(self.detail.name)
+		result = get_project_detail(self.detail.name)
 		self.assertIn("can_create", result)
 		self.assertIn("team", result)
 		self.assertIsInstance(result["team"], list)
@@ -178,8 +178,8 @@ class TestMobileGetWorkItemExtras(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_get_work_item_has_edit_fields(self):
-		from vernon_project.api.mobile import get_work_item
-		r = get_work_item(self.detail.name)
+		from vernon_project.api.mobile import get_project_detail
+		r = get_project_detail(self.detail.name)
 		self.assertTrue(r["can_edit"])
 		self.assertEqual(r["grouping"], self.gl.name)
 		self.assertIn("WIX Grouping", r["groupings"])
@@ -253,7 +253,8 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		rows = get_member_workload(self.project.name, "tm_member@example.com")
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0]["to_do"], "Open task")
-		self.assertEqual(rows[0]["work_item"], self.detail.name)
+		self.assertEqual(rows[0]["project_detail"], self.detail.name)
+		self.assertEqual(rows[0]["project_detail_title"], "Roster Detail")
 		self.assertEqual(rows[0]["status_key"], "planned")
 		# A roster member with no todos returns an empty list.
 		self.assertEqual(get_member_workload(self.project.name, "Administrator"), [])
@@ -266,6 +267,26 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 				get_member_workload(self.project.name, "tm_assignee@example.com")
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_project_detail_items_are_lightweight(self):
+		from vernon_project.api.mobile import get_project_detail
+		r = get_project_detail(self.detail.name)
+		self.assertIn("project_items", r)
+		self.assertEqual(len(r["project_items"]), 1)
+		item = r["project_items"][0]
+		# lightweight shape: link-row fields present, heavy fields absent
+		self.assertEqual(item["to_do"], "Open task")
+		self.assertIn("status_key", item)
+		self.assertIn("assigned_to_name", item)
+		self.assertNotIn("notes", item)
+		self.assertNotIn("timeline", item)
+
+	def test_project_item_links_to_its_detail(self):
+		from vernon_project.api.mobile import get_project_item
+		r = get_project_item(self.todo.name)
+		self.assertEqual(r["project_detail"], self.detail.name)
+		self.assertEqual(r["project_detail_title"], "Roster Detail")
+		self.assertEqual(r["project"], self.project.name)
 
 	def test_team_order_owner_then_leader(self):
 		from vernon_project.api.mobile import get_project
@@ -295,3 +316,35 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		finally:
 			frappe.delete_doc("Project", proj.name, force=True, ignore_permissions=True)
 			frappe.db.commit()
+
+	def test_comment_roundtrip_all_levels(self):
+		from vernon_project.api.mobile import add_comment, get_comments
+		cases = [
+			("Project", self.project.name),
+			("Project Detail", self.detail.name),
+			("Project Todo", self.todo.name),
+		]
+		for dt, dn in cases:
+			added = add_comment(dt, dn, f"hello {dt}")
+			self.assertEqual(added["content"], f"hello {dt}")
+			rows = get_comments(dt, dn)
+			self.assertTrue(any(c["content"] == f"hello {dt}" for c in rows))
+			self.assertIn("by_name", rows[0])
+			self.assertIn("at_human", rows[0])
+			mine = [c for c in rows if c["content"] == f"hello {dt}"][0]
+			self.assertEqual(mine["by"], frappe.session.user)
+			self.assertTrue(mine["by_name"])
+
+	def test_comment_rejects_unknown_doctype(self):
+		from vernon_project.api.mobile import add_comment
+		with self.assertRaises(frappe.ValidationError):
+			add_comment("User", "Administrator", "nope")
+
+	def test_comment_rejects_invisible_project(self):
+		from vernon_project.api.mobile import get_comments
+		frappe.set_user("tm_assignee@example.com")  # not on this project
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				get_comments("Project", self.project.name)
+		finally:
+			frappe.set_user("Administrator")

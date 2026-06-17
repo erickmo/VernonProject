@@ -1,43 +1,43 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, Pencil, Trash2 } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ListChecks, AlertCircle, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { TodoCard } from '@/components/TodoCard'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
-import { WorkItemEditSheet } from '@/components/WorkItemEditSheet'
+import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
+import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useToast } from '@/components/Toast'
-import { useWorkItem, useDeleteWorkItem } from '@/hooks/useData'
+import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
 import { stripHtml, byDeadlineAsc } from '@/lib/format'
 
-export default function WorkItemPage() {
+export default function ProjectDetailScreen() {
   const { name = '' } = useParams()
   const id = decodeURIComponent(name)
-  const { data, isLoading } = useWorkItem(id)
+  const { data, isLoading } = useProjectDetail(id)
   const navigate = useNavigate()
   const toast = useToast()
-  const del = useDeleteWorkItem()
+  const del = useDeleteProjectDetail()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
-      <DetailScreen title="Work item">
+      <DetailScreen title="Project Detail">
         <FullScreenLoader />
       </DetailScreen>
     )
   }
   if (!data) {
     return (
-      <DetailScreen title="Work item">
-        <EmptyState icon={AlertCircle} title="Couldn't load work item" />
+      <DetailScreen title="Project Detail">
+        <EmptyState icon={AlertCircle} title="Couldn't load project detail" />
       </DetailScreen>
     )
   }
 
   const condition = stripHtml(data.current_condition || '')
   const outcome = stripHtml(data.expected_outcome || '')
-  const todos = data.todos.slice().sort(byDeadlineAsc)
+  const projectItems = data.project_items.slice().sort(byDeadlineAsc)
 
   return (
     <DetailScreen title={data.title}>
@@ -57,12 +57,12 @@ export default function WorkItemPage() {
               <Pencil className="h-4 w-4" /> Edit
             </button>
             <button
-              disabled={todos.length > 0}
-              title={todos.length > 0 ? 'Remove all tasks before deleting this work item' : undefined}
+              disabled={projectItems.length > 0}
+              title={projectItems.length > 0 ? 'Remove all project items before deleting this project detail' : undefined}
               onClick={() => {
-                if (!confirm('Delete this work item?')) return
+                if (!confirm('Delete this project detail?')) return
                 del.mutate(data.name, {
-                  onSuccess: () => { toast('success', 'Work item deleted'); navigate(`/project/${encodeURIComponent(data.project)}`) },
+                  onSuccess: () => { toast('success', 'Project detail deleted'); navigate(`/project/${encodeURIComponent(data.project)}`) },
                   onError: (e) => toast('error', (e as Error).message),
                 })
               }}
@@ -93,27 +93,57 @@ export default function WorkItemPage() {
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-            <ListChecks className="h-4 w-4" /> Tasks ({todos.length})
+            <ListChecks className="h-4 w-4" /> Project Items ({projectItems.length})
           </h3>
           {data.can_create && (
             <button
               onClick={() => setSheetOpen(true)}
               className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
             >
-              <Plus className="h-3.5 w-3.5" /> Add task
+              <Plus className="h-3.5 w-3.5" /> Add Project Item
             </button>
           )}
         </div>
-        {todos.length ? (
-          <div className="flex flex-col gap-2.5">
-            {todos.map((t) => (
-              <TodoCard key={t.name} todo={t} showProject={false} showAssignee />
+        {projectItems.length ? (
+          <div className="flex flex-col gap-1.5">
+            {projectItems.map((t) => (
+              <Link
+                key={t.name}
+                to={`/project-item/${encodeURIComponent(t.name)}`}
+                className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-card transition active:scale-[0.99]"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm font-medium ${t.is_overdue ? 'text-rose-700' : 'text-slate-800'}`}>
+                    {t.to_do}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                    <span>{t.status}</span>
+                    {t.deadline_human && (
+                      <>
+                        <span>·</span>
+                        <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
+                          {t.deadline_human}
+                        </span>
+                      </>
+                    )}
+                    {t.assigned_to_name && (
+                      <>
+                        <span>·</span>
+                        <span>{t.assigned_to_name}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+              </Link>
             ))}
           </div>
         ) : (
-          <EmptyState icon={ListChecks} title="No tasks in this work item" />
+          <EmptyState icon={ListChecks} title="No project items in this project detail" />
         )}
       </section>
+
+      <CommentThread referenceDoctype="Project Detail" referenceName={id} />
 
       <CreateTaskSheet
         open={sheetOpen}
@@ -122,7 +152,7 @@ export default function WorkItemPage() {
         team={data.team}
       />
 
-      <WorkItemEditSheet open={editOpen} onClose={() => setEditOpen(false)} workItem={data} />
+      <ProjectDetailEditSheet open={editOpen} onClose={() => setEditOpen(false)} projectDetail={data} />
     </DetailScreen>
   )
 }

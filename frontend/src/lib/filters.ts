@@ -1,4 +1,4 @@
-import type { Todo } from './types'
+import type { ProjectItem } from './types'
 
 export const ESTIMATE_OPTIONS = [
   { value: 'none', label: 'No estimate' },
@@ -43,8 +43,8 @@ export function buildOptions<T>(
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
 }
 
-/** Apply the standard project/brand/owner/leader/estimate filters to tasks. */
-export function applyTaskFilters(list: Todo[], f: Record<string, string>): Todo[] {
+/** Apply the standard project/brand/owner/leader/estimate filters to project items. */
+export function applyTaskFilters(list: ProjectItem[], f: Record<string, string>): ProjectItem[] {
   return list.filter(
     (t) =>
       (!f.status || t.status_key === f.status) &&

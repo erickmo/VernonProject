@@ -4,13 +4,13 @@ import { useFormOptions, useCreateProject, useUpdateProject } from '@/hooks/useD
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import type { ProjectDetail, ProjectInput } from '@/lib/types'
+import type { ProjectFull, ProjectInput } from '@/lib/types'
 
 interface Props {
   open: boolean
   onClose: () => void
   /** Present = edit mode (prefilled); absent = create mode. */
-  project?: ProjectDetail
+  project?: ProjectFull
   /** Edit mode: may the user reassign owner/leader? */
   canReassign?: boolean
   onSaved?: (name: string) => void

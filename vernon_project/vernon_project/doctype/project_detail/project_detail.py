@@ -44,9 +44,9 @@ class ProjectDetail(Document):
 				frappe.throw("Total SOW RP cannot be less than Total Discount.")
 
 	def on_trash(self):
-		# Cannot delete a work item that still has tasks.
+		# Cannot delete a project detail that still has tasks.
 		if frappe.db.count("Project Todo", {"project_detail": self.name}) > 0:
-			frappe.throw("Cannot delete a work item that has tasks.")
+			frappe.throw("Cannot delete a project detail that has tasks.")
 
 	def _apply_rollups(self):
 		"""Compute rollup fields onto self (in-memory) from linked Project Todos.

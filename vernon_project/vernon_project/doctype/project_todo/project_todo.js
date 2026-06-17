@@ -3,7 +3,7 @@
 
 frappe.ui.form.on("Project Todo", {
 	refresh(frm) {
-		// Limit the Work Item (project_detail) searchable select to the chosen project.
+		// Limit the Project Detail (project_detail) searchable select to the chosen project.
 		frm.set_query("project_detail", function () {
 			if (!frm.doc.project) {
 				return {};
@@ -11,7 +11,7 @@ frappe.ui.form.on("Project Todo", {
 			return { filters: { project: frm.doc.project } };
 		});
 
-		// Limit assigned_to to members of the work item's project team.
+		// Limit assigned_to to members of the project detail's project team.
 		frm.set_query("assigned_to", function () {
 			if (!frm.doc.project_detail) {
 				return {};
@@ -24,7 +24,7 @@ frappe.ui.form.on("Project Todo", {
 	},
 
 	project(frm) {
-		// Changing the project invalidates the current Work Item selection.
+		// Changing the project invalidates the current Project Detail selection.
 		if (frm.doc.project_detail) {
 			const linked = frm.doc.__project_of_detail;
 			if (linked && linked !== frm.doc.project) {
@@ -34,8 +34,8 @@ frappe.ui.form.on("Project Todo", {
 	},
 
 	project_detail(frm) {
-		// Keep project in sync with the selected Work Item (and remember it so a
-		// later project change knows whether to clear the Work Item).
+		// Keep project in sync with the selected Project Detail (and remember it so a
+		// later project change knows whether to clear the Project Detail).
 		if (!frm.doc.project_detail) {
 			frm.doc.__project_of_detail = null;
 			return;
