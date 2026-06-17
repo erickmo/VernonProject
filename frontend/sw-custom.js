@@ -3,8 +3,8 @@
 // controls the app. Uses only absolute URLs + runtime caching, so it works
 // regardless of where the script itself is served from.
 
-const ASSET_CACHE = 'vernon-assets-v2'
-const API_CACHE = 'vernon-api-v2'
+const ASSET_CACHE = 'vernon-assets-v3'
+const API_CACHE = 'vernon-api-v3'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 const API_PREFIX = '/api/method/vernon_project.api.mobile.'
 
@@ -79,7 +79,11 @@ async function networkFirst(req, cacheName) {
 async function navigationHandler(req) {
   const cache = await caches.open(ASSET_CACHE)
   try {
-    const res = await fetch(req)
+    // Bypass the browser HTTP cache for the shell: every deploy changes the
+    // hashed asset filenames m.html references, so a heuristically-cached shell
+    // would load deleted JS and white-screen the app. `cache: 'reload'` forces
+    // a fresh fetch; hashed assets below stay cache-first.
+    const res = await fetch(req, { cache: 'reload' })
     if (res && res.status === 200) cache.put('/m', res.clone())
     return res
   } catch (err) {
