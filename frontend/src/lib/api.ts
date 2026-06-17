@@ -82,6 +82,12 @@ export const mobileApi = {
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   workItem: (name: string) => api.get(M + 'get_work_item', { work_item: name }),
+  memberWorkload: (project: string, user: string, includeCompleted: boolean) =>
+    api.get(M + 'get_member_workload', {
+      project,
+      user,
+      include_completed: includeCompleted ? 1 : 0,
+    }),
   todo: (name: string) => api.get(M + 'get_todo', { todo: name }),
   advanceStatus: (todoId: string) =>
     api.post<{ status: string; message: string }>(

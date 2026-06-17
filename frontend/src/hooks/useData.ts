@@ -9,6 +9,7 @@ import type {
   Dashboard,
   FormOptions,
   Group,
+  MemberTodo,
   ProjectCard,
   ProjectDetail,
   ProjectInput,
@@ -24,6 +25,8 @@ export const keys = {
   project: (n: string) => ['project', n] as const,
   workItem: (n: string) => ['work-item', n] as const,
   todo: (n: string) => ['todo', n] as const,
+  memberWorkload: (p: string, u: string, c: boolean) =>
+    ['member-workload', p, u, c] as const,
 }
 
 export const useBoot = () =>
@@ -40,6 +43,18 @@ export const useProject = (name: string) =>
     queryKey: keys.project(name),
     queryFn: () => mobileApi.project(name) as Promise<ProjectDetail>,
     enabled: !!name,
+  })
+
+export const useMemberWorkload = (
+  project: string,
+  user: string | null,
+  includeCompleted: boolean,
+) =>
+  useQuery({
+    queryKey: keys.memberWorkload(project, user ?? '', includeCompleted),
+    queryFn: () =>
+      mobileApi.memberWorkload(project, user as string, includeCompleted) as Promise<MemberTodo[]>,
+    enabled: !!project && !!user,
   })
 
 export const useWorkItem = (name: string) =>
