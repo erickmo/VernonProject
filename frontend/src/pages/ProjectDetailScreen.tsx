@@ -72,22 +72,18 @@ export default function ProjectDetailScreen() {
           </div>
         )}
 
-        {(condition || outcome) && (
-          <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
-            {condition && (
-              <div>
-                <p className="text-xs font-semibold text-slate-400">Current condition</p>
-                <p className="text-slate-600">{condition}</p>
-              </div>
-            )}
-            {outcome && (
-              <div>
-                <p className="text-xs font-semibold text-slate-400">Expected outcome</p>
-                <p className="text-slate-600">{outcome}</p>
-              </div>
-            )}
+        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
+          {condition && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Current condition</p>
+              <p className="text-slate-600">{condition}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-semibold text-slate-400">Expected outcome</p>
+            <p className="whitespace-pre-wrap text-slate-600">{outcome || '—'}</p>
           </div>
-        )}
+        </div>
       </div>
 
       <section className="mt-5">
