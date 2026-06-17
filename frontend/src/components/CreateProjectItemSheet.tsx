@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { X, Plus } from 'lucide-react'
-import { useCreateTask } from '@/hooks/useData'
+import { useCreateProjectItem } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 
-interface CreateTaskSheetProps {
+interface CreateProjectItemSheetProps {
   open: boolean
   onClose: () => void
-  workItem: string
+  projectDetail: string
   team: { user: string; name: string }[]
 }
 
-export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskSheetProps) {
+export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: CreateProjectItemSheetProps) {
   const toast = useToast()
-  const create = useCreateTask(workItem)
+  const create = useCreateProjectItem(projectDetail)
 
   const [toDo, setToDo] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
@@ -34,7 +34,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
 
   const submit = () => {
     if (!toDo.trim() || !assignedTo || !deadline) {
-      toast('error', 'Task name, assignee, and deadline are required')
+      toast('error', 'Name, assignee, and deadline are required')
       return
     }
     const fields: Record<string, unknown> = {
@@ -50,7 +50,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
       if (until) fields.recurring_until = until
     }
     create.mutate(fields, {
-      onSuccess: () => { toast('success', 'Task created'); close() },
+      onSuccess: () => { toast('success', 'Project item created'); close() },
       onError: (err) => toast('error', (err as Error).message),
     })
   }
@@ -66,7 +66,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">New task</h3>
+          <h3 className="text-lg font-bold text-slate-900">New project item</h3>
           <button onClick={close} className="rounded-full p-1 text-slate-400 active:scale-95">
             <X className="h-5 w-5" />
           </button>
@@ -74,7 +74,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
 
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-slate-600">
-            Task<span className="text-red-500"> *</span>
+            Project item<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder="What needs doing?" />
           </label>
 
@@ -122,7 +122,7 @@ export function CreateTaskSheet({ open, onClose, workItem, team }: CreateTaskShe
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
           >
             {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Create task
+            Create project item
           </button>
         </div>
       </div>

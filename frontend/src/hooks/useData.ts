@@ -143,13 +143,13 @@ export function useUpdateTodo(todoId: string) {
   })
 }
 
-export function useCreateTask(workItem: string) {
+export function useCreateProjectItem(projectDetail: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (fields: Record<string, unknown>) =>
-      mobileApi.createTask({ project_detail: workItem, ...fields }),
+      mobileApi.createTask({ project_detail: projectDetail, ...fields }),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.projectDetail(workItem) })
+      qc.invalidateQueries({ queryKey: keys.projectDetail(projectDetail) })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.dashboard })
     },

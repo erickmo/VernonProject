@@ -6,7 +6,7 @@ import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/
 import CommentThread from '@/components/CommentThread'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
-import { CreateTaskSheet } from '@/components/CreateTaskSheet'
+import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { GroupManagerSheet } from '@/components/GroupManagerSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
@@ -238,7 +238,7 @@ export default function ProjectScreen() {
         onClose={() => setWorkloadMember(null)}
       />
       {taskFor && (
-        <CreateTaskSheet open={!!taskFor} onClose={() => setTaskFor(null)} workItem={taskFor} team={data.team} />
+        <CreateProjectItemSheet open={!!taskFor} onClose={() => setTaskFor(null)} projectDetail={taskFor} team={data.team} />
       )}
     </DetailScreen>
   )

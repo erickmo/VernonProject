@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ListChecks, AlertCircle, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { CreateTaskSheet } from '@/components/CreateTaskSheet'
+import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
@@ -145,10 +145,10 @@ export default function ProjectDetailScreen() {
 
       <CommentThread referenceDoctype="Project Detail" referenceName={id} />
 
-      <CreateTaskSheet
+      <CreateProjectItemSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        workItem={data.name}
+        projectDetail={data.name}
         team={data.team}
       />
 
