@@ -374,8 +374,24 @@ def get_project(project):
 	rows = _fetch_todos([project])
 	today = getdate(nowdate())
 
-	# Work-item rollups
+	# Work-item rollups. Seed from every Project Detail so items with zero
+	# todos (e.g. a freshly added feature) still show up — _fetch_todos
+	# inner-joins todos and would otherwise drop them.
 	items = {}
+	for d in frappe.get_all(
+		"Project Detail",
+		filters={"project": project},
+		fields=["name", "title"],
+		limit_page_length=0,
+	):
+		items[d["name"]] = {
+			"name": d["name"],
+			"title": d["title"],
+			"total": 0,
+			"done": 0,
+			"overdue": 0,
+		}
+
 	workload = {}
 	for r in rows:
 		wi = items.setdefault(
