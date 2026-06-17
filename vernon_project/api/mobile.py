@@ -410,16 +410,37 @@ def get_project(project):
 	for wi in items.values():
 		wi["progress"] = round(wi["done"] / wi["total"] * 100) if wi["total"] else 0
 
-	name_map = _user_name_map(set(workload.keys()) | {doc.project_owner, doc.project_leader})
+	# Effective roster: owner + leader + formal Project Team members, unioned
+	# with anyone carrying open-todo load (an assignee need not be a formal
+	# member). Everyone shows even with zero load.
+	member_users = set(
+		frappe.get_all(
+			"Project Team", filters={"parent": project}, pluck="user", limit_page_length=0
+		)
+	)
+	roster = set(member_users) | {doc.project_owner, doc.project_leader} | set(workload.keys())
+	roster.discard(None)
+
+	name_map = _user_name_map(roster)
 	team = [
 		{
 			"user": email,
 			"name": (name_map.get(email) or {}).get("full_name") or email,
 			"image": (name_map.get(email) or {}).get("user_image"),
-			"open_todos": count,
+			"open_todos": workload.get(email, 0),
+			"is_owner": email == doc.project_owner,
+			"is_leader": email == doc.project_leader,
+			"is_member": email in member_users or email in (doc.project_owner, doc.project_leader),
 		}
-		for email, count in sorted(workload.items(), key=lambda kv: -kv[1])
+		for email in roster
 	]
+
+	def _rank(m):
+		# Owner first, leader second, then heaviest load, then name.
+		role = 0 if m["is_owner"] else (1 if m["is_leader"] else 2)
+		return (role, -m["open_todos"], m["name"].lower())
+
+	team.sort(key=_rank)
 
 	return {
 		"name": doc.name,
@@ -441,6 +462,36 @@ def get_project(project):
 		"work_items": sorted(items.values(), key=lambda w: w["title"] or ""),
 		"team": team,
 	}
+
+
+@frappe.whitelist()
+def get_member_workload(project, user, include_completed=0):
+	"""One member's todos within a project. Open-only unless include_completed."""
+	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	include_completed = frappe.utils.cint(include_completed)
+	me = frappe.session.user
+	rows = [r for r in _fetch_todos([project]) if r["assigned_to"] == user]
+	name_map = _user_name_map({user})
+	out = []
+	for r in rows:
+		skey = _status_key(r["status"])
+		if not include_completed and skey == "completed":
+			continue
+		shaped = _shape_todo(r, me, name_map)
+		out.append({
+			"name": shaped["name"],
+			"to_do": shaped["to_do"],
+			"status": shaped["status"],
+			"status_key": shaped["status_key"],
+			"deadline": shaped["deadline"],
+			"deadline_human": shaped["deadline_human"],
+			"is_overdue": shaped["is_overdue"],
+			"work_item": shaped["work_item"],
+			"work_item_title": shaped["work_item_title"],
+		})
+	return out
 
 
 @frappe.whitelist()

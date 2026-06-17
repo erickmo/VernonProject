@@ -126,6 +126,21 @@ export interface TeamMember {
   name: string
   image: string | null
   open_todos: number
+  is_owner: boolean
+  is_leader: boolean
+  is_member: boolean
+}
+
+export interface MemberTodo {
+  name: string
+  to_do: string
+  status: string
+  status_key: string
+  deadline: string | null
+  deadline_human: string | null
+  is_overdue: boolean
+  work_item: string
+  work_item_title: string
 }
 
 export interface ProjectDetail {

@@ -8,9 +8,11 @@ import { WorkItemFormSheet } from '@/components/WorkItemFormSheet'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
 import { GroupManagerSheet } from '@/components/GroupManagerSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
+import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
 import { useToast } from '@/components/Toast'
 import { useProject, useBoot, useDeleteProject, permFlags } from '@/hooks/useData'
 import { formatDate } from '@/lib/format'
+import type { TeamMember } from '@/lib/types'
 
 export default function ProjectDetailPage() {
   const { name = '' } = useParams()
@@ -25,6 +27,7 @@ export default function ProjectDetailPage() {
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [taskFor, setTaskFor] = useState<string | null>(null)
+  const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
 
   if (isLoading && !data) {
     return (
@@ -67,6 +70,10 @@ export default function ProjectDetailPage() {
           {overdue > 0 && <span className="font-semibold text-rose-200">{overdue} overdue</span>}
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" /> {formatDate(data.deadline)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Users className="h-3.5 w-3.5" /> {data.owner_name}
+            {data.leader_name && data.leader_name !== data.owner_name && ` · ${data.leader_name}`}
           </span>
         </div>
       </div>
@@ -127,18 +134,26 @@ export default function ProjectDetailPage() {
             )}
           </div>
           <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1">
-            {data.team.map((m) => (
-              <div
-                key={m.user}
-                className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl bg-white p-3 text-center shadow-card"
-              >
-                <Avatar name={m.name} image={m.image} size={42} />
-                <p className="w-full truncate text-xs font-medium text-slate-700">{m.name}</p>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                  {m.open_todos} open
-                </span>
-              </div>
-            ))}
+            {data.team.map((m) => {
+              const role = m.is_owner && m.is_leader ? 'Owner · Leader'
+                : m.is_owner ? 'Owner' : m.is_leader ? 'Leader' : null
+              return (
+                <button
+                  key={m.user}
+                  onClick={() => setWorkloadMember(m)}
+                  className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl bg-white p-3 text-center shadow-card active:scale-95"
+                >
+                  <Avatar name={m.name} image={m.image} size={42} />
+                  <p className="w-full truncate text-xs font-medium text-slate-700">{m.name}</p>
+                  {role && (
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">{role}</span>
+                  )}
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                    {m.open_todos} open
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </section>
       )}
@@ -212,6 +227,12 @@ export default function ProjectDetailPage() {
         onClose={() => setTeamOpen(false)}
         project={data}
         canReassign={flags.can_reassign}
+      />
+      <MemberWorkloadSheet
+        open={!!workloadMember}
+        member={workloadMember}
+        project={data.name}
+        onClose={() => setWorkloadMember(null)}
       />
       {taskFor && (
         <CreateTaskSheet open={!!taskFor} onClose={() => setTaskFor(null)} workItem={taskFor} team={data.team} />

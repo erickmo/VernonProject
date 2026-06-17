@@ -27,7 +27,7 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
   // Seed the working copy from the loaded project each time the sheet opens.
   useEffect(() => {
     if (open) {
-      setMembers(project.team.map((t) => t.user))
+      setMembers(project.team.filter((t) => t.is_member).map((t) => t.user))
       setOwner(project.project_owner)
       setLeader(project.project_leader)
       setAdmin(project.project_admin ?? '')
