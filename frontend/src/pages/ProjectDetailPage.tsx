@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { WorkItemFormSheet } from '@/components/WorkItemFormSheet'
 import { CreateTaskSheet } from '@/components/CreateTaskSheet'
 import { GroupManagerSheet } from '@/components/GroupManagerSheet'
+import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { useToast } from '@/components/Toast'
 import { useProject, useBoot, useDeleteProject, permFlags } from '@/hooks/useData'
 import { formatDate } from '@/lib/format'
@@ -22,6 +23,7 @@ export default function ProjectDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
+  const [teamOpen, setTeamOpen] = useState(false)
   const [taskFor, setTaskFor] = useState<string | null>(null)
 
   if (isLoading && !data) {
@@ -77,6 +79,12 @@ export default function ProjectDetailPage() {
               <Pencil className="h-4 w-4" /> Edit
             </button>
           )}
+          {flags.can_edit && (
+            <button onClick={() => setTeamOpen(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-sm font-semibold text-slate-700 shadow-card active:scale-95">
+              <Users className="h-4 w-4" /> Team
+            </button>
+          )}
           {flags.can_delete && (
             <button
               disabled={data.work_items.length > 0}
@@ -107,9 +115,17 @@ export default function ProjectDetailPage() {
       {/* Team workload */}
       {data.team.length > 0 && (
         <section className="mt-5">
-          <h3 className="mb-2 flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-500">
-            <Users className="h-4 w-4" /> Team workload
-          </h3>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
+              <Users className="h-4 w-4" /> Team workload
+            </h3>
+            {flags.can_edit && (
+              <button onClick={() => setTeamOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
+                <UserPlus className="h-3.5 w-3.5" /> Manage
+              </button>
+            )}
+          </div>
           <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1">
             {data.team.map((m) => (
               <div
@@ -191,6 +207,12 @@ export default function ProjectDetailPage() {
       />
       <WorkItemFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings ?? []} />
       <GroupManagerSheet open={groupsOpen} onClose={() => setGroupsOpen(false)} project={data.name} />
+      <TeamManagerSheet
+        open={teamOpen}
+        onClose={() => setTeamOpen(false)}
+        project={data}
+        canReassign={flags.can_reassign}
+      />
       {taskFor && (
         <CreateTaskSheet open={!!taskFor} onClose={() => setTaskFor(null)} workItem={taskFor} team={data.team} />
       )}
