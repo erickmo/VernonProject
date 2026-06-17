@@ -515,6 +515,84 @@ def get_member_workload(project, user, include_completed=0):
 	return out
 
 
+COMMENTABLE = {"Project", "Project Detail", "Project Todo"}
+
+
+def _comment_project(reference_doctype, reference_name):
+	"""Resolve a commentable reference to its owning Project name."""
+	if reference_doctype == "Project":
+		return reference_name
+	if reference_doctype == "Project Detail":
+		return frappe.get_value("Project Detail", reference_name, "project")
+	if reference_doctype == "Project Todo":
+		pd = frappe.get_value("Project Todo", reference_name, "project_detail")
+		return frappe.get_value("Project Detail", pd, "project") if pd else None
+	return None
+
+
+def _assert_comment_visible(reference_doctype, reference_name):
+	if reference_doctype not in COMMENTABLE:
+		frappe.throw("Comments are not available for this record.")
+	project = _comment_project(reference_doctype, reference_name)
+	if not project or project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+def _shape_comment(row, name_map):
+	by = row.get("comment_by") or row.get("comment_email")
+	person = name_map.get(by, {})
+	return {
+		"name": row["name"],
+		"content": row.get("content") or "",
+		"by": by,
+		"by_name": person.get("full_name") or by,
+		"by_image": person.get("user_image"),
+		"at": str(row["creation"]),
+		"at_human": _humanize_datetime(row["creation"]),
+	}
+
+
+@frappe.whitelist()
+def get_comments(reference_doctype, reference_name):
+	"""Built-in Frappe comments for a Project / Project Detail / Project Item."""
+	_assert_comment_visible(reference_doctype, reference_name)
+	rows = frappe.get_all(
+		"Comment",
+		filters={
+			"comment_type": "Comment",
+			"reference_doctype": reference_doctype,
+			"reference_name": reference_name,
+		},
+		fields=["name", "content", "comment_email", "comment_by", "creation"],
+		order_by="creation asc",
+		limit_page_length=0,
+	)
+	name_map = _user_name_map({r.get("comment_email") for r in rows} | {r.get("comment_by") for r in rows})
+	return [_shape_comment(r, name_map) for r in rows]
+
+
+@frappe.whitelist()
+def add_comment(reference_doctype, reference_name, content):
+	"""Add a built-in comment to a Project / Project Detail / Project Item."""
+	_assert_comment_visible(reference_doctype, reference_name)
+	content = (content or "").strip()
+	if not content:
+		frappe.throw("Comment cannot be empty.")
+	doc = frappe.get_doc(reference_doctype, reference_name)
+	c = doc.add_comment("Comment", content)
+	name_map = _user_name_map({c.comment_email, c.comment_by})
+	return _shape_comment(
+		{
+			"name": c.name,
+			"content": c.content,
+			"comment_email": c.comment_email,
+			"comment_by": c.comment_by,
+			"creation": c.creation,
+		},
+		name_map,
+	)
+
+
 @frappe.whitelist()
 def get_project_detail(project_detail):
 	"""A Project Detail with its project items."""

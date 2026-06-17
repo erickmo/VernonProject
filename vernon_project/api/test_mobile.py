@@ -316,3 +316,32 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		finally:
 			frappe.delete_doc("Project", proj.name, force=True, ignore_permissions=True)
 			frappe.db.commit()
+
+	def test_comment_roundtrip_all_levels(self):
+		from vernon_project.api.mobile import add_comment, get_comments
+		cases = [
+			("Project", self.project.name),
+			("Project Detail", self.detail.name),
+			("Project Todo", self.todo.name),
+		]
+		for dt, dn in cases:
+			added = add_comment(dt, dn, f"hello {dt}")
+			self.assertEqual(added["content"], f"hello {dt}")
+			rows = get_comments(dt, dn)
+			self.assertTrue(any(c["content"] == f"hello {dt}" for c in rows))
+			self.assertIn("by_name", rows[0])
+			self.assertIn("at_human", rows[0])
+
+	def test_comment_rejects_unknown_doctype(self):
+		from vernon_project.api.mobile import add_comment
+		with self.assertRaises(frappe.ValidationError):
+			add_comment("User", "Administrator", "nope")
+
+	def test_comment_rejects_invisible_project(self):
+		from vernon_project.api.mobile import get_comments
+		frappe.set_user("tm_assignee@example.com")  # not on this project
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				get_comments("Project", self.project.name)
+		finally:
+			frappe.set_user("Administrator")
