@@ -539,7 +539,7 @@ def _assert_comment_visible(reference_doctype, reference_name):
 
 
 def _shape_comment(row, name_map):
-	by = row.get("comment_by") or row.get("comment_email")
+	by = row.get("comment_email") or row.get("comment_by")
 	person = name_map.get(by, {})
 	return {
 		"name": row["name"],

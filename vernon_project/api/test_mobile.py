@@ -331,6 +331,9 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 			self.assertTrue(any(c["content"] == f"hello {dt}" for c in rows))
 			self.assertIn("by_name", rows[0])
 			self.assertIn("at_human", rows[0])
+			mine = [c for c in rows if c["content"] == f"hello {dt}"][0]
+			self.assertEqual(mine["by"], frappe.session.user)
+			self.assertTrue(mine["by_name"])
 
 	def test_comment_rejects_unknown_doctype(self):
 		from vernon_project.api.mobile import add_comment
