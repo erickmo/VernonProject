@@ -80,7 +80,7 @@ export function GroupManagerSheet({ open, onClose, project }: Props) {
           <input className={field + ' mt-2'} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)" />
           <button onClick={addGroup} disabled={create.isPending}
             className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">
-            {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Add group
+            {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Group
           </button>
         </div>
 

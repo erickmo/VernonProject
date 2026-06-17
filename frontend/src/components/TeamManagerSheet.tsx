@@ -114,10 +114,10 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
           </label>
         </div>
 
-        {/* Add member */}
+        {/* Member */}
         <div className="mb-4">
           <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-600">
-            <UserPlus className="h-4 w-4" /> Add member
+            <UserPlus className="h-4 w-4" /> Member
           </p>
           <SearchableSelect value="" onChange={addMember} options={addable} placeholder="Select user…" />
         </div>
