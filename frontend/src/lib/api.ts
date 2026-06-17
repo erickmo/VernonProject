@@ -108,8 +108,6 @@ export const mobileApi = {
     api.post('frappe.client.insert', {
       doc: JSON.stringify({
         doctype: 'Project Todo',
-        parenttype: 'Project Detail',
-        parentfield: 'todo',
         status: '⚪️ Planned',
         ...fields,
       }),

@@ -11,42 +11,41 @@ from datetime import datetime
 class ProjectTodo(Document):
 
 	def validate(self):
-		# Only owner/leader may create a new task
 		self.validate_create_permission()
-
-		# Prevent editing certain fields when status is Done or Completed
+		self.validate_assigned_to_team_member()
 		self.validate_done_todo_fields()
-
-		# Prevent Project Admin from updating status
 		self.validate_project_admin_status_update()
-
-		# Calculate total estimated hours from phases
 		self.calculate_total_estimated_hours()
-
-		# Track phase timestamps and calculate actual times
 		self.track_phase_changes()
-
-		# Set next occurrence for recurring todos
 		if self.is_recurring and self.recurring_frequency and not self.next_occurrence:
 			self.next_occurrence = self.calculate_next_occurrence(self.deadline)
 
-	def get_old_doc(self):
-		"""Return the previously-saved version of this row.
+	def validate_assigned_to_team_member(self):
+		if not self.assigned_to or not self.project_detail:
+			return
+		project_name = frappe.get_value("Project Detail", self.project_detail, "project")
+		if not project_name:
+			return
+		team = frappe.get_all(
+			"Project Team",
+			filters={"parent": project_name, "parenttype": "Project"},
+			pluck="user",
+		)
+		if self.assigned_to not in team:
+			frappe.throw(
+				f"Assigned To '{self.assigned_to}' in ToDo '{self.to_do}' "
+				"is not a member of the Project Team."
+			)
 
-		Project Todo is a child table (istable: 1). When saved through its parent
-		(Project Detail), Frappe's ``get_doc_before_save()`` returns ``None`` for
-		child rows, so status-change detection must fall back to the DB copy.
-		"""
+	def get_old_doc(self):
+		"""Return the previously-saved version, or None for new docs."""
 		old_doc = self.get_doc_before_save()
 		if old_doc:
 			return old_doc
-
 		if self.is_new() or not self.name:
 			return None
-
 		if not frappe.db.exists("Project Todo", self.name):
 			return None
-
 		return frappe.get_doc("Project Todo", self.name)
 
 	def validate_create_permission(self):
@@ -56,9 +55,9 @@ class ProjectTodo(Document):
 		user = frappe.session.user
 		if "System Manager" in frappe.get_roles(user):
 			return
-		if not self.parent:
+		if not self.project_detail:
 			frappe.throw(_("Task must belong to a work item"), frappe.PermissionError)
-		project_name = frappe.get_value("Project Detail", self.parent, "project")
+		project_name = frappe.get_value("Project Detail", self.project_detail, "project")
 		if not project_name:
 			frappe.throw(_("Work item has no project"), frappe.PermissionError)
 		owner, leader = frappe.get_value(
@@ -93,10 +92,10 @@ class ProjectTodo(Document):
 			return
 
 		# Get project to check if user is project_admin
-		if not self.parent:
+		if not self.project_detail:
 			return
 
-		parent_detail = frappe.get_doc("Project Detail", self.parent)
+		parent_detail = frappe.get_doc("Project Detail", self.project_detail)
 		if not parent_detail.project:
 			return
 
@@ -144,25 +143,30 @@ class ProjectTodo(Document):
 				title="Cannot Edit Completed Todo"
 			)
 
-	def on_change(self):
-		# On status changed
-		prev_state = self.get_doc_before_save().status if self.get_doc_before_save() else None
-		if prev_state != self.status:
-			parent = frappe.get_doc("Project Detail", self.parent)
-			parent.save()
+	def after_insert(self):
+		self._recompute_parent()
 
-			# If completed and is recurring, create next occurrence
+	def on_change(self):
+		old = self.get_doc_before_save()
+		prev_state = old.status if old else None
+		if prev_state != self.status:
+			self._recompute_parent()
 			if self.status == "✅ Completed" and self.is_recurring:
 				self.create_next_occurrence()
 
 	def on_trash(self):
-		# Prevent deletion of Project Todo if it is linked to a Project Detail
-		if frappe.db.exists("Project Detail", {"todo": self.name}):
-			frappe.throw("Cannot delete Project Todo as it is linked to a Project Detail.")
-
-		# Cannot Delete if status is not 'Scheduled'
+		# Cannot delete unless status is Planned ("Scheduled").
 		if self.status != "⚪️ Planned":
 			frappe.throw("Cannot delete Project Todo unless its status is 'Scheduled'.")
+
+	def after_delete(self):
+		self._recompute_parent()
+
+	def _recompute_parent(self):
+		from vernon_project.vernon_project.doctype.project_detail.project_detail import (
+			recompute_detail_rollups,
+		)
+		recompute_detail_rollups(self.project_detail)
 
 	def calculate_total_estimated_hours(self):
 		"""Calculate total estimated hours from all phases"""
@@ -292,10 +296,9 @@ class ProjectTodo(Document):
 		if self.recurring_until and getdate(next_date) > getdate(self.recurring_until):
 			return
 
-		# Create new todo with same details but new deadline
-		parent_doc = frappe.get_doc("Project Detail", self.parent)
-
-		new_todo = parent_doc.append("todo", {
+		frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail,
 			"to_do": self.to_do,
 			"assigned_to": self.assigned_to,
 			"deadline": next_date,
@@ -306,51 +309,78 @@ class ProjectTodo(Document):
 			"recurring_until": self.recurring_until,
 			"next_occurrence": self.calculate_next_occurrence(next_date),
 			"original_todo": self.original_todo or self.name,
-			"status": "⚪️ Planned"
-		})
+			"status": "⚪️ Planned",
+		}).insert(ignore_permissions=True)
 
-		parent_doc.save()
-
-		# Clear this (completed) head's next_occurrence so the daily scheduler
-		# doesn't try to spawn the same occurrence again.
 		frappe.db.set_value("Project Todo", self.name, "next_occurrence", None, update_modified=False)
-
 		frappe.msgprint(f"Next recurring todo created with deadline: {next_date}")
 
 
 # --------------------------------------------------------------------------------
-# PERMISSIONS
-# Catatan: Project Todo adalah child table (istable: 1).
-# permission_query_conditions tidak berlaku untuk child doctypes.
-# has_permission digunakan untuk validasi akses API per-dokumen.
+# PERMISSIONS  (Project Todo is now a standalone doctype.)
 # --------------------------------------------------------------------------------
+
+def get_permission_query_conditions(user):
+	if not user or user == "Guest":
+		return ""
+	if "System Manager" in frappe.get_roles(user):
+		return ""
+	user_esc = frappe.db.escape(user)
+	return f"""
+		EXISTS (
+			SELECT 1
+			FROM `tabProject Detail` pd
+			JOIN `tabProject` p ON p.name = pd.project
+			WHERE pd.name = `tabProject Todo`.project_detail
+				AND (
+					p.project_owner = {user_esc}
+					OR p.project_leader = {user_esc}
+					OR p.project_admin = {user_esc}
+					OR EXISTS (
+						SELECT 1 FROM `tabProject Team` pt
+						WHERE pt.parent = p.name AND pt.user = {user_esc}
+					)
+				)
+		)
+	"""
+
 
 def has_permission(doc, ptype, user):
 	if "System Manager" in frappe.get_roles(user):
 		return True
-
-	# Project Todo adalah child table, ambil project via parent (Project Detail)
-	if not doc.parent:
+	if not doc.project_detail:
 		return False
-
-	parent_detail = frappe.get_doc("Project Detail", doc.parent)
-
+	parent_detail = frappe.get_doc("Project Detail", doc.project_detail)
 	if not parent_detail.project:
 		return False
-
 	project = frappe.get_doc("Project", parent_detail.project)
-
-	if user == project.project_owner:
+	if user in (project.project_owner, project.project_leader, project.project_admin):
 		return True
-
-	if user == project.project_leader:
-		return True
-
-	if user == project.project_admin:
-		return True
-
 	if any(t.user == user for t in project.team_members):
 		return True
-
 	return False
 
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def assignable_users(doctype, txt, searchfield, start, page_len, filters):
+	project_detail = filters.get("project_detail")
+	if not project_detail:
+		return []
+	project = frappe.get_value("Project Detail", project_detail, "project")
+	if not project:
+		return []
+	users = frappe.get_all(
+		"Project Team",
+		filters={"parent": project, "parenttype": "Project"},
+		pluck="user",
+	)
+	if not users:
+		return []
+	like = f"%{txt}%"
+	return frappe.db.sql(
+		"""SELECT name, full_name FROM `tabUser`
+		   WHERE name IN %(users)s AND (name LIKE %(like)s OR full_name LIKE %(like)s)
+		   LIMIT %(start)s, %(page_len)s""",
+		{"users": tuple(users), "like": like, "start": start, "page_len": page_len},
+	)

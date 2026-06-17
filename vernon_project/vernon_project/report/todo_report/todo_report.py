@@ -76,8 +76,8 @@ def execute(filters=None):
 			pd.keterangan_di_sow AS sow_note
 		FROM
 			`tabProject Todo` pt
-		JOIN	
-			`tabProject Detail` pd on pt.parent = pd.name
+		JOIN
+			`tabProject Detail` pd on pt.project_detail = pd.name
 		JOIN
 			`tabProject` p on pd.project = p.name
 		JOIN

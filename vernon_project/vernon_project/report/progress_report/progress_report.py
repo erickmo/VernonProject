@@ -55,8 +55,8 @@ def execute(filters=None):
 			pd.name AS project_detail_id
 		FROM
 			`tabProject Todo` pt
-		JOIN	
-			`tabProject Detail` pd on pt.parent = pd.name
+		JOIN
+			`tabProject Detail` pd on pt.project_detail = pd.name
 		JOIN
 			`tabProject` p on pd.project = p.name
 		JOIN

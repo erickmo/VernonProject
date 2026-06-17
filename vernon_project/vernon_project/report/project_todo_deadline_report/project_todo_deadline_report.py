@@ -35,7 +35,7 @@ def execute(filters=None):
 			project.name AS project_name
 		FROM
 			`tabProject Todo` AS todo
-			JOIN `tabProject Detail` AS detail ON todo.parent = detail.name
+			JOIN `tabProject Detail` AS detail ON todo.project_detail = detail.name
 			JOIN `tabProject` AS project ON detail.project = project.name
 		WHERE
 			todo.deadline IS NOT NULL

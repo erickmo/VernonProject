@@ -49,7 +49,7 @@ class TestProjectTodo(unittest.TestCase):
 				"project_name": "Test Project Group",
 			}).insert(ignore_permissions=True)
 
-		# Create test project (company is not required in our custom Project doctype)
+		# Create test project with team members so validate_assigned_to_team_member passes
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Test Project for Todo Validation",
@@ -59,9 +59,15 @@ class TestProjectTodo(unittest.TestCase):
 			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
-			"deadline": add_days(nowdate(), 30)
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [
+				{"user": "Administrator"},
+				{"user": "test_user@example.com"},
+				{"user": "test_user2@example.com"},
+			],
 		})
 		self.project.insert(ignore_permissions=True)
+		self.owner_user = "Administrator"
 
 		# Create a Glossary to use as the grouping for the project detail
 		grouping_doc = frappe.get_doc({
@@ -72,7 +78,7 @@ class TestProjectTodo(unittest.TestCase):
 		grouping_doc.insert(ignore_permissions=True)
 		self.grouping = grouping_doc.name
 
-		# Create test project detail with todo
+		# Create test project detail (no embedded todo rows — todos are standalone now)
 		self.project_detail = frappe.get_doc({
 			"doctype": "Project Detail",
 			"project": self.project.name,
@@ -80,30 +86,36 @@ class TestProjectTodo(unittest.TestCase):
 			"grouping": self.grouping,
 			"project_deadline": add_days(nowdate(), 30),
 			"estimated": 100,
-			"todo": [
-				{
-					"to_do": "Test Todo Item",
-					"assigned_to": "test_user@example.com",
-					"deadline": add_days(nowdate(), 7),
-					"estimated": 60,
-					"status": "⚪️ Planned"
-				}
-			]
 		})
 		self.project_detail.insert(ignore_permissions=True)
-		frappe.db.commit()
 
-		# Get the todo for testing
-		self.todo = self.project_detail.todo[0]
+		# Insert a standalone Project Todo so existing tests still have self.todo
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail.name,
+			"to_do": "Test Todo Item",
+			"assigned_to": "test_user@example.com",
+			"deadline": add_days(nowdate(), 7),
+			"estimated": 60,
+			"status": "⚪️ Planned",
+		}).insert(ignore_permissions=True)
+
+		frappe.db.commit()
 
 	def tearDown(self):
 		"""Clean up test data after each test"""
 		frappe.set_user("Administrator")
-		# Reset all todo statuses to Planned so on_trash does not block deletion
+		# Reset all standalone todo statuses to Planned so on_trash does not block deletion
+		todos = frappe.get_all(
+			"Project Todo",
+			filters={"project_detail": self.project_detail.name},
+			pluck="name",
+		)
+		for todo_name in todos:
+			frappe.db.set_value("Project Todo", todo_name, "status", "⚪️ Planned", update_modified=False)
+			frappe.delete_doc("Project Todo", todo_name, ignore_permissions=True, force=True)
+
 		if hasattr(self, 'project_detail') and frappe.db.exists("Project Detail", self.project_detail.name):
-			detail = frappe.get_doc("Project Detail", self.project_detail.name)
-			for todo in detail.todo:
-				frappe.db.set_value("Project Todo", todo.name, "status", "⚪️ Planned", update_modified=False)
 			frappe.delete_doc("Project Detail", self.project_detail.name, ignore_permissions=True, force=True)
 
 		if hasattr(self, 'grouping') and frappe.db.exists("Glossary", self.grouping):
@@ -114,19 +126,50 @@ class TestProjectTodo(unittest.TestCase):
 
 		frappe.db.commit()
 
+	# ------------------------------------------------------------------
+	# Helper
+	# ------------------------------------------------------------------
+
+	def _make_todo(self, **overrides):
+		fields = {
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail.name,
+			"to_do": "standalone task",
+			"assigned_to": self.owner_user,
+			"deadline": add_days(nowdate(), 5),
+			"estimated": 60,
+			"status": "⚪️ Planned",
+		}
+		fields.update(overrides)
+		return frappe.get_doc(fields).insert(ignore_permissions=True)
+
+	# ------------------------------------------------------------------
+	# Tests from brief Step 1 (new standalone tests)
+	# ------------------------------------------------------------------
+
+	def test_standalone_insert_links_to_detail(self):
+		todo = self._make_todo()
+		self.assertEqual(todo.project_detail, self.project_detail.name)
+		self.assertFalse(getattr(todo, "parent", None))  # standalone: no child parent linkage
+
+	def test_insert_recomputes_parent_rollup(self):
+		self._make_todo(estimated=120)
+		self.project_detail.reload()
+		self.assertGreaterEqual(self.project_detail.total_estimated, 120)
+
+	# ------------------------------------------------------------------
+	# Original tests — rewritten to operate on standalone todos
+	# ------------------------------------------------------------------
+
 	def test_edit_todo_in_planned_status(self):
 		"""Test that editing is allowed when status is Planned"""
-		# Reload the detail to get fresh data
-		self.project_detail.reload()
+		self.todo.reload()
+		self.todo.assigned_to = "test_user2@example.com"
+		self.todo.estimated = 90
+		self.todo.deadline = add_days(nowdate(), 10)
 
-		# Update todo fields
-		self.project_detail.todo[0].assigned_to = "test_user2@example.com"
-		self.project_detail.todo[0].estimated = 90
-		self.project_detail.todo[0].deadline = add_days(nowdate(), 10)
-
-		# This should not raise any error
 		try:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 			success = True
 		except Exception as e:
 			success = False
@@ -137,81 +180,70 @@ class TestProjectTodo(unittest.TestCase):
 	def test_edit_assigned_to_when_done(self):
 		"""Test that editing assigned_to is blocked when status is Done"""
 		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
 		# Try to change assigned_to
-		self.project_detail.reload()
-		self.project_detail.todo[0].assigned_to = "test_user2@example.com"
+		self.todo.reload()
+		self.todo.assigned_to = "test_user2@example.com"
 
-		# This should raise an error
 		with self.assertRaises(frappe.ValidationError) as context:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 
 		self.assertIn("Cannot modify", str(context.exception))
 		self.assertIn("Assigned To", str(context.exception))
 
 	def test_edit_estimated_when_done(self):
 		"""Test that editing estimated is blocked when status is Done"""
-		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Try to change estimated
-		self.project_detail.reload()
-		self.project_detail.todo[0].estimated = 120
+		self.todo.reload()
+		self.todo.estimated = 120
 
-		# This should raise an error
 		with self.assertRaises(frappe.ValidationError) as context:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 
 		self.assertIn("Cannot modify", str(context.exception))
 		self.assertIn("Estimated", str(context.exception))
 
 	def test_edit_deadline_when_done(self):
 		"""Test that editing deadline is blocked when status is Done"""
-		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Try to change deadline
-		self.project_detail.reload()
-		self.project_detail.todo[0].deadline = add_days(nowdate(), 15)
+		self.todo.reload()
+		self.todo.deadline = add_days(nowdate(), 15)
 
-		# This should raise an error
 		with self.assertRaises(frappe.ValidationError) as context:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 
 		self.assertIn("Cannot modify", str(context.exception))
 		self.assertIn("Deadline", str(context.exception))
 
 	def test_edit_multiple_fields_when_done(self):
 		"""Test that editing multiple protected fields shows all field names in error"""
-		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Try to change multiple fields
-		self.project_detail.reload()
-		self.project_detail.todo[0].assigned_to = "test_user2@example.com"
-		self.project_detail.todo[0].estimated = 150
-		self.project_detail.todo[0].deadline = add_days(nowdate(), 20)
+		self.todo.reload()
+		self.todo.assigned_to = "test_user2@example.com"
+		self.todo.estimated = 150
+		self.todo.deadline = add_days(nowdate(), 20)
 
-		# This should raise an error mentioning all fields
 		with self.assertRaises(frappe.ValidationError) as context:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 
 		error_msg = str(context.exception)
 		self.assertIn("Cannot modify", error_msg)
-		# Check that all three fields are mentioned
 		self.assertTrue(
 			"Assigned To" in error_msg or "Estimated" in error_msg or "Deadline" in error_msg,
 			"Error should mention at least one of the modified fields"
@@ -219,72 +251,60 @@ class TestProjectTodo(unittest.TestCase):
 
 	def test_edit_assigned_to_when_completed(self):
 		"""Test that editing assigned_to is blocked when status is Completed"""
-		# Change status to Completed
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "✅ Completed"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "✅ Completed"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Try to change assigned_to
-		self.project_detail.reload()
-		self.project_detail.todo[0].assigned_to = "test_user2@example.com"
+		self.todo.reload()
+		self.todo.assigned_to = "test_user2@example.com"
 
-		# This should raise an error
 		with self.assertRaises(frappe.ValidationError) as context:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 
 		self.assertIn("Cannot modify", str(context.exception))
 		self.assertIn("Assigned To", str(context.exception))
 
 	def test_edit_other_fields_when_done(self):
 		"""Test that editing other fields (not protected) is still allowed when Done"""
-		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Try to change notes (not a protected field)
-		self.project_detail.reload()
-		self.project_detail.todo[0].notes = "Updated notes after completion"
+		self.todo.reload()
+		self.todo.notes = "Updated notes after completion"
 
-		# This should NOT raise an error
 		try:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 			success = True
 		except frappe.ValidationError as e:
 			if "Cannot modify" in str(e):
 				success = False
 			else:
-				# Some other validation error, re-raise
 				raise
-		except Exception as e:
-			# Other errors
+		except Exception:
 			success = True  # We only care about validation error for protected fields
 
 		self.assertTrue(success, "Should be able to edit non-protected fields when status is Done")
 
 	def test_status_transition_from_done_to_planned(self):
 		"""Test that changing status back from Done to Planned allows editing again"""
-		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Change status back to Planned
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "⚪️ Planned"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "⚪️ Planned"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Now try to change assigned_to
-		self.project_detail.reload()
-		self.project_detail.todo[0].assigned_to = "test_user2@example.com"
+		self.todo.reload()
+		self.todo.assigned_to = "test_user2@example.com"
 
-		# This should NOT raise an error
 		try:
-			self.project_detail.save(ignore_permissions=True)
+			self.todo.save(ignore_permissions=True)
 			success = True
 		except frappe.ValidationError as e:
 			if "Cannot modify" in str(e):
@@ -297,17 +317,16 @@ class TestProjectTodo(unittest.TestCase):
 	def test_non_lead_cannot_create_task(self):
 		"""A non owner/leader user cannot add a task to a work item."""
 		frappe.set_user("test_user2@example.com")
-		detail = frappe.get_doc("Project Detail", self.project_detail.name)
-		detail.append("todo", {
-			"to_do": "Sneaky task",
-			"assigned_to": "test_user2@example.com",
-			"deadline": add_days(nowdate(), 5),
-			"status": "⚪️ Planned",
-		})
 		with self.assertRaises(frappe.PermissionError):
-			detail.save(ignore_permissions=True)
+			frappe.get_doc({
+				"doctype": "Project Todo",
+				"project_detail": self.project_detail.name,
+				"to_do": "Sneaky task",
+				"assigned_to": "test_user2@example.com",
+				"deadline": add_days(nowdate(), 5),
+				"status": "⚪️ Planned",
+			}).insert(ignore_permissions=True)
 		frappe.set_user("Administrator")
-		detail.reload()
 
 	def test_lead_can_create_task(self):
 		"""A non-System-Manager project leader can add a task (owner/leader branch)."""
@@ -321,6 +340,9 @@ class TestProjectTodo(unittest.TestCase):
 			"status": "Ongoing",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
+			"team_members": [
+				{"user": "test_user@example.com"},
+			],
 		})
 		proj.insert(ignore_permissions=True)
 		grouping = frappe.get_doc({
@@ -341,22 +363,38 @@ class TestProjectTodo(unittest.TestCase):
 		frappe.db.commit()
 
 		frappe.set_user("test_user@example.com")
-		pd.reload()
-		pd.append("todo", {
+		todo = frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": pd.name,
 			"to_do": "Legit task",
 			"assigned_to": "test_user@example.com",
 			"deadline": add_days(nowdate(), 5),
 			"status": "⚪️ Planned",
-		})
-		pd.save(ignore_permissions=True)
+		}).insert(ignore_permissions=True)
 		frappe.set_user("Administrator")
 
-		pd.reload()
-		self.assertEqual(len(pd.todo), 1)
+		self.assertIsNotNone(todo.name)
+
+		frappe.db.set_value("Project Todo", todo.name, "status", "⚪️ Planned", update_modified=False)
+		frappe.delete_doc("Project Todo", todo.name, force=True, ignore_permissions=True)
 		frappe.delete_doc("Project Detail", pd.name, force=True, ignore_permissions=True)
 		frappe.delete_doc("Glossary", grouping.name, force=True, ignore_permissions=True)
 		frappe.delete_doc("Project", proj.name, force=True, ignore_permissions=True)
 		frappe.db.commit()
+
+	def test_scheduler_spawns_standalone_occurrence(self):
+		from vernon_project.tasks import create_recurring_todos
+		head = self._make_todo(
+			is_recurring=1,
+			recurring_frequency="Daily",
+			deadline=add_days(nowdate(), -1),
+		)
+		frappe.db.set_value("Project Todo", head.name, "next_occurrence", nowdate())
+		before = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+		create_recurring_todos()
+		after = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+		self.assertEqual(after, before + 1)
+		self.assertIsNone(frappe.db.get_value("Project Todo", head.name, "next_occurrence"))
 
 
 class TestProjectTodoPhaseTracking(unittest.TestCase):
@@ -391,7 +429,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 				"project_name": "Test Project Group",
 			}).insert(ignore_permissions=True)
 
-		# Create test project (company is not required in our custom Project doctype)
+		# Create test project with team members so validate_assigned_to_team_member passes
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Test Project for Phase Tracking",
@@ -401,7 +439,11 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
-			"deadline": add_days(nowdate(), 30)
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [
+				{"user": "Administrator"},
+				{"user": "test_user@example.com"},
+			],
 		})
 		self.project.insert(ignore_permissions=True)
 
@@ -414,7 +456,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		grouping_doc.insert(ignore_permissions=True)
 		self.grouping = grouping_doc.name
 
-		# Create test project detail with todo
+		# Create test project detail (no embedded todos — standalone now)
 		self.project_detail = frappe.get_doc({
 			"doctype": "Project Detail",
 			"project": self.project.name,
@@ -422,33 +464,39 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"grouping": self.grouping,
 			"project_deadline": add_days(nowdate(), 30),
 			"estimated": 100,
-			"todo": [
-				{
-					"to_do": "Test Phase Tracking Todo",
-					"assigned_to": "test_user@example.com",
-					"deadline": add_days(nowdate(), 7),
-					"estimated": 60,
-					"status": "⚪️ Planned",
-					"estimated_planned_to_done": 2.5,
-					"estimated_done_to_checked": 1.0,
-					"estimated_checked_to_completed": 0.5
-				}
-			]
 		})
 		self.project_detail.insert(ignore_permissions=True)
-		frappe.db.commit()
 
-		# Get the todo for testing
-		self.todo = self.project_detail.todo[0]
+		# Insert a standalone todo for phase tracking tests
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail.name,
+			"to_do": "Test Phase Tracking Todo",
+			"assigned_to": "test_user@example.com",
+			"deadline": add_days(nowdate(), 7),
+			"estimated": 60,
+			"status": "⚪️ Planned",
+			"estimated_planned_to_done": 2.5,
+			"estimated_done_to_checked": 1.0,
+			"estimated_checked_to_completed": 0.5,
+		}).insert(ignore_permissions=True)
+
+		frappe.db.commit()
 
 	def tearDown(self):
 		"""Clean up test data after each test"""
 		frappe.set_user("Administrator")
-		# Reset all todo statuses to Planned so on_trash does not block deletion
+		# Reset all standalone todo statuses to Planned so on_trash does not block deletion
+		todos = frappe.get_all(
+			"Project Todo",
+			filters={"project_detail": self.project_detail.name},
+			pluck="name",
+		)
+		for todo_name in todos:
+			frappe.db.set_value("Project Todo", todo_name, "status", "⚪️ Planned", update_modified=False)
+			frappe.delete_doc("Project Todo", todo_name, ignore_permissions=True, force=True)
+
 		if hasattr(self, 'project_detail') and frappe.db.exists("Project Detail", self.project_detail.name):
-			detail = frappe.get_doc("Project Detail", self.project_detail.name)
-			for todo in detail.todo:
-				frappe.db.set_value("Project Todo", todo.name, "status", "⚪️ Planned", update_modified=False)
 			frappe.delete_doc("Project Detail", self.project_detail.name, ignore_permissions=True, force=True)
 
 		if hasattr(self, 'grouping') and frappe.db.exists("Glossary", self.grouping):
@@ -461,210 +509,183 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 	def test_calculate_total_estimated_hours(self):
 		"""Test that total estimated hours are calculated correctly"""
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Check that total is calculated
 		expected_total = 2.5 + 1.0 + 0.5  # 4.0
-		self.assertEqual(todo.total_estimated_hours, expected_total,
+		self.assertEqual(self.todo.total_estimated_hours, expected_total,
 			f"Total estimated hours should be {expected_total}")
 
 	def test_planned_started_at_timestamp(self):
 		"""Test that planned_started_at is set when todo is created"""
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Check that planned_started_at is set
-		self.assertIsNotNone(todo.planned_started_at,
+		self.assertIsNotNone(self.todo.planned_started_at,
 			"planned_started_at should be set when todo is created")
 
 	def test_done_timestamp_and_actual_time(self):
 		"""Test that done_started_at is set and actual time is calculated when moving to Done"""
-		# Wait a bit to ensure time difference
-		sleep(1)
+		# Backdate planned_started_at so Planned→Done is a deterministic 1h gap
+		# (a real-time sleep rounds to 0.0 at 2-decimal hour precision).
+		frappe.db.set_value("Project Todo", self.todo.name, "planned_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
-		# Change status to Done
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Check that done_started_at is set
-		self.assertIsNotNone(todo.done_started_at,
+		self.assertIsNotNone(self.todo.done_started_at,
 			"done_started_at should be set when status changes to Done")
 
-		# Check that actual_planned_to_done is calculated
-		self.assertIsNotNone(todo.actual_planned_to_done,
+		self.assertIsNotNone(self.todo.actual_planned_to_done,
 			"actual_planned_to_done should be calculated")
-		self.assertGreater(todo.actual_planned_to_done, 0,
+		self.assertGreater(self.todo.actual_planned_to_done, 0,
 			"actual_planned_to_done should be greater than 0")
 
 	def test_checked_timestamp_and_actual_time(self):
 		"""Test that checked_started_at is set and actual time is calculated when moving to Checked"""
-		# Move to Done first
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Wait a bit
-		sleep(1)
+		# Backdate done_started_at so Done→Checked is a deterministic 1h gap.
+		frappe.db.set_value("Project Todo", self.todo.name, "done_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
-		# Move to Checked By PL
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🔷 Checked By PL"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🔷 Checked By PL"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Check that checked_started_at is set
-		self.assertIsNotNone(todo.checked_started_at,
+		self.assertIsNotNone(self.todo.checked_started_at,
 			"checked_started_at should be set when status changes to Checked By PL")
 
-		# Check that actual_done_to_checked is calculated
-		self.assertIsNotNone(todo.actual_done_to_checked,
+		self.assertIsNotNone(self.todo.actual_done_to_checked,
 			"actual_done_to_checked should be calculated")
-		self.assertGreater(todo.actual_done_to_checked, 0,
+		self.assertGreater(self.todo.actual_done_to_checked, 0,
 			"actual_done_to_checked should be greater than 0")
 
 	def test_completed_timestamp_and_actual_time(self):
 		"""Test that phase_completed_at is set and actual time is calculated when moving to Completed"""
-		# Move through all phases
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
-
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🔷 Checked By PL"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🔷 Checked By PL"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		# Backdate checked_started_at so Checked→Completed is a deterministic 1h gap.
+		frappe.db.set_value("Project Todo", self.todo.name, "checked_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "✅ Completed"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "✅ Completed"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Check that phase_completed_at is set
-		self.assertIsNotNone(todo.phase_completed_at,
+		self.assertIsNotNone(self.todo.phase_completed_at,
 			"phase_completed_at should be set when status changes to Completed")
 
-		# Check that actual_checked_to_completed is calculated
-		self.assertIsNotNone(todo.actual_checked_to_completed,
+		self.assertIsNotNone(self.todo.actual_checked_to_completed,
 			"actual_checked_to_completed should be calculated")
-		self.assertGreater(todo.actual_checked_to_completed, 0,
+		self.assertGreater(self.todo.actual_checked_to_completed, 0,
 			"actual_checked_to_completed should be greater than 0")
 
 	def test_total_actual_hours_calculation(self):
 		"""Test that total actual hours are calculated correctly after going through all phases"""
-		# Move through all phases with delays
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		# Backdate each phase start so every segment is a deterministic positive gap.
+		frappe.db.set_value("Project Todo", self.todo.name, "planned_started_at",
+			add_to_date(now_datetime(), hours=-3), update_modified=False)
+
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		frappe.db.set_value("Project Todo", self.todo.name, "done_started_at",
+			add_to_date(now_datetime(), hours=-2), update_modified=False)
 
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🔷 Checked By PL"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🔷 Checked By PL"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		sleep(1)
+		frappe.db.set_value("Project Todo", self.todo.name, "checked_started_at",
+			add_to_date(now_datetime(), hours=-1), update_modified=False)
 
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "✅ Completed"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "✅ Completed"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check total
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Check that total actual hours is calculated
-		self.assertIsNotNone(todo.total_actual_hours,
+		self.assertIsNotNone(self.todo.total_actual_hours,
 			"total_actual_hours should be calculated")
 
-		# Total should be sum of all phases
-		expected_total = (todo.actual_planned_to_done or 0) + \
-						 (todo.actual_done_to_checked or 0) + \
-						 (todo.actual_checked_to_completed or 0)
+		expected_total = (self.todo.actual_planned_to_done or 0) + \
+						 (self.todo.actual_done_to_checked or 0) + \
+						 (self.todo.actual_checked_to_completed or 0)
 
-		self.assertEqual(todo.total_actual_hours, expected_total,
+		self.assertEqual(self.todo.total_actual_hours, expected_total,
 			"total_actual_hours should equal sum of all phase times")
 
-		# Should be greater than 0 since we had delays
-		self.assertGreater(todo.total_actual_hours, 0,
+		self.assertGreater(self.todo.total_actual_hours, 0,
 			"total_actual_hours should be greater than 0")
 
 	def test_update_estimated_hours_recalculates_total(self):
 		"""Test that changing individual phase estimates updates total"""
-		self.project_detail.reload()
-
-		# Update one phase estimate
-		self.project_detail.todo[0].estimated_planned_to_done = 5.0
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.estimated_planned_to_done = 5.0
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Total should be updated
 		expected_total = 5.0 + 1.0 + 0.5  # 6.5
-		self.assertEqual(todo.total_estimated_hours, expected_total,
+		self.assertEqual(self.todo.total_estimated_hours, expected_total,
 			f"Total should be updated to {expected_total}")
 
 	def test_phase_timestamps_chronological_order(self):
 		"""Test that timestamps are in chronological order"""
-		# Move through all phases
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🟠 Done"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🟠 Done"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
 		sleep(1)
 
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "🔷 Checked By PL"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "🔷 Checked By PL"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
 		sleep(1)
 
-		self.project_detail.reload()
-		self.project_detail.todo[0].status = "✅ Completed"
-		self.project_detail.save(ignore_permissions=True)
+		self.todo.reload()
+		self.todo.status = "✅ Completed"
+		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check order
-		self.project_detail.reload()
-		todo = self.project_detail.todo[0]
+		self.todo.reload()
 
-		# Convert to datetime for comparison
 		from frappe.utils import get_datetime
 
-		planned_time = get_datetime(todo.planned_started_at)
-		done_time = get_datetime(todo.done_started_at)
-		checked_time = get_datetime(todo.checked_started_at)
-		completed_time = get_datetime(todo.phase_completed_at)
+		planned_time = get_datetime(self.todo.planned_started_at)
+		done_time = get_datetime(self.todo.done_started_at)
+		checked_time = get_datetime(self.todo.checked_started_at)
+		completed_time = get_datetime(self.todo.phase_completed_at)
 
-		# Check chronological order
 		self.assertLess(planned_time, done_time,
 			"planned_started_at should be before done_started_at")
 		self.assertLess(done_time, checked_time,
@@ -674,37 +695,30 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 	def test_zero_estimated_hours(self):
 		"""Test handling of zero or null estimated hours"""
-		# Create new todo with no estimates
-		self.project_detail.reload()
-		self.project_detail.append("todo", {
+		extra_todo = frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail.name,
 			"to_do": "Todo with No Estimates",
 			"assigned_to": "test_user@example.com",
 			"deadline": add_days(nowdate(), 7),
-			"status": "⚪️ Planned"
-		})
-		self.project_detail.save(ignore_permissions=True)
+			"status": "⚪️ Planned",
+		}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
-		# Reload and check
-		self.project_detail.reload()
-		new_todo = self.project_detail.todo[1]
+		extra_todo.reload()
 
-		# Total should be 0
-		self.assertEqual(new_todo.total_estimated_hours, 0.0,
+		self.assertEqual(extra_todo.total_estimated_hours, 0.0,
 			"Total should be 0 when no estimates are provided")
 
 
 def run_tests():
 	"""Helper function to run all tests"""
-	# Create test suite
 	loader = unittest.TestLoader()
 	suite = unittest.TestSuite()
 
-	# Add both test classes
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodo))
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodoPhaseTracking))
 
-	# Run tests
 	runner = unittest.TextTestRunner(verbosity=2)
 	result = runner.run(suite)
 

@@ -4,6 +4,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
+from vernon_project.vernon_project.doctype.project_detail.project_detail import recompute_detail_rollups
 
 
 def _ensure(doctype, name, doc):
@@ -20,7 +21,8 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 		self.project = frappe.get_doc({"doctype": "Project", "project_name": "PD Trash Project",
 			"customer": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "Administrator", "project_leader": "Administrator",
-			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30)})
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}]})
 		self.project.insert(ignore_permissions=True)
 		self.gl = frappe.get_doc({"doctype": "Glossary", "glossary": "PDT Grouping",
 			"project": self.project.name})
@@ -30,9 +32,9 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		for pd in frappe.get_all("Project Detail", filters={"project": self.project.name}, pluck="name"):
-			d = frappe.get_doc("Project Detail", pd)
-			d.todo = []
-			d.save(ignore_permissions=True)
+			# Delete any standalone Project Todos linked to this Project Detail first
+			for pt in frappe.get_all("Project Todo", filters={"project_detail": pd}, pluck="name"):
+				frappe.delete_doc("Project Todo", pt, force=True, ignore_permissions=True)
 			frappe.delete_doc("Project Detail", pd, force=True, ignore_permissions=True)
 		if frappe.db.exists("Glossary", self.gl.name):
 			frappe.delete_doc("Glossary", self.gl.name, force=True, ignore_permissions=True)
@@ -41,15 +43,21 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 		frappe.db.commit()
 
 	def _make_detail(self, with_task):
-		todos = []
-		if with_task:
-			todos = [{"to_do": "T1", "assigned_to": "Administrator",
-				"deadline": add_days(nowdate(), 3), "status": "⚪️ Planned"}]
 		d = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
 			"title": "Trash WI", "grouping": self.gl.name,
-			"project_deadline": add_days(nowdate(), 20), "todo": todos})
+			"project_deadline": add_days(nowdate(), 20)})
 		d.insert(ignore_permissions=True)
 		frappe.db.commit()
+		if with_task:
+			frappe.get_doc({
+				"doctype": "Project Todo",
+				"project_detail": d.name,
+				"to_do": "T1",
+				"assigned_to": "Administrator",
+				"deadline": add_days(nowdate(), 3),
+				"status": "⚪️ Planned",
+			}).insert(ignore_permissions=True)
+			frappe.db.commit()
 		return d
 
 	def test_delete_blocked_with_tasks(self):
@@ -61,3 +69,24 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 		d = self._make_detail(with_task=False)
 		frappe.delete_doc("Project Detail", d.name, ignore_permissions=True)
 		self.assertFalse(frappe.db.exists("Project Detail", d.name))
+
+	def test_recompute_rollups_counts_standalone_todos(self):
+		# _make_detail without embedded todo rows so we can insert standalone ones
+		d = self._make_detail(with_task=False)
+		team_user = "Administrator"  # Administrator is in team_members (added in setUp)
+		for i in range(3):
+			frappe.get_doc({
+				"doctype": "Project Todo",
+				"project_detail": d.name,
+				"to_do": f"task {i}",
+				"assigned_to": team_user,
+				"deadline": "2026-12-31",
+				"estimated": 60,
+				"status": "⚪️ Planned",
+			}).insert(ignore_permissions=True)
+
+		recompute_detail_rollups(d.name)
+		d.reload()
+		self.assertEqual(d.todo_count, 3)
+		self.assertEqual(d.total_estimated, 180)
+		self.assertEqual(d.total_remaining_estimated, 180)

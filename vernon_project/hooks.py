@@ -139,6 +139,7 @@ permission_query_conditions = {
 	"Project": "vernon_project.vernon_project.doctype.project.project.get_permission_query_conditions",
 	"Project Detail": "vernon_project.vernon_project.doctype.project_detail.project_detail.get_permission_query_conditions",
 	"Glossary": "vernon_project.vernon_project.doctype.glossary.glossary.get_permission_query_conditions",
+	"Project Todo": "vernon_project.vernon_project.doctype.project_todo.project_todo.get_permission_query_conditions",
 }
 
 has_permission = {
