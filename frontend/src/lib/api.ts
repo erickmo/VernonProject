@@ -81,14 +81,15 @@ export const mobileApi = {
   dashboard: () => api.get(M + 'get_dashboard'),
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
-  workItem: (name: string) => api.get(M + 'get_work_item', { work_item: name }),
+  projectDetail: (name: string) =>
+    api.get(M + 'get_project_detail', { project_detail: name }),
   memberWorkload: (project: string, user: string, includeCompleted: boolean) =>
     api.get(M + 'get_member_workload', {
       project,
       user,
       include_completed: includeCompleted ? 1 : 0,
     }),
-  todo: (name: string) => api.get(M + 'get_todo', { todo: name }),
+  projectItem: (name: string) => api.get(M + 'get_project_item', { project_item: name }),
   advanceStatus: (todoId: string) =>
     api.post<{ status: string; message: string }>(
       'vernon_project.api.project_todo.update_status',
@@ -101,7 +102,7 @@ export const mobileApi = {
     ),
   updateTodo: (todoId: string, fields: Record<string, unknown>) =>
     api.post<{ status: string; message: string }>(M + 'update_todo', {
-      todo: todoId,
+      project_item: todoId,
       ...fields,
     }),
   createTask: (fields: Record<string, unknown>) =>
@@ -114,6 +115,17 @@ export const mobileApi = {
     }),
   reportOptions: () => api.get(M + 'get_report_options'),
   formOptions: () => api.get(M + 'get_form_options'),
+  getComments: (refDoctype: string, refName: string) =>
+    api.get(M + 'get_comments', {
+      reference_doctype: refDoctype,
+      reference_name: refName,
+    }),
+  addComment: (refDoctype: string, refName: string, content: string) =>
+    api.post(M + 'add_comment', {
+      reference_doctype: refDoctype,
+      reference_name: refName,
+      content,
+    }),
   runReport: (report: string, filters: Record<string, unknown>) =>
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
 }

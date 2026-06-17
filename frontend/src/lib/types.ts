@@ -8,7 +8,7 @@ export interface Boot {
   is_leader: boolean
 }
 
-export interface Todo {
+export interface ProjectItem {
   name: string
   to_do: string
   status: string
@@ -24,8 +24,8 @@ export interface Todo {
   assigned_to: string
   assigned_to_name: string
   assigned_to_image: string | null
-  work_item: string
-  work_item_title: string
+  project_detail: string
+  project_detail_title: string
   project: string
   project_name: string
   brand: string | null
@@ -36,7 +36,7 @@ export interface Todo {
   is_mine: boolean
 }
 
-export interface TodoDetail extends Todo {
+export interface ProjectItemDetail extends ProjectItem {
   notes: string
   can_edit_notes: boolean
   can_edit: boolean
@@ -60,7 +60,7 @@ export interface TodoDetail extends Todo {
   is_missed: boolean
 }
 
-export interface TodoEdit {
+export interface ProjectItemEdit {
   to_do?: string
   deadline?: string | null
   estimated?: number
@@ -83,10 +83,10 @@ export interface Dashboard {
     review: number
     completed_today: number
   }
-  overdue: Todo[]
-  due_today: Todo[]
-  upcoming: Todo[]
-  review: Todo[]
+  overdue: ProjectItem[]
+  due_today: ProjectItem[]
+  upcoming: ProjectItem[]
+  review: ProjectItem[]
 }
 
 export interface ProjectCard {
@@ -105,14 +105,14 @@ export interface ProjectCard {
   is_leader: boolean
   is_admin: boolean
   is_member: boolean
-  todo_total: number
-  todo_done: number
+  item_total: number
+  item_done: number
   overdue: number
   review: number
   progress: number
 }
 
-export interface WorkItemSummary {
+export interface ProjectDetailSummary {
   name: string
   title: string
   total: number
@@ -139,11 +139,11 @@ export interface MemberTodo {
   deadline: string | null
   deadline_human: string | null
   is_overdue: boolean
-  work_item: string
-  work_item_title: string
+  project_detail: string
+  project_detail_title: string
 }
 
-export interface ProjectDetail {
+export interface ProjectFull {
   name: string
   project_name: string
   status: string
@@ -158,11 +158,11 @@ export interface ProjectDetail {
   project_admin: string | null
   project_group: string
   groupings: string[]
-  work_items: WorkItemSummary[]
+  project_details: ProjectDetailSummary[]
   team: TeamMember[]
 }
 
-export interface WorkItem {
+export interface ProjectDetail {
   name: string
   title: string
   project: string
@@ -170,7 +170,7 @@ export interface WorkItem {
   status: string
   current_condition: string | null
   expected_outcome: string | null
-  todos: Todo[]
+  project_items: ProjectItem[]
   can_create: boolean
   team: { user: string; name: string; image: string | null }[]
   grouping: string
@@ -209,10 +209,20 @@ export interface ProjectInput {
   team_members?: { user: string }[]
 }
 
-export interface WorkItemInput {
+export interface ProjectDetailInput {
   project: string
   title: string
   project_deadline: string
   grouping: string
   status?: string
+}
+
+export interface Comment {
+  name: string
+  content: string
+  by: string
+  by_name: string
+  by_image: string | null
+  at: string
+  at_human: string
 }
