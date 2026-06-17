@@ -268,3 +268,32 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 				get_member_workload(self.project.name, "tm_assignee@example.com")
 		finally:
 			frappe.set_user("Administrator")
+
+	def test_team_order_owner_then_leader(self):
+		from vernon_project.api.mobile import get_project
+		# Create a project where owner and leader are distinct users.
+		# Add Administrator to team_members so _visible_projects() includes it
+		# (get_permission_query_conditions filters by ownership/membership).
+		proj = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": "Owner Leader Order Project",
+			"customer": "Test Customer",
+			"project_group": "Test Project Group",
+			"project_owner": "tm_member@example.com",
+			"project_leader": "tm_assignee@example.com",
+			"status": "Ongoing",
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}],
+		})
+		proj.insert(ignore_permissions=True)
+		frappe.db.commit()
+		try:
+			r = get_project(proj.name)
+			team = r["team"]
+			self.assertTrue(team[0]["is_owner"])
+			self.assertTrue(team[1]["is_leader"])
+			self.assertNotEqual(team[0]["user"], team[1]["user"])
+		finally:
+			frappe.delete_doc("Project", proj.name, force=True, ignore_permissions=True)
+			frappe.db.commit()

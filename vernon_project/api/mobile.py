@@ -438,7 +438,7 @@ def get_project(project):
 	def _rank(m):
 		# Owner first, leader second, then heaviest load, then name.
 		role = 0 if m["is_owner"] else (1 if m["is_leader"] else 2)
-		return (role, -m["open_todos"], (m["name"] or "").lower())
+		return (role, -m["open_todos"], m["name"].lower())
 
 	team.sort(key=_rank)
 

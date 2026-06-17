@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, AlertCircle, CalendarDays, ChevronRight, Layers } from 'lucide-react'
 import { useMemberWorkload } from '@/hooks/useData'
@@ -15,6 +15,9 @@ interface Props {
 export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
   const navigate = useNavigate()
   const [showAll, setShowAll] = useState(false)
+  useEffect(() => {
+    if (open) setShowAll(false)
+  }, [member?.user, open])
   const { data, isLoading } = useMemberWorkload(project, open ? member?.user ?? null : null, showAll)
 
   if (!open || !member) return null
