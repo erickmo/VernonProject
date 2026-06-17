@@ -6,7 +6,13 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import App from './App'
 import { ToastProvider } from './components/Toast'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './index.css'
+
+// Bump whenever a persisted query payload changes shape. A changed buster makes
+// PersistQueryClientProvider discard the localStorage cache on load, so old-shaped
+// data (e.g. pre-rename `work_items`) is never rehydrated into newer code.
+const CACHE_BUSTER = 'rename-project-detail-2026-06'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,11 +45,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}
+      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24, buster: CACHE_BUSTER }}
     >
       <BrowserRouter basename="/m">
         <ToastProvider>
-          <App />
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
         </ToastProvider>
       </BrowserRouter>
     </PersistQueryClientProvider>
