@@ -20,7 +20,7 @@ import { ProjectCard } from '@/components/ProjectCard'
 import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { useBoot, useDashboard, useProjects } from '@/hooks/useData'
-import { applyTaskFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
+import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byDeadlineAsc } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
@@ -153,9 +153,9 @@ export default function Today() {
   const advCount = ['project', 'brand', 'owner', 'leader', 'estimate'].filter((k) => filters[k]).length
   const filtered = data
     ? {
-        overdue: applyTaskFilters(data.overdue, filters).slice().sort(byDeadlineAsc),
-        due_today: applyTaskFilters(data.due_today, filters).slice().sort(byDeadlineAsc),
-        upcoming: applyTaskFilters(data.upcoming, filters).slice().sort(byDeadlineAsc),
+        overdue: applyProjectItemFilters(data.overdue, filters).slice().sort(byDeadlineAsc),
+        due_today: applyProjectItemFilters(data.due_today, filters).slice().sort(byDeadlineAsc),
+        upcoming: applyProjectItemFilters(data.upcoming, filters).slice().sort(byDeadlineAsc),
       }
     : null
 

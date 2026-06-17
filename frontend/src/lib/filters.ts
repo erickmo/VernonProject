@@ -44,7 +44,7 @@ export function buildOptions<T>(
 }
 
 /** Apply the standard project/brand/owner/leader/estimate filters to project items. */
-export function applyTaskFilters(list: ProjectItem[], f: Record<string, string>): ProjectItem[] {
+export function applyProjectItemFilters(list: ProjectItem[], f: Record<string, string>): ProjectItem[] {
   return list.filter(
     (t) =>
       (!f.status || t.status_key === f.status) &&
