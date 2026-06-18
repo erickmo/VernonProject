@@ -242,7 +242,6 @@ class ProjectTodo(Document):
 		"""Credit assignee + leader. Idempotent on (todo, role)."""
 		assignee_earned, leader_earned, late_days, early_days = self._compute_earned()
 		self.db_set("assignee_earned", assignee_earned, update_modified=False)
-		self.db_set("leader_earned", leader_earned, update_modified=False)
 
 		self._upsert_ledger_row(
 			"Assignee", self.assigned_to, assignee_earned, late_days, early_days
@@ -250,6 +249,9 @@ class ProjectTodo(Document):
 		leader = None
 		if self.project:
 			leader = frappe.get_value("Project", self.project, "project_leader")
+		if not leader:
+			leader_earned = 0.0
+		self.db_set("leader_earned", leader_earned, update_modified=False)
 		self._upsert_ledger_row(
 			"Leader", leader, leader_earned, late_days, early_days
 		)
@@ -426,6 +428,8 @@ class ProjectTodo(Document):
 			"deadline": next_date,
 			"estimated": self.estimated,
 			"notes": self.notes,
+			"group": self.group,
+			"level": self.level,
 			"is_recurring": 1,
 			"recurring_frequency": self.recurring_frequency,
 			"recurring_until": self.recurring_until,
