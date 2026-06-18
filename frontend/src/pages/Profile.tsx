@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
 
@@ -87,6 +87,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-card">
             {canManageGroups(boot) && (
               <Row icon={Trophy} label="Manage Groups" onClick={() => navigate('/groups')} />
+            )}
+            {canManageBrands(boot) && (
+              <Row icon={Store} label="Manage Brands" onClick={() => navigate('/brands')} />
             )}
             <Row icon={RefreshCw} label="Refresh data" onClick={refresh} />
             <Row icon={BookOpen} label="Replay quick tour" onClick={onReplayOnboarding} />

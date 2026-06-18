@@ -258,3 +258,8 @@ export interface ScoringGroupPayload {
   leader_early_bonus: number
   levels: { level_name: string; point: number }[]
 }
+
+export interface Brand {
+  name: string
+  brand_name: string
+}
