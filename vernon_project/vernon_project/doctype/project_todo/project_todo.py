@@ -238,10 +238,22 @@ class ProjectTodo(Document):
 			doc = frappe.get_doc({"doctype": "Point Ledger", **values})
 			doc.insert(ignore_permissions=True)
 
+	def _set_earned(self, field, value):
+		"""Persist an earned-snapshot field without re-running document hooks.
+
+		This runs from on_change; self.db_set() would re-trigger on_change and
+		recurse infinitely, so write straight to the DB and keep the in-memory
+		value in sync.
+		"""
+		self.set(field, value)
+		frappe.db.set_value(
+			"Project Todo", self.name, field, value, update_modified=False
+		)
+
 	def sync_point_ledger(self):
 		"""Credit assignee + leader. Idempotent on (todo, role)."""
 		assignee_earned, leader_earned, late_days, early_days = self._compute_earned()
-		self.db_set("assignee_earned", assignee_earned, update_modified=False)
+		self._set_earned("assignee_earned", assignee_earned)
 
 		self._upsert_ledger_row(
 			"Assignee", self.assigned_to, assignee_earned, late_days, early_days
@@ -251,7 +263,7 @@ class ProjectTodo(Document):
 			leader = frappe.get_value("Project", self.project, "project_leader")
 		if not leader:
 			leader_earned = 0.0
-		self.db_set("leader_earned", leader_earned, update_modified=False)
+		self._set_earned("leader_earned", leader_earned)
 		self._upsert_ledger_row(
 			"Leader", leader, leader_earned, late_days, early_days
 		)
@@ -262,8 +274,8 @@ class ProjectTodo(Document):
 			"Point Ledger", filters={"todo": self.name}, pluck="name"
 		):
 			frappe.delete_doc("Point Ledger", name, ignore_permissions=True, force=True)
-		self.db_set("assignee_earned", 0, update_modified=False)
-		self.db_set("leader_earned", 0, update_modified=False)
+		self._set_earned("assignee_earned", 0)
+		self._set_earned("leader_earned", 0)
 
 	def after_insert(self):
 		self._recompute_parent()
