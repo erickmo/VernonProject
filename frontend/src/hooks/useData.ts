@@ -17,6 +17,8 @@ import type {
   ProjectFull,
   ProjectInput,
   ProjectItemDetail,
+  ScoringGroup,
+  ScoringGroupPayload,
 } from '@/lib/types'
 
 export const keys = {
@@ -28,6 +30,8 @@ export const keys = {
   projectItem: (n: string) => ['project-item', n] as const,
   memberWorkload: (p: string, u: string, c: boolean) =>
     ['member-workload', p, u, c] as const,
+  scoringGroups: ['scoring-groups'] as const,
+  scoringGroup: (n: string) => ['scoring-group', n] as const,
 }
 
 export const useBoot = () =>
@@ -182,6 +186,13 @@ export function permFlags(project: ProjectFull, boot: Boot | undefined) {
 
 export function canCreateProject(boot: Boot | undefined): boolean {
   return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('Project Owner'))
+}
+
+export function canManageGroups(boot: Boot | undefined): boolean {
+  return !!boot && (
+    boot.roles.includes('System Manager') ||
+    boot.roles.includes('Group Manager')
+  )
 }
 
 export function useFormOptions() {
@@ -348,5 +359,57 @@ export function useAddComment(refDoctype: string, refName: string) {
   return useMutation({
     mutationFn: (content: string) => mobileApi.addComment(refDoctype, refName, content),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', refDoctype, refName] }),
+  })
+}
+
+export function useScoringGroups() {
+  return useQuery({
+    queryKey: keys.scoringGroups,
+    queryFn: () =>
+      resource.list<ScoringGroup[]>('Group', {
+        fields: ['name', 'group_name', 'description', 'weight', 'leader_weight'],
+        limit: 0,
+      }),
+  })
+}
+
+export function useScoringGroup(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.scoringGroup(name),
+    queryFn: () => resource.get<ScoringGroup>('Group', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateScoringGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ScoringGroupPayload) =>
+      resource.create<{ name: string }>('Group', payload as unknown as Record<string, unknown>),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.scoringGroups })
+    },
+  })
+}
+
+export function useUpdateScoringGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, payload }: { name: string; payload: ScoringGroupPayload }) =>
+      resource.update<{ name: string }>('Group', name, payload as unknown as Record<string, unknown>),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: keys.scoringGroups })
+      qc.invalidateQueries({ queryKey: keys.scoringGroup(vars.name) })
+    },
+  })
+}
+
+export function useDeleteScoringGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Group', name),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.scoringGroups })
+    },
   })
 }

@@ -227,3 +227,34 @@ export interface Comment {
   at: string
   at_human: string
 }
+
+export interface GroupLevel {
+  name?: string
+  level_name: string
+  point: number
+}
+
+export interface ScoringGroup {
+  name: string
+  group_name: string
+  description?: string
+  weight: number
+  late_penalty: number
+  early_bonus: number
+  leader_weight: number
+  leader_late_penalty: number
+  leader_early_bonus: number
+  levels: GroupLevel[]
+}
+
+export interface ScoringGroupPayload {
+  group_name: string
+  description?: string
+  weight: number
+  late_penalty: number
+  early_bonus: number
+  leader_weight: number
+  leader_late_penalty: number
+  leader_early_bonus: number
+  levels: { level_name: string; point: number }[]
+}

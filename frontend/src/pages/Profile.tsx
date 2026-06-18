@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Spinner } from '@/components/ui'
-import { useBoot } from '@/hooks/useData'
+import { useNavigate } from 'react-router-dom'
+import { useBoot, canManageGroups } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
 
@@ -26,6 +27,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const { data: boot, isLoading } = useBoot()
   const qc = useQueryClient()
   const toast = useToast()
+  const navigate = useNavigate()
   const online = useOnline()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -83,6 +85,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           </div>
 
           <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-card">
+            {canManageGroups(boot) && (
+              <Row icon={Trophy} label="Manage Groups" onClick={() => navigate('/groups')} />
+            )}
             <Row icon={RefreshCw} label="Refresh data" onClick={refresh} />
             <Row icon={BookOpen} label="Replay quick tour" onClick={onReplayOnboarding} />
           </div>
