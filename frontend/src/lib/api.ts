@@ -130,6 +130,14 @@ export const mobileApi = {
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
 }
 
+export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>
+  api.post<{ message?: string }>('frappe.client.rename_doc', {
+    doctype,
+    old_name: oldName,
+    new_name: newName,
+    merge: merge ? 1 : 0,
+  })
+
 // --- Auth (in-app, no desk login page) -------------------------------------
 
 const CACHE_KEY = 'vernon-mobile-cache'

@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource } from '@/lib/api'
+import { mobileApi, resource, renameDoc } from '@/lib/api'
 import type {
   Boot,
   Brand,
@@ -404,6 +404,15 @@ export function useUpdateScoringGroup() {
       qc.invalidateQueries({ queryKey: keys.scoringGroups })
       qc.invalidateQueries({ queryKey: keys.scoringGroup(vars.name) })
     },
+  })
+}
+
+export function useMergeScoringGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ source, target }: { source: string; target: string }) =>
+      renameDoc('Group', source, target, true),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.scoringGroups }),
   })
 }
 
