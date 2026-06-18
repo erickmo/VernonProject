@@ -15,6 +15,9 @@ import ProjectDetailScreen from './pages/ProjectDetailScreen'
 import ProjectItemScreen from './pages/ProjectItemScreen'
 import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
+import GroupsScreen from './pages/GroupsScreen'
+import GroupFormScreen from './pages/GroupFormScreen'
+import { canManageGroups } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -70,6 +73,13 @@ export default function App() {
         {/* Legacy deep-link redirects (cached PWA links). Remove next release. */}
         <Route path="/work-item/:name" element={<LegacyRedirect to="project-detail" />} />
         <Route path="/todo/:name" element={<LegacyRedirect to="project-item" />} />
+        {canManageGroups(boot) && (
+          <>
+            <Route path="/groups" element={<GroupsScreen />} />
+            <Route path="/groups/new" element={<GroupFormScreen />} />
+            <Route path="/groups/:name" element={<GroupFormScreen />} />
+          </>
+        )}
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
