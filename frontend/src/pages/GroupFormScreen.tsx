@@ -177,11 +177,11 @@ export default function GroupFormScreen() {
             <div className="flex flex-col gap-2">
               {WEIGHTS.filter((w) => w.group === grp).map((w) => (
                 <div key={w.key} className="flex items-center gap-2">
-                  <label className="flex-1 text-sm text-slate-600">{w.label}</label>
+                  <label className="flex-1 text-base font-medium text-slate-700">{w.label}</label>
                   <input
                     type="number"
                     inputMode="decimal"
-                    className={field + ' w-24'}
+                    className={field + ' w-16 text-center'}
                     value={String(form[w.key] as number)}
                     onChange={(e) => setNum(w.key, e.target.value)}
                   />
