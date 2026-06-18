@@ -21,6 +21,7 @@ frappe.ui.form.on("Project Todo", {
 				filters: { project_detail: frm.doc.project_detail },
 			};
 		});
+		set_level_options(frm);
 	},
 
 	project(frm) {
@@ -48,6 +49,24 @@ frappe.ui.form.on("Project Todo", {
 			}
 		});
 	},
+	async group(frm) {
+		await set_level_options(frm);
+		// Clear level/point if the previous level no longer belongs to this group.
+		if (frm.doc.level && !(frm._group_levels || {}).hasOwnProperty(frm.doc.level)) {
+			frm.set_value("level", null);
+			frm.set_value("point", 0);
+		}
+	},
+
+	level(frm) {
+		const map = frm._group_levels || {};
+		if (frm.doc.level && map.hasOwnProperty(frm.doc.level)) {
+			frm.set_value("point", map[frm.doc.level]);
+		} else {
+			frm.set_value("point", 0);
+		}
+	},
+
 	action(frm) {
 		if (frm.doc.__unsaved) {
 			frappe.throw({ message: __("Please save the document before performing this action."), title: __("Error") });
@@ -84,3 +103,18 @@ frappe.ui.form.on("Project Todo", {
 		);
 	},
 });
+
+async function set_level_options(frm) {
+	frm._group_levels = {};
+	if (!frm.doc.group) {
+		frm.set_df_property("level", "options", [""]);
+		return;
+	}
+	const grp = await frappe.db.get_doc("Group", frm.doc.group);
+	const names = [""];
+	(grp.levels || []).forEach((row) => {
+		frm._group_levels[row.level_name] = row.point;
+		names.push(row.level_name);
+	});
+	frm.set_df_property("level", "options", names);
+}

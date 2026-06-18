@@ -15,6 +15,13 @@
       "deadline",
       "estimated",
       "notes",
+      "points_section",
+      "group",
+      "level",
+      "point",
+      "column_break_points",
+      "assignee_earned",
+      "leader_earned",
       "time_estimation_section",
       "estimated_planned_to_done",
       "estimated_done_to_checked",
@@ -119,6 +126,49 @@
          "label": "Estimated (minutes)",
          "non_negative": 1,
          "search_index": 1
+      },
+      {
+         "fieldname": "points_section",
+         "fieldtype": "Section Break",
+         "label": "Points"
+      },
+      {
+         "fieldname": "group",
+         "fieldtype": "Link",
+         "label": "Group",
+         "options": "Group",
+         "reqd": 1,
+         "in_standard_filter": 1,
+         "search_index": 1
+      },
+      {
+         "fieldname": "level",
+         "fieldtype": "Select",
+         "label": "Level",
+         "description": "Levels come from the selected Group."
+      },
+      {
+         "fieldname": "point",
+         "fieldtype": "Float",
+         "label": "Point",
+         "read_only": 1,
+         "description": "Base point from the chosen level."
+      },
+      {
+         "fieldname": "column_break_points",
+         "fieldtype": "Column Break"
+      },
+      {
+         "fieldname": "assignee_earned",
+         "fieldtype": "Float",
+         "label": "Assignee Earned",
+         "read_only": 1
+      },
+      {
+         "fieldname": "leader_earned",
+         "fieldtype": "Float",
+         "label": "Leader Earned",
+         "read_only": 1
       },
       {
          "fieldname": "time_estimation_section",
