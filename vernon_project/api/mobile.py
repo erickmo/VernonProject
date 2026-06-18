@@ -128,7 +128,7 @@ def _fetch_todos(project_names):
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
 			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
 			p.project_name, p.project_owner, p.project_leader, p.project_admin,
-			p.customer
+			p.brand
 		FROM `tabProject Todo` t
 		JOIN `tabProject Detail` pd
 			ON t.project_detail = pd.name
@@ -175,7 +175,7 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		"project_detail_title": row["project_detail_title"],
 		"project": row["project"],
 		"project_name": row["project_name"],
-		"brand": row.get("customer"),
+		"brand": row.get("brand"),
 		"project_owner": row.get("project_owner"),
 		"project_owner_name": (name_map.get(row.get("project_owner")) or {}).get("full_name")
 		or row.get("project_owner"),
@@ -330,7 +330,7 @@ def get_projects():
 	plist = frappe.get_list(
 		"Project",
 		fields=[
-			"name", "project_name", "status", "customer", "start_date",
+			"name", "project_name", "status", "brand", "start_date",
 			"deadline", "project_owner", "project_leader", "project_admin", "goal",
 		],
 		order_by="modified desc",
@@ -484,7 +484,7 @@ def get_project(project):
 		"name": doc.name,
 		"project_name": doc.project_name,
 		"status": doc.status,
-		"customer": doc.customer,
+		"brand": doc.brand,
 		"goal": doc.goal,
 		"start_date": str(doc.start_date) if doc.start_date else None,
 		"deadline": str(doc.deadline) if doc.deadline else None,
@@ -939,13 +939,13 @@ def run_report(report, filters=None):
 
 @frappe.whitelist()
 def get_form_options():
-	"""Option lists for the project create/edit form (customers, users, groups).
+	"""Option lists for the project create/edit form (brands, users, groups).
 
 	Uses ``frappe.get_all`` (no per-doctype read gate) so non-System-Manager
 	project leads get the User list too — ``/api/resource/User`` is restricted
 	to System Manager, which would 403 a raw resource list of users.
 	"""
-	customers = frappe.get_all("Customer", fields=["name", "customer_name"], limit_page_length=0)
+	brands = frappe.get_all("Brand", fields=["name", "brand_name"], limit_page_length=0)
 	users = frappe.get_all(
 		"User",
 		filters={"enabled": 1, "name": ["not in", ("Guest",)]},
@@ -954,8 +954,8 @@ def get_form_options():
 	)
 	groups = frappe.get_all("Project Group", fields=["name"], limit_page_length=0)
 	return {
-		"customers": sorted(
-			[{"value": c["name"], "label": c.get("customer_name") or c["name"]} for c in customers],
+		"brands": sorted(
+			[{"value": b["name"], "label": b.get("brand_name") or b["name"]} for b in brands],
 			key=lambda x: x["label"],
 		),
 		"users": sorted(
