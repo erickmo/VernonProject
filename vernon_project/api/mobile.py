@@ -124,6 +124,7 @@ def _fetch_todos(project_names):
 		SELECT
 			t.name, t.to_do, t.status, t.deadline, t.estimated, t.assigned_to,
 			t.ongoing, t.notes, t.is_recurring,
+			t.`group` AS `group`, t.level, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
 			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
@@ -183,6 +184,11 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		"project_leader_name": (name_map.get(row.get("project_leader")) or {}).get("full_name")
 		or row.get("project_leader"),
 		"is_mine": row["assigned_to"] == user,
+		"group": row.get("group"),
+		"level": row.get("level"),
+		"point": row.get("point") or 0,
+		"assignee_earned": row.get("assignee_earned") or 0,
+		"leader_earned": row.get("leader_earned") or 0,
 	}
 	if include_notes:
 		out["notes"] = row.get("notes") or ""
@@ -641,6 +647,14 @@ def get_project_detail(project_detail):
 		"Glossary", filters={"project": detail["project"]}, pluck="glossary", limit_page_length=0
 	)
 
+	# Resolve a default scoring Group from the detail's grouping (Glossary -> label -> Group).
+	default_group = None
+	if detail.get("grouping"):
+		label = frappe.get_value("Glossary", detail["grouping"], "glossary")
+		if label and frappe.db.exists("Group", label):
+			default_group = label
+	detail["default_group"] = default_group
+
 	team_rows = frappe.get_all(
 		"Project Team", filters={"parent": detail["project"]}, fields=["user"],
 		limit_page_length=0,
@@ -765,6 +779,8 @@ def update_todo(
 	deadline=None,
 	estimated=None,
 	assigned_to=None,
+	group=None,
+	level=None,
 	is_recurring=None,
 	recurring_frequency=None,
 	recurring_until=None,
@@ -803,6 +819,10 @@ def update_todo(
 			row.estimated = int(estimated)
 		if assigned_to is not None and assigned_to:
 			row.assigned_to = assigned_to
+		if group is not None and group:
+			row.group = group
+		if level is not None:
+			row.level = level or None
 
 		# Recurring settings
 		if is_recurring is not None:
