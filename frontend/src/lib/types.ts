@@ -177,6 +177,7 @@ export interface ProjectDetail {
   grouping: string
   can_edit: boolean
   groupings: string[]
+  default_group?: string | null
 }
 
 export interface Group {

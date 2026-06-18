@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Plus } from 'lucide-react'
-import { useCreateProjectItem } from '@/hooks/useData'
+import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -10,9 +10,10 @@ interface CreateProjectItemSheetProps {
   onClose: () => void
   projectDetail: string
   team: { user: string; name: string }[]
+  defaultGroup?: string | null
 }
 
-export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: CreateProjectItemSheetProps) {
+export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup }: CreateProjectItemSheetProps) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
 
@@ -24,17 +25,27 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
   const [isRecurring, setIsRecurring] = useState(false)
   const [frequency, setFrequency] = useState('Daily')
   const [until, setUntil] = useState('')
+  const [group, setGroup] = useState(defaultGroup ?? '')
+  const [level, setLevel] = useState('')
+
+  const { data: groups } = useScoringGroups()
+  const { data: groupDoc } = useScoringGroup(group, !!group)
+
+  useEffect(() => {
+    setLevel('')
+  }, [group])
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setDeadline(''); setEstimated('')
     setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
+    setGroup(defaultGroup ?? ''); setLevel('')
   }
 
   const close = () => { reset(); onClose() }
 
   const submit = () => {
-    if (!toDo.trim() || !assignedTo || !deadline) {
-      toast('error', 'Name, assignee, and deadline are required')
+    if (!toDo.trim() || !assignedTo || !deadline || !group || !level) {
+      toast('error', 'Name, assignee, deadline, group and level are required')
       return
     }
     const fields: Record<string, unknown> = {
@@ -42,6 +53,8 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
       assigned_to: assignedTo,
       deadline,
       notes,
+      group,
+      level,
     }
     if (estimated) fields.estimated = Number(estimated)
     if (isRecurring) {
@@ -86,6 +99,27 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team }: C
           <label className="text-sm font-medium text-slate-600">
             Deadline<span className="text-red-500"> *</span>
             <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600">
+            Group<span className="text-red-500"> *</span>
+            <SearchableSelect
+              value={group}
+              onChange={setGroup}
+              options={(groups ?? []).map((g) => ({ value: g.name, label: g.group_name }))}
+              placeholder="Select a group…"
+            />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600">
+            Level<span className="text-red-500"> *</span>
+            <SearchableSelect
+              value={level}
+              onChange={setLevel}
+              options={(groupDoc?.levels ?? []).map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
+              placeholder={group ? 'Select a level…' : 'Pick a group first…'}
+              disabled={!group}
+            />
           </label>
 
           <label className="text-sm font-medium text-slate-600">

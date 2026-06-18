@@ -146,6 +146,7 @@ export default function ProjectDetailScreen() {
         onClose={() => setSheetOpen(false)}
         projectDetail={data.name}
         team={data.team}
+        defaultGroup={data.default_group}
       />
 
       <ProjectDetailEditSheet open={editOpen} onClose={() => setEditOpen(false)} projectDetail={data} />
