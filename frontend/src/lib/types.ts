@@ -59,6 +59,11 @@ export interface ProjectItemDetail extends ProjectItem {
     is_current: boolean
   }[]
   is_missed: boolean
+  group?: string | null
+  level?: string | null
+  point?: number
+  assignee_earned?: number
+  leader_earned?: number
 }
 
 export interface ProjectItemEdit {
