@@ -1,19 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:customer_name",
+ "autoname": "field:brand_name",
  "creation": "2026-01-15 12:07:15.469203",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "customer_name"
+  "brand_name"
  ],
  "fields": [
   {
-   "fieldname": "customer_name",
+   "fieldname": "brand_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Customer Name",
+   "label": "Brand Name",
    "reqd": 1,
    "unique": 1
   }
@@ -24,13 +24,13 @@
   {
    "group": "Projects",
    "link_doctype": "Project",
-   "link_fieldname": "customer"
+   "link_fieldname": "brand"
   }
  ],
- "modified": "2026-01-15 17:43:41.690949",
+ "modified": "2026-06-18 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Vernon Project",
- "name": "Customer",
+ "name": "Brand",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
@@ -83,5 +83,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "brand_name",
  "track_changes": 1
 }
