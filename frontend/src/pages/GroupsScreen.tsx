@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trophy, ChevronRight, Layers } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
@@ -6,8 +7,16 @@ import { useScoringGroups, useBoot, canManageGroups } from '@/hooks/useData'
 
 export default function GroupsScreen() {
   const navigate = useNavigate()
-  const { data: boot } = useBoot()
+  const { data: boot, isLoading: bootLoading } = useBoot()
   const { data: groups, isLoading } = useScoringGroups()
+
+  if (bootLoading) {
+    return (
+      <DetailScreen title="Groups" right={null}>
+        <Spinner className="mx-auto h-5 w-5 text-slate-400" />
+      </DetailScreen>
+    )
+  }
 
   if (!canManageGroups(boot)) return <NoAccessRedirect />
 
@@ -57,6 +66,8 @@ export default function GroupsScreen() {
 
 function NoAccessRedirect() {
   const navigate = useNavigate()
-  navigate('/', { replace: true })
+  useEffect(() => {
+    navigate('/', { replace: true })
+  }, [navigate])
   return null
 }
