@@ -27,7 +27,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
   const saving = create.isPending || update.isPending
 
   const [f, setF] = useState<ProjectInput>({
-    project_name: '', customer: '', project_owner: '', project_leader: '',
+    project_name: '', brand: '', project_owner: '', project_leader: '',
     project_admin: '', project_group: '', start_date: '', deadline: '',
     goal: '', status: 'Ongoing', team_members: [],
   })
@@ -36,7 +36,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
     if (project) {
       setF({
         project_name: project.project_name,
-        customer: project.customer,
+        brand: project.brand,
         project_owner: project.project_owner,
         project_leader: project.project_leader,
         project_admin: project.project_admin ?? '',
@@ -59,9 +59,9 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
     'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400'
 
   const submit = () => {
-    if (!f.project_name.trim() || !f.customer || !f.project_owner || !f.project_leader ||
+    if (!f.project_name.trim() || !f.brand || !f.project_owner || !f.project_leader ||
         !f.project_group || !f.start_date || !f.deadline) {
-      toast('error', 'Name, customer, owner, leader, group, start date and deadline are required')
+      toast('error', 'Name, brand, owner, leader, group, start date and deadline are required')
       return
     }
     const onDone = (r: { name: string }) => {
@@ -94,8 +94,8 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
           </label>
 
           <label className="text-sm font-medium text-slate-600">
-            Customer<span className="text-red-500"> *</span>
-            <SearchableSelect value={f.customer} onChange={(v) => set('customer', v)} options={opts?.customers ?? []} placeholder="Select…" />
+            Brand<span className="text-red-500"> *</span>
+            <SearchableSelect value={f.brand} onChange={(v) => set('brand', v)} options={opts?.brands ?? []} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">

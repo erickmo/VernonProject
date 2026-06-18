@@ -10,7 +10,7 @@
   "naming_series",
   "project_name",
   "project_group",
-  "customer",
+  "brand",
   "column_break_ywxo",
   "start_date",
   "deadline",
@@ -57,10 +57,10 @@
    "label": "Goal"
   },
   {
-   "fieldname": "customer",
+   "fieldname": "brand",
    "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer",
+   "label": "Brand",
+   "options": "Brand",
    "reqd": 1,
    "search_index": 1
   },

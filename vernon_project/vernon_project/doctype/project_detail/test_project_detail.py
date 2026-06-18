@@ -14,12 +14,12 @@ def _ensure(doctype, name, doc):
 
 class TestProjectDetailOnTrash(unittest.TestCase):
 	def setUp(self):
-		_ensure("Customer", "Test Customer", {"doctype": "Customer",
-			"customer_name": "Test Customer", "customer_type": "Company"})
+		_ensure("Brand", "Test Customer", {"doctype": "Brand",
+			"brand_name": "Test Customer"})
 		_ensure("Project Group", "Test Project Group", {"doctype": "Project Group",
 			"project_name": "Test Project Group"})
 		self.project = frappe.get_doc({"doctype": "Project", "project_name": "PD Trash Project",
-			"customer": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "Administrator"}]})

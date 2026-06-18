@@ -20,8 +20,9 @@ import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatEstimate, stripHtml } from '@/lib/format'
-import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo } from '@/hooks/useData'
+import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import type { ProjectItemDetail } from '@/lib/types'
 
 function Stepper({ current }: { current: string }) {
@@ -77,6 +78,17 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [recurring, setRecurring] = useState(data.recurring.is_recurring)
   const [freq, setFreq] = useState(data.recurring.frequency || 'Weekly')
   const [until, setUntil] = useState(data.recurring.until ?? '')
+  const [group, setGroup] = useState(data.group ?? '')
+  const [level, setLevel] = useState(data.level ?? '')
+
+  const { data: groups } = useScoringGroups()
+  const { data: groupDoc } = useScoringGroup(group, !!group)
+
+  useEffect(() => {
+    if (group !== (data.group ?? '')) {
+      setLevel('')
+    }
+  }, [group]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
@@ -87,6 +99,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
   const save = () => {
     if (update.isPending) return
+    if (!group || !level) {
+      toast('error', 'Group and level are required')
+      return
+    }
     const fields: Record<string, unknown> = { to_do: toDo }
     if (!locked) {
       fields.assigned_to = assignee
@@ -103,6 +119,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       fields.recurring_frequency = freq
       fields.recurring_until = until || ''
     }
+    fields.group = group
+    fields.level = level
     update.mutate(fields, {
       onSuccess: (res) => {
         toast('success', res.message)
@@ -223,6 +241,27 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             </div>
           </div>
         )}
+      </div>
+
+      <label className="mb-1 block text-xs font-medium text-slate-500">Group <span className="text-red-500">*</span></label>
+      <div className="mb-3">
+        <SearchableSelect
+          value={group}
+          onChange={setGroup}
+          options={(groups ?? []).map((g) => ({ value: g.name, label: g.group_name }))}
+          placeholder="Select a group…"
+        />
+      </div>
+
+      <label className="mb-1 block text-xs font-medium text-slate-500">Level <span className="text-red-500">*</span></label>
+      <div className="mb-3">
+        <SearchableSelect
+          value={level}
+          onChange={setLevel}
+          options={(groupDoc?.levels ?? []).map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
+          placeholder={group ? 'Select a level…' : 'Pick a group first…'}
+          disabled={!group}
+        />
       </div>
 
       {locked && (
@@ -414,6 +453,13 @@ export default function ProjectItemScreen() {
               </span>
             )}
           </div>
+          {data.group && (
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="font-medium">Group:</span> {data.group}
+              {data.level ? ` · ${data.level}` : ''}
+              {data.point ? ` (${data.point} pts)` : ''}
+            </p>
+          )}
         </div>
       )}
 

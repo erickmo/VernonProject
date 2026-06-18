@@ -33,14 +33,12 @@ class TestProjectTodo(unittest.TestCase):
 			})
 			test_user2.insert(ignore_permissions=True)
 
-		# Create test customer if not exists
-		if not frappe.db.exists("Customer", "Test Customer"):
-			customer = frappe.get_doc({
-				"doctype": "Customer",
-				"customer_name": "Test Customer",
-				"customer_type": "Company"
-			})
-			customer.insert(ignore_permissions=True)
+		# Create test brand if not exists
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({
+				"doctype": "Brand",
+				"brand_name": "Test Customer",
+			}).insert(ignore_permissions=True)
 
 		# Create test project group if not exists
 		if not frappe.db.exists("Project Group", "Test Project Group"):
@@ -53,7 +51,7 @@ class TestProjectTodo(unittest.TestCase):
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Test Project for Todo Validation",
-			"customer": "Test Customer",
+			"brand": "Test Customer",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
 			"project_group": "Test Project Group",
@@ -333,7 +331,7 @@ class TestProjectTodo(unittest.TestCase):
 		proj = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Lead Create Test",
-			"customer": "Test Customer",
+			"brand": "Test Customer",
 			"project_group": "Test Project Group",
 			"project_owner": "test_user@example.com",
 			"project_leader": "test_user@example.com",
@@ -413,14 +411,12 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			})
 			test_user.insert(ignore_permissions=True)
 
-		# Create test customer if not exists
-		if not frappe.db.exists("Customer", "Test Customer Phase"):
-			customer = frappe.get_doc({
-				"doctype": "Customer",
-				"customer_name": "Test Customer Phase",
-				"customer_type": "Company"
-			})
-			customer.insert(ignore_permissions=True)
+		# Create test brand if not exists
+		if not frappe.db.exists("Brand", "Test Customer Phase"):
+			frappe.get_doc({
+				"doctype": "Brand",
+				"brand_name": "Test Customer Phase",
+			}).insert(ignore_permissions=True)
 
 		# Create test project group if not exists
 		if not frappe.db.exists("Project Group", "Test Project Group"):
@@ -433,7 +429,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Test Project for Phase Tracking",
-			"customer": "Test Customer Phase",
+			"brand": "Test Customer Phase",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
 			"project_group": "Test Project Group",

@@ -13,8 +13,8 @@ def _ensure(doctype, name, doc):
 
 class TestProjectGuards(unittest.TestCase):
 	def setUp(self):
-		_ensure("Customer", "Test Customer", {
-			"doctype": "Customer", "customer_name": "Test Customer", "customer_type": "Company"})
+		_ensure("Brand", "Test Customer", {
+			"doctype": "Brand", "brand_name": "Test Customer"})
 		_ensure("Project Group", "Test Project Group", {
 			"doctype": "Project Group", "project_name": "Test Project Group"})
 		for u in ("owner_u@example.com", "leader_u@example.com", "other_u@example.com"):
@@ -24,7 +24,7 @@ class TestProjectGuards(unittest.TestCase):
 
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Guard Test Project",
-			"customer": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "owner_u@example.com", "project_leader": "leader_u@example.com",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})

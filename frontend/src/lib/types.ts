@@ -59,6 +59,11 @@ export interface ProjectItemDetail extends ProjectItem {
     is_current: boolean
   }[]
   is_missed: boolean
+  group?: string | null
+  level?: string | null
+  point?: number
+  assignee_earned?: number
+  leader_earned?: number
 }
 
 export interface ProjectItemEdit {
@@ -94,7 +99,7 @@ export interface ProjectCard {
   name: string
   project_name: string
   status: string
-  customer: string
+  brand: string
   start_date: string | null
   deadline: string | null
   goal: string | null
@@ -148,7 +153,7 @@ export interface ProjectFull {
   name: string
   project_name: string
   status: string
-  customer: string
+  brand: string
   goal: string | null
   start_date: string | null
   deadline: string | null
@@ -177,6 +182,7 @@ export interface ProjectDetail {
   grouping: string
   can_edit: boolean
   groupings: string[]
+  default_group?: string | null
 }
 
 export interface Group {
@@ -191,14 +197,14 @@ export interface Opt2 {
 }
 
 export interface FormOptions {
-  customers: Opt2[]
+  brands: Opt2[]
   users: Opt2[]
   project_groups: Opt2[]
 }
 
 export interface ProjectInput {
   project_name: string
-  customer: string
+  brand: string
   project_owner: string
   project_leader: string
   project_admin?: string | null
@@ -257,4 +263,9 @@ export interface ScoringGroupPayload {
   leader_late_penalty: number
   leader_early_bonus: number
   levels: { level_name: string; point: number }[]
+}
+
+export interface Brand {
+  name: string
+  brand_name: string
 }

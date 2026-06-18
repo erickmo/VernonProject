@@ -23,7 +23,7 @@ export default function Projects() {
 
   const dimensions = useMemo(
     () => [
-      { key: 'brand', label: 'Brand', options: buildOptions(projects, (p) => p.customer, (p) => p.customer) },
+      { key: 'brand', label: 'Brand', options: buildOptions(projects, (p) => p.brand, (p) => p.brand) },
       {
         key: 'owner',
         label: 'Project Owner',
@@ -42,10 +42,10 @@ export default function Projects() {
   const list = projects.filter(
     (p) =>
       (status === 'all' ? true : p.status === status) &&
-      (!filters.brand || p.customer === filters.brand) &&
+      (!filters.brand || p.brand === filters.brand) &&
       (!filters.owner || p.project_owner === filters.owner) &&
       (!filters.leader || p.project_leader === filters.leader) &&
-      (!q || p.project_name.toLowerCase().includes(q) || (p.customer || '').toLowerCase().includes(q)),
+      (!q || p.project_name.toLowerCase().includes(q) || (p.brand || '').toLowerCase().includes(q)),
   ).sort((a, b) => a.project_name.localeCompare(b.project_name))
 
   const advCount = ['brand', 'owner', 'leader'].filter((k) => filters[k]).length

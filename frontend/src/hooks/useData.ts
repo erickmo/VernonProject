@@ -3,9 +3,10 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource } from '@/lib/api'
+import { mobileApi, resource, renameDoc } from '@/lib/api'
 import type {
   Boot,
+  Brand,
   Comment,
   Dashboard,
   FormOptions,
@@ -32,6 +33,8 @@ export const keys = {
     ['member-workload', p, u, c] as const,
   scoringGroups: ['scoring-groups'] as const,
   scoringGroup: (n: string) => ['scoring-group', n] as const,
+  brands: ['brands'] as const,
+  brand: (n: string) => ['brand', n] as const,
 }
 
 export const useBoot = () =>
@@ -404,6 +407,15 @@ export function useUpdateScoringGroup() {
   })
 }
 
+export function useMergeScoringGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ source, target }: { source: string; target: string }) =>
+      renameDoc('Group', source, target, true),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.scoringGroups }),
+  })
+}
+
 export function useDeleteScoringGroup() {
   const qc = useQueryClient()
   return useMutation({
@@ -411,5 +423,57 @@ export function useDeleteScoringGroup() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.scoringGroups })
     },
+  })
+}
+
+export function canManageBrands(boot: Boot | undefined): boolean {
+  return !!boot && (
+    boot.roles.includes('System Manager') ||
+    boot.roles.includes('Project Owner') ||
+    boot.roles.includes('Group Manager')
+  )
+}
+
+export function useBrands() {
+  return useQuery({
+    queryKey: keys.brands,
+    queryFn: () => resource.list<Brand[]>('Brand', { fields: ['name', 'brand_name'], limit: 0 }),
+  })
+}
+
+export function useBrand(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.brand(name),
+    queryFn: () => resource.get<Brand>('Brand', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateBrand() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { brand_name: string }) =>
+      resource.create<{ name: string }>('Brand', payload as unknown as Record<string, unknown>),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.brands }),
+  })
+}
+
+export function useUpdateBrand() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, payload }: { name: string; payload: { brand_name: string } }) =>
+      resource.update<{ name: string }>('Brand', name, payload as unknown as Record<string, unknown>),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: keys.brands })
+      qc.invalidateQueries({ queryKey: keys.brand(vars.name) })
+    },
+  })
+}
+
+export function useDeleteBrand() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Brand', name),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.brands }),
   })
 }

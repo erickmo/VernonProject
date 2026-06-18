@@ -9,11 +9,10 @@ from vernon_project.api.mobile import get_project_detail
 
 class TestMobileGetWorkItem(unittest.TestCase):
 	def setUp(self):
-		if not frappe.db.exists("Customer", "Test Customer"):
+		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({
-				"doctype": "Customer",
-				"customer_name": "Test Customer",
-				"customer_type": "Company",
+				"doctype": "Brand",
+				"brand_name": "Test Customer",
 			}).insert(ignore_permissions=True)
 
 		if not frappe.db.exists("Project Group", "Test Project Group"):
@@ -25,7 +24,7 @@ class TestMobileGetWorkItem(unittest.TestCase):
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Mobile WorkItem Test",
-			"customer": "Test Customer",
+			"brand": "Test Customer",
 			"project_group": "Test Project Group",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
@@ -75,15 +74,14 @@ class TestMobileGetWorkItem(unittest.TestCase):
 
 class TestMobileGetProjectExtras(unittest.TestCase):
 	def setUp(self):
-		if not frappe.db.exists("Customer", "Test Customer"):
-			frappe.get_doc({"doctype": "Customer", "customer_name": "Test Customer",
-				"customer_type": "Company"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Project Group", "Test Project Group"):
 			frappe.get_doc({"doctype": "Project Group",
 				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Extras Test Project",
-			"customer": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})
@@ -112,9 +110,8 @@ class TestMobileGetProjectExtras(unittest.TestCase):
 
 class TestMobileFormOptions(unittest.TestCase):
 	def setUp(self):
-		if not frappe.db.exists("Customer", "Test Customer"):
-			frappe.get_doc({"doctype": "Customer", "customer_name": "Test Customer",
-				"customer_type": "Company"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Project Group", "Test Project Group"):
 			frappe.get_doc({"doctype": "Project Group",
 				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
@@ -145,15 +142,14 @@ class TestMobileFormOptions(unittest.TestCase):
 
 class TestMobileGetWorkItemExtras(unittest.TestCase):
 	def setUp(self):
-		if not frappe.db.exists("Customer", "Test Customer"):
-			frappe.get_doc({"doctype": "Customer", "customer_name": "Test Customer",
-				"customer_type": "Company"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Project Group", "Test Project Group"):
 			frappe.get_doc({"doctype": "Project Group",
 				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "WI Extras Project",
-			"customer": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})
@@ -187,9 +183,8 @@ class TestMobileGetWorkItemExtras(unittest.TestCase):
 
 class TestMobileGetProjectTeam(unittest.TestCase):
 	def setUp(self):
-		if not frappe.db.exists("Customer", "Test Customer"):
-			frappe.get_doc({"doctype": "Customer", "customer_name": "Test Customer",
-				"customer_type": "Company"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Project Group", "Test Project Group"):
 			frappe.get_doc({"doctype": "Project Group",
 				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
@@ -199,7 +194,7 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 					"first_name": email.split("@")[0], "send_welcome_email": 0}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Team Roster Project",
-			"customer": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "tm_member@example.com"}],
@@ -296,7 +291,7 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		proj = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Owner Leader Order Project",
-			"customer": "Test Customer",
+			"brand": "Test Customer",
 			"project_group": "Test Project Group",
 			"project_owner": "tm_member@example.com",
 			"project_leader": "tm_assignee@example.com",
