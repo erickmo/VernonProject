@@ -12,6 +12,7 @@ class ProjectTodo(Document):
 
 	def validate(self):
 		self.sync_project_from_detail()
+		self.snapshot_point_from_level()
 		self.validate_create_permission()
 		self.validate_assigned_to_team_member()
 		self.validate_done_todo_fields()
@@ -30,6 +31,29 @@ class ProjectTodo(Document):
 		"""
 		if self.project_detail:
 			self.project = frappe.get_value("Project Detail", self.project_detail, "project")
+
+	def snapshot_point_from_level(self):
+		"""Set `point` from the chosen level row of the selected Group.
+
+		Validates that `level` belongs to `group`. Empty level => point 0.
+		"""
+		if not self.group:
+			self.point = 0
+			self.level = None
+			return
+		if not self.level:
+			self.point = 0
+			return
+		levels = frappe.get_all(
+			"Group Level",
+			filters={"parent": self.group, "parenttype": "Group", "level_name": self.level},
+			pluck="point",
+		)
+		if not levels:
+			frappe.throw(
+				_("Level '{0}' does not belong to Group '{1}'.").format(self.level, self.group)
+			)
+		self.point = levels[0]
 
 	def validate_assigned_to_team_member(self):
 		if not self.assigned_to or not self.project_detail:
@@ -154,6 +178,91 @@ class ProjectTodo(Document):
 				title="Cannot Edit Completed Todo"
 			)
 
+	def _compute_earned(self):
+		"""Return (assignee_earned, leader_earned, late_days, early_days).
+
+		Uses phase_completed_at (fallback completed_at, then now) vs deadline.
+		Weights are percentages. No flooring; negatives allowed.
+		"""
+		grp = frappe.get_doc("Group", self.group) if self.group else None
+		point = float(self.point or 0)
+		if not grp:
+			return 0.0, 0.0, 0, 0
+
+		completed = self.phase_completed_at or self.completed_at or now_datetime()
+		completed_date = getdate(completed)
+		deadline = getdate(self.deadline) if self.deadline else completed_date
+		delta = (completed_date - deadline).days
+		late_days = max(0, delta)
+		early_days = max(0, -delta)
+
+		w = float(grp.weight or 0) / 100.0
+		lp = float(grp.late_penalty or 0) / 100.0
+		eb = float(grp.early_bonus or 0) / 100.0
+		assignee = point * w - late_days * lp * point + early_days * eb * point
+
+		lw = float(grp.leader_weight or 0) / 100.0
+		llp = float(grp.leader_late_penalty or 0) / 100.0
+		leb = float(grp.leader_early_bonus or 0) / 100.0
+		leader = (
+			assignee * lw
+			- late_days * llp * assignee
+			+ early_days * leb * assignee
+		)
+		return round(assignee, 4), round(leader, 4), late_days, early_days
+
+	def _upsert_ledger_row(self, role, user, points, late_days, early_days):
+		if not user:
+			return
+		existing = frappe.db.exists(
+			"Point Ledger", {"todo": self.name, "role": role}
+		)
+		values = {
+			"user": user,
+			"role": role,
+			"todo": self.name,
+			"group": self.group,
+			"project": self.project,
+			"level_name": self.level,
+			"point": self.point,
+			"late_days": late_days,
+			"early_days": early_days,
+			"points_earned": points,
+			"credited_on": now_datetime(),
+		}
+		if existing:
+			doc = frappe.get_doc("Point Ledger", existing)
+			doc.update(values)
+			doc.save(ignore_permissions=True)
+		else:
+			doc = frappe.get_doc({"doctype": "Point Ledger", **values})
+			doc.insert(ignore_permissions=True)
+
+	def sync_point_ledger(self):
+		"""Credit assignee + leader. Idempotent on (todo, role)."""
+		assignee_earned, leader_earned, late_days, early_days = self._compute_earned()
+		self.db_set("assignee_earned", assignee_earned, update_modified=False)
+		self.db_set("leader_earned", leader_earned, update_modified=False)
+
+		self._upsert_ledger_row(
+			"Assignee", self.assigned_to, assignee_earned, late_days, early_days
+		)
+		leader = None
+		if self.project:
+			leader = frappe.get_value("Project", self.project, "project_leader")
+		self._upsert_ledger_row(
+			"Leader", leader, leader_earned, late_days, early_days
+		)
+
+	def _remove_ledger(self):
+		"""Delete this todo's ledger rows and clear earned snapshots."""
+		for name in frappe.get_all(
+			"Point Ledger", filters={"todo": self.name}, pluck="name"
+		):
+			frappe.delete_doc("Point Ledger", name, ignore_permissions=True, force=True)
+		self.db_set("assignee_earned", 0, update_modified=False)
+		self.db_set("leader_earned", 0, update_modified=False)
+
 	def after_insert(self):
 		self._recompute_parent()
 
@@ -162,8 +271,12 @@ class ProjectTodo(Document):
 		prev_state = old.status if old else None
 		if prev_state != self.status:
 			self._recompute_parent()
-			if self.status == "✅ Completed" and self.is_recurring:
-				self.create_next_occurrence()
+			if self.status == "✅ Completed":
+				self.sync_point_ledger()
+				if self.is_recurring:
+					self.create_next_occurrence()
+			elif prev_state == "✅ Completed":
+				self._remove_ledger()
 
 	def on_trash(self):
 		# Cannot delete unless status is Planned ("Scheduled").
