@@ -14,8 +14,8 @@ def _ensure(doctype, name, doc):
 
 class TestGlossaryGuards(unittest.TestCase):
 	def setUp(self):
-		_ensure("Customer", "Test Customer", {"doctype": "Customer",
-			"customer_name": "Test Customer", "customer_type": "Company"})
+		_ensure("Brand", "Test Customer", {"doctype": "Brand",
+			"brand_name": "Test Customer"})
 		_ensure("Project Group", "Test Project Group", {"doctype": "Project Group",
 			"project_name": "Test Project Group"})
 		for u in ("g_owner@example.com", "g_team@example.com"):
@@ -23,7 +23,7 @@ class TestGlossaryGuards(unittest.TestCase):
 				frappe.get_doc({"doctype": "User", "email": u, "first_name": u.split("@")[0],
 					"send_welcome_email": 0}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({"doctype": "Project", "project_name": "Glossary Test Project",
-			"customer": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer", "project_group": "Test Project Group",
 			"project_owner": "g_owner@example.com", "project_leader": "g_owner@example.com",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "g_team@example.com"}]})
