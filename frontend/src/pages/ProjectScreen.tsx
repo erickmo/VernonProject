@@ -56,7 +56,7 @@ export default function ProjectScreen() {
     <DetailScreen title={data.project_name}>
       {/* Hero summary */}
       <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
-        <p className="text-xs font-medium uppercase tracking-wide text-brand-200">{data.customer}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-brand-200">{data.brand}</p>
         <h2 className="mt-1 text-xl font-bold leading-snug">{data.project_name}</h2>
         <div className="mt-4 flex items-center gap-2">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/25">

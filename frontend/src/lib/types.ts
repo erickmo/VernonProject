@@ -94,7 +94,7 @@ export interface ProjectCard {
   name: string
   project_name: string
   status: string
-  customer: string
+  brand: string
   start_date: string | null
   deadline: string | null
   goal: string | null
@@ -148,7 +148,7 @@ export interface ProjectFull {
   name: string
   project_name: string
   status: string
-  customer: string
+  brand: string
   goal: string | null
   start_date: string | null
   deadline: string | null
@@ -191,14 +191,14 @@ export interface Opt2 {
 }
 
 export interface FormOptions {
-  customers: Opt2[]
+  brands: Opt2[]
   users: Opt2[]
   project_groups: Opt2[]
 }
 
 export interface ProjectInput {
   project_name: string
-  customer: string
+  brand: string
   project_owner: string
   project_leader: string
   project_admin?: string | null

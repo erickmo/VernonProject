@@ -15,7 +15,7 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
         <div className="min-w-0">
           <p className="truncate font-semibold text-slate-800">{p.project_name}</p>
           <span className="mt-1 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-            {p.customer}
+            {p.brand}
           </span>
         </div>
         {p.review > 0 ? (
