@@ -167,9 +167,10 @@ export default function UserFormScreen() {
             </label>
             <button
               onClick={onResetPassword}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 active:bg-slate-50"
+              disabled={resetPw.isPending}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 active:bg-slate-50 disabled:opacity-50"
             >
-              Send password reset email
+              {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
             </button>
           </>
         )}

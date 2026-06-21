@@ -1302,5 +1302,9 @@ def reset_user_password(user):
 	if user in PROTECTED_USERS:
 		frappe.throw("This account cannot be reset here")
 	from frappe.core.doctype.user.user import reset_password
-	reset_password(user)
+	result = reset_password(user)
+	if result:
+		# reset_password returns a sentinel string ("disabled"/"not allowed"/
+		# "not found") when no email was sent; None on success.
+		frappe.throw(f"Could not send reset email: {result}")
 	return {"ok": True}
