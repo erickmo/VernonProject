@@ -302,3 +302,18 @@ export interface Brand {
   name: string
   brand_name: string
 }
+
+export interface ManagedUser {
+  name: string
+  full_name: string | null
+  enabled: 0 | 1
+  user_image: string | null
+  last_active: string | null
+  roles: string[]
+}
+
+export interface UserFormPayload {
+  full_name: string
+  roles: string[]
+  enabled: 0 | 1
+}

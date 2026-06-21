@@ -11,6 +11,7 @@ import type {
   Dashboard,
   FormOptions,
   Group,
+  ManagedUser,
   MemberTodo,
   ProjectCard,
   ProjectDetail,
@@ -21,6 +22,7 @@ import type {
   GroupTodo,
   ScoringGroup,
   ScoringGroupPayload,
+  UserFormPayload,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -39,6 +41,7 @@ export const keys = {
   groupTodos: (n: string) => ['group-todos', n] as const,
   brands: ['brands'] as const,
   brand: (n: string) => ['brand', n] as const,
+  users: ['users'] as const,
 }
 
 export const useBoot = () =>
@@ -462,6 +465,18 @@ export function canManageBrands(boot: Boot | undefined): boolean {
   )
 }
 
+export function canManageUsers(boot: Boot | undefined): boolean {
+  return !!boot && boot.roles.includes('System Manager')
+}
+
+// The Vernon roles assignable from the mobile user-management screen.
+export const VERNON_ROLE_OPTIONS = [
+  { value: 'Project Owner', label: 'Owner' },
+  { value: 'Project Leader', label: 'Leader' },
+  { value: 'Project Admin', label: 'Admin' },
+  { value: 'Project Team', label: 'Team' },
+]
+
 export function useBrands() {
   return useQuery({
     queryKey: keys.brands,
@@ -515,5 +530,40 @@ export function useMergeBrand() {
       qc.invalidateQueries({ queryKey: keys.brands })
       qc.invalidateQueries({ queryKey: keys.projects })
     },
+  })
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: keys.users,
+    queryFn: async () => (await mobileApi.listUsers()).users as ManagedUser[],
+  })
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: {
+      email: string
+      full_name: string
+      roles: string[]
+      send_welcome: boolean
+    }) => mobileApi.createUser(payload),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
+  })
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ user, payload }: { user: string; payload: UserFormPayload }) =>
+      mobileApi.updateUser(user, payload),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
+  })
+}
+
+export function useResetUserPassword() {
+  return useMutation({
+    mutationFn: (user: string) => mobileApi.resetUserPassword(user),
   })
 }

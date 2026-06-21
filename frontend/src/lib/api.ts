@@ -121,6 +121,28 @@ export const mobileApi = {
     }),
   reportOptions: () => api.get(M + 'get_report_options'),
   formOptions: () => api.get(M + 'get_form_options'),
+  listUsers: () => api.get<{ users: import('./types').ManagedUser[] }>(M + 'list_users'),
+  createUser: (payload: {
+    email: string
+    full_name: string
+    roles: string[]
+    send_welcome: boolean
+  }) =>
+    api.post<{ name: string }>(M + 'create_user', {
+      email: payload.email,
+      full_name: payload.full_name,
+      roles: JSON.stringify(payload.roles),
+      send_welcome: payload.send_welcome ? 1 : 0,
+    }),
+  updateUser: (user: string, payload: import('./types').UserFormPayload) =>
+    api.post<{ name: string }>(M + 'update_user', {
+      user,
+      full_name: payload.full_name,
+      roles: JSON.stringify(payload.roles),
+      enabled: payload.enabled,
+    }),
+  resetUserPassword: (user: string) =>
+    api.post<{ ok: boolean }>(M + 'reset_user_password', { user }),
   getComments: (refDoctype: string, refName: string) =>
     api.get(M + 'get_comments', {
       reference_doctype: refDoctype,
