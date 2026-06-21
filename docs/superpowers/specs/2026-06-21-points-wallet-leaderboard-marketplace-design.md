@@ -107,6 +107,8 @@ Returns a unified, date-descending timeline for the caller:
 - Debits: Reward Redemption rows for the user.
 - A **running balance** is computed (oldest→newest) and attached to each row so
   the UI can show balance-after-transaction without client math.
+- Returns the **latest 100** transactions (credits + debits merged). Running
+  balance for the windowed rows starts from current balance and walks backward.
 
 ### `get_leaderboard(period="monthly", brand=None)`
 - `period ∈ {"weekly","monthly","all"}`, default `"monthly"`.
@@ -126,8 +128,8 @@ Returns a unified, date-descending timeline for the caller:
   }
   ```
 - `me` is the caller's own entry (may be outside the returned top-N).
-- Ties: equal points share ordering by user name; rank is dense or sequential
-  (sequential `1..N` is fine for v1).
+- Ties: equal points ordered by user name; rank is **sequential** `1..N`.
+- **Top 50** entries returned; `me` always included even if outside top 50.
 
 ### `get_marketplace()`
 Returns `{ "balance": float, "rewards": [ Marketplace Reward (active only) ] }`.
