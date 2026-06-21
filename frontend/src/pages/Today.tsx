@@ -22,7 +22,7 @@ import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { useBoot, useDashboard, useProjects } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { byDeadlineAsc, formatEstimate } from '@/lib/format'
+import { byDeadlineAsc, byDeadlineDesc, formatEstimate } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
@@ -63,23 +63,13 @@ const LENS_META: Record<Lens, { label: string; icon: React.ComponentType<{ class
   in: { label: "I'm in", icon: Users },
 }
 
-function Section({ title, todos, tone = 'slate' }: { title: string; todos: ProjectItem[]; tone?: 'rose' | 'amber' | 'slate' }) {
-  if (!todos.length) return null
-  const dot = { rose: 'bg-rose-500', amber: 'bg-amber-500', slate: 'bg-slate-300 dark:bg-slate-600' }[tone]
-  return (
-    <section className="mt-6">
-      <div className="mb-2.5 flex items-center gap-2 px-1">
-        <span className={`h-2 w-2 rounded-full ${dot}`} />
-        <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300">{title}</h2>
-        <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{todos.length}</span>
-      </div>
-      <div className="flex flex-col gap-3">
-        {todos.map((t) => (
-          <TodoCard key={t.name} todo={t} />
-        ))}
-      </div>
-    </section>
-  )
+type GroupKey = 'today' | 'overdue' | 'upcoming'
+
+// Active-tab styling per deadline bucket.
+const GROUP_TONE: Record<GroupKey, { active: string; badge: string }> = {
+  today: { active: 'bg-amber-500 text-white border-amber-500', badge: 'bg-white/25' },
+  overdue: { active: 'bg-rose-500 text-white border-rose-500', badge: 'bg-white/25' },
+  upcoming: { active: 'bg-slate-600 text-white border-slate-600 dark:bg-slate-500 dark:border-slate-500', badge: 'bg-white/25' },
 }
 
 function ActionBanner({
@@ -113,6 +103,8 @@ export default function Today() {
   const [lens, setLens] = useState<Lens>('me')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
+  // Which deadline bucket to show: today / overdue / upcoming.
+  const [group, setGroup] = useState<'today' | 'overdue' | 'upcoming'>('today')
 
   const firstName = boot?.full_name?.split(' ')[0] ?? ''
 
@@ -121,8 +113,9 @@ export default function Today() {
   const goOverdue = () => {
     setLens('me')
     setFilters({})
+    setGroup('overdue')
     setTimeout(
-      () => document.getElementById('today-overdue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      () => document.getElementById('today-groups')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
       60,
     )
   }
@@ -131,7 +124,6 @@ export default function Today() {
     () => (data ? [...data.overdue, ...data.due_today, ...data.upcoming] : []),
     [data],
   )
-  const plannedTodayMin = all.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   // Lens project sets
   const owned = (projects ?? []).filter((p) => p.is_owner)
@@ -166,11 +158,25 @@ export default function Today() {
   const advCount = ['project', 'brand', 'owner', 'leader', 'estimate'].filter((k) => filters[k]).length
   const filtered = data
     ? {
-        overdue: applyProjectItemFilters(data.overdue, filters).slice().sort(byDeadlineAsc),
+        overdue: applyProjectItemFilters(data.overdue, filters).slice().sort(byDeadlineDesc),
         due_today: applyProjectItemFilters(data.due_today, filters).slice().sort(byDeadlineAsc),
         upcoming: applyProjectItemFilters(data.upcoming, filters).slice().sort(byDeadlineAsc),
       }
     : null
+
+  // "Today" = due today, plus anything I've allocated time to today even if its
+  // deadline is past/future — so the "Planned today" total always maps to rows
+  // the user can actually see in the Today tab.
+  const todayTodos = (() => {
+    if (!filtered) return []
+    const byId = new Map<string, ProjectItem>()
+    for (const t of filtered.due_today) byId.set(t.name, t)
+    for (const t of [...filtered.overdue, ...filtered.upcoming]) {
+      if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
+    }
+    return [...byId.values()].sort(byDeadlineAsc)
+  })()
+  const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   const right = boot ? (
     <button onClick={() => navigate('/me')} className="transition active:scale-95">
@@ -268,22 +274,64 @@ export default function Today() {
                       />
                     </div>
                   </div>
-                  {plannedTodayMin > 0 && (
-                    <div className="mt-3 flex items-center gap-1.5 rounded-2xl bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300">
-                      <Clock className="h-4 w-4" /> Planned today: {formatEstimate(plannedTodayMin)}
-                    </div>
-                  )}
-                  <div id="today-overdue" className="scroll-mt-4">
-                    <Section title="Overdue" todos={filtered.overdue} tone="rose" />
-                  </div>
-                  <Section title="Due today" todos={filtered.due_today} tone="amber" />
-                  <Section title="Upcoming" todos={filtered.upcoming} tone="slate" />
-                  {!filtered.overdue.length && !filtered.due_today.length && !filtered.upcoming.length &&
-                    (all.length ? (
-                      <EmptyState icon={SearchX} title="Nothing matches these filters" subtitle="Try clearing a filter." />
-                    ) : (
-                      <EmptyState icon={PartyPopper} title="You're all caught up!" subtitle="Nothing assigned to you right now." />
-                    ))}
+                  {(() => {
+                    const groups: { key: GroupKey; label: string; todos: ProjectItem[] }[] = [
+                      { key: 'today', label: 'Today', todos: todayTodos },
+                      { key: 'overdue', label: 'Overdue', todos: filtered.overdue },
+                      { key: 'upcoming', label: 'Upcoming', todos: filtered.upcoming },
+                    ]
+                    const active = groups.find((g) => g.key === group) ?? groups[0]
+                    return (
+                      <div id="today-groups" className="scroll-mt-4">
+                        <div className="mt-5 grid grid-cols-3 gap-2">
+                          {groups.map((g) => {
+                            const on = g.key === group
+                            return (
+                              <button
+                                key={g.key}
+                                onClick={() => setGroup(g.key)}
+                                className={clsx(
+                                  'flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold transition active:scale-95',
+                                  on
+                                    ? GROUP_TONE[g.key].active
+                                    : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
+                                )}
+                              >
+                                {g.label}
+                                <span
+                                  className={clsx(
+                                    'rounded-full px-1.5 text-[11px] font-bold',
+                                    on ? GROUP_TONE[g.key].badge : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
+                                  )}
+                                >
+                                  {g.todos.length}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {group === 'today' && plannedTodayMin > 0 && (
+                          <p className="mt-4 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <Clock className="h-3.5 w-3.5 text-brand-500" />
+                            Planning for today: <span className="font-bold text-brand-600 dark:text-brand-400">{formatEstimate(plannedTodayMin)}</span>
+                          </p>
+                        )}
+
+                        {active.todos.length ? (
+                          <div className="mt-3 flex flex-col gap-3">
+                            {active.todos.map((t) => (
+                              <TodoCard key={t.name} todo={t} />
+                            ))}
+                          </div>
+                        ) : all.length ? (
+                          <EmptyState icon={SearchX} title={`Nothing ${active.label.toLowerCase()}`} subtitle="Try another tab or clear filters." />
+                        ) : (
+                          <EmptyState icon={PartyPopper} title="You're all caught up!" subtitle="Nothing assigned to you right now." />
+                        )}
+                      </div>
+                    )
+                  })()}
                 </>
               )}
 

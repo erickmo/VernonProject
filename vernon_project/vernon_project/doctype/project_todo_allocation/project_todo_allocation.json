@@ -5,7 +5,7 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": ["allocation_date", "estimated_minutes"],
+ "field_order": ["allocation_date", "estimated_minutes", "note"],
  "fields": [
   {
    "fieldname": "allocation_date",
@@ -13,7 +13,7 @@
    "in_list_view": 1,
    "label": "Date",
    "reqd": 1,
-   "columns": 6
+   "columns": 4
   },
   {
    "fieldname": "estimated_minutes",
@@ -21,6 +21,13 @@
    "in_list_view": 1,
    "label": "Estimated Minutes",
    "non_negative": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Note",
    "columns": 4
   }
  ],

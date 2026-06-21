@@ -167,7 +167,7 @@ export function useUpdateTodo(todoId: string) {
 export function useSetTodoAllocations(todoId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (allocations: { date: string; minutes: number }[]) => {
+    mutationFn: async (allocations: { date: string; minutes: number; note?: string }[]) => {
       const res = await mobileApi.setTodoAllocations(todoId, allocations)
       if (res.status === 'error') throw new Error(res.message)
       return res

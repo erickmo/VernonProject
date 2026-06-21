@@ -18,13 +18,16 @@ import {
   CalendarRange,
   Layers,
   Target,
+  Timer,
   X,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
+import FocusOverlay from '@/components/FocusOverlay'
+import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatEstimate, stripHtml } from '@/lib/format'
+import { formatClock, formatEstimate, stripHtml } from '@/lib/format'
 import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -450,7 +453,7 @@ function StatTile({
   )
 }
 
-type AllocRow = { date: string; minutes: number }
+type AllocRow = { date: string; minutes: number; note: string }
 
 // Assignee-only editor to split a todo's effort across days. Planning only —
 // saved via its own endpoint, never affects scoring/status.
@@ -458,14 +461,14 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   const save = useSetTodoAllocations(data.name)
   const toast = useToast()
   const [rows, setRows] = useState<AllocRow[]>(
-    (data.allocations ?? []).map((a) => ({ date: a.date, minutes: a.minutes })),
+    (data.allocations ?? []).map((a) => ({ date: a.date, minutes: a.minutes, note: a.note ?? '' })),
   )
 
   const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
   const field =
     'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none dark:placeholder-slate-500'
 
-  const addRow = () => setRows((r) => [...r, { date: '', minutes: 0 }])
+  const addRow = () => setRows((r) => [...r, { date: '', minutes: 0, note: '' }])
   const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
   const setRow = (i: number, patch: Partial<AllocRow>) =>
     setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)))
@@ -511,25 +514,34 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
       </div>
       <div className="flex flex-col gap-2">
         {rows.map((r, i) => (
-          <div key={i} className="flex items-center gap-2">
+          <div key={i} className="flex flex-col gap-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={r.date}
+                onChange={(e) => setRow(i, { date: e.target.value })}
+                className={field + ' min-w-0 flex-1'}
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={String(r.minutes || '')}
+                placeholder="min"
+                onChange={(e) => setRow(i, { minutes: e.target.value === '' ? 0 : Number(e.target.value) })}
+                className={field + ' w-20 shrink-0 text-center'}
+              />
+              <button onClick={() => removeRow(i)} className="shrink-0 rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
             <input
-              type="date"
-              value={r.date}
-              onChange={(e) => setRow(i, { date: e.target.value })}
-              className={field + ' min-w-0 flex-1'}
+              type="text"
+              value={r.note}
+              placeholder="Note (what you'll do this day)…"
+              onChange={(e) => setRow(i, { note: e.target.value })}
+              className={field + ' w-full'}
             />
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={String(r.minutes || '')}
-              placeholder="min"
-              onChange={(e) => setRow(i, { minutes: e.target.value === '' ? 0 : Number(e.target.value) })}
-              className={field + ' w-20 shrink-0 text-center'}
-            />
-            <button onClick={() => removeRow(i)} className="shrink-0 rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15">
-              <Trash2 className="h-4 w-4" />
-            </button>
           </div>
         ))}
         {!rows.length && (
@@ -563,6 +575,8 @@ export default function ProjectItemScreen() {
   const advance = useAdvanceStatus()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
+  const focus = useFocusTimer()
+  const [focusOpen, setFocusOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
@@ -595,8 +609,42 @@ export default function ProjectItemScreen() {
       </button>
     ) : null
 
+  const focusActive = focus.timer?.taskId === data.name
+  const openFocus = () => {
+    if (!focusActive) focus.start(data.name, data.to_do, data.estimated)
+    setFocusOpen(true)
+  }
+  // Active overtime only matters with a real estimate; a no-estimate timer just
+  // counts up and never goes "over".
+  const focusOver = focusActive && focus.hasEstimate && focus.remainingMs < 0
+  const focusValueMs = focusActive ? (focus.hasEstimate ? focus.remainingMs : focus.elapsedMs) : 0
+
   return (
     <DetailScreen title="Todo" right={editBtn}>
+      {focusOpen && focusActive && focus.timer && (
+        <FocusOverlay
+          title={focus.timer.taskTitle}
+          meta={{
+            project: data.project_name,
+            deadlineHuman: data.deadline_human || undefined,
+            overdue: data.is_overdue,
+            estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
+            group: data.group ? [data.group, data.level].filter(Boolean).join(' · ') : undefined,
+          }}
+          displayMs={focus.hasEstimate ? focus.remainingMs : focus.elapsedMs}
+          fraction={focus.fraction}
+          stopwatch={!focus.hasEstimate}
+          paused={focus.timer.status === 'paused'}
+          onPause={focus.pause}
+          onResume={focus.resume}
+          onReset={focus.reset}
+          onStop={() => {
+            focus.stop()
+            setFocusOpen(false)
+          }}
+          onClose={() => setFocusOpen(false)}
+        />
+      )}
       {editing ? (
         <EditForm data={data} onClose={() => setEditing(false)} />
       ) : (
@@ -706,6 +754,31 @@ export default function ProjectItemScreen() {
               />
             )}
           </div>
+
+          <button
+            onClick={openFocus}
+            className={clsx(
+              'mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition active:scale-[0.98]',
+              focusActive
+                ? focusOver
+                  ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
+                  : 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                : 'bg-brand-600 text-white active:bg-brand-700',
+            )}
+          >
+            <Timer className="h-4 w-4" />
+            {focusActive ? (
+              <>
+                {focus.timer?.status === 'paused' ? 'Resume focus' : 'Open focus'}
+                <span className="font-mono tabular-nums">
+                  {focusOver ? '+' : ''}
+                  {formatClock(focusValueMs)}
+                </span>
+              </>
+            ) : (
+              'Focus mode'
+            )}
+          </button>
         </div>
       )}
 
@@ -718,11 +791,14 @@ export default function ProjectItemScreen() {
             <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               <CalendarRange className="h-4 w-4" /> Day split
             </p>
-            <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
+            <div className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
               {(data.allocations ?? []).map((a, i) => (
-                <div key={i} className="flex justify-between">
-                  <span>{a.date}</span>
-                  <span className="font-medium">{a.minutes}m</span>
+                <div key={i}>
+                  <div className="flex justify-between">
+                    <span>{a.date}</span>
+                    <span className="font-medium">{a.minutes}m</span>
+                  </div>
+                  {a.note && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{a.note}</p>}
                 </div>
               ))}
             </div>

@@ -24,7 +24,7 @@ export interface ProjectItem {
   owner_deadline_human: string | null
   leader_appr_overdue: boolean
   owner_appr_overdue: boolean
-  allocations: { date: string; minutes: number }[]
+  allocations: { date: string; minutes: number; note?: string }[]
   allocated_total: number
   today_allocation: number
   estimated: number

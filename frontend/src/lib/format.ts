@@ -13,6 +13,18 @@ export function formatEstimate(minutes: number): string {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
+// Format a millisecond duration as a clock countdown. Always shows MM:SS, and
+// prepends H: once an hour or more remains (e.g. "1:05:09"). Negative input is
+// treated as its magnitude — the caller adds any "over" sign/label.
+export function formatClock(ms: number): string {
+  const totalSec = Math.floor(Math.abs(ms) / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''))
@@ -117,4 +129,15 @@ export function byDeadlineAsc(
   if (!a.deadline) return 1
   if (!b.deadline) return -1
   return a.deadline.localeCompare(b.deadline)
+}
+
+/** Sort by ISO date string descending (latest first); nulls last. */
+export function byDeadlineDesc(
+  a: { deadline: string | null },
+  b: { deadline: string | null },
+): number {
+  if (!a.deadline && !b.deadline) return 0
+  if (!a.deadline) return 1
+  if (!b.deadline) return -1
+  return b.deadline.localeCompare(a.deadline)
 }

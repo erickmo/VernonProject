@@ -106,8 +106,8 @@ export const mobileApi = {
       project_item: todoId,
       ...fields,
     }),
-  setTodoAllocations: (todoId: string, allocations: { date: string; minutes: number }[]) =>
-    api.post<{ status: string; message: string; allocations: { date: string; minutes: number }[] }>(
+  setTodoAllocations: (todoId: string, allocations: { date: string; minutes: number; note?: string }[]) =>
+    api.post<{ status: string; message: string; allocations: { date: string; minutes: number; note?: string }[] }>(
       M + 'set_todo_allocations',
       { project_item: todoId, allocations: JSON.stringify(allocations) },
     ),
