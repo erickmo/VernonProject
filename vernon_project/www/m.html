@@ -16,12 +16,21 @@
     <meta name="apple-mobile-web-app-title" content="Vernon" />
     <title>Vernon Project</title>
     <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('vernon-theme') || 'system'
+          var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (e) {}
+      })()
+    </script>
+    <script>
       // Injected by Frappe when this file is served as www/m.html. Used by the
       // API client for CSRF-protected POST requests.
       window.csrf_token = '{{ frappe.session.csrf_token }}'
     </script>
-    <script type="module" crossorigin src="/assets/vernon_project/frontend/assets/index-BTRdKrkP.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/vernon_project/frontend/assets/index-BqpFYlTk.css">
+    <script type="module" crossorigin src="/assets/vernon_project/frontend/assets/index-C_3pWAJv.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/vernon_project/frontend/assets/index--dLHzPNP.css">
   </head>
   <body>
     <div id="root"></div>

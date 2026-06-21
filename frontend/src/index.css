@@ -21,6 +21,14 @@ body {
   overscroll-behavior-y: none;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
 /* Hide scrollbars on horizontal strips but keep scrollability */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

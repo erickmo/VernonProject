@@ -9,6 +9,9 @@ import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/Confirm'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './index.css'
+import { initTheme } from './lib/theme'
+
+initTheme()
 
 // Bump whenever a persisted query payload changes shape. A changed buster makes
 // PersistQueryClientProvider discard the localStorage cache on load, so old-shaped

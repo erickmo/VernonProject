@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
-import { Avatar, FullScreenLoader, Spinner } from '@/components/ui'
+import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
 import { useBoot, canManageGroups, canManageBrands, canManageUsers } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
+import { type Theme, getStoredTheme, setTheme } from '@/lib/theme'
 
 function useOnline() {
   const [online, setOnline] = useState(navigator.onLine)
@@ -24,6 +25,12 @@ function useOnline() {
   return online
 }
 
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'System' },
+  { value: 'dark', label: 'Dark' },
+]
+
 export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: () => void }) {
   const { data: boot, isLoading } = useBoot()
   const qc = useQueryClient()
@@ -32,6 +39,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const online = useOnline()
   const [loggingOut, setLoggingOut] = useState(false)
   const [showChangePw, setShowChangePw] = useState(false)
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme)
 
   if (isLoading && !boot) {
     return (
@@ -54,21 +62,26 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
     window.location.href = '/m'
   }
 
+  const handleThemeChange = (v: Theme) => {
+    setThemeState(v)
+    setTheme(v)
+  }
+
   return (
     <TabScreen title="Me">
       {boot && (
         <>
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-6 shadow-card">
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-card">
             <Avatar name={boot.full_name} image={boot.image} size={72} />
             <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">{boot.full_name}</p>
-              <p className="text-sm text-slate-400">{boot.user}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-slate-50">{boot.full_name}</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">{boot.user}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-1.5">
               {boot.roles.map((r) => (
                 <span
                   key={r}
-                  className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/15 px-2.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300"
                 >
                   <ShieldCheck className="h-3 w-3" />
                   {r}
@@ -79,14 +92,24 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
 
           <div
             className={`mt-3 flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium ${
-              online ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+              online
+                ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300'
             }`}
           >
             {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
             {online ? 'Online — synced with server' : 'Offline — showing saved data'}
           </div>
 
-          <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-card">
+          {/* Appearance */}
+          <div className="mt-3 rounded-2xl bg-white dark:bg-slate-800 px-4 py-3.5 shadow-card">
+            <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Appearance
+            </p>
+            <Segmented options={THEME_OPTIONS} value={theme} onChange={handleThemeChange} />
+          </div>
+
+          <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
             <Row icon={KeyRound} label="Change password" onClick={() => setShowChangePw(true)} />
             {canManageGroups(boot) && (
               <Row icon={Trophy} label="Manage Groups" onClick={() => navigate('/groups')} />
@@ -103,16 +126,16 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
 
           <a
             href="/app/vernon-project"
-            className="mt-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 text-sm font-medium text-slate-600 shadow-card"
+            className="mt-3 flex items-center justify-between rounded-2xl bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-card"
           >
             Open full desktop app
-            <ChevronRight className="h-4 w-4 text-slate-300" />
+            <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
           </a>
 
           <button
             onClick={doLogout}
             disabled={loggingOut}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white dark:bg-slate-800 py-3.5 font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60"
           >
             {loggingOut ? (
               <Spinner className="h-4 w-4" />
@@ -123,7 +146,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             )}
           </button>
 
-          <p className="mt-6 text-center text-xs text-slate-300">Vernon Project · Mobile v1.0</p>
+          <p className="mt-6 text-center text-xs text-slate-300 dark:text-slate-600">Vernon Project · Mobile v1.0</p>
 
           <ChangePasswordSheet open={showChangePw} onClose={() => setShowChangePw(false)} />
         </>
@@ -144,11 +167,11 @@ function Row({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-slate-700 active:bg-slate-50"
+      className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:active:bg-slate-700/50"
     >
-      <Icon className="h-5 w-5 text-slate-400" />
+      <Icon className="h-5 w-5 text-slate-400 dark:text-slate-500" />
       <span className="flex-1">{label}</span>
-      <ChevronRight className="h-4 w-4 text-slate-300" />
+      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
     </button>
   )
 }
