@@ -94,7 +94,7 @@ function ActionBanner({
   return (
     <button
       onClick={onClick}
-      className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 dark:bg-brand-500/15 p-4 text-left transition active:scale-[0.99]"
+      className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-brand-100 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/15 p-4 text-left transition active:scale-[0.99]"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
         <Icon className="h-5 w-5" />

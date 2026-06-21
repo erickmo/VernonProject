@@ -63,6 +63,7 @@ html.dark body {
   color: #4f46e5;
   text-decoration: underline;
 }
+html.dark .prose-notes { color: #cbd5e1; } /* slate-300 */
 
 /* Placeholder for empty contentEditable rich editor */
 .rich-editor:empty:before {

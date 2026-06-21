@@ -126,7 +126,7 @@ export function FilterChips<T extends string>({
               <span
                 className={clsx(
                   'rounded-full px-1.5 text-[11px] font-semibold',
-                  active ? 'bg-white/25 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+                  active ? 'bg-white/25 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400',
                 )}
               >
                 {o.count}

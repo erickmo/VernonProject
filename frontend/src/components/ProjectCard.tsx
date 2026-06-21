@@ -14,7 +14,7 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-semibold text-slate-800 dark:text-slate-100">{p.project_name}</p>
-          <span className="mt-1 inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          <span className="mt-1 inline-block rounded-md bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
             {p.brand}
           </span>
         </div>
@@ -26,7 +26,7 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
         ) : (
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              p.status === 'Ongoing' ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+              p.status === 'Ongoing' ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
             }`}
           >
             {p.status}
