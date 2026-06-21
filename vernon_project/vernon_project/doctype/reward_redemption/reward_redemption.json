@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-06-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user", "reward", "column_break_a",
+  "reward_name", "point_cost", "section_break_b",
+  "status", "redeemed_on", "fulfilled_on", "note"
+ ],
+ "fields": [
+  {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "reward", "fieldtype": "Link", "label": "Reward", "options": "Marketplace Reward", "reqd": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "reward_name", "fieldtype": "Data", "label": "Reward Name", "in_list_view": 1},
+  {"fieldname": "point_cost", "fieldtype": "Float", "label": "Point Cost", "in_list_view": 1},
+  {"fieldname": "section_break_b", "fieldtype": "Section Break"},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Pending\nFulfilled", "default": "Pending", "in_list_view": 1},
+  {"fieldname": "redeemed_on", "fieldtype": "Datetime", "label": "Redeemed On"},
+  {"fieldname": "fulfilled_on", "fieldtype": "Datetime", "label": "Fulfilled On"},
+  {"fieldname": "note", "fieldtype": "Small Text", "label": "Note"}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Reward Redemption",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Marketplace Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
