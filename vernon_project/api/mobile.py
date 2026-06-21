@@ -1566,43 +1566,52 @@ def redeem_reward(reward):
 	transaction (row-locked) so concurrent redeems cannot oversell or push a
 	balance negative."""
 	user = frappe.session.user
+	lock_key = f"vernon_redeem:{user}"
+	# Serialize a single user's redeems so two concurrent requests can't both
+	# pass the balance check and drive the balance negative. Connection-scoped;
+	# released in finally. 10s timeout -> treat contention as a transient busy.
+	got = frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]
+	if not got:
+		frappe.throw("Redemption busy, please retry", frappe.ValidationError)
+	try:
+		# Lock the catalog row for the duration of the transaction.
+		row = frappe.db.sql(
+			"""select name, reward_name, point_cost, stock_quantity, active
+			from `tabMarketplace Reward` where name = %s for update""",
+			reward,
+			as_dict=True,
+		)
+		if not row:
+			frappe.throw("Reward unavailable", frappe.ValidationError)
+		r = row[0]
+		if not r["active"]:
+			frappe.throw("Reward unavailable", frappe.ValidationError)
+		if (r["stock_quantity"] or 0) <= 0:
+			frappe.throw("Out of stock", frappe.ValidationError)
 
-	# Lock the catalog row for the duration of the transaction.
-	row = frappe.db.sql(
-		"""select name, reward_name, point_cost, stock_quantity, active
-		from `tabMarketplace Reward` where name = %s for update""",
-		reward,
-		as_dict=True,
-	)
-	if not row:
-		frappe.throw("Reward unavailable", frappe.ValidationError)
-	r = row[0]
-	if not r["active"]:
-		frappe.throw("Reward unavailable", frappe.ValidationError)
-	if (r["stock_quantity"] or 0) <= 0:
-		frappe.throw("Out of stock", frappe.ValidationError)
+		cost = float(r["point_cost"] or 0)
+		_, _, balance = _user_balance(user)
+		if cost > balance:
+			frappe.throw("Insufficient balance", frappe.ValidationError)
 
-	cost = float(r["point_cost"] or 0)
-	_, _, balance = _user_balance(user)
-	if cost > balance:
-		frappe.throw("Insufficient balance", frappe.ValidationError)
+		redemption = frappe.get_doc(
+			{
+				"doctype": "Reward Redemption",
+				"user": user,
+				"reward": r["name"],
+				"reward_name": r["reward_name"],
+				"point_cost": cost,
+				"status": "Pending",
+				"redeemed_on": now_datetime(),
+			}
+		)
+		redemption.insert(ignore_permissions=True)
 
-	redemption = frappe.get_doc(
-		{
-			"doctype": "Reward Redemption",
-			"user": user,
-			"reward": r["name"],
-			"reward_name": r["reward_name"],
-			"point_cost": cost,
-			"status": "Pending",
-			"redeemed_on": now_datetime(),
-		}
-	)
-	redemption.insert(ignore_permissions=True)
+		frappe.db.set_value(
+			"Marketplace Reward", r["name"], "stock_quantity", (r["stock_quantity"] or 0) - 1
+		)
 
-	frappe.db.set_value(
-		"Marketplace Reward", r["name"], "stock_quantity", (r["stock_quantity"] or 0) - 1
-	)
-
-	_, _, new_balance = _user_balance(user)
-	return {"balance": new_balance, "redemption": redemption.name}
+		_, _, new_balance = _user_balance(user)
+		return {"balance": new_balance, "redemption": redemption.name}
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
