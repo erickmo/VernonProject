@@ -17,6 +17,15 @@ from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff
 # Must match the option strings stored in `tabProject Todo`.`status` exactly
 # (note the U+FE0F variation selector after the white-circle in "Planned").
 # --------------------------------------------------------------------------------
+VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team")
+PROTECTED_USERS = ("Guest", "Administrator")
+
+
+def _require_system_manager():
+	if "System Manager" not in frappe.get_roles(frappe.session.user):
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
 STATUS_PLANNED = "⚪️ Planned"
 STATUS_DONE = "\U0001f7e0 Done"
 STATUS_CHECKED = "\U0001f537 Checked By PL"
@@ -1190,3 +1199,108 @@ def get_form_options():
 			key=lambda x: x["label"],
 		),
 	}
+
+
+# --------------------------------------------------------------------------------
+# User management (System Manager only)
+# --------------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def list_users():
+	"""All manageable users with their Vernon roles (System Manager only)."""
+	_require_system_manager()
+	users = frappe.get_all(
+		"User",
+		filters={"name": ["not in", PROTECTED_USERS]},
+		fields=["name", "full_name", "enabled", "user_image", "last_active"],
+		limit_page_length=0,
+		order_by="full_name asc",
+	)
+	# Map user -> their Vernon roles in one query.
+	role_rows = frappe.get_all(
+		"Has Role",
+		filters={"parenttype": "User", "role": ["in", VERNON_ROLES]},
+		fields=["parent", "role"],
+		limit_page_length=0,
+	)
+	roles_by_user = {}
+	for r in role_rows:
+		roles_by_user.setdefault(r["parent"], []).append(r["role"])
+	for u in users:
+		u["roles"] = sorted(roles_by_user.get(u["name"], []))
+	return {"users": users}
+
+
+def _clean_roles(roles):
+	"""Parse the incoming roles list and keep only valid Vernon roles."""
+	if isinstance(roles, str):
+		roles = frappe.parse_json(roles) if roles else []
+	return [r for r in (roles or []) if r in VERNON_ROLES]
+
+
+@frappe.whitelist()
+def create_user(email, full_name=None, roles=None, send_welcome=1):
+	"""Create a User and assign Vernon roles (System Manager only)."""
+	_require_system_manager()
+	email = (email or "").strip().lower()
+	if not email:
+		frappe.throw("Email is required")
+	if frappe.db.exists("User", email):
+		frappe.throw("A user with this email already exists")
+
+	wanted = _clean_roles(roles)
+	doc = frappe.get_doc({
+		"doctype": "User",
+		"email": email,
+		"first_name": (full_name or email).strip(),
+		"enabled": 1,
+		"send_welcome_email": 1 if frappe.utils.cint(send_welcome) else 0,
+	})
+	doc.insert(ignore_permissions=True)
+	if wanted:
+		doc.add_roles(*wanted)
+	return {"name": doc.name}
+
+
+@frappe.whitelist()
+def update_user(user, full_name=None, roles=None, enabled=1):
+	"""Edit name/enabled and sync the Vernon-role set (System Manager only)."""
+	_require_system_manager()
+	if user in PROTECTED_USERS:
+		frappe.throw("This account cannot be modified here")
+	enabled = 1 if frappe.utils.cint(enabled) else 0
+	if enabled == 0 and user == frappe.session.user:
+		frappe.throw("You cannot disable your own account")
+
+	doc = frappe.get_doc("User", user)
+	if full_name is not None:
+		doc.full_name = full_name.strip()
+		# first_name drives full_name for single-field names.
+		doc.first_name = full_name.strip()
+	doc.enabled = enabled
+	doc.save(ignore_permissions=True)
+
+	# Sync only the Vernon-role subset; leave System Manager etc. untouched.
+	wanted = set(_clean_roles(roles))
+	current = {
+		r.role for r in doc.get("roles") if r.role in VERNON_ROLES
+	}
+	to_add = wanted - current
+	to_remove = current - wanted
+	if to_add:
+		doc.add_roles(*to_add)
+	if to_remove:
+		doc.remove_roles(*to_remove)
+	return {"name": doc.name}
+
+
+@frappe.whitelist()
+def reset_user_password(user):
+	"""Send Frappe's reset-password email (System Manager only)."""
+	_require_system_manager()
+	if user in PROTECTED_USERS:
+		frappe.throw("This account cannot be reset here")
+	from frappe.core.doctype.user.user import reset_password
+	reset_password(user)
+	return {"ok": True}
