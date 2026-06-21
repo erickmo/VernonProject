@@ -10,7 +10,7 @@
 import json
 
 import frappe
-from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff
+from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -1538,3 +1538,71 @@ def get_leaderboard(period="monthly", brand=None):
 	brands = [b["brand_name"] for b in frappe.get_all("Brand", fields=["brand_name"], order_by="brand_name asc")]
 
 	return {"period": period, "brand": brand, "brands": brands, "entries": entries, "me": me}
+
+
+# --------------------------------------------------------------------------------
+# Marketplace — browse active rewards and redeem (instant deduct).
+# --------------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_marketplace():
+	"""Active catalog + the caller's spendable balance."""
+	_, _, balance = _user_balance(frappe.session.user)
+	rewards = frappe.get_all(
+		"Marketplace Reward",
+		filters={"active": 1},
+		fields=["name", "reward_name", "point_cost", "image", "description", "stock_quantity"],
+		order_by="point_cost asc, reward_name asc",
+	)
+	for r in rewards:
+		r["point_cost"] = float(r["point_cost"] or 0)
+	return {"balance": balance, "rewards": rewards}
+
+
+@frappe.whitelist()
+def redeem_reward(reward):
+	"""Instant-deduct redemption. Re-checks active + stock + balance inside the
+	transaction (row-locked) so concurrent redeems cannot oversell or push a
+	balance negative."""
+	user = frappe.session.user
+
+	# Lock the catalog row for the duration of the transaction.
+	row = frappe.db.sql(
+		"""select name, reward_name, point_cost, stock_quantity, active
+		from `tabMarketplace Reward` where name = %s for update""",
+		reward,
+		as_dict=True,
+	)
+	if not row:
+		frappe.throw("Reward unavailable", frappe.ValidationError)
+	r = row[0]
+	if not r["active"]:
+		frappe.throw("Reward unavailable", frappe.ValidationError)
+	if (r["stock_quantity"] or 0) <= 0:
+		frappe.throw("Out of stock", frappe.ValidationError)
+
+	cost = float(r["point_cost"] or 0)
+	_, _, balance = _user_balance(user)
+	if cost > balance:
+		frappe.throw("Insufficient balance", frappe.ValidationError)
+
+	redemption = frappe.get_doc(
+		{
+			"doctype": "Reward Redemption",
+			"user": user,
+			"reward": r["name"],
+			"reward_name": r["reward_name"],
+			"point_cost": cost,
+			"status": "Pending",
+			"redeemed_on": now_datetime(),
+		}
+	)
+	redemption.insert(ignore_permissions=True)
+
+	frappe.db.set_value(
+		"Marketplace Reward", r["name"], "stock_quantity", (r["stock_quantity"] or 0) - 1
+	)
+
+	_, _, new_balance = _user_balance(user)
+	return {"balance": new_balance, "redemption": redemption.name}
