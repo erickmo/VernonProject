@@ -20,6 +20,7 @@ import GroupFormScreen from './pages/GroupFormScreen'
 import BrandsScreen from './pages/BrandsScreen'
 import BrandFormScreen from './pages/BrandFormScreen'
 import UsersScreen from './pages/UsersScreen'
+import UserFormScreen from './pages/UserFormScreen'
 import { canManageGroups, canManageBrands, canManageUsers } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -91,7 +92,11 @@ export default function App() {
           </>
         )}
         {canManageUsers(boot) && (
-          <Route path="/users" element={<UsersScreen />} />
+          <>
+            <Route path="/users" element={<UsersScreen />} />
+            <Route path="/users/new" element={<UserFormScreen />} />
+            <Route path="/users/:name" element={<UserFormScreen />} />
+          </>
         )}
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
