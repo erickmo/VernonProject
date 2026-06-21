@@ -1308,3 +1308,31 @@ def reset_user_password(user):
 		# "not found") when no email was sent; None on success.
 		frappe.throw(f"Could not send reset email: {result}")
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def set_user_password(user, new_password):
+	"""Directly set a user's password (System Manager only).
+
+	Permanent until the user changes it. Enforces the site's password-strength
+	policy, the same way frappe.core.doctype.user.user.update_password does.
+	"""
+	_require_system_manager()
+	if user in PROTECTED_USERS:
+		frappe.throw("This account cannot be modified here")
+	if not new_password:
+		frappe.throw("Password is required")
+
+	from frappe.utils.password import update_password as _store_password
+	from frappe.core.doctype.user.user import test_password_strength, handle_password_test_fail
+
+	# Strength check — mirror core update_password (apps/frappe/.../user.py ~line 832-836).
+	result = test_password_strength(new_password)
+	feedback = result.get("feedback", None)
+	if feedback and not feedback.get("password_policy_validation_passed", False):
+		handle_password_test_fail(feedback)
+
+	# Log the user out of other sessions when their password is reset under them.
+	_store_password(user, new_password, logout_all_sessions=True)
+	frappe.db.set_value("User", user, "last_password_reset_date", frappe.utils.today())
+	return {"ok": True}

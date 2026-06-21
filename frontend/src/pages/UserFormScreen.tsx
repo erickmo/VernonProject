@@ -10,6 +10,7 @@ import {
   useCreateUser,
   useUpdateUser,
   useResetUserPassword,
+  useSetUserPassword,
   VERNON_ROLE_OPTIONS,
 } from '@/hooks/useData'
 
@@ -29,12 +30,14 @@ export default function UserFormScreen() {
   const create = useCreateUser()
   const update = useUpdateUser()
   const resetPw = useResetUserPassword()
+  const setPw = useSetUserPassword()
 
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [roles, setRoles] = useState<string[]>([])
   const [enabled, setEnabled] = useState(true)
   const [sendWelcome, setSendWelcome] = useState(true)
+  const [newPassword, setNewPassword] = useState('')
 
   useEffect(() => {
     if (existing) {
@@ -70,6 +73,22 @@ export default function UserFormScreen() {
       navigate('/users', { replace: true })
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  async function onSetPassword() {
+    const ok = await confirm({
+      title: 'Set new password?',
+      message: 'This immediately changes the password for ' + name + ' and logs them out of other sessions.',
+      confirmLabel: 'Set',
+    })
+    if (!ok) return
+    try {
+      await setPw.mutateAsync({ user: name as string, newPassword })
+      toast('success', 'Password set')
+      setNewPassword('')
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Failed to set password')
     }
   }
 
@@ -172,6 +191,25 @@ export default function UserFormScreen() {
             >
               {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
             </button>
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500">Set new password</span>
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={onSetPassword}
+                  disabled={!newPassword || setPw.isPending}
+                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 active:bg-slate-50 disabled:opacity-50"
+                >
+                  {setPw.isPending ? 'Setting…' : 'Set password'}
+                </button>
+              </div>
+            </label>
           </>
         )}
       </div>

@@ -567,3 +567,10 @@ export function useResetUserPassword() {
     mutationFn: (user: string) => mobileApi.resetUserPassword(user),
   })
 }
+
+export function useSetUserPassword() {
+  return useMutation({
+    mutationFn: ({ user, newPassword }: { user: string; newPassword: string }) =>
+      mobileApi.setUserPassword(user, newPassword),
+  })
+}

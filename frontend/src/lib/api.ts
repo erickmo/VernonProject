@@ -143,6 +143,8 @@ export const mobileApi = {
     }),
   resetUserPassword: (user: string) =>
     api.post<{ ok: boolean }>(M + 'reset_user_password', { user }),
+  setUserPassword: (user: string, newPassword: string) =>
+    api.post<{ ok: boolean }>(M + 'set_user_password', { user, new_password: newPassword }),
   getComments: (refDoctype: string, refName: string) =>
     api.get(M + 'get_comments', {
       reference_doctype: refDoctype,
