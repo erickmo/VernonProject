@@ -23,6 +23,10 @@ import type {
   ScoringGroup,
   ScoringGroupPayload,
   UserFormPayload,
+  Wallet,
+  WalletLogEntry,
+  Leaderboard,
+  MarketplaceData,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -42,6 +46,11 @@ export const keys = {
   brands: ['brands'] as const,
   brand: (n: string) => ['brand', n] as const,
   users: ['users'] as const,
+  wallet: ['wallet'] as const,
+  walletLog: ['wallet-log'] as const,
+  leaderboard: (period: string, brand: string | null) =>
+    ['leaderboard', period, brand ?? ''] as const,
+  marketplace: ['marketplace'] as const,
 }
 
 export const useBoot = () =>
@@ -579,5 +588,32 @@ export function useChangeMyPassword() {
   return useMutation({
     mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
       mobileApi.changeMyPassword(oldPassword, newPassword),
+  })
+}
+
+export const useWallet = () =>
+  useQuery({ queryKey: keys.wallet, queryFn: () => mobileApi.getWallet() as Promise<Wallet> })
+
+export const useWalletLog = () =>
+  useQuery({ queryKey: keys.walletLog, queryFn: () => mobileApi.getWalletLog() as Promise<WalletLogEntry[]> })
+
+export const useLeaderboard = (period: string, brand: string | null) =>
+  useQuery({
+    queryKey: keys.leaderboard(period, brand),
+    queryFn: () => mobileApi.getLeaderboard(period, brand) as Promise<Leaderboard>,
+  })
+
+export const useMarketplace = () =>
+  useQuery({ queryKey: keys.marketplace, queryFn: () => mobileApi.getMarketplace() as Promise<MarketplaceData> })
+
+export function useRedeemReward() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (reward: string) => mobileApi.redeemReward(reward),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.marketplace })
+      qc.invalidateQueries({ queryKey: keys.wallet })
+      qc.invalidateQueries({ queryKey: keys.walletLog })
+    },
   })
 }

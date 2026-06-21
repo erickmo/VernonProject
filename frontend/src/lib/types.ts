@@ -317,3 +317,52 @@ export interface UserFormPayload {
   roles: string[]
   enabled: 0 | 1
 }
+
+export interface Wallet {
+  earned: number
+  redeemed: number
+  balance: number
+}
+
+export interface WalletLogEntry {
+  kind: 'credit' | 'debit'
+  amount: number
+  title: string
+  subtitle: string | null
+  status: string | null
+  date: string | null
+  date_human: string | null
+  balance: number
+}
+
+export interface LeaderboardEntry {
+  user: string
+  full_name: string
+  image: string | null
+  points: number
+  rank: number
+}
+
+export type LeaderboardPeriod = 'weekly' | 'monthly' | 'all'
+
+export interface Leaderboard {
+  period: LeaderboardPeriod
+  brand: string | null
+  brands: string[]
+  entries: LeaderboardEntry[]
+  me: LeaderboardEntry | null
+}
+
+export interface MarketplaceReward {
+  name: string
+  reward_name: string
+  point_cost: number
+  image: string | null
+  description: string | null
+  stock_quantity: number
+}
+
+export interface MarketplaceData {
+  balance: number
+  rewards: MarketplaceReward[]
+}

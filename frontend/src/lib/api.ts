@@ -163,6 +163,13 @@ export const mobileApi = {
     }),
   runReport: (report: string, filters: Record<string, unknown>) =>
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
+  getWallet: () => api.get(M + 'get_wallet'),
+  getWalletLog: () => api.get(M + 'get_wallet_log'),
+  getLeaderboard: (period: string, brand?: string | null) =>
+    api.get(M + 'get_leaderboard', { period, ...(brand ? { brand } : {}) }),
+  getMarketplace: () => api.get(M + 'get_marketplace'),
+  redeemReward: (reward: string) =>
+    api.post<{ balance: number; redemption: string }>(M + 'redeem_reward', { reward }),
 }
 
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>
