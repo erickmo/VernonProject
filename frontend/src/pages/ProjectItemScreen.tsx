@@ -11,8 +11,13 @@ import {
   History,
   Lock,
   Pencil,
+  Plus,
   Repeat,
   Save,
+  Trash2,
+  CalendarRange,
+  Layers,
+  Target,
   X,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
@@ -20,7 +25,7 @@ import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatEstimate, stripHtml } from '@/lib/format'
-import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup } from '@/hooks/useData'
+import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import type { ProjectItemDetail } from '@/lib/types'
@@ -72,6 +77,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [toDo, setToDo] = useState(data.to_do)
   const [assignee, setAssignee] = useState(data.assigned_to)
   const [deadline, setDeadline] = useState(data.deadline ?? '')
+  const [leaderDeadline, setLeaderDeadline] = useState(data.leader_deadline ?? '')
+  const [ownerDeadline, setOwnerDeadline] = useState(data.owner_deadline ?? '')
   const [estimated, setEstimated] = useState(String(data.estimated || ''))
   const [pDC, setPDC] = useState(String(data.phase_estimates.done_to_checked || ''))
   const [pCC, setPCC] = useState(String(data.phase_estimates.checked_to_completed || ''))
@@ -80,6 +87,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [until, setUntil] = useState(data.recurring.until ?? '')
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level ?? '')
+  const [blockedBy, setBlockedBy] = useState(data.blocked_by ?? '')
+  const [blocking, setBlocking] = useState(data.blocking ?? '')
 
   const { data: groups } = useScoringGroups()
   const { data: groupDoc } = useScoringGroup(group, !!group)
@@ -103,10 +112,14 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       toast('error', 'Group and level are required')
       return
     }
+    if (!locked && !deadline) {
+      toast('error', 'Deadline is required')
+      return
+    }
     const fields: Record<string, unknown> = { to_do: toDo }
     if (!locked) {
       fields.assigned_to = assignee
-      fields.deadline = deadline || null
+      fields.deadline = deadline
       fields.estimated = estimated === '' ? 0 : Number(estimated)
     }
     // Approval-phase estimates in minutes (summed into the task total server-side).
@@ -119,8 +132,14 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       fields.recurring_frequency = freq
       fields.recurring_until = until || ''
     }
+    // Optional approval-phase deadlines (editable regardless of lock; empty clears).
+    fields.leader_deadline = leaderDeadline || ''
+    fields.owner_deadline = ownerDeadline || ''
     fields.group = group
     fields.level = level
+    // Blocking links (empty clears).
+    fields.blocked_by = blockedBy || ''
+    fields.blocking = blocking || ''
     update.mutate(fields, {
       onSuccess: (res) => {
         toast('success', res.message)
@@ -183,33 +202,49 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </div>
       </div>
 
-      {/* Approval time per phase (minutes) — Leader & Owner steps */}
+      {/* Approval phases — each: deadline + estimated time for that step */}
       <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500">Approval time per phase (min)</span>
+          <span className="text-xs font-semibold text-slate-500">Approval phases (optional)</span>
           <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-bold text-brand-700">
-            Total {phaseTotal || 0}m
+            Est total {phaseTotal || 0}m
           </span>
         </div>
-        <div className="flex gap-2">
-          {[
-            { label: 'Leader → Checked', v: pDC, set: setPDC },
-            { label: 'Owner → Completed', v: pCC, set: setPCC },
-          ].map((p) => (
-            <div key={p.label} className="flex-1">
-              <label className="mb-1 block text-center text-[10px] font-medium text-slate-400">{p.label}</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step="1"
-                value={p.v}
-                onChange={(e) => p.set(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-              />
+        {[
+          { label: 'Leader approval', date: leaderDeadline, setDate: setLeaderDeadline, est: pDC, setEst: setPDC },
+          { label: 'Owner approval', date: ownerDeadline, setDate: setOwnerDeadline, est: pCC, setEst: setPCC },
+        ].map((p) => (
+          <div key={p.label} className="mb-3 last:mb-0">
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">{p.label}</label>
+            <div className="flex gap-2">
+              <div className="min-w-0 flex-1">
+                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">Deadline</span>
+                <input
+                  type="date"
+                  value={p.date}
+                  onChange={(e) => p.setDate(e.target.value)}
+                  className={clsx(field, 'min-w-0')}
+                />
+              </div>
+              <div className="w-24 shrink-0">
+                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">Est.</span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step="1"
+                    value={p.est}
+                    placeholder="0"
+                    onChange={(e) => p.setEst(e.target.value)}
+                    className={clsx(field, 'pr-7 text-right')}
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">m</span>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       {/* Recurring */}
@@ -258,11 +293,38 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         <SearchableSelect
           value={level}
           onChange={setLevel}
-          options={(groupDoc?.levels ?? []).map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
+          options={[...(groupDoc?.levels ?? [])]
+            .sort((a, b) => Number(a.level_name) - Number(b.level_name))
+            .map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
           placeholder={group ? 'Select a level…' : 'Pick a group first…'}
           disabled={!group}
         />
       </div>
+
+      {data.detail_todos.length > 0 && (
+        <div className="mb-3 flex gap-3">
+          <div className="flex-1">
+            <label className="mb-1 block text-xs font-medium text-slate-500">Blocked by</label>
+            <SearchableSelect
+              value={blockedBy}
+              onChange={setBlockedBy}
+              options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
+              allowClear
+              placeholder="None"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-xs font-medium text-slate-500">Blocking</label>
+            <SearchableSelect
+              value={blocking}
+              onChange={setBlocking}
+              options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
+              allowClear
+              placeholder="None"
+            />
+          </div>
+        </div>
+      )}
 
       {locked && (
         <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -354,6 +416,145 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   )
 }
 
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tone = 'default',
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: React.ReactNode
+  sub?: string
+  tone?: 'default' | 'danger' | 'brand'
+}) {
+  const accent =
+    tone === 'danger'
+      ? 'border-rose-200 bg-rose-50'
+      : tone === 'brand'
+        ? 'border-brand-100 bg-brand-50'
+        : 'border-slate-100 bg-slate-50'
+  const valueColor =
+    tone === 'danger' ? 'text-rose-700' : tone === 'brand' ? 'text-brand-700' : 'text-slate-800'
+  const iconColor =
+    tone === 'danger' ? 'text-rose-500' : tone === 'brand' ? 'text-brand-500' : 'text-slate-400'
+  return (
+    <div className={clsx('rounded-2xl border p-3', accent)}>
+      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        <Icon className={clsx('h-3 w-3', iconColor)} /> {label}
+      </p>
+      <div className={clsx('truncate text-sm font-bold leading-tight', valueColor)}>{value}</div>
+      {sub && <p className="mt-0.5 truncate text-[11px] text-slate-400">{sub}</p>}
+    </div>
+  )
+}
+
+type AllocRow = { date: string; minutes: number }
+
+// Assignee-only editor to split a todo's effort across days. Planning only —
+// saved via its own endpoint, never affects scoring/status.
+function AllocationCard({ data }: { data: ProjectItemDetail }) {
+  const save = useSetTodoAllocations(data.name)
+  const toast = useToast()
+  const [rows, setRows] = useState<AllocRow[]>(
+    (data.allocations ?? []).map((a) => ({ date: a.date, minutes: a.minutes })),
+  )
+
+  const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
+  const field =
+    'rounded-xl border border-slate-200 px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none'
+
+  const addRow = () => setRows((r) => [...r, { date: '', minutes: 0 }])
+  const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
+  const setRow = (i: number, patch: Partial<AllocRow>) =>
+    setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+
+  const onSave = () => {
+    // allocation_date is required on each row — don't silently drop rows with
+    // minutes but no date.
+    if (rows.some((r) => !r.date && Number(r.minutes) > 0)) {
+      toast('error', 'Add a date to every allocation row')
+      return
+    }
+    // Daily split must add up to the task estimate (planning consistency).
+    if (data.estimated > 0 && total !== data.estimated) {
+      const diff = data.estimated - total
+      toast('error', diff > 0 ? `${diff}m short of the ${data.estimated}m estimate` : `${-diff}m over the ${data.estimated}m estimate`)
+      return
+    }
+    const clean = rows.filter((r) => r.date)
+    save.mutate(clean, {
+      onSuccess: () => toast('success', 'Allocations saved'),
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <CalendarRange className="h-4 w-4" /> Split across days
+        </p>
+        <span
+          className={
+            'rounded-full px-2 py-0.5 text-[11px] font-bold ' +
+            (!data.estimated
+              ? 'bg-brand-50 text-brand-700'
+              : total === data.estimated
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-rose-50 text-rose-700')
+          }
+        >
+          {total}m{data.estimated ? ` / ${data.estimated}m est` : ''}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="date"
+              value={r.date}
+              onChange={(e) => setRow(i, { date: e.target.value })}
+              className={field + ' min-w-0 flex-1'}
+            />
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={String(r.minutes || '')}
+              placeholder="min"
+              onChange={(e) => setRow(i, { minutes: e.target.value === '' ? 0 : Number(e.target.value) })}
+              className={field + ' w-20 shrink-0 text-center'}
+            />
+            <button onClick={() => removeRow(i)} className="shrink-0 rounded-lg p-1.5 text-rose-600 active:bg-rose-50">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        {!rows.length && (
+          <p className="py-1 text-center text-xs text-slate-400">No day split yet — add a day to plan your time.</p>
+        )}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={addRow}
+          className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 active:bg-slate-200"
+        >
+          <Plus className="h-4 w-4" /> Add day
+        </button>
+        <button
+          onClick={onSave}
+          disabled={save.isPending}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white active:bg-brand-700 disabled:opacity-60"
+        >
+          {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save split
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ProjectItemScreen() {
   const { name = '' } = useParams()
   const navigate = useNavigate()
@@ -431,36 +632,102 @@ export default function ProjectItemScreen() {
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 text-slate-500">
-              <Avatar name={data.assigned_to_name} image={data.assigned_to_image} size={24} />
-              {data.assigned_to_name}
-            </span>
-            {data.deadline && (
-              <span
-                className={clsx(
-                  'inline-flex items-center gap-1.5',
-                  data.is_overdue ? 'font-semibold text-rose-600' : 'text-slate-500',
-                )}
-              >
-                <CalendarDays className="h-4 w-4" />
-                {data.is_overdue ? `Overdue · ${data.deadline_human}` : data.deadline_human}
-              </span>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                <Target className="h-3 w-3 text-slate-400" /> Assignee
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Avatar name={data.assigned_to_name} image={data.assigned_to_image} size={20} />
+                <span className="truncate text-sm font-bold text-slate-800">{data.assigned_to_name}</span>
+              </div>
+            </div>
+
+            <StatTile
+              icon={CalendarDays}
+              label="Deadline"
+              tone={data.is_overdue ? 'danger' : 'default'}
+              value={data.deadline_human || '—'}
+              sub={data.is_overdue ? 'Overdue' : undefined}
+            />
+
+            <StatTile
+              icon={Clock}
+              label="Estimate"
+              value={data.estimated > 0 ? formatEstimate(data.estimated) : '—'}
+              sub={
+                data.phase_estimates.total > data.estimated
+                  ? `total ${formatEstimate(data.phase_estimates.total)}`
+                  : undefined
+              }
+            />
+
+            {data.group && (
+              <StatTile
+                icon={Layers}
+                label="Group"
+                tone="brand"
+                value={data.group}
+                sub={
+                  [data.level, data.point ? `${data.point} pts` : '']
+                    .filter(Boolean)
+                    .join(' · ') || undefined
+                }
+              />
             )}
-            {data.estimated > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-slate-500">
-                <Clock className="h-4 w-4" /> {formatEstimate(data.estimated)}
-              </span>
+
+            {data.leader_deadline && (
+              <StatTile
+                icon={CalendarRange}
+                label="Leader approval"
+                tone={data.leader_appr_overdue ? 'danger' : 'default'}
+                value={data.leader_deadline_human || '—'}
+                sub={data.leader_appr_overdue ? 'Overdue' : undefined}
+              />
+            )}
+
+            {data.owner_deadline && (
+              <StatTile
+                icon={CalendarRange}
+                label="Owner approval"
+                tone={data.owner_appr_overdue ? 'danger' : 'default'}
+                value={data.owner_deadline_human || '—'}
+                sub={data.owner_appr_overdue ? 'Overdue' : undefined}
+              />
+            )}
+
+            {data.today_allocation > 0 && (
+              <StatTile
+                icon={Clock}
+                label="Today"
+                tone="brand"
+                value={formatEstimate(data.today_allocation)}
+                sub="allocated"
+              />
             )}
           </div>
-          {data.group && (
-            <p className="mt-2 text-sm text-slate-600">
-              <span className="font-medium">Group:</span> {data.group}
-              {data.level ? ` · ${data.level}` : ''}
-              {data.point ? ` (${data.point} pts)` : ''}
-            </p>
-          )}
         </div>
+      )}
+
+      {/* Day allocations: editor for the assignee, read-only list for others */}
+      {data.is_mine ? (
+        <AllocationCard data={data} />
+      ) : (
+        (data.allocations ?? []).length > 0 && (
+          <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <CalendarRange className="h-4 w-4" /> Day split
+            </p>
+            <div className="flex flex-col gap-1 text-sm text-slate-600">
+              {(data.allocations ?? []).map((a, i) => (
+                <div key={i} className="flex justify-between">
+                  <span>{a.date}</span>
+                  <span className="font-medium">{a.minutes}m</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       )}
 
       {/* Workflow */}

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   CheckCheck,
   FolderKanban,
+  Clock,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
@@ -21,7 +22,7 @@ import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { useBoot, useDashboard, useProjects } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { byDeadlineAsc } from '@/lib/format'
+import { byDeadlineAsc, formatEstimate } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
@@ -115,10 +116,22 @@ export default function Today() {
 
   const firstName = boot?.full_name?.split(' ')[0] ?? ''
 
+  // Overdue badge: switch to the personal lens (where the Overdue list lives,
+  // clearing any active filter that might hide it) then scroll it into view.
+  const goOverdue = () => {
+    setLens('me')
+    setFilters({})
+    setTimeout(
+      () => document.getElementById('today-overdue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      60,
+    )
+  }
+
   const all = useMemo(
     () => (data ? [...data.overdue, ...data.due_today, ...data.upcoming] : []),
     [data],
   )
+  const plannedTodayMin = all.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   // Lens project sets
   const owned = (projects ?? []).filter((p) => p.is_owner)
@@ -186,14 +199,20 @@ export default function Today() {
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
                     {data.counts.overdue > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/90 px-2 py-0.5 font-semibold">
+                      <button
+                        onClick={goOverdue}
+                        className="inline-flex items-center gap-1 rounded-full bg-rose-500/90 px-2 py-0.5 font-semibold active:scale-95"
+                      >
                         <AlertCircle className="h-3 w-3" /> {data.counts.overdue} overdue
-                      </span>
+                      </button>
                     )}
                     {data.counts.review > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-semibold">
+                      <button
+                        onClick={() => navigate('/review')}
+                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-semibold active:scale-95"
+                      >
                         <CheckCheck className="h-3 w-3" /> {data.counts.review} to review
-                      </span>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -249,7 +268,14 @@ export default function Today() {
                       />
                     </div>
                   </div>
-                  <Section title="Overdue" todos={filtered.overdue} tone="rose" />
+                  {plannedTodayMin > 0 && (
+                    <div className="mt-3 flex items-center gap-1.5 rounded-2xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700">
+                      <Clock className="h-4 w-4" /> Planned today: {formatEstimate(plannedTodayMin)}
+                    </div>
+                  )}
+                  <div id="today-overdue" className="scroll-mt-4">
+                    <Section title="Overdue" todos={filtered.overdue} tone="rose" />
+                  </div>
                   <Section title="Due today" todos={filtered.due_today} tone="amber" />
                   <Section title="Upcoming" todos={filtered.upcoming} tone="slate" />
                   {!filtered.overdue.length && !filtered.due_today.length && !filtered.upcoming.length &&

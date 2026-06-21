@@ -1,24 +1,23 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
-import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
+import { GanttChart } from '@/components/GanttChart'
+import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
-import { useToast } from '@/components/Toast'
-import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
-import { stripHtml, byDeadlineAsc } from '@/lib/format'
+import { useProjectDetail } from '@/hooks/useData'
+import { stripHtml, sanitizeHtml, byDeadlineAsc } from '@/lib/format'
 
 export default function ProjectDetailScreen() {
   const { name = '' } = useParams()
+  const navigate = useNavigate()
   const id = decodeURIComponent(name)
   const { data, isLoading } = useProjectDetail(id)
-  const navigate = useNavigate()
-  const toast = useToast()
-  const del = useDeleteProjectDetail()
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
+  const [view, setView] = useState<'list' | 'gantt'>('list')
+  const [todoFilter, setTodoFilter] = useState<'all' | 'open' | 'completed'>('all')
 
   if (isLoading && !data) {
     return (
@@ -35,9 +34,17 @@ export default function ProjectDetailScreen() {
     )
   }
 
-  const condition = stripHtml(data.current_condition || '')
-  const outcome = stripHtml(data.expected_outcome || '')
+  // Text Editor fields — render the stored HTML; stripHtml is only used to test
+  // emptiness (an empty editor can still hold markup like <p></p>).
+  const conditionHtml = data.current_condition || ''
+  const outcomeHtml = data.expected_outcome || ''
+  const hasCondition = !!stripHtml(conditionHtml).trim()
+  const hasOutcome = !!stripHtml(outcomeHtml).trim()
   const projectItems = data.project_items.slice().sort(byDeadlineAsc)
+  const completedCount = projectItems.filter((t) => t.status_key === 'completed').length
+  const filteredItems = projectItems.filter((t) =>
+    todoFilter === 'all' ? true : todoFilter === 'completed' ? t.status_key === 'completed' : t.status_key !== 'completed',
+  )
 
   return (
     <DetailScreen title={data.title}>
@@ -46,42 +53,31 @@ export default function ProjectDetailScreen() {
           {data.project_name}
         </p>
         <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900">{data.title}</h2>
-        <span className="mt-2 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-          {data.status}
-        </span>
-
-        {data.can_edit && (
-          <div className="mt-3 flex gap-2">
-            <button onClick={() => setEditOpen(true)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-700 active:scale-95">
-              <Pencil className="h-4 w-4" /> Edit
-            </button>
-            <button
-              disabled={projectItems.length > 0}
-              title={projectItems.length > 0 ? 'Remove all todos before deleting this detail' : undefined}
-              onClick={() => {
-                if (!confirm('Delete this detail?')) return
-                del.mutate(data.name, {
-                  onSuccess: () => { toast('success', 'Project detail deleted'); navigate(`/project/${encodeURIComponent(data.project)}`) },
-                  onError: (e) => toast('error', (e as Error).message),
-                })
-              }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-rose-600 active:scale-95 disabled:cursor-not-allowed disabled:text-slate-300 disabled:active:scale-100">
-              <Trash2 className="h-4 w-4" /> Delete
-            </button>
-          </div>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+            {data.status}
+          </span>
+          {data.deadline_human && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              <CalendarClock className="h-3.5 w-3.5" /> {data.deadline_human}
+            </span>
+          )}
+        </div>
 
         <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
-          {condition && (
+          {hasCondition && (
             <div>
               <p className="text-xs font-semibold text-slate-400">Current condition</p>
-              <p className="text-slate-600">{condition}</p>
+              <div className="prose-notes text-slate-600" dangerouslySetInnerHTML={{ __html: sanitizeHtml(conditionHtml) }} />
             </div>
           )}
           <div>
             <p className="text-xs font-semibold text-slate-400">Expected outcome</p>
-            <p className="whitespace-pre-wrap text-slate-600">{outcome || '—'}</p>
+            {hasOutcome ? (
+              <div className="prose-notes text-slate-600" dangerouslySetInnerHTML={{ __html: sanitizeHtml(outcomeHtml) }} />
+            ) : (
+              <p className="text-slate-600">—</p>
+            )}
           </div>
         </div>
       </div>
@@ -91,18 +87,64 @@ export default function ProjectDetailScreen() {
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
             <ListChecks className="h-4 w-4" /> Todos ({projectItems.length})
           </h3>
-          {data.can_create && (
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" /> Todo
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-full bg-slate-100 p-0.5">
+              <button
+                onClick={() => setView('list')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}
+              >
+                <List className="h-3.5 w-3.5" /> List
+              </button>
+              <button
+                onClick={() => setView('gantt')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" /> Gantt
+              </button>
+            </div>
+            {data.can_create && (
+              <button
+                onClick={() => setSheetOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" /> Todo
+              </button>
+            )}
+          </div>
         </div>
-        {projectItems.length ? (
-          <div className="flex flex-col gap-1.5">
-            {projectItems.map((t) => (
+        {view === 'gantt' ? (
+          <GanttChart
+            groups={[groupFromItems(data.title, projectItems)]}
+            title={data.title}
+            onBarClick={(tid) => navigate(`/project-item/${encodeURIComponent(tid)}`)}
+          />
+        ) : projectItems.length ? (
+          <>
+            <div className="mb-2.5 flex gap-1.5">
+              {([
+                ['all', `All ${projectItems.length}`],
+                ['open', `Open ${projectItems.length - completedCount}`],
+                ['completed', `Completed ${completedCount}`],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setTodoFilter(key)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${todoFilter === key ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {filteredItems.length ? (
+          <div className="flex flex-col gap-3">
+            {[
+              { label: 'Open', items: filteredItems.filter((t) => t.status_key !== 'completed') },
+              { label: 'Completed', items: filteredItems.filter((t) => t.status_key === 'completed') },
+            ].filter((s) => s.items.length).map((s) => (
+              <div key={s.label}>
+                <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">{s.label} ({s.items.length})</p>
+                <div className="flex flex-col gap-1.5">
+                  {s.items.map((t) => (
               <Link
                 key={t.name}
                 to={`/project-item/${encodeURIComponent(t.name)}`}
@@ -132,8 +174,15 @@ export default function ProjectDetailScreen() {
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
               </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
+            ) : (
+              <EmptyState icon={ListChecks} title="No matching todos" />
+            )}
+          </>
         ) : (
           <EmptyState icon={ListChecks} title="No todos in this detail" />
         )}
@@ -147,9 +196,8 @@ export default function ProjectDetailScreen() {
         projectDetail={data.name}
         team={data.team}
         defaultGroup={data.default_group}
+        siblings={data.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
       />
-
-      <ProjectDetailEditSheet open={editOpen} onClose={() => setEditOpen(false)} projectDetail={data} />
     </DetailScreen>
   )
 }

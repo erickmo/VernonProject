@@ -27,6 +27,43 @@ export function stripHtml(html: string): string {
   return (tmp.textContent || tmp.innerText || '').trim()
 }
 
+// Unwrap a Frappe error into plain readable text. The thrown message is often a
+// JSON-stringified `_server_messages` array of JSON strings, each with HTML.
+export function parseFrappeError(raw: string | undefined | null): string {
+  if (!raw) return 'Something went wrong'
+  let text = raw
+  try {
+    const arr = JSON.parse(raw)
+    if (Array.isArray(arr)) {
+      text = arr
+        .map((m) => {
+          try {
+            return (JSON.parse(m) as { message?: string })?.message ?? String(m)
+          } catch {
+            return String(m)
+          }
+        })
+        .join(' ')
+    }
+  } catch {
+    /* not JSON — use raw */
+  }
+  return stripHtml(text) || 'Something went wrong'
+}
+
+// Friendly message for a failed delete. Frappe's LinkExistsError reads
+// "Cannot delete or cancel because <Doctype> X is linked with <Doctype> Y".
+export function deleteErrorMessage(e: unknown, entity: string): string {
+  const msg = parseFrappeError((e as { message?: string })?.message)
+  if (/linked with/i.test(msg)) {
+    const linked = msg.split(/linked with/i)[1]?.replace(/\.$/, '').trim()
+    return linked
+      ? `Can't delete this ${entity} — still linked with ${linked}. Remove those first.`
+      : `Can't delete this ${entity} — it's still in use.`
+  }
+  return msg
+}
+
 // Sanitize untrusted rich-text (e.g. Frappe comment HTML) for safe rendering:
 // drop dangerous elements, strip event-handler attributes and javascript: URLs.
 // Links open in the same webview (no target=_blank) so they stay inside the

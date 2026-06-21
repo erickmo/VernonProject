@@ -18,21 +18,25 @@ import type {
   ProjectFull,
   ProjectInput,
   ProjectItemDetail,
+  GroupTodo,
   ScoringGroup,
   ScoringGroupPayload,
 } from '@/lib/types'
+import type { GanttGroup } from '@/lib/gantt'
 
 export const keys = {
   boot: ['boot'] as const,
   dashboard: ['dashboard'] as const,
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
+  projectGantt: (n: string) => ['project-gantt', n] as const,
   projectDetail: (n: string) => ['project-detail', n] as const,
   projectItem: (n: string) => ['project-item', n] as const,
   memberWorkload: (p: string, u: string, c: boolean) =>
     ['member-workload', p, u, c] as const,
   scoringGroups: ['scoring-groups'] as const,
   scoringGroup: (n: string) => ['scoring-group', n] as const,
+  groupTodos: (n: string) => ['group-todos', n] as const,
   brands: ['brands'] as const,
   brand: (n: string) => ['brand', n] as const,
 }
@@ -51,6 +55,13 @@ export const useProject = (name: string) =>
     queryKey: keys.project(name),
     queryFn: () => mobileApi.project(name) as Promise<ProjectFull>,
     enabled: !!name,
+  })
+
+export const useProjectGantt = (name: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.projectGantt(name),
+    queryFn: () => mobileApi.projectGantt(name) as Promise<GanttGroup[]>,
+    enabled: !!name && enabled,
   })
 
 export const useMemberWorkload = (
@@ -146,6 +157,21 @@ export function useUpdateTodo(todoId: string) {
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.projects })
+    },
+  })
+}
+
+export function useSetTodoAllocations(todoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (allocations: { date: string; minutes: number }[]) => {
+      const res = await mobileApi.setTodoAllocations(todoId, allocations)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
     },
   })
 }
@@ -248,31 +274,20 @@ export function useDeleteProject() {
 export function useCreateProjectDetail(project: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: Omit<ProjectDetailInput, 'project'>) => {
-      const existing = await resource.list<{ name: string }[]>('Glossary', {
-        filters: [
-          ['glossary', '=', input.grouping],
-          ['project', '=', project],
-        ],
-        fields: ['name'],
-        limit: 1,
-      })
-      let groupingName = existing[0]?.name
-      if (!groupingName) {
-        const created = await resource.create<{ name: string }>('Glossary', {
-          glossary: input.grouping,
-          project,
-        })
-        groupingName = created.name
-      }
-      return resource.create<{ name: string }>('Project Detail', {
+    mutationFn: async (input: Omit<ProjectDetailInput, 'project'>) =>
+      resource.create<{ name: string }>('Project Detail', {
+        // project_deadline is read_only + fetch_from project.deadline on the
+        // doctype, so it is populated server-side — never sent from the client.
         project,
         title: input.title,
-        project_deadline: input.project_deadline,
-        grouping: groupingName,
-        ...(input.status ? { status: input.status } : {}),
-      })
-    },
+        ...(input.is_pending != null ? { is_pending: input.is_pending } : {}),
+        ...(input.current_condition != null ? { current_condition: input.current_condition } : {}),
+        ...(input.expected_outcome != null ? { expected_outcome: input.expected_outcome } : {}),
+        ...(input.keterangan_di_sow != null ? { keterangan_di_sow: input.keterangan_di_sow } : {}),
+        ...(input.discount != null ? { discount: input.discount } : {}),
+        ...(input.price != null ? { price: input.price } : {}),
+        ...(input.glossaries ? { glossaries: input.glossaries } : {}),
+      }),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.project(project) })
     },
@@ -370,7 +385,7 @@ export function useScoringGroups() {
     queryKey: keys.scoringGroups,
     queryFn: () =>
       resource.list<ScoringGroup[]>('Group', {
-        fields: ['name', 'group_name', 'description', 'weight', 'leader_weight'],
+        fields: ['name', 'group_name', 'description', 'leader_weight'],
         limit: 0,
       }),
   })
@@ -380,6 +395,19 @@ export function useScoringGroup(name: string, enabled = true) {
   return useQuery({
     queryKey: keys.scoringGroup(name),
     queryFn: () => resource.get<ScoringGroup>('Group', name),
+    enabled: !!name && enabled,
+  })
+}
+
+// Project Todos linked to a scoring Group, newest deadline first.
+export function useGroupTodos(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.groupTodos(name),
+    queryFn: () =>
+      resource.list<GroupTodo[]>('Project Todo', {
+        filters: [['group', '=', name]],
+        fields: ['name', 'to_do', 'status', 'project', 'deadline'],
+      }),
     enabled: !!name && enabled,
   })
 }
@@ -475,5 +503,17 @@ export function useDeleteBrand() {
   return useMutation({
     mutationFn: (name: string) => resource.remove('Brand', name),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.brands }),
+  })
+}
+
+export function useMergeBrand() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ source, target }: { source: string; target: string }) =>
+      renameDoc('Brand', source, target, true),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.brands })
+      qc.invalidateQueries({ queryKey: keys.projects })
+    },
   })
 }

@@ -18,7 +18,6 @@ Aplikasi manajemen proyek berbasis Frappe Framework untuk mengelola proyek, tuga
 ## Fitur Utama
 
 - **Manajemen Proyek**: Kelola multiple proyek dengan customer, timeline, dan tim yang berbeda
-- **Project Grouping**: Organisasi proyek dalam struktur hierarki menggunakan Project Group
 - **Project Details**: Breakdown proyek menjadi detail-detail pekerjaan dengan estimasi dan pricing
 - **Todo Management**: Sistem todo dengan workflow status (Planned → Done → Checked By PL → Completed)
 - **Team Management**: Kelola tim proyek dengan role Project Owner, Project Leader, dan Team Members
@@ -56,8 +55,7 @@ DocType utama untuk mengelola proyek.
 **Fields:**
 - `project_name` - Nama proyek (required)
 - `naming_series` - Auto-naming: PRJ-.YY..MM.-.#####
-- `project_group` - Link ke Project Group (required)
-- `customer` - Link ke Customer (required)
+- `customer` - Link ke Brand (required)
 - `start_date` - Tanggal mulai proyek (required)
 - `deadline` - Deadline proyek (required)
 - `status` - Status: Ongoing / Closed (default: Ongoing)
@@ -150,16 +148,16 @@ Child table untuk todo items dalam Project Detail.
 
 ---
 
-### 4. Customer
+### 4. Brand
 
-Master data customer/klien.
+Master data brand/klien (sebelumnya Customer).
 
 **Fields:**
-- `customer_name` - Nama customer (required, unique)
+- `brand_name` - Nama brand (required, unique)
 
-**Naming:** By fieldname (customer_name)
+**Naming:** By fieldname (brand_name)
 
-**File:** [vernon_project/doctype/customer/customer.json](vernon_project/vernon_project/doctype/customer/customer.json)
+**File:** [vernon_project/doctype/brand/brand.json](vernon_project/vernon_project/doctype/brand/brand.json)
 
 ---
 
@@ -178,25 +176,7 @@ Istilah/terminologi untuk pengelompokan project detail.
 
 ---
 
-### 6. Project Group
-
-Pengelompokan proyek dalam struktur tree/hierarki.
-
-**Fields:**
-- `project_name` - Nama group (required, unique)
-- `is_group` - Checkbox apakah ini folder group
-- `parent_project_group` - Parent group (untuk tree structure)
-- `lft`, `rgt`, `old_parent` - Fields untuk Nested Set Model
-
-**Features:**
-- Tree view (is_tree: true)
-- Nested Set Model untuk hierarki
-
-**File:** [vernon_project/doctype/project_group/project_group.json](vernon_project/vernon_project/doctype/project_group/project_group.json)
-
----
-
-### 7. Project Team
+### 6. Project Team
 
 Child table untuk team members di Project.
 
@@ -205,7 +185,7 @@ Child table untuk team members di Project.
 
 ---
 
-### 8. Project Glossary
+### 7. Project Glossary
 
 Child table MultiSelect untuk glossaries di Project Detail.
 
@@ -214,15 +194,47 @@ Child table MultiSelect untuk glossaries di Project Detail.
 
 ---
 
-### 9. Scope of Work
+### 8. Scope of Work
 
 DocType untuk mengelola scope of work (belum fully implemented).
 
 ---
 
-### 10. Project Proposal
+### 9. Project Proposal
 
 DocType untuk mengelola proposal proyek (belum fully implemented).
+
+---
+
+### 10. Group
+
+Pengelompokan untuk sistem scoring/penilaian (taxonomy grup penilaian).
+
+**File:** [vernon_project/doctype/group/group.json](vernon_project/vernon_project/doctype/group/group.json)
+
+---
+
+### 11. Group Level
+
+Level/tingkat penilaian dalam sebuah Group (skala -5..5).
+
+**File:** [vernon_project/doctype/group_level/group_level.json](vernon_project/vernon_project/doctype/group_level/group_level.json)
+
+---
+
+### 12. Point Ledger
+
+Catatan ledger poin untuk sistem scoring.
+
+**File:** [vernon_project/doctype/point_ledger/point_ledger.json](vernon_project/vernon_project/doctype/point_ledger/point_ledger.json)
+
+---
+
+### 13. Project Todo Allocation
+
+Alokasi todo proyek ke user/tim.
+
+**File:** [vernon_project/doctype/project_todo_allocation/project_todo_allocation.json](vernon_project/vernon_project/doctype/project_todo_allocation/project_todo_allocation.json)
 
 ## Role & Permissions
 
@@ -236,7 +248,7 @@ DocType untuk mengelola proposal proyek (belum fully implemented).
    - Bisa create project
    - Full access ke project yang dia buat atau menjadi team member
    - Bisa approve todo sampai tahap Completed
-   - Bisa create/edit/delete Project Detail dan Customer
+   - Bisa create/edit/delete Project Detail dan Brand
 
 3. **Project Leader**
    - Read access ke project yang dia assigned sebagai leader atau team member
@@ -438,15 +450,11 @@ bench --site [nama-site] migrate
 
 ### 1. Setup Awal
 
-1. **Buat Customer**
-   - Buka menu Customer
-   - Tambahkan customer/klien baru
+1. **Buat Brand**
+   - Buka menu Brand
+   - Tambahkan brand/klien baru
 
-2. **Buat Project Group** (opsional)
-   - Buka menu Project Group
-   - Buat struktur folder untuk organisasi project
-
-3. **Buat Glossary**
+2. **Buat Glossary**
    - Buka menu Glossary
    - Buat istilah-istilah untuk pengelompokan project detail
    - Setiap glossary terkait dengan satu project
@@ -457,7 +465,6 @@ bench --site [nama-site] migrate
 2. Klik **New**
 3. Isi data:
    - Project Name
-   - Project Group
    - Customer
    - Start Date & Deadline
    - Project Owner & Project Leader
@@ -540,13 +547,16 @@ vernon_project/
 │       │   ├── project/                 # Project DocType
 │       │   ├── project_detail/          # Project Detail DocType
 │       │   ├── project_todo/            # Project Todo DocType
-│       │   ├── customer/                # Customer DocType
+│       │   ├── brand/                   # Brand DocType (eks Customer)
 │       │   ├── glossary/                # Glossary DocType
-│       │   ├── project_group/           # Project Group DocType
 │       │   ├── project_team/            # Project Team (child)
 │       │   ├── project_glossary/        # Project Glossary (child)
 │       │   ├── scope_of_work/           # Scope of Work DocType
-│       │   └── project_proposal/        # Project Proposal DocType
+│       │   ├── project_proposal/        # Project Proposal DocType
+│       │   ├── group/                   # Group DocType (scoring)
+│       │   ├── group_level/             # Group Level DocType
+│       │   ├── point_ledger/            # Point Ledger DocType
+│       │   └── project_todo_allocation/ # Project Todo Allocation
 │       └── report/
 │           ├── progress_report/         # Progress Report
 │           ├── todo_report/             # Todo Report

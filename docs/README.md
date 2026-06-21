@@ -22,7 +22,8 @@ cd docs && python3 -m http.server 8080
 | [index.html](index.html) | Overview, feature highlights, and a map of the docs |
 | [getting-started.html](getting-started.html) | Installation on a Frappe bench + first-time setup and daily usage |
 | [architecture.html](architecture.html) | Data model, app hooks, the scheduled job, and the dashboard |
-| [doctypes.html](doctypes.html) | Field-by-field reference for all 10 DocTypes with controller logic |
+| [doctypes.html](doctypes.html) | Field-by-field reference for all 14 DocTypes with controller logic |
+| [erd.html](erd.html) | A visual entity-relationship diagram (Mermaid) of all 14 DocTypes and their links |
 | [workflow.html](workflow.html) | The four-stage todo lifecycle, phase time tracking, recurring todos, field locking |
 | [permissions.html](permissions.html) | Roles, row-level query filtering, document checks, and the Project Admin block |
 | [api.html](api.html) | The four whitelisted API endpoints |

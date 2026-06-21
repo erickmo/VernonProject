@@ -11,22 +11,30 @@ interface CreateProjectItemSheetProps {
   projectDetail: string
   team: { user: string; name: string }[]
   defaultGroup?: string | null
+  /** Sibling tasks in this detail, for the blocking pickers. */
+  siblings?: { name: string; to_do: string }[]
 }
 
-export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup }: CreateProjectItemSheetProps) {
+export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup, siblings = [] }: CreateProjectItemSheetProps) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
 
   const [toDo, setToDo] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
   const [deadline, setDeadline] = useState('')
+  const [leaderDeadline, setLeaderDeadline] = useState('')
+  const [ownerDeadline, setOwnerDeadline] = useState('')
   const [estimated, setEstimated] = useState('')
+  const [leaderEstimated, setLeaderEstimated] = useState('')
+  const [ownerEstimated, setOwnerEstimated] = useState('')
   const [notes, setNotes] = useState('')
   const [isRecurring, setIsRecurring] = useState(false)
   const [frequency, setFrequency] = useState('Daily')
   const [until, setUntil] = useState('')
   const [group, setGroup] = useState(defaultGroup ?? '')
   const [level, setLevel] = useState('')
+  const [blockedBy, setBlockedBy] = useState('')
+  const [blocking, setBlocking] = useState('')
 
   const { data: groups } = useScoringGroups()
   const { data: groupDoc } = useScoringGroup(group, !!group)
@@ -37,8 +45,9 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setDeadline(''); setEstimated('')
+    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
-    setGroup(defaultGroup ?? ''); setLevel('')
+    setGroup(defaultGroup ?? ''); setLevel(''); setBlockedBy(''); setBlocking('')
   }
 
   const close = () => { reset(); onClose() }
@@ -57,6 +66,12 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
       level,
     }
     if (estimated) fields.estimated = Number(estimated)
+    if (leaderDeadline) fields.leader_deadline = leaderDeadline
+    if (ownerDeadline) fields.owner_deadline = ownerDeadline
+    if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
+    if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
+    if (blockedBy) fields.blocked_by = blockedBy
+    if (blocking) fields.blocking = blocking
     if (isRecurring) {
       fields.is_recurring = 1
       fields.recurring_frequency = frequency
@@ -96,10 +111,38 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             <SearchableSelect value={assignedTo} onChange={setAssignedTo} options={team.map((m) => ({ value: m.user, label: m.name }))} placeholder="Select a team member…" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
-            Deadline<span className="text-red-500"> *</span>
-            <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-          </label>
+          <div className="flex gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Deadline<span className="text-red-500"> *</span>
+              <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            </label>
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Estimated (minutes)
+              <input type="number" min={0} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
+            </label>
+          </div>
+
+          <div className="flex gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Leader approval by
+              <input type="date" className={field + ' mt-1'} value={leaderDeadline} onChange={(e) => setLeaderDeadline(e.target.value)} />
+            </label>
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Est. for approval (min)
+              <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
+            </label>
+          </div>
+
+          <div className="flex gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Owner approval by
+              <input type="date" className={field + ' mt-1'} value={ownerDeadline} onChange={(e) => setOwnerDeadline(e.target.value)} />
+            </label>
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Est. for owner approval (min)
+              <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
+            </label>
+          </div>
 
           <label className="text-sm font-medium text-slate-600">
             Group<span className="text-red-500"> *</span>
@@ -116,16 +159,38 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             <SearchableSelect
               value={level}
               onChange={setLevel}
-              options={(groupDoc?.levels ?? []).map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
+              options={[...(groupDoc?.levels ?? [])]
+                .sort((a, b) => Number(a.level_name) - Number(b.level_name))
+                .map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
               placeholder={group ? 'Select a level…' : 'Pick a group first…'}
               disabled={!group}
             />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
-            Estimated (minutes)
-            <input type="number" min={0} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
-          </label>
+          {siblings.length > 0 && (
+            <div className="flex gap-3">
+              <label className="flex-1 text-sm font-medium text-slate-600">
+                Blocked by
+                <SearchableSelect
+                  value={blockedBy}
+                  onChange={setBlockedBy}
+                  options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
+                  allowClear
+                  placeholder="None"
+                />
+              </label>
+              <label className="flex-1 text-sm font-medium text-slate-600">
+                Blocking
+                <SearchableSelect
+                  value={blocking}
+                  onChange={setBlocking}
+                  options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
+                  allowClear
+                  placeholder="None"
+                />
+              </label>
+            </div>
+          )}
 
           <label className="text-sm font-medium text-slate-600">
             Notes

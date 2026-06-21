@@ -74,6 +74,15 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
                 {formatEstimate(todo.estimated)}
               </span>
             )}
+            {todo.today_allocation > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-700"
+                title="Allocated for today"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                {formatEstimate(todo.today_allocation)} today
+              </span>
+            )}
           </div>
         </div>
 

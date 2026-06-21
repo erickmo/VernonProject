@@ -18,6 +18,15 @@ export interface ProjectItem {
   deadline: string | null
   deadline_human: string | null
   is_overdue: boolean
+  leader_deadline: string | null
+  leader_deadline_human: string | null
+  owner_deadline: string | null
+  owner_deadline_human: string | null
+  leader_appr_overdue: boolean
+  owner_appr_overdue: boolean
+  allocations: { date: string; minutes: number }[]
+  allocated_total: number
+  today_allocation: number
   estimated: number
   ongoing: boolean
   is_recurring: boolean
@@ -64,6 +73,11 @@ export interface ProjectItemDetail extends ProjectItem {
   point?: number
   assignee_earned?: number
   leader_earned?: number
+  blocked_by: string | null
+  blocking: string | null
+  blocked_by_name: string | null
+  blocking_name: string | null
+  detail_todos: { name: string; to_do: string }[]
 }
 
 export interface ProjectItemEdit {
@@ -162,7 +176,8 @@ export interface ProjectFull {
   project_owner: string
   project_leader: string
   project_admin: string | null
-  project_group: string
+  blocked_by: string | null
+  blocked_by_name: string | null
   groupings: string[]
   project_details: ProjectDetailSummary[]
   team: TeamMember[]
@@ -174,14 +189,23 @@ export interface ProjectDetail {
   project: string
   project_name: string
   status: string
+  is_pending: number
   current_condition: string | null
   expected_outcome: string | null
+  keterangan_di_sow: string | null
+  discount: number | null
+  price: number | null
+  latest_deadline: string | null
+  project_deadline: string | null
+  deadline_human: string | null
   project_items: ProjectItem[]
   can_create: boolean
   team: { user: string; name: string; image: string | null }[]
   grouping: string
   can_edit: boolean
   groupings: string[]
+  glossaries: string[]
+  glossary_options: { name: string; glossary: string }[]
   default_group?: string | null
 }
 
@@ -199,7 +223,6 @@ export interface Opt2 {
 export interface FormOptions {
   brands: Opt2[]
   users: Opt2[]
-  project_groups: Opt2[]
 }
 
 export interface ProjectInput {
@@ -208,7 +231,7 @@ export interface ProjectInput {
   project_owner: string
   project_leader: string
   project_admin?: string | null
-  project_group: string
+  blocked_by?: string | null
   start_date: string
   deadline: string
   goal?: string
@@ -219,9 +242,13 @@ export interface ProjectInput {
 export interface ProjectDetailInput {
   project: string
   title: string
-  project_deadline: string
-  grouping: string
-  status?: string
+  is_pending?: number
+  current_condition?: string
+  expected_outcome?: string
+  keterangan_di_sow?: string
+  discount?: number
+  price?: number
+  glossaries?: { glossary: string }[]
 }
 
 export interface Comment {
@@ -244,7 +271,6 @@ export interface ScoringGroup {
   name: string
   group_name: string
   description?: string
-  weight: number
   late_penalty: number
   early_bonus: number
   leader_weight: number
@@ -253,10 +279,17 @@ export interface ScoringGroup {
   levels: GroupLevel[]
 }
 
+export interface GroupTodo {
+  name: string
+  to_do: string
+  status: string
+  project: string
+  deadline: string | null
+}
+
 export interface ScoringGroupPayload {
   group_name: string
   description?: string
-  weight: number
   late_penalty: number
   early_bonus: number
   leader_weight: number

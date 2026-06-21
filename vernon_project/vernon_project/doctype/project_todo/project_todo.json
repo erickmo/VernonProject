@@ -13,7 +13,11 @@
       "to_do",
       "assigned_to",
       "deadline",
+      "leader_deadline",
+      "owner_deadline",
       "estimated",
+      "blocked_by",
+      "blocking",
       "notes",
       "points_section",
       "group",
@@ -47,6 +51,8 @@
       "column_break_recurring",
       "next_occurrence",
       "original_todo",
+      "allocations_section",
+      "allocations",
       "progress_section",
       "status",
       "action",
@@ -112,6 +118,20 @@
          "reqd": 1
       },
       {
+         "columns": 1,
+         "fieldname": "leader_deadline",
+         "fieldtype": "Date",
+         "label": "Leader Approval Deadline",
+         "description": "Optional target date for Leader approval (status Checked By PL). For long tasks."
+      },
+      {
+         "columns": 1,
+         "fieldname": "owner_deadline",
+         "fieldtype": "Date",
+         "label": "Owner Approval Deadline",
+         "description": "Optional target date for Owner approval (status Completed). For long tasks."
+      },
+      {
          "columns": 3,
          "fieldname": "notes",
          "fieldtype": "Text Editor",
@@ -126,6 +146,20 @@
          "label": "Estimated (minutes)",
          "non_negative": 1,
          "search_index": 1
+      },
+      {
+         "fieldname": "blocked_by",
+         "fieldtype": "Link",
+         "label": "Blocked By",
+         "options": "Project Todo",
+         "description": "This task is blocked by / depends on the selected task."
+      },
+      {
+         "fieldname": "blocking",
+         "fieldtype": "Link",
+         "label": "Blocking",
+         "options": "Project Todo",
+         "description": "This task blocks the selected task."
       },
       {
          "fieldname": "points_section",
@@ -145,6 +179,7 @@
          "fieldname": "level",
          "fieldtype": "Select",
          "label": "Level",
+         "reqd": 1,
          "description": "Levels come from the selected Group."
       },
       {
@@ -332,6 +367,18 @@
          "label": "Original Todo",
          "read_only": 1,
          "hidden": 1
+      },
+      {
+         "fieldname": "allocations_section",
+         "fieldtype": "Section Break",
+         "label": "Day Allocations"
+      },
+      {
+         "fieldname": "allocations",
+         "fieldtype": "Table",
+         "label": "Day Allocations",
+         "options": "Project Todo Allocation",
+         "description": "Assignee's plan splitting the estimated effort across days. Planning only \u2014 not scored."
       },
       {
          "columns": 1,

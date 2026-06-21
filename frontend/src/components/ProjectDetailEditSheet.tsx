@@ -1,40 +1,46 @@
 import { useEffect, useState } from 'react'
 import { X, Check } from 'lucide-react'
-import { useUpdateProjectDetail, useGroups } from '@/hooks/useData'
+import { useUpdateProjectDetail, useProjectDetail } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
-import { SearchableSelect } from '@/components/SearchableSelect'
-import { stripHtml } from '@/lib/format'
-import type { ProjectDetail } from '@/lib/types'
+import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { RichEditor } from '@/components/RichEditor'
 
 interface Props {
   open: boolean
   onClose: () => void
-  projectDetail: ProjectDetail
+  projectDetailName: string
 }
 
-const STATUSES = ['Pending', 'Ongoing', 'Completed']
-
-export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) {
+export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Props) {
   const toast = useToast()
-  const update = useUpdateProjectDetail(projectDetail.name)
-  const { data: groups } = useGroups(projectDetail.project, open)
+  const update = useUpdateProjectDetail(projectDetailName)
+  // Fetch the full detail so condition/outcome aren't lost on save.
+  const { data: projectDetail, isLoading } = useProjectDetail(projectDetailName)
 
   const [title, setTitle] = useState('')
-  const [status, setStatus] = useState('Pending')
-  const [grouping, setGrouping] = useState('')
+  const [isPending, setIsPending] = useState(false)
   const [condition, setCondition] = useState('')
   const [outcome, setOutcome] = useState('')
+  const [sow, setSow] = useState('')
+  const [discount, setDiscount] = useState('')
+  const [price, setPrice] = useState('')
+  const [glossaries, setGlossaries] = useState<string[]>([])
 
   useEffect(() => {
-    if (open) {
+    if (open && projectDetail) {
       setTitle(projectDetail.title)
-      setStatus(projectDetail.status)
-      setGrouping(projectDetail.grouping)
-      setCondition(stripHtml(projectDetail.current_condition || ''))
-      setOutcome(stripHtml(projectDetail.expected_outcome || ''))
+      setIsPending(!!projectDetail.is_pending)
+      setCondition(projectDetail.current_condition || '')
+      setOutcome(projectDetail.expected_outcome || '')
+      setSow(projectDetail.keterangan_di_sow || '')
+      setDiscount(projectDetail.discount != null ? String(projectDetail.discount) : '')
+      setPrice(projectDetail.price != null ? String(projectDetail.price) : '')
+      setGlossaries(projectDetail.glossaries ?? [])
     }
   }, [open, projectDetail])
+
+  const glossaryOpts = (projectDetail?.glossary_options ?? []).map((g) => ({ value: g.name, label: g.glossary }))
 
   if (!open) return null
 
@@ -42,17 +48,20 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) 
     'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
 
   const submit = () => {
-    if (!title.trim() || !grouping) {
-      toast('error', 'Title and group are required')
+    if (!title.trim()) {
+      toast('error', 'Title is required')
       return
     }
     update.mutate(
       {
         title: title.trim(),
-        status,
-        grouping,
+        is_pending: isPending ? 1 : 0,
         current_condition: condition,
         expected_outcome: outcome,
+        keterangan_di_sow: sow,
+        discount: Number(discount) || 0,
+        price: Number(price) || 0,
+        glossaries: glossaries.map((g) => ({ glossary: g })),
       },
       {
         onSuccess: () => { toast('success', 'Project detail updated'); onClose() },
@@ -60,8 +69,6 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) 
       },
     )
   }
-
-  const groupOpts = (groups ?? []).map((g) => ({ value: g.name, label: g.glossary }))
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
@@ -73,31 +80,53 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) 
           </button>
         </div>
 
+        {isLoading || !projectDetail ? (
+          <Spinner className="mx-auto my-8 h-6 w-6 text-slate-400" />
+        ) : (
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-slate-600">
             Title<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
-            Group<span className="text-red-500"> *</span>
-            <SearchableSelect value={grouping} onChange={setGrouping} options={groupOpts} placeholder="Select a group…" />
-          </label>
-
-          <label className="text-sm font-medium text-slate-600">
-            Status
-            <SearchableSelect value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: s }))} />
+          <label className="flex items-center justify-between text-sm font-medium text-slate-600">
+            <span>
+              Mark as pending
+              <span className="mt-0.5 block text-xs font-normal text-slate-400">Status is otherwise set automatically from the tasks (Completed when all done, else Ongoing).</span>
+            </span>
+            <input type="checkbox" checked={isPending} onChange={(e) => setIsPending(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
             Current condition
-            <textarea className={field + ' mt-1'} rows={2} value={condition} onChange={(e) => setCondition(e.target.value)} />
+            <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
             Expected outcome
-            <textarea className={field + ' mt-1'} rows={2} value={outcome} onChange={(e) => setOutcome(e.target.value)} />
+            <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
           </label>
+
+          <label className="text-sm font-medium text-slate-600">
+            Keterangan di SOW
+            <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
+          </label>
+
+          <div className="text-sm font-medium text-slate-600">
+            Glossaries
+            <MultiSelectChips options={glossaryOpts} value={glossaries} onChange={setGlossaries} emptyText="No glossaries for this project yet" />
+          </div>
+
+          <div className="flex gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Discount (Rp)
+              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={discount} onChange={(e) => setDiscount(e.target.value)} />
+            </label>
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Price (Rp)
+              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={price} onChange={(e) => setPrice(e.target.value)} />
+            </label>
+          </div>
 
           <button onClick={submit} disabled={update.isPending}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">
@@ -105,6 +134,7 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetail }: Props) 
             Save changes
           </button>
         </div>
+        )}
       </div>
     </div>
   )

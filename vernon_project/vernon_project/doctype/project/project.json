@@ -9,13 +9,13 @@
   "section_break_azxo",
   "naming_series",
   "project_name",
-  "project_group",
   "brand",
   "column_break_ywxo",
   "start_date",
   "deadline",
   "column_break_nukl",
   "status",
+  "blocked_by",
   "section_break_gwge",
   "project_owner",
   "project_leader",
@@ -116,14 +116,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "project_group",
-   "fieldtype": "Link",
-   "label": "Project Group",
-   "options": "Project Group",
-   "reqd": 1,
-   "search_index": 1
-  },
-  {
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
@@ -142,6 +134,14 @@
    "label": "Status",
    "options": "Ongoing\nClosed",
    "reqd": 1
+  },
+  {
+   "fieldname": "blocked_by",
+   "fieldtype": "Link",
+   "label": "Blocking Project",
+   "options": "Project",
+   "description": "This project is blocked by / depends on the selected project.",
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,

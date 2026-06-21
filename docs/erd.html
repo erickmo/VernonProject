@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entity-Relationship Diagram · Vernon Project Docs</title>
+  <meta name="description" content="A visual entity-relationship diagram (ERD) of every Vernon Project DocType and how they link together.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236d5efc'/><text x='16' y='23' font-size='20' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
+  <link rel="stylesheet" href="assets/styles.css">
+  <style>
+    .erd-frame{border:1px solid var(--border,#e3e3ee);border-radius:14px;background:#fff;padding:18px;overflow-x:auto;margin:1rem 0}
+    .erd-frame .mermaid{min-width:760px}
+    [data-theme="dark"] .erd-frame{background:#0f1117;border-color:#272a36}
+    .legend{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;margin:.75rem 0 0;font-size:.85rem}
+    .legend code{font-size:.8rem}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="iconbtn hamburger" id="hamburger" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a class="topbar__brand" href="index.html">
+      <span class="brand-mark">V</span>
+      <span>Vernon Project<small>Documentation</small></span>
+    </a>
+    <div class="topbar__spacer"></div>
+    <button class="searchbtn" data-search-open aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="stxt">Search docs</span>
+      <span class="kbd">&#8984; K</span>
+    </button>
+    <button class="iconbtn" id="themeToggle" aria-label="Toggle theme">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+    <a class="iconbtn" href="https://github.com" aria-label="Repository" title="Repository">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 0 0 8.84 21.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.69 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85V21c0 .27.16.59.67.5A10 10 0 0 0 12 2Z"/></svg>
+    </a>
+  </header>
+  <div class="scrim" id="scrim"></div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav>
+        <div class="nav-group">
+          <div class="nav-group__title">Getting Started</div>
+          <a class="nav-link" href="index.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Overview</span></a>
+          <a class="nav-link" href="getting-started.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5 5-5"/><path d="M12 4v12"/></svg><span>Installation &amp; Setup</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Core Concepts</div>
+          <a class="nav-link" href="architecture.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Architecture</span></a>
+          <a class="nav-link" href="doctypes.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>DocType Reference</span></a>
+          <a class="nav-link active" href="erd.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/><path d="M6.5 8v3.5a2 2 0 0 0 2 2H17.5V16M6.5 13.5V16"/></svg><span>ERD</span></a>
+          <a class="nav-link" href="workflow.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg><span>Todo Workflow</span></a>
+          <a class="nav-link" href="permissions.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Roles &amp; Permissions</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group__title">Reference</div>
+          <a class="nav-link" href="api.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>API Reference</span></a>
+          <a class="nav-link" href="reports.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Reports &amp; Dashboards</span></a>
+          <a class="nav-link" href="changelog.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg><span>Changelog &amp; Roadmap</span></a>
+        </div>
+</nav>
+    </aside>
+    <main class="content">
+<nav class="breadcrumb"><a href="index.html">Docs</a> <span>/</span> <span>ERD</span></nav>
+<h1 class="page-title">Entity-Relationship Diagram</h1>
+<p class="page-lead">A bird's-eye view of the Vernon Project data model — all 14 DocTypes and the Link / child-table relationships between them. The diagram is generated from the DocType JSON definitions and is the visual companion to the <a href="doctypes.html">DocType Reference</a>.</p>
+
+<h2>The diagram</h2>
+<p>Crow's-foot notation: <code>||</code> = exactly one, <code>o{</code> = zero-or-many, <code>o|</code> = zero-or-one. Child-table DocTypes (<code>istable: 1</code>) are reached only through their parent's Table field and never exist as standalone documents.</p>
+
+<div class="erd-frame">
+<pre class="mermaid">
+erDiagram
+  Brand["Brand"] {
+    Data brand_name PK
+  }
+  Project["Project"] {
+    Link brand FK
+    Link project_owner FK
+    Link project_leader FK
+    Link project_admin FK
+  }
+  ProjectTeam["Project Team (child)"] {
+    Link user FK
+  }
+  ProjectDetail["Project Detail"] {
+    Link project FK
+    Link grouping FK
+    Select status
+    Currency price
+    Currency discount
+  }
+  Glossary["Glossary"] {
+    Link project FK
+    Data glossary
+  }
+  ProjectGlossary["Project Glossary (child)"] {
+    Link glossary FK
+  }
+  ProjectTodo["Project Todo"] {
+    Link project_detail FK
+    Link project FK
+    Link assigned_to FK
+    Link group FK
+    Select level
+    Float point
+    Select status
+  }
+  ProjectTodoAllocation["Project Todo Allocation (child)"] {
+    Date allocation_date
+    Int estimated_minutes
+  }
+  Group["Group"] {
+    Data group_name PK
+    Percent late_penalty
+    Percent early_bonus
+  }
+  GroupLevel["Group Level (child)"] {
+    Data level_name
+    Float point
+  }
+  PointLedger["Point Ledger"] {
+    Link user FK
+    Link todo FK
+    Link group FK
+    Link project FK
+    Float points_earned
+  }
+  ProjectProposal["Project Proposal"] {
+    Link amended_from FK
+  }
+  ScopeOfWork["Scope of Work"] {
+    Link proposal FK
+  }
+  User["User (Frappe)"] {
+    Data email PK
+  }
+
+  Project          }o--|| Brand                 : brand
+  Project          ||--o{ ProjectTeam           : team_members
+  ProjectTeam      }o--|| User                  : user
+  Project          }o--|| User                  : "owner/leader/admin"
+  Project          ||--o{ ProjectDetail         : details
+  ProjectDetail    }o--o| Glossary              : grouping
+  Glossary         }o--|| Project               : project
+  ProjectDetail    ||--o{ ProjectGlossary       : glossaries
+  ProjectGlossary  }o--|| Glossary              : glossary
+  ProjectDetail    ||--o{ ProjectTodo           : todos
+  ProjectTodo      }o--o| Project               : project
+  ProjectTodo      }o--|| Group                  : group
+  ProjectTodo      }o--|| User                  : "assignee/approvers"
+  ProjectTodo      ||--o{ ProjectTodoAllocation : allocations
+  Group            ||--o{ GroupLevel            : levels
+  PointLedger      }o--|| User                  : user
+  PointLedger      }o--|| ProjectTodo           : todo
+  PointLedger      }o--o| Group                  : group
+  PointLedger      }o--o| Project               : project
+  ScopeOfWork      }o--o| ProjectProposal       : proposal
+</pre>
+</div>
+
+<div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">Project Todo is now a standalone DocType</div><p>Earlier versions modelled tasks as a <code>todo</code> child table inside Project Detail. Project Todo is now a <strong>standalone</strong> DocType that links its parent via a <code>project_detail</code> Link, and carries its own <code>allocations</code> child table (<a href="doctypes.html#project-todo-allocation">Project Todo Allocation</a>) for per-day planning.</p></div></div>
+
+<h2>How to read it</h2>
+<ul>
+<li><strong>The work spine.</strong> <a href="doctypes.html#project">Project</a> &rarr; <a href="doctypes.html#project-detail">Project Detail</a> &rarr; <a href="doctypes.html#project-todo">Project Todo</a> is the three-level work-breakdown chain. Each Project Todo splits its time across days via <a href="doctypes.html#project-todo-allocation">Project Todo Allocation</a> rows.</li>
+<li><strong>Classification.</strong> A Project links a <a href="doctypes.html#brand">Brand</a> (formerly <em>Customer</em>).</li>
+<li><strong>Scoring.</strong> A Project Todo links a <a href="doctypes.html#group">Group</a> and picks a <code>level</code> from that group's <a href="doctypes.html#group-level">Group Level</a> child rows; awarded points are recorded as <a href="doctypes.html#point-ledger">Point Ledger</a> entries, one per role (assignee / leader).</li>
+<li><strong>Glossary.</strong> A Project Detail may link a <code>grouping</code> Glossary and a <code>glossaries</code> multiselect; each Glossary is scoped to a Project. The grouping seeds a default scoring Group when present.</li>
+<li><strong>Standalone stubs.</strong> <a href="doctypes.html#scope-of-work">Scope of Work</a> and <a href="doctypes.html#project-proposal">Project Proposal</a> are submittable skeletons outside the work chain (Scope of Work optionally links a Proposal).</li>
+</ul>
+
+<h2>Relationship table</h2>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Cardinality</th><th>From</th><th>To</th><th>Via</th></tr></thead>
+<tbody>
+<tr><td>N : 1</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#brand">Brand</a></td><td><code>brand</code> Link</td></tr>
+<tr><td>1 : N (child)</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#project-team">Project Team</a></td><td><code>team_members</code> Table</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#project">Project</a></td><td>User</td><td><code>project_owner</code>, <code>project_leader</code>, <code>project_admin</code></td></tr>
+<tr><td>1 : N</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><code>project</code> Link</td></tr>
+<tr><td>N : 1 (optional)</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#glossary">Glossary</a></td><td><code>grouping</code> Link</td></tr>
+<tr><td>N : N (multiselect)</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#glossary">Glossary</a></td><td><code>glossaries</code> &rarr; <a href="doctypes.html#project-glossary">Project Glossary</a></td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#glossary">Glossary</a></td><td><a href="doctypes.html#project">Project</a></td><td><code>project</code> Link (scopes it)</td></tr>
+<tr><td>1 : N</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><code>project_detail</code> Link</td></tr>
+<tr><td>1 : N (child)</td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><a href="doctypes.html#project-todo-allocation">Project Todo Allocation</a></td><td><code>allocations</code> Table</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><a href="doctypes.html#group">Group</a></td><td><code>group</code> Link</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td>User</td><td><code>assigned_to</code>, <code>developed_by</code>, <code>tested_by</code>, <code>completed_by</code></td></tr>
+<tr><td>1 : N (child)</td><td><a href="doctypes.html#group">Group</a></td><td><a href="doctypes.html#group-level">Group Level</a></td><td><code>levels</code> Table</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#point-ledger">Point Ledger</a></td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><code>todo</code> Link</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#point-ledger">Point Ledger</a></td><td>User</td><td><code>user</code> Link</td></tr>
+<tr><td>N : 1 (optional)</td><td><a href="doctypes.html#point-ledger">Point Ledger</a></td><td><a href="doctypes.html#group">Group</a> / <a href="doctypes.html#project">Project</a></td><td><code>group</code>, <code>project</code> Links</td></tr>
+<tr><td>N : 1 (optional)</td><td><a href="doctypes.html#scope-of-work">Scope of Work</a></td><td><a href="doctypes.html#project-proposal">Project Proposal</a></td><td><code>proposal</code> Link</td></tr>
+</tbody>
+</table></div>
+
+      <nav class="pager"><a class="prev" href="doctypes.html"><small>&larr; Previous</small><strong>DocType Reference</strong></a><a class="next" href="workflow.html"><small>Next &rarr;</small><strong>Todo Workflow</strong></a></nav>
+      <footer class="docfoot">
+        <span>Vernon Project &middot; v0.4.0 &middot; MIT License</span>
+        <span>Built for the Frappe Framework &middot; <a href="mailto:help@vernon.id">help@vernon.id</a></span>
+      </footer>
+    </main>
+    <aside class="toc" id="toc"></aside>
+  </div>
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-box">
+      <div class="search-box__input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Search the documentation..." autocomplete="off" spellcheck="false">
+        <span class="kbd">Esc</span>
+      </div>
+      <div class="search-box__results" id="searchResults"></div>
+      <div class="search-box__foot">
+        <span><span class="kbd">&#8593;</span><span class="kbd">&#8595;</span> navigate</span>
+        <span><span class="kbd">&#8629;</span> open</span>
+        <span><span class="kbd">Esc</span> close</span>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark'
+      || document.body.getAttribute('data-theme') === 'dark';
+    mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'neutral', er: { useMaxWidth: false } });
+  </script>
+  <script src="assets/search-index.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

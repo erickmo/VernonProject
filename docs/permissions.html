@@ -47,6 +47,7 @@
           <div class="nav-group__title">Core Concepts</div>
           <a class="nav-link" href="architecture.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Architecture</span></a>
           <a class="nav-link" href="doctypes.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>DocType Reference</span></a>
+          <a class="nav-link" href="erd.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/><path d="M6.5 8v3.5a2 2 0 0 0 2 2H17.5V16M6.5 13.5V16"/></svg><span>ERD</span></a>
           <a class="nav-link" href="workflow.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg><span>Todo Workflow</span></a>
           <a class="nav-link active" href="permissions.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Roles &amp; Permissions</span></a>
         </div>
@@ -165,19 +166,15 @@ OR EXISTS (
 <tr><td>Project Admin</td><td>✓</td><td>✓</td><td>✓</td><td>&mdash;</td></tr>
 <tr><td>Project Team</td><td>✓</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
 
-<tr><td rowspan="4"><code>Customer</code></td><td>System Manager</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
-<tr><td>Project Owner</td><td>✓</td><td>✓</td><td>✓</td><td>&mdash;</td></tr>
+<tr><td rowspan="5"><code>Brand</code></td><td>System Manager</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td>Project Owner</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td>Group Manager</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
 <tr><td>Project Leader</td><td>✓</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
 <tr><td>Project Team</td><td>✓</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
 
 <tr><td rowspan="4"><code>Glossary</code></td><td>System Manager</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
 <tr><td>Project Owner</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
 <tr><td>Project Leader</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
-<tr><td>Project Team</td><td>✓</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
-
-<tr><td rowspan="4"><code>Project Group</code></td><td>System Manager</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
-<tr><td>Project Owner</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
-<tr><td>Project Leader</td><td>✓</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
 <tr><td>Project Team</td><td>✓</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
 </tbody>
 </table></div>
@@ -187,7 +184,7 @@ OR EXISTS (
 <li><strong>Project Detail / Project Admin</strong> has read, write, and create but <strong>no delete</strong>&mdash;the only project role on Project Detail with write &amp; create yet no delete (Project Team is fully read-only).</li>
 <li><strong>Project Detail / Project Team</strong> is read-only (read and select; no write/create/delete).</li>
 <li><strong>Project</strong> grants write/create to Project Owner only; Leader, Admin, and Team are read-only at the JSON level (the Project Owner row additionally carries <code>if_owner=1</code>, narrowing it to documents the user owns).</li>
-<li><strong>Project Group</strong> and <strong>Glossary</strong> are not scoped to a project and do not define a Project Admin permission row.</li>
+<li><strong>Glossary</strong> is not scoped to a project and does not define a Project Admin permission row.</li>
 </ul>
 
 <div class="callout callout--warn"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><div class="callout__body"><div class="callout__title">Inert permlevel-9 rows</div><p>Project Detail declares a second permission entry at <code>permlevel 9</code> (read-only) for all four project roles. No field in the DocType is assigned <code>permlevel 9</code>, so these rows currently gate no fields and have no effect.</p></div></div>

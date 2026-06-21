@@ -3,8 +3,8 @@
 // controls the app. Uses only absolute URLs + runtime caching, so it works
 // regardless of where the script itself is served from.
 
-const ASSET_CACHE = 'vernon-assets-v3'
-const API_CACHE = 'vernon-api-v3'
+const ASSET_CACHE = 'vernon-assets-v4'
+const API_CACHE = 'vernon-api-v4'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 const API_PREFIX = '/api/method/vernon_project.api.mobile.'
 

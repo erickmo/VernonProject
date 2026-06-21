@@ -4,11 +4,16 @@ import { Trash2, Check } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
+import { MergeIntoCard } from '@/components/MergeIntoCard'
+import { deleteErrorMessage } from '@/lib/format'
 import {
   useBrand,
+  useBrands,
   useCreateBrand,
   useUpdateBrand,
   useDeleteBrand,
+  useMergeBrand,
   useBoot,
   canManageBrands,
 } from '@/hooks/useData'
@@ -19,6 +24,7 @@ const field =
 export default function BrandFormScreen() {
   const navigate = useNavigate()
   const toast = useToast()
+  const confirm = useConfirm()
   const { name: rawName } = useParams()
   const name = rawName ? decodeURIComponent(rawName) : ''
   const isEdit = !!name
@@ -28,6 +34,8 @@ export default function BrandFormScreen() {
   const create = useCreateBrand()
   const update = useUpdateBrand()
   const del = useDeleteBrand()
+  const merge = useMergeBrand()
+  const { data: allBrands } = useBrands()
 
   const [form, setForm] = useState<{ brand_name: string }>({ brand_name: '' })
 
@@ -76,16 +84,33 @@ export default function BrandFormScreen() {
     else create.mutate(payload, opts)
   }
 
-  const remove = () => {
-    if (!confirm('Delete this brand?')) return
+  const remove = async () => {
+    if (!(await confirm({ title: 'Delete this brand?', confirmLabel: 'Delete', destructive: true })))
+      return
     del.mutate(name, {
       onSuccess: () => {
         toast('success', 'Brand deleted')
         navigate('/brands')
       },
-      onError: (e) => toast('error', (e as Error).message),
+      onError: (e) => toast('error', deleteErrorMessage(e, 'brand')),
     })
   }
+
+  const doMerge = (target: string) =>
+    merge.mutate(
+      { source: name, target },
+      {
+        onSuccess: () => {
+          toast('success', 'Brands merged')
+          navigate('/brands')
+        },
+        onError: (e) => toast('error', (e as Error).message),
+      },
+    )
+
+  const mergeOptions = (allBrands ?? [])
+    .filter((b) => b.name !== name)
+    .map((b) => ({ value: b.name, label: b.brand_name }))
 
   const saving = create.isPending || update.isPending
 
@@ -120,6 +145,16 @@ export default function BrandFormScreen() {
           >
             {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
           </button>
+        )}
+
+        {isEdit && mergeOptions.length > 0 && (
+          <MergeIntoCard
+            entity="brand"
+            currentLabel={existing?.brand_name || name}
+            options={mergeOptions}
+            isPending={merge.isPending}
+            onConfirm={doMerge}
+          />
         )}
       </div>
     </DetailScreen>

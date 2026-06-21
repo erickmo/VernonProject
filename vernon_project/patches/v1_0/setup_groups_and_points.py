@@ -56,7 +56,6 @@ def _seed_groups():
 			frappe.get_doc({
 				"doctype": "Group",
 				"group_name": group_name,
-				"weight": 100,
 			}).insert(ignore_permissions=True)
 		name_map[r.grouping] = group_name
 	return name_map

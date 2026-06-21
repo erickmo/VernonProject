@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { X, Plus, Pencil, Trash2, Check } from 'lucide-react'
 import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
 import { Spinner } from '@/components/ui'
-import { stripHtml } from '@/lib/format'
+import { stripHtml, deleteErrorMessage } from '@/lib/format'
 
 interface Props {
   open: boolean
@@ -13,6 +14,7 @@ interface Props {
 
 export function GroupManagerSheet({ open, onClose, project }: Props) {
   const toast = useToast()
+  const confirm = useConfirm()
   const { data: groups, isLoading } = useGroups(project, open)
   const create = useCreateGroup(project)
   const update = useUpdateGroup(project)
@@ -57,11 +59,12 @@ export function GroupManagerSheet({ open, onClose, project }: Props) {
     )
   }
 
-  const removeGroup = (name: string) => {
-    if (!confirm('Delete this group?')) return
+  const removeGroup = async (name: string) => {
+    if (!(await confirm({ title: 'Delete this group?', confirmLabel: 'Delete', destructive: true })))
+      return
     del.mutate(name, {
       onSuccess: () => toast('success', 'Group deleted'),
-      onError: (e) => toast('error', (e as Error).message),
+      onError: (e) => toast('error', deleteErrorMessage(e, 'group')),
     })
   }
 

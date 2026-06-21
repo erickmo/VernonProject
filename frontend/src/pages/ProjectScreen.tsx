@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
+import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
-import { GroupManagerSheet } from '@/components/GroupManagerSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
 import { useToast } from '@/components/Toast'
-import { useProject, useBoot, useDeleteProject, permFlags } from '@/hooks/useData'
+import { useConfirm } from '@/components/Confirm'
+import { useProject, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
+import { GanttChart } from '@/components/GanttChart'
 import { formatDate } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
 
@@ -22,13 +24,18 @@ export default function ProjectScreen() {
   const { data, isLoading } = useProject(id)
   const { data: boot } = useBoot()
   const toast = useToast()
+  const confirm = useConfirm()
   const del = useDeleteProject()
+  const delDetail = useDeleteProjectDetail()
   const [editOpen, setEditOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
-  const [groupsOpen, setGroupsOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
+  const [editDetail, setEditDetail] = useState<string | null>(null)
   const [itemFor, setItemFor] = useState<string | null>(null)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
+  const [view, setView] = useState<'list' | 'gantt'>('list')
+  const [detailFilter, setDetailFilter] = useState<'all' | 'open' | 'completed'>('all')
+  const { data: gantt, isLoading: ganttLoading } = useProjectGantt(id, view === 'gantt')
 
   if (isLoading && !data) {
     return (
@@ -51,6 +58,13 @@ export default function ProjectScreen() {
   const doneTasks = data.project_details.reduce((s, w) => s + w.done, 0)
   const overdue = data.project_details.reduce((s, w) => s + w.overdue, 0)
   const progress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
+
+  // A detail counts as "completed" when it has todos and all are done.
+  const isDetailCompleted = (w: typeof data.project_details[number]) => w.total > 0 && w.done === w.total
+  const filteredDetails = data.project_details.filter((w) =>
+    detailFilter === 'all' ? true : detailFilter === 'completed' ? isDetailCompleted(w) : !isDetailCompleted(w),
+  )
+  const completedCount = data.project_details.filter(isDetailCompleted).length
 
   return (
     <DetailScreen title={data.project_name}>
@@ -79,6 +93,17 @@ export default function ProjectScreen() {
         </div>
       </div>
 
+      {data.blocked_by && (
+        <button
+          onClick={() => navigate(`/project/${encodeURIComponent(data.blocked_by!)}`)}
+          className="mt-3 flex w-full items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-left text-sm font-medium text-amber-800 active:scale-[0.99]"
+        >
+          <Ban className="h-4 w-4 shrink-0" />
+          <span className="flex-1">Blocked by <b>{data.blocked_by_name ?? data.blocked_by}</b></span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-amber-500" />
+        </button>
+      )}
+
       {(flags.can_edit || flags.can_delete) && (
         <div className="mt-3 flex gap-2">
           {flags.can_edit && (
@@ -97,8 +122,9 @@ export default function ProjectScreen() {
             <button
               disabled={data.project_details.length > 0}
               title={data.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
-              onClick={() => {
-                if (!confirm('Delete this project?')) return
+              onClick={async () => {
+                if (!(await confirm({ title: 'Delete this project?', confirmLabel: 'Delete', destructive: true })))
+                  return
                 del.mutate(data.name, {
                   onSuccess: () => { toast('success', 'Project deleted'); navigate('/projects') },
                   onError: (e) => toast('error', (e as Error).message),
@@ -165,36 +191,110 @@ export default function ProjectScreen() {
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
             <Layers className="h-4 w-4" /> Details
           </h3>
-          {flags.can_edit && (
-            <div className="flex gap-2">
-              <button onClick={() => setGroupsOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
-                <Layers className="h-3.5 w-3.5" /> Groups
-              </button>
-              <button onClick={() => setWiOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95">
-                <Plus className="h-3.5 w-3.5" /> Detail
-              </button>
-              {data.project_details.length > 0 && (
-                <button onClick={() => setItemFor(data.project_details[0].name)}
-                  className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
-                  <ListPlus className="h-3.5 w-3.5" /> Todo
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        {data.project_details.length ? (
-          <div className="flex flex-col gap-2.5">
-            {data.project_details.map((w) => (
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-full bg-slate-100 p-0.5">
               <button
+                onClick={() => setView('list')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}
+              >
+                <List className="h-3.5 w-3.5" /> List
+              </button>
+              <button
+                onClick={() => setView('gantt')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" /> Gantt
+              </button>
+            </div>
+            {flags.can_edit && (
+              <>
+                <button onClick={() => setWiOpen(true)}
+                  className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95">
+                  <Plus className="h-3.5 w-3.5" /> Detail
+                </button>
+                {data.project_details.length > 0 && (
+                  <button onClick={() => setItemFor(data.project_details[0].name)}
+                    className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 active:scale-95">
+                    <ListPlus className="h-3.5 w-3.5" /> Todo
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {view === 'gantt' ? (
+          ganttLoading ? (
+            <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 shadow-card">Loading timeline…</div>
+          ) : (
+            <GanttChart
+              groups={gantt ?? []}
+              title={data.project_name}
+              onBarClick={(tid) => navigate(`/project-item/${encodeURIComponent(tid)}`)}
+            />
+          )
+        ) : data.project_details.length ? (
+          <>
+            <div className="mb-2.5 flex gap-1.5">
+              {([
+                ['all', `All ${data.project_details.length}`],
+                ['open', `Open ${data.project_details.length - completedCount}`],
+                ['completed', `Completed ${completedCount}`],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setDetailFilter(key)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${detailFilter === key ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {filteredDetails.length ? (
+          <div className="flex flex-col gap-3">
+            {[
+              { label: 'Open', items: filteredDetails.filter((w) => !isDetailCompleted(w)) },
+              { label: 'Completed', items: filteredDetails.filter((w) => isDetailCompleted(w)) },
+            ].filter((s) => s.items.length).map((s) => (
+              <div key={s.label}>
+                <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">{s.label} ({s.items.length})</p>
+                <div className="flex flex-col gap-2.5">
+                  {s.items.map((w) => (
+              <div
                 key={w.name}
                 onClick={() => navigate(`/project-detail/${encodeURIComponent(w.name)}`)}
-                className="w-full rounded-2xl bg-white p-4 text-left shadow-card transition active:scale-[0.99]"
+                role="button"
+                className="w-full cursor-pointer rounded-2xl bg-white p-4 text-left shadow-card transition active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate font-semibold text-slate-800">{w.title}</p>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+                  {flags.can_edit ? (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditDetail(w.name) }}
+                        className="rounded-lg p-1.5 text-slate-400 active:bg-slate-100"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        disabled={w.total > 0}
+                        title={w.total > 0 ? 'Remove all todos before deleting this detail' : undefined}
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          if (w.total > 0) return
+                          if (!(await confirm({ title: 'Delete this detail?', message: `"${w.title}" will be removed.`, confirmLabel: 'Delete', destructive: true }))) return
+                          delDetail.mutate(w.name, {
+                            onSuccess: () => toast('success', 'Project detail deleted'),
+                            onError: (err) => toast('error', (err as Error).message),
+                          })
+                        }}
+                        className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+                  )}
                 </div>
                 <div className="mt-2.5 flex items-center gap-2">
                   <ProgressBar value={w.progress} />
@@ -207,9 +307,16 @@ export default function ProjectScreen() {
                     <AlertCircle className="h-3.5 w-3.5" /> {w.overdue} overdue
                   </p>
                 )}
-              </button>
+              </div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
+            ) : (
+              <EmptyState icon={Layers} title="No matching details" />
+            )}
+          </>
         ) : (
           <EmptyState icon={Layers} title="No details yet" />
         )}
@@ -223,8 +330,12 @@ export default function ProjectScreen() {
         project={data}
         canReassign={flags.can_reassign}
       />
-      <ProjectDetailFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} groupings={data.groupings ?? []} />
-      <GroupManagerSheet open={groupsOpen} onClose={() => setGroupsOpen(false)} project={data.name} />
+      <ProjectDetailFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} />
+      <ProjectDetailEditSheet
+        open={!!editDetail}
+        onClose={() => setEditDetail(null)}
+        projectDetailName={editDetail ?? ''}
+      />
       <TeamManagerSheet
         open={teamOpen}
         onClose={() => setTeamOpen(false)}

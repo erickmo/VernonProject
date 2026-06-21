@@ -196,10 +196,11 @@ class ProjectTodo(Document):
 		late_days = max(0, delta)
 		early_days = max(0, -delta)
 
-		w = float(grp.weight or 0) / 100.0
+		# Assignee earns the level's point directly (no per-group weight multiplier),
+		# adjusted only for timing: late days subtract, early days add.
 		lp = float(grp.late_penalty or 0) / 100.0
 		eb = float(grp.early_bonus or 0) / 100.0
-		assignee = point * w - late_days * lp * point + early_days * eb * point
+		assignee = point - late_days * lp * point + early_days * eb * point
 
 		lw = float(grp.leader_weight or 0) / 100.0
 		llp = float(grp.leader_late_penalty or 0) / 100.0

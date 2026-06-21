@@ -81,6 +81,7 @@ export const mobileApi = {
   dashboard: () => api.get(M + 'get_dashboard'),
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
+  projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),
   projectDetail: (name: string) =>
     api.get(M + 'get_project_detail', { project_detail: name }),
   memberWorkload: (project: string, user: string, includeCompleted: boolean) =>
@@ -105,6 +106,11 @@ export const mobileApi = {
       project_item: todoId,
       ...fields,
     }),
+  setTodoAllocations: (todoId: string, allocations: { date: string; minutes: number }[]) =>
+    api.post<{ status: string; message: string; allocations: { date: string; minutes: number }[] }>(
+      M + 'set_todo_allocations',
+      { project_item: todoId, allocations: JSON.stringify(allocations) },
+    ),
   createTask: (fields: Record<string, unknown>) =>
     api.post('frappe.client.insert', {
       doc: JSON.stringify({

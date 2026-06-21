@@ -18,16 +18,14 @@ class ProjectDetail(Document):
 		self._apply_rollups()
 
 	def validate(self):
-		# grouping must be part of project
-		if not self.grouping:
-			frappe.throw("Grouping is required.")
-
 		if not self.project:
 			frappe.throw("Project is required.")
 
-		grouping_doc = frappe.get_doc("Glossary", self.grouping)
-		if grouping_doc.project != self.project:
-			frappe.throw("Grouping must be part of the selected Project.")
+		# grouping is optional; when set it must belong to the project
+		if self.grouping:
+			grouping_doc = frappe.get_doc("Glossary", self.grouping)
+			if grouping_doc.project != self.project:
+				frappe.throw("Grouping must be part of the selected Project.")
 
 		# glossaries must be part of grouping
 		if self.glossaries:

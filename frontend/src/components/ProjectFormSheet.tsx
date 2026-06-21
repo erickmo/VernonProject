@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, Check } from 'lucide-react'
-import { useFormOptions, useCreateProject, useUpdateProject } from '@/hooks/useData'
+import { useFormOptions, useCreateProject, useUpdateProject, useProjects } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -22,13 +22,14 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
   const toast = useToast()
   const isEdit = !!project
   const { data: opts } = useFormOptions()
+  const { data: allProjects } = useProjects()
   const create = useCreateProject()
   const update = useUpdateProject(project?.name ?? '')
   const saving = create.isPending || update.isPending
 
   const [f, setF] = useState<ProjectInput>({
     project_name: '', brand: '', project_owner: '', project_leader: '',
-    project_admin: '', project_group: '', start_date: '', deadline: '',
+    project_admin: '', blocked_by: '', start_date: '', deadline: '',
     goal: '', status: 'Ongoing', team_members: [],
   })
 
@@ -40,7 +41,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
         project_owner: project.project_owner,
         project_leader: project.project_leader,
         project_admin: project.project_admin ?? '',
-        project_group: project.project_group,
+        blocked_by: project.blocked_by ?? '',
         start_date: project.start_date ?? '',
         deadline: project.deadline ?? '',
         goal: project.goal ?? '',
@@ -60,8 +61,12 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
   const submit = () => {
     if (!f.project_name.trim() || !f.brand || !f.project_owner || !f.project_leader ||
-        !f.project_group || !f.start_date || !f.deadline) {
-      toast('error', 'Name, brand, owner, leader, group, start date and deadline are required')
+        !f.start_date || !f.deadline) {
+      toast('error', 'Name, brand, owner, leader, start date and deadline are required')
+      return
+    }
+    if (f.start_date > f.deadline) {
+      toast('error', 'Start date cannot be after the deadline')
       return
     }
     const onDone = (r: { name: string }) => {
@@ -99,11 +104,6 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
           </label>
 
           <label className="text-sm font-medium text-slate-600">
-            Project group<span className="text-red-500"> *</span>
-            <SearchableSelect value={f.project_group} onChange={(v) => set('project_group', v)} options={opts?.project_groups ?? []} placeholder="Select…" />
-          </label>
-
-          <label className="text-sm font-medium text-slate-600">
             Owner<span className="text-red-500"> *</span>
             <SearchableSelect value={f.project_owner} onChange={(v) => set('project_owner', v)} options={users} disabled={lockLeads} placeholder="Select…" />
           </label>
@@ -116,6 +116,20 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
           <label className="text-sm font-medium text-slate-600">
             Admin
             <SearchableSelect value={f.project_admin ?? ''} onChange={(v) => set('project_admin', v)} options={users} allowClear placeholder="None" />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600">
+            Blocking project
+            <SearchableSelect
+              value={f.blocked_by ?? ''}
+              onChange={(v) => set('blocked_by', v)}
+              options={(allProjects ?? [])
+                .filter((p) => p.name !== project?.name)
+                .map((p) => ({ value: p.name, label: p.project_name }))}
+              allowClear
+              placeholder="None — not blocked"
+            />
+            <span className="mt-0.5 block text-xs font-normal text-slate-400">The project this one depends on / is blocked by.</span>
           </label>
 
           <div className="flex gap-3">

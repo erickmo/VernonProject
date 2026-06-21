@@ -7,6 +7,8 @@
 # These return exactly the shape the React PWA needs so the client never has to
 # query child tables directly or replicate the status-workflow permission rules.
 
+import json
+
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff
 
@@ -122,7 +124,8 @@ def _fetch_todos(project_names):
 	return frappe.db.sql(
 		"""
 		SELECT
-			t.name, t.to_do, t.status, t.deadline, t.estimated, t.assigned_to,
+			t.name, t.to_do, t.status, t.deadline, t.leader_deadline, t.owner_deadline,
+			t.estimated, t.assigned_to,
 			t.ongoing, t.notes, t.is_recurring,
 			t.`group` AS `group`, t.level, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
@@ -142,7 +145,72 @@ def _fetch_todos(project_names):
 	)
 
 
-def _shape_todo(row, user, name_map, include_notes=False):
+@frappe.whitelist()
+def get_project_gantt(project):
+	"""Gantt bars for a project: todos grouped by project detail.
+
+	Each bar spans the first day-allocation date -> deadline (falls back to a
+	1-day marker on whichever exists). Returns [{title, bars:[...]}].
+	"""
+	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+	rows = _fetch_todos([project])
+	alloc = _allocations_map([r["name"] for r in rows])
+	name_map = _user_name_map({r["assigned_to"] for r in rows if r.get("assigned_to")})
+	groups = {}
+	for r in rows:
+		dates = sorted(a["date"] for a in alloc.get(r["name"], []) if a.get("date"))
+		dl = str(r["deadline"]) if r["deadline"] else None
+		if not dates and not dl:
+			continue
+		start = dates[0] if dates else dl
+		end = dl if dl else dates[-1]
+		if end < start:
+			end = start
+		skey = _status_key(r["status"])
+		g = groups.setdefault(
+			r["project_detail"],
+			{"detail": r["project_detail"], "title": r["project_detail_title"] or r["project_detail"], "bars": []},
+		)
+		g["bars"].append({
+			"id": r["name"],
+			"label": r["to_do"],
+			"start": start,
+			"end": end,
+			"statusKey": skey,
+			"overdue": bool(dl and skey != "completed" and getdate(dl) < getdate(nowdate())),
+			"sub": (name_map.get(r["assigned_to"]) or {}).get("full_name") or r.get("assigned_to"),
+		})
+	out = []
+	for g in groups.values():
+		g["bars"].sort(key=lambda b: b["start"])
+		out.append(g)
+	out.sort(key=lambda g: g["title"] or "")
+	return out
+
+
+def _allocations_map(todo_names):
+	"""Batch-fetch day allocations for many todos: {todo_name: [{date, minutes}]}."""
+	names = [n for n in todo_names if n]
+	if not names:
+		return {}
+	rows = frappe.get_all(
+		"Project Todo Allocation",
+		filters={"parent": ["in", names]},
+		fields=["parent", "allocation_date", "estimated_minutes"],
+		order_by="allocation_date asc",
+		limit_page_length=0,
+	)
+	m = {}
+	for r in rows:
+		m.setdefault(r["parent"], []).append({
+			"date": str(r["allocation_date"]) if r["allocation_date"] else None,
+			"minutes": r["estimated_minutes"] or 0,
+		})
+	return m
+
+
+def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 	skey = _status_key(row["status"])
 	project = {
 		"project_owner": row["project_owner"],
@@ -155,6 +223,18 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		and skey != "completed"
 		and getdate(row["deadline"]) < getdate(nowdate())
 	)
+	# Phase approval deadlines fire as overdue only while the task is actually
+	# waiting in that phase: Done -> awaiting leader, Checked -> awaiting owner.
+	leader_appr_overdue = bool(
+		row.get("leader_deadline")
+		and skey == "done"
+		and getdate(row["leader_deadline"]) < getdate(nowdate())
+	)
+	owner_appr_overdue = bool(
+		row.get("owner_deadline")
+		and skey == "checked"
+		and getdate(row["owner_deadline"]) < getdate(nowdate())
+	)
 	assignee = name_map.get(row["assigned_to"], {})
 	out = {
 		"name": row["name"],
@@ -166,6 +246,12 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
 		"deadline_human": _humanize_date(row["deadline"]),
 		"is_overdue": overdue,
+		"leader_deadline": str(row["leader_deadline"]) if row.get("leader_deadline") else None,
+		"leader_deadline_human": _humanize_date(row.get("leader_deadline")),
+		"owner_deadline": str(row["owner_deadline"]) if row.get("owner_deadline") else None,
+		"owner_deadline_human": _humanize_date(row.get("owner_deadline")),
+		"leader_appr_overdue": leader_appr_overdue,
+		"owner_appr_overdue": owner_appr_overdue,
 		"estimated": row["estimated"] or 0,
 		"ongoing": bool(row.get("ongoing")),
 		"is_recurring": bool(row.get("is_recurring")),
@@ -190,6 +276,20 @@ def _shape_todo(row, user, name_map, include_notes=False):
 		"assignee_earned": row.get("assignee_earned") or 0,
 		"leader_earned": row.get("leader_earned") or 0,
 	}
+	# Day allocations (assignee's per-day plan; not scored). alloc_map avoids N+1
+	# in list contexts; for a single todo fetch directly when no map is supplied.
+	if alloc_map is None:
+		allocs = _allocations_map([row["name"]]).get(row["name"], [])
+	else:
+		allocs = alloc_map.get(row["name"], [])
+	today = str(nowdate())
+	today_alloc = 0
+	for a in allocs:
+		if a["date"] == today:
+			today_alloc += a["minutes"] or 0
+	out["allocations"] = allocs
+	out["allocated_total"] = sum((a["minutes"] or 0) for a in allocs)
+	out["today_allocation"] = today_alloc
 	if include_notes:
 		out["notes"] = row.get("notes") or ""
 		out["timeline"] = [
@@ -280,12 +380,13 @@ def get_dashboard():
 			[r["developed_by"], r["tested_by"], r["completed_by"], r["project_owner"], r["project_leader"]]
 		)
 	name_map = _user_name_map(emails)
+	alloc_map = _allocations_map([r["name"] for r in rows])
 
 	today = getdate(nowdate())
 	overdue, due_today, upcoming, review = [], [], [], []
 
 	for r in rows:
-		shaped = _shape_todo(r, user, name_map)
+		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map)
 		skey = shaped["status_key"]
 
 		# Review queue: items awaiting an action *I* am allowed to take.
@@ -499,7 +600,8 @@ def get_project(project):
 		"project_owner": doc.project_owner,
 		"project_leader": doc.project_leader,
 		"project_admin": doc.project_admin,
-		"project_group": doc.project_group,
+		"blocked_by": doc.blocked_by,
+		"blocked_by_name": frappe.get_value("Project", doc.blocked_by, "project_name") if doc.blocked_by else None,
 		"groupings": frappe.get_all(
 			"Glossary", filters={"project": doc.name}, pluck="glossary", limit_page_length=0
 		),
@@ -518,12 +620,13 @@ def get_member_workload(project, user, include_completed=0):
 	me = frappe.session.user
 	rows = [r for r in _fetch_todos([project]) if r["assigned_to"] == user]
 	name_map = _user_name_map({user})
+	alloc_map = _allocations_map([r["name"] for r in rows])
 	out = []
 	for r in rows:
 		skey = _status_key(r["status"])
 		if not include_completed and skey == "completed":
 			continue
-		shaped = _shape_todo(r, me, name_map)
+		shaped = _shape_todo(r, me, name_map, alloc_map=alloc_map)
 		out.append({
 			"name": shaped["name"],
 			"to_do": shaped["to_do"],
@@ -534,6 +637,9 @@ def get_member_workload(project, user, include_completed=0):
 			"is_overdue": shaped["is_overdue"],
 			"project_detail": shaped["project_detail"],
 			"project_detail_title": shaped["project_detail_title"],
+			"allocations": shaped["allocations"],
+			"allocated_total": shaped["allocated_total"],
+			"today_allocation": shaped["today_allocation"],
 		})
 	return out
 
@@ -622,13 +728,18 @@ def get_project_detail(project_detail):
 	user = frappe.session.user
 	detail = frappe.get_value(
 		"Project Detail", project_detail,
-		["name", "title", "project", "status", "current_condition", "expected_outcome", "grouping"],
+		["name", "title", "project", "status", "is_pending", "current_condition",
+		 "expected_outcome", "grouping", "keterangan_di_sow", "discount", "price",
+		 "latest_deadline", "project_deadline"],
 		as_dict=True,
 	)
 	if not detail:
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	if detail["project"] not in _visible_projects():
 		frappe.throw("Not permitted", frappe.PermissionError)
+	detail["deadline_human"] = _humanize_date(detail.get("latest_deadline"))
+	detail["latest_deadline"] = str(detail["latest_deadline"]) if detail.get("latest_deadline") else None
+	detail["project_deadline"] = str(detail["project_deadline"]) if detail.get("project_deadline") else None
 
 	rows = [r for r in _fetch_todos([detail["project"]]) if r["project_detail"] == project_detail]
 	emails = {r["assigned_to"] for r in rows}
@@ -645,6 +756,15 @@ def get_project_detail(project_detail):
 	detail["can_edit"] = is_sm or user in (owner, leader)
 	detail["groupings"] = frappe.get_all(
 		"Glossary", filters={"project": detail["project"]}, pluck="glossary", limit_page_length=0
+	)
+	# Glossary options scoped to this project (name + label) and the detail's own selection.
+	detail["glossary_options"] = frappe.get_all(
+		"Glossary", filters={"project": detail["project"]},
+		fields=["name", "glossary"], order_by="glossary asc", limit_page_length=0
+	)
+	detail["glossaries"] = frappe.get_all(
+		"Project Glossary", filters={"parent": project_detail, "parentfield": "glossaries"},
+		pluck="glossary", limit_page_length=0
 	)
 
 	# Resolve a default scoring Group from the detail's grouping (Glossary -> label -> Group).
@@ -675,12 +795,19 @@ def get_project_detail(project_detail):
 def get_project_item(project_item):
 	"""Full detail of one project item including notes + audit timeline + permission flags."""
 	user = frappe.session.user
+	if not frappe.db.exists("Project Todo", project_item):
+		frappe.throw("Not found", frappe.DoesNotExistError)
+	# Authorize against the Project Todo's own read permission (System Manager or
+	# project owner/leader/admin/team) so access matches what the todo lists show.
+	# _visible_projects() is stricter (owner/team only, no System Manager exemption)
+	# and would dead-end legitimately readable todos opened from cross-project
+	# surfaces like the group detail screen.
+	if not frappe.has_permission("Project Todo", "read", doc=project_item):
+		frappe.throw("Not permitted", frappe.PermissionError)
 	project_detail = frappe.get_value("Project Todo", project_item, "project_detail")
 	if not project_detail:
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	project = frappe.get_value("Project Detail", project_detail, "project")
-	if project not in _visible_projects():
-		frappe.throw("Not permitted", frappe.PermissionError)
 
 	rows = [r for r in _fetch_todos([project]) if r["name"] == project_item]
 	if not rows:
@@ -717,9 +844,23 @@ def get_project_item(project_item):
 			"recurring_frequency",
 			"recurring_until",
 			"original_todo",
+			"blocked_by",
+			"blocking",
 		],
 		as_dict=True,
 	) or {}
+	shaped["blocked_by"] = extra.get("blocked_by")
+	shaped["blocking"] = extra.get("blocking")
+	shaped["blocked_by_name"] = frappe.get_value("Project Todo", extra["blocked_by"], "to_do") if extra.get("blocked_by") else None
+	shaped["blocking_name"] = frappe.get_value("Project Todo", extra["blocking"], "to_do") if extra.get("blocking") else None
+	# Sibling tasks in the same project detail (for the blocking pickers; excludes self).
+	shaped["detail_todos"] = frappe.get_all(
+		"Project Todo",
+		filters={"project_detail": project_detail, "name": ["!=", project_item]},
+		fields=["name", "to_do"],
+		order_by="creation asc",
+		limit_page_length=0,
+	)
 	shaped["phase_estimates"] = {
 		"planned_to_done": extra.get("estimated_planned_to_done") or 0,
 		"done_to_checked": extra.get("estimated_done_to_checked") or 0,
@@ -777,6 +918,8 @@ def update_todo(
 	project_item,
 	to_do=None,
 	deadline=None,
+	leader_deadline=None,
+	owner_deadline=None,
 	estimated=None,
 	assigned_to=None,
 	group=None,
@@ -787,6 +930,8 @@ def update_todo(
 	estimated_planned_to_done=None,
 	estimated_done_to_checked=None,
 	estimated_checked_to_completed=None,
+	blocked_by=None,
+	blocking=None,
 ):
 	"""Edit a task's fields. Returns a clean status/message so the mobile UI can
 	show friendly feedback instead of a raw traceback."""
@@ -815,6 +960,11 @@ def update_todo(
 			row.to_do = to_do.strip()
 		if deadline is not None:
 			row.deadline = deadline
+		# Optional phase deadlines: empty string clears them.
+		if leader_deadline is not None:
+			row.leader_deadline = leader_deadline or None
+		if owner_deadline is not None:
+			row.owner_deadline = owner_deadline or None
 		if estimated is not None and estimated != "":
 			row.estimated = int(estimated)
 		if assigned_to is not None and assigned_to:
@@ -823,6 +973,16 @@ def update_todo(
 			row.group = group
 		if level is not None:
 			row.level = level or None
+
+		# Blocking links (empty string clears). A task can't block/depend on itself.
+		if blocked_by is not None:
+			if blocked_by == project_item:
+				return {"status": "error", "message": "A task can't be blocked by itself."}
+			row.blocked_by = blocked_by or None
+		if blocking is not None:
+			if blocking == project_item:
+				return {"status": "error", "message": "A task can't block itself."}
+			row.blocking = blocking or None
 
 		# Recurring settings
 		if is_recurring is not None:
@@ -857,6 +1017,54 @@ def update_todo(
 	except Exception as e:
 		# Surface the validation message (e.g. locked-field edit) cleanly.
 		msg = frappe.utils.strip_html(str(e)).strip() or "Could not save changes."
+		return {"status": "error", "message": msg}
+
+
+@frappe.whitelist()
+def set_todo_allocations(project_item, allocations):
+	"""Assignee-only: replace a todo's day allocations (planning only, not scored).
+
+	`allocations` is a JSON list of {date, minutes}. Returns the saved rows.
+	"""
+	try:
+		user = frappe.session.user
+		if not frappe.db.exists("Project Todo", project_item):
+			return {"status": "error", "message": "Task not found."}
+		assigned_to = frappe.get_value("Project Todo", project_item, "assigned_to")
+		if user != assigned_to and "System Manager" not in frappe.get_roles(user):
+			return {"status": "error", "message": "Only the assignee can edit day allocations."}
+
+		if isinstance(allocations, str):
+			allocations = json.loads(allocations or "[]")
+
+		doc = frappe.get_doc("Project Todo", project_item)
+		doc.set("allocations", [])
+		alloc_sum = 0
+		for a in allocations or []:
+			d = a.get("date") or a.get("allocation_date")
+			if not d:
+				continue
+			minutes = int(a.get("minutes") or a.get("estimated_minutes") or 0)
+			alloc_sum += minutes
+			doc.append("allocations", {
+				"allocation_date": d,
+				"estimated_minutes": minutes,
+			})
+		# Daily split must add up to the task estimate (planning consistency).
+		estimated = int(doc.estimated or 0)
+		if estimated > 0 and alloc_sum != estimated:
+			diff = estimated - alloc_sum
+			short = f"{diff}m short of" if diff > 0 else f"{-diff}m over"
+			return {"status": "error", "message": f"Daily split is {short} the {estimated}m estimate."}
+		doc.save(ignore_permissions=True)
+		frappe.db.commit()
+		return {
+			"status": "ok",
+			"message": "Allocations saved.",
+			"allocations": _allocations_map([project_item]).get(project_item, []),
+		}
+	except Exception as e:
+		msg = frappe.utils.strip_html(str(e)).strip() or "Could not save allocations."
 		return {"status": "error", "message": msg}
 
 
@@ -972,7 +1180,6 @@ def get_form_options():
 		fields=["name", "full_name"],
 		limit_page_length=0,
 	)
-	groups = frappe.get_all("Project Group", fields=["name"], limit_page_length=0)
 	return {
 		"brands": sorted(
 			[{"value": b["name"], "label": b.get("brand_name") or b["name"]} for b in brands],
@@ -980,10 +1187,6 @@ def get_form_options():
 		),
 		"users": sorted(
 			[{"value": u["name"], "label": u.get("full_name") or u["name"]} for u in users],
-			key=lambda x: x["label"],
-		),
-		"project_groups": sorted(
-			[{"value": g["name"], "label": g["name"]} for g in groups],
 			key=lambda x: x["label"],
 		),
 	}

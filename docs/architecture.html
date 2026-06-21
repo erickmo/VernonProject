@@ -47,6 +47,7 @@
           <div class="nav-group__title">Core Concepts</div>
           <a class="nav-link active" href="architecture.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg><span>Architecture</span></a>
           <a class="nav-link" href="doctypes.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>DocType Reference</span></a>
+          <a class="nav-link" href="erd.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/><path d="M6.5 8v3.5a2 2 0 0 0 2 2H17.5V16M6.5 13.5V16"/></svg><span>ERD</span></a>
           <a class="nav-link" href="workflow.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg><span>Todo Workflow</span></a>
           <a class="nav-link" href="permissions.html"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Roles &amp; Permissions</span></a>
         </div>
@@ -80,28 +81,33 @@
 </table></div>
 
 <h2>The data model</h2>
-<p>The model is a three-level work-breakdown chain. A <a href="doctypes.html#project">Project</a> owns one or more <a href="doctypes.html#project-detail">Project Detail</a> records, and each Project Detail carries a <code>todo</code> child table of <a href="doctypes.html#project-todo">Project Todo</a> rows. Project Todo is a child-table DocType (<code>istable: 1</code>); it has no standalone document and always lives inside a Project Detail.</p>
-<p>Around that spine sit several supporting links:</p>
+<p>The model is a three-level work-breakdown chain. A <a href="doctypes.html#project">Project</a> owns one or more <a href="doctypes.html#project-detail">Project Detail</a> records, and each Project Detail owns one or more <a href="doctypes.html#project-todo">Project Todo</a> tasks. Project Todo is a <strong>standalone</strong> DocType (<code>istable: 0</code>) that links its parent through a <code>project_detail</code> Link; each todo splits its time across days via an <code>allocations</code> child table of <a href="doctypes.html#project-todo-allocation">Project Todo Allocation</a> rows.</p>
+<p>For the full picture see the <a href="erd.html">entity-relationship diagram</a>. Around the spine sit several supporting links:</p>
 <ul>
 <li><strong>Team.</strong> A Project holds a <code>team_members</code> child table of <a href="doctypes.html#project-team">Project Team</a> rows, each linking a <code>User</code>. The Project Owner, Project Leader, and (when set) Project Admin are auto-added to this table and de-duplicated by the controller.</li>
-<li><strong>People.</strong> A Project links <code>project_owner</code>, <code>project_leader</code>, and the optional <code>project_admin</code> to <code>User</code>.</li>
-<li><strong>Classification.</strong> A Project links a <code>customer</code> to <a href="doctypes.html#customer">Customer</a> and a <code>project_group</code> to <a href="doctypes.html#project-group">Project Group</a>, which is a hierarchical tree (Frappe NestedSet).</li>
-<li><strong>Glossary.</strong> A Project Detail links a <code>grouping</code> to <a href="doctypes.html#glossary">Glossary</a> and a <code>glossaries</code> Table MultiSelect of <a href="doctypes.html#project-glossary">Project Glossary</a> rows (each row links a Glossary). A Glossary is itself scoped to a Project, and the controller requires every selected glossary's <code>project</code> to equal the detail's own <code>project</code>.</li>
+<li><strong>People.</strong> A Project links <code>project_owner</code>, <code>project_leader</code>, and the optional <code>project_admin</code> to <code>User</code>. A Project Todo additionally links <code>assigned_to</code> plus the sign-off users <code>developed_by</code>, <code>tested_by</code>, and <code>completed_by</code>.</li>
+<li><strong>Classification.</strong> A Project links a <code>brand</code> to <a href="doctypes.html#brand">Brand</a> (formerly <em>Customer</em>).</li>
+<li><strong>Scoring.</strong> A Project Todo links a <code>group</code> to <a href="doctypes.html#group">Group</a> and picks a <code>level</code> from that group's <a href="doctypes.html#group-level">Group Level</a> child rows, yielding a <code>point</code> value. Awards are written to <a href="doctypes.html#point-ledger">Point Ledger</a> entries — one row per role (assignee / leader).</li>
+<li><strong>Glossary.</strong> A Project Detail optionally links a <code>grouping</code> to <a href="doctypes.html#glossary">Glossary</a> and a <code>glossaries</code> Table MultiSelect of <a href="doctypes.html#project-glossary">Project Glossary</a> rows (each row links a Glossary). A Glossary is itself scoped to a Project, and the controller requires every selected glossary's <code>project</code> to equal the detail's own <code>project</code>. The grouping, when set, seeds a default scoring Group for new tasks.</li>
 <li><strong>Standalone stubs.</strong> <a href="doctypes.html#scope-of-work">Scope of Work</a> and <a href="doctypes.html#project-proposal">Project Proposal</a> are submittable DocTypes that exist as skeletons, outside the Project chain (Scope of Work optionally links a Project Proposal).</li>
 </ul>
 
-<div class="code"><pre>Project Group (tree: parent_project_group, is_group)
-│
-└─ Project ──────────────────────── customer → Customer
-   │                                 project_group → Project Group
+<div class="code"><pre>Project ─────────────────────────── brand → Brand
    │                                 owner / leader / admin → User
    ├─ team_members[] (Project Team) → User
    │
-   └─ Project Detail ─────────────── grouping → Glossary  (Glossary.project == this.project)
+   └─ Project Detail ─────────────── grouping → Glossary  (optional; Glossary.project == this.project)
       │                              glossaries[] (Project Glossary) → Glossary
       │
-      └─ todo[] (Project Todo, child table)
-            status: ⚪️ Planned → 🟠 Done → 🔷 Checked By PL → ✅ Completed
+      └─ Project Todo ───────────── project_detail → Project Detail
+            │                        group → Group ; level → Group Level row → point
+            │                        assigned_to / developed_by / tested_by / completed_by → User
+            │                        status: ⚪️ Planned → 🟠 Done → 🔷 Checked By PL → ✅ Completed
+            └─ allocations[] (Project Todo Allocation: allocation_date, estimated_minutes)
+
+Scoring:
+   Group ── levels[] (Group Level: level_name, point)
+   Point Ledger ── todo → Project Todo ; user → User ; group → Group ; project → Project
 
 Standalone (not in the chain):
    Scope of Work ── proposal → Project Proposal
@@ -111,14 +117,17 @@ Standalone (not in the chain):
 <thead><tr><th>Relationship</th><th>From</th><th>To</th><th>Via</th></tr></thead>
 <tbody>
 <tr><td>1 : N</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><code>project</code> Link</td></tr>
-<tr><td>1 : N (child table)</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><code>todo</code> Table</td></tr>
+<tr><td>1 : N</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><code>project_detail</code> Link</td></tr>
+<tr><td>1 : N (child table)</td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><a href="doctypes.html#project-todo-allocation">Project Todo Allocation</a></td><td><code>allocations</code> Table</td></tr>
 <tr><td>1 : N (child table)</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#project-team">Project Team</a></td><td><code>team_members</code> Table</td></tr>
 <tr><td>N : 1</td><td><a href="doctypes.html#project-team">Project Team</a></td><td>User</td><td><code>user</code> Link</td></tr>
 <tr><td>N : 1</td><td><a href="doctypes.html#project">Project</a></td><td>User</td><td><code>project_owner</code>, <code>project_leader</code>, <code>project_admin</code> Links</td></tr>
-<tr><td>N : 1</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#customer">Customer</a></td><td><code>customer</code> Link</td></tr>
-<tr><td>N : 1</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#project-group">Project Group</a></td><td><code>project_group</code> Link</td></tr>
-<tr><td>Tree (self)</td><td><a href="doctypes.html#project-group">Project Group</a></td><td><a href="doctypes.html#project-group">Project Group</a></td><td><code>parent_project_group</code> Link (NestedSet)</td></tr>
-<tr><td>N : 1</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#glossary">Glossary</a></td><td><code>grouping</code> Link</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td>User</td><td><code>assigned_to</code>, <code>developed_by</code>, <code>tested_by</code>, <code>completed_by</code> Links</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#project">Project</a></td><td><a href="doctypes.html#brand">Brand</a></td><td><code>brand</code> Link</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><a href="doctypes.html#group">Group</a></td><td><code>group</code> Link</td></tr>
+<tr><td>1 : N (child table)</td><td><a href="doctypes.html#group">Group</a></td><td><a href="doctypes.html#group-level">Group Level</a></td><td><code>levels</code> Table</td></tr>
+<tr><td>N : 1</td><td><a href="doctypes.html#point-ledger">Point Ledger</a></td><td><a href="doctypes.html#project-todo">Project Todo</a></td><td><code>todo</code> Link (+ <code>user</code>, <code>group</code>, <code>project</code>)</td></tr>
+<tr><td>N : 1 (optional)</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#glossary">Glossary</a></td><td><code>grouping</code> Link</td></tr>
 <tr><td>N : N (multiselect)</td><td><a href="doctypes.html#project-detail">Project Detail</a></td><td><a href="doctypes.html#glossary">Glossary</a></td><td><code>glossaries</code> Table MultiSelect &rarr; <a href="doctypes.html#project-glossary">Project Glossary</a></td></tr>
 <tr><td>N : 1</td><td><a href="doctypes.html#glossary">Glossary</a></td><td><a href="doctypes.html#project">Project</a></td><td><code>project</code> Link (scopes the glossary)</td></tr>
 <tr><td>N : 1 (optional)</td><td><a href="doctypes.html#scope-of-work">Scope of Work</a></td><td><a href="doctypes.html#project-proposal">Project Proposal</a></td><td><code>proposal</code> Link</td></tr>
@@ -155,7 +164,7 @@ Standalone (not in the chain):
 <div class="deflist">
 <div class="deflist__row"><div class="deflist__key">Chart</div><div class="deflist__val">Project Progress <span class="badge badge--gray">standard</span> <span class="badge badge--gray">public</span></div></div>
 <div class="deflist__row"><div class="deflist__key">Type</div><div class="deflist__val"><span class="badge badge--amber">Sum</span> rendered as a <span class="badge badge--purple">Line</span> chart</div></div>
-<div class="deflist__row"><div class="deflist__key">Document</div><div class="deflist__val"><a href="doctypes.html#project-todo">Project Todo</a> (parent <a href="doctypes.html#project-detail">Project Detail</a>)</div></div>
+<div class="deflist__row"><div class="deflist__key">Document</div><div class="deflist__val"><a href="doctypes.html#project-todo">Project Todo</a> (links <a href="doctypes.html#project-detail">Project Detail</a>)</div></div>
 <div class="deflist__row"><div class="deflist__key">Summed value</div><div class="deflist__val"><code>estimated</code></div></div>
 <div class="deflist__row"><div class="deflist__key">Time axis</div><div class="deflist__val"><code>deadline</code>, <strong>Daily</strong> interval, <strong>Last Year</strong> timespan</div></div>
 <div class="deflist__row"><div class="deflist__key">Filter</div><div class="deflist__val"><code>status = ⚪️ Planned</code></div></div>

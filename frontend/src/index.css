@@ -56,6 +56,13 @@ body {
   text-decoration: underline;
 }
 
+/* Placeholder for empty contentEditable rich editor */
+.rich-editor:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

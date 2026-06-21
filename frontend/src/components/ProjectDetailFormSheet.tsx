@@ -1,29 +1,37 @@
 import { useState } from 'react'
 import { X, Plus } from 'lucide-react'
-import { useCreateProjectDetail } from '@/hooks/useData'
+import { useCreateProjectDetail, useGroups } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
-import { SearchableSelect } from '@/components/SearchableSelect'
+import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { RichEditor } from '@/components/RichEditor'
 
 interface Props {
   open: boolean
   onClose: () => void
   project: string
-  groupings: string[]
 }
 
-const STATUSES = ['Pending', 'Ongoing', 'Completed']
-
-export function ProjectDetailFormSheet({ open, onClose, project, groupings = [] }: Props) {
+export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
   const toast = useToast()
   const create = useCreateProjectDetail(project)
+  const { data: glossaryList } = useGroups(project, open && !!project)
   const [title, setTitle] = useState('')
-  const [grouping, setGrouping] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [status, setStatus] = useState('Pending')
+  const [isPending, setIsPending] = useState(false)
+  const [condition, setCondition] = useState('')
+  const [outcome, setOutcome] = useState('')
+  const [sow, setSow] = useState('')
+  const [discount, setDiscount] = useState('')
+  const [price, setPrice] = useState('')
+  const [glossaries, setGlossaries] = useState<string[]>([])
 
-  const reset = () => { setTitle(''); setGrouping(''); setDeadline(''); setStatus('Pending') }
+  const reset = () => {
+    setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
+    setSow(''); setDiscount(''); setPrice(''); setGlossaries([])
+  }
   const close = () => { reset(); onClose() }
+
+  const glossaryOpts = (glossaryList ?? []).map((g) => ({ value: g.name, label: g.glossary }))
 
   if (!open) return null
 
@@ -31,12 +39,21 @@ export function ProjectDetailFormSheet({ open, onClose, project, groupings = [] 
     'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
 
   const submit = () => {
-    if (!title.trim() || !grouping.trim() || !deadline) {
-      toast('error', 'Title, grouping and deadline are required')
+    if (!title.trim()) {
+      toast('error', 'Title is required')
       return
     }
     create.mutate(
-      { title: title.trim(), grouping: grouping.trim(), project_deadline: deadline, status },
+      {
+        title: title.trim(),
+        is_pending: isPending ? 1 : 0,
+        current_condition: condition,
+        expected_outcome: outcome,
+        keterangan_di_sow: sow,
+        discount: Number(discount) || 0,
+        price: Number(price) || 0,
+        glossaries: glossaries.map((g) => ({ glossary: g })),
+      },
       {
         onSuccess: () => { toast('success', 'Project detail created'); close() },
         onError: (e) => toast('error', (e as Error).message),
@@ -60,20 +77,44 @@ export function ProjectDetailFormSheet({ open, onClose, project, groupings = [] 
             <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
-            Grouping<span className="text-red-500"> *</span>
-            <SearchableSelect value={grouping} onChange={setGrouping} options={groupings.map((g) => ({ value: g, label: g }))} allowCreate placeholder="Pick or type a new grouping" />
+          <label className="flex items-center justify-between text-sm font-medium text-slate-600">
+            <span>
+              Mark as pending
+              <span className="mt-0.5 block text-xs font-normal text-slate-400">The deadline follows the project's; status is set automatically from the tasks.</span>
+            </span>
+            <input type="checkbox" checked={isPending} onChange={(e) => setIsPending(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
-            Deadline<span className="text-red-500"> *</span>
-            <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            Current condition
+            <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600">
-            Status
-            <SearchableSelect value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: s }))} />
+            Expected outcome
+            <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
           </label>
+
+          <label className="text-sm font-medium text-slate-600">
+            Keterangan di SOW
+            <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
+          </label>
+
+          <div className="text-sm font-medium text-slate-600">
+            Glossaries
+            <MultiSelectChips options={glossaryOpts} value={glossaries} onChange={setGlossaries} emptyText="No glossaries for this project yet" />
+          </div>
+
+          <div className="flex gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Discount (Rp)
+              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={discount} onChange={(e) => setDiscount(e.target.value)} />
+            </label>
+            <label className="flex-1 text-sm font-medium text-slate-600">
+              Price (Rp)
+              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={price} onChange={(e) => setPrice(e.target.value)} />
+            </label>
+          </div>
 
           <button onClick={submit} disabled={create.isPending}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">

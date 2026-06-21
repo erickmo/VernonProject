@@ -16,6 +16,9 @@ class Project(Document):
 			if getdate(self.start_date) > getdate(self.deadline):
 				frappe.throw("Start Date cannot be after Deadline.")
 
+		# No circular blocking chains (A blocks B blocks A …)
+		self.validate_blocking_chain()
+
 		# Edit scope + owner-only reassignment (updates only)
 		self.validate_edit_permission()
 
@@ -48,6 +51,22 @@ class Project(Document):
 				unique_team_members.append(member)
 
 		self.team_members = unique_team_members
+
+	def validate_blocking_chain(self):
+		if not self.blocked_by:
+			return
+		if self.blocked_by == self.name:
+			frappe.throw("A project cannot block itself.")
+		# Walk the chain from the blocker; if it loops back to this project, reject.
+		seen = {self.name}
+		current = self.blocked_by
+		while current:
+			if current in seen:
+				frappe.throw(
+					f"Circular blocking chain detected (loops back through {frappe.bold(current)})."
+				)
+			seen.add(current)
+			current = frappe.db.get_value("Project", current, "blocked_by")
 
 	def validate_edit_permission(self):
 		if self.is_new():

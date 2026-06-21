@@ -61,7 +61,7 @@
     <main class="content">
 <nav class="breadcrumb"><a href="index.html">Docs</a> <span>/</span> <span>DocType Reference</span></nav>
 <h1 class="page-title">DocType Reference</h1>
-<p class="page-lead">Field-by-field reference for all ten DocTypes in the Vernon Project app &mdash; three core work-management types and seven supporting types. Each entry lists its kind, naming, fields, controller logic, client scripts, and a pointer to the full permission matrix.</p>
+<p class="page-lead">Field-by-field reference for all fourteen DocTypes in the Vernon Project app &mdash; three core work-management types and eleven supporting types. Each entry lists its kind, naming, fields, controller logic, client scripts, and a pointer to the full permission matrix.</p>
 
 <div class="callout callout--note"><svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="callout__body"><div class="callout__title">How to read these tables</div><p>Pure layout fields (Section Break, Column Break, Tab Break) are omitted. Required fields are marked <span class="req">required</span>. Fields written by the server or framework rather than the user are noted as <em>computed</em> or <em>auto-set</em>. Some labels and validation messages are in Indonesian and are quoted verbatim. For the complete role/permission grid see <a href="permissions.html">Permissions</a>.</p></div></div>
 
@@ -69,10 +69,13 @@
 <div class="card-grid cols-3">
   <a class="card" href="#project"><div class="card__title">Project</div><p class="card__desc">Top-level project record. Calendar &amp; Gantt, team auto-population.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
   <a class="card" href="#project-detail"><div class="card__title">Project Detail</div><p class="card__desc">Work-breakdown under a project. Rolled-up todo stats, derived status, SOW pricing.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
-  <a class="card" href="#project-todo"><div class="card__title">Project Todo</div><p class="card__desc">Child task with four-stage workflow, phase tracking, recurrence.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
-  <a class="card" href="#customer"><div class="card__title">Customer</div><p class="card__desc">Minimal client entity that projects link back to.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-todo"><div class="card__title">Project Todo</div><p class="card__desc">Standalone task with four-stage workflow, phase tracking, scoring, day allocations, recurrence.</p><span class="card__arrow">Core &middot; jump &rarr;</span></a>
+  <a class="card" href="#brand"><div class="card__title">Brand</div><p class="card__desc">Minimal client entity that projects link back to.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#project-todo-allocation"><div class="card__title">Project Todo Allocation</div><p class="card__desc">Child table of per-day time plans for a todo.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#group"><div class="card__title">Group</div><p class="card__desc">Scoring group with weighting/penalty config and a level scale.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#group-level"><div class="card__title">Group Level</div><p class="card__desc">Child table of named levels with point values on a group.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
+  <a class="card" href="#point-ledger"><div class="card__title">Point Ledger</div><p class="card__desc">Immutable record of points awarded per role for a completed todo.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
   <a class="card" href="#glossary"><div class="card__title">Glossary</div><p class="card__desc">Project-scoped terminology term.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
-  <a class="card" href="#project-group"><div class="card__title">Project Group</div><p class="card__desc">Hierarchical NestedSet tree for organizing projects.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
   <a class="card" href="#project-team"><div class="card__title">Project Team</div><p class="card__desc">Child table of team-member User links.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
   <a class="card" href="#project-glossary"><div class="card__title">Project Glossary</div><p class="card__desc">Child table attaching glossary terms to a detail.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
   <a class="card" href="#scope-of-work"><div class="card__title">Scope of Work</div><p class="card__desc">Submittable SOW record linked to a proposal.</p><span class="card__arrow">Supporting &middot; jump &rarr;</span></a>
@@ -80,9 +83,9 @@
 </div>
 
 <h2>Core DocTypes</h2>
-<p>The three core types carry the app's work-management workflow: a <a href="#project">Project</a> contains many <a href="#project-detail">Project Detail</a> records, each of which owns a <a href="#project-todo">Project Todo</a> child table.</p>
+<p>The three core types carry the app's work-management workflow: a <a href="#project">Project</a> contains many <a href="#project-detail">Project Detail</a> records, each of which is the parent of many standalone <a href="#project-todo">Project Todo</a> records (linked back through <code>project_detail</code>).</p>
 
-<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-8L9 5H5a2 2 0 0 0-2 2z"/></svg></div><div class="dt-head__meta"><h3 id="project">Project</h3><p>The top-level project record &mdash; name, customer, group, schedule, status, and the people responsible &mdash; linked from Project Detail and exposed in calendar/Gantt views.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Calendar &amp; Gantt</span><span class="badge badge--gray">Track Changes</span></div></div></div>
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-8L9 5H5a2 2 0 0 0-2 2z"/></svg></div><div class="dt-head__meta"><h3 id="project">Project</h3><p>The top-level project record &mdash; name, brand, schedule, status, and the people responsible &mdash; linked from Project Detail and exposed in calendar/Gantt views.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Calendar &amp; Gantt</span><span class="badge badge--gray">Track Changes</span></div></div></div>
 
 <div class="deflist">
   <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
@@ -95,8 +98,7 @@
 <tbody>
 <tr><td><code>naming_series</code></td><td><span class="badge badge--purple">Select</span></td><td></td><td>Single option <code>PRJ-.YY..MM.-.#####</code>; drives autoname.</td></tr>
 <tr><td><code>project_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Shown in list view; the doctype's title field.</td></tr>
-<tr><td><code>project_group</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#project-group">Project Group</a>. Client filters options to non-group records (<code>is_group = 0</code>). Search-indexed.</td></tr>
-<tr><td><code>customer</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#customer">Customer</a>. Search-indexed.</td></tr>
+<tr><td><code>brand</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#brand">Brand</a>. Search-indexed.</td></tr>
 <tr><td><code>start_date</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Validated to be on/before <code>deadline</code>. Search-indexed.</td></tr>
 <tr><td><code>deadline</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Validated to be on/after <code>start_date</code>. Search-indexed.</td></tr>
 <tr><td><code>status</code></td><td><span class="badge badge--purple">Select</span></td><td><span class="req">required</span></td><td>Options <code>Ongoing</code>, <code>Closed</code>. Default <code>Ongoing</code>.</td></tr>
@@ -119,7 +121,7 @@
 
 <p><strong>Client script</strong></p>
 <ul>
-  <li><code>refresh</code> sets a query on <code>project_group</code> returning <code>{is_group: 0}</code>, so only non-group Project Groups can be selected. No custom buttons, dialogs, or formatters.</li>
+  <li><code>refresh</code> &mdash; no custom buttons, dialogs, or formatters.</li>
 </ul>
 
 <p><strong>Permissions:</strong> roles are System Manager, Project Owner, Project Leader, Project Admin, and Project Team; the Project Owner row is <code>if_owner</code>-restricted. Full matrix at <a href="permissions.html">Permissions</a>.</p>
@@ -186,11 +188,11 @@
 
 <p><strong>Permissions:</strong> System Manager, Project Owner, Project Leader, Project Admin (no delete), and Project Team (read-only). Permlevel-9 rows exist for the project roles but currently gate no fields. Full matrix at <a href="permissions.html">Permissions</a>.</p>
 
-<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="dt-head__meta"><h3 id="project-todo">Project Todo</h3><p>An individual task embedded in a Project Detail's <code>todo</code> table. Tracks assignment, deadline, estimate, a four-stage status workflow, per-phase time estimates and actuals, phase timestamps, progress sign-off, and optional recurrence.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Four-stage workflow</span><span class="badge badge--gray">Phase tracking</span><span class="badge badge--gray">Recurring</span></div></div></div>
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="dt-head__meta"><h3 id="project-todo">Project Todo</h3><p>A standalone task that links back to its parent <a href="#project-detail">Project Detail</a> through a <code>project_detail</code> Link field. Tracks assignment, deadline, estimate, a four-stage status workflow, per-phase time estimates and actuals, phase timestamps, progress sign-off, scoring (group/level/points), per-day allocations, and optional recurrence.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Four-stage workflow</span><span class="badge badge--gray">Phase tracking</span><span class="badge badge--gray">Scoring</span><span class="badge badge--gray">Recurring</span></div></div></div>
 
 <div class="deflist">
-  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Child Table (<code>istable: 1</code>) &mdash; lives inside Project Detail &rarr; Project</div></div>
-  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None &mdash; child rows get framework hash names</div></div>
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType (<code>istable: 0</code>) &mdash; standalone, linked to its parent Project Detail via <code>project_detail</code>; owns its own <code>allocations</code> child table</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None defined &mdash; default hash naming</div></div>
   <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
 </div>
 
@@ -212,12 +214,42 @@
 <div class="table-wrap"><table class="tbl">
 <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
+<tr><td><code>project_detail</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#project-detail">Project Detail</a> &mdash; the parent this standalone todo links back to (labeled <em>Detail</em>). Drives permissions, status roll-up, and the cascading parent save.</td></tr>
 <tr><td><code>ongoing</code></td><td><span class="badge badge--slate">Check</span></td><td></td><td>In list view. No controller logic acts on it.</td></tr>
 <tr><td><code>to_do</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>The task description. In list view.</td></tr>
 <tr><td><code>assigned_to</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target User. Locked once status is Done/Completed. In list view.</td></tr>
 <tr><td><code>deadline</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Task deadline and base date for recurrence. Locked once status is Done/Completed. In list view.</td></tr>
 <tr><td><code>estimated</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Estimated effort in minutes. Non-negative. Locked once status is Done/Completed. In list view, search-indexed.</td></tr>
 <tr><td><code>notes</code></td><td><span class="badge badge--gray">Text Editor</span></td><td></td><td>Free-form notes.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Scoring</em></p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>group</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target <a href="#group">Group</a> &mdash; the scoring group whose weighting/penalty config and level scale apply to this todo.</td></tr>
+<tr><td><code>level</code></td><td><span class="badge badge--purple">Select</span></td><td></td><td>The named level on the selected group's scale; resolves to a base <code>point</code> value.</td></tr>
+<tr><td><code>point</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Base point value derived from the chosen <code>level</code>.</td></tr>
+<tr><td><code>assignee_earned</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Points earned by the assignee, after applying the group's late penalty / early bonus.</td></tr>
+<tr><td><code>leader_earned</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Points earned by the leader, after applying the group's leader weight and leader late/early adjustments.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Approval Deadlines</em></p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>leader_deadline</code></td><td><span class="badge badge--green">Date</span></td><td></td><td>Labeled <em>Leader Approval Deadline</em>. Reference date for the leader's late/early scoring adjustment.</td></tr>
+<tr><td><code>owner_deadline</code></td><td><span class="badge badge--green">Date</span></td><td></td><td>Labeled <em>Owner Approval Deadline</em>. Reference date for the owner-stage approval.</td></tr>
+</tbody>
+</table></div>
+
+<p><em>Day Allocations</em></p>
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>allocations</code></td><td><span class="badge badge--gray">Table</span></td><td></td><td>Labeled <em>Day Allocations</em>. Child table of <a href="#project-todo-allocation">Project Todo Allocation</a> rows &mdash; a per-day time plan for the todo (planning only, not scored).</td></tr>
 </tbody>
 </table></div>
 
@@ -290,7 +322,7 @@
   <li><code>on_change</code> &mdash; when the status changed, saves the parent Project Detail (cascading recalculation); when status is <code>✅ Completed</code> and recurring, calls <code>create_next_occurrence()</code>.</li>
   <li><code>create_next_occurrence()</code> &mdash; appends a new <code>⚪️ Planned</code> todo to the parent with the next computed deadline (stopping past <code>recurring_until</code>) and msgprints <code>Next recurring todo created with deadline: &lt;date&gt;</code>.</li>
   <li><code>on_trash</code> &mdash; blocks deletion if linked to a Project Detail (<code>Cannot delete Project Todo as it is linked to a Project Detail.</code>) or if status is not Planned (<code>Cannot delete Project Todo unless its status is 'Scheduled'.</code>).</li>
-  <li>Module-level <code>has_permission</code> &mdash; resolves access through the parent's Project (owner, leader, admin, or team member). Note <code>permission_query_conditions</code> does not apply to child doctypes. See <a href="permissions.html">Permissions</a>.</li>
+  <li>Module-level <code>has_permission</code> &mdash; resolves access through the linked <code>project_detail</code>'s Project (owner, leader, admin, or team member). As a standalone doctype, a <code>permission_query_conditions</code> hook can also apply. See <a href="permissions.html">Permissions</a>.</li>
 </ul>
 
 <p><strong>Client script</strong></p>
@@ -303,25 +335,116 @@
 <p><strong>Permissions:</strong> governed entirely by the runtime <code>has_permission</code> hook (no JSON permission rows). See <a href="permissions.html">Permissions</a> and the <a href="api.html">API reference</a> for <code>update_status</code>.</p>
 
 <h2>Supporting DocTypes</h2>
-<p>The supporting types provide reference data (Customer, Glossary, Project Group), child-table building blocks (Project Team, Project Glossary), and two submittable stubs (Scope of Work, Project Proposal).</p>
+<p>The supporting types provide reference data (Brand, Group, Glossary), scoring records (Point Ledger), child-table building blocks (Project Todo Allocation, Group Level, Project Team, Project Glossary), and two submittable stubs (Scope of Work, Project Proposal).</p>
 
-<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="dt-head__meta"><h3 id="customer">Customer</h3><p>A minimal client entity that Projects link back to via <code>Project.customer</code>. Holds only the customer's name, which doubles as its unique identifier.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="dt-head__meta"><h3 id="brand">Brand</h3><p>A minimal client entity that Projects link back to via <code>Project.brand</code>. Holds only the brand's name, which doubles as its unique identifier.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
 
 <div class="deflist">
   <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
-  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By fieldname &mdash; <code>field:customer_name</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By fieldname &mdash; <code>field:brand_name</code></div></div>
   <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
 </div>
 
 <div class="table-wrap"><table class="tbl">
 <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>customer_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Unique. Used as the document's name/identifier. In list view.</td></tr>
+<tr><td><code>brand_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Unique. The title field; used as the document's name/identifier. In list view.</td></tr>
 </tbody>
 </table></div>
 
-<p><strong>Controller &amp; client script:</strong> none &mdash; <code>customer.py</code> is <code>class Customer(Document): pass</code> and <code>customer.js</code> is the commented-out scaffold. Nothing is computed or auto-populated.</p>
+<p><strong>Controller &amp; client script:</strong> none &mdash; <code>brand.py</code> is <code>class Brand(Document): pass</code> and <code>brand.js</code> is the commented-out scaffold. Nothing is computed or auto-populated.</p>
 <p><strong>Permissions:</strong> only System Manager has delete; System Manager and Project Owner can create/write; Project Leader and Project Team are read-only. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg></div><div class="dt-head__meta"><h3 id="project-todo-allocation">Project Todo Allocation</h3><p>A child table row representing one day of a <a href="#project-todo">Project Todo</a>'s time plan, embedded as the <code>allocations</code> table on Project Todo. Planning only &mdash; allocations are not scored.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Child Table (<code>istable: 1</code>) &mdash; lives inside Project Todo &rarr; <code>allocations</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None &mdash; framework hash names</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>allocation_date</code></td><td><span class="badge badge--green">Date</span></td><td><span class="req">required</span></td><td>Labeled <em>Date</em>. The day this allocation applies to. In grid list view.</td></tr>
+<tr><td><code>estimated_minutes</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Labeled <em>Estimated Minutes</em>. Planned effort for the day.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; boilerplate <code>pass</code> controller, no client script. Both fields are user-entered.</p>
+<p><strong>Permissions:</strong> empty JSON permissions array; access flows through the parent Project Todo. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></div><div class="dt-head__meta"><h3 id="group">Group</h3><p>A scoring group that carries the weighting and penalty configuration used to award points, and holds the named level scale (via its <code>levels</code> child table) that todos pick a level from.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Scoring config</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By fieldname &mdash; <code>field:group_name</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>group_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Unique. The title field; used as the document's name/identifier. In list view.</td></tr>
+<tr><td><code>description</code></td><td><span class="badge badge--gray">Small Text</span></td><td></td><td>Optional free-text description of the group.</td></tr>
+<tr><td><code>late_penalty</code></td><td><span class="badge badge--amber">Percent</span></td><td></td><td>Labeled <em>Late Penalty (per day)</em>. Per-day deduction applied to the assignee's score when late.</td></tr>
+<tr><td><code>early_bonus</code></td><td><span class="badge badge--amber">Percent</span></td><td></td><td>Labeled <em>Early Bonus (per day)</em>. Per-day bonus applied to the assignee's score when early.</td></tr>
+<tr><td><code>leader_weight</code></td><td><span class="badge badge--amber">Percent</span></td><td></td><td>Labeled <em>Leader Weight</em>. Share of the base point awarded to the leader.</td></tr>
+<tr><td><code>leader_late_penalty</code></td><td><span class="badge badge--amber">Percent</span></td><td></td><td>Labeled <em>Leader Late Penalty (per day)</em>. Per-day deduction on the leader's score when late.</td></tr>
+<tr><td><code>leader_early_bonus</code></td><td><span class="badge badge--amber">Percent</span></td><td></td><td>Labeled <em>Leader Early Bonus (per day)</em>. Per-day bonus on the leader's score when early.</td></tr>
+<tr><td><code>levels</code></td><td><span class="badge badge--gray">Table</span></td><td></td><td>Child table of <a href="#group-level">Group Level</a> rows &mdash; the named level scale, each level pairing a name with its base point value.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; boilerplate <code>pass</code> controller, no client script. The fields are user-entered scoring configuration.</p>
+<p><strong>Permissions:</strong> see <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div><div class="dt-head__meta"><h3 id="group-level">Group Level</h3><p>A child table row representing one named level on a <a href="#group">Group</a>'s scale, embedded as the <code>levels</code> table on Group. Each level pairs a name with its point value.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Child Table (<code>istable: 1</code>) &mdash; lives inside Group &rarr; <code>levels</code></div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None &mdash; framework hash names</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>level_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Labeled <em>Level Name</em>. The level's display name. In grid list view.</td></tr>
+<tr><td><code>point</code></td><td><span class="badge badge--amber">Float</span></td><td><span class="req">required</span></td><td>Labeled <em>Point</em>. The base point value awarded at this level.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; boilerplate <code>pass</code> controller, no client script. Both fields are user-entered.</p>
+<p><strong>Permissions:</strong> empty JSON permissions array; access flows through the parent Group. See <a href="permissions.html">Permissions</a>.</p>
+
+<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="dt-head__meta"><h3 id="point-ledger">Point Ledger</h3><p>An immutable record of points awarded to a user for a completed <a href="#project-todo">Project Todo</a> &mdash; one row per role (Assignee or Leader). Captures the base point, late/early adjustments, and the final points earned.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Immutable ledger</span></div></div></div>
+
+<div class="deflist">
+  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Normal DocType</div></div>
+  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">None defined &mdash; default hash naming</div></div>
+  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
+</div>
+
+<div class="table-wrap"><table class="tbl">
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>user</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Target User &mdash; the person the points are awarded to. In list view.</td></tr>
+<tr><td><code>role</code></td><td><span class="badge badge--purple">Select</span></td><td><span class="req">required</span></td><td>Options <code>Assignee</code>, <code>Leader</code>. Which role this ledger row credits.</td></tr>
+<tr><td><code>todo</code></td><td><span class="badge badge--blue">Link</span></td><td><span class="req">required</span></td><td>Labeled <em>Project Todo</em>. Target <a href="#project-todo">Project Todo</a> the points were earned on.</td></tr>
+<tr><td><code>group</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target <a href="#group">Group</a> &mdash; the scoring group in effect at credit time.</td></tr>
+<tr><td><code>project</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Target <a href="#project">Project</a> the todo belongs to.</td></tr>
+<tr><td><code>level_name</code></td><td><span class="badge badge--blue">Data</span></td><td></td><td>Labeled <em>Level</em>. Snapshot of the level name used for scoring.</td></tr>
+<tr><td><code>point</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Labeled <em>Base Point</em>. The base point value before adjustments.</td></tr>
+<tr><td><code>late_days</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Labeled <em>Late Days</em>. Number of days late, driving the penalty.</td></tr>
+<tr><td><code>early_days</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Labeled <em>Early Days</em>. Number of days early, driving the bonus.</td></tr>
+<tr><td><code>points_earned</code></td><td><span class="badge badge--amber">Float</span></td><td></td><td>Labeled <em>Points Earned</em>. The final awarded points after penalty/bonus.</td></tr>
+<tr><td><code>credited_on</code></td><td><span class="badge badge--green">Datetime</span></td><td></td><td>Labeled <em>Credited On</em>. When the points were recorded.</td></tr>
+</tbody>
+</table></div>
+
+<p><strong>Controller &amp; client script:</strong> none &mdash; boilerplate <code>pass</code> controller; rows are written by the scoring logic when a todo is completed. See the <a href="api.html">API reference</a>.</p>
+<p><strong>Permissions:</strong> see <a href="permissions.html">Permissions</a>.</p>
 
 <div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="dt-head__meta"><h3 id="glossary">Glossary</h3><p>A glossary term scoped to a single Project, pairing a term with its project and an optional rich-text description.</p><div class="pill-list"><span class="badge badge--brand">Normal DocType</span><span class="badge badge--gray">Expression naming</span></div></div></div>
 
@@ -342,33 +465,6 @@
 
 <p><strong>Controller &amp; client script:</strong> none &mdash; <code>glossary.py</code> is a <code>pass</code> controller and <code>glossary.js</code> is commented-out boilerplate.</p>
 <p><strong>Permissions:</strong> System Manager, Project Owner, and Project Leader have full read/write/create/delete; Project Team is read-only. See <a href="permissions.html">Permissions</a>.</p>
-
-<div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-5"/></svg></div><div class="dt-head__meta"><h3 id="project-group">Project Group</h3><p>A hierarchical grouping doctype used to organize Projects into nested groups, implemented as a Frappe NestedSet tree.</p><div class="pill-list"><span class="badge badge--brand">Tree</span><span class="badge badge--gray">NestedSet</span></div></div></div>
-
-<div class="deflist">
-  <div class="deflist__row"><div class="deflist__key">Kind</div><div class="deflist__val">Tree (<code>is_tree=1</code>, default view Tree)</div></div>
-  <div class="deflist__row"><div class="deflist__key">Naming</div><div class="deflist__val">By fieldname &mdash; <code>field:project_name</code></div></div>
-  <div class="deflist__row"><div class="deflist__key">Submittable</div><div class="deflist__val">No</div></div>
-</div>
-
-<div class="table-wrap"><table class="tbl">
-<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><code>project_name</code></td><td><span class="badge badge--blue">Data</span></td><td><span class="req">required</span></td><td>Unique. Used as the document name. In list view.</td></tr>
-<tr><td><code>is_group</code></td><td><span class="badge badge--slate">Check</span></td><td></td><td>NestedSet flag: whether this node can have children (a branch vs. a leaf).</td></tr>
-<tr><td><code>parent_project_group</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Self-referential tree parent (<code>nsm_parent_field</code>). Target Project Group. Ignores user permissions.</td></tr>
-<tr><td><code>lft</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Nested-set left boundary. <em>Auto-set</em> by the framework. Read-only, hidden.</td></tr>
-<tr><td><code>rgt</code></td><td><span class="badge badge--amber">Int</span></td><td></td><td>Nested-set right boundary. <em>Auto-set</em> by the framework. Read-only, hidden.</td></tr>
-<tr><td><code>old_parent</code></td><td><span class="badge badge--blue">Link</span></td><td></td><td>Previous parent during reparenting. <em>Auto-set</em> by the framework. Target Project Group.</td></tr>
-</tbody>
-</table></div>
-
-<p><strong>Controller logic</strong></p>
-<ul>
-  <li><code>class ProjectGroup(NestedSet): pass</code> &mdash; no custom code. All tree behavior (lft/rgt maintenance, cycle detection, reparenting, &ldquo;cannot be its own parent&rdquo; validation) is inherited from Frappe's <code>NestedSet</code>.</li>
-</ul>
-<p><strong>Client script:</strong> none &mdash; <code>project_group.js</code> is a commented-out stub.</p>
-<p><strong>Permissions:</strong> System Manager and Project Owner have full rights; Project Leader and Project Team are read-only. See <a href="permissions.html">Permissions</a>.</p>
 
 <div class="dt-head"><div class="dt-head__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="dt-head__meta"><h3 id="project-team">Project Team</h3><p>A child table whose rows each link a single User. Embedded as the <code>team_members</code> table on Project.</p><div class="pill-list"><span class="badge badge--brand">Child Table</span><span class="badge badge--gray">Boilerplate controller</span></div></div></div>
 

@@ -46,7 +46,28 @@ export default function Projects() {
       (!filters.owner || p.project_owner === filters.owner) &&
       (!filters.leader || p.project_leader === filters.leader) &&
       (!q || p.project_name.toLowerCase().includes(q) || (p.brand || '').toLowerCase().includes(q)),
-  ).sort((a, b) => a.project_name.localeCompare(b.project_name))
+  )
+
+  // Group by brand, sort brands A→Z (unbranded last), projects by name within each.
+  const groups = useMemo(() => {
+    const byBrand = new Map<string, typeof list>()
+    for (const p of list) {
+      const key = p.brand || ''
+      const arr = byBrand.get(key)
+      if (arr) arr.push(p)
+      else byBrand.set(key, [p])
+    }
+    return Array.from(byBrand.entries())
+      .map(([brand, items]) => ({
+        brand,
+        items: items.slice().sort((a, b) => a.project_name.localeCompare(b.project_name)),
+      }))
+      .sort((a, b) => {
+        if (!a.brand) return 1
+        if (!b.brand) return -1
+        return a.brand.localeCompare(b.brand)
+      })
+  }, [list])
 
   const advCount = ['brand', 'owner', 'leader'].filter((k) => filters[k]).length
 
@@ -101,9 +122,22 @@ export default function Projects() {
           </div>
 
           {list.length ? (
-            <div className="flex flex-col gap-2.5">
-              {list.map((p) => (
-                <ProjectCard key={p.name} p={p} />
+            <div className="flex flex-col gap-5">
+              {groups.map((g) => (
+                <div key={g.brand || '__none__'}>
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <span className="h-5 w-1.5 rounded-full bg-brand-600" />
+                    <h3 className="text-base font-bold text-slate-900">{g.brand || 'No brand'}</h3>
+                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">
+                      {g.items.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {g.items.map((p) => (
+                      <ProjectCard key={p.name} p={p} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

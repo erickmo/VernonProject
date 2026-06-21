@@ -6,6 +6,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import App from './App'
 import { ToastProvider } from './components/Toast'
+import { ConfirmProvider } from './components/Confirm'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './index.css'
 
@@ -49,9 +50,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     >
       <BrowserRouter basename="/m">
         <ToastProvider>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
+          <ConfirmProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </ConfirmProvider>
         </ToastProvider>
       </BrowserRouter>
     </PersistQueryClientProvider>
