@@ -1,18 +1,31 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Users, ChevronRight } from 'lucide-react'
+import { Plus, Users, ChevronRight, Search } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
+import type { ManagedUser } from '@/lib/types'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
   VERNON_ROLE_OPTIONS.map((o) => [o.value, o.label]),
 )
 
+type StatusFilter = 'all' | 'active' | 'disabled'
+
+const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'disabled', label: 'Disabled' },
+]
+
 export default function UsersScreen() {
   const navigate = useNavigate()
   const { data: boot, isLoading: bootLoading } = useBoot()
   const { data: users, isLoading } = useUsers()
+
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [roleFilter, setRoleFilter] = useState<string>('')
 
   if (bootLoading) {
     return (
@@ -38,14 +51,126 @@ export default function UsersScreen() {
     >
       {isLoading ? (
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
-      ) : !(users ?? []).length ? (
+      ) : (
+        <UsersBody
+          users={users ?? []}
+          search={search}
+          setSearch={setSearch}
+          status={status}
+          setStatus={setStatus}
+          roleFilter={roleFilter}
+          setRoleFilter={setRoleFilter}
+          onSelect={(name) => navigate(`/users/${encodeURIComponent(name)}`)}
+        />
+      )}
+    </DetailScreen>
+  )
+}
+
+interface UsersBodyProps {
+  users: ManagedUser[]
+  search: string
+  setSearch: (v: string) => void
+  status: StatusFilter
+  setStatus: (v: StatusFilter) => void
+  roleFilter: string
+  setRoleFilter: (v: string) => void
+  onSelect: (name: string) => void
+}
+
+function UsersBody({
+  users,
+  search,
+  setSearch,
+  status,
+  setStatus,
+  roleFilter,
+  setRoleFilter,
+  onSelect,
+}: UsersBodyProps) {
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return users.filter((u) => {
+      if (q && !(u.full_name ?? '').toLowerCase().includes(q) && !u.name.toLowerCase().includes(q))
+        return false
+      if (status === 'active' && u.enabled !== 1) return false
+      if (status === 'disabled' && u.enabled !== 0) return false
+      if (roleFilter && !u.roles.includes(roleFilter)) return false
+      return true
+    })
+  }, [users, search, status, roleFilter])
+
+  const hasUsers = users.length > 0
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Search input */}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or email…"
+          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400"
+        />
+      </div>
+
+      {/* Status chips */}
+      <div className="flex gap-2">
+        {STATUS_CHIPS.map((chip) => (
+          <button
+            key={chip.value}
+            onClick={() => setStatus(chip.value)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              status === chip.value
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Role chips */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setRoleFilter('')}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            roleFilter === ''
+              ? 'bg-brand-600 text-white'
+              : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+          }`}
+        >
+          All roles
+        </button>
+        {VERNON_ROLE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setRoleFilter(roleFilter === opt.value ? '' : opt.value)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              roleFilter === opt.value
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* List or empty states */}
+      {!hasUsers ? (
         <EmptyState icon={Users} title="No users yet" />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Users} title="No matching users" />
       ) : (
         <div className="flex flex-col gap-2">
-          {(users ?? []).map((u) => (
+          {filtered.map((u) => (
             <button
               key={u.name}
-              onClick={() => navigate(`/users/${encodeURIComponent(u.name)}`)}
+              onClick={() => onSelect(u.name)}
               className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50"
             >
               <Avatar name={u.full_name || u.name} image={u.user_image} size={40} />
@@ -77,7 +202,7 @@ export default function UsersScreen() {
           ))}
         </div>
       )}
-    </DetailScreen>
+    </div>
   )
 }
 

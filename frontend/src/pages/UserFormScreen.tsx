@@ -199,6 +199,7 @@ export default function UserFormScreen() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password"
+                  autoComplete="new-password"
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 />
                 <button
