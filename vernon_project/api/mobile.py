@@ -1464,3 +1464,77 @@ def get_wallet_log():
 		running -= r["amount"]
 
 	return rows
+
+
+# --------------------------------------------------------------------------------
+# Leaderboard — rank users by points EARNED in a period, optionally by brand.
+# Spending never lowers rank (we sum Point Ledger only, not redemptions).
+# --------------------------------------------------------------------------------
+
+
+def _period_start(period):
+	"""Return the inclusive start date for a period, or None for all-time."""
+	from frappe.utils import get_first_day, get_first_day_of_week
+
+	if period == "weekly":
+		return get_first_day_of_week(nowdate())
+	if period == "monthly":
+		return get_first_day(getdate(nowdate()))
+	return None
+
+
+@frappe.whitelist()
+def get_leaderboard(period="monthly", brand=None):
+	"""Top 50 users by points earned in the period; plus the caller's own rank."""
+	if period not in ("weekly", "monthly", "all"):
+		period = "monthly"
+	brand = brand or None
+
+	start = _period_start(period)
+	conds = []
+	params = {}
+	join = ""
+	if start is not None:
+		conds.append("pl.credited_on >= %(start)s")
+		params["start"] = start
+	if brand:
+		join = "join `tabProject` p on p.name = pl.project"
+		conds.append("p.brand = %(brand)s")
+		params["brand"] = brand
+
+	where = ("where " + " and ".join(conds)) if conds else ""
+	sql = f"""
+		select pl.user as user, coalesce(sum(pl.points_earned), 0) as points
+		from `tabPoint Ledger` pl
+		{join}
+		{where}
+		group by pl.user
+		having points <> 0
+		order by points desc, pl.user asc
+	"""
+	ranked = frappe.db.sql(sql, params, as_dict=True)
+
+	name_map = _user_name_map([r["user"] for r in ranked])
+
+	def shape(row, rank):
+		info = name_map.get(row["user"], {})
+		return {
+			"user": row["user"],
+			"full_name": info.get("full_name") or row["user"],
+			"image": info.get("user_image"),
+			"points": float(row["points"]),
+			"rank": rank,
+		}
+
+	entries, me = [], None
+	caller = frappe.session.user
+	for i, row in enumerate(ranked):
+		shaped = shape(row, i + 1)
+		if i < 50:
+			entries.append(shaped)
+		if row["user"] == caller:
+			me = shaped
+
+	brands = [b["brand_name"] for b in frappe.get_all("Brand", fields=["brand_name"], order_by="brand_name asc")]
+
+	return {"period": period, "brand": brand, "brands": brands, "entries": entries, "me": me}
