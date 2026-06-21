@@ -206,7 +206,7 @@ def _allocations_map(todo_names):
 	rows = frappe.get_all(
 		"Project Todo Allocation",
 		filters={"parent": ["in", names]},
-		fields=["parent", "allocation_date", "estimated_minutes"],
+		fields=["parent", "allocation_date", "estimated_minutes", "note"],
 		order_by="allocation_date asc",
 		limit_page_length=0,
 	)
@@ -215,6 +215,7 @@ def _allocations_map(todo_names):
 		m.setdefault(r["parent"], []).append({
 			"date": str(r["allocation_date"]) if r["allocation_date"] else None,
 			"minutes": r["estimated_minutes"] or 0,
+			"note": r["note"] or "",
 		})
 	return m
 
@@ -1033,7 +1034,7 @@ def update_todo(
 def set_todo_allocations(project_item, allocations):
 	"""Assignee-only: replace a todo's day allocations (planning only, not scored).
 
-	`allocations` is a JSON list of {date, minutes}. Returns the saved rows.
+	`allocations` is a JSON list of {date, minutes, note}. Returns the saved rows.
 	"""
 	try:
 		user = frappe.session.user
@@ -1058,6 +1059,7 @@ def set_todo_allocations(project_item, allocations):
 			doc.append("allocations", {
 				"allocation_date": d,
 				"estimated_minutes": minutes,
+				"note": (a.get("note") or "").strip(),
 			})
 		# Daily split must add up to the task estimate (planning consistency).
 		estimated = int(doc.estimated or 0)
@@ -1365,3 +1367,100 @@ def change_my_password(old_password, new_password):
 	_store_password(user, new_password, logout_all_sessions=True)
 	frappe.db.set_value("User", user, "last_password_reset_date", frappe.utils.today())
 	return {"ok": True}
+
+
+# --------------------------------------------------------------------------------
+# Points wallet — balance, transaction log
+# Balance is computed live: sum(Point Ledger credits) - sum(Reward Redemption debits).
+# Nothing is materialized, so there is no balance to drift out of sync.
+# --------------------------------------------------------------------------------
+
+
+def _user_balance(user):
+	"""Return (earned, redeemed, balance) for a user as floats."""
+	earned = frappe.db.sql(
+		"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` where user = %s",
+		user,
+	)[0][0]
+	redeemed = frappe.db.sql(
+		"select coalesce(sum(point_cost), 0) from `tabReward Redemption` where user = %s",
+		user,
+	)[0][0]
+	earned, redeemed = float(earned), float(redeemed)
+	return earned, redeemed, earned - redeemed
+
+
+@frappe.whitelist()
+def get_wallet():
+	"""Spendable-points summary for the logged-in user."""
+	earned, redeemed, balance = _user_balance(frappe.session.user)
+	return {"earned": earned, "redeemed": redeemed, "balance": balance}
+
+
+@frappe.whitelist()
+def get_wallet_log():
+	"""Unified credit/debit timeline (latest 100), newest first, with a running
+	balance-after-transaction attached to each row."""
+	user = frappe.session.user
+
+	credits = frappe.get_all(
+		"Point Ledger",
+		filters={"user": user},
+		fields=["points_earned as amount", "todo", "group", "role", "credited_on as date"],
+		order_by="credited_on desc",
+		limit=100,
+	)
+	debits = frappe.get_all(
+		"Reward Redemption",
+		filters={"user": user},
+		fields=["point_cost", "reward_name", "status", "redeemed_on as date"],
+		order_by="redeemed_on desc",
+		limit=100,
+	)
+
+	# Resolve todo subjects for credit titles in one query.
+	todo_ids = [c["todo"] for c in credits if c.get("todo")]
+	subj = {}
+	if todo_ids:
+		for r in frappe.get_all(
+			"Project Todo", filters={"name": ["in", todo_ids]}, fields=["name", "to_do"]
+		):
+			subj[r["name"]] = r["to_do"]
+
+	rows = []
+	for c in credits:
+		rows.append(
+			{
+				"kind": "credit",
+				"amount": float(c["amount"] or 0),
+				"title": subj.get(c.get("todo")) or "Points earned",
+				"subtitle": c.get("group") or (c.get("role") and f"{c['role']} reward"),
+				"status": None,
+				"date": str(c["date"]) if c.get("date") else None,
+				"date_human": _humanize_datetime(c.get("date")),
+			}
+		)
+	for d in debits:
+		rows.append(
+			{
+				"kind": "debit",
+				"amount": -float(d["point_cost"] or 0),
+				"title": d.get("reward_name") or "Redemption",
+				"subtitle": "Marketplace",
+				"status": d.get("status"),
+				"date": str(d["date"]) if d.get("date") else None,
+				"date_human": _humanize_datetime(d.get("date")),
+			}
+		)
+
+	# Sort merged newest-first; rows with no date sink to the bottom.
+	rows.sort(key=lambda r: r["date"] or "", reverse=True)
+	rows = rows[:100]
+
+	# Running balance walks newest -> oldest from the current total.
+	_, _, running = _user_balance(user)
+	for r in rows:
+		r["balance"] = round(running, 2)
+		running -= r["amount"]
+
+	return rows
