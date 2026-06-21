@@ -90,25 +90,25 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
-      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Manage team</h3>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Manage team</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Roles */}
-        <div className="mb-4 flex flex-col gap-3 rounded-xl bg-slate-50 p-3">
-          <label className="text-sm font-medium text-slate-600">
+        <div className="mb-4 flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Owner<span className="text-red-500"> *</span>
             <SearchableSelect value={owner} onChange={setOwnerRole} options={users} disabled={!canReassign} placeholder="Select…" />
           </label>
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Leader<span className="text-red-500"> *</span>
             <SearchableSelect value={leader} onChange={setLeaderRole} options={users} disabled={!canReassign} placeholder="Select…" />
           </label>
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Admin
             <SearchableSelect value={admin} onChange={setAdminRole} options={users} allowClear placeholder="None" />
           </label>
@@ -116,7 +116,7 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
 
         {/* Member */}
         <div className="mb-4">
-          <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-600">
+          <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
             <UserPlus className="h-4 w-4" /> Member
           </p>
           <SearchableSelect value="" onChange={addMember} options={addable} placeholder="Select user…" />
@@ -127,16 +127,16 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
           {members.map((email) => {
             const role = roleOf(email)
             return (
-              <div key={email} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 p-2.5">
+              <div key={email} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Avatar name={nameFor(email)} image={imageFor(email)} size={32} />
-                  <span className="truncate text-sm font-medium text-slate-700">{nameFor(email)}</span>
+                  <span className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{nameFor(email)}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {role ? (
-                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">{role}</span>
+                    <span className="rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300">{role}</span>
                   ) : (
-                    <button onClick={() => removeMember(email)} className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50">
+                    <button onClick={() => removeMember(email)} className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
@@ -144,7 +144,7 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
               </div>
             )
           })}
-          {!members.length && <p className="py-4 text-center text-sm text-slate-400">No members</p>}
+          {!members.length && <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">No members</p>}
         </div>
 
         <button onClick={save} disabled={update.isPending}

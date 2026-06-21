@@ -106,13 +106,13 @@ function UsersBody({
     <div className="flex flex-col gap-4">
       {/* Search input */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or email…"
-          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400"
+          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
         />
       </div>
 
@@ -125,7 +125,7 @@ function UsersBody({
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               status === chip.value
                 ? 'bg-brand-600 text-white'
-                : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+                : 'bg-slate-100 text-slate-600 active:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:active:bg-slate-700'
             }`}
           >
             {chip.label}
@@ -140,7 +140,7 @@ function UsersBody({
           className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
             roleFilter === ''
               ? 'bg-brand-600 text-white'
-              : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+              : 'bg-slate-100 text-slate-600 active:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:active:bg-slate-700'
           }`}
         >
           All roles
@@ -152,7 +152,7 @@ function UsersBody({
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               roleFilter === opt.value
                 ? 'bg-brand-600 text-white'
-                : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+                : 'bg-slate-100 text-slate-600 active:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:active:bg-slate-700'
             }`}
           >
             {opt.label}
@@ -171,20 +171,20 @@ function UsersBody({
             <button
               key={u.name}
               onClick={() => onSelect(u.name)}
-              className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50"
+              className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50 dark:bg-slate-800 dark:active:bg-slate-700/50"
             >
               <Avatar name={u.full_name || u.name} image={u.user_image} size={40} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-800">
+                <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                   {u.full_name || u.name}
                 </p>
-                <p className="truncate text-xs text-slate-500">{u.name}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.name}</p>
                 {u.roles.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {u.roles.map((r) => (
                       <span
                         key={r}
-                        className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700"
+                        className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
                       >
                         {ROLE_LABEL[r] ?? r}
                       </span>
@@ -193,11 +193,11 @@ function UsersBody({
                 )}
               </div>
               {!u.enabled && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   Disabled
                 </span>
               )}
-              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
             </button>
           ))}
         </div>

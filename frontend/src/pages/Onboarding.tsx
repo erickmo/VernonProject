@@ -30,9 +30,9 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const last = i === SLIDES.length - 1
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white pt-[env(safe-area-inset-top)] animate-fade-in">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900 pt-[env(safe-area-inset-top)] animate-fade-in">
       <div className="flex justify-end px-5 pt-4">
-        <button onClick={onDone} className="text-sm font-medium text-slate-400">
+        <button onClick={onDone} className="text-sm font-medium text-slate-400 dark:text-slate-500">
           Skip
         </button>
       </div>
@@ -46,8 +46,8 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         >
           <Icon className="h-12 w-12" strokeWidth={1.8} />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">{slide.title}</h2>
-        <p className="mt-3 max-w-xs leading-relaxed text-slate-500">{slide.body}</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{slide.title}</h2>
+        <p className="mt-3 max-w-xs leading-relaxed text-slate-500 dark:text-slate-400">{slide.body}</p>
       </div>
 
       <div className="px-8 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
@@ -57,7 +57,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               key={idx}
               className={clsx(
                 'h-2 rounded-full transition-all',
-                idx === i ? 'w-6 bg-brand-600' : 'w-2 bg-slate-200',
+                idx === i ? 'w-6 bg-brand-600' : 'w-2 bg-slate-200 dark:bg-slate-700',
               )}
             />
           ))}

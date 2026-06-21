@@ -66,8 +66,8 @@ export default function Review() {
               {groups.map((g) => (
                 <section key={g.name}>
                   <div className="mb-2 flex items-center justify-between px-1">
-                    <h2 className="truncate text-sm font-semibold text-slate-600">{g.name}</h2>
-                    <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+                    <h2 className="truncate text-sm font-semibold text-slate-600 dark:text-slate-300">{g.name}</h2>
+                    <span className="shrink-0 rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300">
                       {g.items.length}
                     </span>
                   </div>

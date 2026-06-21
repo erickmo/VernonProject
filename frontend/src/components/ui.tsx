@@ -8,7 +8,7 @@ export function Spinner({ className }: { className?: string }) {
 
 export function FullScreenLoader({ label }: { label?: string }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 py-24 text-slate-400">
+    <div className="flex h-full flex-col items-center justify-center gap-3 py-24 text-slate-400 dark:text-slate-500">
       <Spinner className="h-7 w-7 text-brand-500" />
       {label && <p className="text-sm">{label}</p>}
     </div>
@@ -30,7 +30,7 @@ export function Avatar({
         src={image}
         alt={name}
         style={{ width: size, height: size }}
-        className="shrink-0 rounded-full object-cover ring-2 ring-white"
+        className="shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-slate-800"
       />
     )
   }
@@ -38,7 +38,7 @@ export function Avatar({
     <div
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       className={clsx(
-        'flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-white',
+        'flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-white dark:ring-slate-800',
         colorFor(name || '?'),
       )}
     >
@@ -49,7 +49,7 @@ export function Avatar({
 
 export function ProgressBar({ value, className }: { value: number; className?: string }) {
   return (
-    <div className={clsx('h-1.5 w-full overflow-hidden rounded-full bg-slate-200', className)}>
+    <div className={clsx('h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700', className)}>
       <div
         className="h-full rounded-full bg-brand-500 transition-all duration-500"
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
@@ -69,11 +69,11 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-8 py-16 text-center">
-      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-card">
+      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 shadow-card">
         <Icon className="h-7 w-7 text-brand-400" />
       </div>
-      <p className="font-semibold text-slate-700">{title}</p>
-      {subtitle && <p className="max-w-xs text-sm text-slate-400">{subtitle}</p>}
+      <p className="font-semibold text-slate-700 dark:text-slate-200">{title}</p>
+      {subtitle && <p className="max-w-xs text-sm text-slate-400 dark:text-slate-500">{subtitle}</p>}
     </div>
   )
 }
@@ -118,7 +118,7 @@ export function FilterChips<T extends string>({
               'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
               active
                 ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-                : 'border-slate-200 bg-white text-slate-600',
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300',
             )}
           >
             {o.label}
@@ -126,7 +126,7 @@ export function FilterChips<T extends string>({
               <span
                 className={clsx(
                   'rounded-full px-1.5 text-[11px] font-semibold',
-                  active ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500',
+                  active ? 'bg-white/25 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
                 )}
               >
                 {o.count}
@@ -149,7 +149,7 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void
 }) {
   return (
-    <div className="flex gap-1 rounded-2xl bg-slate-100 p-1">
+    <div className="flex gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1">
       {options.map((o) => {
         const active = o.value === value
         return (
@@ -158,7 +158,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={clsx(
               'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-              active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500',
+              active ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-50 shadow-sm' : 'text-slate-500 dark:text-slate-400',
             )}
           >
             {o.label}
@@ -166,7 +166,7 @@ export function Segmented<T extends string>({
               <span
                 className={clsx(
                   'rounded-full px-1.5 text-[11px] font-semibold',
-                  active ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-500',
+                  active ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400',
                 )}
               >
                 {o.badge}

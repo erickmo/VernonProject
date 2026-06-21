@@ -51,45 +51,45 @@ export function ChangePasswordSheet({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={handleClose}>
-      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Change password</h3>
-          <button onClick={handleClose} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Change password</h3>
+          <button onClick={handleClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-600">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
             Current password
             <input
               type="password"
               autoComplete="current-password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-400 focus:bg-white"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 dark:placeholder-slate-500"
               placeholder="Enter current password"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-600">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
             New password
             <input
               type="password"
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-400 focus:bg-white"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 dark:placeholder-slate-500"
               placeholder="Enter new password"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-600">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">
             Confirm new password
             <input
               type="password"
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-400 focus:bg-white"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 dark:placeholder-slate-500"
               placeholder="Confirm new password"
             />
           </label>

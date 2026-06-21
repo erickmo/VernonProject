@@ -29,7 +29,7 @@ export function GroupManagerSheet({ open, onClose, project }: Props) {
   if (!open) return null
 
   const field =
-    'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
+    'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder-slate-500 focus:border-brand-600 focus:outline-none'
 
   const addGroup = () => {
     if (!newName.trim()) {
@@ -70,15 +70,15 @@ export function GroupManagerSheet({ open, onClose, project }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
-      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Manage groups</h3>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Manage groups</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mb-4 rounded-xl bg-slate-50 p-3">
+        <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
           <input className={field} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New group name" />
           <input className={field + ' mt-2'} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)" />
           <button onClick={addGroup} disabled={create.isPending}
@@ -88,12 +88,12 @@ export function GroupManagerSheet({ open, onClose, project }: Props) {
         </div>
 
         {isLoading ? (
-          <Spinner className="mx-auto h-5 w-5 text-slate-400" />
+          <Spinner className="mx-auto h-5 w-5 text-slate-400 dark:text-slate-500" />
         ) : (
           <div className="flex flex-col gap-2">
             {(groups ?? []).map((g) =>
               editId === g.name ? (
-                <div key={g.name} className="rounded-xl border border-brand-200 p-3">
+                <div key={g.name} className="rounded-xl border border-brand-200 dark:border-brand-500/30 bg-white dark:bg-slate-800 p-3">
                   <input className={field} value={editName} onChange={(e) => setEditName(e.target.value)} />
                   <input className={field + ' mt-2'} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" />
                   <div className="mt-2 flex gap-2">
@@ -102,25 +102,25 @@ export function GroupManagerSheet({ open, onClose, project }: Props) {
                       <Check className="h-3.5 w-3.5" /> Save
                     </button>
                     <button onClick={() => setEditId(null)}
-                      className="flex-1 rounded-lg bg-slate-100 py-1.5 text-xs font-semibold text-slate-600">Cancel</button>
+                      className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
                   </div>
                 </div>
               ) : (
-                <div key={g.name} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                <div key={g.name} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 p-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-800">{g.glossary}</p>
-                    {g.description && <p className="truncate text-xs text-slate-500">{stripHtml(g.description)}</p>}
+                    <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{g.glossary}</p>
+                    {g.description && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{stripHtml(g.description)}</p>}
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button onClick={() => { setEditId(g.name); setEditName(g.glossary); setEditDesc(stripHtml(g.description || '')) }}
-                      className="rounded-lg p-1.5 text-slate-500 active:bg-slate-100"><Pencil className="h-4 w-4" /></button>
+                      className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-700"><Pencil className="h-4 w-4" /></button>
                     <button onClick={() => removeGroup(g.name)}
-                      className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
+                      className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
               ),
             )}
-            {!(groups ?? []).length && <p className="py-4 text-center text-sm text-slate-400">No groups yet</p>}
+            {!(groups ?? []).length && <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">No groups yet</p>}
           </div>
         )}
       </div>

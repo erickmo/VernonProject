@@ -104,14 +104,14 @@ export default function ReportPage() {
   return (
     <DetailScreen title={def.title}>
       {/* Filters */}
-      <div className="rounded-2xl bg-white p-4 shadow-card">
-        <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <Filter className="h-3.5 w-3.5" /> Filters
         </p>
         <div className="space-y-3">
           {def.controls.map((c) => {
             const label = (
-              <label className="mb-1 block text-xs font-medium text-slate-500">
+              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
                 {c.label}
                 {c.required && <span className="text-rose-500"> *</span>}
               </label>
@@ -161,8 +161,8 @@ export default function ReportPage() {
                             className={clsx(
                               'rounded-xl border px-3 py-1.5 text-sm font-medium transition active:scale-95',
                               on
-                                ? 'border-brand-600 bg-brand-50 text-brand-700'
-                                : 'border-slate-200 bg-white text-slate-500',
+                                ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400',
                             )}
                           >
                             {o.label}
@@ -170,7 +170,7 @@ export default function ReportPage() {
                         )
                       })}
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
                       {sel.length ? `${sel.length} selected` : 'All statuses'}
                     </p>
                   </div>
@@ -208,8 +208,8 @@ export default function ReportPage() {
                         className={clsx(
                           'rounded-xl border px-3 py-1.5 text-sm font-medium transition active:scale-95',
                           active
-                            ? 'border-brand-600 bg-brand-50 text-brand-700'
-                            : 'border-slate-200 bg-white text-slate-600',
+                            ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
+                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300',
                         )}
                       >
                         {p.label}
@@ -225,7 +225,7 @@ export default function ReportPage() {
 
       {/* Report messages (e.g. validation hints from the report itself) */}
       {data?.messages?.length ? (
-        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="space-y-1">
             {data.messages.map((m, i) => (
@@ -252,25 +252,25 @@ export default function ReportPage() {
         ) : (
           <>
             <div className="mb-2 flex items-center justify-between px-1">
-              <p className="text-sm font-semibold text-slate-600">
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                 {data.total} {data.total === 1 ? 'row' : 'rows'}
               </p>
               {isFetching ? (
                 <Spinner className="h-4 w-4 text-brand-500" />
               ) : data.rows.some((r) => r.todo_id) ? (
-                <span className="text-xs text-slate-400">Tap a row to open the task</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">Tap a row to open the task</span>
               ) : null}
             </div>
-            <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-card">
+            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-card">
               <table className="min-w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50">
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
                     {data.columns.map((col, i) => (
                       <th
                         key={col.fieldname + i}
                         className={clsx(
-                          'whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500',
-                          i === 0 && 'sticky left-0 z-10 bg-slate-50',
+                          'whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
+                          i === 0 && 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800/60',
                         )}
                       >
                         {col.label}
@@ -286,18 +286,18 @@ export default function ReportPage() {
                         key={ri}
                         onClick={todoId ? () => navigate(`/project-item/${encodeURIComponent(todoId)}`) : undefined}
                         className={clsx(
-                          'border-b border-slate-50 last:border-0',
-                          todoId && 'cursor-pointer transition active:bg-brand-50',
+                          'border-b border-slate-50 dark:border-slate-800 last:border-0',
+                          todoId && 'cursor-pointer transition active:bg-brand-50 dark:active:bg-brand-500/15',
                         )}
                       >
                         {data.columns.map((col, ci) => (
                           <td
                             key={col.fieldname + ci}
                             className={clsx(
-                              'whitespace-nowrap px-3 py-2.5 text-slate-700',
+                              'whitespace-nowrap px-3 py-2.5 text-slate-700 dark:text-slate-200',
                               ci === 0 &&
-                                'sticky left-0 z-10 max-w-[180px] truncate bg-white font-medium',
-                              ci === 0 && todoId && 'text-brand-700',
+                                'sticky left-0 z-10 max-w-[180px] truncate bg-white dark:bg-slate-800 font-medium',
+                              ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
                             )}
                           >
                             {cell(row[col.fieldname], col.fieldtype)}
@@ -310,7 +310,7 @@ export default function ReportPage() {
               </table>
             </div>
             {data.total > data.rows.length && (
-              <p className="mt-2 px-1 text-center text-xs text-slate-400">
+              <p className="mt-2 px-1 text-center text-xs text-slate-400 dark:text-slate-500">
                 Showing first {data.rows.length} of {data.total}. Refine filters to narrow results.
               </p>
             )}

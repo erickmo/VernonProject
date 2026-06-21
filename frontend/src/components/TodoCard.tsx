@@ -34,18 +34,18 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
     <button
       onClick={() => navigate(`/project-item/${encodeURIComponent(todo.name)}`)}
       className={clsx(
-        'group w-full rounded-2xl border-l-4 bg-white p-4 text-left shadow-card transition active:scale-[0.99]',
+        'group w-full rounded-2xl border-l-4 bg-white dark:bg-slate-800 p-4 text-left shadow-card transition active:scale-[0.99]',
         todo.is_overdue ? 'border-rose-400' : meta.ring,
       )}
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           {showProject && (
-            <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
               {todo.project_name} · {todo.project_detail_title}
             </p>
           )}
-          <p className="line-clamp-2 font-semibold leading-snug text-slate-800">{todo.to_do}</p>
+          <p className="line-clamp-2 font-semibold leading-snug text-slate-800 dark:text-slate-100">{todo.to_do}</p>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
             <Pill className={meta.pill}>
@@ -61,7 +61,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
               <span
                 className={clsx(
                   'inline-flex items-center gap-1',
-                  todo.is_overdue ? 'font-semibold text-rose-600' : 'text-slate-500',
+                  todo.is_overdue ? 'font-semibold text-rose-600' : 'text-slate-500 dark:text-slate-400',
                 )}
               >
                 <CalendarDays className="h-3.5 w-3.5" />
@@ -69,14 +69,14 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
               </span>
             )}
             {todo.estimated > 0 && (
-              <span className="inline-flex items-center gap-1 text-slate-500">
+              <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
                 <Clock className="h-3.5 w-3.5" />
                 {formatEstimate(todo.estimated)}
               </span>
             )}
             {todo.today_allocation > 0 && (
               <span
-                className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-700"
+                className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 font-semibold text-brand-700 dark:text-brand-300"
                 title="Allocated for today"
               >
                 <Clock className="h-3.5 w-3.5" />
@@ -89,16 +89,16 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         {showAssignee ? (
           <Avatar name={todo.assigned_to_name} image={todo.assigned_to_image} size={34} />
         ) : (
-          <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-300" />
+          <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
         )}
       </div>
 
       {todo.can_advance && todo.next_status_label && (
-        <div className="mt-3 border-t border-slate-100 pt-3">
+        <div className="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3">
           <span
             onClick={onAdvance}
             role="button"
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-50 py-2.5 text-sm font-semibold text-brand-700 transition active:bg-brand-100"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:bg-brand-100 dark:active:bg-brand-500/20"
           >
             {advance.isPending ? (
               <Spinner className="h-4 w-4" />

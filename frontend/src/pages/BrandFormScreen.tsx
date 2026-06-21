@@ -19,7 +19,7 @@ import {
 } from '@/hooks/useData'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
+  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function BrandFormScreen() {
   const navigate = useNavigate()
@@ -118,9 +118,9 @@ export default function BrandFormScreen() {
     <DetailScreen title={isEdit ? 'Edit brand' : 'New brand'}>
       <div className="flex flex-col gap-4">
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500">Brand name</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Brand name</label>
           <input
-            className={field + (isEdit ? ' bg-slate-100 text-slate-500' : '')}
+            className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
             value={form.brand_name}
             readOnly={isEdit}
             onChange={(e) => setForm((f) => ({ ...f, brand_name: e.target.value }))}
@@ -141,7 +141,7 @@ export default function BrandFormScreen() {
           <button
             onClick={remove}
             disabled={del.isPending}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60 dark:bg-slate-800 dark:active:bg-rose-500/15"
           >
             {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
           </button>

@@ -61,15 +61,15 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-slate-900/40 animate-fade-in"
             onClick={() => close(false)}
           />
-          <div className="relative w-full max-w-sm animate-slide-up rounded-3xl bg-white p-5 shadow-2xl">
-            <h2 className="text-lg font-bold text-slate-900">{pending.title}</h2>
+          <div className="relative w-full max-w-sm animate-slide-up rounded-3xl bg-white dark:bg-slate-800 p-5 shadow-2xl">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{pending.title}</h2>
             {pending.message && (
-              <p className="mt-2 text-sm leading-snug text-slate-500">{pending.message}</p>
+              <p className="mt-2 text-sm leading-snug text-slate-500 dark:text-slate-400">{pending.message}</p>
             )}
             <div className="mt-5 flex gap-2">
               <button
                 onClick={() => close(false)}
-                className="flex-1 rounded-2xl bg-slate-100 py-3 font-semibold text-slate-600 active:bg-slate-200"
+                className="flex-1 rounded-2xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-600 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-600"
               >
                 {pending.cancelLabel || 'Cancel'}
               </button>

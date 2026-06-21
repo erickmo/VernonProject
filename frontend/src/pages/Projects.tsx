@@ -89,17 +89,17 @@ export default function Projects() {
         <PullToRefresh onRefresh={refetch}>
           {/* Search */}
           <div className="relative mb-3">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search project or brand…"
-              className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-[15px] text-slate-700 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 pl-10 pr-9 text-[15px] text-slate-700 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
             />
             {query && (
               <button
                 onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -127,8 +127,8 @@ export default function Projects() {
                 <div key={g.brand || '__none__'}>
                   <div className="mb-2.5 flex items-center gap-2">
                     <span className="h-5 w-1.5 rounded-full bg-brand-600" />
-                    <h3 className="text-base font-bold text-slate-900">{g.brand || 'No brand'}</h3>
-                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-700">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">{g.brand || 'No brand'}</h3>
+                    <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-xs font-bold text-brand-700 dark:text-brand-300">
                       {g.items.length}
                     </span>
                   </div>

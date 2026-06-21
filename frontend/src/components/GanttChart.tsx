@@ -175,9 +175,9 @@ ${rowsHtml}
 
   if (!bars.length) {
     return (
-      <div className="rounded-2xl bg-white p-8 text-center shadow-card">
-        <CalendarRange className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-        <p className="text-sm text-slate-400">No dated tasks to chart yet.</p>
+      <div className="rounded-2xl bg-white dark:bg-slate-800 p-8 text-center shadow-card">
+        <CalendarRange className="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+        <p className="text-sm text-slate-400 dark:text-slate-500">No dated tasks to chart yet.</p>
       </div>
     )
   }
@@ -193,7 +193,7 @@ ${rowsHtml}
           onClick={downloadHtml}
           title="Download HTML"
           aria-label="Download HTML"
-          className="rounded-full bg-slate-100 p-2 text-slate-600 active:scale-95"
+          className="rounded-full bg-slate-100 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 active:scale-95"
         >
           <FileCode className="h-4 w-4" />
         </button>
@@ -201,13 +201,13 @@ ${rowsHtml}
           onClick={downloadXlsx}
           title="Download Excel"
           aria-label="Download Excel"
-          className="rounded-full bg-slate-100 p-2 text-slate-600 active:scale-95"
+          className="rounded-full bg-slate-100 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 active:scale-95"
         >
           <FileSpreadsheet className="h-4 w-4" />
         </button>
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-card">
-        <div className="relative bg-white" style={{ width: LABEL_W + totalW }}>
+      <div className="overflow-x-auto rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+        <div className="relative bg-white dark:bg-slate-800" style={{ width: LABEL_W + totalW }}>
         {/* Today marker */}
         {todayOffset !== null && (
           <div
@@ -217,8 +217,8 @@ ${rowsHtml}
         )}
 
         {/* Header: month + day number */}
-        <div className="flex border-b border-slate-100">
-          <div className="sticky left-0 z-20 shrink-0 bg-white" style={{ width: LABEL_W }} />
+        <div className="flex border-b border-slate-100 dark:border-slate-700">
+          <div className="sticky left-0 z-20 shrink-0 bg-white dark:bg-slate-800" style={{ width: LABEL_W }} />
           <div className="relative" style={{ width: totalW, height: 34 }}>
             {days.map((d, i) => {
               const date = dayToDate(d)
@@ -231,17 +231,17 @@ ${rowsHtml}
                   key={d}
                   className={
                     'absolute top-0 bottom-0 border-l text-center ' +
-                    (weekend ? 'bg-slate-50 ' : '') +
-                    (firstOfMonth ? 'border-slate-300' : 'border-slate-100')
+                    (weekend ? 'bg-slate-50 dark:bg-slate-900/40 ' : '') +
+                    (firstOfMonth ? 'border-slate-300 dark:border-slate-600' : 'border-slate-100 dark:border-slate-700')
                   }
                   style={{ left: i * DAY_W, width: DAY_W }}
                 >
                   {firstOfMonth && (
-                    <span className="absolute left-0.5 top-0.5 whitespace-nowrap text-[9px] font-bold text-slate-500">
+                    <span className="absolute left-0.5 top-0.5 whitespace-nowrap text-[9px] font-bold text-slate-500 dark:text-slate-400">
                       {MONTHS[date.getUTCMonth()]}
                     </span>
                   )}
-                  <span className="absolute bottom-0.5 left-0 right-0 text-[10px] text-slate-400">{dom}</span>
+                  <span className="absolute bottom-0.5 left-0 right-0 text-[10px] text-slate-400 dark:text-slate-500">{dom}</span>
                 </div>
               )
             })}
@@ -253,7 +253,7 @@ ${rowsHtml}
           g.bars.length ? (
             <div key={g.title}>
               <div
-                className="sticky left-0 z-20 bg-slate-50/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500"
+                className="sticky left-0 z-20 bg-slate-50/80 dark:bg-slate-900/60 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
                 style={{ width: LABEL_W + totalW }}
               >
                 {g.title}
@@ -270,13 +270,13 @@ ${rowsHtml}
                     key={b.id}
                     onClick={clickable ? () => onBarClick!(b.id) : undefined}
                     className={
-                      'flex border-t border-slate-50 ' +
-                      (clickable ? 'cursor-pointer hover:bg-slate-50 active:bg-slate-100' : '')
+                      'flex border-t border-slate-50 dark:border-slate-700/50 ' +
+                      (clickable ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 active:bg-slate-100 dark:active:bg-slate-700' : '')
                     }
                     style={{ height: ROW_H }}
                   >
                     <div
-                      className="sticky left-0 z-10 flex shrink-0 items-center truncate bg-white px-3 text-xs text-slate-700"
+                      className="sticky left-0 z-10 flex shrink-0 items-center truncate bg-white dark:bg-slate-800 px-3 text-xs text-slate-700 dark:text-slate-200"
                       style={{ width: LABEL_W }}
                       title={b.label}
                     >

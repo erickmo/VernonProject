@@ -46,7 +46,7 @@ function Stepper({ current }: { current: string }) {
                   'flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm transition',
                   active && 'border-brand-500 bg-brand-500 text-white',
                   done && 'border-emerald-500 bg-emerald-500 text-white',
-                  !active && !done && 'border-slate-200 bg-white text-slate-300',
+                  !active && !done && 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600',
                 )}
               >
                 {done ? <Check className="h-4 w-4" /> : <span>{meta.emoji}</span>}
@@ -54,14 +54,14 @@ function Stepper({ current }: { current: string }) {
               <span
                 className={clsx(
                   'w-16 text-center text-[10px] font-medium leading-tight',
-                  active ? 'text-brand-700' : 'text-slate-400',
+                  active ? 'text-brand-700 dark:text-brand-300' : 'text-slate-400 dark:text-slate-500',
                 )}
               >
                 {meta.label}
               </span>
             </div>
             {i < STATUS_ORDER.length - 1 && (
-              <div className={clsx('-mt-5 h-0.5 flex-1', i < idx ? 'bg-emerald-500' : 'bg-slate-200')} />
+              <div className={clsx('-mt-5 h-0.5 flex-1', i < idx ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700')} />
             )}
           </div>
         )
@@ -149,13 +149,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     })
   }
 
-  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[15px] text-slate-800 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
+  const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-[15px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-card">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600">Edit todo</p>
+    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500">Title</label>
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
       <textarea
         value={toDo}
         onChange={(e) => setToDo(e.target.value)}
@@ -163,7 +163,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         className={clsx(field, 'mb-3 resize-none')}
       />
 
-      <label className="mb-1 block text-xs font-medium text-slate-500">Assigned to</label>
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Assigned to</label>
       <select
         value={assignee}
         disabled={locked}
@@ -179,7 +179,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
       <div className="mb-3 flex gap-3">
         <div className="flex-1">
-          <label className="mb-1 block text-xs font-medium text-slate-500">Deadline</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Deadline</label>
           <input
             type="date"
             value={deadline}
@@ -189,7 +189,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           />
         </div>
         <div className="w-28">
-          <label className="mb-1 block text-xs font-medium text-slate-500">Est. (min)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Est. (min)</label>
           <input
             type="number"
             inputMode="numeric"
@@ -203,10 +203,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       {/* Approval phases — each: deadline + estimated time for that step */}
-      <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+      <div className="mb-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500">Approval phases (optional)</span>
-          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-bold text-brand-700">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Approval phases (optional)</span>
+          <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-[11px] font-bold text-brand-700 dark:text-brand-300">
             Est total {phaseTotal || 0}m
           </span>
         </div>
@@ -215,10 +215,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           { label: 'Owner approval', date: ownerDeadline, setDate: setOwnerDeadline, est: pCC, setEst: setPCC },
         ].map((p) => (
           <div key={p.label} className="mb-3 last:mb-0">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600">{p.label}</label>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">{p.label}</label>
             <div className="flex gap-2">
               <div className="min-w-0 flex-1">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">Deadline</span>
+                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Deadline</span>
                 <input
                   type="date"
                   value={p.date}
@@ -227,7 +227,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
                 />
               </div>
               <div className="w-24 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">Est.</span>
+                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Est.</span>
                 <div className="relative">
                   <input
                     type="number"
@@ -239,7 +239,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
                     onChange={(e) => p.setEst(e.target.value)}
                     className={clsx(field, 'pr-7 text-right')}
                   />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">m</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500">m</span>
                 </div>
               </div>
             </div>
@@ -248,10 +248,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       {/* Recurring */}
-      <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+      <div className="mb-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60 p-3">
         <label className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-slate-600">
-            <Repeat className="h-4 w-4 text-slate-400" /> Repeat this todo
+          <span className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
+            <Repeat className="h-4 w-4 text-slate-400 dark:text-slate-500" /> Repeat this todo
           </span>
           <input
             type="checkbox"
@@ -263,7 +263,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         {recurring && (
           <div className="mt-3 flex gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500">Frequency</label>
+              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Frequency</label>
               <select value={freq} onChange={(e) => setFreq(e.target.value)} className={field}>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
@@ -271,14 +271,14 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
               </select>
             </div>
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500">Until (optional)</label>
+              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Until (optional)</label>
               <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className={field} />
             </div>
           </div>
         )}
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500">Group <span className="text-red-500">*</span></label>
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Group <span className="text-red-500">*</span></label>
       <div className="mb-3">
         <SearchableSelect
           value={group}
@@ -288,7 +288,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         />
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500">Level <span className="text-red-500">*</span></label>
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Level <span className="text-red-500">*</span></label>
       <div className="mb-3">
         <SearchableSelect
           value={level}
@@ -304,7 +304,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       {data.detail_todos.length > 0 && (
         <div className="mb-3 flex gap-3">
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500">Blocked by</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocked by</label>
             <SearchableSelect
               value={blockedBy}
               onChange={setBlockedBy}
@@ -314,7 +314,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500">Blocking</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocking</label>
             <SearchableSelect
               value={blocking}
               onChange={setBlocking}
@@ -327,7 +327,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       )}
 
       {locked && (
-        <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           <Lock className="h-3.5 w-3.5" />
           Assignee, deadline &amp; estimate are locked once a todo is Done.
         </p>
@@ -336,7 +336,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <div className="flex gap-2">
         <button
           onClick={onClose}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-600 active:bg-slate-200"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-700"
         >
           <X className="h-4 w-4" /> Cancel
         </button>
@@ -383,9 +383,9 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   if (!canEdit) {
     const clean = stripHtml(initial)
     return clean ? (
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{clean}</p>
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">{clean}</p>
     ) : (
-      <p className="text-sm italic text-slate-400">No notes yet.</p>
+      <p className="text-sm italic text-slate-400 dark:text-slate-500">No notes yet.</p>
     )
   }
 
@@ -397,9 +397,9 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
         onBlur={commit}
         rows={4}
         placeholder="Add a quick note about your progress…"
-        className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+        className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
       />
-      <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-slate-400">
+      <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-slate-400 dark:text-slate-500">
         {save.isPending ? (
           <span className="inline-flex items-center gap-1">
             <Spinner className="h-3 w-3" /> Saving…
@@ -431,21 +431,21 @@ function StatTile({
 }) {
   const accent =
     tone === 'danger'
-      ? 'border-rose-200 bg-rose-50'
+      ? 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/15'
       : tone === 'brand'
-        ? 'border-brand-100 bg-brand-50'
-        : 'border-slate-100 bg-slate-50'
+        ? 'border-brand-100 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/15'
+        : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60'
   const valueColor =
-    tone === 'danger' ? 'text-rose-700' : tone === 'brand' ? 'text-brand-700' : 'text-slate-800'
+    tone === 'danger' ? 'text-rose-700 dark:text-rose-300' : tone === 'brand' ? 'text-brand-700 dark:text-brand-300' : 'text-slate-800 dark:text-slate-100'
   const iconColor =
-    tone === 'danger' ? 'text-rose-500' : tone === 'brand' ? 'text-brand-500' : 'text-slate-400'
+    tone === 'danger' ? 'text-rose-500' : tone === 'brand' ? 'text-brand-500' : 'text-slate-400 dark:text-slate-500'
   return (
     <div className={clsx('rounded-2xl border p-3', accent)}>
-      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
         <Icon className={clsx('h-3 w-3', iconColor)} /> {label}
       </p>
       <div className={clsx('truncate text-sm font-bold leading-tight', valueColor)}>{value}</div>
-      {sub && <p className="mt-0.5 truncate text-[11px] text-slate-400">{sub}</p>}
+      {sub && <p className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">{sub}</p>}
     </div>
   )
 }
@@ -463,7 +463,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
 
   const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
   const field =
-    'rounded-xl border border-slate-200 px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none'
+    'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none dark:placeholder-slate-500'
 
   const addRow = () => setRows((r) => [...r, { date: '', minutes: 0 }])
   const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
@@ -491,19 +491,19 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+    <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
       <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <CalendarRange className="h-4 w-4" /> Split across days
         </p>
         <span
           className={
             'rounded-full px-2 py-0.5 text-[11px] font-bold ' +
             (!data.estimated
-              ? 'bg-brand-50 text-brand-700'
+              ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
               : total === data.estimated
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-rose-50 text-rose-700')
+                ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300')
           }
         >
           {total}m{data.estimated ? ` / ${data.estimated}m est` : ''}
@@ -527,19 +527,19 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
               onChange={(e) => setRow(i, { minutes: e.target.value === '' ? 0 : Number(e.target.value) })}
               className={field + ' w-20 shrink-0 text-center'}
             />
-            <button onClick={() => removeRow(i)} className="shrink-0 rounded-lg p-1.5 text-rose-600 active:bg-rose-50">
+            <button onClick={() => removeRow(i)} className="shrink-0 rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15">
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
         ))}
         {!rows.length && (
-          <p className="py-1 text-center text-xs text-slate-400">No day split yet — add a day to plan your time.</p>
+          <p className="py-1 text-center text-xs text-slate-400 dark:text-slate-500">No day split yet — add a day to plan your time.</p>
         )}
       </div>
       <div className="mt-3 flex gap-2">
         <button
           onClick={addRow}
-          className="flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 active:bg-slate-200"
+          className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-700"
         >
           <Plus className="h-4 w-4" /> Add day
         </button>
@@ -589,7 +589,7 @@ export default function ProjectItemScreen() {
     data.can_edit && !editing ? (
       <button
         onClick={() => setEditing(true)}
-        className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3.5 py-2 text-sm font-semibold text-brand-700 transition active:scale-95"
+        className="flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/15 px-3.5 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-95"
       >
         <Pencil className="h-4 w-4" /> Edit
       </button>
@@ -600,32 +600,32 @@ export default function ProjectItemScreen() {
       {editing ? (
         <EditForm data={data} onClose={() => setEditing(false)} />
       ) : (
-        <div className="rounded-2xl bg-white p-4 shadow-card">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {data.project_name}
           </p>
           <Link
             to={`/project-detail/${encodeURIComponent(data.project_detail)}`}
-            className="text-sm text-brand-600"
+            className="text-sm text-brand-600 dark:text-brand-400"
           >
             in {data.project_detail_title}
           </Link>
-          <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900">{data.to_do}</h2>
+          <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900 dark:text-slate-50">{data.to_do}</h2>
 
           {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {data.is_missed && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 dark:bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
                   <AlertCircle className="h-3.5 w-3.5" /> Missed occurrence
                 </span>
               )}
               {data.recurring.is_recurring && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-500/15 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300">
                   <Repeat className="h-3.5 w-3.5" /> Repeats {data.recurring.frequency?.toLowerCase()}
                 </span>
               )}
               {data.phase_estimates.total > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 dark:bg-brand-500/20 px-2.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-300">
                   <Clock className="h-3.5 w-3.5" /> {formatEstimate(data.phase_estimates.total)} total
                 </span>
               )}
@@ -633,13 +633,13 @@ export default function ProjectItemScreen() {
           )}
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
-              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                <Target className="h-3 w-3 text-slate-400" /> Assignee
+            <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3">
+              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <Target className="h-3 w-3 text-slate-400 dark:text-slate-500" /> Assignee
               </p>
               <div className="flex items-center gap-1.5">
                 <Avatar name={data.assigned_to_name} image={data.assigned_to_image} size={20} />
-                <span className="truncate text-sm font-bold text-slate-800">{data.assigned_to_name}</span>
+                <span className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{data.assigned_to_name}</span>
               </div>
             </div>
 
@@ -714,11 +714,11 @@ export default function ProjectItemScreen() {
         <AllocationCard data={data} />
       ) : (
         (data.allocations ?? []).length > 0 && (
-          <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               <CalendarRange className="h-4 w-4" /> Day split
             </p>
-            <div className="flex flex-col gap-1 text-sm text-slate-600">
+            <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
               {(data.allocations ?? []).map((a, i) => (
                 <div key={i} className="flex justify-between">
                   <span>{a.date}</span>
@@ -731,8 +731,8 @@ export default function ProjectItemScreen() {
       )}
 
       {/* Workflow */}
-      <div className="mt-4 rounded-2xl bg-white p-4 pb-5 shadow-card">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Workflow</p>
+      <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 pb-5 shadow-card">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Workflow</p>
         <Stepper current={data.status_key} />
 
         {data.status_key !== 'completed' &&
@@ -752,7 +752,7 @@ export default function ProjectItemScreen() {
               )}
             </button>
           ) : (
-            <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 py-3 text-sm text-slate-400">
+            <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
               <Lock className="h-4 w-4" />
               Waiting on someone else to advance this
             </div>
@@ -761,8 +761,8 @@ export default function ProjectItemScreen() {
 
       {/* Recurrence history */}
       {data.occurrences.length > 1 && (
-        <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Repeat className="h-3.5 w-3.5" /> Recurrence history ({data.occurrences.length})
           </p>
           <ol className="space-y-1.5">
@@ -774,13 +774,13 @@ export default function ProjectItemScreen() {
                     onClick={() => !o.is_current && navigate(`/project-item/${encodeURIComponent(o.name)}`)}
                     className={clsx(
                       'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition',
-                      o.is_current ? 'bg-brand-50 ring-1 ring-brand-200' : 'bg-slate-50 active:bg-slate-100',
+                      o.is_current ? 'bg-brand-50 dark:bg-brand-500/15 ring-1 ring-brand-200' : 'bg-slate-50 dark:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-700',
                     )}
                   >
                     <span>{meta.emoji}</span>
-                    <span className="flex-1 text-slate-600">{o.deadline_human || '—'}</span>
+                    <span className="flex-1 text-slate-600 dark:text-slate-300">{o.deadline_human || '—'}</span>
                     {o.is_current ? (
-                      <span className="text-[11px] font-semibold text-brand-600">This one</span>
+                      <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400">This one</span>
                     ) : (
                       <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-medium', meta.pill)}>
                         {meta.label}
@@ -795,8 +795,8 @@ export default function ProjectItemScreen() {
       )}
 
       {/* Notes */}
-      <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <FileText className="h-3.5 w-3.5" /> Notes
         </p>
         <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
@@ -804,21 +804,21 @@ export default function ProjectItemScreen() {
 
       {/* Timeline */}
       {data.timeline.length > 0 && (
-        <div className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <History className="h-3.5 w-3.5" /> Activity
           </p>
           <ol className="space-y-3">
             {data.timeline.map((e, i) => (
               <li key={i} className="flex gap-3">
-                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="text-sm">
-                  <p className="font-medium text-slate-700">
-                    {e.label} <span className="font-normal text-slate-400">by {e.by_name}</span>
+                  <p className="font-medium text-slate-700 dark:text-slate-200">
+                    {e.label} <span className="font-normal text-slate-400 dark:text-slate-500">by {e.by_name}</span>
                   </p>
-                  <p className="text-xs text-slate-400">{e.at_human}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">{e.at_human}</p>
                 </div>
               </li>
             ))}

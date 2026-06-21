@@ -57,7 +57,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
     setF((s) => ({ ...s, [k]: v }))
 
   const field =
-    'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400'
+    'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
 
   const submit = () => {
     if (!f.project_name.trim() || !f.brand || !f.project_owner || !f.project_leader ||
@@ -84,41 +84,41 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
-      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">{isEdit ? 'Edit project' : 'New project'}</h3>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">{isEdit ? 'Edit project' : 'New project'}</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Project name<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={f.project_name} onChange={(e) => set('project_name', e.target.value)} />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Brand<span className="text-red-500"> *</span>
             <SearchableSelect value={f.brand} onChange={(v) => set('brand', v)} options={opts?.brands ?? []} placeholder="Select…" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Owner<span className="text-red-500"> *</span>
             <SearchableSelect value={f.project_owner} onChange={(v) => set('project_owner', v)} options={users} disabled={lockLeads} placeholder="Select…" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Leader<span className="text-red-500"> *</span>
             <SearchableSelect value={f.project_leader} onChange={(v) => set('project_leader', v)} options={users} disabled={lockLeads} placeholder="Select…" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Admin
             <SearchableSelect value={f.project_admin ?? ''} onChange={(v) => set('project_admin', v)} options={users} allowClear placeholder="None" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Blocking project
             <SearchableSelect
               value={f.blocked_by ?? ''}
@@ -129,26 +129,26 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
               allowClear
               placeholder="None — not blocked"
             />
-            <span className="mt-0.5 block text-xs font-normal text-slate-400">The project this one depends on / is blocked by.</span>
+            <span className="mt-0.5 block text-xs font-normal text-slate-400 dark:text-slate-500">The project this one depends on / is blocked by.</span>
           </label>
 
           <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Start<span className="text-red-500"> *</span>
               <input type="date" className={field + ' mt-1'} value={f.start_date} onChange={(e) => set('start_date', e.target.value)} />
             </label>
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Deadline<span className="text-red-500"> *</span>
               <input type="date" className={field + ' mt-1'} value={f.deadline} onChange={(e) => set('deadline', e.target.value)} />
             </label>
           </div>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Status
             <SearchableSelect value={f.status} onChange={(v) => set('status', v)} options={STATUSES.map((s) => ({ value: s, label: s }))} />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Goal
             <textarea className={field + ' mt-1'} rows={2} value={f.goal} onChange={(e) => set('goal', e.target.value)} />
           </label>

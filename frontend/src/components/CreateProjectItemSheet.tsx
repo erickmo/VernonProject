@@ -85,66 +85,66 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
 
   if (!open) return null
 
-  const field = 'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
+  const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={close}>
       <div
-        className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white p-5"
+        className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">New todo</h3>
-          <button onClick={close} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">New todo</h3>
+          <button onClick={close} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Todo<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder="What needs doing?" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Assigned to<span className="text-red-500"> *</span>
             <SearchableSelect value={assignedTo} onChange={setAssignedTo} options={team.map((m) => ({ value: m.user, label: m.name }))} placeholder="Select a team member…" />
           </label>
 
           <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Deadline<span className="text-red-500"> *</span>
               <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </label>
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Estimated (minutes)
               <input type="number" min={0} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
             </label>
           </div>
 
           <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Leader approval by
               <input type="date" className={field + ' mt-1'} value={leaderDeadline} onChange={(e) => setLeaderDeadline(e.target.value)} />
             </label>
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Est. for approval (min)
               <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
             </label>
           </div>
 
           <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Owner approval by
               <input type="date" className={field + ' mt-1'} value={ownerDeadline} onChange={(e) => setOwnerDeadline(e.target.value)} />
             </label>
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Est. for owner approval (min)
               <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
             </label>
           </div>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Group<span className="text-red-500"> *</span>
             <SearchableSelect
               value={group}
@@ -154,7 +154,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Level<span className="text-red-500"> *</span>
             <SearchableSelect
               value={level}
@@ -169,7 +169,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
 
           {siblings.length > 0 && (
             <div className="flex gap-3">
-              <label className="flex-1 text-sm font-medium text-slate-600">
+              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Blocked by
                 <SearchableSelect
                   value={blockedBy}
@@ -179,7 +179,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
                   placeholder="None"
                 />
               </label>
-              <label className="flex-1 text-sm font-medium text-slate-600">
+              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Blocking
                 <SearchableSelect
                   value={blocking}
@@ -192,23 +192,23 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             </div>
           )}
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Notes
             <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
 
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
             Recurring
           </label>
 
           {isRecurring && (
-            <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-3">
-              <label className="text-sm font-medium text-slate-600">
+            <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                 Frequency
                 <SearchableSelect value={frequency} onChange={setFrequency} options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))} />
               </label>
-              <label className="text-sm font-medium text-slate-600">
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                 Until
                 <input type="date" className={field + ' mt-1'} value={until} onChange={(e) => setUntil(e.target.value)} />
               </label>

@@ -30,12 +30,12 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div className="flex h-full min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center">
-        <h1 className="text-lg font-bold text-slate-900">Something went wrong</h1>
-        <p className="max-w-sm text-sm text-slate-500">
+      <div className="flex h-full min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-800/60 p-6 text-center">
+        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">Something went wrong</h1>
+        <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
           The app hit an error. Resetting clears local data and reloads a fresh copy.
         </p>
-        <pre className="max-w-full overflow-auto rounded-lg bg-slate-100 p-3 text-left text-xs text-rose-600">
+        <pre className="max-w-full overflow-auto rounded-lg bg-slate-100 dark:bg-slate-800 p-3 text-left text-xs text-rose-600">
           {this.state.error.message}
         </pre>
         <button

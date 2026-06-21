@@ -16,7 +16,7 @@ export function BottomNav() {
   const reviewCount = data?.counts.review ?? 0
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white/95 shadow-nav backdrop-blur pb-safe">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-800/95 shadow-nav backdrop-blur pb-safe">
       <div className="mx-auto flex max-w-md items-stretch justify-around">
         {TABS.map((t) => {
           const Icon = t.icon
@@ -29,7 +29,7 @@ export function BottomNav() {
               className={({ isActive }) =>
                 clsx(
                   'relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors',
-                  isActive ? 'text-brand-600' : 'text-slate-400',
+                  isActive ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500',
                 )
               }
             >

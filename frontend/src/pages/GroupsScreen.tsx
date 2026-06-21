@@ -42,15 +42,15 @@ export default function GroupsScreen() {
             <button
               key={g.name}
               onClick={() => navigate(`/groups/${encodeURIComponent(g.name)}`)}
-              className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50"
+              className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50 dark:bg-slate-800 dark:active:bg-slate-700/50"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-800">{g.group_name}</p>
+                <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{g.group_name}</p>
                 {g.description && (
-                  <p className="truncate text-xs text-slate-500">{g.description}</p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{g.description}</p>
                 )}
               </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
             </button>
           ))}
         </div>

@@ -42,16 +42,16 @@ export default function Login() {
         {/* Card */}
         <form
           onSubmit={submit}
-          className="rounded-3xl bg-white p-6 shadow-xl animate-slide-up"
+          className="rounded-3xl bg-white dark:bg-slate-800 p-6 shadow-xl animate-slide-up"
         >
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
+            <div className="mb-4 flex items-start gap-2 rounded-xl bg-rose-50 dark:bg-rose-500/15 px-3 py-2.5 text-sm text-rose-700 dark:text-rose-300">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          <label className="mb-1.5 block text-sm font-medium text-slate-600">Email</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
           <input
             type="email"
             inputMode="email"
@@ -61,10 +61,10 @@ export default function Login() {
             value={usr}
             onChange={(e) => setUsr(e.target.value)}
             placeholder="you@vernon.id"
-            className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[16px] text-slate-800 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+            className="mb-4 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 text-[16px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
           />
 
-          <label className="mb-1.5 block text-sm font-medium text-slate-600">Password</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-300">Password</label>
           <div className="relative mb-5">
             <input
               type={show ? 'text' : 'password'}
@@ -72,12 +72,12 @@ export default function Login() {
               value={pwd}
               onChange={(e) => setPwd(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-[16px] text-slate-800 outline-none transition focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-3 pr-12 text-[16px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
             />
             <button
               type="button"
               onClick={() => setShow((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
               aria-label={show ? 'Hide password' : 'Show password'}
             >
               {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

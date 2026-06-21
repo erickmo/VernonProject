@@ -21,7 +21,7 @@ import {
 import type { GroupLevel, ScoringGroupPayload } from '@/lib/types'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
+  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee' | 'Leader' }[] = [
   { key: 'late_penalty', label: 'Late penalty % / day', group: 'Assignee' },
@@ -182,9 +182,9 @@ export default function GroupFormScreen() {
     <DetailScreen title={isEdit ? 'Edit group' : 'New group'}>
       <div className="flex flex-col gap-4">
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500">Group name</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Group name</label>
           <input
-            className={field + (isEdit ? ' bg-slate-100 text-slate-500' : '')}
+            className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
             value={form.group_name}
             readOnly={isEdit}
             onChange={(e) => setForm((f) => ({ ...f, group_name: e.target.value }))}
@@ -193,7 +193,7 @@ export default function GroupFormScreen() {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500">Description</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Description</label>
           <textarea
             className={field}
             rows={2}
@@ -203,36 +203,36 @@ export default function GroupFormScreen() {
         </div>
 
         {/* How scoring works */}
-        <div className="rounded-2xl bg-brand-50 p-3 text-xs leading-relaxed text-brand-900">
-          <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-brand-700">
+        <div className="rounded-2xl bg-brand-50 p-3 text-xs leading-relaxed text-brand-900 dark:bg-brand-500/15 dark:text-brand-200">
+          <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
             <Info className="h-3.5 w-3.5" /> How points are scored
           </p>
           <p className="mb-1">
             When a todo is completed, the <b>assignee</b> earns the <b>point of the chosen level</b>
             {' '}(your −5…5 scale), then adjusted for timing:
           </p>
-          <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700">
+          <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
             assignee = point × (1 − late_days×late% + early_days×early%)
           </p>
           <p className="mb-1">
             The <b>leader</b> earns a share of the assignee's points:
           </p>
-          <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700">
+          <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
             leader = assignee × (leader% − late_days×lead_late% + early_days×lead_early%)
           </p>
         </div>
 
         {(['Assignee', 'Leader'] as const).map((grp) => (
-          <div key={grp} className="rounded-2xl bg-slate-50 p-3">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">{grp}</p>
+          <div key={grp} className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{grp}</p>
             <div className="flex flex-col gap-2">
               {WEIGHTS.filter((w) => w.group === grp).map((w) => (
                 <div key={w.key} className="flex items-center gap-3">
-                  <label className="min-w-0 flex-1 text-sm font-medium text-slate-700">{w.label}</label>
+                  <label className="min-w-0 flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">{w.label}</label>
                   <input
                     type="number"
                     inputMode="decimal"
-                    className="w-14 shrink-0 rounded-xl border border-slate-200 px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none"
+                    className="w-14 shrink-0 rounded-xl border border-slate-200 px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                     value={String(form[w.key] as number)}
                     onChange={(e) => setNum(w.key, e.target.value)}
                   />
@@ -242,23 +242,23 @@ export default function GroupFormScreen() {
           </div>
         ))}
 
-        <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Levels</p>
-          <p className="mb-2 text-[11px] text-slate-400">
+        <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Levels</p>
+          <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
             Fixed scale −5 to 5. Only the point per level is editable — this is the points earned.
           </p>
-          <div className="mb-1 flex items-center gap-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          <div className="mb-1 flex items-center gap-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <span className="flex-1">Level</span>
             <span className="w-20 text-center">Point</span>
           </div>
           <div className="flex flex-col gap-2">
             {form.levels.map((l, i) => (
               <div key={l.level_name} className="flex items-center gap-3">
-                <span className="flex-1 px-1 text-sm font-semibold text-slate-700">{l.level_name}</span>
+                <span className="flex-1 px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{l.level_name}</span>
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-20 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none"
+                  className="w-20 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                   value={String(l.point)}
                   onChange={(e) => setLevelPoint(i, e.target.value === '' ? 0 : Number(e.target.value))}
                   placeholder="Point"
@@ -269,11 +269,11 @@ export default function GroupFormScreen() {
         </div>
 
         {isEdit && (
-          <div className="rounded-2xl bg-slate-50 p-3">
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+          <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               <ListChecks className="h-3.5 w-3.5" /> Linked tasks
               {linkedTodos && (
-                <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-500">
+                <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                   {linkedTodos.length}
                 </span>
               )}
@@ -281,23 +281,23 @@ export default function GroupFormScreen() {
             {todosLoading ? (
               <Spinner className="mx-auto my-2 h-4 w-4 text-slate-400" />
             ) : !linkedTodos || linkedTodos.length === 0 ? (
-              <p className="py-2 text-center text-xs text-slate-400">No tasks use this group.</p>
+              <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">No tasks use this group.</p>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {linkedTodos.map((t) => (
                   <Link
                     key={t.name}
                     to={`/project-item/${encodeURIComponent(t.name)}`}
-                    className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm active:scale-[0.99]"
+                    className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm active:scale-[0.99] dark:bg-slate-800"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-800">{t.to_do || t.name}</p>
-                      <p className="truncate text-[11px] text-slate-400">
+                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{t.to_do || t.name}</p>
+                      <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
                         {t.status}
                         {t.deadline ? ` · ${formatDate(t.deadline)}` : ''}
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
                   </Link>
                 ))}
               </div>
@@ -318,7 +318,7 @@ export default function GroupFormScreen() {
           <button
             onClick={remove}
             disabled={del.isPending}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60 dark:bg-slate-800 dark:active:bg-rose-500/15"
           >
             {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete group
           </button>

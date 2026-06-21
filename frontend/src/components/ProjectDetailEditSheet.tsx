@@ -45,7 +45,7 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
   if (!open) return null
 
   const field =
-    'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none'
+    'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
 
   const submit = () => {
     if (!title.trim()) {
@@ -72,57 +72,57 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
-      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Edit detail</h3>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Edit detail</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {isLoading || !projectDetail ? (
-          <Spinner className="mx-auto my-8 h-6 w-6 text-slate-400" />
+          <Spinner className="mx-auto my-8 h-6 w-6 text-slate-400 dark:text-slate-500" />
         ) : (
         <div className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Title<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
 
-          <label className="flex items-center justify-between text-sm font-medium text-slate-600">
+          <label className="flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-300">
             <span>
               Mark as pending
-              <span className="mt-0.5 block text-xs font-normal text-slate-400">Status is otherwise set automatically from the tasks (Completed when all done, else Ongoing).</span>
+              <span className="mt-0.5 block text-xs font-normal text-slate-400 dark:text-slate-500">Status is otherwise set automatically from the tasks (Completed when all done, else Ongoing).</span>
             </span>
             <input type="checkbox" checked={isPending} onChange={(e) => setIsPending(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Current condition
             <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Expected outcome
             <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
           </label>
 
-          <label className="text-sm font-medium text-slate-600">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Keterangan di SOW
             <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
           </label>
 
-          <div className="text-sm font-medium text-slate-600">
+          <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Glossaries
             <MultiSelectChips options={glossaryOpts} value={glossaries} onChange={setGlossaries} emptyText="No glossaries for this project yet" />
           </div>
 
           <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Discount (Rp)
               <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={discount} onChange={(e) => setDiscount(e.target.value)} />
             </label>
-            <label className="flex-1 text-sm font-medium text-slate-600">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Price (Rp)
               <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={price} onChange={(e) => setPrice(e.target.value)} />
             </label>

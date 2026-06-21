@@ -37,33 +37,33 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
-      <div className="max-h-[88vh] overflow-y-auto rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[88vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar name={member.name} image={member.image} size={40} />
             <div className="min-w-0">
-              <p className="truncate text-base font-bold text-slate-900">{member.name}</p>
-              <p className="text-xs text-slate-500">
+              <p className="truncate text-base font-bold text-slate-900 dark:text-slate-50">{member.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {role ? `${role} · ` : ''}{member.open_todos} allocated
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 active:scale-95">
+          <button onClick={onClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Open / All toggle */}
-        <div className="mb-4 inline-flex rounded-xl bg-slate-100 p-0.5 text-sm font-semibold">
+        <div className="mb-4 inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-sm font-semibold">
           <button
             onClick={() => setShowAll(false)}
-            className={`rounded-lg px-4 py-1.5 ${!showAll ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+            className={`rounded-lg px-4 py-1.5 ${!showAll ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
           >
             Open
           </button>
           <button
             onClick={() => setShowAll(true)}
-            className={`rounded-lg px-4 py-1.5 ${showAll ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+            className={`rounded-lg px-4 py-1.5 ${showAll ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
           >
             All
           </button>
@@ -77,13 +77,13 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
               <button
                 key={t.name}
                 onClick={() => goto(t.project_detail)}
-                className="w-full rounded-2xl border border-slate-200 p-3 text-left active:scale-[0.99]"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-left active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="min-w-0 flex-1 truncate font-medium text-slate-800">{t.to_do}</p>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-300" />
+                  <p className="min-w-0 flex-1 truncate font-medium text-slate-800 dark:text-slate-100">{t.to_do}</p>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                   <span className="inline-flex items-center gap-1">
                     <Layers className="h-3.5 w-3.5" /> {t.project_detail_title}
                   </span>

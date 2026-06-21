@@ -45,11 +45,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={t.id}
-              className="pointer-events-auto flex w-full max-w-sm animate-fade-in items-start gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-lg"
+              className="pointer-events-auto flex w-full max-w-sm animate-fade-in items-start gap-3 rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 shadow-lg"
             >
               <Icon className={clsx('mt-0.5 h-5 w-5 shrink-0', ACCENT[t.type])} />
-              <p className="flex-1 text-sm leading-snug text-slate-700">{t.message}</p>
-              <button onClick={() => dismiss(t.id)} className="text-slate-300 hover:text-slate-500">
+              <p className="flex-1 text-sm leading-snug text-slate-700 dark:text-slate-200">{t.message}</p>
+              <button onClick={() => dismiss(t.id)} className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400">
                 <X className="h-4 w-4" />
               </button>
             </div>

@@ -130,29 +130,29 @@ export default function UserFormScreen() {
     >
       <div className="flex flex-col gap-4">
         <label className="block">
-          <span className="text-xs font-medium text-slate-500">Email</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Email</span>
           <input
             type="email"
             value={isEdit ? (name as string) : email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isEdit}
             placeholder="name@company.com"
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:disabled:bg-slate-900"
           />
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-slate-500">Full name</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Full name</span>
           <input
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
           />
         </label>
 
         <div>
-          <span className="text-xs font-medium text-slate-500">Roles</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Roles</span>
           <MultiSelectChips
             options={VERNON_ROLE_OPTIONS}
             value={roles}
@@ -162,8 +162,8 @@ export default function UserFormScreen() {
         </div>
 
         {!isEdit && (
-          <label className="flex items-center justify-between rounded-xl bg-white p-3 shadow-card">
-            <span className="text-sm text-slate-700">Send welcome email</span>
+          <label className="flex items-center justify-between rounded-xl bg-white p-3 shadow-card dark:bg-slate-800">
+            <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
             <input
               type="checkbox"
               checked={sendWelcome}
@@ -175,8 +175,8 @@ export default function UserFormScreen() {
 
         {isEdit && (
           <>
-            <label className="flex items-center justify-between rounded-xl bg-white p-3 shadow-card">
-              <span className="text-sm text-slate-700">Account enabled</span>
+            <label className="flex items-center justify-between rounded-xl bg-white p-3 shadow-card dark:bg-slate-800">
+              <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
               <input
                 type="checkbox"
                 checked={enabled}
@@ -187,12 +187,12 @@ export default function UserFormScreen() {
             <button
               onClick={onResetPassword}
               disabled={resetPw.isPending}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 active:bg-slate-50 disabled:opacity-50"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 active:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:active:bg-slate-700/50"
             >
               {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
             </button>
             <label className="block">
-              <span className="text-xs font-medium text-slate-500">Set new password</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Set new password</span>
               <div className="mt-1 flex gap-2">
                 <input
                   type="password"
@@ -200,12 +200,12 @@ export default function UserFormScreen() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password"
                   autoComplete="new-password"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
                 />
                 <button
                   onClick={onSetPassword}
                   disabled={!newPassword || setPw.isPending}
-                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 active:bg-slate-50 disabled:opacity-50"
+                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 active:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:active:bg-slate-700/50"
                 >
                   {setPw.isPending ? 'Setting…' : 'Set password'}
                 </button>
