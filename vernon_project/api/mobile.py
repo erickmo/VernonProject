@@ -1336,3 +1336,32 @@ def set_user_password(user, new_password):
 	_store_password(user, new_password, logout_all_sessions=True)
 	frappe.db.set_value("User", user, "last_password_reset_date", frappe.utils.today())
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def change_my_password(old_password, new_password):
+	"""Logged-in user changes their OWN password (any authenticated user)."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	if not old_password or not new_password:
+		frappe.throw("Both current and new password are required")
+
+	from frappe.utils.password import check_password, update_password as _store_password
+	from frappe.core.doctype.user.user import test_password_strength, handle_password_test_fail
+
+	# Verify current password (raises AuthenticationError if wrong).
+	try:
+		check_password(user, old_password)
+	except frappe.AuthenticationError:
+		frappe.throw("Current password is incorrect")
+
+	# Strength policy — same as set_user_password.
+	result = test_password_strength(new_password)
+	feedback = result.get("feedback", None)
+	if feedback and not feedback.get("password_policy_validation_passed", False):
+		handle_password_test_fail(feedback)
+
+	_store_password(user, new_password, logout_all_sessions=True)
+	frappe.db.set_value("User", user, "last_password_reset_date", frappe.utils.today())
+	return {"ok": True}

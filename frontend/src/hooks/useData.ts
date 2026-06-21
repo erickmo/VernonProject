@@ -574,3 +574,10 @@ export function useSetUserPassword() {
       mobileApi.setUserPassword(user, newPassword),
   })
 }
+
+export function useChangeMyPassword() {
+  return useMutation({
+    mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
+      mobileApi.changeMyPassword(oldPassword, newPassword),
+  })
+}

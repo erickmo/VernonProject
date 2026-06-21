@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Spinner } from '@/components/ui'
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useBoot, canManageGroups, canManageBrands, canManageUsers } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
+import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
 
 function useOnline() {
   const [online, setOnline] = useState(navigator.onLine)
@@ -30,6 +31,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const navigate = useNavigate()
   const online = useOnline()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [showChangePw, setShowChangePw] = useState(false)
 
   if (isLoading && !boot) {
     return (
@@ -85,6 +87,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           </div>
 
           <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-card">
+            <Row icon={KeyRound} label="Change password" onClick={() => setShowChangePw(true)} />
             {canManageGroups(boot) && (
               <Row icon={Trophy} label="Manage Groups" onClick={() => navigate('/groups')} />
             )}
@@ -121,6 +124,8 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           </button>
 
           <p className="mt-6 text-center text-xs text-slate-300">Vernon Project · Mobile v1.0</p>
+
+          <ChangePasswordSheet open={showChangePw} onClose={() => setShowChangePw(false)} />
         </>
       )}
     </TabScreen>
