@@ -1400,7 +1400,8 @@ def get_wallet():
 	def _earned_on(day):
 		return float(frappe.db.sql(
 			"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
-			"where user=%s and date(credited_on)=%s",
+			"where user=%s and date(credited_on)=%s "
+			"and coalesce(source, 'Todo') <> 'Grant'",
 			(user, day),
 		)[0][0])
 	return {
