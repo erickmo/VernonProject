@@ -1423,7 +1423,7 @@ def get_wallet_log():
 	credits = frappe.get_all(
 		"Point Ledger",
 		filters={"user": user},
-		fields=["points_earned as amount", "todo", "group", "role", "source", "note", "credited_on as date"],
+		fields=["points_earned as amount", "todo", "group", "role", "source", "note", "granted_by", "credited_on as date"],
 		order_by="credited_on desc",
 		limit=100,
 	)
@@ -1444,13 +1444,38 @@ def get_wallet_log():
 		):
 			subj[r["name"]] = r["to_do"]
 
+	# Resolve gift counterpart (granted_by) display names in one query.
+	gift_user_ids = list({c["granted_by"] for c in credits if c.get("source") == "Gift" and c.get("granted_by")})
+	gift_names = {}
+	if gift_user_ids:
+		for r in frappe.get_all(
+			"User", filters={"name": ["in", gift_user_ids]}, fields=["name", "full_name"]
+		):
+			gift_names[r["name"]] = r["full_name"]
+
 	rows = []
 	for c in credits:
-		is_grant = (c.get("source") == "Grant")
+		src = c.get("source")
+		amt = float(c["amount"] or 0)
+		if src == "Gift":
+			counterpart = gift_names.get(c.get("granted_by")) or c.get("granted_by") or "someone"
+			rows.append(
+				{
+					"kind": "debit" if amt < 0 else "credit",
+					"amount": amt,
+					"title": "Gift sent" if amt < 0 else "Gift received",
+					"subtitle": (f"to {counterpart}" if amt < 0 else f"from {counterpart}"),
+					"status": None,
+					"date": str(c["date"]) if c.get("date") else None,
+					"date_human": _humanize_datetime(c.get("date")),
+				}
+			)
+			continue
+		is_grant = (src == "Grant")
 		rows.append(
 			{
 				"kind": "credit",
-				"amount": float(c["amount"] or 0),
+				"amount": amt,
 				"title": "Points granted" if is_grant else (subj.get(c.get("todo")) or "Points earned"),
 				"subtitle": (c.get("note") or "Granted") if is_grant else (c.get("group") or (c.get("role") and f"{c['role']} reward")),
 				"status": None,
