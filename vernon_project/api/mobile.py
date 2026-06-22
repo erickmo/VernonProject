@@ -10,7 +10,7 @@
 import json
 
 import frappe
-from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime
+from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -1392,9 +1392,21 @@ def _user_balance(user):
 
 @frappe.whitelist()
 def get_wallet():
-	"""Spendable-points summary for the logged-in user."""
-	earned, redeemed, balance = _user_balance(frappe.session.user)
-	return {"earned": earned, "redeemed": redeemed, "balance": balance}
+	"""Spendable-points summary for the logged-in user, including today's and yesterday's earned points."""
+	user = frappe.session.user
+	earned, redeemed, balance = _user_balance(user)
+	today = nowdate()
+	yesterday = add_days(today, -1)
+	def _earned_on(day):
+		return float(frappe.db.sql(
+			"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
+			"where user=%s and date(credited_on)=%s",
+			(user, day),
+		)[0][0])
+	return {
+		"earned": earned, "redeemed": redeemed, "balance": balance,
+		"today_earned": _earned_on(today), "yesterday_earned": _earned_on(yesterday),
+	}
 
 
 @frappe.whitelist()
