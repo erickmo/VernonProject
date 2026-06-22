@@ -27,6 +27,9 @@ import type {
   WalletLogEntry,
   Leaderboard,
   MarketplaceData,
+  AdminReward,
+  AdminRedemption,
+  RewardFormPayload,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -51,6 +54,9 @@ export const keys = {
   leaderboard: (period: string, brand: string | null) =>
     ['leaderboard', period, brand ?? ''] as const,
   marketplace: ['marketplace'] as const,
+  rewardsAdmin: ['rewards-admin'] as const,
+  rewardAdmin: (n: string) => ['reward-admin', n] as const,
+  redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
 }
 
 export const useBoot = () =>
@@ -615,5 +621,83 @@ export function useRedeemReward() {
       qc.invalidateQueries({ queryKey: keys.wallet })
       qc.invalidateQueries({ queryKey: keys.walletLog })
     },
+  })
+}
+
+export function canManageMarketplace(boot: Boot | undefined): boolean {
+  return !!boot && (
+    boot.roles.includes('System Manager') ||
+    boot.roles.includes('Marketplace Manager')
+  )
+}
+
+export function useRewardsAdmin() {
+  return useQuery({
+    queryKey: keys.rewardsAdmin,
+    queryFn: () =>
+      resource.list<AdminReward[]>('Marketplace Reward', {
+        fields: ['name', 'reward_name', 'point_cost', 'stock_quantity', 'active', 'image'],
+        limit: 0,
+      }),
+  })
+}
+
+export function useReward(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.rewardAdmin(name),
+    queryFn: () => resource.get<AdminReward>('Marketplace Reward', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateReward() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: RewardFormPayload) =>
+      resource.create<{ name: string }>('Marketplace Reward', payload as unknown as Record<string, unknown>),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.rewardsAdmin })
+      qc.invalidateQueries({ queryKey: keys.marketplace })
+    },
+  })
+}
+
+export function useUpdateReward() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, payload }: { name: string; payload: RewardFormPayload }) =>
+      resource.update<{ name: string }>('Marketplace Reward', name, payload as unknown as Record<string, unknown>),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: keys.rewardsAdmin })
+      qc.invalidateQueries({ queryKey: keys.rewardAdmin(vars.name) })
+      qc.invalidateQueries({ queryKey: keys.marketplace })
+    },
+  })
+}
+
+export function useDeleteReward() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Marketplace Reward', name),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.rewardsAdmin })
+      qc.invalidateQueries({ queryKey: keys.marketplace })
+    },
+  })
+}
+
+export function useRedemptionsAdmin(status: string) {
+  return useQuery({
+    queryKey: keys.redemptionsAdmin(status),
+    queryFn: () => mobileApi.listRedemptions(status) as Promise<AdminRedemption[]>,
+  })
+}
+
+export function useFulfillRedemption() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) =>
+      resource.update<{ name: string }>('Reward Redemption', name, { status: 'Fulfilled' }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['redemptions-admin'] }),
   })
 }

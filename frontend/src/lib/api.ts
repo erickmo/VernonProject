@@ -170,6 +170,32 @@ export const mobileApi = {
   getMarketplace: () => api.get(M + 'get_marketplace'),
   redeemReward: (reward: string) =>
     api.post<{ balance: number; redemption: string }>(M + 'redeem_reward', { reward }),
+  listRedemptions: (status: string) => api.get(M + 'list_redemptions', { status }),
+}
+
+// Multipart upload to a whitelisted method. Returns the saved file URL.
+export async function uploadRewardImage(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_reward_image', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out.file_url as string
 }
 
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>

@@ -366,3 +366,34 @@ export interface MarketplaceData {
   balance: number
   rewards: MarketplaceReward[]
 }
+
+export interface AdminReward {
+  name: string
+  reward_name: string
+  point_cost: number
+  stock_quantity: number
+  active: 0 | 1
+  image: string | null
+  description?: string | null
+}
+
+export interface AdminRedemption {
+  name: string
+  user: string
+  user_name: string
+  reward_name: string
+  point_cost: number
+  status: 'Pending' | 'Fulfilled'
+  redeemed_on: string | null
+  redeemed_on_human: string | null
+  fulfilled_on: string | null
+}
+
+export interface RewardFormPayload {
+  reward_name: string
+  point_cost: number
+  stock_quantity: number
+  active: 0 | 1
+  description?: string
+  image?: string | null
+}
