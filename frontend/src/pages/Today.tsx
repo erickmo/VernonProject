@@ -14,13 +14,14 @@ import {
   CheckCheck,
   FolderKanban,
   Clock,
+  Coins,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
 import { ProjectCard } from '@/components/ProjectCard'
 import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
-import { useBoot, useDashboard, useProjects } from '@/hooks/useData'
+import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byDeadlineAsc, byDeadlineDesc, formatEstimate } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
@@ -100,6 +101,7 @@ export default function Today() {
   const { data: boot } = useBoot()
   const { data, isLoading, refetch } = useDashboard()
   const { data: projects } = useProjects()
+  const { data: wallet } = useWallet()
   const [lens, setLens] = useState<Lens>('me')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
@@ -220,6 +222,12 @@ export default function Today() {
                         <CheckCheck className="h-3 w-3" /> {data.counts.review} to review
                       </button>
                     )}
+                    <button
+                      onClick={() => navigate('/marketplace')}
+                      className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-semibold active:scale-95"
+                    >
+                      <Coins className="h-3 w-3" /> {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
+                    </button>
                   </div>
                 </div>
               </div>
