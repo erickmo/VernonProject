@@ -1418,7 +1418,7 @@ def get_wallet_log():
 	credits = frappe.get_all(
 		"Point Ledger",
 		filters={"user": user},
-		fields=["points_earned as amount", "todo", "group", "role", "credited_on as date"],
+		fields=["points_earned as amount", "todo", "group", "role", "source", "note", "credited_on as date"],
 		order_by="credited_on desc",
 		limit=100,
 	)
@@ -1441,12 +1441,13 @@ def get_wallet_log():
 
 	rows = []
 	for c in credits:
+		is_grant = (c.get("source") == "Grant")
 		rows.append(
 			{
 				"kind": "credit",
 				"amount": float(c["amount"] or 0),
-				"title": subj.get(c.get("todo")) or "Points earned",
-				"subtitle": c.get("group") or (c.get("role") and f"{c['role']} reward"),
+				"title": "Points granted" if is_grant else (subj.get(c.get("todo")) or "Points earned"),
+				"subtitle": (c.get("note") or "Granted") if is_grant else (c.get("group") or (c.get("role") and f"{c['role']} reward")),
 				"status": None,
 				"date": str(c["date"]) if c.get("date") else None,
 				"date_human": _humanize_datetime(c.get("date")),
@@ -1506,6 +1507,7 @@ def get_leaderboard(period="monthly", brand=None):
 	conds = []
 	params = {}
 	join = ""
+	conds.append("coalesce(pl.source, 'Todo') <> 'Grant'")
 	if start is not None:
 		conds.append("pl.credited_on >= %(start)s")
 		params["start"] = start
