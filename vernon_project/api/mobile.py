@@ -854,15 +854,20 @@ def get_project_item(project_item):
 			"recurring_frequency",
 			"recurring_until",
 			"original_todo",
-			"blocked_by",
-			"blocking",
 		],
 		as_dict=True,
 	) or {}
-	shaped["blocked_by"] = extra.get("blocked_by")
-	shaped["blocking"] = extra.get("blocking")
-	shaped["blocked_by_name"] = frappe.get_value("Project Todo", extra["blocked_by"], "to_do") if extra.get("blocked_by") else None
-	shaped["blocking_name"] = frappe.get_value("Project Todo", extra["blocking"], "to_do") if extra.get("blocking") else None
+	# Blocking links are Table MultiSelect child rows (mirror sides of one edge).
+	shaped["blocked_by"] = frappe.get_all(
+		"Project Todo Dependency",
+		filters={"parent": project_item, "parentfield": "blocked_by"},
+		pluck="todo",
+	)
+	shaped["blocking"] = frappe.get_all(
+		"Project Todo Dependency",
+		filters={"parent": project_item, "parentfield": "blocking"},
+		pluck="todo",
+	)
 	# Sibling tasks in the same project detail (for the blocking pickers; excludes self).
 	shaped["detail_todos"] = frappe.get_all(
 		"Project Todo",
@@ -984,15 +989,14 @@ def update_todo(
 		if level is not None:
 			row.level = level or None
 
-		# Blocking links (empty string clears). A task can't block/depend on itself.
+		# Blocking links: arrays of todo names (JSON or list). Empty clears. The
+		# controller mirrors the other side and rejects self-references.
 		if blocked_by is not None:
-			if blocked_by == project_item:
-				return {"status": "error", "message": "A task can't be blocked by itself."}
-			row.blocked_by = blocked_by or None
+			ids = [i for i in (frappe.parse_json(blocked_by) or []) if i != project_item]
+			row.set("blocked_by", [{"todo": i} for i in ids])
 		if blocking is not None:
-			if blocking == project_item:
-				return {"status": "error", "message": "A task can't block itself."}
-			row.blocking = blocking or None
+			ids = [i for i in (frappe.parse_json(blocking) or []) if i != project_item]
+			row.set("blocking", [{"todo": i} for i in ids])
 
 		# Recurring settings
 		if is_recurring is not None:
@@ -1401,7 +1405,7 @@ def get_wallet():
 		return float(frappe.db.sql(
 			"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
 			"where user=%s and date(credited_on)=%s "
-			"and coalesce(source, 'Todo') <> 'Grant'",
+			"and coalesce(source, 'Todo') not in ('Grant', 'Gift')",
 			(user, day),
 		)[0][0])
 	return {
@@ -1508,7 +1512,7 @@ def get_leaderboard(period="monthly", brand=None):
 	conds = []
 	params = {}
 	join = ""
-	conds.append("coalesce(pl.source, 'Todo') <> 'Grant'")
+	conds.append("coalesce(pl.source, 'Todo') not in ('Grant', 'Gift')")
 	if start is not None:
 		conds.append("pl.credited_on >= %(start)s")
 		params["start"] = start
@@ -1726,6 +1730,23 @@ def _require_points_granter():
 		frappe.throw("Not permitted", frappe.PermissionError)
 
 
+# Manual grants aren't tied to a real work group, so they're attributed to a
+# dedicated "Extra" group. This makes grants show a group in the wallet log and
+# group-based reporting alongside earned points.
+GRANT_GROUP = "Extra"
+
+
+def _ensure_grant_group():
+	"""Create the 'Extra' grant group on first use. Idempotent."""
+	if not frappe.db.exists("Group", GRANT_GROUP):
+		frappe.get_doc({
+			"doctype": "Group",
+			"group_name": GRANT_GROUP,
+			"description": "Manual point grants (not tied to a work group).",
+		}).insert(ignore_permissions=True)
+	return GRANT_GROUP
+
+
 @frappe.whitelist()
 def grant_points(user, amount, note=None):
 	"""Manually credit points to a user's wallet. Positive amounts only."""
@@ -1745,6 +1766,7 @@ def grant_points(user, amount, note=None):
 	frappe.get_doc({
 		"doctype": "Point Ledger",
 		"user": user,
+		"group": _ensure_grant_group(),
 		"points_earned": amount,
 		"point": amount,
 		"source": "Grant",
