@@ -318,6 +318,8 @@ export interface UserFormPayload {
   enabled: 0 | 1
 }
 
+export type GrantUser = { name: string; full_name: string; user_image?: string | null }
+
 export interface Wallet {
   earned: number
   redeemed: number

@@ -17,7 +17,7 @@ from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff,
 # Must match the option strings stored in `tabProject Todo`.`status` exactly
 # (note the U+FE0F variation selector after the white-circle in "Planned").
 # --------------------------------------------------------------------------------
-VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team")
+VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team", "Points Granter")
 PROTECTED_USERS = ("Guest", "Administrator")
 
 
@@ -365,7 +365,7 @@ def bootstrap():
 	roles = frappe.get_roles(user)
 	vernon_roles = [
 		r
-		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager")
+		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager", "Points Granter")
 		if r in roles
 	]
 	return {
@@ -1400,7 +1400,8 @@ def get_wallet():
 	def _earned_on(day):
 		return float(frappe.db.sql(
 			"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
-			"where user=%s and date(credited_on)=%s",
+			"where user=%s and date(credited_on)=%s "
+			"and coalesce(source, 'Todo') <> 'Grant'",
 			(user, day),
 		)[0][0])
 	return {
@@ -1418,7 +1419,7 @@ def get_wallet_log():
 	credits = frappe.get_all(
 		"Point Ledger",
 		filters={"user": user},
-		fields=["points_earned as amount", "todo", "group", "role", "credited_on as date"],
+		fields=["points_earned as amount", "todo", "group", "role", "source", "note", "credited_on as date"],
 		order_by="credited_on desc",
 		limit=100,
 	)
@@ -1441,12 +1442,13 @@ def get_wallet_log():
 
 	rows = []
 	for c in credits:
+		is_grant = (c.get("source") == "Grant")
 		rows.append(
 			{
 				"kind": "credit",
 				"amount": float(c["amount"] or 0),
-				"title": subj.get(c.get("todo")) or "Points earned",
-				"subtitle": c.get("group") or (c.get("role") and f"{c['role']} reward"),
+				"title": "Points granted" if is_grant else (subj.get(c.get("todo")) or "Points earned"),
+				"subtitle": (c.get("note") or "Granted") if is_grant else (c.get("group") or (c.get("role") and f"{c['role']} reward")),
 				"status": None,
 				"date": str(c["date"]) if c.get("date") else None,
 				"date_human": _humanize_datetime(c.get("date")),
@@ -1506,6 +1508,7 @@ def get_leaderboard(period="monthly", brand=None):
 	conds = []
 	params = {}
 	join = ""
+	conds.append("coalesce(pl.source, 'Todo') <> 'Grant'")
 	if start is not None:
 		conds.append("pl.credited_on >= %(start)s")
 		params["start"] = start
@@ -1708,3 +1711,62 @@ def upload_reward_image():
 
 	saved = save_file(f.filename, content, None, None, is_private=0)
 	return {"file_url": saved.file_url}
+
+
+# --------------------------------------------------------------------------------
+# Grant Points — manual wallet credit by an authorized grantor.
+# Granted points raise the recipient's spendable balance but are excluded from
+# the leaderboard (source='Grant'). Grantor = Points Granter or System Manager.
+# --------------------------------------------------------------------------------
+
+
+def _require_points_granter():
+	roles = frappe.get_roles(frappe.session.user)
+	if "System Manager" not in roles and "Points Granter" not in roles:
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+@frappe.whitelist()
+def grant_points(user, amount, note=None):
+	"""Manually credit points to a user's wallet. Positive amounts only."""
+	_require_points_granter()
+	user = (user or "").strip()
+	if not user or user in PROTECTED_USERS or not frappe.db.exists("User", user):
+		frappe.throw("Unknown user")
+	if not frappe.db.get_value("User", user, "enabled"):
+		frappe.throw("User is disabled")
+	try:
+		amount = float(amount)
+	except (TypeError, ValueError):
+		frappe.throw("Amount must be a number")
+	if amount <= 0:
+		frappe.throw("Amount must be greater than zero")
+
+	frappe.get_doc({
+		"doctype": "Point Ledger",
+		"user": user,
+		"points_earned": amount,
+		"point": amount,
+		"source": "Grant",
+		"note": (note or "").strip() or None,
+		"granted_by": frappe.session.user,
+		"credited_on": frappe.utils.now(),
+	}).insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	_, _, balance = _user_balance(user)
+	return {"balance": balance, "granted": amount}
+
+
+@frappe.whitelist()
+def list_grant_users():
+	"""Lightweight enabled-user list for the grant picker."""
+	_require_points_granter()
+	users = frappe.get_all(
+		"User",
+		filters={"name": ["not in", PROTECTED_USERS], "enabled": 1},
+		fields=["name", "full_name", "user_image"],
+		limit_page_length=0,
+		order_by="full_name asc",
+	)
+	return {"users": users}

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings, Gift } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
@@ -122,6 +122,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             )}
             {canManageMarketplace(boot) && (
               <Row icon={Settings} label="Manage Marketplace" onClick={() => navigate('/marketplace-admin')} />
+            )}
+            {canGrantPoints(boot) && (
+              <Row icon={Gift} label="Grant Points" onClick={() => navigate('/grant-points')} />
             )}
             <Row icon={RefreshCw} label="Refresh data" onClick={refresh} />
             <Row icon={BookOpen} label="Replay quick tour" onClick={onReplayOnboarding} />
