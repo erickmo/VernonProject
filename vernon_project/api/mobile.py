@@ -1663,15 +1663,36 @@ def list_redemptions(status="all"):
 	return rows
 
 
+ALLOWED_IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+ALLOWED_IMAGE_MIME = ("image/png", "image/jpeg", "image/webp", "image/gif")
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+
 @frappe.whitelist()
 def upload_reward_image():
-	"""Save an uploaded image as a public File and return its URL. The form
-	then stores the URL on the reward's `image` field like any other field."""
+	"""Save an uploaded reward image as a public File and return its URL. The
+	form then stores the URL on the reward's `image` field like any other field.
+
+	Only raster image types are accepted: the file is served public, so SVG/HTML
+	(stored-XSS vectors) and other content are rejected by extension and MIME."""
 	_require_marketplace_manager()
+	import os
 	from frappe.utils.file_manager import save_file
 
 	f = frappe.request.files.get("file")
 	if not f:
 		frappe.throw("No file uploaded")
-	saved = save_file(f.filename, f.stream.read(), None, None, is_private=0)
+
+	ext = os.path.splitext(f.filename or "")[1].lower()
+	if ext not in ALLOWED_IMAGE_EXT:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+	mimetype = (getattr(f, "mimetype", "") or "").lower()
+	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+
+	content = f.stream.read()
+	if len(content) > MAX_IMAGE_BYTES:
+		frappe.throw("Image too large (max 5 MB).")
+
+	saved = save_file(f.filename, content, None, None, is_private=0)
 	return {"file_url": saved.file_url}
