@@ -322,6 +322,8 @@ export interface Wallet {
   earned: number
   redeemed: number
   balance: number
+  today_earned: number
+  yesterday_earned: number
 }
 
 export interface WalletLogEntry {

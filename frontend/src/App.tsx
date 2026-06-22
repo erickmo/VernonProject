@@ -22,7 +22,6 @@ import BrandFormScreen from './pages/BrandFormScreen'
 import UsersScreen from './pages/UsersScreen'
 import UserFormScreen from './pages/UserFormScreen'
 import WalletLogScreen from './pages/WalletLogScreen'
-import PointsScreen from './pages/PointsScreen'
 import LeaderboardScreen from './pages/LeaderboardScreen'
 import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
@@ -111,7 +110,6 @@ export default function App() {
             <Route path="/marketplace-admin/reward/:name" element={<RewardFormScreen />} />
           </>
         )}
-        <Route path="/points" element={<PointsScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />

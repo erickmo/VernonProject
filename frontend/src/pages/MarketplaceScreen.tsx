@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { Store, Coins } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Store, Coins, Wallet, Trophy, Settings } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { RedeemSheet } from '@/components/RedeemSheet'
-import { useMarketplace, useRedeemReward } from '@/hooks/useData'
+import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import type { MarketplaceReward } from '@/lib/types'
 
 export default function MarketplaceScreen() {
+  const navigate = useNavigate()
+  const { data: boot } = useBoot()
   const { data, isLoading } = useMarketplace()
   const redeem = useRedeemReward()
   const toast = useToast()
@@ -28,7 +31,7 @@ export default function MarketplaceScreen() {
 
   return (
     <DetailScreen title="Marketplace">
-      <div className="mb-4 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
+      <div className="mb-3 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
           <Coins className="h-5 w-5" />
         </div>
@@ -38,6 +41,33 @@ export default function MarketplaceScreen() {
             {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
           </p>
         </div>
+      </div>
+
+      {/* Menu row */}
+      <div className="mb-4 flex gap-2">
+        <button
+          onClick={() => navigate('/wallet')}
+          className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-card active:scale-95 transition"
+        >
+          <Wallet className="h-4 w-4 text-brand-500" />
+          Log
+        </button>
+        <button
+          onClick={() => navigate('/leaderboard')}
+          className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-card active:scale-95 transition"
+        >
+          <Trophy className="h-4 w-4 text-amber-500" />
+          Leaderboard
+        </button>
+        {canManageMarketplace(boot) && (
+          <button
+            onClick={() => navigate('/marketplace-admin')}
+            className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-card active:scale-95 transition"
+          >
+            <Settings className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+            Manage
+          </button>
+        )}
       </div>
 
       {isLoading && !data ? (

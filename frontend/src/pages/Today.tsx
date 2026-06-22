@@ -15,6 +15,9 @@ import {
   FolderKanban,
   Clock,
   Coins,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
@@ -227,21 +230,64 @@ export default function Today() {
               </div>
 
               {/* Points card */}
-              <button
-                onClick={() => navigate('/points')}
-                className="mt-3 flex w-full items-center gap-4 rounded-2xl bg-white dark:bg-slate-800 px-4 py-3.5 shadow-card active:scale-[0.99] transition"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400">
-                  <Coins className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1 text-left">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Points</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">
-                    {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-slate-300 dark:text-slate-600 shrink-0" />
-              </button>
+              {(() => {
+                const bal = wallet?.balance ?? 0
+                const tod = wallet?.today_earned ?? 0
+                const yest = wallet?.yesterday_earned ?? 0
+                const isBeating = tod > 0 && tod >= yest
+                const isZero = tod === 0
+                return (
+                  <button
+                    onClick={() => navigate('/marketplace')}
+                    className="mt-3 w-full rounded-2xl bg-white dark:bg-slate-800 px-4 py-4 shadow-card active:scale-[0.99] transition text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400">
+                        <Coins className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Spendable points</p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">
+                          {bal.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-slate-300 dark:text-slate-600 shrink-0" />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          {tod > 0 && <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
+                          <span className={`text-sm font-bold ${tod > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                            +{tod.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">today</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-slate-300 dark:text-slate-600">
+                            +{yest.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </span>
+                          <span className="text-xs text-slate-300 dark:text-slate-600">yest</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {isZero ? (
+                          <span className="text-xs font-semibold text-amber-500">Earn your first points today →</span>
+                        ) : isBeating ? (
+                          <>
+                            <TrendingUp className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">🔥 Beating yesterday!</span>
+                          </>
+                        ) : (
+                          <>
+                            <TrendingDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Keep it up →</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })()}
 
               {/* Lens switcher */}
               <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4">
