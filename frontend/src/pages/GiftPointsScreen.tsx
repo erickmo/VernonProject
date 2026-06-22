@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Search, Send, Users } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
@@ -9,7 +8,6 @@ import { useConfirm } from '@/components/Confirm'
 import type { GiftUser } from '@/lib/types'
 
 export default function GiftPointsScreen() {
-  const navigate = useNavigate()
   const toast = useToast()
   const confirm = useConfirm()
   const { data: wallet } = useWallet()
