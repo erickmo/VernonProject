@@ -490,6 +490,7 @@ export const VERNON_ROLE_OPTIONS = [
   { value: 'Project Leader', label: 'Leader' },
   { value: 'Project Admin', label: 'Admin' },
   { value: 'Project Team', label: 'Team' },
+  { value: 'Points Granter', label: 'Points Granter' },
 ]
 
 export function useBrands() {
@@ -628,6 +629,13 @@ export function canManageMarketplace(boot: Boot | undefined): boolean {
   return !!boot && (
     boot.roles.includes('System Manager') ||
     boot.roles.includes('Marketplace Manager')
+  )
+}
+
+export function canGrantPoints(boot: Boot | undefined): boolean {
+  return !!boot && (
+    boot.roles.includes('System Manager') ||
+    boot.roles.includes('Points Granter')
   )
 }
 
