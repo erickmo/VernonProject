@@ -26,7 +26,8 @@ import LeaderboardScreen from './pages/LeaderboardScreen'
 import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace } from './hooks/useData'
+import GrantPointsScreen from './pages/GrantPointsScreen'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -109,6 +110,9 @@ export default function App() {
             <Route path="/marketplace-admin/reward/new" element={<RewardFormScreen />} />
             <Route path="/marketplace-admin/reward/:name" element={<RewardFormScreen />} />
           </>
+        )}
+        {canGrantPoints(boot) && (
+          <Route path="/grant-points" element={<GrantPointsScreen />} />
         )}
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
