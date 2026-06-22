@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Gift, Users } from 'lucide-react'
@@ -35,17 +35,18 @@ export default function GrantPointsScreen() {
     )
   }, [users, search])
 
-  if (bootLoading) {
+  // Access gate: redirect outside render (useEffect-safe pattern)
+  const blocked = boot !== undefined && !canGrantPoints(boot)
+  useEffect(() => {
+    if (blocked) navigate('/me', { replace: true })
+  }, [blocked, navigate])
+
+  if (bootLoading || blocked) {
     return (
       <DetailScreen title="Grant Points" right={null}>
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
       </DetailScreen>
     )
-  }
-
-  if (!canGrantPoints(boot)) {
-    navigate('/me', { replace: true })
-    return null
   }
 
   const submit = async () => {
