@@ -3,10 +3,8 @@
 // controls the app. Uses only absolute URLs + runtime caching, so it works
 // regardless of where the script itself is served from.
 
-const ASSET_CACHE = 'vernon-assets-v4'
-const API_CACHE = 'vernon-api-v4'
+const ASSET_CACHE = 'vernon-assets-v5'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
-const API_PREFIX = '/api/method/vernon_project.api.mobile.'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -15,12 +13,10 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Drop caches from older versions.
+      // Drop caches from older versions (incl. the retired API cache).
       const keys = await caches.keys()
       await Promise.all(
-        keys
-          .filter((k) => k !== ASSET_CACHE && k !== API_CACHE)
-          .map((k) => caches.delete(k)),
+        keys.filter((k) => k !== ASSET_CACHE).map((k) => caches.delete(k)),
       )
       await self.clients.claim()
     })(),
@@ -40,11 +36,8 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Mobile read API: network-first, fall back to last cached response offline.
-  if (url.pathname.startsWith(API_PREFIX)) {
-    event.respondWith(networkFirst(req, API_CACHE))
-    return
-  }
+  // Mobile read API is never cached: always hit the network so data is fresh.
+  // (No respondWith → default browser fetch, no SW fallback.)
 
   // App navigations under /m: network-first, fall back to the cached shell.
   if (req.mode === 'navigate' && url.pathname.startsWith('/m')) {
@@ -61,19 +54,6 @@ async function cacheFirst(req, cacheName) {
   const res = await fetch(req)
   if (res && res.status === 200) cache.put(req, res.clone())
   return res
-}
-
-async function networkFirst(req, cacheName) {
-  const cache = await caches.open(cacheName)
-  try {
-    const res = await fetch(req)
-    if (res && res.status === 200) cache.put(req, res.clone())
-    return res
-  } catch (err) {
-    const hit = await cache.match(req)
-    if (hit) return hit
-    throw err
-  }
 }
 
 async function navigationHandler(req) {

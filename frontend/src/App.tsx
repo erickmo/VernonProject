@@ -27,6 +27,7 @@ import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
+import GiftPointsScreen from './pages/GiftPointsScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -114,6 +115,7 @@ export default function App() {
         {canGrantPoints(boot) && (
           <Route path="/grant-points" element={<GrantPointsScreen />} />
         )}
+        <Route path="/gift-points" element={<GiftPointsScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />

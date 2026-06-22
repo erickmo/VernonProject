@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings, Gift } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings, Gift, Send } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
@@ -111,6 +111,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
 
           <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
             <Row icon={KeyRound} label="Change password" onClick={() => setShowChangePw(true)} />
+            <Row icon={Send} label="Gift Points" onClick={() => navigate('/gift-points')} />
             {canManageGroups(boot) && (
               <Row icon={Trophy} label="Manage Groups" onClick={() => navigate('/groups')} />
             )}
