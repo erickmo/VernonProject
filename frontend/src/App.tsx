@@ -23,6 +23,7 @@ import UsersScreen from './pages/UsersScreen'
 import UserFormScreen from './pages/UserFormScreen'
 import WalletLogScreen from './pages/WalletLogScreen'
 import LeaderboardScreen from './pages/LeaderboardScreen'
+import MarketplaceScreen from './pages/MarketplaceScreen'
 import { canManageGroups, canManageBrands, canManageUsers } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -102,6 +103,7 @@ export default function App() {
         )}
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
+        <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
