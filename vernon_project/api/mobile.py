@@ -365,7 +365,7 @@ def bootstrap():
 	roles = frappe.get_roles(user)
 	vernon_roles = [
 		r
-		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager")
+		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager")
 		if r in roles
 	]
 	return {
@@ -1615,3 +1615,63 @@ def redeem_reward(reward):
 		return {"balance": new_balance, "redemption": redemption.name}
 	finally:
 		frappe.db.sql("select release_lock(%s)", lock_key)
+
+
+# --------------------------------------------------------------------------------
+# Marketplace administration — catalog CRUD rides /api/resource; these endpoints
+# cover what resource access can't: server-resolved redemption listing and
+# role-gated image upload. Admin = Marketplace Manager or System Manager.
+# --------------------------------------------------------------------------------
+
+
+def _require_marketplace_manager():
+	roles = frappe.get_roles(frappe.session.user)
+	if "System Manager" not in roles and "Marketplace Manager" not in roles:
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+@frappe.whitelist()
+def list_redemptions(status="all"):
+	"""Redemptions with user full names resolved server-side, newest first.
+	status in {"pending", "fulfilled", "all"}."""
+	_require_marketplace_manager()
+
+	filters = {}
+	if status == "pending":
+		filters["status"] = "Pending"
+	elif status == "fulfilled":
+		filters["status"] = "Fulfilled"
+
+	rows = frappe.get_all(
+		"Reward Redemption",
+		filters=filters,
+		fields=[
+			"name", "user", "reward_name", "point_cost", "status",
+			"redeemed_on", "fulfilled_on",
+		],
+		order_by="redeemed_on desc",
+		limit=200,
+	)
+	name_map = _user_name_map([r["user"] for r in rows])
+	for r in rows:
+		info = name_map.get(r["user"], {})
+		r["user_name"] = info.get("full_name") or r["user"]
+		r["point_cost"] = float(r["point_cost"] or 0)
+		r["redeemed_on_human"] = _humanize_datetime(r.get("redeemed_on"))
+		r["redeemed_on"] = str(r["redeemed_on"]) if r.get("redeemed_on") else None
+		r["fulfilled_on"] = str(r["fulfilled_on"]) if r.get("fulfilled_on") else None
+	return rows
+
+
+@frappe.whitelist()
+def upload_reward_image():
+	"""Save an uploaded image as a public File and return its URL. The form
+	then stores the URL on the reward's `image` field like any other field."""
+	_require_marketplace_manager()
+	from frappe.utils.file_manager import save_file
+
+	f = frappe.request.files.get("file")
+	if not f:
+		frappe.throw("No file uploaded")
+	saved = save_file(f.filename, f.stream.read(), None, None, is_private=0)
+	return {"file_url": saved.file_url}
