@@ -1792,3 +1792,75 @@ def list_grant_users():
 		order_by="full_name asc",
 	)
 	return {"users": users}
+
+
+@frappe.whitelist()
+def gift_points(to_user, amount, note=None):
+	"""Transfer points from the logged-in user to another user. Zero-sum:
+	the sender is debited (negative ledger row), the recipient credited.
+	Whole numbers only. Excluded from leaderboard rank."""
+	sender = frappe.session.user
+	to_user = (to_user or "").strip()
+	if not to_user or to_user in PROTECTED_USERS or not frappe.db.exists("User", to_user):
+		frappe.throw("Unknown user")
+	if to_user == sender:
+		frappe.throw("Cannot gift yourself")
+	if not frappe.db.get_value("User", to_user, "enabled"):
+		frappe.throw("User is disabled")
+	try:
+		amount = float(amount)
+	except (TypeError, ValueError):
+		frappe.throw("Amount must be a whole number greater than zero")
+	if amount <= 0 or amount != int(amount):
+		frappe.throw("Amount must be a whole number greater than zero")
+	amount = int(amount)
+
+	_, _, balance = _user_balance(sender)
+	if balance < amount:
+		frappe.throw("Not enough points")
+
+	note = (note or "").strip() or None
+	now = frappe.utils.now()
+	# Recipient credit
+	frappe.get_doc({
+		"doctype": "Point Ledger",
+		"user": to_user,
+		"points_earned": amount,
+		"point": amount,
+		"source": "Gift",
+		"granted_by": sender,
+		"note": note,
+		"credited_on": now,
+	}).insert(ignore_permissions=True)
+	# Sender debit (negative row reduces sender balance via the sum formula)
+	frappe.get_doc({
+		"doctype": "Point Ledger",
+		"user": sender,
+		"points_earned": -amount,
+		"point": amount,
+		"source": "Gift",
+		"granted_by": to_user,
+		"note": note,
+		"credited_on": now,
+	}).insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	_, _, new_balance = _user_balance(sender)
+	return {"balance": new_balance, "gifted": amount, "to": to_user}
+
+
+@frappe.whitelist()
+def list_gift_recipients():
+	"""Enabled users (minus protected users and the caller) for the gift
+	picker. Open to every logged-in user (unlike list_grant_users)."""
+	users = frappe.get_all(
+		"User",
+		filters={
+			"name": ["not in", list(PROTECTED_USERS) + [frappe.session.user]],
+			"enabled": 1,
+		},
+		fields=["name", "full_name", "user_image"],
+		limit_page_length=0,
+		order_by="full_name asc",
+	)
+	return {"users": users}
