@@ -178,6 +178,14 @@ export const mobileApi = {
       ...(note ? { note } : {}),
     }),
   listGrantUsers: () => api.get<{ users: import('./types').GrantUser[] }>(M + 'list_grant_users'),
+  giftPoints: (toUser: string, amount: number, note?: string) =>
+    api.post<{ balance: number; gifted: number; to: string }>(M + 'gift_points', {
+      to_user: toUser,
+      amount,
+      ...(note ? { note } : {}),
+    }),
+  listGiftRecipients: () =>
+    api.get<{ users: import('./types').GiftUser[] }>(M + 'list_gift_recipients'),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.

@@ -57,6 +57,7 @@ export const keys = {
   rewardsAdmin: ['rewards-admin'] as const,
   rewardAdmin: (n: string) => ['reward-admin', n] as const,
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
+  giftRecipients: ['gift-recipients'] as const,
 }
 
 export const useBoot = () =>
@@ -603,6 +604,25 @@ export const useWallet = () =>
 
 export const useWalletLog = () =>
   useQuery({ queryKey: keys.walletLog, queryFn: () => mobileApi.getWalletLog() as Promise<WalletLogEntry[]> })
+
+export function useGiftRecipients() {
+  return useQuery({
+    queryKey: keys.giftRecipients,
+    queryFn: () => mobileApi.listGiftRecipients(),
+  })
+}
+
+export function useGiftPoints() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ toUser, amount, note }: { toUser: string; amount: number; note?: string }) =>
+      mobileApi.giftPoints(toUser, amount, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.wallet })
+      qc.invalidateQueries({ queryKey: keys.walletLog })
+    },
+  })
+}
 
 export const useLeaderboard = (period: string, brand: string | null) =>
   useQuery({

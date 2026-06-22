@@ -73,10 +73,8 @@ export interface ProjectItemDetail extends ProjectItem {
   point?: number
   assignee_earned?: number
   leader_earned?: number
-  blocked_by: string | null
-  blocking: string | null
-  blocked_by_name: string | null
-  blocking_name: string | null
+  blocked_by: string[]
+  blocking: string[]
   detail_todos: { name: string; to_do: string }[]
 }
 
@@ -319,6 +317,8 @@ export interface UserFormPayload {
 }
 
 export type GrantUser = { name: string; full_name: string; user_image?: string | null }
+
+export type GiftUser = GrantUser
 
 export interface Wallet {
   earned: number
