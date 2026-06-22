@@ -222,15 +222,26 @@ export default function Today() {
                         <CheckCheck className="h-3 w-3" /> {data.counts.review} to review
                       </button>
                     )}
-                    <button
-                      onClick={() => navigate('/marketplace')}
-                      className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-semibold active:scale-95"
-                    >
-                      <Coins className="h-3 w-3" /> {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
-                    </button>
                   </div>
                 </div>
               </div>
+
+              {/* Points card */}
+              <button
+                onClick={() => navigate('/points')}
+                className="mt-3 flex w-full items-center gap-4 rounded-2xl bg-white dark:bg-slate-800 px-4 py-3.5 shadow-card active:scale-[0.99] transition"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400">
+                  <Coins className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Points</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">
+                    {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-slate-300 dark:text-slate-600 shrink-0" />
+              </button>
 
               {/* Lens switcher */}
               <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4">

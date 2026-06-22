@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Coins, Wallet, Settings } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, useWallet } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
@@ -33,7 +33,6 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 
 export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: () => void }) {
   const { data: boot, isLoading } = useBoot()
-  const { data: wallet } = useWallet()
   const qc = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
@@ -100,26 +99,6 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           >
             {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
             {online ? 'Online — synced with server' : 'Offline — showing saved data'}
-          </div>
-
-          {/* Rewards */}
-          <div className="mt-3 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
-            <div className="flex items-center gap-3 bg-gradient-to-br from-brand-600 to-brand-800 px-4 py-4 text-white">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15">
-                <Coins className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-brand-200">Spendable points</p>
-                <p className="text-xl font-bold leading-tight">
-                  {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                </p>
-              </div>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-700">
-              <Row icon={Wallet} label="Points log" onClick={() => navigate('/wallet')} />
-              <Row icon={Trophy} label="Leaderboard" onClick={() => navigate('/leaderboard')} />
-              <Row icon={Store} label="Marketplace" onClick={() => navigate('/marketplace')} />
-            </div>
           </div>
 
           {/* Appearance */}
