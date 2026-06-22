@@ -365,7 +365,7 @@ def bootstrap():
 	roles = frappe.get_roles(user)
 	vernon_roles = [
 		r
-		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager")
+		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager", "Points Granter")
 		if r in roles
 	]
 	return {
