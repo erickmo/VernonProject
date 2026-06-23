@@ -1044,6 +1044,55 @@ def update_todo(
 		return {"status": "error", "message": msg}
 
 
+def _load_todo_for_edit(project_item):
+	"""Resolve a todo + its project and assert the caller may edit it.
+	Returns (row_doc, project_doc). Raises a frappe error message dict via
+	the caller on failure — here we return (None, error_dict)."""
+	user = frappe.session.user
+	if not frappe.db.exists("Project Todo", project_item):
+		return None, {"status": "error", "message": "Task not found."}
+	row = frappe.get_doc("Project Todo", project_item)
+	project_detail = row.project_detail
+	detail_project = frappe.get_value("Project Detail", project_detail, "project") if project_detail else None
+	if not detail_project:
+		return None, {"status": "error", "message": "Task not found."}
+	project = frappe.get_doc("Project", detail_project)
+	is_sm = "System Manager" in frappe.get_roles(user)
+	if not (is_sm or user in (project.project_owner, project.project_leader, row.assigned_to)):
+		return None, {"status": "error", "message": "You don't have permission to edit this task."}
+	return row, project
+
+
+@frappe.whitelist()
+def cancel_todo(project_item, reason=None):
+	"""Cancel a non-completed todo (reversible). Stores an optional reason."""
+	row, ctx = _load_todo_for_edit(project_item)
+	if row is None:
+		return ctx
+	if row.status == STATUS_COMPLETED:
+		return {"status": "error", "message": "Cannot cancel a completed task."}
+	if row.status == STATUS_CANCELLED:
+		return {"status": "info", "message": "Task is already cancelled."}
+	row.status = STATUS_CANCELLED
+	row.cancellation_reason = (reason or "").strip() or None
+	row.save(ignore_permissions=True)
+	return {"status": "ok", "message": "Task cancelled."}
+
+
+@frappe.whitelist()
+def restore_todo(project_item):
+	"""Restore a cancelled todo back to Planned and clear its reason."""
+	row, ctx = _load_todo_for_edit(project_item)
+	if row is None:
+		return ctx
+	if row.status != STATUS_CANCELLED:
+		return {"status": "info", "message": "Task is not cancelled."}
+	row.status = STATUS_PLANNED
+	row.cancellation_reason = None
+	row.save(ignore_permissions=True)
+	return {"status": "ok", "message": "Task restored."}
+
+
 @frappe.whitelist()
 def set_todo_allocations(project_item, allocations):
 	"""Assignee-only: replace a todo's day allocations (planning only, not scored).
