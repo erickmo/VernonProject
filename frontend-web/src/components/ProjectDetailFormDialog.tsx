@@ -1,0 +1,161 @@
+import { useState } from 'react'
+import { Plus } from 'lucide-react'
+import { useCreateProjectDetail, useGroups } from '@/hooks/useData'
+import { useToast } from '@/components/Toast'
+import { Spinner } from '@/components/ui'
+import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { RichEditor } from '@/components/RichEditor'
+import { Dialog } from '@web/components/overlays/Dialog'
+
+interface Props {
+  open: boolean
+  onClose: () => void
+  project: string
+}
+
+export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
+  const toast = useToast()
+  const create = useCreateProjectDetail(project)
+  const { data: glossaryList } = useGroups(project, open && !!project)
+  const [title, setTitle] = useState('')
+  const [isPending, setIsPending] = useState(false)
+  const [condition, setCondition] = useState('')
+  const [outcome, setOutcome] = useState('')
+  const [sow, setSow] = useState('')
+  const [discount, setDiscount] = useState('')
+  const [price, setPrice] = useState('')
+  const [glossaries, setGlossaries] = useState<string[]>([])
+
+  const reset = () => {
+    setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
+    setSow(''); setDiscount(''); setPrice(''); setGlossaries([])
+  }
+  const close = () => { reset(); onClose() }
+
+  const glossaryOpts = (glossaryList ?? []).map((g) => ({ value: g.name, label: g.glossary }))
+
+  const field =
+    'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+
+  const submit = () => {
+    if (!title.trim()) {
+      toast('error', 'Title is required')
+      return
+    }
+    create.mutate(
+      {
+        title: title.trim(),
+        is_pending: isPending ? 1 : 0,
+        current_condition: condition,
+        expected_outcome: outcome,
+        keterangan_di_sow: sow,
+        discount: Number(discount) || 0,
+        price: Number(price) || 0,
+        glossaries: glossaries.map((g) => ({ glossary: g })),
+      },
+      {
+        onSuccess: () => { toast('success', 'Project detail created'); close() },
+        onError: (e) => toast('error', (e as Error).message),
+      },
+    )
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={close}
+      title="New detail"
+      widthClass="max-w-2xl"
+      footer={
+        <>
+          <button
+            onClick={close}
+            className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={create.isPending}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold disabled:opacity-60"
+          >
+            {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            Create detail
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Title<span className="text-red-500"> *</span>
+          <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+
+        <label className="flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span>
+            Mark as pending
+            <span className="mt-0.5 block text-xs font-normal text-slate-400 dark:text-slate-500">
+              The deadline follows the project's; status is set automatically from the tasks.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={isPending}
+            onChange={(e) => setIsPending(e.target.checked)}
+            className="ml-3 h-5 w-5 shrink-0 accent-brand-600"
+          />
+        </label>
+
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Current condition
+          <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
+        </label>
+
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Expected outcome
+          <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
+        </label>
+
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Keterangan di SOW
+          <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
+        </label>
+
+        <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Glossaries
+          <MultiSelectChips
+            options={glossaryOpts}
+            value={glossaries}
+            onChange={setGlossaries}
+            emptyText="No glossaries for this project yet"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+            Discount (Rp)
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={field + ' mt-1'}
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+            />
+          </label>
+          <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+            Price (Rp)
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={field + ' mt-1'}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </label>
+        </div>
+      </div>
+    </Dialog>
+  )
+}

@@ -1,0 +1,110 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AlertCircle, CalendarDays, ChevronRight, Layers } from 'lucide-react'
+import { useMemberWorkload } from '@/hooks/useData'
+import { Avatar, Spinner, EmptyState } from '@/components/ui'
+import { Drawer } from '@web/components/overlays/Drawer'
+import type { TeamMember } from '@/lib/types'
+
+interface Props {
+  open: boolean
+  member: TeamMember | null
+  project: string
+  onClose: () => void
+}
+
+export function TeamWorkloadDrawer({ open, member, project, onClose }: Props) {
+  const navigate = useNavigate()
+  const [showAll, setShowAll] = useState(false)
+
+  useEffect(() => {
+    if (open) setShowAll(false)
+  }, [member?.user, open])
+
+  const { data, isLoading } = useMemberWorkload(project, open ? member?.user ?? null : null, showAll)
+
+  const role = member
+    ? member.is_owner && member.is_leader
+      ? 'Owner · Leader'
+      : member.is_owner
+        ? 'Owner'
+        : member.is_leader
+          ? 'Leader'
+          : null
+    : null
+
+  const goto = (projectDetail: string) => {
+    onClose()
+    navigate(`/project-detail/${encodeURIComponent(projectDetail)}`)
+  }
+
+  const title = member ? member.name : 'Team member'
+
+  return (
+    <Drawer open={open} onClose={onClose} title={title}>
+      {member && (
+        <div className="flex flex-col gap-4">
+          {/* Member header */}
+          <div className="flex items-center gap-3">
+            <Avatar name={member.name} image={member.image} size={40} />
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{member.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {role ? `${role} · ` : ''}{member.open_todos} allocated
+              </p>
+            </div>
+          </div>
+
+          {/* Open / All toggle */}
+          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-sm font-semibold">
+            <button
+              onClick={() => setShowAll(false)}
+              className={`rounded-lg px-4 py-1.5 ${!showAll ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              Open
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={`rounded-lg px-4 py-1.5 ${showAll ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              All
+            </button>
+          </div>
+
+          {/* Todo list */}
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Spinner className="h-6 w-6" /></div>
+          ) : data && data.length ? (
+            <div className="flex flex-col gap-2">
+              {data.map((t) => (
+                <button
+                  key={t.name}
+                  onClick={() => goto(t.project_detail)}
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 flex-1 truncate font-medium text-slate-800 dark:text-slate-100">{t.to_do}</p>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="inline-flex items-center gap-1">
+                      <Layers className="h-3.5 w-3.5" /> {t.project_detail_title}
+                    </span>
+                    {t.deadline_human && (
+                      <span className={`inline-flex items-center gap-1 ${t.is_overdue ? 'font-semibold text-rose-600' : ''}`}>
+                        {t.is_overdue ? <AlertCircle className="h-3.5 w-3.5" /> : <CalendarDays className="h-3.5 w-3.5" />}
+                        {t.deadline_human}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={Layers} title="No todos" />
+          )}
+        </div>
+      )}
+    </Drawer>
+  )
+}
