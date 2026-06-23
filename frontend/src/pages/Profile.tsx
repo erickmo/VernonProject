@@ -77,6 +77,19 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               <p className="text-lg font-bold text-slate-900 dark:text-slate-50">{boot.full_name}</p>
               <p className="text-sm text-slate-400 dark:text-slate-500">{boot.user}</p>
             </div>
+            {boot.badge && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                style={
+                  boot.badge.color
+                    ? { backgroundColor: `${boot.badge.color}22`, color: boot.badge.color }
+                    : undefined
+                }
+              >
+                {boot.badge.icon && <span>{boot.badge.icon}</span>}
+                {boot.badge.tier_name}
+              </span>
+            )}
             <div className="flex flex-wrap justify-center gap-1.5">
               {boot.roles.map((r) => (
                 <span

@@ -25,9 +25,24 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
         {medal(e.rank) ?? e.rank}
       </div>
       <Avatar name={e.full_name} image={e.image} size={36} />
-      <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-        {e.full_name} {isMe && <span className="text-brand-600 dark:text-brand-300">· you</span>}
-      </p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+          {e.full_name} {isMe && <span className="text-brand-600 dark:text-brand-300">· you</span>}
+        </p>
+        {e.badge && (
+          <span
+            className="mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+            style={
+              e.badge.color
+                ? { backgroundColor: `${e.badge.color}22`, color: e.badge.color }
+                : undefined
+            }
+          >
+            {e.badge.icon && <span>{e.badge.icon}</span>}
+            {e.badge.tier_name}
+          </span>
+        )}
+      </div>
       <p className="text-sm font-bold text-slate-900 dark:text-slate-50">
         {e.points.toLocaleString(undefined, { maximumFractionDigits: 1 })}
       </p>

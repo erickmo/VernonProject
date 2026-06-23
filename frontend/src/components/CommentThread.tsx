@@ -31,7 +31,22 @@ export default function CommentThread({
           {(comments ?? []).map((c) => (
             <li key={c.name} className="rounded-xl bg-gray-50 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-800">{c.by_name}</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
+                  {c.by_name}
+                  {c.by_badge && (
+                    <span
+                      className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                      style={
+                        c.by_badge.color
+                          ? { backgroundColor: `${c.by_badge.color}22`, color: c.by_badge.color }
+                          : undefined
+                      }
+                    >
+                      {c.by_badge.icon && <span>{c.by_badge.icon}</span>}
+                      {c.by_badge.tier_name}
+                    </span>
+                  )}
+                </span>
                 <span className="text-xs text-gray-400">{c.at_human}</span>
               </div>
               <div

@@ -522,6 +522,10 @@ export function canManageUsers(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
 
+export function canManageBadges(boot: Boot | undefined): boolean {
+  return !!boot && boot.roles.includes('System Manager')
+}
+
 // The Vernon roles assignable from the mobile user-management screen.
 export const VERNON_ROLE_OPTIONS = [
   { value: 'Project Owner', label: 'Owner' },

@@ -1,11 +1,18 @@
 export type StatusKey = 'planned' | 'done' | 'checked' | 'completed' | 'cancelled'
 
+export interface Badge {
+  tier_name: string
+  color: string | null
+  icon: string | null
+}
+
 export interface Boot {
   user: string
   full_name: string
   image: string | null
   roles: string[]
   is_leader: boolean
+  badge?: Badge | null
 }
 
 export interface ProjectItem {
@@ -258,6 +265,7 @@ export interface Comment {
   by: string
   by_name: string
   by_image: string | null
+  by_badge?: Badge | null
   at: string
   at_human: string
 }
@@ -348,6 +356,7 @@ export interface LeaderboardEntry {
   image: string | null
   points: number
   rank: number
+  badge?: Badge | null
 }
 
 export type LeaderboardPeriod = 'weekly' | 'monthly' | 'all'
