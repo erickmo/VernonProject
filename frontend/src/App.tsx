@@ -4,6 +4,8 @@ import { FolderKanban } from 'lucide-react'
 import { useBoot } from './hooks/useData'
 import { ApiError } from './lib/api'
 import { Spinner } from './components/ui'
+import { useConfirm } from './components/Confirm'
+import { pushSupported, subscribeToPush } from './lib/push'
 import Login from './pages/Login'
 import Today from './pages/Today'
 import Reports from './pages/Reports'
@@ -32,6 +34,7 @@ import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
+const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
 
 function Splash() {
   return (
@@ -52,10 +55,34 @@ function LegacyRedirect({ to }: { to: string }) {
 export default function App() {
   const { data: boot, isLoading, error } = useBoot()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const confirm = useConfirm()
 
   useEffect(() => {
     if (boot && !localStorage.getItem(ONBOARDED_KEY)) setShowOnboarding(true)
   }, [boot])
+
+  useEffect(() => {
+    if (!boot || !boot.vapid_public_key) return
+    if (!pushSupported() || Notification.permission !== 'default') return
+    if (localStorage.getItem(PUSH_ASKED_KEY)) return
+    localStorage.setItem(PUSH_ASKED_KEY, '1')
+    ;(async () => {
+      const ok = await confirm({
+        title: 'Enable notifications?',
+        message:
+          'Get notified about task assignments, approvals, comments, and points — even when the app is closed.',
+        confirmLabel: 'Enable',
+        cancelLabel: 'Not now',
+      })
+      if (ok) {
+        try {
+          await subscribeToPush(boot.vapid_public_key!)
+        } catch {
+          /* user can retry from Profile */
+        }
+      }
+    })()
+  }, [boot, confirm])
 
   const finishOnboarding = () => {
     localStorage.setItem(ONBOARDED_KEY, '1')
