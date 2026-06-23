@@ -2,13 +2,10 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, CalendarClock, ListChecks, Plus, ChevronRight,
-  Pencil, Trash2,
 } from 'lucide-react'
-import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
-import { sanitizeHtml, stripHtml, formatDate } from '@/lib/format'
+import { useProjectDetail } from '@/hooks/useData'
+import { sanitizeHtml, stripHtml } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
-import { useToast } from '@/components/Toast'
-import { useConfirm } from '@/components/Confirm'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { STATUS } from '@/lib/status'
@@ -18,14 +15,11 @@ export default function ProjectDetail() {
   const { name = '' } = useParams()
   const id = decodeURIComponent(name)
   const nav = useNavigate()
-  const toast = useToast()
-  const confirm = useConfirm()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
 
   const detail = useProjectDetail(id, showCancelled)
-  const deleteDetail = useDeleteProjectDetail()
 
   if (detail.isLoading && !detail.data) {
     return (
@@ -54,23 +48,6 @@ export default function ProjectDetail() {
   const visibleItems = showCancelled
     ? items
     : items.filter((t) => t.status_key !== 'cancelled')
-
-  const handleDelete = async () => {
-    const ok = await confirm({
-      title: 'Delete this detail?',
-      message: `"${d.title}" and all its todos will be permanently deleted.`,
-      confirmLabel: 'Delete',
-      destructive: true,
-    })
-    if (!ok) return
-    deleteDetail.mutate(id, {
-      onSuccess: () => {
-        toast('success', 'Detail deleted')
-        nav(`/project/${d.project}`)
-      },
-      onError: (e) => toast('error', (e as Error).message),
-    })
-  }
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -105,25 +82,6 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {d.can_edit && (
-          <div className="flex items-center gap-2 shrink-0 mt-1">
-            <button
-              onClick={() => {/* edit handled via ProjectDetailFormDialog if needed */}}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
-              title="Edit detail"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleteDetail.isPending}
-              className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-500 hover:text-rose-600 disabled:opacity-50"
-              title="Delete detail"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Header content cards */}
