@@ -30,12 +30,14 @@ STATUS_PLANNED = "⚪️ Planned"
 STATUS_DONE = "\U0001f7e0 Done"
 STATUS_CHECKED = "\U0001f537 Checked By PL"
 STATUS_COMPLETED = "✅ Completed"
+STATUS_CANCELLED = "\U0001f6ab Cancelled"
 
 STATUS_KEY = {
 	STATUS_PLANNED: "planned",
 	STATUS_DONE: "done",
 	STATUS_CHECKED: "checked",
 	STATUS_COMPLETED: "completed",
+	STATUS_CANCELLED: "cancelled",
 }
 
 # key -> (label, full status string) for the *next* step

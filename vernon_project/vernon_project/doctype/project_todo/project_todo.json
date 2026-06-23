@@ -55,6 +55,7 @@
       "allocations",
       "progress_section",
       "status",
+      "cancellation_reason",
       "action",
       "column_break_hypm",
       "developed_at",
@@ -149,17 +150,17 @@
       },
       {
          "fieldname": "blocked_by",
-         "fieldtype": "Link",
+         "fieldtype": "Table MultiSelect",
          "label": "Blocked By",
-         "options": "Project Todo",
-         "description": "This task is blocked by / depends on the selected task."
+         "options": "Project Todo Dependency",
+         "description": "This task is blocked by / depends on the selected tasks."
       },
       {
          "fieldname": "blocking",
-         "fieldtype": "Link",
+         "fieldtype": "Table MultiSelect",
          "label": "Blocking",
-         "options": "Project Todo",
-         "description": "This task blocks the selected task."
+         "options": "Project Todo Dependency",
+         "description": "This task blocks the selected tasks."
       },
       {
          "fieldname": "points_section",
@@ -387,9 +388,14 @@
          "fieldtype": "Select",
          "in_list_view": 1,
          "label": "Status",
-         "options": "\u26aa\ufe0f Planned\n\ud83d\udfe0 Done\n\ud83d\udd37 Checked By PL\n\u2705 Completed",
+         "options": "\u26aa\ufe0f Planned\n\ud83d\udfe0 Done\n\ud83d\udd37 Checked By PL\n\u2705 Completed\n\ud83d\udeab Cancelled",
          "read_only": 1,
          "reqd": 1
+      },
+      {
+         "fieldname": "cancellation_reason",
+         "fieldtype": "Small Text",
+         "label": "Cancellation Reason"
       },
       {
          "columns": 1,
