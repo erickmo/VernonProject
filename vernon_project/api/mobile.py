@@ -1757,6 +1757,7 @@ def get_leaderboard(period="monthly", brand=None):
 			"image": info.get("user_image"),
 			"points": float(row["points"]),
 			"rank": rank,
+			"badge": _user_badge(row["user"]),
 		}
 
 	entries, me = [], None
