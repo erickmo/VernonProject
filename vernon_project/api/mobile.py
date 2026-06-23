@@ -953,6 +953,32 @@ def add_comment(reference_doctype, reference_name, content):
 		frappe.throw("Comment cannot be empty.")
 	doc = frappe.get_doc(reference_doctype, reference_name)
 	c = doc.add_comment("Comment", content)
+
+	# Notify item participants (project owner/leader + the todo's assignee).
+	actor = frappe.session.user
+	project = _comment_project(reference_doctype, reference_name)
+	participants = set()
+	if project:
+		owner, leader = frappe.get_value(
+			"Project", project, ["project_owner", "project_leader"]
+		) or (None, None)
+		participants.update([owner, leader])
+	if reference_doctype == "Project Todo":
+		assignee = frappe.get_value("Project Todo", reference_name, "assigned_to")
+		participants.add(assignee)
+	actor_name = (_user_name_map({actor}).get(actor) or {}).get("full_name") or actor
+	snippet = frappe.utils.strip_html(content)[:80]
+	for p in participants:
+		_notify(
+			recipient=p,
+			type="Comment",
+			title="New comment",
+			body=f"{actor_name}: {snippet}",
+			reference_doctype=reference_doctype,
+			reference_name=reference_name,
+			actor=actor,
+		)
+
 	name_map = _user_name_map({c.comment_email, c.comment_by})
 	return _shape_comment(
 		{
@@ -2196,6 +2222,16 @@ def grant_points(user, amount, note=None):
 	}).insert(ignore_permissions=True)
 	frappe.db.commit()
 
+	_notify(
+		recipient=user,
+		type="Points",
+		title="You received points",
+		body=f"You were granted {int(amount)} points.",
+		reference_doctype="Wallet",
+		reference_name=user,
+		actor=frappe.session.user,
+	)
+
 	_, _, balance = _user_balance(user)
 	return {"balance": balance, "granted": amount}
 
@@ -2264,6 +2300,17 @@ def gift_points(to_user, amount, note=None):
 		"credited_on": now,
 	}).insert(ignore_permissions=True)
 	frappe.db.commit()
+
+	sender_name = (_user_name_map({sender}).get(sender) or {}).get("full_name") or sender
+	_notify(
+		recipient=to_user,
+		type="Points",
+		title="You received a gift",
+		body=f"{sender_name} gifted you {amount} points.",
+		reference_doctype="Wallet",
+		reference_name=to_user,
+		actor=sender,
+	)
 
 	_, _, new_balance = _user_balance(sender)
 	return {"balance": new_balance, "gifted": amount, "to": to_user}
