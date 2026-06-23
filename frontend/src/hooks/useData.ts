@@ -59,6 +59,7 @@ export const keys = {
   rewardAdmin: (n: string) => ['reward-admin', n] as const,
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
   giftRecipients: ['gift-recipients'] as const,
+  notifications: ['notifications'] as const,
 }
 
 export const useBoot = () =>
@@ -788,5 +789,30 @@ export function useSaveBadgeSettings() {
       qc.invalidateQueries({ queryKey: keys.boot })
       qc.invalidateQueries({ queryKey: ['leaderboard'] })
     },
+  })
+}
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: keys.notifications,
+    queryFn: () => mobileApi.getNotifications(30),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+  })
+}
+
+export function useMarkRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => mobileApi.markNotificationRead(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
+  })
+}
+
+export function useMarkAllRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => mobileApi.markAllRead(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
   })
 }

@@ -13,6 +13,34 @@ export interface Boot {
   roles: string[]
   is_leader: boolean
   badge?: Badge | null
+  vapid_public_key?: string | null
+}
+
+export type NotificationType =
+  | 'Assignment'
+  | 'Approval'
+  | 'Comment'
+  | 'Mention'
+  | 'Points'
+  | 'Redemption'
+
+export interface AppNotification {
+  name: string
+  type: NotificationType
+  title: string
+  body: string | null
+  reference_doctype: string | null
+  reference_name: string | null
+  actor: string | null
+  actor_name: string | null
+  is_read: boolean
+  at: string
+  at_human: string | null
+}
+
+export interface NotificationsResponse {
+  items: AppNotification[]
+  unread: number
 }
 
 export interface ProjectItem {

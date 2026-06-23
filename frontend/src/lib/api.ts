@@ -202,6 +202,17 @@ export const mobileApi = {
     api.get<{ tiers: import('./types').BadgeTierInput[] }>(M + 'get_badge_settings'),
   saveBadgeSettings: (tiers: import('./types').BadgeTierInput[]) =>
     api.post<{ ok: boolean }>(M + 'save_badge_settings', { tiers: JSON.stringify(tiers) }),
+  getNotifications: (limit = 30) =>
+    api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit }),
+  markNotificationRead: (name: string) =>
+    api.post<{ ok: boolean }>(M + 'mark_notification_read', { name }),
+  markAllRead: () => api.post<{ ok: boolean; marked: number }>(M + 'mark_all_read'),
+  registerPushSubscription: (subscription: unknown) =>
+    api.post<{ ok: boolean }>(M + 'register_push_subscription', {
+      subscription: JSON.stringify(subscription),
+    }),
+  unregisterPushSubscription: (endpoint: string) =>
+    api.post<{ ok: boolean }>(M + 'unregister_push_subscription', { endpoint }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
