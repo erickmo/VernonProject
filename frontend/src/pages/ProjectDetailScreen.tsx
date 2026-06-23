@@ -9,6 +9,7 @@ import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useProjectDetail } from '@/hooks/useData'
 import { stripHtml, sanitizeHtml, byDeadlineAsc } from '@/lib/format'
+import { STATUS } from '@/lib/status'
 
 export default function ProjectDetailScreen() {
   const { name = '' } = useParams()
@@ -43,8 +44,9 @@ export default function ProjectDetailScreen() {
   const hasOutcome = !!stripHtml(outcomeHtml).trim()
   const projectItems = data.project_items.slice().sort(byDeadlineAsc)
   const completedCount = projectItems.filter((t) => t.status_key === 'completed').length
+  const openCount = projectItems.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
   const filteredItems = projectItems.filter((t) =>
-    todoFilter === 'all' ? true : todoFilter === 'completed' ? t.status_key === 'completed' : t.status_key !== 'completed',
+    todoFilter === 'all' ? true : todoFilter === 'completed' ? t.status_key === 'completed' : (t.status_key !== 'completed' && t.status_key !== 'cancelled'),
   )
 
   return (
@@ -125,7 +127,7 @@ export default function ProjectDetailScreen() {
               <div className="flex gap-1.5">
                 {([
                   ['all', `All ${projectItems.length}`],
-                  ['open', `Open ${projectItems.length - completedCount}`],
+                  ['open', `Open ${openCount}`],
                   ['completed', `Completed ${completedCount}`],
                 ] as const).map(([key, label]) => (
                   <button
@@ -150,24 +152,34 @@ export default function ProjectDetailScreen() {
             {filteredItems.length ? (
           <div className="flex flex-col gap-3">
             {[
-              { label: 'Open', items: filteredItems.filter((t) => t.status_key !== 'completed') },
+              { label: 'Open', items: filteredItems.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled') },
               { label: 'Completed', items: filteredItems.filter((t) => t.status_key === 'completed') },
+              { label: 'Cancelled', items: todoFilter === 'all' ? projectItems.filter((t) => t.status_key === 'cancelled') : [] },
             ].filter((s) => s.items.length).map((s) => (
               <div key={s.label}>
                 <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{s.label} ({s.items.length})</p>
                 <div className="flex flex-col gap-1.5">
-                  {s.items.map((t) => (
+                  {s.items.map((t) => {
+                    const isCancelled = t.status_key === 'cancelled'
+                    const statusMeta = STATUS[t.status_key as keyof typeof STATUS]
+                    return (
               <Link
                 key={t.name}
                 to={`/project-item/${encodeURIComponent(t.name)}`}
-                className="flex items-center gap-3 rounded-xl bg-white dark:bg-slate-800 px-4 py-3 shadow-card transition active:scale-[0.99]"
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-card transition active:scale-[0.99] ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 opacity-60' : 'bg-white dark:bg-slate-800'}`}
               >
                 <div className="min-w-0 flex-1">
-                  <p className={`truncate text-sm font-medium ${t.is_overdue ? 'text-rose-700' : 'text-slate-800 dark:text-slate-100'}`}>
+                  <p className={`truncate text-sm font-medium ${isCancelled ? 'text-slate-400 dark:text-slate-500 line-through' : t.is_overdue ? 'text-rose-700' : 'text-slate-800 dark:text-slate-100'}`}>
                     {t.to_do}
                   </p>
                   <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                    <span>{t.status}</span>
+                    {statusMeta ? (
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}>
+                        {statusMeta.emoji} {statusMeta.label}
+                      </span>
+                    ) : (
+                      <span>{t.status}</span>
+                    )}
                     {t.deadline_human && (
                       <>
                         <span>·</span>
@@ -186,7 +198,8 @@ export default function ProjectDetailScreen() {
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
               </Link>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}

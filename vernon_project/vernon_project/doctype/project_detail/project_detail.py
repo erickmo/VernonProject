@@ -63,10 +63,15 @@ class ProjectDetail(Document):
 
 
 def _todo_stats(detail_name):
-	"""Aggregate Project Todo rows for one Project Detail."""
+	"""Aggregate Project Todo rows for one Project Detail.
+
+	Cancelled todos are excluded from all counts/estimates so they do not
+	affect the derived status (e.g. cancelling the last Planned todo must
+	not flip the detail to "Completed").
+	"""
 	rows = frappe.get_all(
 		"Project Todo",
-		filters={"project_detail": detail_name},
+		filters={"project_detail": detail_name, "status": ["!=", "🚫 Cancelled"]},
 		fields=["estimated", "status", "deadline"],
 	)
 	count = len(rows)
