@@ -44,6 +44,7 @@ website_redirects = [
 # so client-side routing (React Router) works on deep links and refreshes.
 website_route_rules = [
 	{"from_route": "/m/<path:app_path>", "to_route": "m"},
+	{"from_route": "/web/<path:app_path>", "to_route": "web"},
 ]
 
 # include js, css files in header of web template
