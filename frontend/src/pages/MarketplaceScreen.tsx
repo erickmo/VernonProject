@@ -4,6 +4,7 @@ import { Store, Coins, Wallet, Trophy, Settings } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { RedeemSheet } from '@/components/RedeemSheet'
+import { RewardDetailSheet } from '@/components/RewardDetailSheet'
 import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { formatNumber } from '@/lib/format'
@@ -15,6 +16,7 @@ export default function MarketplaceScreen() {
   const { data, isLoading } = useMarketplace()
   const redeem = useRedeemReward()
   const toast = useToast()
+  const [detail, setDetail] = useState<MarketplaceReward | null>(null)
   const [selected, setSelected] = useState<MarketplaceReward | null>(null)
 
   const balance = data?.balance ?? 0
@@ -102,11 +104,10 @@ export default function MarketplaceScreen() {
                     {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
                   </div>
                   <button
-                    onClick={() => setSelected(r)}
-                    disabled={disabled}
-                    className="mt-2 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400"
+                    onClick={() => setDetail(r)}
+                    className="mt-2 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white"
                   >
-                    {soldOut ? 'Sold out' : tooPricey ? 'Not enough' : 'Redeem'}
+                    View
                   </button>
                 </div>
               </div>
@@ -114,6 +115,17 @@ export default function MarketplaceScreen() {
           })}
         </div>
       )}
+
+      <RewardDetailSheet
+        reward={detail}
+        balance={balance}
+        onRedeem={() => {
+          if (!detail) return
+          setSelected(detail)
+          setDetail(null)
+        }}
+        onClose={() => setDetail(null)}
+      />
 
       <RedeemSheet
         reward={selected}
