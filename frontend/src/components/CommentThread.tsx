@@ -26,6 +26,7 @@ export default function CommentThread({
   const [mentionOpen, setMentionOpen] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [people, setPeople] = useState<MentionUser[]>([])
+  const peopleLoaded = useRef(false)
   const [pending, setPending] = useState(false)
 
   // Insert an HTML fragment at the current caret inside the editor.
@@ -84,12 +85,13 @@ export default function CommentThread({
     }
     setMentionQuery(m[1].toLowerCase())
     setMentionOpen(true)
-    if (!people.length) {
+    if (!peopleLoaded.current) {
       try {
         const list = await mobileApi.getMentionableUsers(referenceDoctype, referenceName)
         setPeople(list)
+        peopleLoaded.current = true
       } catch {
-        /* leave empty; autocomplete simply shows nothing */
+        /* leave empty; retry allowed on next @ keypress since peopleLoaded stays false */
       }
     }
   }
@@ -128,8 +130,11 @@ export default function CommentThread({
     const ed = editorRef.current
     if (!ed) return
     const html = sanitizeHtml(ed.innerHTML).trim()
-    // Reject empty (no text, no image, no mention).
-    const hasContent = (ed.textContent || '').trim() || ed.querySelector('img,span[data-mention]')
+    // Reject empty (no text, no image, no mention) — check the sanitized output, not the raw DOM,
+    // so that content stripped by the sanitizer does not pass through as a phantom "has content".
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    const hasContent = (tmp.textContent || '').trim() || tmp.querySelector('img,span[data-mention]')
     if (!hasContent) return
     setPending(true)
     addComment.mutate(html, {
@@ -227,7 +232,7 @@ export default function CommentThread({
         </button>
         <button
           onClick={submit}
-          disabled={pending}
+          disabled={pending || uploading}
           className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white disabled:opacity-40"
           aria-label="Send comment"
         >
