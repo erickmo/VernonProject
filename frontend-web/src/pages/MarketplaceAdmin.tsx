@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Store, Check, Gift } from 'lucide-react'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
+import { ErrorState, rowButtonProps } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
 import { formatNumber } from '@/lib/format'
 import {
   useBoot,
@@ -37,7 +39,7 @@ export default function MarketplaceAdmin() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Marketplace admin</h1>
+        <h1 className="text-2xl font-bold">Marketplace Admin</h1>
         {tab === 'rewards' && (
           <button
             onClick={() => navigate('/marketplace-admin/reward/new')}
@@ -64,7 +66,8 @@ export default function MarketplaceAdmin() {
 
 function RewardsTable() {
   const navigate = useNavigate()
-  const { data: rewards, isLoading } = useRewardsAdmin()
+  const q = useRewardsAdmin()
+  const { data: rewards, isLoading } = q
 
   if (isLoading) {
     return (
@@ -73,6 +76,7 @@ function RewardsTable() {
       </div>
     )
   }
+  if (q.isError) return <ErrorState onRetry={() => q.refetch()} />
   if (!(rewards ?? []).length) {
     return <EmptyState icon={Store} title="No rewards yet" subtitle="Click New reward to add one." />
   }
@@ -92,8 +96,10 @@ function RewardsTable() {
           {(rewards ?? []).map((r) => (
             <tr
               key={r.name}
-              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
-              onClick={() => navigate(`/marketplace-admin/reward/${encodeURIComponent(r.name)}`)}
+              {...rowButtonProps(() =>
+                navigate(`/marketplace-admin/reward/${encodeURIComponent(r.name)}`),
+              )}
+              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
             >
               <td className="px-4 py-2.5 font-medium">{r.reward_name}</td>
               <td className="px-4 py-2.5 text-right text-slate-500 whitespace-nowrap">
@@ -123,15 +129,27 @@ function RewardsTable() {
 
 function RedemptionsTable() {
   const toast = useToast()
+  const confirm = useConfirm()
   const [status, setStatus] = useState<RStatus>('pending')
-  const { data: rows, isLoading } = useRedemptionsAdmin(status)
+  const q = useRedemptionsAdmin(status)
+  const { data: rows, isLoading } = q
   const fulfill = useFulfillRedemption()
+  const [fulfillingName, setFulfillingName] = useState<string | null>(null)
 
-  const markFulfilled = (name: string) =>
+  const markFulfilled = async (name: string) => {
+    const ok = await confirm({
+      title: 'Mark this redemption fulfilled?',
+      message: 'This action is irreversible.',
+      confirmLabel: 'Fulfill',
+    })
+    if (!ok) return
+    setFulfillingName(name)
     fulfill.mutate(name, {
       onSuccess: () => toast('success', 'Marked fulfilled'),
       onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not update'),
+      onSettled: () => setFulfillingName(null),
     })
+  }
 
   return (
     <div className="space-y-4">
@@ -149,6 +167,8 @@ function RedemptionsTable() {
         <div className="flex justify-center py-20">
           <Spinner />
         </div>
+      ) : q.isError ? (
+        <ErrorState onRetry={() => q.refetch()} />
       ) : !(rows ?? []).length ? (
         <EmptyState icon={Gift} title="Nothing here" />
       ) : (
@@ -176,10 +196,15 @@ function RedemptionsTable() {
                     {r.status === 'Pending' ? (
                       <button
                         onClick={() => markFulfilled(r.name)}
-                        disabled={fulfill.isPending}
+                        disabled={fulfillingName === r.name}
                         className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
                       >
-                        <Check className="h-3.5 w-3.5" /> Fulfill
+                        {fulfillingName === r.name ? (
+                          <Spinner className="h-3.5 w-3.5" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}{' '}
+                        Fulfill
                       </button>
                     ) : (
                       <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">

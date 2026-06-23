@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Users as UsersIcon, Search } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
+import { ErrorState, rowButtonProps } from '@web/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
@@ -26,7 +27,8 @@ const chip = (active: boolean) =>
 export default function Users() {
   const navigate = useNavigate()
   const { data: boot, isLoading: bootLoading } = useBoot()
-  const { data: users, isLoading } = useUsers()
+  const usersQuery = useUsers()
+  const { data: users, isLoading } = usersQuery
 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
@@ -58,6 +60,10 @@ export default function Users() {
   }
 
   if (blocked) return null
+
+  if (usersQuery.isError) {
+    return <ErrorState onRetry={() => usersQuery.refetch()} />
+  }
 
   const hasUsers = (users ?? []).length > 0
 
@@ -109,11 +115,27 @@ export default function Users() {
       </div>
 
       {!hasUsers ? (
-        <EmptyState icon={UsersIcon} title="No users yet" />
+        <div className="flex flex-col items-center gap-3">
+          <EmptyState
+            icon={UsersIcon}
+            title="No users yet"
+            subtitle="Invite your first teammate to get started."
+          />
+          <button
+            onClick={() => navigate('/users/new')}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" /> New user
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon={UsersIcon} title="No matching users" />
+        <EmptyState
+          icon={UsersIcon}
+          title="No matching users"
+          subtitle="Try a different search or clear the filters."
+        />
       ) : (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
@@ -126,8 +148,8 @@ export default function Users() {
               {filtered.map((u) => (
                 <tr
                   key={u.name}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
-                  onClick={() => navigate(`/users/${encodeURIComponent(u.name)}`)}
+                  {...rowButtonProps(() => navigate(`/users/${encodeURIComponent(u.name)}`))}
+                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                 >
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-3">

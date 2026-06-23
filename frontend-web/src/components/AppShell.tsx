@@ -13,6 +13,9 @@ import {
 import { Avatar } from '@/components/ui'
 import { logout } from '@/lib/api'
 import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
+import { useModalA11y } from '@web/lib/useModalA11y'
+
+const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' }
 
 type NavItem = {
   to: string
@@ -46,6 +49,7 @@ export function AppShell() {
   const reviewCount = dash.data?.counts.review ?? 0
   const [theme, setThemeState] = useState<Theme>(getStoredTheme())
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const drawerRef = useModalA11y(drawerOpen, () => setDrawerOpen(false))
 
   const pickTheme = (t: Theme) => { setTheme(t); setThemeState(t) }
   const doLogout = async () => { await logout(); window.location.href = '/web' }
@@ -120,6 +124,9 @@ export function AppShell() {
             <button
               key={value}
               onClick={() => pickTheme(value)}
+              aria-label={`${THEME_LABEL[value]} theme`}
+              aria-pressed={theme === value}
+              title={THEME_LABEL[value]}
               className={`flex-1 flex items-center justify-center py-1.5 rounded-md ${
                 theme === value ? 'bg-brand-50 dark:bg-brand-600/15 text-brand-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
@@ -144,14 +151,19 @@ export function AppShell() {
       {drawerOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute left-0 top-0">{sidebar}</div>
+          <div ref={drawerRef} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="absolute left-0 top-0">{sidebar}</div>
         </div>
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* top bar */}
         <header className="sticky top-0 z-30 flex items-center gap-3 h-14 px-4 lg:px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
-          <button className="lg:hidden" onClick={() => setDrawerOpen((o) => !o)}>
+          <button
+            className="lg:hidden rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            aria-label="Menu"
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen((o) => !o)}
+          >
             {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div id="web-topbar-slot" className="flex-1 flex items-center justify-between" />

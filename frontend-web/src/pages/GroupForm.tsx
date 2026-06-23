@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus } from 'lucide-react'
 import { Spinner } from '@/components/ui'
+import { ErrorState, Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
@@ -70,6 +71,8 @@ export default function GroupForm() {
   })
 
   const [stepFill, setStepFill] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [nameError, setNameError] = useState('')
 
   useEffect(() => {
     if (isEdit && existing) {
@@ -105,23 +108,39 @@ export default function GroupForm() {
     )
   }
 
-  const setNum = (key: keyof ScoringGroupPayload, v: string) =>
-    setForm((f) => ({ ...f, [key]: v === '' ? 0 : Number(v) }))
+  if (isEdit && !isLoading && !existing) {
+    return (
+      <ErrorState
+        title="Not found"
+        subtitle="This group could not be found. It may have been deleted."
+        onRetry={() => navigate('/groups')}
+      />
+    )
+  }
 
-  const setLevelPoint = (i: number, point: number) =>
+  const setNum = (key: keyof ScoringGroupPayload, v: string) => {
+    setDirty(true)
+    setForm((f) => ({ ...f, [key]: v === '' ? 0 : Number(v) }))
+  }
+
+  const setLevelPoint = (i: number, point: number) => {
+    setDirty(true)
     setForm((f) => ({
       ...f,
       levels: f.levels.map((l, j) => (j === i ? { ...l, point } : l)),
     }))
+  }
 
   const LEVEL_STEP = 5
-  const bumpLevelPoint = (i: number, delta: number) =>
+  const bumpLevelPoint = (i: number, delta: number) => {
+    setDirty(true)
     setForm((f) => ({
       ...f,
       levels: f.levels.map((l, j) =>
         j === i ? { ...l, point: Math.max(0, (Number(l.point) || 0) + delta) } : l,
       ),
     }))
+  }
 
   const applyStepFill = () => {
     const step = Number(stepFill)
@@ -129,10 +148,24 @@ export default function GroupForm() {
       toast('error', 'Enter a step value first')
       return
     }
+    setDirty(true)
     setForm((f) => ({
       ...f,
       levels: f.levels.map((l, i) => ({ ...l, point: Math.max(0, (i + 1) * step) })),
     }))
+  }
+
+  const goBack = async () => {
+    if (dirty) {
+      const ok = await confirm({
+        title: 'Discard changes?',
+        message: 'You have unsaved changes. Leave without saving?',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+      })
+      if (!ok) return
+    }
+    navigate('/groups')
   }
 
   const validate = (): string | null => {
@@ -147,9 +180,11 @@ export default function GroupForm() {
   const save = () => {
     const err = validate()
     if (err) {
+      if (!form.group_name.trim()) setNameError('Group name is required')
       toast('error', err)
       return
     }
+    setNameError('')
     const payload: ScoringGroupPayload = {
       ...form,
       group_name: form.group_name.trim(),
@@ -201,7 +236,8 @@ export default function GroupForm() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <button
-          onClick={() => navigate('/groups')}
+          type="button"
+          onClick={goBack}
           className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Groups
@@ -209,27 +245,51 @@ export default function GroupForm() {
         <h1 className="text-2xl font-bold">{isEdit ? 'Edit group' : 'New group'}</h1>
       </div>
 
-      <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4">
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Group name</label>
-          <input
-            className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
-            value={form.group_name}
-            readOnly={isEdit}
-            onChange={(e) => setForm((f) => ({ ...f, group_name: e.target.value }))}
-            placeholder="e.g. Frontend"
-          />
-        </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+        className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4"
+      >
+        <Field
+          label="Group name"
+          required={!isEdit}
+          error={nameError}
+          hint={isEdit ? "Can't be changed after creation" : undefined}
+        >
+          {(id) => (
+            <input
+              id={id}
+              className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
+              value={form.group_name}
+              readOnly={isEdit}
+              autoFocus={!isEdit}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, group_name: e.target.value }))
+                setDirty(true)
+                if (nameError) setNameError('')
+              }}
+              placeholder="e.g. Frontend"
+            />
+          )}
+        </Field>
 
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Description</label>
-          <textarea
-            className={field}
-            rows={2}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-        </div>
+        <Field label="Description">
+          {(id) => (
+            <textarea
+              id={id}
+              className={field}
+              rows={2}
+              autoFocus={isEdit}
+              value={form.description}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, description: e.target.value }))
+                setDirty(true)
+              }}
+            />
+          )}
+        </Field>
 
         {/* How scoring works */}
         <div className="rounded-2xl bg-brand-50 p-3 text-xs leading-relaxed text-brand-900 dark:bg-brand-500/15 dark:text-brand-200">
@@ -337,14 +397,14 @@ export default function GroupForm() {
         </div>
 
         <button
-          onClick={save}
+          type="submit"
           disabled={saving}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
         >
           {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           {isEdit ? 'Save changes' : 'Create group'}
         </button>
-      </div>
+      </form>
 
       {isEdit && (
         <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6">

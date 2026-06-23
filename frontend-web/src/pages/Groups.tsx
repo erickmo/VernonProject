@@ -2,12 +2,14 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trophy } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { ErrorState, rowButtonProps } from '@web/components/ui'
 import { useScoringGroups, useBoot, canManageGroups } from '@/hooks/useData'
 
 export default function Groups() {
   const navigate = useNavigate()
   const { data: boot, isLoading: bootLoading } = useBoot()
-  const { data: groups, isLoading } = useScoringGroups()
+  const groupsQuery = useScoringGroups()
+  const { data: groups, isLoading } = groupsQuery
 
   const blocked = !!boot && !canManageGroups(boot)
   useEffect(() => {
@@ -24,6 +26,10 @@ export default function Groups() {
 
   if (blocked) return null
 
+  if (groupsQuery.isError) {
+    return <ErrorState onRetry={() => groupsQuery.refetch()} />
+  }
+
   const list = groups ?? []
 
   return (
@@ -39,9 +45,21 @@ export default function Groups() {
       </div>
 
       {list.length === 0 ? (
-        <EmptyState icon={Trophy} title="No groups yet" />
+        <div className="flex flex-col items-center gap-3">
+          <EmptyState
+            icon={Trophy}
+            title="No groups yet"
+            subtitle="Create a scoring group to start weighting tasks."
+          />
+          <button
+            onClick={() => navigate('/groups/new')}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" /> New group
+          </button>
+        </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="max-w-3xl rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
@@ -53,13 +71,13 @@ export default function Groups() {
               {list.map((g) => (
                 <tr
                   key={g.name}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
-                  onClick={() => navigate(`/groups/${encodeURIComponent(g.name)}`)}
+                  {...rowButtonProps(() => navigate(`/groups/${encodeURIComponent(g.name)}`))}
+                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                 >
                   <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
                     {g.group_name}
                   </td>
-                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">
+                  <td className="max-w-md truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">
                     {g.description || '—'}
                   </td>
                 </tr>

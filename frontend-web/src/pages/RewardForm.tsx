@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Trash2, Check, ImagePlus, ArrowLeft } from 'lucide-react'
+import { Trash2, Check, ImagePlus, ArrowLeft, X } from 'lucide-react'
 import { Spinner } from '@/components/ui'
+import { ErrorState, Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
@@ -28,6 +29,8 @@ const empty: RewardFormPayload = {
   image: null,
 }
 
+type Errors = { reward_name?: string; point_cost?: string; stock_quantity?: string }
+
 export default function RewardForm() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -43,8 +46,18 @@ export default function RewardForm() {
   const del = useDeleteReward()
 
   const [form, setForm] = useState<RewardFormPayload>(empty)
+  const [errors, setErrors] = useState<Errors>({})
+  const [dirty, setDirty] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const costRef = useRef<HTMLInputElement>(null)
+  const stockRef = useRef<HTMLInputElement>(null)
+
+  const patch = (p: Partial<RewardFormPayload>) => {
+    setForm((f) => ({ ...f, ...p }))
+    setDirty(true)
+  }
 
   useEffect(() => {
     if (isEdit && existing) {
@@ -73,13 +86,28 @@ export default function RewardForm() {
     )
   }
 
+  // Edit deep-link not-found guard.
+  if (isEdit && !isLoading && !existing) {
+    return (
+      <div className="space-y-5 max-w-2xl">
+        <Link
+          to="/marketplace-admin"
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        >
+          <ArrowLeft className="h-4 w-4" /> Marketplace Admin
+        </Link>
+        <ErrorState title="Not found" subtitle="This reward doesn't exist or was deleted." />
+      </div>
+    )
+  }
+
   const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
     setUploading(true)
     try {
       const url = await uploadRewardImage(f)
-      setForm((s) => ({ ...s, image: url }))
+      patch({ image: url })
       toast('success', 'Image uploaded')
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Upload failed')
@@ -89,17 +117,22 @@ export default function RewardForm() {
     }
   }
 
-  const validate = (): string | null => {
-    if (!form.reward_name.trim()) return 'Reward name is required'
-    if (form.point_cost < 0) return 'Point cost must be zero or more'
-    if (form.stock_quantity < 0) return 'Stock must be zero or more'
-    return null
+  const validate = (): Errors => {
+    const errs: Errors = {}
+    if (!form.reward_name.trim()) errs.reward_name = 'Reward name is required'
+    if (form.point_cost < 0) errs.point_cost = 'Point cost must be zero or more'
+    if (form.stock_quantity < 0) errs.stock_quantity = 'Stock must be zero or more'
+    return errs
   }
 
   const save = () => {
-    const err = validate()
-    if (err) {
-      toast('error', err)
+    const errs = validate()
+    setErrors(errs)
+    if (errs.reward_name || errs.point_cost || errs.stock_quantity) {
+      toast('error', errs.reward_name || errs.point_cost || errs.stock_quantity!)
+      if (errs.reward_name) nameRef.current?.focus()
+      else if (errs.point_cost) costRef.current?.focus()
+      else stockRef.current?.focus()
       return
     }
     const payload: RewardFormPayload = {
@@ -112,6 +145,7 @@ export default function RewardForm() {
     }
     const opts = {
       onSuccess: () => {
+        setDirty(false)
         toast('success', isEdit ? 'Reward updated' : 'Reward created')
         navigate('/marketplace-admin')
       },
@@ -125,6 +159,7 @@ export default function RewardForm() {
     if (!(await confirm({ title: 'Delete this reward?', confirmLabel: 'Delete', destructive: true }))) return
     del.mutate(name, {
       onSuccess: () => {
+        setDirty(false)
         toast('success', 'Reward deleted')
         navigate('/marketplace-admin')
       },
@@ -132,16 +167,36 @@ export default function RewardForm() {
     })
   }
 
+  const onBack = async (e: React.MouseEvent) => {
+    if (!dirty) return
+    e.preventDefault()
+    const ok = await confirm({
+      title: 'Discard changes?',
+      message: 'You have unsaved changes that will be lost.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep editing',
+      destructive: true,
+    })
+    if (ok) navigate('/marketplace-admin')
+  }
+
   const saving = create.isPending || update.isPending
 
   return (
-    <div className="space-y-5 max-w-2xl">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        save()
+      }}
+      className="space-y-5 max-w-2xl"
+    >
       <div className="space-y-2">
         <Link
           to="/marketplace-admin"
+          onClick={onBack}
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
         >
-          <ArrowLeft className="h-4 w-4" /> Marketplace admin
+          <ArrowLeft className="h-4 w-4" /> Marketplace Admin
         </Link>
         <h1 className="text-2xl font-bold">{isEdit ? 'Edit reward' : 'New reward'}</h1>
       </div>
@@ -149,7 +204,7 @@ export default function RewardForm() {
       <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-5">
         {/* Image */}
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Image</label>
+          <label className="mb-1 block text-sm font-medium">Image</label>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -157,7 +212,9 @@ export default function RewardForm() {
             className="flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800"
           >
             {uploading ? (
-              <Spinner className="h-5 w-5" />
+              <span className="flex flex-col items-center gap-1 text-xs">
+                <Spinner className="h-5 w-5" /> Uploading…
+              </span>
             ) : form.image ? (
               <img src={form.image} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -166,39 +223,69 @@ export default function RewardForm() {
               </span>
             )}
           </button>
+          {form.image && !uploading && (
+            <button
+              type="button"
+              onClick={() => patch({ image: null })}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 dark:hover:text-rose-400"
+            >
+              <X className="h-3.5 w-3.5" /> Remove image
+            </button>
+          )}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Reward name</label>
-          <input
-            className={field}
-            value={form.reward_name}
-            onChange={(e) => setForm((f) => ({ ...f, reward_name: e.target.value }))}
-            placeholder="e.g. Coffee Voucher"
-          />
-        </div>
+        <Field label="Reward name" required error={errors.reward_name}>
+          {(id) => (
+            <input
+              id={id}
+              ref={nameRef}
+              autoFocus={!isEdit}
+              className={field}
+              value={form.reward_name}
+              onChange={(e) => {
+                patch({ reward_name: e.target.value })
+                if (errors.reward_name) setErrors((s) => ({ ...s, reward_name: undefined }))
+              }}
+              placeholder="e.g. Coffee Voucher"
+            />
+          )}
+        </Field>
 
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Point cost</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              className={field}
-              value={formatNumber(form.point_cost)}
-              onChange={(e) => setForm((f) => ({ ...f, point_cost: Number(e.target.value.replace(/[^\d]/g, '')) }))}
-            />
+            <Field label="Point cost" required error={errors.point_cost}>
+              {(id) => (
+                <input
+                  id={id}
+                  ref={costRef}
+                  type="text"
+                  inputMode="numeric"
+                  className={field}
+                  value={formatNumber(form.point_cost)}
+                  onChange={(e) =>
+                    patch({ point_cost: Number(e.target.value.replace(/[^\d]/g, '')) })
+                  }
+                />
+              )}
+            </Field>
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Stock</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              className={field}
-              value={formatNumber(form.stock_quantity)}
-              onChange={(e) => setForm((f) => ({ ...f, stock_quantity: Number(e.target.value.replace(/[^\d]/g, '')) }))}
-            />
+            <Field label="Stock" required error={errors.stock_quantity}>
+              {(id) => (
+                <input
+                  id={id}
+                  ref={stockRef}
+                  type="text"
+                  inputMode="numeric"
+                  className={field}
+                  value={formatNumber(form.stock_quantity)}
+                  onChange={(e) =>
+                    patch({ stock_quantity: Number(e.target.value.replace(/[^\d]/g, '')) })
+                  }
+                />
+              )}
+            </Field>
           </div>
         </div>
 
@@ -208,24 +295,27 @@ export default function RewardForm() {
             type="checkbox"
             className="h-5 w-5 accent-brand-600"
             checked={form.active === 1}
-            onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked ? 1 : 0 }))}
+            onChange={(e) => patch({ active: e.target.checked ? 1 : 0 })}
           />
         </label>
 
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Description</label>
-          <textarea
-            className={field}
-            rows={3}
-            value={form.description ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Optional details"
-          />
-        </div>
+        <Field label="Description">
+          {(id) => (
+            <textarea
+              id={id}
+              className={field}
+              rows={3}
+              value={form.description ?? ''}
+              onChange={(e) => patch({ description: e.target.value })}
+              placeholder="Optional details"
+            />
+          )}
+        </Field>
 
         <div className="flex items-center justify-between gap-3">
           {isEdit ? (
             <button
+              type="button"
               onClick={remove}
               disabled={del.isPending}
               className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/10"
@@ -237,7 +327,7 @@ export default function RewardForm() {
           )}
 
           <button
-            onClick={save}
+            type="submit"
             disabled={saving || uploading}
             className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
           >
@@ -246,6 +336,6 @@ export default function RewardForm() {
           </button>
         </div>
       </div>
-    </div>
+    </form>
   )
 }

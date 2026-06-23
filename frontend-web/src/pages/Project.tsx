@@ -4,7 +4,7 @@ import {
   Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers,
   Pencil, Trash2, Plus, ListPlus, BarChart3, List,
 } from 'lucide-react'
-import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject } from '@/hooks/useData'
+import { useProject, useProjectDetail, useProjectGantt, permFlags, useBoot, useDeleteProject } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Avatar, Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -38,6 +38,9 @@ export default function Project() {
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
 
   const gantt = useProjectGantt(id, view === 'gantt')
+  // Quick-add targets a single detail; load it so the create form can offer
+  // the Blocked-by / Blocking pickers (siblings) like the detail-page add does.
+  const itemDetail = useProjectDetail(createItemFor ?? '')
 
   if (project.isLoading) {
     return (
@@ -335,6 +338,8 @@ export default function Project() {
           onClose={() => setCreateItemFor(null)}
           projectDetail={createItemFor}
           team={p.team.map((t) => ({ user: t.user, name: t.name }))}
+          defaultGroup={itemDetail.data?.default_group ?? null}
+          siblings={(itemDetail.data?.project_items ?? []).map((t) => ({ name: t.name, to_do: t.to_do }))}
         />
       )}
       <TeamWorkloadDrawer

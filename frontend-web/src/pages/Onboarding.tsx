@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import clsx from 'clsx'
-import { Home, MousePointerClick, CheckCheck, ArrowRight } from 'lucide-react'
+import { Home, MousePointerClick, CheckCheck, ArrowRight, ArrowLeft } from 'lucide-react'
+import { useModalA11y } from '@web/lib/useModalA11y'
 
 const SLIDES = [
   {
@@ -28,13 +29,21 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const slide = SLIDES[i]
   const Icon = slide.icon
   const last = i === SLIDES.length - 1
+  const ref = useModalA11y(true, onDone)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/50" onClick={onDone} />
-      <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-xl flex flex-col">
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Welcome to Vernon"
+        tabIndex={-1}
+        className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-xl flex flex-col"
+      >
         <div className="flex justify-end px-5 pt-4">
-          <button onClick={onDone} className="text-sm font-medium text-slate-400 dark:text-slate-500 hover:text-slate-600">
+          <button onClick={onDone} className="text-sm font-medium text-slate-400 dark:text-slate-500 hover:text-slate-600 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
             Skip
           </button>
         </div>
@@ -64,13 +73,23 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               />
             ))}
           </div>
-          <button
-            onClick={() => (last ? onDone() : setI(i + 1))}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-brand-700"
-          >
-            {last ? 'Get started' : 'Next'}
-            <ArrowRight className="h-5 w-5" />
-          </button>
+          <div className="flex gap-3">
+            {i > 0 && (
+              <button
+                onClick={() => setI(i - 1)}
+                className="flex items-center justify-center gap-1 rounded-2xl border border-slate-300 dark:border-slate-700 px-5 py-3.5 text-base font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
+                <ArrowLeft className="h-5 w-5" /> Back
+              </button>
+            )}
+            <button
+              onClick={() => (last ? onDone() : setI(i + 1))}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            >
+              {last ? 'Get started' : 'Next'}
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

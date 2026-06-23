@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast'
 import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 import { Dialog } from '@web/components/overlays/Dialog'
+import { ErrorState, rowButtonProps } from '@web/components/ui'
 
 function RewardDetailDialog({
   reward,
@@ -30,9 +31,11 @@ function RewardDetailDialog({
       open={!!reward}
       onClose={() => !pending && onClose()}
       title={reward?.reward_name ?? ''}
+      onSubmit={() => !disabled && onRedeem()}
       footer={
         <>
           <button
+            type="button"
             onClick={() => !pending && onClose()}
             disabled={pending}
             className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-60"
@@ -40,6 +43,7 @@ function RewardDetailDialog({
             Cancel
           </button>
           <button
+            type="submit"
             onClick={onRedeem}
             disabled={disabled}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400"
@@ -107,7 +111,8 @@ function RewardDetailDialog({
 export default function Marketplace() {
   const navigate = useNavigate()
   const { data: boot } = useBoot()
-  const { data, isLoading } = useMarketplace()
+  const marketplace = useMarketplace()
+  const { data, isLoading } = marketplace
   const redeem = useRedeemReward()
   const toast = useToast()
   const [detail, setDetail] = useState<MarketplaceReward | null>(null)
@@ -172,20 +177,24 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {isLoading && !data ? (
+      {marketplace.isError ? (
+        <ErrorState onRetry={() => marketplace.refetch()} />
+      ) : isLoading && !data ? (
         <div className="flex justify-center py-20">
           <Spinner />
         </div>
       ) : !data || data.rewards.length === 0 ? (
         <EmptyState icon={Store} title="No rewards yet" subtitle="Check back soon." />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {data.rewards.map((r) => {
             const soldOut = r.stock_quantity <= 0
             return (
               <div
                 key={r.name}
-                className="flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800"
+                {...rowButtonProps(() => setDetail(r))}
+                aria-label={`View reward ${r.reward_name}`}
+                className="flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
               >
                 <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800">
                   {r.image ? (
@@ -208,10 +217,13 @@ export default function Marketplace() {
                     {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
                   </div>
                   <button
-                    onClick={() => setDetail(r)}
+                    onClick={(ev) => {
+                      ev.stopPropagation()
+                      setDetail(r)
+                    }}
                     className="mt-2 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition"
                   >
-                    View
+                    {soldOut ? 'View reward' : 'Redeem'}
                   </button>
                 </div>
               </div>

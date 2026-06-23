@@ -3,6 +3,8 @@ import { Trophy } from 'lucide-react'
 import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
 import type { LeaderboardEntry, LeaderboardPeriod } from '@/lib/types'
+import { ErrorState } from '@web/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: 'weekly', label: 'Week' },
@@ -53,7 +55,8 @@ export default function Leaderboard() {
   const { data: boot } = useBoot()
   const [period, setPeriod] = useState<LeaderboardPeriod>('monthly')
   const [brand, setBrand] = useState<string>('')
-  const { data, isLoading } = useLeaderboard(period, brand || null)
+  const q = useLeaderboard(period, brand || null)
+  const { data, isLoading } = q
 
   const meInTop = !!data?.me && data.entries.some((e) => e.user === data.me!.user)
 
@@ -64,31 +67,37 @@ export default function Leaderboard() {
       <div className="flex items-center gap-3 flex-wrap">
         <Segmented options={PERIODS} value={period} onChange={setPeriod} />
         {data && data.brands.length > 0 && (
-          <select
-            value={brand}
-            onChange={(ev) => setBrand(ev.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 focus:border-brand-600 focus:outline-none"
-          >
-            <option value="">All brands</option>
-            {data.brands.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
+          <div className="w-48">
+            <SearchableSelect
+              value={brand}
+              onChange={setBrand}
+              options={data.brands.map((b) => ({ value: b, label: b }))}
+              placeholder="All brands"
+              allowClear
+            />
+          </div>
         )}
       </div>
 
-      {isLoading && !data ? (
+      {q.isError ? (
+        <ErrorState onRetry={() => q.refetch()} />
+      ) : isLoading && !data ? (
         <div className="flex justify-center py-20">
           <Spinner />
         </div>
       ) : !data || data.entries.length === 0 ? (
         <EmptyState icon={Trophy} title="No points yet" subtitle="Complete work to climb the board." />
       ) : (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="space-y-3 max-w-2xl">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
             <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">Rank</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Player</th>
+                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Points</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {data.entries.map((e) => (
                   <Row key={e.user} e={e} isMe={e.user === boot?.user} />
@@ -98,7 +107,7 @@ export default function Leaderboard() {
           </div>
 
           {data.me && !meInTop && (
-            <div className="rounded-xl border border-brand-200 dark:border-brand-500/30 overflow-hidden">
+            <div className="rounded-xl border border-brand-200 dark:border-brand-500/30 overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
                   <Row e={data.me} isMe />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { FolderKanban } from 'lucide-react'
+import { FolderKanban, AlertTriangle, RotateCw } from 'lucide-react'
 import {
   useBoot,
   canManageGroups,
@@ -48,6 +48,24 @@ function Splash() {
   )
 }
 
+function BootError() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-6 text-center">
+      <AlertTriangle className="w-12 h-12 text-amber-500" />
+      <h1 className="text-xl font-semibold">Couldn’t load Vernon</h1>
+      <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
+        Something went wrong reaching the server. Check your connection and try again.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        className="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium hover:bg-brand-700"
+      >
+        <RotateCw className="w-4 h-4" /> Reload
+      </button>
+    </div>
+  )
+}
+
 export default function App() {
   const boot = useBoot()
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -67,7 +85,11 @@ export default function App() {
   if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
     return <Login />
   }
-  if (!boot.data && err) return <Login />
+  // Genuine auth failure with no data -> login; any other boot failure (500,
+  // network) is an outage, not a missing session -> show a retry screen.
+  if (!boot.data && err) {
+    return err instanceof ApiError ? <Login /> : <BootError />
+  }
 
   const b = boot.data
 

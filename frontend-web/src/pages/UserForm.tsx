@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Spinner } from '@/components/ui'
+import { ErrorState, Field } from '@web/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -41,6 +42,8 @@ export default function UserForm() {
   const [enabled, setEnabled] = useState(true)
   const [sendWelcome, setSendWelcome] = useState(true)
   const [newPassword, setNewPassword] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [emailError, setEmailError] = useState('')
 
   useEffect(() => {
     if (existing) {
@@ -52,6 +55,19 @@ export default function UserForm() {
 
   const saving = create.isPending || update.isPending
 
+  async function goBack() {
+    if (dirty) {
+      const ok = await confirm({
+        title: 'Discard changes?',
+        message: 'You have unsaved changes. Leave without saving?',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+      })
+      if (!ok) return
+    }
+    navigate('/users')
+  }
+
   async function onSave() {
     try {
       if (isEdit) {
@@ -62,9 +78,11 @@ export default function UserForm() {
         toast('success', 'User updated')
       } else {
         if (!email.trim()) {
+          setEmailError('Email is required')
           toast('error', 'Email is required')
           return
         }
+        setEmailError('')
         await create.mutateAsync({
           email: email.trim(),
           full_name: fullName.trim() || email.trim(),
@@ -118,12 +136,29 @@ export default function UserForm() {
     )
   }
 
+  if (isEdit && !isLoading && !existing) {
+    return (
+      <ErrorState
+        title="Not found"
+        subtitle="This user could not be found. They may have been removed."
+        onRetry={() => navigate('/users')}
+      />
+    )
+  }
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSave()
+      }}
+      className="space-y-6 max-w-2xl"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <button
-            onClick={() => navigate('/users')}
+            type="button"
+            onClick={goBack}
             className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Users
@@ -131,7 +166,7 @@ export default function UserForm() {
           <h1 className="text-2xl font-bold">{isEdit ? 'Edit user' : 'New user'}</h1>
         </div>
         <button
-          onClick={onSave}
+          type="submit"
           disabled={saving}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
         >
@@ -140,34 +175,55 @@ export default function UserForm() {
       </div>
 
       <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4">
-        <label className="block">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Email</span>
-          <input
-            type="email"
-            value={isEdit ? (name as string) : email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isEdit}
-            placeholder="name@company.com"
-            className={field}
-          />
-        </label>
+        <Field
+          label="Email"
+          required={!isEdit}
+          error={emailError}
+          hint={isEdit ? "Can't be changed after creation" : undefined}
+        >
+          {(id) => (
+            <input
+              id={id}
+              type="email"
+              value={isEdit ? (name as string) : email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setDirty(true)
+                if (emailError) setEmailError('')
+              }}
+              disabled={isEdit}
+              autoFocus={!isEdit}
+              placeholder="name@company.com"
+              className={field}
+            />
+          )}
+        </Field>
 
-        <label className="block">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Full name</span>
-          <input
-            type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className={field}
-          />
-        </label>
+        <Field label="Full name">
+          {(id) => (
+            <input
+              id={id}
+              type="text"
+              value={fullName}
+              autoFocus={isEdit}
+              onChange={(e) => {
+                setFullName(e.target.value)
+                setDirty(true)
+              }}
+              className={field}
+            />
+          )}
+        </Field>
 
         <div>
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roles</span>
           <MultiSelectChips
             options={VERNON_ROLE_OPTIONS}
             value={roles}
-            onChange={setRoles}
+            onChange={(v) => {
+              setRoles(v)
+              setDirty(true)
+            }}
             emptyText="No roles"
           />
         </div>
@@ -178,7 +234,10 @@ export default function UserForm() {
             <input
               type="checkbox"
               checked={sendWelcome}
-              onChange={(e) => setSendWelcome(e.target.checked)}
+              onChange={(e) => {
+                setSendWelcome(e.target.checked)
+                setDirty(true)
+              }}
               className="h-5 w-5 accent-brand-600"
             />
           </label>
@@ -190,7 +249,10 @@ export default function UserForm() {
             <input
               type="checkbox"
               checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
+              onChange={(e) => {
+                setEnabled(e.target.checked)
+                setDirty(true)
+              }}
               className="h-5 w-5 accent-brand-600"
             />
           </label>
@@ -203,34 +265,38 @@ export default function UserForm() {
             Password
           </h2>
           <button
+            type="button"
             onClick={onResetPassword}
             disabled={resetPw.isPending}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
           >
             {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
           </button>
-          <label className="block">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Set new password</span>
-            <div className="mt-1 flex gap-2">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="New password"
-                autoComplete="new-password"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
-              />
-              <button
-                onClick={onSetPassword}
-                disabled={!newPassword || setPw.isPending}
-                className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
-              >
-                {setPw.isPending ? 'Setting…' : 'Set password'}
-              </button>
-            </div>
-          </label>
+          <Field label="Set new password">
+            {(id) => (
+              <div className="flex gap-2">
+                <input
+                  id={id}
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={onSetPassword}
+                  disabled={!newPassword || setPw.isPending}
+                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  {setPw.isPending ? 'Setting…' : 'Set password'}
+                </button>
+              </div>
+            )}
+          </Field>
         </div>
       )}
-    </div>
+    </form>
   )
 }

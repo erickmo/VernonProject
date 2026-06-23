@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui'
+import { ErrorState, Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
@@ -37,6 +38,8 @@ export default function BrandForm() {
   const { data: allBrands } = useBrands()
 
   const [form, setForm] = useState<{ brand_name: string }>({ brand_name: '' })
+  const [dirty, setDirty] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (isEdit && existing) {
@@ -59,6 +62,29 @@ export default function BrandForm() {
     )
   }
 
+  if (isEdit && !isLoading && !existing) {
+    return (
+      <ErrorState
+        title="Not found"
+        subtitle="This brand could not be found. It may have been deleted."
+        onRetry={() => navigate('/brands')}
+      />
+    )
+  }
+
+  const goBack = async () => {
+    if (dirty) {
+      const ok = await confirm({
+        title: 'Discard changes?',
+        message: 'You have unsaved changes. Leave without saving?',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+      })
+      if (!ok) return
+    }
+    navigate('/brands')
+  }
+
   const validate = (): string | null => {
     if (!form.brand_name.trim()) return 'Brand name is required'
     return null
@@ -67,9 +93,11 @@ export default function BrandForm() {
   const save = () => {
     const err = validate()
     if (err) {
+      setError(err)
       toast('error', err)
       return
     }
+    setError('')
     const payload = { brand_name: form.brand_name.trim() }
     const opts = {
       onSuccess: () => {
@@ -116,7 +144,7 @@ export default function BrandForm() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <button
-          onClick={() => navigate('/brands')}
+          onClick={goBack}
           className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Brands
@@ -124,27 +152,45 @@ export default function BrandForm() {
         <h1 className="text-2xl font-bold">{isEdit ? 'Edit brand' : 'New brand'}</h1>
       </div>
 
-      <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4">
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Brand name</label>
-          <input
-            className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
-            value={form.brand_name}
-            readOnly={isEdit}
-            onChange={(e) => setForm((f) => ({ ...f, brand_name: e.target.value }))}
-            placeholder="e.g. Acme"
-          />
-        </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+        className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4"
+      >
+        <Field
+          label="Brand name"
+          required
+          error={error}
+          hint={isEdit ? "Can't be changed after creation" : undefined}
+        >
+          {(id) => (
+            <input
+              id={id}
+              className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
+              value={form.brand_name}
+              readOnly={isEdit}
+              autoFocus={!isEdit}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, brand_name: e.target.value }))
+                setDirty(true)
+                if (error) setError('')
+              }}
+              placeholder="e.g. Acme"
+            />
+          )}
+        </Field>
 
         <button
-          onClick={save}
+          type="submit"
           disabled={saving}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
         >
           {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           {isEdit ? 'Save changes' : 'Create brand'}
         </button>
-      </div>
+      </form>
 
       {isEdit && (
         <div className="max-w-2xl flex flex-col gap-3">
