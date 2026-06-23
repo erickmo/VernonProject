@@ -120,12 +120,43 @@ def _user_name_map(emails):
 	return {r["name"]: r for r in rows}
 
 
+def _involved_project_names(user):
+	"""Projects the user is involved in: owner / leader / admin, a Project Team
+	member, or assigned to any todo in the project."""
+	names = set()
+	for role_field in ("project_owner", "project_leader", "project_admin"):
+		names |= set(
+			frappe.get_all("Project", filters={role_field: user}, pluck="name", limit_page_length=0)
+		)
+	names |= set(
+		frappe.get_all("Project Team", filters={"user": user}, pluck="parent", limit_page_length=0)
+	)
+	# Assigned a todo -> resolve its Project Detail -> project.
+	details = set(
+		frappe.get_all("Project Todo", filters={"assigned_to": user}, pluck="project_detail", limit_page_length=0)
+	)
+	if details:
+		names |= set(
+			frappe.get_all(
+				"Project Detail", filters={"name": ["in", list(details)]}, pluck="project", limit_page_length=0
+			)
+		)
+	return names
+
+
 def _visible_projects(status=None):
-	"""Project names the current user is allowed to see (respects permissions)."""
+	"""Project names the current user may see. Frappe-permitted, and — unless the
+	user is a System Manager — restricted to projects they are involved in
+	(owner/leader/admin, team member, or assignee)."""
+	user = frappe.session.user
 	filters = {}
 	if status:
 		filters["status"] = status
-	return frappe.get_list("Project", filters=filters, pluck="name", limit_page_length=0)
+	allowed = frappe.get_list("Project", filters=filters, pluck="name", limit_page_length=0)
+	if "System Manager" in frappe.get_roles(user):
+		return allowed
+	involved = _involved_project_names(user)
+	return [n for n in allowed if n in involved]
 
 
 def _fetch_todos(project_names, include_cancelled=False):
@@ -457,6 +488,9 @@ def get_projects():
 		order_by="modified desc",
 		limit_page_length=0,
 	)
+	# Restrict to projects the user is involved in (System Managers see all).
+	visible = set(_visible_projects())
+	plist = [p for p in plist if p["name"] in visible]
 	if not plist:
 		return []
 
