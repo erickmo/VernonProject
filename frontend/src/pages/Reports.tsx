@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, BarChart3 } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
+import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
 
 export default function Reports() {
   const navigate = useNavigate()
   return (
-    <TabScreen title="Reports" subtitle="Live data, same as the desk">
+    <TabScreen title="Reports" subtitle="Live data, same as the desk" right={<NotificationBell />}>
       <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 text-white shadow-card">
         <BarChart3 className="h-7 w-7 shrink-0 text-brand-300" />
         <p className="text-sm leading-snug text-slate-200">

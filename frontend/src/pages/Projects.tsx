@@ -5,6 +5,7 @@ import { EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { ProjectCard } from '@/components/ProjectCard'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
+import { NotificationBell } from '@/components/NotificationBell'
 import { useProjects, useBoot, canCreateProject } from '@/hooks/useData'
 import { buildOptions } from '@/lib/filters'
 
@@ -96,7 +97,7 @@ export default function Projects() {
   const advCount = ['brand', 'owner', 'leader'].filter((k) => filters[k]).length
 
   return (
-    <TabScreen title="Projects" subtitle={`${list.length} of ${projects.length}`}>
+    <TabScreen title="Projects" subtitle={`${list.length} of ${projects.length}`} right={<NotificationBell />}>
       {canCreateProject(boot) && (
         <div className="mb-3">
           <button

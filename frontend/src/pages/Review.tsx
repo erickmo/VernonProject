@@ -4,6 +4,7 @@ import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
+import { NotificationBell } from '@/components/NotificationBell'
 import { useDashboard } from '@/hooks/useData'
 import { buildOptions } from '@/lib/filters'
 import { byDeadlineAsc } from '@/lib/format'
@@ -52,7 +53,7 @@ export default function Review() {
   const advCount = ['project', 'brand', 'assignee'].filter((k) => filters[k]).length
 
   return (
-    <TabScreen title="Review" subtitle={`${filtered.length} waiting for your approval`}>
+    <TabScreen title="Review" subtitle={`${filtered.length} waiting for your approval`} right={<NotificationBell />}>
       {isLoading && !data ? (
         <FullScreenLoader label="Loading review queue…" />
       ) : (

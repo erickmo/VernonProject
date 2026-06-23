@@ -24,6 +24,7 @@ import { TodoCard } from '@/components/TodoCard'
 import { ProjectCard } from '@/components/ProjectCard'
 import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
+import { NotificationBell } from '@/components/NotificationBell'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byDeadlineAsc, byDeadlineDesc, formatEstimate } from '@/lib/format'
@@ -184,9 +185,12 @@ export default function Today() {
   const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   const right = boot ? (
-    <button onClick={() => navigate('/me')} className="transition active:scale-95">
-      <Avatar name={boot.full_name} image={boot.image} size={42} />
-    </button>
+    <div className="flex items-center gap-1">
+      <NotificationBell />
+      <button onClick={() => navigate('/me')} className="transition active:scale-95">
+        <Avatar name={boot.full_name} image={boot.image} size={42} />
+      </button>
+    </div>
   ) : null
 
   return (
