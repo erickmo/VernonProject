@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { LogOut, KeyRound, Smartphone } from 'lucide-react'
+import { LogOut, KeyRound, Smartphone, Sparkles } from 'lucide-react'
 import { useBoot } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 
-export default function Me() {
+export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
   const [pwOpen, setPwOpen] = useState(false)
   const b = boot.data
@@ -52,6 +52,15 @@ export default function Me() {
           <Smartphone className="w-4 h-4" />
           Open mobile app
         </a>
+        {onReplayOnboarding && (
+          <button
+            onClick={onReplayOnboarding}
+            className="w-full flex items-center gap-3 px-5 py-4 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <Sparkles className="w-4 h-4" />
+            Replay onboarding
+          </button>
+        )}
         <button
           onClick={doLogout}
           className="w-full flex items-center gap-3 px-5 py-4 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
