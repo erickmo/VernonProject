@@ -944,6 +944,36 @@ def get_comments(reference_doctype, reference_name):
 	return [_shape_comment(r, name_map) for r in rows]
 
 
+import re
+
+_MENTION_RE = re.compile(r'data-mention\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
+
+
+def _parse_mentions(content):
+	"""Extract the set of user emails marked up as
+	<span data-mention="user@email">@Name</span> in comment HTML."""
+	if not content:
+		return set()
+	return {m.strip() for m in _MENTION_RE.findall(content) if m.strip()}
+
+
+def _comment_participants(reference_doctype, reference_name):
+	"""Users to notify of a new comment on this record: project owner/leader/admin
+	and (for a Project Todo target) the todo's assignee."""
+	project = _comment_project(reference_doctype, reference_name)
+	people = set()
+	if project:
+		owner, leader, admin = frappe.get_value(
+			"Project", project, ["project_owner", "project_leader", "project_admin"]
+		)
+		people |= {e for e in (owner, leader, admin) if e}
+	if reference_doctype == "Project Todo":
+		assignee = frappe.get_value("Project Todo", reference_name, "assigned_to")
+		if assignee:
+			people.add(assignee)
+	return {p for p in people if p}
+
+
 @frappe.whitelist()
 def add_comment(reference_doctype, reference_name, content):
 	"""Add a built-in comment to a Project / Project Detail / Project Item."""
@@ -953,27 +983,29 @@ def add_comment(reference_doctype, reference_name, content):
 		frappe.throw("Comment cannot be empty.")
 	doc = frappe.get_doc(reference_doctype, reference_name)
 	c = doc.add_comment("Comment", content)
+	frappe.db.commit()
 
-	# Notify item participants (project owner/leader + the todo's assignee).
 	actor = frappe.session.user
-	project = _comment_project(reference_doctype, reference_name)
-	participants = set()
-	if project:
-		owner, leader = frappe.get_value(
-			"Project", project, ["project_owner", "project_leader"]
-		) or (None, None)
-		participants.update([owner, leader])
-	if reference_doctype == "Project Todo":
-		assignee = frappe.get_value("Project Todo", reference_name, "assigned_to")
-		participants.add(assignee)
 	actor_name = (_user_name_map({actor}).get(actor) or {}).get("full_name") or actor
-	snippet = frappe.utils.strip_html(content)[:80]
-	for p in participants:
+	mentioned = _parse_mentions(content)
+	# Mention notifications take precedence over the generic comment ping for the
+	# same person (don't double-notify a mentioned participant).
+	for u in mentioned:
 		_notify(
-			recipient=p,
+			recipient=u,
+			type="Mention",
+			title=f"{actor_name} mentioned you",
+			body=f"{actor_name} mentioned you in a comment.",
+			reference_doctype=reference_doctype,
+			reference_name=reference_name,
+			actor=actor,
+		)
+	for u in _comment_participants(reference_doctype, reference_name) - mentioned:
+		_notify(
+			recipient=u,
 			type="Comment",
-			title="New comment",
-			body=f"{actor_name}: {snippet}",
+			title=f"New comment from {actor_name}",
+			body=f"{actor_name} commented on an item you follow.",
 			reference_doctype=reference_doctype,
 			reference_name=reference_name,
 			actor=actor,
