@@ -1,4 +1,5 @@
 import { Spinner } from '@/components/ui'
+import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 
 export function RedeemSheet({
@@ -26,7 +27,7 @@ export function RedeemSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-600" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Redeem {reward.reward_name}?</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          This spends <span className="font-semibold">{reward.point_cost}</span> points. Balance after:{' '}
+          This spends <span className="font-semibold">{formatNumber(reward.point_cost)}</span> points. Balance after:{' '}
           <span className="font-semibold">{after.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>.
         </p>
         <div className="mt-5 flex gap-2">

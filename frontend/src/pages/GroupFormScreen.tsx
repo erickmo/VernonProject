@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Trash2, Check, ListChecks, ChevronRight, Info } from 'lucide-react'
+import { Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -31,13 +31,13 @@ const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee
   { key: 'leader_early_bonus', label: 'Leader early bonus % / day', group: 'Leader' },
 ]
 
-// Fixed level scale: names are not editable and always run -5 → 5 in order.
-// Only the point % per level is configurable. Numbers are the default points.
+// Fixed level scale: names are not editable and always run 0 → 10 in order.
+// Only the point per level is configurable. Numbers are the default points.
 const LEVEL_DEFS: { name: string; point: number }[] = [
-  { name: '-5', point: 0 }, { name: '-4', point: 20 }, { name: '-3', point: 40 },
-  { name: '-2', point: 60 }, { name: '-1', point: 80 }, { name: '0', point: 100 },
-  { name: '1', point: 125 }, { name: '2', point: 150 }, { name: '3', point: 175 },
-  { name: '4', point: 200 }, { name: '5', point: 250 },
+  { name: '0', point: 0 }, { name: '1', point: 20 }, { name: '2', point: 40 },
+  { name: '3', point: 60 }, { name: '4', point: 80 }, { name: '5', point: 100 },
+  { name: '6', point: 125 }, { name: '7', point: 150 }, { name: '8', point: 175 },
+  { name: '9', point: 200 }, { name: '10', point: 250 },
 ]
 
 const defaultLevels = () => LEVEL_DEFS.map((d) => ({ level_name: d.name, point: d.point }))
@@ -69,6 +69,9 @@ export default function GroupFormScreen() {
     leader_early_bonus: 0,
     levels: defaultLevels(),
   })
+
+  // Step value for the "fill levels by increment" helper.
+  const [stepFill, setStepFill] = useState('')
 
   useEffect(() => {
     if (isEdit && existing) {
@@ -115,6 +118,30 @@ export default function GroupFormScreen() {
       ...f,
       levels: f.levels.map((l, j) => (j === i ? { ...l, point } : l)),
     }))
+
+  // Bump a level's point up/down by a step, clamped at 0.
+  const LEVEL_STEP = 5
+  const bumpLevelPoint = (i: number, delta: number) =>
+    setForm((f) => ({
+      ...f,
+      levels: f.levels.map((l, j) =>
+        j === i ? { ...l, point: Math.max(0, (Number(l.point) || 0) + delta) } : l,
+      ),
+    }))
+
+  // Auto-fill every level as (index + 1) × step, so level 0 = step (not 0),
+  // level 1 = 2×step, level 2 = 3×step, …
+  const applyStepFill = () => {
+    const step = Number(stepFill)
+    if (!stepFill.trim() || isNaN(step)) {
+      toast('error', 'Enter a step value first')
+      return
+    }
+    setForm((f) => ({
+      ...f,
+      levels: f.levels.map((l, i) => ({ ...l, point: Math.max(0, (i + 1) * step) })),
+    }))
+  }
 
   const validate = (): string | null => {
     if (!form.group_name.trim()) return 'Group name is required'
@@ -209,7 +236,7 @@ export default function GroupFormScreen() {
           </p>
           <p className="mb-1">
             When a todo is completed, the <b>assignee</b> earns the <b>point of the chosen level</b>
-            {' '}(your −5…5 scale), then adjusted for timing:
+            {' '}(your 0…10 scale), then adjusted for timing:
           </p>
           <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
             assignee = point × (1 − late_days×late% + early_days×early%)
@@ -245,28 +272,76 @@ export default function GroupFormScreen() {
         <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Levels</p>
           <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
-            Fixed scale −5 to 5. Only the point per level is editable — this is the points earned.
+            Fixed scale 0 to 10. Only the point per level is editable — this is the points earned.
           </p>
+          {/* Fill by increment: sets each level to (index+1) × step (0=step, 1=2×step, 2=3×step, …). */}
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-white px-2 py-2 dark:bg-slate-800/80">
+            <span className="min-w-0 flex-1 text-[11px] text-slate-500 dark:text-slate-400">
+              Fill by increment
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+              value={stepFill}
+              onChange={(e) => setStepFill(e.target.value)}
+              placeholder="Step"
+            />
+            <button
+              type="button"
+              onClick={applyStepFill}
+              className="shrink-0 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white active:scale-95"
+            >
+              Update
+            </button>
+          </div>
           <div className="mb-1 flex items-center gap-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <span className="flex-1">Level</span>
-            <span className="w-20 text-center">Point</span>
+            <span className="w-[7.5rem] text-center">Point</span>
           </div>
           <div className="flex flex-col gap-2">
             {form.levels.map((l, i) => (
               <div key={l.level_name} className="flex items-center gap-3">
                 <span className="flex-1 px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{l.level_name}</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  className="w-20 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                  value={String(l.point)}
-                  onChange={(e) => setLevelPoint(i, e.target.value === '' ? 0 : Number(e.target.value))}
-                  placeholder="Point"
-                />
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label="Decrease point"
+                    onClick={() => bumpLevelPoint(i, -LEVEL_STEP)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    className="w-16 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                    value={String(l.point)}
+                    onChange={(e) => setLevelPoint(i, e.target.value === '' ? 0 : Number(e.target.value))}
+                    placeholder="Point"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Increase point"
+                    onClick={() => bumpLevelPoint(i, LEVEL_STEP)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
+        >
+          {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+          {isEdit ? 'Save changes' : 'Create group'}
+        </button>
 
         {isEdit && (
           <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
@@ -304,15 +379,6 @@ export default function GroupFormScreen() {
             )}
           </div>
         )}
-
-        <button
-          onClick={save}
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
-        >
-          {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-          {isEdit ? 'Save changes' : 'Create group'}
-        </button>
 
         {isEdit && (
           <button

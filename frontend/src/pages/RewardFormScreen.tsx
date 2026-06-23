@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
-import { deleteErrorMessage } from '@/lib/format'
+import { deleteErrorMessage, formatNumber } from '@/lib/format'
 import {
   useReward,
   useCreateReward,
@@ -174,21 +174,21 @@ export default function RewardFormScreen() {
           <div className="flex-1">
             <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Point cost</label>
             <input
-              type="number"
-              min={0}
+              type="text"
+              inputMode="numeric"
               className={field}
-              value={form.point_cost}
-              onChange={(e) => setForm((f) => ({ ...f, point_cost: Number(e.target.value) }))}
+              value={formatNumber(form.point_cost)}
+              onChange={(e) => setForm((f) => ({ ...f, point_cost: Number(e.target.value.replace(/[^\d]/g, '')) }))}
             />
           </div>
           <div className="flex-1">
             <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Stock</label>
             <input
-              type="number"
-              min={0}
+              type="text"
+              inputMode="numeric"
               className={field}
-              value={form.stock_quantity}
-              onChange={(e) => setForm((f) => ({ ...f, stock_quantity: Number(e.target.value) }))}
+              value={formatNumber(form.stock_quantity)}
+              onChange={(e) => setForm((f) => ({ ...f, stock_quantity: Number(e.target.value.replace(/[^\d]/g, '')) }))}
             />
           </div>
         </div>

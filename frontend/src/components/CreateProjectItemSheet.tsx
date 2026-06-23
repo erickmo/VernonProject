@@ -4,6 +4,7 @@ import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { MultiSelectChips } from '@/components/MultiSelectChips'
 
 interface CreateProjectItemSheetProps {
   open: boolean
@@ -33,8 +34,8 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
   const [until, setUntil] = useState('')
   const [group, setGroup] = useState(defaultGroup ?? '')
   const [level, setLevel] = useState('')
-  const [blockedBy, setBlockedBy] = useState('')
-  const [blocking, setBlocking] = useState('')
+  const [blockedBy, setBlockedBy] = useState<string[]>([])
+  const [blocking, setBlocking] = useState<string[]>([])
 
   const { data: groups } = useScoringGroups()
   const { data: groupDoc } = useScoringGroup(group, !!group)
@@ -47,7 +48,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
     setToDo(''); setAssignedTo(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
-    setGroup(defaultGroup ?? ''); setLevel(''); setBlockedBy(''); setBlocking('')
+    setGroup(defaultGroup ?? ''); setLevel(''); setBlockedBy([]); setBlocking([])
   }
 
   const close = () => { reset(); onClose() }
@@ -70,8 +71,8 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
     if (ownerDeadline) fields.owner_deadline = ownerDeadline
     if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
     if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
-    if (blockedBy) fields.blocked_by = blockedBy
-    if (blocking) fields.blocking = blocking
+    if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
+    if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
     if (isRecurring) {
       fields.is_recurring = 1
       fields.recurring_frequency = frequency
@@ -168,27 +169,23 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
           </label>
 
           {siblings.length > 0 && (
-            <div className="flex gap-3">
-              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+            <div className="flex flex-col gap-3">
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
                 Blocked by
-                <SearchableSelect
+                <MultiSelectChips
                   value={blockedBy}
                   onChange={setBlockedBy}
                   options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
-                  allowClear
-                  placeholder="None"
                 />
-              </label>
-              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+              </div>
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
                 Blocking
-                <SearchableSelect
+                <MultiSelectChips
                   value={blocking}
                   onChange={setBlocking}
                   options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
-                  allowClear
-                  placeholder="None"
                 />
-              </label>
+              </div>
             </div>
           )}
 

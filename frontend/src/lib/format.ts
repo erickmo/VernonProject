@@ -5,6 +5,11 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
+// Thousand-separated integer (e.g. 1000000 -> "1,000,000"). Drops fractions.
+export function formatNumber(num: number): string {
+  return (num || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
+}
+
 export function formatEstimate(minutes: number): string {
   if (!minutes) return '—'
   if (minutes < 60) return `${minutes}m`

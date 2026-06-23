@@ -6,6 +6,7 @@ import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { RedeemSheet } from '@/components/RedeemSheet'
 import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
+import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 
 export default function MarketplaceScreen() {
@@ -97,7 +98,7 @@ export default function MarketplaceScreen() {
                     <p className="mt-0.5 line-clamp-2 text-xs text-slate-400 dark:text-slate-500">{r.description}</p>
                   )}
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-bold text-brand-700 dark:text-brand-300">{r.point_cost} pts</span>
+                    <span className="text-sm font-bold text-brand-700 dark:text-brand-300">{formatNumber(r.point_cost)} pts</span>
                     {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
                   </div>
                   <button

@@ -19,8 +19,21 @@ class ProjectTodo(Document):
 		self.validate_project_admin_status_update()
 		self.calculate_total_estimated_hours()
 		self.track_phase_changes()
+		self.validate_block_links()
 		if self.is_recurring and self.recurring_frequency and not self.next_occurrence:
 			self.next_occurrence = self.calculate_next_occurrence(self.deadline)
+
+	def validate_block_links(self):
+		"""A task can't block or depend on itself; drop duplicate rows."""
+		for fieldname in ("blocking", "blocked_by"):
+			seen = set()
+			rows = []
+			for row in self.get(fieldname):
+				if not row.todo or row.todo == self.name or row.todo in seen:
+					continue
+				seen.add(row.todo)
+				rows.append(row)
+			self.set(fieldname, rows)
 
 	def sync_project_from_detail(self):
 		"""Keep the denormalized `project` in sync with the linked Project Detail.
@@ -293,10 +306,65 @@ class ProjectTodo(Document):
 			elif prev_state == "✅ Completed":
 				self._remove_ledger()
 
+	def on_update(self):
+		self.sync_block_links()
+
+	# --- Bidirectional blocking / blocked-by sync -----------------------------
+	# "blocking" and "blocked_by" are mirror sides of one dependency edge: if A
+	# lists B under blocking, B must list A under blocked_by, and vice versa.
+	# We reconcile the other side here whenever either field changes.
+
+	def sync_block_links(self):
+		if self.flags.get("skip_block_sync"):
+			return
+
+		blocking_now = {r.todo for r in self.blocking if r.todo}
+		blocked_by_now = {r.todo for r in self.blocked_by if r.todo}
+		old = self.get_doc_before_save()
+		blocking_old = {r.todo for r in old.blocking if r.todo} if old else set()
+		blocked_by_old = {r.todo for r in old.blocked_by if r.todo} if old else set()
+
+		# Each task this one blocks must list this one as blocked_by (mirror).
+		for other in blocking_now - blocking_old:
+			self._add_block_link(other, "blocked_by")
+		for other in blocking_old - blocking_now:
+			self._remove_block_link(other, "blocked_by")
+		# Each task that blocks this one must list this one under blocking (mirror).
+		for other in blocked_by_now - blocked_by_old:
+			self._add_block_link(other, "blocking")
+		for other in blocked_by_old - blocked_by_now:
+			self._remove_block_link(other, "blocking")
+
+	def _add_block_link(self, other_name, fieldname):
+		if not other_name or not frappe.db.exists("Project Todo", other_name):
+			return
+		other = frappe.get_doc("Project Todo", other_name)
+		if any(r.todo == self.name for r in other.get(fieldname)):
+			return
+		other.append(fieldname, {"todo": self.name})
+		other.flags.skip_block_sync = True
+		other.save(ignore_permissions=True)
+
+	def _remove_block_link(self, other_name, fieldname):
+		if not other_name or not frappe.db.exists("Project Todo", other_name):
+			return
+		other = frappe.get_doc("Project Todo", other_name)
+		kept = [r for r in other.get(fieldname) if r.todo != self.name]
+		if len(kept) == len(other.get(fieldname)):
+			return
+		other.set(fieldname, kept)
+		other.flags.skip_block_sync = True
+		other.save(ignore_permissions=True)
+
 	def on_trash(self):
 		# Cannot delete unless status is Planned ("Scheduled").
 		if self.status != "⚪️ Planned":
 			frappe.throw("Cannot delete Project Todo unless its status is 'Scheduled'.")
+		# Drop mirror references from the other side so no dangling links remain.
+		for r in self.blocking:
+			self._remove_block_link(r.todo, "blocked_by")
+		for r in self.blocked_by:
+			self._remove_block_link(r.todo, "blocking")
 
 	def after_delete(self):
 		self._recompute_parent()

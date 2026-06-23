@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { FolderKanban, Plus, Search, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, FolderKanban, Plus, Search, X } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { ProjectCard } from '@/components/ProjectCard'
@@ -18,6 +18,24 @@ export default function Projects() {
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem('projectsCollapsedGroups') || '[]'))
+    } catch {
+      return new Set<string>()
+    }
+  })
+  // First load with no saved preference: collapse all groups by default.
+  const seeded = useRef(localStorage.getItem('projectsCollapsedGroups') !== null)
+
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      localStorage.setItem('projectsCollapsedGroups', JSON.stringify(Array.from(next)))
+      return next
+    })
 
   const projects = data ?? []
 
@@ -68,6 +86,12 @@ export default function Projects() {
         return a.brand.localeCompare(b.brand)
       })
   }, [list])
+
+  useEffect(() => {
+    if (seeded.current || !groups.length) return
+    seeded.current = true
+    setCollapsed(new Set(groups.map((g) => g.brand || '__none__')))
+  }, [groups])
 
   const advCount = ['brand', 'owner', 'leader'].filter((k) => filters[k]).length
 
@@ -123,22 +147,38 @@ export default function Projects() {
 
           {list.length ? (
             <div className="flex flex-col gap-5">
-              {groups.map((g) => (
-                <div key={g.brand || '__none__'}>
-                  <div className="mb-2.5 flex items-center gap-2">
-                    <span className="h-5 w-1.5 rounded-full bg-brand-600" />
-                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">{g.brand || 'No brand'}</h3>
-                    <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-xs font-bold text-brand-700 dark:text-brand-300">
-                      {g.items.length}
-                    </span>
+              {groups.map((g) => {
+                const key = g.brand || '__none__'
+                const isCollapsed = collapsed.has(key)
+                return (
+                  <div key={key}>
+                    <button
+                      onClick={() => toggleGroup(key)}
+                      className="mb-2.5 flex w-full items-center gap-2 text-left"
+                    >
+                      <span className="h-5 w-1.5 rounded-full bg-brand-600" />
+                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">
+                        {g.brand || 'No brand'}
+                      </h3>
+                      <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-xs font-bold text-brand-700 dark:text-brand-300">
+                        {g.items.length}
+                      </span>
+                      <ChevronDown
+                        className={`ml-auto h-4 w-4 text-slate-400 dark:text-slate-500 transition-transform ${
+                          isCollapsed ? '-rotate-90' : ''
+                        }`}
+                      />
+                    </button>
+                    {!isCollapsed && (
+                      <div className="flex flex-col gap-2.5">
+                        {g.items.map((p) => (
+                          <ProjectCard key={p.name} p={p} />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-2.5">
-                    {g.items.map((p) => (
-                      <ProjectCard key={p.name} p={p} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <EmptyState

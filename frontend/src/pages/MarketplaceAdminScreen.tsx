@@ -4,6 +4,7 @@ import { Plus, Store, ChevronRight, Check, Gift } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { useToast } from '@/components/Toast'
+import { formatNumber } from '@/lib/format'
 import {
   useBoot,
   canManageMarketplace,
@@ -78,7 +79,7 @@ function RewardsList() {
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{r.reward_name}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              {r.point_cost} pts · stock {r.stock_quantity}
+              {formatNumber(r.point_cost)} pts · stock {formatNumber(r.stock_quantity)}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -135,7 +136,7 @@ function RedemptionsList() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{r.reward_name}</p>
                     <p className="truncate text-xs text-slate-400 dark:text-slate-500">
-                      {r.user_name} · {r.point_cost} pts · {r.redeemed_on_human}
+                      {r.user_name} · {formatNumber(r.point_cost)} pts · {r.redeemed_on_human}
                     </p>
                   </div>
                   {r.status === 'Pending' ? (
