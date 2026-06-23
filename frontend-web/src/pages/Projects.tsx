@@ -1,4 +1,94 @@
-// stub — replaced in Task 7
+import { useMemo, useState } from 'react'
+import { Plus, FolderKanban, Search } from 'lucide-react'
+import { useProjects, canCreateProject, useBoot } from '@/hooks/useData'
+import { ProjectCard } from '@/components/ProjectCard'
+import { Segmented, Spinner, EmptyState } from '@/components/ui'
+import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
+
+const STATUS: { value: string; label: string }[] = [
+  { value: 'Ongoing', label: 'Ongoing' },
+  { value: 'Closed', label: 'Closed' },
+  { value: 'all', label: 'All' },
+]
+
 export default function Projects() {
-  return <div className="p-6">Projects</div>
+  const projects = useProjects()
+  const boot = useBoot()
+  const [status, setStatus] = useState('Ongoing')
+  const [q, setQ] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+
+  const visible = useMemo(
+    () =>
+      (projects.data ?? []).filter((p) => {
+        if (status !== 'all' && p.status !== status) return false
+        if (q && !p.project_name.toLowerCase().includes(q.toLowerCase())) return false
+        return true
+      }),
+    [projects.data, status, q],
+  )
+
+  const byBrand = useMemo(() => {
+    const m = new Map<string, typeof visible>()
+    for (const p of visible) {
+      const k = p.brand || 'No brand'
+      const existing = m.get(k)
+      if (existing) existing.push(p)
+      else m.set(k, [p])
+    }
+    return [...m.entries()]
+  }, [visible])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Projects</h1>
+        {canCreateProject(boot.data) && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition"
+          >
+            <Plus className="w-4 h-4" />
+            New project
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search projects"
+            className="pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+          />
+        </div>
+        <Segmented options={STATUS} value={status} onChange={setStatus} />
+      </div>
+
+      {projects.isLoading ? (
+        <div className="flex justify-center py-20">
+          <Spinner />
+        </div>
+      ) : visible.length === 0 ? (
+        <EmptyState icon={FolderKanban} title="No projects" subtitle="Nothing matches your filters." />
+      ) : (
+        byBrand.map(([brand, list]) => (
+          <section key={brand} className="space-y-3">
+            <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              {brand}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {list.map((p) => (
+                <ProjectCard key={p.name} p={p} />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+
+      <ProjectFormDialog open={showCreate} onClose={() => setShowCreate(false)} />
+    </div>
+  )
 }
