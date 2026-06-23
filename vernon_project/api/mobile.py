@@ -729,6 +729,7 @@ def _shape_comment(row, name_map):
 		"by": by,
 		"by_name": person.get("full_name") or by,
 		"by_image": person.get("user_image"),
+		"by_badge": _user_badge(by) if by else None,
 		"at": str(row["creation"]),
 		"at_human": _humanize_datetime(row["creation"]),
 	}
