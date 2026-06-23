@@ -315,6 +315,10 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"project_leader_name": (name_map.get(row.get("project_leader")) or {}).get("full_name")
 		or row.get("project_leader"),
 		"is_mine": row["assigned_to"] == user,
+		# Relationship of the current user to this todo's project (drives the
+		# Review tab "I own / I led" lens). Mirrors get_projects (is_owner/is_leader).
+		"is_owner": row.get("project_owner") == user,
+		"is_leader": row.get("project_leader") == user,
 		"group": row.get("group"),
 		"level": row.get("level"),
 		"point": row.get("point") or 0,
