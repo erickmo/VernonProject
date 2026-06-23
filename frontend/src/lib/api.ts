@@ -198,6 +198,10 @@ export const mobileApi = {
     }),
   listGiftRecipients: () =>
     api.get<{ users: import('./types').GiftUser[] }>(M + 'list_gift_recipients'),
+  getBadgeSettings: () =>
+    api.get<{ tiers: import('./types').BadgeTierInput[] }>(M + 'get_badge_settings'),
+  saveBadgeSettings: (tiers: import('./types').BadgeTierInput[]) =>
+    api.post<{ ok: boolean }>(M + 'save_badge_settings', { tiers: JSON.stringify(tiers) }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.

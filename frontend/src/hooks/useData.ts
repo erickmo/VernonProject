@@ -30,6 +30,7 @@ import type {
   AdminReward,
   AdminRedemption,
   RewardFormPayload,
+  BadgeTierInput,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -768,5 +769,24 @@ export function useFulfillRedemption() {
     mutationFn: (name: string) =>
       resource.update<{ name: string }>('Reward Redemption', name, { status: 'Fulfilled' }),
     onSettled: () => qc.invalidateQueries({ queryKey: ['redemptions-admin'] }),
+  })
+}
+
+export function useBadgeSettings() {
+  return useQuery({
+    queryKey: ['badge-settings'],
+    queryFn: async () => (await mobileApi.getBadgeSettings()).tiers,
+  })
+}
+
+export function useSaveBadgeSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (tiers: BadgeTierInput[]) => mobileApi.saveBadgeSettings(tiers),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['badge-settings'] })
+      qc.invalidateQueries({ queryKey: keys.boot })
+      qc.invalidateQueries({ queryKey: ['leaderboard'] })
+    },
   })
 }

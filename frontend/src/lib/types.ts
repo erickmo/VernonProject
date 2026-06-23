@@ -413,3 +413,10 @@ export interface RewardFormPayload {
   description?: string
   image?: string | null
 }
+
+export interface BadgeTierInput {
+  tier_name: string
+  min_points: number
+  color: string
+  icon: string
+}

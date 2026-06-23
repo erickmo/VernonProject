@@ -28,7 +28,8 @@ import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints } from './hooks/useData'
+import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -104,6 +105,9 @@ export default function App() {
             <Route path="/users/new" element={<UserFormScreen />} />
             <Route path="/users/:name" element={<UserFormScreen />} />
           </>
+        )}
+        {canManageBadges(boot) && (
+          <Route path="/badge-settings" element={<BadgeSettingsScreen />} />
         )}
         {canManageMarketplace(boot) && (
           <>
