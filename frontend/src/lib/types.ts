@@ -298,6 +298,12 @@ export interface Comment {
   at_human: string
 }
 
+export interface MentionUser {
+  user: string
+  full_name: string
+  image: string | null
+}
+
 export interface GroupLevel {
   name?: string
   level_name: string

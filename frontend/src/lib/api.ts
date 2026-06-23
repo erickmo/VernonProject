@@ -173,6 +173,11 @@ export const mobileApi = {
       reference_name: refName,
       content,
     }),
+  getMentionableUsers: (refDoctype: string, refName: string) =>
+    api.get<import('./types').MentionUser[]>(M + 'get_mentionable_users', {
+      reference_doctype: refDoctype,
+      reference_name: refName,
+    }),
   runReport: (report: string, filters: Record<string, unknown>) =>
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
   getWallet: () => api.get(M + 'get_wallet'),
