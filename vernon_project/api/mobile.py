@@ -120,6 +120,81 @@ def _user_name_map(emails):
 	return {r["name"]: r for r in rows}
 
 
+def _push_to_subscriptions(recipient, payload):
+	"""Best-effort Web Push to every Push Subscription of `recipient`.
+	Dead endpoints (404/410) are deleted. Never raises."""
+	public_key = frappe.conf.get("vapid_public_key")
+	private_key = frappe.conf.get("vapid_private_key")
+	subject = frappe.conf.get("vapid_subject")
+	if not (public_key and private_key and subject):
+		return  # VAPID not configured yet (see deploy prerequisite)
+
+	try:
+		from pywebpush import webpush, WebPushException
+	except Exception:
+		return  # pywebpush not installed yet
+
+	subs = frappe.get_all(
+		"Push Subscription",
+		filters={"user": recipient},
+		fields=["name", "endpoint", "p256dh", "auth"],
+		limit_page_length=0,
+	)
+	for sub in subs:
+		try:
+			webpush(
+				subscription_info={
+					"endpoint": sub["endpoint"],
+					"keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
+				},
+				data=json.dumps(payload),
+				vapid_private_key=private_key,
+				vapid_claims={"sub": subject},
+			)
+		except WebPushException as e:
+			status = getattr(getattr(e, "response", None), "status_code", None)
+			if status in (404, 410):
+				frappe.delete_doc(
+					"Push Subscription", sub["name"], ignore_permissions=True, force=True
+				)
+		except Exception:
+			pass  # network / encoding error — drop this push, keep the loop alive
+
+
+def _notify(recipient, type, title, body, reference_doctype=None, reference_name=None, actor=None):
+	"""Insert an in-app Vernon Notification and send Web Push. Best-effort:
+	any failure is swallowed so the triggering mutation never breaks. Skips
+	self-notification (recipient == actor)."""
+	try:
+		if not recipient or recipient in PROTECTED_USERS:
+			return
+		if actor and recipient == actor:
+			return
+		frappe.get_doc({
+			"doctype": "Vernon Notification",
+			"recipient": recipient,
+			"type": type,
+			"title": title,
+			"body": body,
+			"reference_doctype": reference_doctype,
+			"reference_name": reference_name,
+			"actor": actor,
+			"is_read": 0,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		_push_to_subscriptions(
+			recipient,
+			{
+				"title": title,
+				"body": body,
+				"reference_doctype": reference_doctype,
+				"reference_name": reference_name,
+			},
+		)
+	except Exception:
+		frappe.log_error(title="_notify failed")
+
+
 def _involved_project_names(user):
 	"""Projects the user is involved in: owner / leader / admin, a Project Team
 	member, or assigned to any todo in the project."""
