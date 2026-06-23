@@ -2163,6 +2163,41 @@ def upload_reward_image():
 	return {"file_url": saved.file_url}
 
 
+@frappe.whitelist()
+def upload_comment_image(reference_doctype=None, reference_name=None):
+	"""Save an uploaded comment image as a public File and return its URL. The
+	caller (CommentThread) then inlines the URL as an <img src="/files/..."> in
+	the comment HTML content.
+
+	Access is gated by comment visibility on the target record. Only raster image
+	types are accepted: the file is served public, so SVG/HTML (stored-XSS
+	vectors) and other content are rejected by extension and MIME, mirroring
+	upload_reward_image."""
+	if reference_doctype and reference_name:
+		_assert_comment_visible(reference_doctype, reference_name)
+	import os
+	from frappe.utils.file_manager import save_file
+
+	f = frappe.request.files.get("file")
+	if not f:
+		frappe.throw("No file uploaded")
+
+	ext = os.path.splitext(f.filename or "")[1].lower()
+	if ext not in ALLOWED_IMAGE_EXT:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+	mimetype = (getattr(f, "mimetype", "") or "").lower()
+	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+
+	content = f.stream.read()
+	if len(content) > MAX_IMAGE_BYTES:
+		frappe.throw("Image too large (max 5 MB).")
+
+	saved = save_file(f.filename, content, None, None, is_private=0)
+	frappe.db.commit()
+	return {"file_url": saved.file_url}
+
+
 # --------------------------------------------------------------------------------
 # Grant Points — manual wallet credit by an authorized grantor.
 # Granted points raise the recipient's spendable balance but are excluded from
