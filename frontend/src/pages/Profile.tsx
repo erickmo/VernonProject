@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings, Gift, Send, Award } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
@@ -9,6 +9,7 @@ import { useToast } from '@/components/Toast'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
 import { type Theme, getStoredTheme, setTheme } from '@/lib/theme'
+import { pushSupported, subscribeToPush, unsubscribeFromPush, getPushSubscription } from '@/lib/push'
 
 function useOnline() {
   const [online, setOnline] = useState(navigator.onLine)
@@ -40,6 +41,37 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const [loggingOut, setLoggingOut] = useState(false)
   const [showChangePw, setShowChangePw] = useState(false)
   const [theme, setThemeState] = useState<Theme>(getStoredTheme)
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    getPushSubscription().then((s) => setPushOn(!!s))
+  }, [])
+
+  const togglePush = async () => {
+    if (pushBusy) return
+    setPushBusy(true)
+    try {
+      if (pushOn) {
+        await unsubscribeFromPush()
+        setPushOn(false)
+        toast('success', 'Notifications disabled')
+      } else {
+        const key = boot?.vapid_public_key
+        if (!key) {
+          toast('error', 'Push not configured')
+          return
+        }
+        const ok = await subscribeToPush(key)
+        setPushOn(ok)
+        toast(ok ? 'success' : 'error', ok ? 'Notifications enabled' : 'Permission denied')
+      }
+    } catch {
+      toast('error', 'Could not change notifications')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   if (isLoading && !boot) {
     return (
@@ -123,6 +155,13 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           </div>
 
           <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+            {pushSupported() && (
+              <Row
+                icon={pushOn ? Bell : BellOff}
+                label={pushBusy ? 'Working…' : pushOn ? 'Notifications: On' : 'Enable notifications'}
+                onClick={togglePush}
+              />
+            )}
             <Row icon={KeyRound} label="Change password" onClick={() => setShowChangePw(true)} />
             <Row icon={Send} label="Gift Points" onClick={() => navigate('/gift-points')} />
             {canManageGroups(boot) && (
