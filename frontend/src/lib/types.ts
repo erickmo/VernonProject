@@ -1,4 +1,4 @@
-export type StatusKey = 'planned' | 'done' | 'checked' | 'completed'
+export type StatusKey = 'planned' | 'done' | 'checked' | 'completed' | 'cancelled'
 
 export interface Boot {
   user: string
@@ -76,6 +76,7 @@ export interface ProjectItemDetail extends ProjectItem {
   blocked_by: string[]
   blocking: string[]
   detail_todos: { name: string; to_do: string }[]
+  cancellation_reason?: string | null
 }
 
 export interface ProjectItemEdit {

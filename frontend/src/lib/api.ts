@@ -82,8 +82,11 @@ export const mobileApi = {
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),
-  projectDetail: (name: string) =>
-    api.get(M + 'get_project_detail', { project_detail: name }),
+  projectDetail: (projectDetail: string, includeCancelled = false) =>
+    api.get(M + 'get_project_detail', {
+      project_detail: projectDetail,
+      ...(includeCancelled ? { include_cancelled: 1 } : {}),
+    }),
   memberWorkload: (project: string, user: string, includeCompleted: boolean) =>
     api.get(M + 'get_member_workload', {
       project,
@@ -96,6 +99,15 @@ export const mobileApi = {
       'vernon_project.api.project_todo.update_status',
       { todo_id: todoId },
     ),
+  cancelTodo: (projectItem: string, reason?: string) =>
+    api.post<{ status: string; message: string }>(M + 'cancel_todo', {
+      project_item: projectItem,
+      ...(reason ? { reason } : {}),
+    }),
+  restoreTodo: (projectItem: string) =>
+    api.post<{ status: string; message: string }>(M + 'restore_todo', {
+      project_item: projectItem,
+    }),
   saveNotes: (todoId: string, notes: string) =>
     api.post<{ status: string; message: string }>(
       'vernon_project.api.project_todo.save_notes',

@@ -95,12 +95,13 @@ export const useMemberWorkload = (
     enabled: !!project && !!user,
   })
 
-export const useProjectDetail = (name: string) =>
-  useQuery({
-    queryKey: keys.projectDetail(name),
-    queryFn: () => mobileApi.projectDetail(name) as Promise<ProjectDetail>,
+export function useProjectDetail(name: string, includeCancelled = false) {
+  return useQuery({
+    queryKey: ['project-detail', name, includeCancelled],
+    queryFn: () => mobileApi.projectDetail(name, includeCancelled) as Promise<ProjectDetail>,
     enabled: !!name,
   })
+}
 
 export const useProjectItem = (name: string) =>
   useQuery({
@@ -116,6 +117,42 @@ export function useAdvanceStatus() {
   return useMutation({
     mutationFn: async (todoId: string) => {
       const res = await mobileApi.advanceStatus(todoId)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+export function useCancelTodo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ projectItem, reason }: { projectItem: string; reason?: string }) => {
+      const res = await mobileApi.cancelTodo(projectItem, reason)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+export function useRestoreTodo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (projectItem: string) => {
+      const res = await mobileApi.restoreTodo(projectItem)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },

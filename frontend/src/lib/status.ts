@@ -38,6 +38,13 @@ export const STATUS: Record<StatusKey, StatusMeta> = {
     dot: 'bg-emerald-500',
     ring: 'border-emerald-400',
   },
+  cancelled: {
+    label: 'Cancelled',
+    emoji: '🚫',
+    pill: 'bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300',
+    dot: 'bg-rose-500',
+    ring: 'border-rose-400',
+  },
 }
 
 export const STATUS_ORDER: StatusKey[] = ['planned', 'done', 'checked', 'completed']
