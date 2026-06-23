@@ -3,13 +3,16 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
+  ArrowDownLeft,
   ArrowRight,
+  ArrowUpRight,
   Ban,
   CalendarDays,
   Check,
   Clock,
   FileText,
   History,
+  Link2,
   Lock,
   Pencil,
   Plus,
@@ -310,13 +313,17 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
       {data.detail_todos.length > 0 && (
         <div className="mb-3">
-          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocked by</label>
+          <label className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
+          </label>
           <MultiSelectChips
             value={blockedBy}
             onChange={setBlockedBy}
             options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
           />
-          <label className="mb-1 mt-3 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocking</label>
+          <label className="mb-1 mt-3 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
+          </label>
           <MultiSelectChips
             value={blocking}
             onChange={setBlocking}
@@ -346,6 +353,41 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         >
           {update.isPending ? <Spinner className="h-4 w-4" /> : <><Save className="h-4 w-4" /> Save changes</>}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function DepGroup({
+  icon: Icon,
+  label,
+  tone,
+  items,
+  resolve,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  tone: 'rose' | 'amber'
+  items: string[]
+  resolve: (id: string) => string
+}) {
+  if (!items.length) return null
+  const toneCls = tone === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'
+  return (
+    <div className="mb-3 last:mb-0">
+      <p className={clsx('mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide', toneCls)}>
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((id) => (
+          <Link
+            key={id}
+            to={`/project-item/${encodeURIComponent(id)}`}
+            className="inline-flex max-w-full items-center rounded-lg bg-slate-100 dark:bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-700"
+          >
+            <span className="truncate">{resolve(id)}</span>
+          </Link>
+        ))}
       </div>
     </div>
   )
@@ -959,6 +1001,29 @@ export default function ProjectItemScreen() {
         </p>
         <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
       </div>
+
+      {/* Dependencies */}
+      {(data.blocked_by.length > 0 || data.blocking.length > 0) && (
+        <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Link2 className="h-3.5 w-3.5" /> Dependencies
+          </p>
+          <DepGroup
+            icon={ArrowDownLeft}
+            label="Blocked by"
+            tone="rose"
+            items={data.blocked_by}
+            resolve={(id) => data.detail_todos.find((t) => t.name === id)?.to_do ?? id}
+          />
+          <DepGroup
+            icon={ArrowUpRight}
+            label="Blocking"
+            tone="amber"
+            items={data.blocking}
+            resolve={(id) => data.detail_todos.find((t) => t.name === id)?.to_do ?? id}
+          />
+        </div>
+      )}
 
       {/* Timeline */}
       {data.timeline.length > 0 && (

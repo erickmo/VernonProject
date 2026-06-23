@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Plus } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, X, Plus } from 'lucide-react'
 import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
@@ -171,7 +171,9 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
           {siblings.length > 0 && (
             <div className="flex flex-col gap-3">
               <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Blocked by
+                <span className="flex items-center gap-1">
+                  <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
+                </span>
                 <MultiSelectChips
                   value={blockedBy}
                   onChange={setBlockedBy}
@@ -179,7 +181,9 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
                 />
               </div>
               <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Blocking
+                <span className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
+                </span>
                 <MultiSelectChips
                   value={blocking}
                   onChange={setBlocking}
