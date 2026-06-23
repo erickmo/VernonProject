@@ -12,6 +12,7 @@ import type { ProjectItem } from '@/lib/types'
 export default function Review() {
   const { data, isLoading, refetch } = useDashboard()
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [rel, setRel] = useState<'all' | 'owned' | 'led'>('all')
   const [sheet, setSheet] = useState(false)
 
   const review = (data?.review ?? []).slice().sort(byDeadlineAsc)
@@ -31,6 +32,7 @@ export default function Review() {
 
   const filtered = review.filter(
     (t) =>
+      (rel === 'all' || (rel === 'owned' ? t.is_owner : t.is_leader)) &&
       (!filters.project || t.project === filters.project) &&
       (!filters.brand || t.brand === filters.brand) &&
       (!filters.assignee || t.assigned_to === filters.assignee),
@@ -56,7 +58,27 @@ export default function Review() {
       ) : (
         <PullToRefresh onRefresh={refetch}>
           {review.length > 0 && (
-            <div className="mb-2">
+            <div className="mb-2 flex flex-col gap-2">
+              <div className="inline-flex self-start rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-sm font-semibold">
+                <button
+                  onClick={() => setRel('all')}
+                  className={`rounded-lg px-4 py-1.5 ${rel === 'all' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setRel('owned')}
+                  className={`rounded-lg px-4 py-1.5 ${rel === 'owned' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  I own
+                </button>
+                <button
+                  onClick={() => setRel('led')}
+                  className={`rounded-lg px-4 py-1.5 ${rel === 'led' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  I led
+                </button>
+              </div>
               <FilterButton count={advCount} onClick={() => setSheet(true)} />
             </div>
           )}
