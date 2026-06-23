@@ -741,7 +741,7 @@ def get_comments(reference_doctype, reference_name):
 			"reference_name": reference_name,
 		},
 		fields=["name", "content", "comment_email", "comment_by", "creation"],
-		order_by="creation asc",
+		order_by="creation desc",
 		limit_page_length=0,
 	)
 	name_map = _user_name_map({r.get("comment_email") for r in rows} | {r.get("comment_by") for r in rows})
