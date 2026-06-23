@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import {
   AlertCircle,
   ArrowRight,
+  Ban,
   CalendarDays,
   Check,
   Clock,
@@ -13,6 +14,7 @@ import {
   Pencil,
   Plus,
   Repeat,
+  RotateCcw,
   Save,
   Trash2,
   CalendarRange,
@@ -28,9 +30,11 @@ import FocusOverlay from '@/components/FocusOverlay'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml } from '@/lib/format'
-import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations } from '@/hooks/useData'
+import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { MultiSelectChips } from '@/components/MultiSelectChips'
 import type { ProjectItemDetail } from '@/lib/types'
 
 function Stepper({ current }: { current: string }) {
@@ -90,8 +94,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [until, setUntil] = useState(data.recurring.until ?? '')
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level ?? '')
-  const [blockedBy, setBlockedBy] = useState(data.blocked_by ?? '')
-  const [blocking, setBlocking] = useState(data.blocking ?? '')
+  const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
+  const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
 
   const { data: groups } = useScoringGroups()
   const { data: groupDoc } = useScoringGroup(group, !!group)
@@ -140,9 +144,9 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.owner_deadline = ownerDeadline || ''
     fields.group = group
     fields.level = level
-    // Blocking links (empty clears).
-    fields.blocked_by = blockedBy || ''
-    fields.blocking = blocking || ''
+    // Blocking links: arrays of todo names (controller syncs the mirror side).
+    fields.blocked_by = JSON.stringify(blockedBy)
+    fields.blocking = JSON.stringify(blocking)
     update.mutate(fields, {
       onSuccess: (res) => {
         toast('success', res.message)
@@ -305,27 +309,19 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       {data.detail_todos.length > 0 && (
-        <div className="mb-3 flex gap-3">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocked by</label>
-            <SearchableSelect
-              value={blockedBy}
-              onChange={setBlockedBy}
-              options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
-              allowClear
-              placeholder="None"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocking</label>
-            <SearchableSelect
-              value={blocking}
-              onChange={setBlocking}
-              options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
-              allowClear
-              placeholder="None"
-            />
-          </div>
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocked by</label>
+          <MultiSelectChips
+            value={blockedBy}
+            onChange={setBlockedBy}
+            options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
+          />
+          <label className="mb-1 mt-3 block text-xs font-medium text-slate-500 dark:text-slate-400">Blocking</label>
+          <MultiSelectChips
+            value={blocking}
+            onChange={setBlocking}
+            options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
+          />
         </div>
       )}
 
@@ -573,8 +569,13 @@ export default function ProjectItemScreen() {
   const id = decodeURIComponent(name)
   const { data, isLoading } = useProjectItem(id)
   const advance = useAdvanceStatus()
+  const cancelTodo = useCancelTodo()
+  const restoreTodo = useRestoreTodo()
+  const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
+  const [showCancel, setShowCancel] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
   const focus = useFocusTimer()
   const [focusOpen, setFocusOpen] = useState(false)
 
@@ -598,6 +599,28 @@ export default function ProjectItemScreen() {
       onSuccess: (res) => toast('success', res.message),
       onError: (err) => toast('error', (err as Error).message),
     })
+
+  const onCancel = async () => {
+    try {
+      const res = await cancelTodo.mutateAsync({ projectItem: data.name, reason: cancelReason.trim() || undefined })
+      toast(res.status === 'ok' ? 'success' : 'info', res.message)
+      setShowCancel(false)
+      setCancelReason('')
+    } catch (e: any) {
+      toast('error', e?.message || 'Cancel failed')
+    }
+  }
+
+  const onRestore = async () => {
+    const ok = await confirm({ title: 'Restore this task to Planned?', confirmLabel: 'Restore' })
+    if (!ok) return
+    try {
+      const res = await restoreTodo.mutateAsync(data.name)
+      toast(res.status === 'ok' ? 'success' : 'info', res.message)
+    } catch (e: any) {
+      toast('error', e?.message || 'Restore failed')
+    }
+  }
 
   const editBtn =
     data.can_edit && !editing ? (
@@ -811,28 +834,87 @@ export default function ProjectItemScreen() {
         <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Workflow</p>
         <Stepper current={data.status_key} />
 
-        {data.status_key !== 'completed' &&
-          (data.can_advance ? (
-            <button
-              onClick={onAdvance}
-              disabled={advance.isPending}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition active:bg-brand-700 disabled:opacity-60"
-            >
-              {advance.isPending ? (
-                <Spinner className="h-5 w-5" />
+        {data.status_key === 'cancelled' ? (
+          <div className="mt-5 space-y-3">
+            {data.cancellation_reason && (
+              <p className="rounded-xl bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+                Reason: {data.cancellation_reason}
+              </p>
+            )}
+            {data.can_edit && (
+              <button
+                onClick={onRestore}
+                disabled={restoreTodo.isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-700 dark:text-slate-200 active:scale-[0.99] disabled:opacity-60"
+              >
+                {restoreTodo.isPending ? <Spinner className="h-5 w-5" /> : <RotateCcw className="h-4 w-4" />}
+                Restore to Planned
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {data.status_key !== 'completed' &&
+              (data.can_advance ? (
+                <button
+                  onClick={onAdvance}
+                  disabled={advance.isPending}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition active:bg-brand-700 disabled:opacity-60"
+                >
+                  {advance.isPending ? (
+                    <Spinner className="h-5 w-5" />
+                  ) : (
+                    <>
+                      {data.next_status_label}
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
               ) : (
-                <>
-                  {data.next_status_label}
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          ) : (
-            <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
-              <Lock className="h-4 w-4" />
-              Waiting on someone else to advance this
-            </div>
-          ))}
+                <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
+                  <Lock className="h-4 w-4" />
+                  Waiting on someone else to advance this
+                </div>
+              ))}
+
+            {data.can_edit && data.status_key !== 'completed' && (
+              showCancel ? (
+                <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    rows={2}
+                    placeholder="Reason (optional)"
+                    className="w-full resize-none rounded-lg border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={onCancel}
+                      disabled={cancelTodo.isPending}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-60"
+                    >
+                      {cancelTodo.isPending ? <Spinner className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                      Confirm cancel
+                    </button>
+                    <button
+                      onClick={() => { setShowCancel(false); setCancelReason('') }}
+                      className="rounded-lg bg-white dark:bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-200"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowCancel(true)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-600 ring-1 ring-rose-200 dark:ring-rose-500/30 active:bg-rose-50"
+                >
+                  <Ban className="h-4 w-4" /> Cancel task
+                </button>
+              )
+            )}
+          </>
+        )}
       </div>
 
       {/* Recurrence history */}

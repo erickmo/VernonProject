@@ -14,7 +14,8 @@ export default function ProjectDetailScreen() {
   const { name = '' } = useParams()
   const navigate = useNavigate()
   const id = decodeURIComponent(name)
-  const { data, isLoading } = useProjectDetail(id)
+  const [showCancelled, setShowCancelled] = useState(false)
+  const { data, isLoading } = useProjectDetail(id, showCancelled)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [todoFilter, setTodoFilter] = useState<'all' | 'open' | 'completed'>('all')
@@ -120,20 +121,31 @@ export default function ProjectDetailScreen() {
           />
         ) : projectItems.length ? (
           <>
-            <div className="mb-2.5 flex gap-1.5">
-              {([
-                ['all', `All ${projectItems.length}`],
-                ['open', `Open ${projectItems.length - completedCount}`],
-                ['completed', `Completed ${completedCount}`],
-              ] as const).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setTodoFilter(key)}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${todoFilter === key ? 'bg-brand-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="mb-2.5 flex items-center justify-between gap-1.5">
+              <div className="flex gap-1.5">
+                {([
+                  ['all', `All ${projectItems.length}`],
+                  ['open', `Open ${projectItems.length - completedCount}`],
+                  ['completed', `Completed ${completedCount}`],
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setTodoFilter(key)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${todoFilter === key ? 'bg-brand-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={showCancelled}
+                  onChange={(e) => setShowCancelled(e.target.checked)}
+                  className="h-4 w-4 accent-brand-600"
+                />
+                Show cancelled
+              </label>
             </div>
             {filteredItems.length ? (
           <div className="flex flex-col gap-3">
