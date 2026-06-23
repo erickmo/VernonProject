@@ -1,3 +1,172 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Trash2, Check } from 'lucide-react'
+import { Spinner } from '@/components/ui'
+import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
+import { MergeIntoCard } from '@/components/MergeIntoCard'
+import { deleteErrorMessage } from '@/lib/format'
+import {
+  useBrand,
+  useBrands,
+  useCreateBrand,
+  useUpdateBrand,
+  useDeleteBrand,
+  useMergeBrand,
+  useBoot,
+  canManageBrands,
+} from '@/hooks/useData'
+
+const field =
+  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+
 export default function BrandForm() {
-  return <div className="p-2 text-slate-500">BrandForm — coming soon</div>
+  const navigate = useNavigate()
+  const toast = useToast()
+  const confirm = useConfirm()
+  const { name: rawName } = useParams()
+  const name = rawName ? decodeURIComponent(rawName) : ''
+  const isEdit = !!name
+  const { data: boot } = useBoot()
+
+  const { data: existing, isLoading } = useBrand(name, isEdit)
+  const create = useCreateBrand()
+  const update = useUpdateBrand()
+  const del = useDeleteBrand()
+  const merge = useMergeBrand()
+  const { data: allBrands } = useBrands()
+
+  const [form, setForm] = useState<{ brand_name: string }>({ brand_name: '' })
+
+  useEffect(() => {
+    if (isEdit && existing) {
+      setForm({ brand_name: existing.brand_name })
+    }
+  }, [isEdit, existing])
+
+  const blocked = !boot ? false : !canManageBrands(boot)
+  useEffect(() => {
+    if (blocked) navigate('/', { replace: true })
+  }, [blocked, navigate])
+
+  if (blocked) return null
+
+  if (isEdit && isLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spinner />
+      </div>
+    )
+  }
+
+  const validate = (): string | null => {
+    if (!form.brand_name.trim()) return 'Brand name is required'
+    return null
+  }
+
+  const save = () => {
+    const err = validate()
+    if (err) {
+      toast('error', err)
+      return
+    }
+    const payload = { brand_name: form.brand_name.trim() }
+    const opts = {
+      onSuccess: () => {
+        toast('success', isEdit ? 'Brand updated' : 'Brand created')
+        navigate('/brands')
+      },
+      onError: (e: unknown) => toast('error', (e as Error).message),
+    }
+    if (isEdit) update.mutate({ name, payload }, opts)
+    else create.mutate(payload, opts)
+  }
+
+  const remove = async () => {
+    if (!(await confirm({ title: 'Delete this brand?', confirmLabel: 'Delete', destructive: true })))
+      return
+    del.mutate(name, {
+      onSuccess: () => {
+        toast('success', 'Brand deleted')
+        navigate('/brands')
+      },
+      onError: (e) => toast('error', deleteErrorMessage(e, 'brand')),
+    })
+  }
+
+  const doMerge = (target: string) =>
+    merge.mutate(
+      { source: name, target },
+      {
+        onSuccess: () => {
+          toast('success', 'Brands merged')
+          navigate('/brands')
+        },
+        onError: (e) => toast('error', (e as Error).message),
+      },
+    )
+
+  const mergeOptions = (allBrands ?? [])
+    .filter((b) => b.name !== name)
+    .map((b) => ({ value: b.name, label: b.brand_name }))
+
+  const saving = create.isPending || update.isPending
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <button
+          onClick={() => navigate('/brands')}
+          className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Brands
+        </button>
+        <h1 className="text-2xl font-bold">{isEdit ? 'Edit brand' : 'New brand'}</h1>
+      </div>
+
+      <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Brand name</label>
+          <input
+            className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
+            value={form.brand_name}
+            readOnly={isEdit}
+            onChange={(e) => setForm((f) => ({ ...f, brand_name: e.target.value }))}
+            placeholder="e.g. Acme"
+          />
+        </div>
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+        >
+          {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+          {isEdit ? 'Save changes' : 'Create brand'}
+        </button>
+      </div>
+
+      {isEdit && (
+        <div className="max-w-2xl flex flex-col gap-3">
+          <button
+            onClick={remove}
+            disabled={del.isPending}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:hover:bg-rose-500/15 transition-colors"
+          >
+            {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
+          </button>
+
+          {mergeOptions.length > 0 && (
+            <MergeIntoCard
+              entity="brand"
+              currentLabel={existing?.brand_name || name}
+              options={mergeOptions}
+              isPending={merge.isPending}
+              onConfirm={doMerge}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
