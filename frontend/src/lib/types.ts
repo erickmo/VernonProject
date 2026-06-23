@@ -43,6 +43,8 @@ export interface ProjectItem {
   project_leader: string | null
   project_leader_name: string | null
   is_mine: boolean
+  is_owner: boolean
+  is_leader: boolean
 }
 
 export interface ProjectItemDetail extends ProjectItem {
