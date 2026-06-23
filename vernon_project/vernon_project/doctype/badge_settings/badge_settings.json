@@ -1,0 +1,27 @@
+{
+ "actions": [],
+ "creation": "2026-06-23 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["intro", "tiers"],
+ "fields": [
+  {"fieldname": "intro", "fieldtype": "HTML", "label": "Intro", "options": "<p>Define point-earned tiers. A user's badge is the highest tier whose Min Points is ≤ their lifetime Todo-source points earned.</p>"},
+  {"fieldname": "tiers", "fieldtype": "Table", "label": "Tiers", "options": "Badge Tier"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-06-23 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Badge Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
