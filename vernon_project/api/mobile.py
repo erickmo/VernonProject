@@ -195,6 +195,120 @@ def _notify(recipient, type, title, body, reference_doctype=None, reference_name
 		frappe.log_error(title="_notify failed")
 
 
+@frappe.whitelist()
+def get_notifications(limit=30):
+	"""Newest-first notifications for the session user + unread count."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	limit = frappe.utils.cint(limit) or 30
+	rows = frappe.get_all(
+		"Vernon Notification",
+		filters={"recipient": user},
+		fields=[
+			"name", "type", "title", "body", "reference_doctype",
+			"reference_name", "actor", "is_read", "creation",
+		],
+		order_by="creation desc",
+		limit_page_length=limit,
+	)
+	actor_map = _user_name_map({r["actor"] for r in rows})
+	items = [
+		{
+			"name": r["name"],
+			"type": r["type"],
+			"title": r["title"],
+			"body": r["body"],
+			"reference_doctype": r["reference_doctype"],
+			"reference_name": r["reference_name"],
+			"actor": r["actor"],
+			"actor_name": (actor_map.get(r["actor"]) or {}).get("full_name") or r["actor"],
+			"is_read": bool(r["is_read"]),
+			"at": str(r["creation"]),
+			"at_human": _humanize_datetime(r["creation"]),
+		}
+		for r in rows
+	]
+	unread = frappe.db.count("Vernon Notification", {"recipient": user, "is_read": 0})
+	return {"items": items, "unread": unread}
+
+
+@frappe.whitelist()
+def mark_notification_read(name):
+	"""Mark one of the session user's notifications read."""
+	user = frappe.session.user
+	owner = frappe.db.get_value("Vernon Notification", name, "recipient")
+	if owner != user:
+		frappe.throw("Not permitted", frappe.PermissionError)
+	frappe.db.set_value("Vernon Notification", name, "is_read", 1, update_modified=False)
+	frappe.db.commit()
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def mark_all_read():
+	"""Mark every unread notification of the session user as read."""
+	user = frappe.session.user
+	names = frappe.get_all(
+		"Vernon Notification",
+		filters={"recipient": user, "is_read": 0},
+		pluck="name",
+		limit_page_length=0,
+	)
+	for n in names:
+		frappe.db.set_value("Vernon Notification", n, "is_read", 1, update_modified=False)
+	frappe.db.commit()
+	return {"ok": True, "marked": len(names)}
+
+
+@frappe.whitelist()
+def register_push_subscription(subscription):
+	"""Upsert a Push Subscription (by endpoint) for the session user."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	sub = frappe.parse_json(subscription) if isinstance(subscription, str) else subscription
+	endpoint = (sub or {}).get("endpoint")
+	keys = (sub or {}).get("keys") or {}
+	p256dh = keys.get("p256dh")
+	auth = keys.get("auth")
+	if not endpoint or not p256dh or not auth:
+		frappe.throw("Invalid subscription")
+	ua = frappe.local.request.headers.get("User-Agent") if frappe.local.request else None
+	existing = frappe.db.get_value("Push Subscription", {"endpoint": endpoint}, "name")
+	if existing:
+		doc = frappe.get_doc("Push Subscription", existing)
+		doc.user = user
+		doc.p256dh = p256dh
+		doc.auth = auth
+		doc.user_agent = (ua or "")[:500]
+		doc.save(ignore_permissions=True)
+	else:
+		frappe.get_doc({
+			"doctype": "Push Subscription",
+			"user": user,
+			"endpoint": endpoint,
+			"p256dh": p256dh,
+			"auth": auth,
+			"user_agent": (ua or "")[:500],
+		}).insert(ignore_permissions=True)
+	frappe.db.commit()
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def unregister_push_subscription(endpoint):
+	"""Delete the session user's Push Subscription by endpoint."""
+	user = frappe.session.user
+	name = frappe.db.get_value(
+		"Push Subscription", {"endpoint": endpoint, "user": user}, "name"
+	)
+	if name:
+		frappe.delete_doc("Push Subscription", name, ignore_permissions=True, force=True)
+		frappe.db.commit()
+	return {"ok": True}
+
+
 def _involved_project_names(user):
 	"""Projects the user is involved in: owner / leader / admin, a Project Team
 	member, or assigned to any todo in the project."""
