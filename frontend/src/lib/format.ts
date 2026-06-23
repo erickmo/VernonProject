@@ -85,6 +85,20 @@ export function deleteErrorMessage(e: unknown, entity: string): string {
 // drop dangerous elements, strip event-handler attributes and javascript: URLs.
 // Links open in the same webview (no target=_blank) so they stay inside the
 // installed PWA instead of kicking out to an external browser. Keeps formatting.
+// True when an <img src> is a safe inline comment image: an app-served file
+// (/files/...) or any same-origin URL. Cross-origin/remote and data: URLs are
+// dropped to avoid tracking pixels and external content in user HTML.
+function isAllowedImgSrc(src: string): boolean {
+  const s = (src || '').trim()
+  if (s.startsWith('/files/')) return true
+  try {
+    const u = new URL(s, window.location.origin)
+    return u.origin === window.location.origin && u.pathname.startsWith('/files/')
+  } catch {
+    return false
+  }
+}
+
 export function sanitizeHtml(html: string): string {
   if (!html) return ''
   const root = document.createElement('div')
@@ -97,6 +111,23 @@ export function sanitizeHtml(html: string): string {
       else if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(attr.value)) {
         el.removeAttribute(attr.name)
       }
+    }
+    // Inline comment images: keep only safe /files/ (or same-origin) sources;
+    // unwrap any other <img> entirely so remote/data: pixels never render.
+    if (el.tagName === 'IMG') {
+      if (!isAllowedImgSrc(el.getAttribute('src') || '')) {
+        el.remove()
+        return
+      }
+    }
+    // Mention chips: keep <span data-mention="email"> but strip every other
+    // attribute so only the marker + text survive.
+    if (el.tagName === 'SPAN' && el.hasAttribute('data-mention')) {
+      const mention = el.getAttribute('data-mention') || ''
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name.toLowerCase() !== 'data-mention') el.removeAttribute(attr.name)
+      }
+      el.setAttribute('data-mention', mention)
     }
     // Strip any author-supplied target so links don't force a new tab/window.
     if (el.tagName === 'A') {
