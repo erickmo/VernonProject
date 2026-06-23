@@ -128,12 +128,14 @@ def _visible_projects(status=None):
 	return frappe.get_list("Project", filters=filters, pluck="name", limit_page_length=0)
 
 
-def _fetch_todos(project_names):
-	"""All todos (with project + work-item context) for the given projects."""
+def _fetch_todos(project_names, include_cancelled=False):
+	"""All todos (with project + work-item context) for the given projects.
+	Cancelled todos are excluded unless include_cancelled is True."""
 	if not project_names:
 		return []
+	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
 	return frappe.db.sql(
-		"""
+		f"""
 		SELECT
 			t.name, t.to_do, t.status, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
@@ -148,10 +150,10 @@ def _fetch_todos(project_names):
 		JOIN `tabProject Detail` pd
 			ON t.project_detail = pd.name
 		JOIN `tabProject` p ON pd.project = p.name
-		WHERE pd.project IN %(projects)s
+		WHERE pd.project IN %(projects)s {cond}
 		ORDER BY t.deadline ASC
 		""",
-		{"projects": tuple(project_names)},
+		{"projects": tuple(project_names), "cancelled": STATUS_CANCELLED},
 		as_dict=True,
 	)
 
@@ -735,7 +737,7 @@ def add_comment(reference_doctype, reference_name, content):
 
 
 @frappe.whitelist()
-def get_project_detail(project_detail):
+def get_project_detail(project_detail, include_cancelled=0):
 	"""A Project Detail with its project items."""
 	user = frappe.session.user
 	detail = frappe.get_value(
@@ -753,7 +755,11 @@ def get_project_detail(project_detail):
 	detail["latest_deadline"] = str(detail["latest_deadline"]) if detail.get("latest_deadline") else None
 	detail["project_deadline"] = str(detail["project_deadline"]) if detail.get("project_deadline") else None
 
-	rows = [r for r in _fetch_todos([detail["project"]]) if r["project_detail"] == project_detail]
+	rows = [
+		r
+		for r in _fetch_todos([detail["project"]], include_cancelled=frappe.utils.cint(include_cancelled))
+		if r["project_detail"] == project_detail
+	]
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
 	detail["project_name"] = frappe.get_value("Project", detail["project"], "project_name")
@@ -821,7 +827,7 @@ def get_project_item(project_item):
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	project = frappe.get_value("Project Detail", project_detail, "project")
 
-	rows = [r for r in _fetch_todos([project]) if r["name"] == project_item]
+	rows = [r for r in _fetch_todos([project], include_cancelled=True) if r["name"] == project_item]
 	if not rows:
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	r = rows[0]
@@ -856,9 +862,11 @@ def get_project_item(project_item):
 			"recurring_frequency",
 			"recurring_until",
 			"original_todo",
+			"cancellation_reason",
 		],
 		as_dict=True,
 	) or {}
+	shaped["cancellation_reason"] = extra.get("cancellation_reason")
 	# Blocking links are Table MultiSelect child rows (mirror sides of one edge).
 	shaped["blocked_by"] = frappe.get_all(
 		"Project Todo Dependency",
