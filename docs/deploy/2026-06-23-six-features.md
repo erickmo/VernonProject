@@ -16,27 +16,20 @@ cd /home/frappe/frappe-bench
 Pulls `cryptography` (already present), `http-ece`, `py-vapid`. The `_notify` helper guards the import
 (`mobile.py:133-135`) — nothing crashes if you skip this, push just doesn't send.
 
-## 2. Generate a VAPID keypair
+## 2+3. Generate the keypair AND write it into the site config (one step)
+
+Use the script's `--site` mode — it writes `sites/project.vernon.id/site_config.json` directly.
+**Do not** use `bench set-config` for the keys: a base64url key starting with `-` is misparsed as a
+CLI flag and silently dropped.
 
 ```bash
 cd /home/frappe/frappe-bench
-./env/bin/python vapid_keygen.py     # (copy vapid_keygen.py here first)
+./env/bin/python apps/vernon_project/scripts/vapid_keygen.py \
+    --site project.vernon.id --subject mailto:mo@intinusa.id
 ```
-Prints `vapid_public_key` (87 chars) and `vapid_private_key` (43 chars). **The private key is a secret** —
-it only goes into site_config (step 3), never into git/chat/tickets.
-
-## 3. Write the three keys into the SITE config
-
-`set-config` edits `sites/project.vernon.id/site_config.json` JSON-safely:
-
-```bash
-cd /home/frappe/frappe-bench
-bench --site project.vernon.id set-config vapid_public_key  '<PUBLIC_KEY_FROM_STEP_2>'
-bench --site project.vernon.id set-config vapid_private_key '<PRIVATE_KEY_FROM_STEP_2>'
-bench --site project.vernon.id set-config vapid_subject     'mailto:mo@intinusa.id'
-```
-The code reads exactly these keys (`mobile.py:126-128`, exposed to the browser via
-`bootstrap()` `mobile.py:606`). `vapid_subject` must be a `mailto:` or `https:` URL.
+The code reads exactly `vapid_public_key` / `vapid_private_key` / `vapid_subject` (`mobile.py:126-128`,
+public key exposed to the browser via `bootstrap()` `mobile.py:606`). `vapid_subject` must be a
+`mailto:` or `https:` URL. The private key never prints in `--site` mode.
 
 ## 4. Migrate — create the new doctype tables
 
