@@ -1471,6 +1471,53 @@ def change_my_password(old_password, new_password):
 
 
 # --------------------------------------------------------------------------------
+# Badge — highest Badge Settings tier the user's lifetime Todo-source points clear.
+# Metric matches the leaderboard: sum(Point Ledger.points_earned WHERE source='Todo').
+# Grant/Gift credits never affect the badge.
+# --------------------------------------------------------------------------------
+
+
+def _badge_tiers():
+	"""Configured tiers sorted by min_points desc. Cached for the request so the
+	bootstrap/leaderboard/comment calls don't re-read the single each time."""
+	cached = getattr(frappe.local, "_vernon_badge_tiers", None)
+	if cached is not None:
+		return cached
+	tiers = []
+	try:
+		settings = frappe.get_cached_doc("Badge Settings")
+		for t in settings.get("tiers") or []:
+			tiers.append({
+				"tier_name": t.tier_name,
+				"min_points": float(t.min_points or 0),
+				"color": t.color or None,
+				"icon": t.icon or None,
+			})
+	except Exception:
+		tiers = []
+	tiers.sort(key=lambda t: t["min_points"], reverse=True)
+	frappe.local._vernon_badge_tiers = tiers
+	return tiers
+
+
+def _user_badge(user):
+	"""Return {tier_name, color, icon} for the highest tier the user clears, or None.
+	earned = lifetime Todo-source points (Grant/Gift excluded, matching the leaderboard)."""
+	tiers = _badge_tiers()
+	if not tiers:
+		return None
+	earned = float(frappe.db.sql(
+		"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
+		"where user = %s and coalesce(source, 'Todo') not in ('Grant', 'Gift')",
+		user,
+	)[0][0])
+	for t in tiers:  # already sorted desc by min_points
+		if earned >= t["min_points"]:
+			return {"tier_name": t["tier_name"], "color": t["color"], "icon": t["icon"]}
+	return None
+
+
+# --------------------------------------------------------------------------------
 # Points wallet — balance, transaction log
 # Balance is computed live: sum(Point Ledger credits) - sum(Reward Redemption debits).
 # Nothing is materialized, so there is no balance to drift out of sync.
