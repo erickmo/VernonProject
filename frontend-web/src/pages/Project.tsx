@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Outlet, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import {
   Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers,
   Pencil, Trash2, Plus, ListPlus, BarChart3, List,
 } from 'lucide-react'
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
-import { Segmented, ProgressBar, Avatar, Spinner, EmptyState } from '@/components/ui'
+import { ProgressBar, Avatar, Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -24,8 +24,6 @@ export default function Project() {
   const { name = '', itemName } = useParams()
   const id = decodeURIComponent(name)
   const nav = useNavigate()
-  const loc = useLocation()
-
   const project = useProject(id)
   const boot = useBoot()
   const del = useDeleteProject()
@@ -79,9 +77,6 @@ export default function Project() {
       onError: (e) => toast('error', (e as Error).message),
     })
   }
-
-  // Suppress unused loc warning — kept for future use (e.g., back navigation)
-  void loc
 
   return (
     <div className="space-y-5">
