@@ -1222,6 +1222,7 @@ def update_todo(
 			row.owner_deadline = owner_deadline or None
 		if estimated is not None and estimated != "":
 			row.estimated = int(estimated)
+		_prev_assignee = row.assigned_to
 		if assigned_to is not None and assigned_to:
 			row.assigned_to = assigned_to
 		if group is not None and group:
@@ -1264,6 +1265,19 @@ def update_todo(
 			row.next_occurrence = row.calculate_next_occurrence(row.deadline)
 
 		row.save(ignore_permissions=True)
+
+		if row.assigned_to and row.assigned_to != _prev_assignee:
+			actor_name = (_user_name_map({user}).get(user) or {}).get("full_name") or user
+			_notify(
+				recipient=row.assigned_to,
+				type="Assignment",
+				title="New task assigned",
+				body=f"{actor_name} assigned you: {row.to_do}",
+				reference_doctype="Project Todo",
+				reference_name=row.name,
+				actor=user,
+			)
+
 		return {"status": "ok", "message": "Task updated."}
 
 	except frappe.DoesNotExistError:
