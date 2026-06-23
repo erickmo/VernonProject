@@ -993,6 +993,51 @@ def add_comment(reference_doctype, reference_name, content):
 
 
 @frappe.whitelist()
+def get_mentionable_users(reference_doctype, reference_name):
+	"""Project participants who can be @mentioned in a comment on this record:
+	the project's owner, leader, admin, team members, and the assignees of the
+	project's todos. Returns [{user, full_name, image}], de-duplicated, sorted by
+	full name. Access is gated by comment visibility on the target."""
+	_assert_comment_visible(reference_doctype, reference_name)
+	project = _comment_project(reference_doctype, reference_name)
+	if not project:
+		return []
+
+	owner, leader, admin = frappe.get_value(
+		"Project", project, ["project_owner", "project_leader", "project_admin"]
+	)
+	emails = {e for e in (owner, leader, admin) if e}
+	emails |= set(
+		frappe.get_all(
+			"Project Team",
+			filters={"parent": project},
+			pluck="user",
+			limit_page_length=0,
+		)
+	)
+	emails |= set(
+		frappe.get_all(
+			"Project Todo",
+			filters={"project": project, "assigned_to": ["is", "set"]},
+			pluck="assigned_to",
+			limit_page_length=0,
+		)
+	)
+	emails = {e for e in emails if e}
+	name_map = _user_name_map(emails)
+	out = [
+		{
+			"user": e,
+			"full_name": (name_map.get(e) or {}).get("full_name") or e,
+			"image": (name_map.get(e) or {}).get("user_image"),
+		}
+		for e in emails
+	]
+	out.sort(key=lambda r: (r["full_name"] or "").lower())
+	return out
+
+
+@frappe.whitelist()
 def get_project_detail(project_detail, include_cancelled=0):
 	"""A Project Detail with its project items."""
 	user = frappe.session.user
