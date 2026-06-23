@@ -240,6 +240,39 @@ export async function uploadRewardImage(file: File): Promise<string> {
   return out.file_url as string
 }
 
+// Multipart upload of a comment image to a whitelisted method. Access is gated
+// server-side by comment visibility on the referenced record. Returns the saved
+// public file URL (served from /files/...).
+export async function uploadCommentImage(
+  file: File,
+  refDoctype?: string,
+  refName?: string,
+): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  if (refDoctype) fd.append('reference_doctype', refDoctype)
+  if (refName) fd.append('reference_name', refName)
+  const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_comment_image', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out.file_url as string
+}
+
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>
   api.post<{ message?: string }>('frappe.client.rename_doc', {
     doctype,
