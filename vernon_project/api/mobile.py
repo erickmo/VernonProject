@@ -413,6 +413,7 @@ def bootstrap():
 		"image": u.get("user_image"),
 		"roles": vernon_roles,
 		"is_leader": any(r in roles for r in ("Project Owner", "Project Leader", "System Manager")),
+		"badge": _user_badge(user),
 	}
 
 
