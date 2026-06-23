@@ -1,0 +1,56 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-23 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["tier_name", "min_points", "color", "icon"],
+ "fields": [
+  {
+   "fieldname": "tier_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tier Name",
+   "reqd": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "min_points",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Min Points",
+   "non_negative": 1,
+   "reqd": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Color",
+   "columns": 3
+  },
+  {
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Icon",
+   "columns": 2
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-23 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Badge Tier",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
