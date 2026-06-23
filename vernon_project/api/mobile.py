@@ -603,6 +603,7 @@ def bootstrap():
 		"roles": vernon_roles,
 		"is_leader": any(r in roles for r in ("Project Owner", "Project Leader", "System Manager")),
 		"badge": _user_badge(user),
+		"vapid_public_key": frappe.conf.get("vapid_public_key") or None,
 	}
 
 
