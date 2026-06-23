@@ -305,6 +305,58 @@ class ProjectTodo(Document):
 					self.create_next_occurrence()
 			elif prev_state == "✅ Completed":
 				self._remove_ledger()
+			self._notify_status_change(prev_state)
+
+	def _notify_status_change(self, prev_state):
+		"""Best-effort approval-queue notifications. Never raises into the save.
+		done   -> Leader approval queue (notify project_leader)
+		checked-> Owner approval queue  (notify project_owner)
+		Completed -> notify the assignee their work was approved."""
+		try:
+			from vernon_project.api.mobile import _notify
+
+			actor = frappe.session.user
+			project = frappe.get_value(
+				"Project", self.project, ["project_owner", "project_leader"], as_dict=True
+			) or {}
+
+			# Done By PL? -> awaiting Leader. Checked By PL -> awaiting Owner.
+			DONE = "\U0001f7e0 Done"
+			CHECKED = "\U0001f537 Checked By PL"
+			COMPLETED = "✅ Completed"
+
+			if self.status == DONE:
+				_notify(
+					recipient=project.get("project_leader"),
+					type="Approval",
+					title="Task awaiting your approval",
+					body=f"“{self.to_do}” is ready for Leader approval.",
+					reference_doctype="Project Todo",
+					reference_name=self.name,
+					actor=actor,
+				)
+			elif self.status == CHECKED:
+				_notify(
+					recipient=project.get("project_owner"),
+					type="Approval",
+					title="Task awaiting your approval",
+					body=f"“{self.to_do}” is ready for Owner approval.",
+					reference_doctype="Project Todo",
+					reference_name=self.name,
+					actor=actor,
+				)
+			elif self.status == COMPLETED:
+				_notify(
+					recipient=self.assigned_to,
+					type="Approval",
+					title="Your task was approved",
+					body=f"“{self.to_do}” is now Completed.",
+					reference_doctype="Project Todo",
+					reference_name=self.name,
+					actor=actor,
+				)
+		except Exception:
+			frappe.log_error(title="_notify_status_change failed")
 
 	def on_update(self):
 		self.sync_block_links()
