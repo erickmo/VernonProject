@@ -88,7 +88,7 @@ export default function Projects() {
         ))
       )}
 
-      <ProjectFormDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      <ProjectFormDialog key={showCreate ? 'create-open' : 'create-closed'} open={showCreate} onClose={() => setShowCreate(false)} />
     </div>
   )
 }

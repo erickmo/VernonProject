@@ -55,7 +55,7 @@ export default function ProjectDetail() {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <button
-            onClick={() => nav(`/project/${d.project}`)}
+            onClick={() => nav(`/project/${encodeURIComponent(d.project)}`)}
             className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

@@ -57,11 +57,11 @@ export default function Review() {
   )
 
   const byProject = useMemo(() => {
-    const m = new Map<string, typeof visible>()
+    const m = new Map<string, { displayName: string; items: typeof visible }>()
     for (const t of visible) {
-      const existing = m.get(t.project_name)
-      if (existing) existing.push(t)
-      else m.set(t.project_name, [t])
+      const existing = m.get(t.project)
+      if (existing) existing.items.push(t)
+      else m.set(t.project, { displayName: t.project_name, items: [t] })
     }
     return [...m.entries()]
   }, [visible])
@@ -129,13 +129,13 @@ export default function Review() {
           subtitle="The queue is empty."
         />
       ) : (
-        byProject.map(([proj, list]) => (
-          <section key={proj} className="space-y-2">
-            <h2 className="text-sm font-semibold text-slate-500">{proj}</h2>
+        byProject.map(([projId, { displayName, items }]) => (
+          <section key={projId} className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-500">{displayName}</h2>
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {list.map((t) => (
+                  {items.map((t) => (
                     <tr
                       key={t.name}
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
