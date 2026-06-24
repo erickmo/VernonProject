@@ -7,6 +7,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import App from './App'
 import { ToastProvider } from '@/components/Toast'
 import { ConfirmProvider } from '@/components/Confirm'
+import { AdvanceProvider } from '@/components/AdvanceProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import './index.css'
 import { initTheme } from '@/lib/theme'
@@ -35,9 +36,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter basename="/w">
         <ToastProvider>
           <ConfirmProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
+            <AdvanceProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </AdvanceProvider>
           </ConfirmProvider>
         </ToastProvider>
       </BrowserRouter>

@@ -95,10 +95,13 @@ export const mobileApi = {
     }),
   projectItem: (name: string) => api.get(M + 'get_project_item', { project_item: name }),
   advanceStatus: (todoId: string) =>
-    api.post<{ status: string; message: string }>(
-      'vernon_project.api.project_todo.update_status',
-      { todo_id: todoId },
-    ),
+    api.post<{
+      status: string
+      message: string
+      status_key?: string
+      can_advance?: boolean
+      next_status_label?: string | null
+    }>('vernon_project.api.project_todo.update_status', { todo_id: todoId }),
   cancelTodo: (projectItem: string, reason?: string) =>
     api.post<{ status: string; message: string }>(M + 'cancel_todo', {
       project_item: projectItem,

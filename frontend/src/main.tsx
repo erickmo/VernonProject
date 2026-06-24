@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/Confirm'
+import { AdvanceProvider } from './components/AdvanceProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './index.css'
 import { initTheme } from './lib/theme'
@@ -46,9 +47,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter basename="/m">
         <ToastProvider>
           <ConfirmProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
+            <AdvanceProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </AdvanceProvider>
           </ConfirmProvider>
         </ToastProvider>
       </BrowserRouter>
