@@ -156,17 +156,19 @@ export function AppShell() {
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 h-14 px-4 lg:px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+        {/* mobile-only top bar (desktop uses the sidebar) */}
+        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 h-14 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
           <button
-            className="lg:hidden rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             aria-label="Menu"
             aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen((o) => !o)}
           >
             {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <div id="web-topbar-slot" className="flex-1 flex items-center justify-between" />
+          <span className="flex items-center gap-2 text-brand-600 font-bold">
+            <FolderKanban className="w-5 h-5" /> Vernon
+          </span>
         </header>
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 py-6">
           <Outlet />

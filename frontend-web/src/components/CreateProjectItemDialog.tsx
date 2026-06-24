@@ -4,7 +4,7 @@ import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Dialog } from '@web/components/overlays/Dialog'
 
 interface Props {
@@ -195,7 +195,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
               <span className="flex items-center gap-1">
                 <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
               </span>
-              <MultiSelectChips
+              <MultiSelectSearch
                 value={blockedBy}
                 onChange={setBlockedBy}
                 options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
@@ -205,7 +205,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
               <span className="flex items-center gap-1">
                 <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
               </span>
-              <MultiSelectChips
+              <MultiSelectSearch
                 value={blocking}
                 onChange={setBlocking}
                 options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}

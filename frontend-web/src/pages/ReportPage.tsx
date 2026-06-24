@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { AlertCircle, ArrowLeft, Filter, Inbox, Info } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Inbox,
+  Info,
+} from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { useBoot, useReport, useReportOptions } from '@/hooks/useData'
@@ -20,6 +28,19 @@ function cell(value: unknown, fieldtype: string): string {
   return s
 }
 
+const PAGE_SIZE = 50
+type SortDir = 'asc' | 'desc'
+
+// Treat numeric Frappe fieldtypes as numeric for sorting.
+function isNumericType(fieldtype: string): boolean {
+  return /int|float|currency|percent|rating|duration/i.test(fieldtype)
+}
+
+// Null / undefined / '' always sort last (regardless of direction).
+function isEmpty(v: unknown): boolean {
+  return v === null || v === undefined || v === ''
+}
+
 export default function ReportPage() {
   const { name = '' } = useParams()
   const reportName = decodeURIComponent(name)
@@ -33,6 +54,10 @@ export default function ReportPage() {
 
   const filterRef = useRef<HTMLSpanElement>(null)
   const [filterOpen, setFilterOpen] = useState(false)
+
+  // Client-side sorting + progressive "load more" reveal.
+  const [sort, setSort] = useState<{ field: string; dir: SortDir } | null>(null)
+  const [visible, setVisible] = useState(PAGE_SIZE)
 
   const statusSets: Record<StatusSet, Opt[]> = useMemo(
     () => ({
@@ -103,6 +128,57 @@ export default function ReportPage() {
       return n + 1
     }, 0)
   }, [def, filters])
+
+  // Sort the FULL fetched result set (not just the revealed page), then slice
+  // to the visible count below. Numeric columns sort numerically; everything
+  // else falls back to a locale-aware string compare. Empty values sort last.
+  const sortedRows = useMemo(() => {
+    const rows = data?.rows ?? []
+    if (!sort) return rows
+    const col = data?.columns.find((c) => c.fieldname === sort.field)
+    if (!col) return rows
+    const numeric = isNumericType(col.fieldtype)
+    const factor = sort.dir === 'asc' ? 1 : -1
+    return [...rows].sort((a, b) => {
+      const va = a[sort.field]
+      const vb = b[sort.field]
+      const ea = isEmpty(va)
+      const eb = isEmpty(vb)
+      if (ea && eb) return 0
+      if (ea) return 1 // empties always last
+      if (eb) return -1
+      let cmp: number
+      if (numeric) {
+        cmp = Number(va) - Number(vb)
+        if (Number.isNaN(cmp)) cmp = String(va).localeCompare(String(vb))
+      } else {
+        const na = Number(va)
+        const nb = Number(vb)
+        cmp =
+          !Number.isNaN(na) && !Number.isNaN(nb) && String(va).trim() !== '' && String(vb).trim() !== ''
+            ? na - nb
+            : String(va).localeCompare(String(vb), undefined, { numeric: true })
+      }
+      return cmp * factor
+    })
+  }, [data?.rows, data?.columns, sort])
+
+  const visibleRows = sortedRows.slice(0, visible)
+
+  // Toggle sort for a column: asc → desc → none.
+  const toggleSort = (field: string) =>
+    setSort((cur) => {
+      if (!cur || cur.field !== field) return { field, dir: 'asc' }
+      if (cur.dir === 'asc') return { field, dir: 'desc' }
+      return null
+    })
+
+  // Reset paging + sorting whenever the underlying result set changes
+  // (new report or new filters produce a fresh rows array).
+  useEffect(() => {
+    setVisible(PAGE_SIZE)
+    setSort(null)
+  }, [data?.rows])
 
   if (!def) {
     return (
@@ -300,7 +376,8 @@ export default function ReportPage() {
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              {data.total} {data.total === 1 ? 'row' : 'rows'}
+              Showing {visibleRows.length} of {data.rows.length}
+              {data.total > data.rows.length ? ` (of ${data.total} total)` : ''}
             </p>
             {data.rows.some((r) => r.todo_id) ? (
               <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -312,21 +389,44 @@ export default function ReportPage() {
             <table className="min-w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
-                  {data.columns.map((col, i) => (
-                    <th
-                      key={col.fieldname + i}
-                      className={clsx(
-                        'whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
-                        i === 0 && 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800/60',
-                      )}
-                    >
-                      {col.label}
-                    </th>
-                  ))}
+                  {data.columns.map((col, i) => {
+                    const active = sort?.field === col.fieldname
+                    return (
+                      <th
+                        key={col.fieldname + i}
+                        aria-sort={
+                          active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'
+                        }
+                        className={clsx(
+                          'whitespace-nowrap px-0 py-0 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
+                          i === 0 && 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800/60',
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(col.fieldname)}
+                          className={clsx(
+                            'flex w-full items-center gap-1 px-4 py-2.5 text-left uppercase tracking-wide outline-none transition-colors',
+                            'hover:text-slate-700 dark:hover:text-slate-200',
+                            'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset',
+                            active && 'text-slate-700 dark:text-slate-200',
+                          )}
+                        >
+                          <span className="truncate">{col.label}</span>
+                          {active &&
+                            (sort!.dir === 'asc' ? (
+                              <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            ))}
+                        </button>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {data.rows.map((row, ri) => {
+                {visibleRows.map((row, ri) => {
                   const todoId = row.todo_id as string | undefined
                   return (
                     <tr
@@ -359,9 +459,24 @@ export default function ReportPage() {
               </tbody>
             </table>
           </div>
-          {data.total > data.rows.length && (
+          {visibleRows.length < data.rows.length && (
+            <div className="flex justify-center pt-1">
+              <button
+                type="button"
+                onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
+                Load more
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  ({Math.min(PAGE_SIZE, data.rows.length - visibleRows.length)} more)
+                </span>
+              </button>
+            </div>
+          )}
+          {data.total > data.rows.length && visibleRows.length >= data.rows.length && (
             <p className="px-1 text-center text-xs text-slate-400 dark:text-slate-500">
-              Showing first {data.rows.length} of {data.total}. Refine filters to narrow results.
+              Showing all {data.rows.length} loaded of {data.total} total. Refine filters to narrow
+              results.
             </p>
           )}
         </div>

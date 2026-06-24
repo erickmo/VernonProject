@@ -45,7 +45,7 @@ import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { FocusOverlay } from '@web/components/FocusOverlay'
 import type { ProjectItemDetail, StatusKey } from '@/lib/types'
 
@@ -609,7 +609,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
             <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
           </label>
-          <MultiSelectChips
+          <MultiSelectSearch
             value={blockedBy}
             onChange={setBlockedBy}
             options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
@@ -617,7 +617,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           <label className="mb-1 mt-3 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
             <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
           </label>
-          <MultiSelectChips
+          <MultiSelectSearch
             value={blocking}
             onChange={setBlocking}
             options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
