@@ -12,7 +12,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
 
   const doLogout = async () => {
     await logout()
-    window.location.href = '/web'
+    window.location.href = '/w'
   }
 
   return (

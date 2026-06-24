@@ -32,7 +32,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       client={queryClient}
       persistOptions={{ persister, buster: CACHE_BUSTER }}
     >
-      <BrowserRouter basename="/web">
+      <BrowserRouter basename="/w">
         <ToastProvider>
           <ConfirmProvider>
             <ErrorBoundary>

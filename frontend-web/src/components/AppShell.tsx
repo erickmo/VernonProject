@@ -52,7 +52,7 @@ export function AppShell() {
   const drawerRef = useModalA11y(drawerOpen, () => setDrawerOpen(false))
 
   const pickTheme = (t: Theme) => { setTheme(t); setThemeState(t) }
-  const doLogout = async () => { await logout(); window.location.href = '/web' }
+  const doLogout = async () => { await logout(); window.location.href = '/w' }
 
   const b = boot.data
   const admin: NavItem[] = [

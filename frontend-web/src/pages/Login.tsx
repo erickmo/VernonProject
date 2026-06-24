@@ -15,7 +15,7 @@ export default function Login() {
     setBusy(true); setErr('')
     try {
       await login(email.trim(), pwd)
-      window.location.href = '/web'
+      window.location.href = '/w'
     } catch (ex) {
       setErr(parseFrappeError(ex instanceof Error ? ex.message : String(ex)) || 'Login failed')
       setBusy(false)
@@ -51,7 +51,7 @@ export default function Login() {
         <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand-600 text-white py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} Sign in
         </button>
-        <a href="/login#forgot?redirect-to=/web" className="block text-center text-sm text-brand-600">Forgot password?</a>
+        <a href="/login#forgot?redirect-to=/w" className="block text-center text-sm text-brand-600">Forgot password?</a>
       </form>
     </div>
   )

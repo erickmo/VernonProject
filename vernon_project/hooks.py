@@ -37,14 +37,18 @@ app_include_js = "/assets/vernon_project/js/desk_navbar.js"
 # Settings so it is live without a worker restart.)
 website_redirects = [
 	{"source": r"/docs/?", "target": "/assets/vernon_project/docs/index.html"},
+	# Desktop app moved /web -> /w; keep old links working (preserve sub-path).
+	{"source": r"/web/(.*)", "target": r"/w/\1"},
+	{"source": r"/web/?$", "target": "/w"},
 ]
 
-# Mobile PWA (React) — single-page app served at /m. The build copies its
-# index.html to www/m.html; this rule routes every /m/* path back to that page
-# so client-side routing (React Router) works on deep links and refreshes.
+# SPA shells (React) — mobile PWA at /m, desktop at /w. The build copies each
+# index.html to www/m.html and www/w.html; these rules route every /m/* and /w/*
+# path back to its page so client-side routing (React Router) works on deep links
+# and refreshes.
 website_route_rules = [
 	{"from_route": "/m/<path:app_path>", "to_route": "m"},
-	{"from_route": "/web/<path:app_path>", "to_route": "web"},
+	{"from_route": "/w/<path:app_path>", "to_route": "w"},
 ]
 
 # include js, css files in header of web template
