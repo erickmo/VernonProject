@@ -12,7 +12,7 @@ import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { useProject, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
+import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { formatDate } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
@@ -36,6 +36,9 @@ export default function ProjectScreen() {
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [detailFilter, setDetailFilter] = useState<'all' | 'open' | 'completed'>('all')
   const { data: gantt, isLoading: ganttLoading } = useProjectGantt(id, view === 'gantt')
+  // Quick-add targets a single detail; load it so the create form can offer
+  // the Blocked-by / Blocking pickers (siblings) like the detail-page add does.
+  const { data: itemDetailData } = useProjectDetail(itemFor ?? '')
 
   if (isLoading && !data) {
     return (
@@ -349,7 +352,14 @@ export default function ProjectScreen() {
         onClose={() => setWorkloadMember(null)}
       />
       {itemFor && (
-        <CreateProjectItemSheet open={!!itemFor} onClose={() => setItemFor(null)} projectDetail={itemFor} team={data.team} />
+        <CreateProjectItemSheet
+          open={!!itemFor}
+          onClose={() => setItemFor(null)}
+          projectDetail={itemFor}
+          team={data.team}
+          defaultGroup={itemDetailData?.default_group}
+          siblings={(itemDetailData?.project_items ?? []).map((t) => ({ name: t.name, to_do: t.to_do }))}
+        />
       )}
     </DetailScreen>
   )
