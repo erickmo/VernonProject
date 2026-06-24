@@ -1,20 +1,19 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Check } from 'lucide-react'
-import { useDashboard, useAdvanceStatus } from '@/hooks/useData'
+import { useDashboard } from '@/hooks/useData'
 import { byDeadlineAsc, formatDate } from '@/lib/format'
 import { Avatar, EmptyState, Spinner } from '@/components/ui'
 import { buildOptions } from '@/lib/filters'
 import { FilterButton, activeFilterCount, type FilterValue } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { Popover } from '@web/components/overlays/Popover'
-import { useToast } from '@/components/Toast'
+import { useAdvance } from '@/components/AdvanceProvider'
 
 export default function Review() {
   const navigate = useNavigate()
   const dash = useDashboard()
-  const advance = useAdvanceStatus()
-  const toast = useToast()
+  const advanceConfirm = useAdvance()
   const [filters, setFilters] = useState<FilterValue>({})
   const filterRef = useRef<HTMLSpanElement>(null)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -66,14 +65,8 @@ export default function Review() {
     return [...m.entries()]
   }, [visible])
 
-  const approve = async (id: string) => {
-    try {
-      const r = await advance.mutateAsync(id)
-      toast('success', r.message || 'Approved')
-    } catch (e) {
-      toast('error', e instanceof Error ? e.message : 'Failed')
-    }
-  }
+  const approve = (t: { name: string; next_status_label: string | null; to_do: string }) =>
+    advanceConfirm(t.name, t.next_status_label || 'Approve', t.to_do)
 
   if (dash.isLoading) {
     return (
@@ -161,9 +154,8 @@ export default function Review() {
                       >
                         {t.can_advance && (
                           <button
-                            onClick={() => approve(t.name)}
-                            disabled={advance.isPending}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
+                            onClick={() => approve(t)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
                           >
                             <Check className="w-3 h-3" />
                             {t.next_status_label || 'Approve'}

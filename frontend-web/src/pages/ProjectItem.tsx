@@ -28,7 +28,6 @@ import {
 } from 'lucide-react'
 import {
   useProjectItem,
-  useAdvanceStatus,
   useSaveNotes,
   useSetTodoAllocations,
   useUpdateTodo,
@@ -47,6 +46,7 @@ import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { FocusOverlay } from '@web/components/FocusOverlay'
+import { useAdvance } from '@/components/AdvanceProvider'
 import type { ProjectItemDetail, StatusKey } from '@/lib/types'
 
 // ─────────────────────────── Stepper ───────────────────────────
@@ -658,7 +658,7 @@ export default function ProjectItem() {
   const todoName = decodeURIComponent(params.itemName ?? params.name ?? '')
 
   const { data, isLoading } = useProjectItem(todoName)
-  const advance = useAdvanceStatus()
+  const advanceConfirm = useAdvance()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
   const confirm = useConfirm()
@@ -685,11 +685,9 @@ export default function ProjectItem() {
     )
   }
 
-  const onAdvance = () =>
-    advance.mutate(data.name, {
-      onSuccess: (res) => toast('success', res.message),
-      onError: (err) => toast('error', (err as Error).message),
-    })
+  const onAdvance = () => {
+    if (data.next_status_label) advanceConfirm(data.name, data.next_status_label, data.to_do)
+  }
 
   const onCancel = async () => {
     try {
@@ -956,17 +954,10 @@ export default function ProjectItem() {
                     (data.can_advance ? (
                       <button
                         onClick={onAdvance}
-                        disabled={advance.isPending}
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-60"
+                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition hover:bg-brand-700"
                       >
-                        {advance.isPending ? (
-                          <Spinner className="h-5 w-5" />
-                        ) : (
-                          <>
-                            {data.next_status_label}
-                            <ArrowRight className="h-4 w-4" />
-                          </>
-                        )}
+                        {data.next_status_label}
+                        <ArrowRight className="h-4 w-4" />
                       </button>
                     ) : (
                       <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
