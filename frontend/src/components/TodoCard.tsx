@@ -3,9 +3,8 @@ import clsx from 'clsx'
 import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate } from '@/lib/format'
-import { Avatar, Pill, Spinner } from './ui'
-import { useAdvanceStatus } from '@/hooks/useData'
-import { useToast } from './Toast'
+import { Avatar, Pill } from './ui'
+import { useAdvance } from '@/components/AdvanceProvider'
 import type { ProjectItem } from '@/lib/types'
 
 interface Props {
@@ -17,17 +16,12 @@ interface Props {
 
 export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const navigate = useNavigate()
-  const advance = useAdvanceStatus()
-  const toast = useToast()
+  const advanceConfirm = useAdvance()
   const meta = STATUS[todo.status_key]
 
   const onAdvance = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (advance.isPending) return
-    advance.mutate(todo.name, {
-      onSuccess: (res) => toast('success', res.message),
-      onError: (err) => toast('error', (err as Error).message),
-    })
+    if (todo.next_status_label) advanceConfirm(todo.name, todo.next_status_label, todo.to_do)
   }
 
   return (
@@ -100,14 +94,8 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
             role="button"
             className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:bg-brand-100 dark:active:bg-brand-500/20"
           >
-            {advance.isPending ? (
-              <Spinner className="h-4 w-4" />
-            ) : (
-              <>
-                {todo.next_status_label}
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
+            {todo.next_status_label}
+            <ArrowRight className="h-4 w-4" />
           </span>
         </div>
       )}

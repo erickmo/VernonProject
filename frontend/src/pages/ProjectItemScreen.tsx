@@ -33,9 +33,10 @@ import FocusOverlay from '@/components/FocusOverlay'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml } from '@/lib/format'
-import { useAdvanceStatus, useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
+import { useAdvance } from '@/components/AdvanceProvider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import type { ProjectItemDetail } from '@/lib/types'
@@ -610,7 +611,7 @@ export default function ProjectItemScreen() {
   const navigate = useNavigate()
   const id = decodeURIComponent(name)
   const { data, isLoading } = useProjectItem(id)
-  const advance = useAdvanceStatus()
+  const advanceConfirm = useAdvance()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
   const confirm = useConfirm()
@@ -636,11 +637,9 @@ export default function ProjectItemScreen() {
     )
   }
 
-  const onAdvance = () =>
-    advance.mutate(data.name, {
-      onSuccess: (res) => toast('success', res.message),
-      onError: (err) => toast('error', (err as Error).message),
-    })
+  const onAdvance = () => {
+    if (data.next_status_label) advanceConfirm(data.name, data.next_status_label, data.to_do)
+  }
 
   const onCancel = async () => {
     try {
@@ -900,17 +899,10 @@ export default function ProjectItemScreen() {
               (data.can_advance ? (
                 <button
                   onClick={onAdvance}
-                  disabled={advance.isPending}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition active:bg-brand-700 disabled:opacity-60"
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition active:bg-brand-700"
                 >
-                  {advance.isPending ? (
-                    <Spinner className="h-5 w-5" />
-                  ) : (
-                    <>
-                      {data.next_status_label}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
+                  {data.next_status_label}
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               ) : (
                 <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
