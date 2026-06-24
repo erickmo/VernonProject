@@ -17,6 +17,7 @@ def update_status(todo_id):
 	Returns:
 			dict: A dictionary containing the status of the operation.
 	"""
+	from vernon_project.api.mobile import _can_advance, _status_key, NEXT_LABEL
 	try:
 		# Get Todo, Detail, and Project
 		todo = frappe.get_doc("Project Todo", todo_id)
@@ -65,7 +66,14 @@ def update_status(todo_id):
 		# Save and ignore permission
 		todo.save(ignore_permissions=True)
 
-		return {"status": "info", "message": f"Todo {todo.to_do} is updated to {todo.status}."}
+		new_key = _status_key(todo.status)
+		return {
+			"status": "info",
+			"message": f"Todo {todo.to_do} is updated to {todo.status}.",
+			"status_key": new_key,
+			"can_advance": new_key != "completed" and _can_advance(new_key, project, user, todo.assigned_to),
+			"next_status_label": NEXT_LABEL.get(new_key),
+		}
 
 	except frappe.DoesNotExistError:
 			return {"status": "error", "message": f"Todo {todo_id} does not exist."}
