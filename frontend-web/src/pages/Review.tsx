@@ -9,6 +9,7 @@ import { FilterButton, activeFilterCount, type FilterValue } from '@/components/
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { Popover } from '@web/components/overlays/Popover'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 export default function Review() {
   const navigate = useNavigate()
@@ -78,98 +79,112 @@ export default function Review() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Review</h1>
-        <div className="relative">
-          <span ref={filterRef}>
-            <FilterButton
-              count={activeFilterCount(filters)}
-              onClick={() => setFilterOpen((o) => !o)}
-            />
-          </span>
-          <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
-            <div className="space-y-4">
-              {dims.map((d) => (
-                <div key={d.key} className="space-y-1">
-                  <div className="text-xs font-semibold text-slate-500">{d.label}</div>
-                  <SearchableSelect
-                    value={filters[d.key] ?? ''}
-                    onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
-                    options={d.options.map((o) => ({
-                      value: o.value,
-                      label: o.count != null ? `${o.label} (${o.count})` : o.label,
-                    }))}
-                    allowClear
-                    placeholder="Any"
-                  />
-                </div>
-              ))}
-              <button
-                onClick={() => setFilters({})}
-                className="text-sm text-brand-600"
-              >
-                Clear all
-              </button>
-            </div>
-          </Popover>
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold">Review</h1>
 
-      {visible.length === 0 ? (
-        <EmptyState
-          icon={CheckCircle2}
-          title="Nothing to review"
-          subtitle="The queue is empty."
-        />
-      ) : (
-        byProject.map(([projId, { displayName, items }]) => (
-          <section key={projId} className="space-y-2">
-            <h2 className="text-sm font-semibold text-slate-500">{displayName}</h2>
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <table className="w-full text-sm">
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {items.map((t) => (
-                    <tr
-                      key={t.name}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
-                      onClick={() => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
-                    >
-                      <td className="px-4 py-2.5 font-medium">{t.to_do}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <Avatar
-                            name={t.assigned_to_name}
-                            image={t.assigned_to_image ?? undefined}
-                            size={24}
-                          />
-                          <span className="text-slate-500 whitespace-nowrap">{t.assigned_to_name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
-                        {formatDate(t.deadline ?? null)}
-                      </td>
-                      <td
-                        className="px-4 py-2.5 text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t.can_advance && (
-                          <button
-                            onClick={() => approve(t)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
-                          >
-                            <Check className="w-3 h-3" />
-                            {t.next_status_label || 'Approve'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+      <BentoGrid>
+        <BentoTile
+          span="sm"
+          tone="tint"
+          accent="brand"
+          actions={
+            <div className="relative">
+              <span ref={filterRef}>
+                <FilterButton
+                  count={activeFilterCount(filters)}
+                  onClick={() => setFilterOpen((o) => !o)}
+                />
+              </span>
+              <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
+                <div className="space-y-4">
+                  {dims.map((d) => (
+                    <div key={d.key} className="space-y-1">
+                      <div className="text-xs font-semibold text-slate-500">{d.label}</div>
+                      <SearchableSelect
+                        value={filters[d.key] ?? ''}
+                        onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
+                        options={d.options.map((o) => ({
+                          value: o.value,
+                          label: o.count != null ? `${o.label} (${o.count})` : o.label,
+                        }))}
+                        allowClear
+                        placeholder="Any"
+                      />
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                  <button
+                    onClick={() => setFilters({})}
+                    className="text-sm text-brand-600"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </Popover>
             </div>
-          </section>
-        ))
-      )}
+          }
+        >
+          <BentoStat value={all.length} label="pending" />
+        </BentoTile>
+
+        <BentoTile span="full" tone="plain">
+          {visible.length === 0 ? (
+            <EmptyState
+              icon={CheckCircle2}
+              title="Nothing to review"
+              subtitle="The queue is empty."
+            />
+          ) : (
+            <div className="space-y-5">
+              {byProject.map(([projId, { displayName, items }]) => (
+                <section key={projId} className="space-y-2">
+                  <h2 className="text-sm font-semibold text-slate-500">{displayName}</h2>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {items.map((t) => (
+                          <tr
+                            key={t.name}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                            onClick={() => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
+                          >
+                            <td className="px-4 py-2.5 font-medium">{t.to_do}</td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <Avatar
+                                  name={t.assigned_to_name}
+                                  image={t.assigned_to_image ?? undefined}
+                                  size={24}
+                                />
+                                <span className="text-slate-500 whitespace-nowrap">{t.assigned_to_name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
+                              {formatDate(t.deadline ?? null)}
+                            </td>
+                            <td
+                              className="px-4 py-2.5 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {t.can_advance && (
+                                <button
+                                  onClick={() => approve(t)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  {t.next_status_label || 'Approve'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </BentoTile>
+      </BentoGrid>
     </div>
   )
 }
