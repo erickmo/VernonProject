@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
+import { Sortable } from '@/components/Sortable'
 import { deleteErrorMessage, formatDate } from '@/lib/format'
 import {
   useScoringGroup,
@@ -31,16 +32,13 @@ const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee
   { key: 'leader_early_bonus', label: 'Leader early bonus % / day', group: 'Leader' },
 ]
 
-// Fixed level scale: names are not editable and always run 0 → 10 in order.
-// Only the point per level is configurable. Numbers are the default points.
-const LEVEL_DEFS: { name: string; point: number }[] = [
-  { name: '0', point: 0 }, { name: '1', point: 20 }, { name: '2', point: 40 },
-  { name: '3', point: 60 }, { name: '4', point: 80 }, { name: '5', point: 100 },
-  { name: '6', point: 125 }, { name: '7', point: 150 }, { name: '8', point: 175 },
-  { name: '9', point: 200 }, { name: '10', point: 250 },
-]
+type LevelRow = { _key: string; name?: string; level_id?: string; level_name: string; point: number }
 
-const defaultLevels = () => LEVEL_DEFS.map((d) => ({ level_name: d.name, point: d.point }))
+let _tmp = 0
+const tmpKey = () => `new-${_tmp++}`
+const rowKey = (l: { level_id?: string; name?: string }) => l.level_id || l.name || tmpKey()
+
+const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), level_name: '1', point: 100 }]
 
 export default function GroupFormScreen() {
   const navigate = useNavigate()
@@ -59,7 +57,8 @@ export default function GroupFormScreen() {
   const { data: allGroups } = useScoringGroups()
   const { data: linkedTodos, isLoading: todosLoading } = useGroupTodos(name, isEdit)
 
-  const [form, setForm] = useState<ScoringGroupPayload>({
+  type FormState = Omit<ScoringGroupPayload, 'levels'> & { levels: LevelRow[] }
+  const [form, setForm] = useState<FormState>({
     group_name: '',
     description: '',
     late_penalty: 0,
@@ -75,9 +74,6 @@ export default function GroupFormScreen() {
 
   useEffect(() => {
     if (isEdit && existing) {
-      // Keep the fixed -5→5 scale; pull each level's point from the saved group,
-      // falling back to the default when a level is missing.
-      const pmap = new Map((existing.levels ?? []).map((l: GroupLevel) => [l.level_name, l.point]))
       setForm({
         group_name: existing.group_name,
         description: existing.description ?? '',
@@ -86,10 +82,16 @@ export default function GroupFormScreen() {
         leader_weight: existing.leader_weight ?? 0,
         leader_late_penalty: existing.leader_late_penalty ?? 0,
         leader_early_bonus: existing.leader_early_bonus ?? 0,
-        levels: LEVEL_DEFS.map((d) => ({
-          level_name: d.name,
-          point: pmap.has(d.name) ? (pmap.get(d.name) as number) : d.point,
-        })),
+        levels: (existing.levels ?? [])
+          .slice()
+          .sort((a: GroupLevel, b: GroupLevel) => (a.idx ?? 0) - (b.idx ?? 0))
+          .map((l: GroupLevel) => ({
+            _key: rowKey(l),
+            name: l.name,
+            level_id: l.level_id,
+            level_name: l.level_name,
+            point: l.point,
+          })),
       })
     }
   }, [isEdit, existing])
@@ -113,21 +115,27 @@ export default function GroupFormScreen() {
   const setNum = (key: keyof ScoringGroupPayload, v: string) =>
     setForm((f) => ({ ...f, [key]: v === '' ? 0 : Number(v) }))
 
-  const setLevelPoint = (i: number, point: number) =>
-    setForm((f) => ({
-      ...f,
-      levels: f.levels.map((l, j) => (j === i ? { ...l, point } : l)),
-    }))
-
-  // Bump a level's point up/down by a step, clamped at 0.
   const LEVEL_STEP = 5
+  const patchLevel = (i: number, patch: Partial<LevelRow>) =>
+    setForm((f) => ({ ...f, levels: f.levels.map((l, j) => (j === i ? { ...l, ...patch } : l)) }))
+  const setLevelName = (i: number, level_name: string) => patchLevel(i, { level_name })
+  const setLevelPoint = (i: number, point: number) => patchLevel(i, { point })
   const bumpLevelPoint = (i: number, delta: number) =>
+    patchLevel(i, { point: Math.max(0, (Number(form.levels[i].point) || 0) + delta) })
+  const addLevel = () =>
     setForm((f) => ({
       ...f,
-      levels: f.levels.map((l, j) =>
-        j === i ? { ...l, point: Math.max(0, (Number(l.point) || 0) + delta) } : l,
-      ),
+      levels: [...f.levels, { _key: tmpKey(), level_name: String(f.levels.length + 1), point: 0 }],
     }))
+  const removeLevel = (i: number) =>
+    setForm((f) => ({ ...f, levels: f.levels.filter((_, j) => j !== i) }))
+  const reorderLevel = (from: number, to: number) =>
+    setForm((f) => {
+      const next = f.levels.slice()
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return { ...f, levels: next }
+    })
 
   // Auto-fill every level as (index + 1) × step, so level 0 = step (not 0),
   // level 1 = 2×step, level 2 = 3×step, …
@@ -137,16 +145,19 @@ export default function GroupFormScreen() {
       toast('error', 'Enter a step value first')
       return
     }
-    setForm((f) => ({
-      ...f,
-      levels: f.levels.map((l, i) => ({ ...l, point: Math.max(0, (i + 1) * step) })),
-    }))
+    setForm((f) => ({ ...f, levels: f.levels.map((l, i) => ({ ...l, point: Math.max(0, (i + 1) * step) })) }))
   }
 
   const validate = (): string | null => {
     if (!form.group_name.trim()) return 'Group name is required'
+    if (form.levels.length === 0) return 'Add at least one level'
+    const names = new Set<string>()
     for (const l of form.levels) {
-      if (!(typeof l.point === 'number') || isNaN(l.point)) return 'Level points must be numbers'
+      const nm = l.level_name.trim()
+      if (!nm) return 'Level names cannot be empty'
+      if (names.has(nm)) return `Duplicate level name: ${nm}`
+      names.add(nm)
+      if (typeof l.point !== 'number' || isNaN(l.point)) return 'Level points must be numbers'
       if (l.point < 0) return 'Level points cannot be negative'
     }
     return null
@@ -162,7 +173,12 @@ export default function GroupFormScreen() {
       ...form,
       group_name: form.group_name.trim(),
       description: (form.description ?? '').trim(),
-      levels: form.levels.map((l) => ({ level_name: l.level_name.trim(), point: Number(l.point) })),
+      levels: form.levels.map((l) => ({
+        name: l.name,
+        level_id: l.level_id,
+        level_name: l.level_name.trim(),
+        point: Number(l.point),
+      })),
     }
     const opts = {
       onSuccess: () => {
@@ -272,7 +288,7 @@ export default function GroupFormScreen() {
         <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Levels</p>
           <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
-            Fixed scale 0 to 10. Only the point per level is editable — this is the points earned.
+            Add, rename, set points, delete, or drag to reorder. Todos list levels in this order.
           </p>
           {/* Fill by increment: sets each level to (index+1) × step (0=step, 1=2×step, 2=3×step, …). */}
           <div className="mb-3 flex items-center gap-2 rounded-xl bg-white px-2 py-2 dark:bg-slate-800/80">
@@ -295,43 +311,42 @@ export default function GroupFormScreen() {
               Update
             </button>
           </div>
-          <div className="mb-1 flex items-center gap-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            <span className="flex-1">Level</span>
-            <span className="w-[7.5rem] text-center">Point</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            {form.levels.map((l, i) => (
-              <div key={l.level_name} className="flex items-center gap-3">
-                <span className="flex-1 px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{l.level_name}</span>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label="Decrease point"
-                    onClick={() => bumpLevelPoint(i, -LEVEL_STEP)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    className="w-16 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                    value={String(l.point)}
-                    onChange={(e) => setLevelPoint(i, e.target.value === '' ? 0 : Number(e.target.value))}
-                    placeholder="Point"
-                  />
-                  <button
-                    type="button"
-                    aria-label="Increase point"
-                    onClick={() => bumpLevelPoint(i, LEVEL_STEP)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+          <Sortable
+            items={form.levels}
+            keyFor={(l) => (l as LevelRow)._key}
+            onReorder={reorderLevel}
+            renderItem={(l, i) => (
+              <div className="flex items-center gap-2">
+                <input
+                  className={field + ' flex-1'}
+                  value={(l as LevelRow).level_name}
+                  onChange={(e) => setLevelName(i, e.target.value)}
+                  placeholder="Level name"
+                />
+                <button type="button" aria-label="Decrease point" onClick={() => bumpLevelPoint(i, -LEVEL_STEP)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300">
+                  <Minus className="h-4 w-4" />
+                </button>
+                <input type="number" inputMode="decimal"
+                  className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                  value={String((l as LevelRow).point)}
+                  onChange={(e) => setLevelPoint(i, e.target.value === '' ? 0 : Number(e.target.value))}
+                  placeholder="Point" />
+                <button type="button" aria-label="Increase point" onClick={() => bumpLevelPoint(i, LEVEL_STEP)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300">
+                  <Plus className="h-4 w-4" />
+                </button>
+                <button type="button" aria-label="Delete level" onClick={() => removeLevel(i)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 active:scale-95 dark:border-slate-700 dark:hover:bg-red-500/10">
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          />
+          <button type="button" onClick={addLevel}
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 active:scale-95 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60">
+            <Plus className="h-4 w-4" /> Add level
+          </button>
         </div>
 
         <button
