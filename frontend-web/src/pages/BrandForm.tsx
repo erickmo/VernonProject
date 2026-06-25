@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
-import { PageGrid } from '@web/components/layout'
+import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
@@ -141,72 +141,6 @@ export default function BrandForm() {
 
   const saving = create.isPending || update.isPending
 
-  const formCard = (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        save()
-      }}
-      className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-5 sm:p-6"
-    >
-      <div className="max-w-md space-y-4">
-        <Field
-          label="Brand name"
-          required
-          error={error}
-          hint={isEdit ? "Can't be changed after creation" : undefined}
-        >
-          {(id) => (
-            <input
-              id={id}
-              className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
-              value={form.brand_name}
-              readOnly={isEdit}
-              autoFocus={!isEdit}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, brand_name: e.target.value }))
-                setDirty(true)
-                if (error) setError('')
-              }}
-              placeholder="e.g. Acme"
-            />
-          )}
-        </Field>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
-        >
-          {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-          {isEdit ? 'Save changes' : 'Create brand'}
-        </button>
-      </div>
-    </form>
-  )
-
-  const rail = (
-    <>
-      <button
-        onClick={remove}
-        disabled={del.isPending}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:hover:bg-rose-500/15 transition-colors"
-      >
-        {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
-      </button>
-
-      {mergeOptions.length > 0 && (
-        <MergeIntoCard
-          entity="brand"
-          currentLabel={existing?.brand_name || name}
-          options={mergeOptions}
-          isPending={merge.isPending}
-          onConfirm={doMerge}
-        />
-      )}
-    </>
-  )
-
   return (
     <div className="space-y-6">
       <div>
@@ -219,7 +153,87 @@ export default function BrandForm() {
         <h1 className="text-2xl font-bold">{isEdit ? 'Edit brand' : 'New brand'}</h1>
       </div>
 
-      {isEdit ? <PageGrid main={formCard} rail={rail} /> : <div className="max-w-xl">{formCard}</div>}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+      >
+        <BentoGrid>
+          {/* Field tile */}
+          <BentoTile span="lg" tone="plain" title="Brand details">
+            <div className="mt-1 max-w-md space-y-4">
+              <Field
+                label="Brand name"
+                required
+                error={error}
+                hint={isEdit ? "Can't be changed after creation" : undefined}
+              >
+                {(id) => (
+                  <input
+                    id={id}
+                    className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
+                    value={form.brand_name}
+                    readOnly={isEdit}
+                    autoFocus={!isEdit}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, brand_name: e.target.value }))
+                      setDirty(true)
+                      if (error) setError('')
+                    }}
+                    placeholder="e.g. Acme"
+                  />
+                )}
+              </Field>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+              >
+                {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                {isEdit ? 'Save changes' : 'Create brand'}
+              </button>
+            </div>
+          </BentoTile>
+
+          {/* Preview / summary tile */}
+          <BentoTile span="sm" tone="tint" accent="slate" title="Preview">
+            <div className="mt-1 space-y-2">
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">
+                {form.brand_name || <span className="opacity-40">Untitled</span>}
+              </p>
+              <p className="text-xs text-slate-400">Brand</p>
+            </div>
+          </BentoTile>
+
+          {/* Danger zone (edit only) */}
+          {isEdit && (
+            <BentoTile span="md" tone="plain" title="Danger zone">
+              <div className="mt-1 space-y-4">
+                <button
+                  type="button"
+                  onClick={remove}
+                  disabled={del.isPending}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:border-rose-500/30 dark:hover:bg-rose-500/10 transition-colors"
+                >
+                  {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
+                </button>
+
+                {mergeOptions.length > 0 && (
+                  <MergeIntoCard
+                    entity="brand"
+                    currentLabel={existing?.brand_name || name}
+                    options={mergeOptions}
+                    isPending={merge.isPending}
+                    onConfirm={doMerge}
+                  />
+                )}
+              </div>
+            </BentoTile>
+          )}
+        </BentoGrid>
+      </form>
     </div>
   )
 }
