@@ -46,45 +46,56 @@ class ProjectTodo(Document):
 			self.project = frappe.get_value("Project Detail", self.project_detail, "project")
 
 	def snapshot_point_from_level(self):
-		"""Resolve `point` and refresh the cached `level` name from `level_id`.
+		"""Resolve the chosen work-type and compute `point` from time × difficulty.
 
-		Truth is `level_id`; `level` is a display cache. Resolution rules:
-		- No group: clear everything.
-		- Have level_id and it resolves: set point + refresh level name.
-		- Have level_id but it no longer resolves (level was deleted): keep the
-		  existing point/name as-is (do NOT throw) so deleting a level can't
-		  break active or historical todos.
+		Truth is `level_id`; `level` is a display cache. The type carries a
+		`difficulty_percent`; the todo's points are derived, not picked:
+
+		    point = group.base_rate_per_minute × estimated_minutes × difficulty%
+
+		Resolution rules mirror the previous behaviour:
+		- No group / no type chosen: clear point to 0.
+		- Have level_id and it resolves: refresh level name, recompute point.
+		- Have level_id but it no longer resolves (type deleted): keep the cached
+		  level/point untouched (do NOT throw) so deleting a type can't break
+		  active or historical todos.
 		- Legacy: have a level name but no level_id: match by name, backfill
-		  level_id, set point. No match: keep existing point, do not throw.
-		- Nothing chosen: point 0.
+		  level_id, recompute. No match: keep existing point, do not throw.
 		"""
 		if not self.group:
 			self.point = 0
 			self.level = None
 			self.level_id = None
 			return
+
+		def _compute(difficulty_percent):
+			base_rate = frappe.db.get_value("Group", self.group, "base_rate_per_minute") or 0
+			minutes = float(self.estimated or 0)
+			pct = float(difficulty_percent or 0)
+			return round(float(base_rate) * minutes * (pct / 100.0), 4)
+
 		if self.level_id:
 			row = frappe.db.get_value(
 				"Group Level",
 				{"parent": self.group, "parenttype": "Group", "level_id": self.level_id},
-				["level_name", "point"],
+				["level_name", "difficulty_percent"],
 				as_dict=True,
 			)
 			if row:
 				self.level = row.level_name
-				self.point = row.point
-			# else: level deleted — keep cached level/point untouched
+				self.point = _compute(row.difficulty_percent)
+			# else: type deleted — keep cached level/point untouched
 			return
 		if self.level:
 			row = frappe.db.get_value(
 				"Group Level",
 				{"parent": self.group, "parenttype": "Group", "level_name": self.level},
-				["name", "level_id", "point"],
+				["name", "level_id", "difficulty_percent"],
 				as_dict=True,
 			)
 			if row:
 				self.level_id = row.level_id
-				self.point = row.point
+				self.point = _compute(row.difficulty_percent)
 			return
 		self.point = 0
 
