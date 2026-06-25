@@ -22,6 +22,7 @@
       "points_section",
       "group",
       "level",
+      "level_id",
       "point",
       "column_break_points",
       "assignee_earned",
@@ -178,10 +179,19 @@
       },
       {
          "fieldname": "level",
-         "fieldtype": "Select",
+         "fieldtype": "Data",
          "label": "Level",
          "reqd": 1,
-         "description": "Levels come from the selected Group."
+         "description": "Cached display name of the chosen level (refreshed from the group)."
+      },
+      {
+         "fieldname": "level_id",
+         "fieldtype": "Data",
+         "label": "Level ID",
+         "read_only": 1,
+         "no_copy": 1,
+         "in_standard_filter": 1,
+         "description": "Stable reference to the chosen Group Level row."
       },
       {
          "fieldname": "point",
