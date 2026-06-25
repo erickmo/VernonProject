@@ -1,10 +1,15 @@
 import { useState } from 'react'
-import { FolderKanban, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
+import { FolderKanban, Eye, EyeOff, LogIn, AlertCircle, Sparkles } from 'lucide-react'
 import { login } from '@/lib/api'
 import { Spinner } from '@/components/ui'
 
 // In-app login (does NOT use the Frappe desk login page). Posts to
 // /api/method/login and hard-reloads into /m on success.
+//
+// Layout: a solid color-blocked "bento" mosaic (flat opaque tiles, crisp
+// borders, no blur/transparency) over a plain canvas, with the form as the
+// hero tile beneath. Entrance is a short staggered rise; tiles are static.
+// Scoped <style> below = no Tailwind config change / new dep.
 export default function Login() {
   const [usr, setUsr] = useState('')
   const [pwd, setPwd] = useState('')
@@ -28,24 +33,54 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-gradient-to-b from-brand-600 to-brand-800 pt-[env(safe-area-inset-top)]">
-      <div className="flex flex-1 flex-col justify-center px-7 pb-[env(safe-area-inset-bottom)]">
-        {/* Brand */}
-        <div className="mb-8 flex flex-col items-center text-center text-white">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/15 backdrop-blur">
-            <FolderKanban className="h-10 w-10" />
+    <div className="flex min-h-full flex-col bg-slate-100 dark:bg-slate-950 pt-[env(safe-area-inset-top)]">
+      <style>{vnlCss}</style>
+
+      <div className="flex flex-1 flex-col justify-center gap-3.5 px-5 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
+        {/* Color-blocked bento mosaic (3-col, alternating spans) */}
+        <div className="grid grid-cols-3 gap-3.5" style={{ gridAutoRows: '6.5rem' }}>
+          {/* Logo tile (wide) — solid brand fill */}
+          <div className="vnl-rise col-span-2 flex flex-col justify-between rounded-3xl border border-brand-700/50 bg-brand-600 p-4 shadow-sm" style={{ animationDelay: '40ms' }}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-brand-600">
+              <FolderKanban className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold leading-none tracking-tight text-white">Vernon Project</h1>
+              <p className="mt-1.5 text-xs font-medium text-brand-100">Sign in to your workspace</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Vernon Project</h1>
-          <p className="mt-1.5 text-brand-100">Sign in to your workspace</p>
+
+          {/* Accent tile (narrow) — the one warm pop */}
+          <div className="vnl-rise relative col-span-1 overflow-hidden rounded-3xl border border-amber-500/40 bg-amber-400 p-4 shadow-sm" style={{ animationDelay: '110ms' }}>
+            <div className="absolute right-3 top-3 h-3 w-3 rounded-[4px] bg-slate-900/80" />
+            <Sparkles className="absolute bottom-3 left-3 h-8 w-8 text-slate-900" strokeWidth={2.25} />
+          </div>
+
+          {/* Geometry tile (narrow) — deep indigo + flat dot grid */}
+          <div className="vnl-rise relative col-span-1 overflow-hidden rounded-3xl border border-black/20 bg-brand-900 shadow-sm" style={{ animationDelay: '180ms' }}>
+            <div className="vnl-dots absolute inset-0" />
+            <div className="absolute -bottom-5 -right-5 h-16 w-16 rounded-2xl bg-brand-500" />
+            <div className="absolute left-3 top-3 h-3 w-3 rounded-full bg-amber-400" />
+          </div>
+
+          {/* Tagline tile (wide) — white card */}
+          <div className="vnl-rise col-span-2 flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" style={{ animationDelay: '250ms' }}>
+            <p className="text-lg font-semibold leading-tight tracking-tight text-slate-900 dark:text-white">
+              Your work,<br />
+              <span className="text-brand-600">one place.</span>
+            </p>
+            <div className="h-3.5 w-3.5 shrink-0 rounded-[5px] bg-brand-600" />
+          </div>
         </div>
 
-        {/* Card */}
+        {/* Form — hero tile */}
         <form
           onSubmit={submit}
-          className="rounded-3xl bg-white dark:bg-slate-800 p-6 shadow-xl animate-slide-up"
+          className="vnl-rise rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          style={{ animationDelay: '330ms' }}
         >
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-xl bg-rose-50 dark:bg-rose-500/15 px-3 py-2.5 text-sm text-rose-700 dark:text-rose-300">
+            <div className="mb-4 flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -110,8 +145,27 @@ export default function Login() {
           </a>
         </form>
 
-        <p className="mt-6 text-center text-xs text-brand-200">Vernon Project · Mobile v1.0</p>
+        <p className="vnl-rise text-center text-xs text-slate-400 dark:text-slate-500" style={{ animationDelay: '410ms' }}>
+          Vernon Project · Mobile v1.0
+        </p>
       </div>
     </div>
   )
 }
+
+// Scoped styles. Inline so the page needs no Tailwind config change / new dep.
+// Honors prefers-reduced-motion.
+const vnlCss = `
+.vnl-rise { animation: vnl-rise 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+.vnl-dots {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.22) 1px, transparent 1.4px);
+  background-size: 12px 12px;
+}
+@keyframes vnl-rise {
+  0% { opacity: 0; transform: translateY(14px) scale(0.985); }
+  100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vnl-rise { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+`

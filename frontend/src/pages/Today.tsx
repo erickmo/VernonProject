@@ -210,12 +210,18 @@ export default function Today() {
           {data && (
             <>
               {/* Hero */}
-              <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
-                <div className="relative flex h-[68px] w-[68px] items-center justify-center">
+              <div className="relative flex items-center gap-4 overflow-hidden rounded-3xl border border-brand-700/50 bg-brand-600 p-5 text-white shadow-sm">
+                {/* flat dot-grid motif — echoes the login bento geometry tile */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1.4px)', backgroundSize: '14px 14px' }}
+                />
+                <div className="relative z-10 flex h-[68px] w-[68px] items-center justify-center">
                   <Ring pct={pct} />
                   <span className="absolute text-sm font-bold">{Math.round(pct * 100)}%</span>
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="relative z-10 min-w-0 flex-1">
                   <p className="text-xs font-medium uppercase tracking-wide text-brand-200">Today</p>
                   <p className="mt-0.5 text-lg font-bold leading-tight">
                     {data.counts.completed_today} done · {data.counts.due_today} due
@@ -256,7 +262,7 @@ export default function Today() {
                 return (
                   <button
                     onClick={() => navigate('/marketplace')}
-                    className="mt-3 w-full rounded-2xl bg-white dark:bg-slate-800 px-4 py-4 shadow-card active:scale-[0.99] transition text-left"
+                    className="mt-3 w-full rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-4 shadow-sm active:scale-[0.99] transition text-left"
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/15 text-brand-600 dark:text-brand-400">
