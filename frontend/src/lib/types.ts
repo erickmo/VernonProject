@@ -343,6 +343,7 @@ export interface ScoringGroupPayload {
   leader_weight: number
   leader_late_penalty: number
   leader_early_bonus: number
+  base_rate_per_minute: number
   levels: { name?: string; level_id?: string; level_name: string; difficulty_percent: number }[]
 }
 
