@@ -3,7 +3,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
-import { PageGrid, FieldGrid } from '@web/components/layout'
+import { FieldGrid } from '@web/components/layout'
+import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
@@ -268,14 +269,15 @@ export default function GroupForm() {
         <h1 className="text-2xl font-bold">{isEdit ? 'Edit group' : 'New group'}</h1>
       </div>
 
-      <PageGrid
-        main={
+      <BentoGrid>
+        {/* Main form tile */}
+        <BentoTile span="wide" tone="plain">
           <form
             onSubmit={(e) => {
               e.preventDefault()
               save()
             }}
-            className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-5 sm:p-6 flex flex-col gap-4"
+            className="flex flex-col gap-4"
           >
             <FieldGrid>
               <Field
@@ -413,89 +415,93 @@ export default function GroupForm() {
               {isEdit ? 'Save changes' : 'Create group'}
             </button>
           </form>
-        }
-        rail={
-          <>
-            <div className="rounded-2xl bg-brand-50 p-4 text-xs leading-relaxed text-brand-900 dark:bg-brand-500/15 dark:text-brand-200">
-              <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
-                <Info className="h-3.5 w-3.5" /> How points are scored
-              </p>
-              <p className="mb-1">
-                When a todo is completed, the <b>assignee</b> earns the <b>point of the chosen level</b>
-                {' '}(your 0…10 scale), then adjusted for timing:
-              </p>
-              <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
-                assignee = point × (1 − late_days×late% + early_days×early%)
-              </p>
-              <p className="mb-1">
-                The <b>leader</b> earns a share of the assignee's points:
-              </p>
-              <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
-                leader = assignee × (leader% − late_days×lead_late% + early_days×lead_early%)
-              </p>
+        </BentoTile>
+
+        {/* How points are scored info tile */}
+        <BentoTile span="md" tone="tint" accent="slate">
+          <div className="text-xs leading-relaxed text-brand-900 dark:text-brand-200">
+            <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+              <Info className="h-3.5 w-3.5" /> How points are scored
+            </p>
+            <p className="mb-1">
+              When a todo is completed, the <b>assignee</b> earns the <b>point of the chosen level</b>
+              {' '}(your 0…10 scale), then adjusted for timing:
+            </p>
+            <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
+              assignee = point × (1 − late_days×late% + early_days×early%)
+            </p>
+            <p className="mb-1">
+              The <b>leader</b> earns a share of the assignee's points:
+            </p>
+            <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
+              leader = assignee × (leader% − late_days×lead_late% + early_days×lead_early%)
+            </p>
+          </div>
+        </BentoTile>
+
+        {/* Linked tasks tile */}
+        {isEdit && (
+          <BentoTile span="md" tone="plain">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <ListChecks className="h-3.5 w-3.5" /> Linked tasks
+              {linkedTodos && (
+                <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                  {linkedTodos.length}
+                </span>
+              )}
+            </p>
+            {todosLoading ? (
+              <Spinner className="mx-auto my-2 h-4 w-4 text-slate-400" />
+            ) : !linkedTodos || linkedTodos.length === 0 ? (
+              <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">No tasks use this group.</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {linkedTodos.map((t) => (
+                  <Link
+                    key={t.name}
+                    to={`/project-item/${encodeURIComponent(t.name)}`}
+                    className="flex items-center gap-2 rounded-xl border border-slate-100 px-3 py-2 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{t.to_do || t.name}</p>
+                      <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
+                        {t.status}
+                        {t.deadline ? ` · ${formatDate(t.deadline)}` : ''}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </BentoTile>
+        )}
+
+        {/* Delete / Merge tile */}
+        {isEdit && (
+          <BentoTile span="md" tone="plain">
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={remove}
+                disabled={del.isPending}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-50 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-100 disabled:opacity-60 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 transition-colors"
+              >
+                {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete group
+              </button>
+
+              {mergeOptions.length > 0 && (
+                <MergeIntoCard
+                  entity="group"
+                  currentLabel={existing?.group_name || name}
+                  options={mergeOptions}
+                  isPending={merge.isPending}
+                  onConfirm={doMerge}
+                />
+              )}
             </div>
-
-            {isEdit && (
-              <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-5 sm:p-6">
-                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  <ListChecks className="h-3.5 w-3.5" /> Linked tasks
-                  {linkedTodos && (
-                    <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                      {linkedTodos.length}
-                    </span>
-                  )}
-                </p>
-                {todosLoading ? (
-                  <Spinner className="mx-auto my-2 h-4 w-4 text-slate-400" />
-                ) : !linkedTodos || linkedTodos.length === 0 ? (
-                  <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">No tasks use this group.</p>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {linkedTodos.map((t) => (
-                      <Link
-                        key={t.name}
-                        to={`/project-item/${encodeURIComponent(t.name)}`}
-                        className="flex items-center gap-2 rounded-xl border border-slate-100 px-3 py-2 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{t.to_do || t.name}</p>
-                          <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
-                            {t.status}
-                            {t.deadline ? ` · ${formatDate(t.deadline)}` : ''}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {isEdit && (
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={remove}
-                  disabled={del.isPending}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:hover:bg-rose-500/15 transition-colors"
-                >
-                  {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete group
-                </button>
-
-                {mergeOptions.length > 0 && (
-                  <MergeIntoCard
-                    entity="group"
-                    currentLabel={existing?.group_name || name}
-                    options={mergeOptions}
-                    isPending={merge.isPending}
-                    onConfirm={doMerge}
-                  />
-                )}
-              </div>
-            )}
-          </>
-        }
-      />
+          </BentoTile>
+        )}
+      </BentoGrid>
     </div>
   )
 }
