@@ -451,7 +451,7 @@ export function useScoringGroups() {
     queryKey: keys.scoringGroups,
     queryFn: () =>
       resource.list<ScoringGroup[]>('Group', {
-        fields: ['name', 'group_name', 'description', 'leader_weight'],
+        fields: ['name', 'group_name', 'description', 'leader_weight', 'base_rate_per_minute'],
         limit: 0,
       }),
   })

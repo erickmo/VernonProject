@@ -310,7 +310,7 @@ export interface GroupLevel {
   name?: string
   level_id?: string
   level_name: string
-  point: number
+  difficulty_percent: number
   idx?: number
 }
 
@@ -323,6 +323,7 @@ export interface ScoringGroup {
   leader_weight: number
   leader_late_penalty: number
   leader_early_bonus: number
+  base_rate_per_minute: number
   levels: GroupLevel[]
 }
 
@@ -342,7 +343,7 @@ export interface ScoringGroupPayload {
   leader_weight: number
   leader_late_penalty: number
   leader_early_bonus: number
-  levels: { name?: string; level_id?: string; level_name: string; point: number }[]
+  levels: { name?: string; level_id?: string; level_name: string; difficulty_percent: number }[]
 }
 
 export interface Brand {
