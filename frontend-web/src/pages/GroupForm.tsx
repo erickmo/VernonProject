@@ -3,7 +3,6 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
-import { FieldGrid } from '@web/components/layout'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -279,7 +278,7 @@ export default function GroupForm() {
             }}
             className="flex flex-col gap-4"
           >
-            <FieldGrid>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field
                 label="Group name"
                 required={!isEdit}
@@ -318,7 +317,7 @@ export default function GroupForm() {
                   />
                 )}
               </Field>
-            </FieldGrid>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(['Assignee', 'Leader'] as const).map((grp) => (
