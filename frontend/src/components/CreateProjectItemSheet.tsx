@@ -5,6 +5,7 @@ import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { computeTodoPoints } from '../lib/points'
 
 interface CreateProjectItemSheetProps {
   open: boolean
@@ -55,7 +56,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
 
   const submit = () => {
     if (!toDo.trim() || !assignedTo || !deadline || !group || !level) {
-      toast('error', 'Name, assignee, deadline, group and level are required')
+      toast('error', 'Name, assignee, deadline, group and type are required')
       return
     }
     const fields: Record<string, unknown> = {
@@ -156,17 +157,26 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Level<span className="text-red-500"> *</span>
+            Type<span className="text-red-500"> *</span>
             <SearchableSelect
               value={level}
               onChange={setLevel}
-              options={[...(groupDoc?.levels ?? [])]
-                .sort((a, b) => Number(a.level_name) - Number(b.level_name))
-                .map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
-              placeholder={group ? 'Select a level…' : 'Pick a group first…'}
+              options={(groupDoc?.levels ?? [])
+                .map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.difficulty_percent}%)` }))}
+              placeholder={group ? 'Select a type…' : 'Pick a group first…'}
               disabled={!group}
             />
           </label>
+          {group && level && (() => {
+            const lvl = (groupDoc?.levels ?? []).find((l) => l.level_name === level)
+            const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
+            return (
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                Estimated points: <span className="font-medium">{pts}</span>
+                {!estimated && ' (set estimated minutes)'}
+              </div>
+            )
+          })()}
 
           {siblings.length > 0 && (
             <div className="flex flex-col gap-3">
