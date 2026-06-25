@@ -3,7 +3,7 @@ import { EmptyState, Spinner } from '@/components/ui'
 import { useWallet, useWalletLog } from '@/hooks/useData'
 import { formatNumber } from '@/lib/format'
 import { ErrorState } from '@web/components/ui'
-import { PageGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 const fmt = (n: number) =>
   (n > 0 ? '+' : '') + n.toLocaleString(undefined, { maximumFractionDigits: 1 })
@@ -17,10 +17,40 @@ export default function WalletLog() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Points log</h1>
 
-      <PageGrid
-        railFirst
-        main={
-          logQuery.isError ? (
+      <BentoGrid>
+        {/* Balance hero */}
+        <BentoTile span="md" tall tone="solid" accent="amber" icon={Wallet} title="Spendable balance">
+          <BentoStat
+            value={formatNumber(wallet?.balance ?? 0)}
+            label="balance"
+          />
+        </BentoTile>
+
+        {/* Earned today */}
+        <BentoTile span="sm" tone="tint" accent="amber" title="Earned today">
+          <BentoStat
+            value={`+${formatNumber(wallet?.today_earned ?? 0)}`}
+            label="today"
+          />
+        </BentoTile>
+
+        {/* Summary stats — total earned / redeemed */}
+        <BentoTile span="sm" tone="tint" accent="amber" title="Summary">
+          <dl className="space-y-2 text-sm pt-1">
+            <div className="flex justify-between gap-3">
+              <dt className="opacity-70">Total earned</dt>
+              <dd className="font-semibold">{formatNumber(wallet?.earned ?? 0)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="opacity-70">Total redeemed</dt>
+              <dd className="font-semibold">{formatNumber(wallet?.redeemed ?? 0)}</dd>
+            </div>
+          </dl>
+        </BentoTile>
+
+        {/* Transaction log */}
+        <BentoTile span="full" tone="plain">
+          {logQuery.isError ? (
             <ErrorState onRetry={() => logQuery.refetch()} />
           ) : isLoading && !log ? (
             <div className="flex justify-center py-20">
@@ -29,7 +59,7 @@ export default function WalletLog() {
           ) : !log || log.length === 0 ? (
             <EmptyState icon={Wallet} title="No activity yet" subtitle="Earned and spent points will show up here." />
           ) : (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+            <div className="overflow-x-auto -mx-5 -mb-5">
               <table className="w-full text-sm">
                 <thead>
                   <tr>
@@ -81,38 +111,9 @@ export default function WalletLog() {
                 </tbody>
               </table>
             </div>
-          )
-        }
-        rail={
-          <>
-            <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-                <Wallet className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-brand-200">Spendable balance</p>
-                <p className="text-2xl font-bold leading-tight">{formatNumber(wallet?.balance ?? 0)}</p>
-              </div>
-            </div>
-            <SectionCard title="Summary">
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">Total earned</dt>
-                  <dd className="font-semibold text-slate-800 dark:text-slate-100">{formatNumber(wallet?.earned ?? 0)}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">Total redeemed</dt>
-                  <dd className="font-semibold text-slate-800 dark:text-slate-100">{formatNumber(wallet?.redeemed ?? 0)}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500 dark:text-slate-400">Earned today</dt>
-                  <dd className="font-semibold text-emerald-600 dark:text-emerald-400">+{formatNumber(wallet?.today_earned ?? 0)}</dd>
-                </div>
-              </dl>
-            </SectionCard>
-          </>
-        }
-      />
+          )}
+        </BentoTile>
+      </BentoGrid>
     </div>
   )
 }
