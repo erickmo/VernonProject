@@ -57,7 +57,10 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
     document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
-      if (e.key === 'Enter') confirm()
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        confirm()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => {
