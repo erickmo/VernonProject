@@ -381,7 +381,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [freq, setFreq] = useState(data.recurring.frequency || 'Weekly')
   const [until, setUntil] = useState(data.recurring.until ?? '')
   const [group, setGroup] = useState(data.group ?? '')
-  const [level, setLevel] = useState(data.level ?? '')
+  const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
 
@@ -427,7 +427,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.leader_deadline = leaderDeadline || ''
     fields.owner_deadline = ownerDeadline || ''
     fields.group = group
-    fields.level = level
+    fields.level_id = level
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
     update.mutate(fields, {
@@ -596,9 +596,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         <SearchableSelect
           value={level}
           onChange={setLevel}
-          options={[...(groupDoc?.levels ?? [])]
-            .sort((a, b) => Number(a.level_name) - Number(b.level_name))
-            .map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.point} pts)` }))}
+          options={(groupDoc?.levels ?? []).map((l) => ({
+            value: l.level_id ?? '',
+            label: `${l.level_name} (${l.point} pts)`,
+          }))}
           placeholder={group ? 'Select a level…' : 'Pick a group first…'}
           disabled={!group}
         />

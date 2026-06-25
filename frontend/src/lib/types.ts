@@ -107,6 +107,7 @@ export interface ProjectItemDetail extends ProjectItem {
   is_missed: boolean
   group?: string | null
   level?: string | null
+  level_id?: string | null
   point?: number
   assignee_earned?: number
   leader_earned?: number
