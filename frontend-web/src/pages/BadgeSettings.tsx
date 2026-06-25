@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, Plus, Trash2 } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Field } from '@web/components/ui'
-import { PageGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useBoot, canManageBadges, useBadgeSettings, useSaveBadgeSettings } from '@/hooks/useData'
@@ -122,134 +122,43 @@ export default function BadgeSettings() {
         e.preventDefault()
         doSave()
       }}
-      className="space-y-6 max-w-2xl"
+      className="space-y-6"
     >
       <h1 className="text-2xl font-bold">Badges</h1>
 
-      <PageGrid
-        main={
-          tiers.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">No badge tiers yet.</p>
-              <button
-                type="button"
-                onClick={addTier}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" /> Add first tier
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
-              {tiers.map((t, i) => (
-            <div key={i} className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  Tier {i + 1}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Remove tier"
-                  onClick={() => removeTier(i)}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-500/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <div className="flex-1">
-                    <Field label="Tier name" required error={errors[i]?.tier_name}>
-                      {(id) => (
-                        <input
-                          id={id}
-                          ref={(el) => {
-                            rowRefs.current[i] = el
-                          }}
-                          className={field}
-                          value={t.tier_name}
-                          onChange={(e) => {
-                            setTier(i, { tier_name: e.target.value })
-                            clearError(i, 'tier_name')
-                          }}
-                          placeholder="e.g. Silver"
-                        />
-                      )}
-                    </Field>
-                  </div>
-                  <div className="flex-1">
-                    <Field label="Min points" required error={errors[i]?.min_points}>
-                      {(id) => (
-                        <input
-                          id={id}
-                          type="number"
-                          inputMode="decimal"
-                          className={field}
-                          value={t.min_points}
-                          onChange={(e) => {
-                            setTier(i, { min_points: e.target.value })
-                            clearError(i, 'min_points')
-                          }}
-                          placeholder="e.g. 500"
-                        />
-                      )}
-                    </Field>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Field label="Color">
-                      {(id) => (
-                        <input
-                          id={id}
-                          className={field}
-                          value={t.color}
-                          onChange={(e) => setTier(i, { color: e.target.value })}
-                          placeholder="e.g. #9ca3af"
-                        />
-                      )}
-                    </Field>
-                  </div>
-                  <div className="flex-1">
-                    <Field label="Icon">
-                      {(id) => (
-                        <input
-                          id={id}
-                          className={field}
-                          value={t.icon}
-                          onChange={(e) => setTier(i, { icon: e.target.value })}
-                          placeholder="Emoji"
-                        />
-                      )}
-                    </Field>
-                  </div>
-                </div>
-                {(t.color || t.icon) && (
-                  <span
-                    className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-                    style={t.color ? { backgroundColor: `${t.color}22`, color: t.color } : undefined}
-                  >
-                    {t.icon && <span>{t.icon}</span>}
-                    {t.tier_name || 'Preview'}
-                  </span>
+      <BentoGrid>
+        {/* How badges work — info tile */}
+        <BentoTile span="sm" tone="tint" accent="violet" title="How badges work">
+          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 mt-1">
+            A user's badge is the highest tier whose <b>Min Points</b> is ≤ their lifetime
+            Todo-source points earned. Grants and gifts never change the badge.
+          </p>
+        </BentoTile>
+
+        {/* Preview swatches + actions tile */}
+        <BentoTile span="sm" tone="plain" title="Tier previews">
+          <div className="mt-1 space-y-3">
+            {tiers.length === 0 ? (
+              <p className="text-sm text-slate-400">No tiers yet.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {tiers.map((t, i) =>
+                  t.color || t.icon || t.tier_name ? (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                      style={t.color ? { backgroundColor: `${t.color}22`, color: t.color } : undefined}
+                    >
+                      {t.icon && <span>{t.icon}</span>}
+                      {t.tier_name || `Tier ${i + 1}`}
+                    </span>
+                  ) : null,
                 )}
               </div>
-            </div>
-              ))}
-            </div>
-          )
-        }
-        rail={
-          <>
-            <SectionCard title="How badges work">
-              <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                A user's badge is the highest tier whose <b>Min Points</b> is ≤ their lifetime
-                Todo-source points earned. Grants and gifts never change the badge.
-              </p>
-            </SectionCard>
+            )}
 
             {tiers.length > 0 && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 pt-2">
                 <button
                   type="button"
                   onClick={addTier}
@@ -268,9 +177,116 @@ export default function BadgeSettings() {
                 </button>
               </div>
             )}
-          </>
-        }
-      />
+          </div>
+        </BentoTile>
+
+        {/* Tier config tile */}
+        <BentoTile span="full" tone="plain" title="Badge tiers">
+          <div className="mt-1">
+            {tiers.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
+                <p className="text-sm text-slate-500 dark:text-slate-400">No badge tiers yet.</p>
+                <button
+                  type="button"
+                  onClick={addTier}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" /> Add first tier
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+                {tiers.map((t, i) => (
+                  <div key={i} className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        Tier {i + 1}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Remove tier"
+                        onClick={() => removeTier(i)}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <div className="flex-1">
+                          <Field label="Tier name" required error={errors[i]?.tier_name}>
+                            {(id) => (
+                              <input
+                                id={id}
+                                ref={(el) => {
+                                  rowRefs.current[i] = el
+                                }}
+                                className={field}
+                                value={t.tier_name}
+                                onChange={(e) => {
+                                  setTier(i, { tier_name: e.target.value })
+                                  clearError(i, 'tier_name')
+                                }}
+                                placeholder="e.g. Silver"
+                              />
+                            )}
+                          </Field>
+                        </div>
+                        <div className="flex-1">
+                          <Field label="Min points" required error={errors[i]?.min_points}>
+                            {(id) => (
+                              <input
+                                id={id}
+                                type="number"
+                                inputMode="decimal"
+                                className={field}
+                                value={t.min_points}
+                                onChange={(e) => {
+                                  setTier(i, { min_points: e.target.value })
+                                  clearError(i, 'min_points')
+                                }}
+                                placeholder="e.g. 500"
+                              />
+                            )}
+                          </Field>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <Field label="Color">
+                            {(id) => (
+                              <input
+                                id={id}
+                                className={field}
+                                value={t.color}
+                                onChange={(e) => setTier(i, { color: e.target.value })}
+                                placeholder="e.g. #9ca3af"
+                              />
+                            )}
+                          </Field>
+                        </div>
+                        <div className="flex-1">
+                          <Field label="Icon">
+                            {(id) => (
+                              <input
+                                id={id}
+                                className={field}
+                                value={t.icon}
+                                onChange={(e) => setTier(i, { icon: e.target.value })}
+                                placeholder="Emoji"
+                              />
+                            )}
+                          </Field>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </BentoTile>
+      </BentoGrid>
     </form>
   )
 }
