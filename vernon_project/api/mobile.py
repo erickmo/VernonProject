@@ -360,7 +360,7 @@ def _fetch_todos(project_names, include_cancelled=False):
 			t.name, t.to_do, t.status, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.ongoing, t.notes, t.is_recurring,
-			t.`group` AS `group`, t.level, t.point, t.assignee_earned, t.leader_earned,
+			t.`group` AS `group`, t.level, t.level_id, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
 			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
