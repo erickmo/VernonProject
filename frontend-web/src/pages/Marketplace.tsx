@@ -8,6 +8,7 @@ import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 import { Dialog } from '@web/components/overlays/Dialog'
 import { ErrorState, rowButtonProps, CardGridSkeleton } from '@web/components/ui'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 function RewardDetailDialog({
   reward,
@@ -137,98 +138,97 @@ export default function Marketplace() {
     <div className="space-y-5">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Marketplace</h1>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-            <Coins className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-brand-200">Spendable balance</p>
-            <p className="text-2xl font-bold leading-tight">
-              {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-            </p>
-          </div>
-        </div>
+      <BentoGrid>
+        <BentoTile span="sm" tone="solid" accent="amber" icon={Coins} title="Spendable balance">
+          <BentoStat
+            value={balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+            label="points"
+          />
+        </BentoTile>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => navigate('/wallet')}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
-          >
-            <Wallet className="h-4 w-4 text-brand-500" />
-            Log
-          </button>
-          <button
-            onClick={() => navigate('/leaderboard')}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
-          >
-            <Trophy className="h-4 w-4 text-amber-500" />
-            Leaderboard
-          </button>
-          {canManageMarketplace(boot) && (
+        <BentoTile span="sm" tone="tint" accent="slate">
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => navigate('/marketplace-admin')}
+              onClick={() => navigate('/wallet')}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
             >
-              <Settings className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-              Manage
+              <Wallet className="h-4 w-4 text-brand-500" />
+              Log
             </button>
-          )}
-        </div>
-      </div>
-
-      {marketplace.isError ? (
-        <ErrorState onRetry={() => marketplace.refetch()} />
-      ) : isLoading && !data ? (
-        <CardGridSkeleton />
-      ) : !data || data.rewards.length === 0 ? (
-        <EmptyState icon={Store} title="No rewards yet" subtitle="Check back soon." />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-          {data.rewards.map((r) => {
-            const soldOut = r.stock_quantity <= 0
-            return (
-              <div
-                key={r.name}
-                {...rowButtonProps(() => setDetail(r))}
-                aria-label={`View reward ${r.reward_name}`}
-                className="flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
+            <button
+              onClick={() => navigate('/leaderboard')}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
+            >
+              <Trophy className="h-4 w-4 text-amber-500" />
+              Leaderboard
+            </button>
+            {canManageMarketplace(boot) && (
+              <button
+                onClick={() => navigate('/marketplace-admin')}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"
               >
-                <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800">
-                  {r.image ? (
-                    <img src={r.image} alt={r.reward_name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
-                      <Store className="h-8 w-8" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col p-3">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.reward_name}</p>
-                  {r.description && (
-                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-400 dark:text-slate-500">{r.description}</p>
-                  )}
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
-                      {formatNumber(r.point_cost)} pts
-                    </span>
-                    {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
-                  </div>
-                  <button
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      setDetail(r)
-                    }}
-                    className="mt-2 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition"
+                <Settings className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                Manage
+              </button>
+            )}
+          </div>
+        </BentoTile>
+
+        <BentoTile span="full" tone="plain">
+          {marketplace.isError ? (
+            <ErrorState onRetry={() => marketplace.refetch()} />
+          ) : isLoading && !data ? (
+            <CardGridSkeleton />
+          ) : !data || data.rewards.length === 0 ? (
+            <EmptyState icon={Store} title="No rewards yet" subtitle="Check back soon." />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+              {data.rewards.map((r) => {
+                const soldOut = r.stock_quantity <= 0
+                return (
+                  <div
+                    key={r.name}
+                    {...rowButtonProps(() => setDetail(r))}
+                    aria-label={`View reward ${r.reward_name}`}
+                    className="flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-card border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                   >
-                    {soldOut ? 'View reward' : 'Redeem'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                    <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800">
+                      {r.image ? (
+                        <img src={r.image} alt={r.reward_name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
+                          <Store className="h-8 w-8" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col p-3">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.reward_name}</p>
+                      {r.description && (
+                        <p className="mt-0.5 line-clamp-2 text-xs text-slate-400 dark:text-slate-500">{r.description}</p>
+                      )}
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
+                          {formatNumber(r.point_cost)} pts
+                        </span>
+                        {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
+                      </div>
+                      <button
+                        onClick={(ev) => {
+                          ev.stopPropagation()
+                          setDetail(r)
+                        }}
+                        className="mt-2 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition"
+                      >
+                        {soldOut ? 'View reward' : 'Redeem'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </BentoTile>
+      </BentoGrid>
 
       <RewardDetailDialog
         reward={detail}
