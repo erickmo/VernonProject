@@ -146,7 +146,7 @@ export default function Marketplace() {
           />
         </BentoTile>
 
-        <BentoTile span="sm" tone="tint" accent="slate">
+        <BentoTile span="sm" tone="tint" accent="emerald">
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => navigate('/wallet')}
