@@ -306,8 +306,10 @@ export interface MentionUser {
 
 export interface GroupLevel {
   name?: string
+  level_id?: string
   level_name: string
   point: number
+  idx?: number
 }
 
 export interface ScoringGroup {
@@ -338,7 +340,7 @@ export interface ScoringGroupPayload {
   leader_weight: number
   leader_late_penalty: number
   leader_early_bonus: number
-  levels: { level_name: string; point: number }[]
+  levels: { name?: string; level_id?: string; level_name: string; point: number }[]
 }
 
 export interface Brand {
