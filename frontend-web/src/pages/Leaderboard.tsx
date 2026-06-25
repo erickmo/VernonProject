@@ -59,8 +59,6 @@ export default function Leaderboard() {
   const q = useLeaderboard(period, brand || null)
   const { data, isLoading } = q
 
-  const meInTop = !!data?.me && data.entries.some((e) => e.user === data.me!.user)
-
   // Top-3 entries for podium tile
   const top3 = data ? data.entries.slice(0, 3) : []
 

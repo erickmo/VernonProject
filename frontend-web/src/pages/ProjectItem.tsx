@@ -1053,7 +1053,7 @@ export default function ProjectItem() {
           </BentoTile>
 
           {/* ── RIGHT COLUMN ── */}
-          <BentoTile span="md" tone="tint" accent="sky" className="space-y-5">
+          <BentoTile span="md" tone="plain" className="space-y-5">
             {/* Notes */}
             <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">

@@ -134,7 +134,7 @@ export default function Today() {
           <BentoStat
             value={w ? formatNumber(w.balance) : '—'}
             label="balance"
-            delta={`+${w ? formatNumber(w.today_earned) : 0} today`}
+            delta={`+${w ? formatNumber(w.today_earned) : 0} today · +${w ? formatNumber(w.yesterday_earned) : 0} yest`}
           />
         </BentoTile>
 
