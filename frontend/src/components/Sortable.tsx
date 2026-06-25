@@ -13,15 +13,17 @@ type SortableProps<T> = {
 export function Sortable<T>({ items, keyFor, onReorder, renderItem }: SortableProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const dragIndexRef = useRef<number | null>(null)
 
   const down = (e: PointerEvent, index: number) => {
     e.preventDefault()
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    dragIndexRef.current = index
     setDragIndex(index)
   }
 
   const move = (e: PointerEvent) => {
-    if (dragIndex === null || !containerRef.current) return
+    if (dragIndexRef.current === null || !containerRef.current) return
     const rows = Array.from(containerRef.current.children) as HTMLElement[]
     const y = e.clientY
     let target = rows.findIndex((row) => {
@@ -29,15 +31,18 @@ export function Sortable<T>({ items, keyFor, onReorder, renderItem }: SortablePr
       return y < r.top + r.height / 2
     })
     if (target === -1) target = rows.length - 1
-    if (target !== dragIndex) {
-      onReorder(dragIndex, target)
+    const current = dragIndexRef.current
+    if (target !== current) {
+      onReorder(current, target)
+      dragIndexRef.current = target
       setDragIndex(target)
     }
   }
 
   const up = (e: PointerEvent) => {
-    if (dragIndex === null) return
+    if (dragIndexRef.current === null) return
     ;(e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId)
+    dragIndexRef.current = null
     setDragIndex(null)
   }
 
