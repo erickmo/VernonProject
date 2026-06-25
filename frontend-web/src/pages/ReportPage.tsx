@@ -18,6 +18,7 @@ import { reportByName, DATE_PRESETS } from '@/lib/reports'
 import type { StatusSet } from '@/lib/reports'
 import { formatDate, stripHtml } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 function cell(value: unknown, fieldtype: string): string {
   if (value === null || value === undefined) return '—'
@@ -194,293 +195,314 @@ export default function ReportPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/reports"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Back to reports"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <h1 className="text-2xl font-bold">{def.title}</h1>
-          {isFetching && data ? <Spinner className="h-4 w-4 text-brand-500" /> : null}
-        </div>
-        <div className="relative">
-          <span ref={filterRef}>
-            <button
-              onClick={() => setFilterOpen((o) => !o)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-              {activeCount > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">
-                  {activeCount}
-                </span>
-              )}
-            </button>
-          </span>
-          <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
-            <div className="space-y-4">
-              {def.controls.map((c) => {
-                const label = (
-                  <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {c.label}
-                    {c.required && <span className="text-rose-500"> *</span>}
-                  </label>
-                )
+      <BentoGrid>
+        {/* Header hero tile */}
+        <BentoTile span="wide" tone="gradient" accent="slate">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link
+                to="/reports"
+                className="flex h-9 w-9 items-center justify-center rounded-lg opacity-70 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                aria-label="Back to reports"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <h1 className="text-2xl font-bold">{def.title}</h1>
+              {isFetching && data ? <Spinner className="h-4 w-4 text-brand-500" /> : null}
+            </div>
+            <div className="relative">
+              <span ref={filterRef}>
+                <button
+                  onClick={() => setFilterOpen((o) => !o)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white/60 dark:bg-slate-800/60 px-3 py-2 text-sm font-medium hover:bg-white dark:hover:bg-slate-800"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {activeCount > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">
+                      {activeCount}
+                    </span>
+                  )}
+                </button>
+              </span>
+              <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
+                <div className="space-y-4">
+                  {def.controls.map((c) => {
+                    const label = (
+                      <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        {c.label}
+                        {c.required && <span className="text-rose-500"> *</span>}
+                      </label>
+                    )
 
-                if (c.type === 'project' || c.type === 'person') {
-                  const opts = c.type === 'project' ? projects : users
-                  const anyLabel =
-                    c.type === 'project'
-                      ? c.required
-                        ? 'Select a project…'
-                        : 'All projects'
-                      : c.required
-                        ? 'Select a person…'
-                        : 'Everyone'
-                  return (
-                    <div key={c.key}>
-                      {label}
-                      <SearchableSelect
-                        value={(filters[c.key] as string) || ''}
-                        onChange={(v) => setVal(c.key, v)}
-                        options={opts.map((o) => ({ value: o.value, label: o.label }))}
-                        allowClear
-                        placeholder={anyLabel}
-                      />
-                    </div>
-                  )
-                }
+                    if (c.type === 'project' || c.type === 'person') {
+                      const opts = c.type === 'project' ? projects : users
+                      const anyLabel =
+                        c.type === 'project'
+                          ? c.required
+                            ? 'Select a project…'
+                            : 'All projects'
+                          : c.required
+                            ? 'Select a person…'
+                            : 'Everyone'
+                      return (
+                        <div key={c.key}>
+                          {label}
+                          <SearchableSelect
+                            value={(filters[c.key] as string) || ''}
+                            onChange={(v) => setVal(c.key, v)}
+                            options={opts.map((o) => ({ value: o.value, label: o.label }))}
+                            allowClear
+                            placeholder={anyLabel}
+                          />
+                        </div>
+                      )
+                    }
 
-                if (c.type === 'status') {
-                  const set = statusSets[c.statusSet!] || []
-                  if (c.multi) {
-                    const sel = (filters[c.key] as string[]) || []
+                    if (c.type === 'status') {
+                      const set = statusSets[c.statusSet!] || []
+                      if (c.multi) {
+                        const sel = (filters[c.key] as string[]) || []
+                        return (
+                          <div key={c.key}>
+                            {label}
+                            <div className="flex flex-wrap gap-2">
+                              {set.map((o) => {
+                                const on = sel.includes(o.value)
+                                return (
+                                  <button
+                                    key={o.value}
+                                    onClick={() => {
+                                      const next = on
+                                        ? sel.filter((v) => v !== o.value)
+                                        : [...sel, o.value]
+                                      setVal(c.key, next.length ? next : '')
+                                    }}
+                                    className={clsx(
+                                      'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
+                                      on
+                                        ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
+                                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50',
+                                    )}
+                                  >
+                                    {o.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                              {sel.length ? `${sel.length} selected` : 'All statuses'}
+                            </p>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div key={c.key}>
+                          {label}
+                          <SearchableSelect
+                            value={(filters[c.key] as string) || ''}
+                            onChange={(v) => setVal(c.key, v)}
+                            options={set.map((o) => ({ value: o.value, label: o.label }))}
+                            allowClear
+                            placeholder="Any"
+                          />
+                        </div>
+                      )
+                    }
+
+                    // daterange
+                    const presets = DATE_PRESETS.filter((p) => !c.maxDays || p.days <= c.maxDays)
                     return (
                       <div key={c.key}>
                         {label}
                         <div className="flex flex-wrap gap-2">
-                          {set.map((o) => {
-                            const on = sel.includes(o.value)
+                          {presets.map((p) => {
+                            const active = preset === p.value
                             return (
                               <button
-                                key={o.value}
+                                key={p.value}
                                 onClick={() => {
-                                  const next = on
-                                    ? sel.filter((v) => v !== o.value)
-                                    : [...sel, o.value]
-                                  setVal(c.key, next.length ? next : '')
+                                  setPreset(p.value)
+                                  setVal(c.key, p.range())
                                 }}
                                 className={clsx(
                                   'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
-                                  on
+                                  active
                                     ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50',
+                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50',
                                 )}
                               >
-                                {o.label}
+                                {p.label}
                               </button>
                             )
                           })}
                         </div>
-                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
-                          {sel.length ? `${sel.length} selected` : 'All statuses'}
-                        </p>
                       </div>
                     )
-                  }
-                  return (
-                    <div key={c.key}>
-                      {label}
-                      <SearchableSelect
-                        value={(filters[c.key] as string) || ''}
-                        onChange={(v) => setVal(c.key, v)}
-                        options={set.map((o) => ({ value: o.value, label: o.label }))}
-                        allowClear
-                        placeholder="Any"
-                      />
-                    </div>
-                  )
-                }
+                  })}
+                </div>
+              </Popover>
+            </div>
+          </div>
+        </BentoTile>
 
-                // daterange
-                const presets = DATE_PRESETS.filter((p) => !c.maxDays || p.days <= c.maxDays)
-                return (
-                  <div key={c.key}>
-                    {label}
-                    <div className="flex flex-wrap gap-2">
-                      {presets.map((p) => {
-                        const active = preset === p.value
+        {/* Summary stat tiles — shown once data is loaded */}
+        {data && data.rows.length > 0 && (
+          <>
+            <BentoTile span="sm" tone="tint" accent="slate">
+              <BentoStat value={data.rows.length} label="Rows" delta={data.total > data.rows.length ? `of ${data.total} total` : undefined} />
+            </BentoTile>
+            <BentoTile span="sm" tone="tint" accent="slate">
+              <BentoStat value={data.columns.length} label="Columns" />
+            </BentoTile>
+          </>
+        )}
+
+        {/* Report messages */}
+        {data?.messages?.length ? (
+          <BentoTile span="full" tone="plain">
+            <div className="flex items-start gap-2 rounded-2xl bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="space-y-1">
+                {data.messages.map((m, i) => (
+                  <p key={i}>{m}</p>
+                ))}
+              </div>
+            </div>
+          </BentoTile>
+        ) : null}
+
+        {/* Results tile */}
+        <BentoTile span="full" tone="plain">
+          {!ready ? (
+            <EmptyState
+              icon={Filter}
+              title="Set the filters first"
+              subtitle={`Choose ${missingLabel.join(' & ')} to run this report.`}
+            />
+          ) : isFetching && !data ? (
+            <div className="flex justify-center py-20">
+              <Spinner />
+            </div>
+          ) : error ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Couldn't run report"
+              subtitle={(error as Error).message}
+            />
+          ) : !data || !data.rows.length ? (
+            <EmptyState icon={Inbox} title="No results" subtitle="No data for these filters." />
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                  Showing {visibleRows.length} of {data.rows.length}
+                  {data.total > data.rows.length ? ` (of ${data.total} total)` : ''}
+                </p>
+                {data.rows.some((r) => r.todo_id) ? (
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    Click a row to open the task
+                  </span>
+                ) : null}
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+                      {data.columns.map((col, i) => {
+                        const active = sort?.field === col.fieldname
                         return (
-                          <button
-                            key={p.value}
-                            onClick={() => {
-                              setPreset(p.value)
-                              setVal(c.key, p.range())
-                            }}
+                          <th
+                            key={col.fieldname + i}
+                            aria-sort={
+                              active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'
+                            }
                             className={clsx(
-                              'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
-                              active
-                                ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50',
+                              'whitespace-nowrap px-0 py-0 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
+                              i === 0 && 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800/60',
                             )}
                           >
-                            {p.label}
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleSort(col.fieldname)}
+                              className={clsx(
+                                'flex w-full items-center gap-1 px-4 py-2.5 text-left uppercase tracking-wide outline-none transition-colors',
+                                'hover:text-slate-700 dark:hover:text-slate-200',
+                                'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset',
+                                active && 'text-slate-700 dark:text-slate-200',
+                              )}
+                            >
+                              <span className="truncate">{col.label}</span>
+                              {active &&
+                                (sort!.dir === 'asc' ? (
+                                  <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                ))}
+                            </button>
+                          </th>
                         )
                       })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Popover>
-        </div>
-      </div>
-
-      {/* Report messages (e.g. validation hints from the report itself) */}
-      {data?.messages?.length ? (
-        <div className="flex items-start gap-2 rounded-2xl bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <div className="space-y-1">
-            {data.messages.map((m, i) => (
-              <p key={i}>{m}</p>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Results */}
-      {!ready ? (
-        <EmptyState
-          icon={Filter}
-          title="Set the filters first"
-          subtitle={`Choose ${missingLabel.join(' & ')} to run this report.`}
-        />
-      ) : isFetching && !data ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : error ? (
-        <EmptyState
-          icon={AlertCircle}
-          title="Couldn't run report"
-          subtitle={(error as Error).message}
-        />
-      ) : !data || !data.rows.length ? (
-        <EmptyState icon={Inbox} title="No results" subtitle="No data for these filters." />
-      ) : (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Showing {visibleRows.length} of {data.rows.length}
-              {data.total > data.rows.length ? ` (of ${data.total} total)` : ''}
-            </p>
-            {data.rows.some((r) => r.todo_id) ? (
-              <span className="text-xs text-slate-400 dark:text-slate-500">
-                Click a row to open the task
-              </span>
-            ) : null}
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
-                  {data.columns.map((col, i) => {
-                    const active = sort?.field === col.fieldname
-                    return (
-                      <th
-                        key={col.fieldname + i}
-                        aria-sort={
-                          active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'
-                        }
-                        className={clsx(
-                          'whitespace-nowrap px-0 py-0 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
-                          i === 0 && 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800/60',
-                        )}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleSort(col.fieldname)}
-                          className={clsx(
-                            'flex w-full items-center gap-1 px-4 py-2.5 text-left uppercase tracking-wide outline-none transition-colors',
-                            'hover:text-slate-700 dark:hover:text-slate-200',
-                            'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset',
-                            active && 'text-slate-700 dark:text-slate-200',
-                          )}
-                        >
-                          <span className="truncate">{col.label}</span>
-                          {active &&
-                            (sort!.dir === 'asc' ? (
-                              <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                            ) : (
-                              <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                            ))}
-                        </button>
-                      </th>
-                    )
-                  })}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {visibleRows.map((row, ri) => {
-                  const todoId = row.todo_id as string | undefined
-                  return (
-                    <tr
-                      key={ri}
-                      onClick={
-                        todoId
-                          ? () => navigate(`/project-item/${encodeURIComponent(todoId)}`)
-                          : undefined
-                      }
-                      className={clsx(
-                        todoId && 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50',
-                      )}
-                    >
-                      {data.columns.map((col, ci) => (
-                        <td
-                          key={col.fieldname + ci}
-                          className={clsx(
-                            'whitespace-nowrap px-4 py-2.5 text-slate-700 dark:text-slate-200',
-                            ci === 0 &&
-                              'sticky left-0 z-10 max-w-[260px] truncate bg-white dark:bg-slate-900 font-medium',
-                            ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
-                          )}
-                        >
-                          {cell(row[col.fieldname], col.fieldtype)}
-                        </td>
-                      ))}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          {visibleRows.length < data.rows.length && (
-            <div className="flex justify-center pt-1">
-              <button
-                type="button"
-                onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              >
-                Load more
-                <span className="text-xs text-slate-400 dark:text-slate-500">
-                  ({Math.min(PAGE_SIZE, data.rows.length - visibleRows.length)} more)
-                </span>
-              </button>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {visibleRows.map((row, ri) => {
+                      const todoId = row.todo_id as string | undefined
+                      return (
+                        <tr
+                          key={ri}
+                          onClick={
+                            todoId
+                              ? () => navigate(`/project-item/${encodeURIComponent(todoId)}`)
+                              : undefined
+                          }
+                          className={clsx(
+                            todoId && 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                          )}
+                        >
+                          {data.columns.map((col, ci) => (
+                            <td
+                              key={col.fieldname + ci}
+                              className={clsx(
+                                'whitespace-nowrap px-4 py-2.5 text-slate-700 dark:text-slate-200',
+                                ci === 0 &&
+                                  'sticky left-0 z-10 max-w-[260px] truncate bg-white dark:bg-slate-900 font-medium',
+                                ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
+                              )}
+                            >
+                              {cell(row[col.fieldname], col.fieldtype)}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {visibleRows.length < data.rows.length && (
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    Load more
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                      ({Math.min(PAGE_SIZE, data.rows.length - visibleRows.length)} more)
+                    </span>
+                  </button>
+                </div>
+              )}
+              {data.total > data.rows.length && visibleRows.length >= data.rows.length && (
+                <p className="px-1 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Showing all {data.rows.length} loaded of {data.total} total. Refine filters to narrow
+                  results.
+                </p>
+              )}
             </div>
           )}
-          {data.total > data.rows.length && visibleRows.length >= data.rows.length && (
-            <p className="px-1 text-center text-xs text-slate-400 dark:text-slate-500">
-              Showing all {data.rows.length} loaded of {data.total} total. Refine filters to narrow
-              results.
-            </p>
-          )}
-        </div>
-      )}
+        </BentoTile>
+      </BentoGrid>
     </div>
   )
 }
