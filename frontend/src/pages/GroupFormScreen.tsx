@@ -32,13 +32,13 @@ const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee
   { key: 'leader_early_bonus', label: 'Leader early bonus % / day', group: 'Leader' },
 ]
 
-type LevelRow = { _key: string; name?: string; level_id?: string; level_name: string; point: number }
+type LevelRow = { _key: string; name?: string; level_id?: string; level_name: string; difficulty_percent: number }
 
 let _tmp = 0
 const tmpKey = () => `new-${_tmp++}`
 const rowKey = (l: { level_id?: string; name?: string }) => l.level_id || l.name || tmpKey()
 
-const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), level_name: '1', point: 100 }]
+const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), level_name: '1', difficulty_percent: 100 }]
 
 export default function GroupFormScreen() {
   const navigate = useNavigate()
@@ -61,6 +61,7 @@ export default function GroupFormScreen() {
   const [form, setForm] = useState<FormState>({
     group_name: '',
     description: '',
+    base_rate_per_minute: 1,
     late_penalty: 0,
     early_bonus: 0,
     leader_weight: 0,
@@ -77,6 +78,7 @@ export default function GroupFormScreen() {
       setForm({
         group_name: existing.group_name,
         description: existing.description ?? '',
+        base_rate_per_minute: existing.base_rate_per_minute ?? 1,
         late_penalty: existing.late_penalty ?? 0,
         early_bonus: existing.early_bonus ?? 0,
         leader_weight: existing.leader_weight ?? 0,
@@ -90,7 +92,7 @@ export default function GroupFormScreen() {
             name: l.name,
             level_id: l.level_id,
             level_name: l.level_name,
-            point: l.point,
+            difficulty_percent: l.difficulty_percent,
           })),
       })
     }
@@ -119,13 +121,13 @@ export default function GroupFormScreen() {
   const patchLevel = (i: number, patch: Partial<LevelRow>) =>
     setForm((f) => ({ ...f, levels: f.levels.map((l, j) => (j === i ? { ...l, ...patch } : l)) }))
   const setLevelName = (i: number, level_name: string) => patchLevel(i, { level_name })
-  const setLevelPoint = (i: number, point: number) => patchLevel(i, { point })
-  const bumpLevelPoint = (i: number, delta: number) =>
-    patchLevel(i, { point: Math.max(0, (Number(form.levels[i].point) || 0) + delta) })
+  const setLevelDifficulty = (i: number, difficulty_percent: number) => patchLevel(i, { difficulty_percent })
+  const bumpLevelDifficulty = (i: number, delta: number) =>
+    patchLevel(i, { difficulty_percent: Math.max(0, (Number(form.levels[i].difficulty_percent) || 0) + delta) })
   const addLevel = () =>
     setForm((f) => ({
       ...f,
-      levels: [...f.levels, { _key: tmpKey(), level_name: String(f.levels.length + 1), point: 0 }],
+      levels: [...f.levels, { _key: tmpKey(), level_name: String(f.levels.length + 1), difficulty_percent: 0 }],
     }))
   const removeLevel = (i: number) =>
     setForm((f) => ({ ...f, levels: f.levels.filter((_, j) => j !== i) }))
@@ -145,7 +147,7 @@ export default function GroupFormScreen() {
       toast('error', 'Enter a step value first')
       return
     }
-    setForm((f) => ({ ...f, levels: f.levels.map((l, i) => ({ ...l, point: Math.max(0, (i + 1) * step) })) }))
+    setForm((f) => ({ ...f, levels: f.levels.map((l, i) => ({ ...l, difficulty_percent: Math.max(0, (i + 1) * step) })) }))
   }
 
   const validate = (): string | null => {
@@ -157,8 +159,8 @@ export default function GroupFormScreen() {
       if (!nm) return 'Level names cannot be empty'
       if (names.has(nm)) return `Duplicate level name: ${nm}`
       names.add(nm)
-      if (typeof l.point !== 'number' || isNaN(l.point)) return 'Level points must be numbers'
-      if (l.point < 0) return 'Level points cannot be negative'
+      if (typeof l.difficulty_percent !== 'number' || isNaN(l.difficulty_percent)) return 'Difficulty must be a number'
+      if (l.difficulty_percent < 0) return 'Difficulty cannot be negative'
     }
     return null
   }
@@ -173,11 +175,12 @@ export default function GroupFormScreen() {
       ...form,
       group_name: form.group_name.trim(),
       description: (form.description ?? '').trim(),
+      base_rate_per_minute: Number(form.base_rate_per_minute),
       levels: form.levels.map((l) => ({
         name: l.name,
         level_id: l.level_id,
         level_name: l.level_name.trim(),
-        point: Number(l.point),
+        difficulty_percent: Number(l.difficulty_percent),
       })),
     }
     const opts = {
@@ -245,6 +248,17 @@ export default function GroupFormScreen() {
           />
         </div>
 
+        <div className="flex items-center gap-3">
+          <label className="min-w-0 flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">Base rate (points / minute)</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            className="w-20 shrink-0 rounded-xl border border-slate-200 px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+            value={String(form.base_rate_per_minute)}
+            onChange={(e) => setNum('base_rate_per_minute', e.target.value)}
+          />
+        </div>
+
         {/* How scoring works */}
         <div className="rounded-2xl bg-brand-50 p-3 text-xs leading-relaxed text-brand-900 dark:bg-brand-500/15 dark:text-brand-200">
           <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
@@ -286,14 +300,14 @@ export default function GroupFormScreen() {
         ))}
 
         <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Levels</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Types</p>
           <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
-            Add, rename, set points, delete, or drag to reorder. Todos list levels in this order.
+            Add, rename, set difficulty, delete, or drag to reorder. Todos list types in this order.
           </p>
-          {/* Fill by increment: sets each level to (index+1) × step (0=step, 1=2×step, 2=3×step, …). */}
+          {/* Fill difficulty by step: sets each type to (index+1) × step (0=step, 1=2×step, 2=3×step, …). */}
           <div className="mb-3 flex items-center gap-2 rounded-xl bg-white px-2 py-2 dark:bg-slate-800/80">
             <span className="min-w-0 flex-1 text-[11px] text-slate-500 dark:text-slate-400">
-              Fill by increment
+              Fill difficulty by step
             </span>
             <input
               type="number"
@@ -321,22 +335,22 @@ export default function GroupFormScreen() {
                   className={field + ' flex-1'}
                   value={(l as LevelRow).level_name}
                   onChange={(e) => setLevelName(i, e.target.value)}
-                  placeholder="Level name"
+                  placeholder="Type name"
                 />
-                <button type="button" aria-label="Decrease point" onClick={() => bumpLevelPoint(i, -LEVEL_STEP)}
+                <button type="button" aria-label="Decrease difficulty" onClick={() => bumpLevelDifficulty(i, -LEVEL_STEP)}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300">
                   <Minus className="h-4 w-4" />
                 </button>
                 <input type="number" inputMode="decimal"
                   className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                  value={String((l as LevelRow).point)}
-                  onChange={(e) => setLevelPoint(i, e.target.value === '' ? 0 : Number(e.target.value))}
-                  placeholder="Point" />
-                <button type="button" aria-label="Increase point" onClick={() => bumpLevelPoint(i, LEVEL_STEP)}
+                  value={String((l as LevelRow).difficulty_percent)}
+                  onChange={(e) => setLevelDifficulty(i, e.target.value === '' ? 0 : Number(e.target.value))}
+                  placeholder="Difficulty %" />
+                <button type="button" aria-label="Increase difficulty" onClick={() => bumpLevelDifficulty(i, LEVEL_STEP)}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300">
                   <Plus className="h-4 w-4" />
                 </button>
-                <button type="button" aria-label="Delete level" onClick={() => removeLevel(i)}
+                <button type="button" aria-label="Delete type" onClick={() => removeLevel(i)}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 active:scale-95 dark:border-slate-700 dark:hover:bg-red-500/10">
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -345,7 +359,7 @@ export default function GroupFormScreen() {
           />
           <button type="button" onClick={addLevel}
             className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 active:scale-95 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60">
-            <Plus className="h-4 w-4" /> Add level
+            <Plus className="h-4 w-4" /> Add type
           </button>
         </div>
 
