@@ -51,20 +51,15 @@ frappe.ui.form.on("Project Todo", {
 	},
 	async group(frm) {
 		await set_level_options(frm);
-		// Clear level/point if the previous level no longer belongs to this group.
+		// Clear the type if the previous one no longer belongs to this group.
 		if (frm.doc.level && !(frm._group_levels || {}).hasOwnProperty(frm.doc.level)) {
 			frm.set_value("level", null);
-			frm.set_value("point", 0);
 		}
 	},
 
 	level(frm) {
-		const map = frm._group_levels || {};
-		if (frm.doc.level && map.hasOwnProperty(frm.doc.level)) {
-			frm.set_value("point", map[frm.doc.level]);
-		} else {
-			frm.set_value("point", 0);
-		}
+		// Point is computed server-side from estimated minutes × difficulty %.
+		// Nothing to set here; the value refreshes on save.
 	},
 
 	action(frm) {
@@ -113,7 +108,7 @@ async function set_level_options(frm) {
 	const grp = await frappe.db.get_doc("Group", frm.doc.group);
 	const names = [""];
 	(grp.levels || []).forEach((row) => {
-		frm._group_levels[row.level_name] = row.point;
+		frm._group_levels[row.level_name] = row.difficulty_percent;
 		names.push(row.level_name);
 	});
 	frm.set_df_property("level", "options", names);
