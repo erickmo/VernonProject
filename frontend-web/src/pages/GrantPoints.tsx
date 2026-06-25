@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Gift } from 'lucide-react'
 import { Spinner, Avatar } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
-import { PageGrid, FieldGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { useBoot, canGrantPoints } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -98,97 +98,98 @@ export default function GrantPoints() {
     >
       <h1 className="text-2xl font-bold">Grant Points</h1>
 
-      <PageGrid
-        main={
-          <SectionCard title="Grant points">
-            <div className="space-y-5">
-              <Field label="Recipient" required>
-                {(id) =>
-                  isLoading ? (
-                    <Spinner className="h-5 w-5 text-slate-400" />
-                  ) : q.isError ? (
-                    <ErrorState onRetry={() => q.refetch()} />
-                  ) : (
-                    <div id={id}>
-                      <SearchableSelect
-                        value={selectedName}
-                        onChange={setSelectedName}
-                        options={users.map((u) => ({ value: u.name, label: `${u.full_name} (${u.name})` }))}
-                        placeholder="Search users…"
-                      />
-                    </div>
-                  )
-                }
+      <BentoGrid>
+        {/* Recipient summary tile */}
+        <BentoTile span="sm" tone="solid" accent="amber" title="Recipient">
+          {selected ? (
+            <div className="flex items-center gap-3 mt-1">
+              <Avatar name={selected.full_name} image={selected.user_image} size={40} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">
+                  {selected.full_name}
+                </p>
+                <p className="truncate text-xs opacity-70">{selected.name}</p>
+              </div>
+            </div>
+          ) : (
+            <BentoStat value="—" label="no recipient selected" />
+          )}
+        </BentoTile>
+
+        {/* Warning note tile */}
+        <BentoTile span="sm" tone="tint" accent="amber">
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Grants create a ledger entry and can't be undone.
+          </p>
+        </BentoTile>
+
+        {/* Main form tile */}
+        <BentoTile span="full" tone="plain" title="Grant points">
+          <div className="space-y-5 mt-1">
+            <Field label="Recipient" required>
+              {(id) =>
+                isLoading ? (
+                  <Spinner className="h-5 w-5 text-slate-400" />
+                ) : q.isError ? (
+                  <ErrorState onRetry={() => q.refetch()} />
+                ) : (
+                  <div id={id}>
+                    <SearchableSelect
+                      value={selectedName}
+                      onChange={setSelectedName}
+                      options={users.map((u) => ({ value: u.name, label: `${u.full_name} (${u.name})` }))}
+                      placeholder="Search users…"
+                    />
+                  </div>
+                )
+              }
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Points" required error={amountError}>
+                {(id) => (
+                  <input
+                    id={id}
+                    ref={amountRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value)
+                      if (amountError) setAmountError(undefined)
+                    }}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-lg font-semibold text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
+                  />
+                )}
               </Field>
 
-              <FieldGrid>
-                <Field label="Points" required error={amountError}>
-                  {(id) => (
-                    <input
-                      id={id}
-                      ref={amountRef}
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      value={amount}
-                      onChange={(e) => {
-                        setAmount(e.target.value)
-                        if (amountError) setAmountError(undefined)
-                      }}
-                      placeholder="0"
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-lg font-semibold text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
-                    />
-                  )}
-                </Field>
-
-                <Field label="Note (optional)">
-                  {(id) => (
-                    <textarea
-                      id={id}
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      rows={2}
-                      placeholder="Reason for the grant"
-                      className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
-                    />
-                  )}
-                </Field>
-              </FieldGrid>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
-              >
-                {submitting ? <Spinner className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
-                Grant points
-              </button>
+              <Field label="Note (optional)">
+                {(id) => (
+                  <textarea
+                    id={id}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    placeholder="Reason for the grant"
+                    className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
+                  />
+                )}
+              </Field>
             </div>
-          </SectionCard>
-        }
-        rail={
-          <>
-            <SectionCard title="Recipient">
-              {selected ? (
-                <div className="flex items-center gap-3">
-                  <Avatar name={selected.full_name} image={selected.user_image} size={40} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                      {selected.full_name}
-                    </p>
-                    <p className="truncate text-xs text-slate-400">{selected.name}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400">Search and pick a user to grant points to.</p>
-              )}
-            </SectionCard>
-            <div className="rounded-2xl border border-amber-200/60 bg-amber-50/60 dark:border-amber-500/20 dark:bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
-              Grants create a ledger entry and can't be undone.
-            </div>
-          </>
-        }
-      />
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+            >
+              {submitting ? <Spinner className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
+              Grant points
+            </button>
+          </div>
+        </BentoTile>
+      </BentoGrid>
     </form>
   )
 }
