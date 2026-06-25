@@ -455,18 +455,15 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       />
 
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Assigned to</label>
-      <select
-        value={assignee}
-        disabled={locked}
-        onChange={(e) => setAssignee(e.target.value)}
-        className={clsx(fieldCls, 'mb-3')}
-      >
-        {team.map((m) => (
-          <option key={m.user} value={m.user}>
-            {m.name}
-          </option>
-        ))}
-      </select>
+      <div className="mb-3">
+        <SearchableSelect
+          value={assignee}
+          disabled={locked}
+          onChange={setAssignee}
+          options={team.map((m) => ({ value: m.user, label: m.name }))}
+          placeholder="Select a team member…"
+        />
+      </div>
 
       <div className="mb-3 flex gap-3">
         <div className="flex-1">
@@ -724,7 +721,7 @@ export default function ProjectItem() {
   const focusValueMs = focusActive ? (focus.hasEstimate ? focus.remainingMs : focus.elapsedMs) : 0
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+    <div className="space-y-6">
       {/* Focus overlay — full-screen, rendered above everything */}
       {focusOpen && focusActive && focus.timer && (
         <FocusOverlay
@@ -776,9 +773,11 @@ export default function ProjectItem() {
       </div>
 
       {editing ? (
-        <EditForm data={data} onClose={() => setEditing(false)} />
+        <div className="max-w-3xl">
+          <EditForm data={data} onClose={() => setEditing(false)} />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-[1.5fr_1fr]">
           {/* ── LEFT COLUMN ── */}
           <div className="space-y-5">
             {/* Badges */}

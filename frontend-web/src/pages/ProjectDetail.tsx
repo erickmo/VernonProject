@@ -8,6 +8,7 @@ import { sanitizeHtml, stripHtml } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { PageGrid } from '@web/components/layout'
 import { STATUS } from '@/lib/status'
 import type { StatusKey } from '@/lib/types'
 
@@ -41,6 +42,8 @@ export default function ProjectDetail() {
   const hasCondition = !!stripHtml(conditionHtml).trim()
   const hasOutcome = !!stripHtml(outcomeHtml).trim()
   const hasSow = !!stripHtml(sowHtml).trim()
+  const hasPricing = (d.price != null && d.price > 0) || (d.discount != null && d.discount > 0)
+  const hasMeta = hasCondition || hasOutcome || hasSow || hasPricing
 
   const items = d.project_items
   const completedCount = items.filter((t) => t.status_key === 'completed').length
@@ -50,7 +53,7 @@ export default function ProjectDetail() {
     : items.filter((t) => t.status_key !== 'cancelled')
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       {/* Back + title */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -84,8 +87,10 @@ export default function ProjectDetail() {
 
       </div>
 
-      {/* Header content cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <PageGrid
+        rail={
+          hasMeta ? (
+          <>
         {hasCondition && (
           <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card p-4">
             <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wide">
@@ -140,10 +145,13 @@ export default function ProjectDetail() {
             </div>
           </div>
         ) : null}
-      </div>
-
-      {/* Tasks section */}
-      <section>
+          </>
+          ) : null
+        }
+        main={
+          <>
+            {/* Tasks section */}
+            <section>
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
             <ListChecks className="h-4 w-4" />
@@ -265,8 +273,11 @@ export default function ProjectDetail() {
         )}
       </section>
 
-      {/* Comments */}
-      <CommentThread referenceDoctype="Project Detail" referenceName={id} />
+            {/* Comments */}
+            <CommentThread referenceDoctype="Project Detail" referenceName={id} />
+          </>
+        }
+      />
 
       {/* Create todo dialog */}
       <CreateProjectItemDialog

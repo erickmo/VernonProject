@@ -175,18 +175,15 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       />
 
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Assigned to</label>
-      <select
-        value={assignee}
-        disabled={locked}
-        onChange={(e) => setAssignee(e.target.value)}
-        className={clsx(field, 'mb-3')}
-      >
-        {team.map((m) => (
-          <option key={m.user} value={m.user}>
-            {m.name}
-          </option>
-        ))}
-      </select>
+      <div className="mb-3">
+        <SearchableSelect
+          value={assignee}
+          disabled={locked}
+          onChange={setAssignee}
+          options={team.map((m) => ({ value: m.user, label: m.name }))}
+          placeholder="Select a team member…"
+        />
+      </div>
 
       <div className="mb-3 flex gap-3">
         <div className="flex-1">

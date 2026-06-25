@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
+import { PageGrid, FieldGrid, SectionCard } from '@web/components/layout'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -152,7 +153,7 @@ export default function UserForm() {
         e.preventDefault()
         onSave()
       }}
-      className="space-y-6 max-w-2xl"
+      className="space-y-6"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -174,129 +175,141 @@ export default function UserForm() {
         </button>
       </div>
 
-      <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4">
-        <Field
-          label="Email"
-          required={!isEdit}
-          error={emailError}
-          hint={isEdit ? "Can't be changed after creation" : undefined}
-        >
-          {(id) => (
-            <input
-              id={id}
-              type="email"
-              value={isEdit ? (name as string) : email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                setDirty(true)
-                if (emailError) setEmailError('')
-              }}
-              disabled={isEdit}
-              autoFocus={!isEdit}
-              placeholder="name@company.com"
-              className={field}
-            />
-          )}
-        </Field>
+      <PageGrid
+        main={
+          <SectionCard title="Profile">
+            <FieldGrid>
+              <Field
+                label="Email"
+                required={!isEdit}
+                error={emailError}
+                hint={isEdit ? "Can't be changed after creation" : undefined}
+              >
+                {(id) => (
+                  <input
+                    id={id}
+                    type="email"
+                    value={isEdit ? (name as string) : email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      setDirty(true)
+                      if (emailError) setEmailError('')
+                    }}
+                    disabled={isEdit}
+                    autoFocus={!isEdit}
+                    placeholder="name@company.com"
+                    className={field}
+                  />
+                )}
+              </Field>
 
-        <Field label="Full name">
-          {(id) => (
-            <input
-              id={id}
-              type="text"
-              value={fullName}
-              autoFocus={isEdit}
-              onChange={(e) => {
-                setFullName(e.target.value)
-                setDirty(true)
-              }}
-              className={field}
-            />
-          )}
-        </Field>
+              <Field label="Full name">
+                {(id) => (
+                  <input
+                    id={id}
+                    type="text"
+                    value={fullName}
+                    autoFocus={isEdit}
+                    onChange={(e) => {
+                      setFullName(e.target.value)
+                      setDirty(true)
+                    }}
+                    className={field}
+                  />
+                )}
+              </Field>
+            </FieldGrid>
+          </SectionCard>
+        }
+        rail={
+          <>
+            <SectionCard title="Access">
+              <div className="space-y-4">
+                <div>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roles</span>
+                  <MultiSelectChips
+                    options={VERNON_ROLE_OPTIONS}
+                    value={roles}
+                    onChange={(v) => {
+                      setRoles(v)
+                      setDirty(true)
+                    }}
+                    emptyText="No roles"
+                  />
+                </div>
 
-        <div>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roles</span>
-          <MultiSelectChips
-            options={VERNON_ROLE_OPTIONS}
-            value={roles}
-            onChange={(v) => {
-              setRoles(v)
-              setDirty(true)
-            }}
-            emptyText="No roles"
-          />
-        </div>
+                {!isEdit && (
+                  <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+                    <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
+                    <input
+                      type="checkbox"
+                      checked={sendWelcome}
+                      onChange={(e) => {
+                        setSendWelcome(e.target.checked)
+                        setDirty(true)
+                      }}
+                      className="h-5 w-5 accent-brand-600"
+                    />
+                  </label>
+                )}
 
-        {!isEdit && (
-          <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
-            <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
-            <input
-              type="checkbox"
-              checked={sendWelcome}
-              onChange={(e) => {
-                setSendWelcome(e.target.checked)
-                setDirty(true)
-              }}
-              className="h-5 w-5 accent-brand-600"
-            />
-          </label>
-        )}
-
-        {isEdit && (
-          <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
-            <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => {
-                setEnabled(e.target.checked)
-                setDirty(true)
-              }}
-              className="h-5 w-5 accent-brand-600"
-            />
-          </label>
-        )}
-      </div>
-
-      {isEdit && (
-        <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-            Password
-          </h2>
-          <button
-            type="button"
-            onClick={onResetPassword}
-            disabled={resetPw.isPending}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
-          >
-            {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
-          </button>
-          <Field label="Set new password">
-            {(id) => (
-              <div className="flex gap-2">
-                <input
-                  id={id}
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="New password"
-                  autoComplete="new-password"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
-                />
-                <button
-                  type="button"
-                  onClick={onSetPassword}
-                  disabled={!newPassword || setPw.isPending}
-                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
-                >
-                  {setPw.isPending ? 'Setting…' : 'Set password'}
-                </button>
+                {isEdit && (
+                  <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+                    <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={(e) => {
+                        setEnabled(e.target.checked)
+                        setDirty(true)
+                      }}
+                      className="h-5 w-5 accent-brand-600"
+                    />
+                  </label>
+                )}
               </div>
+            </SectionCard>
+
+            {isEdit && (
+              <SectionCard title="Password">
+                <div className="flex flex-col gap-4">
+                  <button
+                    type="button"
+                    onClick={onResetPassword}
+                    disabled={resetPw.isPending}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                  >
+                    {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
+                  </button>
+                  <Field label="Set new password">
+                    {(id) => (
+                      <div className="flex gap-2">
+                        <input
+                          id={id}
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="New password"
+                          autoComplete="new-password"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={onSetPassword}
+                          disabled={!newPassword || setPw.isPending}
+                          className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                        >
+                          {setPw.isPending ? 'Setting…' : 'Set password'}
+                        </button>
+                      </div>
+                    )}
+                  </Field>
+                </div>
+              </SectionCard>
             )}
-          </Field>
-        </div>
-      )}
+          </>
+        }
+      />
     </form>
   )
 }

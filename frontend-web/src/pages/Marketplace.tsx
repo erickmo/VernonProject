@@ -7,7 +7,7 @@ import { useToast } from '@/components/Toast'
 import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 import { Dialog } from '@web/components/overlays/Dialog'
-import { ErrorState, rowButtonProps } from '@web/components/ui'
+import { ErrorState, rowButtonProps, CardGridSkeleton } from '@web/components/ui'
 
 function RewardDetailDialog({
   reward,
@@ -180,13 +180,11 @@ export default function Marketplace() {
       {marketplace.isError ? (
         <ErrorState onRetry={() => marketplace.refetch()} />
       ) : isLoading && !data ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
+        <CardGridSkeleton />
       ) : !data || data.rewards.length === 0 ? (
         <EmptyState icon={Store} title="No rewards yet" subtitle="Check back soon." />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           {data.rewards.map((r) => {
             const soldOut = r.stock_quantity <= 0
             return (

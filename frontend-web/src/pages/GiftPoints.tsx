@@ -7,7 +7,8 @@ import { useConfirm } from '@/components/Confirm'
 import type { GiftUser } from '@/lib/types'
 import { formatNumber } from '@/lib/format'
 import { Dialog } from '@web/components/overlays/Dialog'
-import { ErrorState, rowButtonProps } from '@web/components/ui'
+import { ErrorState } from '@web/components/ui'
+import { PageGrid, SectionCard } from '@web/components/layout'
 
 export default function GiftPoints() {
   const toast = useToast()
@@ -72,70 +73,73 @@ export default function GiftPoints() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Gift Points</h1>
 
-      <p className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm text-slate-500 shadow-card max-w-sm">
-        Your balance:{' '}
-        <span className="font-semibold text-slate-900 dark:text-slate-50">{formatNumber(balance)}</span>
-      </p>
+      <PageGrid
+        main={
+          <div className="space-y-5">
+            <div className="relative max-w-md">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+              />
+            </div>
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search users"
-          className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-        />
-      </div>
-
-      {recipients.isError ? (
-        <ErrorState onRetry={() => recipients.refetch()} />
-      ) : isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState icon={Users} title="No users" />
-      ) : (
-        <div className="max-w-2xl rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
-          <table className="w-full text-sm">
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filtered.map((u) => (
-                <tr
-                  key={u.name}
-                  {...rowButtonProps(() => {
-                    setSelected(u)
-                    setAmount('')
-                    setNote('')
-                  })}
-                  aria-label={`Gift points to ${u.full_name}`}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={u.full_name} image={u.user_image} size={36} />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                          {u.full_name}
-                        </p>
-                        <p className="truncate text-xs text-slate-400">{u.name}</p>
-                      </div>
+            {recipients.isError ? (
+              <ErrorState onRetry={() => recipients.refetch()} />
+            ) : isLoading ? (
+              <div className="flex justify-center py-20">
+                <Spinner />
+              </div>
+            ) : filtered.length === 0 ? (
+              <EmptyState icon={Users} title="No users" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+                {filtered.map((u) => (
+                  <button
+                    key={u.name}
+                    type="button"
+                    onClick={() => {
+                      setSelected(u)
+                      setAmount('')
+                      setNote('')
+                    }}
+                    aria-label={`Gift points to ${u.full_name}`}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+                  >
+                    <Avatar name={u.full_name} image={u.user_image} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {u.full_name}
+                      </p>
+                      <p className="truncate text-xs text-slate-400">{u.name}</p>
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-600">
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600">
                       <Send className="h-3 w-3" />
                       Gift
                     </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        }
+        rail={
+          <>
+            <SectionCard title="Your balance">
+              <p className="text-3xl font-bold text-slate-900 dark:text-slate-50">{formatNumber(balance)}</p>
+              <p className="mt-1 text-xs text-slate-400">Available to gift</p>
+            </SectionCard>
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
+              Pick someone to send points. Gifts come out of your balance and can't be undone.
+            </div>
+          </>
+        }
+      />
 
       <Dialog
         open={!!selected}

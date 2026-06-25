@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
+import { PageGrid } from '@web/components/layout'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
@@ -140,25 +141,15 @@ export default function BrandForm() {
 
   const saving = create.isPending || update.isPending
 
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <button
-          onClick={goBack}
-          className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Brands
-        </button>
-        <h1 className="text-2xl font-bold">{isEdit ? 'Edit brand' : 'New brand'}</h1>
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          save()
-        }}
-        className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-6 flex flex-col gap-4"
-      >
+  const formCard = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        save()
+      }}
+      className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-5 sm:p-6"
+    >
+      <div className="max-w-md space-y-4">
         <Field
           label="Brand name"
           required
@@ -190,29 +181,45 @@ export default function BrandForm() {
           {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           {isEdit ? 'Save changes' : 'Create brand'}
         </button>
-      </form>
+      </div>
+    </form>
+  )
 
-      {isEdit && (
-        <div className="max-w-2xl flex flex-col gap-3">
-          <button
-            onClick={remove}
-            disabled={del.isPending}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:hover:bg-rose-500/15 transition-colors"
-          >
-            {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
-          </button>
+  const rail = (
+    <>
+      <button
+        onClick={remove}
+        disabled={del.isPending}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:hover:bg-rose-500/15 transition-colors"
+      >
+        {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
+      </button>
 
-          {mergeOptions.length > 0 && (
-            <MergeIntoCard
-              entity="brand"
-              currentLabel={existing?.brand_name || name}
-              options={mergeOptions}
-              isPending={merge.isPending}
-              onConfirm={doMerge}
-            />
-          )}
-        </div>
+      {mergeOptions.length > 0 && (
+        <MergeIntoCard
+          entity="brand"
+          currentLabel={existing?.brand_name || name}
+          options={mergeOptions}
+          isPending={merge.isPending}
+          onConfirm={doMerge}
+        />
       )}
+    </>
+  )
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <button
+          onClick={goBack}
+          className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Brands
+        </button>
+        <h1 className="text-2xl font-bold">{isEdit ? 'Edit brand' : 'New brand'}</h1>
+      </div>
+
+      {isEdit ? <PageGrid main={formCard} rail={rail} /> : <div className="max-w-xl">{formCard}</div>}
     </div>
   )
 }

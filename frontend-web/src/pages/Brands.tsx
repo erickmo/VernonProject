@@ -59,27 +59,18 @@ export default function Brands() {
           </button>
         </div>
       ) : (
-        <div className="max-w-3xl rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <tr>
-                <th className="px-4 py-2.5">Brand</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {list.map((b) => (
-                <tr
-                  key={b.name}
-                  {...rowButtonProps(() => navigate(`/brands/${encodeURIComponent(b.name)}`))}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
-                >
-                  <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
-                    {b.brand_name}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-3">
+          {list.map((b) => (
+            <button
+              key={b.name}
+              type="button"
+              onClick={() => navigate(`/brands/${encodeURIComponent(b.name)}`)}
+              className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-left font-medium text-slate-800 dark:text-slate-100 hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+            >
+              <Store className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="truncate">{b.brand_name}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

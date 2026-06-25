@@ -59,7 +59,7 @@ export default function Groups() {
           </button>
         </div>
       ) : (
-        <div className="max-w-3xl rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>

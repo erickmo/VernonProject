@@ -220,6 +220,11 @@ export default function Today() {
                   <p className="mt-0.5 text-lg font-bold leading-tight">
                     {data.counts.completed_today} done · {data.counts.due_today} due
                   </p>
+                  {data.counts.completed_minutes_today > 0 && (
+                    <p className="text-xs font-medium text-brand-200">
+                      {formatEstimate(data.counts.completed_minutes_today)} completed today
+                    </p>
+                  )}
                   <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
                     {data.counts.overdue > 0 && (
                       <button

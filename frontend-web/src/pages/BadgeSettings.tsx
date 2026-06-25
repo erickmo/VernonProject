@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, Plus, Trash2 } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Field } from '@web/components/ui'
+import { PageGrid, SectionCard } from '@web/components/layout'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useBoot, canManageBadges, useBadgeSettings, useSaveBadgeSettings } from '@/hooks/useData'
@@ -125,25 +126,22 @@ export default function BadgeSettings() {
     >
       <h1 className="text-2xl font-bold">Badges</h1>
 
-      <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-        A user's badge is the highest tier whose <b>Min Points</b> is ≤ their lifetime
-        Todo-source points earned. Grants and gifts never change the badge.
-      </p>
-
-      {tiers.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">No badge tiers yet.</p>
-          <button
-            type="button"
-            onClick={addTier}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" /> Add first tier
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {tiers.map((t, i) => (
+      <PageGrid
+        main={
+          tiers.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
+              <p className="text-sm text-slate-500 dark:text-slate-400">No badge tiers yet.</p>
+              <button
+                type="button"
+                onClick={addTier}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" /> Add first tier
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+              {tiers.map((t, i) => (
             <div key={i} className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -237,30 +235,42 @@ export default function BadgeSettings() {
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+              ))}
+            </div>
+          )
+        }
+        rail={
+          <>
+            <SectionCard title="How badges work">
+              <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                A user's badge is the highest tier whose <b>Min Points</b> is ≤ their lifetime
+                Todo-source points earned. Grants and gifts never change the badge.
+              </p>
+            </SectionCard>
 
-      {tiers.length > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={addTier}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 hover:border-slate-400 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500"
-          >
-            <Plus className="h-4 w-4" /> Add tier
-          </button>
+            {tiers.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={addTier}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 hover:border-slate-400 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500"
+                >
+                  <Plus className="h-4 w-4" /> Add tier
+                </button>
 
-          <button
-            type="submit"
-            disabled={save.isPending}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
-          >
-            {save.isPending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-            Save badges
-          </button>
-        </div>
-      )}
+                <button
+                  type="submit"
+                  disabled={save.isPending}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+                >
+                  {save.isPending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                  Save badges
+                </button>
+              </div>
+            )}
+          </>
+        }
+      />
     </form>
   )
 }

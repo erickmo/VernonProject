@@ -648,13 +648,16 @@ def get_dashboard():
 	review.sort(key=lambda t: (not t["is_overdue"], t["deadline"] or "9999"))
 	upcoming.sort(key=lambda t: t["deadline"] or "9999")
 
-	completed_today = sum(
-		1
-		for r in rows
-		if r["assigned_to"] == user
-		and r["completed_at"]
-		and str(r["completed_at"])[:10] == str(today)
-	)
+	completed_today = 0
+	completed_minutes_today = 0
+	for r in rows:
+		if (
+			r["assigned_to"] == user
+			and r["completed_at"]
+			and str(r["completed_at"])[:10] == str(today)
+		):
+			completed_today += 1
+			completed_minutes_today += r["estimated"] or 0
 
 	return {
 		"counts": {
@@ -663,6 +666,7 @@ def get_dashboard():
 			"upcoming": len(upcoming),
 			"review": len(review),
 			"completed_today": completed_today,
+			"completed_minutes_today": completed_minutes_today,
 		},
 		"overdue": overdue,
 		"due_today": due_today,

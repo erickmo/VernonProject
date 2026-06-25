@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { TodoCard } from '@/components/TodoCard'
 import { Segmented, EmptyState, FullScreenLoader } from '@/components/ui'
 import { useCalendar, useProjects } from '@/hooks/useData'
-import { STATUS } from '@/lib/status'
+import { STATUS, STATUS_ORDER } from '@/lib/status'
 import type { ProjectItem } from '@/lib/types'
 
 type Scope = 'my' | 'all' | 'project'
@@ -16,6 +16,14 @@ const MONTHS = [
 ]
 // Monday-first weekday headers.
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+// Chip colors shown on the grid: each status' `dot`, plus the overdue override
+// (rose-400, applied to any non-completed past-due item).
+const LEGEND: { color: string; label: string }[] = [
+  ...STATUS_ORDER.map((k) => ({ color: STATUS[k].dot, label: STATUS[k].label })),
+  { color: STATUS.cancelled.dot, label: STATUS.cancelled.label },
+  { color: 'bg-rose-400', label: 'Overdue' },
+]
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const keyOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -35,7 +43,8 @@ function persist(k: string, v: string) {
 
 // Self-contained calendar (toggles + month grid + day sheet). No page shell —
 // each platform wraps it in its own chrome (mobile DetailScreen / web AppShell).
-export function CalendarView() {
+// `fluid` drops the centered 768px cap so the web page can fill its column.
+export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
   const { data, isLoading } = useCalendar()
   const { data: projects } = useProjects()
 
@@ -104,7 +113,7 @@ export function CalendarView() {
   const dayTodos = openDay ? byDay.get(openDay) ?? [] : []
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={fluid ? 'w-full' : 'mx-auto max-w-3xl'}>
       {/* Toggles */}
       <div className="mb-4 space-y-2.5">
         <Segmented<Scope>
@@ -152,6 +161,16 @@ export function CalendarView() {
               before:absolute before:left-0.5 before:top-0.5 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-transform checked:before:translate-x-4"
           />
         </label>
+      </div>
+
+      {/* Legend: what the day-cell chip colors mean */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        {LEGEND.map((l) => (
+          <span key={l.label} className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span className={clsx('h-2.5 w-2.5 rounded-sm', l.color)} />
+            {l.label}
+          </span>
+        ))}
       </div>
 
       {/* Month nav */}

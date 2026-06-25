@@ -1,6 +1,25 @@
 import { useId, type ReactNode } from 'react'
 import { AlertTriangle, RotateCw } from 'lucide-react'
 
+/** Animated placeholder block for loading states. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/70 ${className}`} />
+}
+
+/** Loading placeholder for card-grid pages (Projects, Marketplace, …). */
+export function CardGridSkeleton({ cards = 8 }: { cards?: number }) {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-44" />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+        {Array.from({ length: cards }).map((_, i) => (
+          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Desktop error state for failed queries. Distinguishes a real failure from an
  * empty result (which should use EmptyState from @/components/ui instead).
@@ -43,17 +62,19 @@ export function Field({
   required,
   error,
   hint,
+  className = '',
   children,
 }: {
   label: string
   required?: boolean
   error?: string
   hint?: string
+  className?: string
   children: (id: string) => ReactNode
 }) {
   const id = useId()
   return (
-    <div className="space-y-1">
+    <div className={`space-y-1 ${className}`}>
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
         {required && <span className="text-red-500"> *</span>}

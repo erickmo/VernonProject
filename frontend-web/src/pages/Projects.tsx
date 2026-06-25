@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { Plus, FolderKanban, Search } from 'lucide-react'
 import { useProjects, canCreateProject, useBoot } from '@/hooks/useData'
 import { ProjectCard } from '@/components/ProjectCard'
-import { Segmented, Spinner, EmptyState } from '@/components/ui'
+import { Segmented, EmptyState } from '@/components/ui'
+import { CardGridSkeleton } from '@web/components/ui'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
 
 const STATUS: { value: string; label: string }[] = [
@@ -68,9 +69,7 @@ export default function Projects() {
       </div>
 
       {projects.isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
+        <CardGridSkeleton />
       ) : visible.length === 0 ? (
         <EmptyState icon={FolderKanban} title="No projects" subtitle="Nothing matches your filters." />
       ) : (
@@ -79,7 +78,7 @@ export default function Projects() {
             <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               {brand}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {list.map((p) => (
                 <ProjectCard key={p.name} p={p} />
               ))}

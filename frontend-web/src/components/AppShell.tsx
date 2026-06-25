@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
-  Award, Store, Coins,
+  Award, Store, Coins, ChevronRight, Search,
 } from 'lucide-react'
 import {
-  useBoot, useDashboard,
+  useBoot, useDashboard, useWallet,
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
   canManageMarketplace, canGrantPoints,
 } from '@/hooks/useData'
@@ -14,6 +14,8 @@ import { Avatar } from '@/components/ui'
 import { logout } from '@/lib/api'
 import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
 import { useModalA11y } from '@web/lib/useModalA11y'
+import { formatNumber } from '@/lib/format'
+import { CommandPalette, type Command } from '@web/components/CommandPalette'
 
 const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' }
 
@@ -44,6 +46,44 @@ const THEMES: { value: Theme; icon: typeof Sun }[] = [
   { value: 'light', icon: Sun }, { value: 'dark', icon: Moon }, { value: 'system', icon: Monitor },
 ]
 
+const SECTION: Record<string, { label: string; to: string }> = {
+  '': { label: 'Today', to: '/' },
+  calendar: { label: 'Calendar', to: '/calendar' },
+  projects: { label: 'Projects', to: '/projects' },
+  project: { label: 'Projects', to: '/projects' },
+  'project-detail': { label: 'Projects', to: '/projects' },
+  'project-item': { label: 'Projects', to: '/projects' },
+  review: { label: 'Review', to: '/review' },
+  reports: { label: 'Reports', to: '/reports' },
+  report: { label: 'Reports', to: '/reports' },
+  leaderboard: { label: 'Leaderboard', to: '/leaderboard' },
+  marketplace: { label: 'Marketplace', to: '/marketplace' },
+  wallet: { label: 'Wallet', to: '/wallet' },
+  'gift-points': { label: 'Gift Points', to: '/gift-points' },
+  users: { label: 'Users', to: '/users' },
+  groups: { label: 'Groups', to: '/groups' },
+  brands: { label: 'Brands', to: '/brands' },
+  'badge-settings': { label: 'Badges', to: '/badge-settings' },
+  'marketplace-admin': { label: 'Marketplace Admin', to: '/marketplace-admin' },
+  'grant-points': { label: 'Grant Points', to: '/grant-points' },
+  me: { label: 'Me', to: '/me' },
+}
+
+// Breadcrumb for the desktop header: a clickable section crumb, plus a
+// non-clickable leaf for nested routes (e.g. "Projects / Detail").
+function buildCrumbs(pathname: string): { label: string; to?: string }[] {
+  const segs = pathname.split('/').filter(Boolean)
+  const top = segs[0] ?? ''
+  const section = SECTION[top] ?? { label: 'Vernon', to: '/' }
+  const rest = segs.slice(1)
+  if (rest.length === 0) return [{ label: section.label }]
+  let leaf = 'Detail'
+  if (rest.includes('new')) leaf = 'New'
+  else if (rest.includes('item') || top === 'project-item') leaf = 'Item'
+  else if (['users', 'groups', 'brands', 'marketplace-admin'].includes(top)) leaf = 'Edit'
+  return [{ label: section.label, to: section.to }, { label: leaf }]
+}
+
 export function AppShell() {
   const boot = useBoot()
   const dash = useDashboard()
@@ -51,6 +91,22 @@ export function AppShell() {
   const [theme, setThemeState] = useState<Theme>(getStoredTheme())
   const [drawerOpen, setDrawerOpen] = useState(false)
   const drawerRef = useModalA11y(drawerOpen, () => setDrawerOpen(false))
+  const wallet = useWallet()
+  const { pathname } = useLocation()
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const crumbs = buildCrumbs(pathname)
+
+  // ⌘K / Ctrl+K toggles the command palette from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((o) => !o)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   const pickTheme = (t: Theme) => { setTheme(t); setThemeState(t) }
   const doLogout = async () => { await logout(); window.location.href = '/w' }
@@ -63,6 +119,12 @@ export function AppShell() {
     ...(canManageBadges(b) ? [{ to: '/badge-settings', label: 'Badges', icon: Award } as NavItem] : []),
     ...(canManageMarketplace(b) ? [{ to: '/marketplace-admin', label: 'Marketplace Admin', icon: Store } as NavItem] : []),
     ...(canGrantPoints(b) ? [{ to: '/grant-points', label: 'Grant Points', icon: Coins } as NavItem] : []),
+  ]
+
+  const navCommands: Command[] = [
+    ...MAIN.map((n) => ({ id: n.to, label: n.label, group: 'Go to', icon: n.icon, to: n.to })),
+    ...REWARDS.map((n) => ({ id: n.to, label: n.label, group: 'Rewards', icon: n.icon, to: n.to })),
+    ...admin.map((n) => ({ id: n.to, label: n.label, group: 'Admin', icon: n.icon, to: n.to })),
   ]
 
   const renderItem = ({ to, label, icon: Icon, end, badge }: NavItem) => (
@@ -171,10 +233,45 @@ export function AppShell() {
             <FolderKanban className="w-5 h-5" /> Vernon
           </span>
         </header>
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 py-6">
+        {/* desktop header — breadcrumb + global search + points (mobile uses its own bar above) */}
+        <header className="hidden lg:flex sticky top-0 z-30 items-center gap-4 h-14 px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm min-w-0">
+            {crumbs.map((c, i) => (
+              <span key={i} className="flex items-center gap-1.5 min-w-0">
+                {i > 0 && <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-300 dark:text-slate-600" />}
+                {c.to ? (
+                  <NavLink to={c.to} className="truncate text-slate-500 hover:text-brand-600">{c.label}</NavLink>
+                ) : (
+                  <span className="truncate font-semibold text-slate-800 dark:text-slate-100">{c.label}</span>
+                )}
+              </span>
+            ))}
+          </nav>
+          <div className="flex-1" />
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <Search className="w-4 h-4" />
+            <span className="hidden xl:inline">Search…</span>
+            <kbd className="hidden xl:inline-flex items-center rounded border border-slate-200 dark:border-slate-700 px-1.5 text-[10px] font-medium">⌘K</kbd>
+          </button>
+          <NavLink
+            to="/wallet"
+            className="flex items-center gap-1.5 rounded-lg bg-brand-50 dark:bg-brand-600/15 px-3 py-1.5 text-sm font-semibold text-brand-700 dark:text-brand-200"
+          >
+            <Coins className="w-4 h-4" />
+            {wallet.data ? formatNumber(wallet.data.balance) : '—'}
+          </NavLink>
+        </header>
+        <main className="flex-1 w-full px-4 lg:px-8 2xl:px-10 py-6">
           <Outlet />
         </main>
       </div>
+
+      {paletteOpen && (
+        <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />
+      )}
     </div>
   )
 }

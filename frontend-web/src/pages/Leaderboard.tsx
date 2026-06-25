@@ -4,6 +4,7 @@ import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
 import type { LeaderboardEntry, LeaderboardPeriod } from '@/lib/types'
 import { ErrorState } from '@web/components/ui'
+import { PageGrid, SectionCard } from '@web/components/layout'
 import { SearchableSelect } from '@/components/SearchableSelect'
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
@@ -88,34 +89,50 @@ export default function Leaderboard() {
       ) : !data || data.entries.length === 0 ? (
         <EmptyState icon={Trophy} title="No points yet" subtitle="Complete work to climb the board." />
       ) : (
-        <div className="space-y-3 max-w-2xl">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">Rank</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Player</th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Points</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {data.entries.map((e) => (
-                  <Row key={e.user} e={e} isMe={e.user === boot?.user} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {data.me && !meInTop && (
-            <div className="rounded-xl border border-brand-200 dark:border-brand-500/30 overflow-x-auto">
+        <PageGrid
+          main={
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
               <table className="w-full text-sm">
-                <tbody>
-                  <Row e={data.me} isMe />
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">Rank</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Player</th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Points</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {data.entries.map((e) => (
+                    <Row key={e.user} e={e} isMe={e.user === boot?.user} />
+                  ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          }
+          rail={
+            <>
+              {data.me && (
+                <SectionCard title="Your standing" className={meInTop ? '' : 'ring-1 ring-brand-200 dark:ring-brand-500/30'}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 text-center text-2xl font-bold text-slate-500 dark:text-slate-400">
+                      {medal(data.me.rank) ?? `#${data.me.rank}`}
+                    </div>
+                    <Avatar name={data.me.full_name} image={data.me.image} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{data.me.full_name}</p>
+                      <p className="text-xs text-slate-400">
+                        {data.me.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} pts
+                      </p>
+                    </div>
+                  </div>
+                </SectionCard>
+              )}
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
+                Showing <b className="text-slate-700 dark:text-slate-200">{PERIODS.find((p) => p.value === period)?.label}</b>{' '}
+                standings{brand ? <> for <b className="text-slate-700 dark:text-slate-200">{brand}</b></> : ''}.
+              </div>
+            </>
+          }
+        />
       )}
     </div>
   )

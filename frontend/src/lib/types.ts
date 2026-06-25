@@ -139,6 +139,7 @@ export interface Dashboard {
     upcoming: number
     review: number
     completed_today: number
+    completed_minutes_today: number
   }
   overdue: ProjectItem[]
   due_today: ProjectItem[]
