@@ -265,11 +265,11 @@ export default function GroupFormScreen() {
             <Info className="h-3.5 w-3.5" /> How points are scored
           </p>
           <p className="mb-1">
-            When a todo is completed, the <b>assignee</b> earns the <b>point of the chosen level</b>
-            {' '}(your 0…10 scale), then adjusted for timing:
+            When a todo is completed, the <b>assignee</b> earns points based on{' '}
+            <b>base rate × estimated minutes × difficulty%</b>, then adjusted for timing:
           </p>
           <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
-            assignee = point × (1 − late_days×late% + early_days×early%)
+            assignee = base_rate × minutes × difficulty% × (1 − late_days×late% + early_days×early%)
           </p>
           <p className="mb-1">
             The <b>leader</b> earns a share of the assignee's points:

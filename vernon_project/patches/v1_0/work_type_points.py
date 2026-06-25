@@ -8,6 +8,8 @@ def execute():
 	explicitly so any pre-existing NULLs are deterministic. Existing Project
 	Todo rows keep their already-snapshotted `point` — not recomputed here.
 	"""
+	# The `= 0` clause intentionally treats legacy NULL-equivalent zero rows as needing
+	# the default. This one-shot patch is not re-run after users start editing.
 	frappe.db.sql(
 		"UPDATE `tabGroup` SET base_rate_per_minute = 1 "
 		"WHERE base_rate_per_minute IS NULL OR base_rate_per_minute = 0"

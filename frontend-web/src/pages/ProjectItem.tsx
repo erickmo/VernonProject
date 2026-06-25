@@ -853,7 +853,7 @@ export default function ProjectItem() {
                   tone="brand"
                   value={data.group}
                   sub={
-                    [data.level, data.point ? `${formatNumber(data.point)} pts` : '']
+                    [data.level, data.point != null ? `${formatNumber(data.point)} pts` : '']
                       .filter(Boolean)
                       .join(' · ') || undefined
                   }
