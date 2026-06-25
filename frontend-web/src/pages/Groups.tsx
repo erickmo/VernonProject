@@ -4,6 +4,7 @@ import { Plus, Trophy } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { ErrorState, rowButtonProps } from '@web/components/ui'
 import { useScoringGroups, useBoot, canManageGroups } from '@/hooks/useData'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 export default function Groups() {
   const navigate = useNavigate()
@@ -34,58 +35,70 @@ export default function Groups() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Groups</h1>
-        <button
-          onClick={() => navigate('/groups/new')}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" /> New group
-        </button>
-      </div>
+      <h1 className="text-2xl font-bold">Groups</h1>
 
-      {list.length === 0 ? (
-        <div className="flex flex-col items-center gap-3">
-          <EmptyState
-            icon={Trophy}
-            title="No groups yet"
-            subtitle="Create a scoring group to start weighting tasks."
-          />
-          <button
-            onClick={() => navigate('/groups/new')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" /> New group
-          </button>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <tr>
-                <th className="px-4 py-2.5">Group</th>
-                <th className="px-4 py-2.5">Description</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {list.map((g) => (
-                <tr
-                  key={g.name}
-                  {...rowButtonProps(() => navigate(`/groups/${encodeURIComponent(g.name)}`))}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
-                >
-                  <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
-                    {g.group_name}
-                  </td>
-                  <td className="max-w-md truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">
-                    {g.description || '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <BentoGrid>
+        <BentoTile
+          span="sm"
+          tone="tint"
+          accent="slate"
+          actions={
+            <button
+              onClick={() => navigate('/groups/new')}
+              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> New group
+            </button>
+          }
+        >
+          <BentoStat value={list.length} label="groups" />
+        </BentoTile>
+
+        <BentoTile span="full" tone="plain">
+          {list.length === 0 ? (
+            <div className="flex flex-col items-center gap-3">
+              <EmptyState
+                icon={Trophy}
+                title="No groups yet"
+                subtitle="Create a scoring group to start weighting tasks."
+              />
+              <button
+                onClick={() => navigate('/groups/new')}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" /> New group
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <tr>
+                    <th className="px-4 py-2.5">Group</th>
+                    <th className="px-4 py-2.5">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {list.map((g) => (
+                    <tr
+                      key={g.name}
+                      {...rowButtonProps(() => navigate(`/groups/${encodeURIComponent(g.name)}`))}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
+                    >
+                      <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
+                        {g.group_name}
+                      </td>
+                      <td className="max-w-md truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">
+                        {g.description || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </BentoTile>
+      </BentoGrid>
     </div>
   )
 }
