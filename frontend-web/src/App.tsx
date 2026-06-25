@@ -38,6 +38,7 @@ import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
 import RewardForm from '@web/pages/RewardForm'
 import GrantPoints from '@web/pages/GrantPoints'
 import Onboarding from '@web/pages/Onboarding'
+import BentoDemo from '@web/pages/BentoDemo'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -101,6 +102,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Today />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/bento-demo" element={<BentoDemo />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/project/:name" element={<Project />}>
             <Route path="item/:itemName" element={<ProjectItem />} />
