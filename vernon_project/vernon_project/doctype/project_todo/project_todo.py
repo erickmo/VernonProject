@@ -46,27 +46,47 @@ class ProjectTodo(Document):
 			self.project = frappe.get_value("Project Detail", self.project_detail, "project")
 
 	def snapshot_point_from_level(self):
-		"""Set `point` from the chosen level row of the selected Group.
+		"""Resolve `point` and refresh the cached `level` name from `level_id`.
 
-		Validates that `level` belongs to `group`. Empty level => point 0.
+		Truth is `level_id`; `level` is a display cache. Resolution rules:
+		- No group: clear everything.
+		- Have level_id and it resolves: set point + refresh level name.
+		- Have level_id but it no longer resolves (level was deleted): keep the
+		  existing point/name as-is (do NOT throw) so deleting a level can't
+		  break active or historical todos.
+		- Legacy: have a level name but no level_id: match by name, backfill
+		  level_id, set point. No match: keep existing point, do not throw.
+		- Nothing chosen: point 0.
 		"""
 		if not self.group:
 			self.point = 0
 			self.level = None
+			self.level_id = None
 			return
-		if not self.level:
-			self.point = 0
-			return
-		levels = frappe.get_all(
-			"Group Level",
-			filters={"parent": self.group, "parenttype": "Group", "level_name": self.level},
-			pluck="point",
-		)
-		if not levels:
-			frappe.throw(
-				_("Level '{0}' does not belong to Group '{1}'.").format(self.level, self.group)
+		if self.level_id:
+			row = frappe.db.get_value(
+				"Group Level",
+				{"parent": self.group, "parenttype": "Group", "level_id": self.level_id},
+				["level_name", "point"],
+				as_dict=True,
 			)
-		self.point = levels[0]
+			if row:
+				self.level = row.level_name
+				self.point = row.point
+			# else: level deleted — keep cached level/point untouched
+			return
+		if self.level:
+			row = frappe.db.get_value(
+				"Group Level",
+				{"parent": self.group, "parenttype": "Group", "level_name": self.level},
+				["name", "level_id", "point"],
+				as_dict=True,
+			)
+			if row:
+				self.level_id = row.level_id
+				self.point = row.point
+			return
+		self.point = 0
 
 	def validate_assigned_to_team_member(self):
 		if not self.assigned_to or not self.project_detail:
@@ -563,6 +583,7 @@ class ProjectTodo(Document):
 			"notes": self.notes,
 			"group": self.group,
 			"level": self.level,
+			"level_id": self.level_id,
 			"is_recurring": 1,
 			"recurring_frequency": self.recurring_frequency,
 			"recurring_until": self.recurring_until,
