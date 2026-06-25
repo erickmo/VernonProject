@@ -789,7 +789,11 @@ export default function ProjectItemScreen() {
                 label="Group"
                 tone="brand"
                 value={data.group}
-                sub={data.level || undefined}
+                sub={
+                  [data.level, data.point != null ? `${data.point} pts` : '']
+                    .filter(Boolean)
+                    .join(' · ') || undefined
+                }
               />
             )}
 

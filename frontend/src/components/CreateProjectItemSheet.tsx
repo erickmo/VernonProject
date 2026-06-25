@@ -5,7 +5,7 @@ import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
-import { computeTodoPoints } from '../lib/points'
+import { computeTodoPoints } from '@/lib/points'
 
 interface CreateProjectItemSheetProps {
   open: boolean
