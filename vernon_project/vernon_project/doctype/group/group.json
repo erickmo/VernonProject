@@ -8,6 +8,7 @@
  "field_order": [
   "group_name",
   "description",
+  "base_rate_per_minute",
   "weights_section",
   "late_penalty",
   "early_bonus",
@@ -21,6 +22,7 @@
  "fields": [
   {"fieldname": "group_name", "fieldtype": "Data", "label": "Group Name", "reqd": 1, "unique": 1, "in_list_view": 1},
   {"fieldname": "description", "fieldtype": "Small Text", "label": "Description"},
+  {"fieldname": "base_rate_per_minute", "fieldtype": "Float", "label": "Base Rate (points / minute)", "default": "1", "non_negative": 1, "description": "Points per estimated minute, before difficulty %"},
   {"fieldname": "weights_section", "fieldtype": "Section Break", "label": "Point Weights (%)"},
   {"fieldname": "late_penalty", "fieldtype": "Percent", "label": "Late Penalty (per day)", "default": "0"},
   {"fieldname": "early_bonus", "fieldtype": "Percent", "label": "Early Bonus (per day)", "default": "0"},
