@@ -39,6 +39,7 @@ import {
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, formatDate, formatNumber, stripHtml } from '@/lib/format'
+import { computeTodoPoints } from '@/lib/points'
 import { Avatar, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
@@ -405,7 +406,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const save = () => {
     if (update.isPending) return
     if (!group || !level) {
-      toast('error', 'Group and level are required')
+      toast('error', 'Group and type are required')
       return
     }
     if (!locked && !deadline) {
@@ -588,7 +589,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-        Level <span className="text-red-500">*</span>
+        Type <span className="text-red-500">*</span>
       </label>
       <div className="mb-3">
         <SearchableSelect
@@ -596,11 +597,21 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           onChange={setLevel}
           options={(groupDoc?.levels ?? []).map((l) => ({
             value: l.level_id ?? '',
-            label: `${l.level_name} (${l.point} pts)`,
+            label: `${l.level_name} (${l.difficulty_percent}%)`,
           }))}
-          placeholder={group ? 'Select a level…' : 'Pick a group first…'}
+          placeholder={group ? 'Select a type…' : 'Pick a group first…'}
           disabled={!group}
         />
+        {group && level && (() => {
+          const lvl = (groupDoc?.levels ?? []).find((l) => (l.level_id ?? '') === level)
+          const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
+          return (
+            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Estimated points: <span className="font-medium">{pts}</span>
+              {!estimated && ' (set estimated minutes)'}
+            </div>
+          )
+        })()}
       </div>
 
       {data.detail_todos.length > 0 && (
