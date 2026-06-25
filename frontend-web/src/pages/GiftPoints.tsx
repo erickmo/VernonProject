@@ -8,7 +8,7 @@ import type { GiftUser } from '@/lib/types'
 import { formatNumber } from '@/lib/format'
 import { Dialog } from '@web/components/overlays/Dialog'
 import { ErrorState } from '@web/components/ui'
-import { PageGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 export default function GiftPoints() {
   const toast = useToast()
@@ -76,9 +76,25 @@ export default function GiftPoints() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Gift Points</h1>
 
-      <PageGrid
-        main={
-          <div className="space-y-5">
+      <BentoGrid>
+        {/* Balance summary tile */}
+        <BentoTile span="sm" tone="solid" accent="amber" title="Your balance">
+          <BentoStat
+            value={formatNumber(balance)}
+            label="available to gift"
+          />
+        </BentoTile>
+
+        {/* Hint tile */}
+        <BentoTile span="sm" tone="tint" accent="amber">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Pick someone to send points. Gifts come out of your balance and can't be undone.
+          </p>
+        </BentoTile>
+
+        {/* Recipient picker tile */}
+        <BentoTile span="full" tone="plain" title="Choose recipient">
+          <div className="mt-1 space-y-5">
             <div className="relative max-w-md">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -127,19 +143,8 @@ export default function GiftPoints() {
               </div>
             )}
           </div>
-        }
-        rail={
-          <>
-            <SectionCard title="Your balance">
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-50">{formatNumber(balance)}</p>
-              <p className="mt-1 text-xs text-slate-400">Available to gift</p>
-            </SectionCard>
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
-              Pick someone to send points. Gifts come out of your balance and can't be undone.
-            </div>
-          </>
-        }
-      />
+        </BentoTile>
+      </BentoGrid>
 
       <Dialog
         open={!!selected}
