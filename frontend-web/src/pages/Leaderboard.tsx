@@ -4,7 +4,7 @@ import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
 import type { LeaderboardEntry, LeaderboardPeriod } from '@/lib/types'
 import { ErrorState } from '@web/components/ui'
-import { PageGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { SearchableSelect } from '@/components/SearchableSelect'
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
@@ -61,24 +61,12 @@ export default function Leaderboard() {
 
   const meInTop = !!data?.me && data.entries.some((e) => e.user === data.me!.user)
 
+  // Top-3 entries for podium tile
+  const top3 = data ? data.entries.slice(0, 3) : []
+
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Leaderboard</h1>
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <Segmented options={PERIODS} value={period} onChange={setPeriod} />
-        {data && data.brands.length > 0 && (
-          <div className="w-48">
-            <SearchableSelect
-              value={brand}
-              onChange={setBrand}
-              options={data.brands.map((b) => ({ value: b, label: b }))}
-              placeholder="All brands"
-              allowClear
-            />
-          </div>
-        )}
-      </div>
 
       {q.isError ? (
         <ErrorState onRetry={() => q.refetch()} />
@@ -89,9 +77,58 @@ export default function Leaderboard() {
       ) : !data || data.entries.length === 0 ? (
         <EmptyState icon={Trophy} title="No points yet" subtitle="Complete work to climb the board." />
       ) : (
-        <PageGrid
-          main={
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+        <BentoGrid>
+          {/* Top-3 podium */}
+          <BentoTile span="wide" tone="gradient" accent="violet" title="Top Players">
+            <div className="flex flex-wrap gap-4 pt-1">
+              {top3.map((e) => (
+                <div key={e.user} className="flex items-center gap-3 min-w-0">
+                  <div className="text-2xl shrink-0">{medal(e.rank) ?? `#${e.rank}`}</div>
+                  <Avatar name={e.full_name} image={e.image} size={40} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{e.full_name}</p>
+                    <p className="text-xs opacity-70">{e.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} pts</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </BentoTile>
+
+          {/* My rank */}
+          {data.me && (
+            <BentoTile span="sm" tone="solid" accent="violet" title="Your rank">
+              <BentoStat
+                value={medal(data.me.rank) ?? `#${data.me.rank}`}
+                label={`${data.me.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} pts`}
+              />
+            </BentoTile>
+          )}
+
+          {/* Period / filter controls */}
+          <BentoTile span="sm" tone="tint" accent="slate" title="Filter">
+            <div className="flex flex-col gap-3 pt-1">
+              <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+              {data.brands.length > 0 && (
+                <div className="w-full">
+                  <SearchableSelect
+                    value={brand}
+                    onChange={setBrand}
+                    options={data.brands.map((b) => ({ value: b, label: b }))}
+                    placeholder="All brands"
+                    allowClear
+                  />
+                </div>
+              )}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Showing <b className="text-slate-700 dark:text-slate-200">{PERIODS.find((p) => p.value === period)?.label}</b>{' '}
+                standings{brand ? <> for <b className="text-slate-700 dark:text-slate-200">{brand}</b></> : ''}.
+              </p>
+            </div>
+          </BentoTile>
+
+          {/* Full ranking */}
+          <BentoTile span="full" tone="plain">
+            <div className="overflow-x-auto -mx-5 -mb-5">
               <table className="w-full text-sm">
                 <thead>
                   <tr>
@@ -107,32 +144,8 @@ export default function Leaderboard() {
                 </tbody>
               </table>
             </div>
-          }
-          rail={
-            <>
-              {data.me && (
-                <SectionCard title="Your standing" className={meInTop ? '' : 'ring-1 ring-brand-200 dark:ring-brand-500/30'}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 text-center text-2xl font-bold text-slate-500 dark:text-slate-400">
-                      {medal(data.me.rank) ?? `#${data.me.rank}`}
-                    </div>
-                    <Avatar name={data.me.full_name} image={data.me.image} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{data.me.full_name}</p>
-                      <p className="text-xs text-slate-400">
-                        {data.me.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} pts
-                      </p>
-                    </div>
-                  </div>
-                </SectionCard>
-              )}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
-                Showing <b className="text-slate-700 dark:text-slate-200">{PERIODS.find((p) => p.value === period)?.label}</b>{' '}
-                standings{brand ? <> for <b className="text-slate-700 dark:text-slate-200">{brand}</b></> : ''}.
-              </div>
-            </>
-          }
-        />
+          </BentoTile>
+        </BentoGrid>
       )}
     </div>
   )
