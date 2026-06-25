@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Trash2, Check, ImagePlus, ArrowLeft, X } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
-import { PageGrid, FieldGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
@@ -189,7 +189,7 @@ export default function RewardForm() {
         e.preventDefault()
         save()
       }}
-      className="space-y-5 max-w-2xl"
+      className="space-y-5"
     >
       <div className="space-y-2">
         <Link
@@ -202,143 +202,144 @@ export default function RewardForm() {
         <h1 className="text-2xl font-bold">{isEdit ? 'Edit reward' : 'New reward'}</h1>
       </div>
 
-      <PageGrid
-        main={
-          <SectionCard title="Details">
-            <div className="flex flex-col gap-5">
-              <Field label="Reward name" required error={errors.reward_name}>
+      <BentoGrid>
+        {/* Details tile */}
+        <BentoTile span="lg" tone="plain" title="Details">
+          <div className="mt-1 flex flex-col gap-5">
+            <Field label="Reward name" required error={errors.reward_name}>
+              {(id) => (
+                <input
+                  id={id}
+                  ref={nameRef}
+                  autoFocus={!isEdit}
+                  className={field}
+                  value={form.reward_name}
+                  onChange={(e) => {
+                    patch({ reward_name: e.target.value })
+                    if (errors.reward_name) setErrors((s) => ({ ...s, reward_name: undefined }))
+                  }}
+                  placeholder="e.g. Coffee Voucher"
+                />
+              )}
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Point cost" required error={errors.point_cost}>
                 {(id) => (
                   <input
                     id={id}
-                    ref={nameRef}
-                    autoFocus={!isEdit}
+                    ref={costRef}
+                    type="text"
+                    inputMode="numeric"
                     className={field}
-                    value={form.reward_name}
-                    onChange={(e) => {
-                      patch({ reward_name: e.target.value })
-                      if (errors.reward_name) setErrors((s) => ({ ...s, reward_name: undefined }))
-                    }}
-                    placeholder="e.g. Coffee Voucher"
+                    value={formatNumber(form.point_cost)}
+                    onChange={(e) =>
+                      patch({ point_cost: Number(e.target.value.replace(/[^\d]/g, '')) })
+                    }
                   />
                 )}
               </Field>
-
-              <FieldGrid>
-                <Field label="Point cost" required error={errors.point_cost}>
-                  {(id) => (
-                    <input
-                      id={id}
-                      ref={costRef}
-                      type="text"
-                      inputMode="numeric"
-                      className={field}
-                      value={formatNumber(form.point_cost)}
-                      onChange={(e) =>
-                        patch({ point_cost: Number(e.target.value.replace(/[^\d]/g, '')) })
-                      }
-                    />
-                  )}
-                </Field>
-                <Field label="Stock" required error={errors.stock_quantity}>
-                  {(id) => (
-                    <input
-                      id={id}
-                      ref={stockRef}
-                      type="text"
-                      inputMode="numeric"
-                      className={field}
-                      value={formatNumber(form.stock_quantity)}
-                      onChange={(e) =>
-                        patch({ stock_quantity: Number(e.target.value.replace(/[^\d]/g, '')) })
-                      }
-                    />
-                  )}
-                </Field>
-              </FieldGrid>
-
-              <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Active</span>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-brand-600"
-                  checked={form.active === 1}
-                  onChange={(e) => patch({ active: e.target.checked ? 1 : 0 })}
-                />
-              </label>
-
-              <Field label="Description">
+              <Field label="Stock" required error={errors.stock_quantity}>
                 {(id) => (
-                  <textarea
+                  <input
                     id={id}
+                    ref={stockRef}
+                    type="text"
+                    inputMode="numeric"
                     className={field}
-                    rows={3}
-                    value={form.description ?? ''}
-                    onChange={(e) => patch({ description: e.target.value })}
-                    placeholder="Optional details"
+                    value={formatNumber(form.stock_quantity)}
+                    onChange={(e) =>
+                      patch({ stock_quantity: Number(e.target.value.replace(/[^\d]/g, '')) })
+                    }
                   />
                 )}
               </Field>
-
-              <div className="flex items-center justify-between gap-3">
-                {isEdit ? (
-                  <button
-                    type="button"
-                    onClick={remove}
-                    disabled={del.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/10"
-                  >
-                    {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete reward
-                  </button>
-                ) : (
-                  <span />
-                )}
-
-                <button
-                  type="submit"
-                  disabled={saving || uploading}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
-                >
-                  {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                  {isEdit ? 'Save changes' : 'Create reward'}
-                </button>
-              </div>
             </div>
-          </SectionCard>
-        }
-        rail={
-          <>
-            <SectionCard title="Image">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800"
-              >
-                {uploading ? (
-                  <span className="flex flex-col items-center gap-1 text-xs">
-                    <Spinner className="h-5 w-5" /> Uploading…
-                  </span>
-                ) : form.image ? (
-                  <img src={form.image} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="flex flex-col items-center gap-1 text-xs">
-                    <ImagePlus className="h-6 w-6" /> Click to upload
-                  </span>
-                )}
-              </button>
-              {form.image && !uploading && (
+
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Active</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={form.active === 1}
+                onChange={(e) => patch({ active: e.target.checked ? 1 : 0 })}
+              />
+            </label>
+
+            <Field label="Description">
+              {(id) => (
+                <textarea
+                  id={id}
+                  className={field}
+                  rows={3}
+                  value={form.description ?? ''}
+                  onChange={(e) => patch({ description: e.target.value })}
+                  placeholder="Optional details"
+                />
+              )}
+            </Field>
+
+            <div className="flex items-center justify-between gap-3">
+              {isEdit ? (
                 <button
                   type="button"
-                  onClick={() => patch({ image: null })}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 dark:hover:text-rose-400"
+                  onClick={remove}
+                  disabled={del.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/10"
                 >
-                  <X className="h-3.5 w-3.5" /> Remove image
+                  {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete reward
                 </button>
+              ) : (
+                <span />
               )}
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
-            </SectionCard>
 
-            <SectionCard title="Preview">
+              <button
+                type="submit"
+                disabled={saving || uploading}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+              >
+                {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                {isEdit ? 'Save changes' : 'Create reward'}
+              </button>
+            </div>
+          </div>
+        </BentoTile>
+
+        {/* Live reward-card preview tile */}
+        <BentoTile span="sm" tone="tint" accent="emerald" title="Preview">
+          <div className="mt-1 space-y-3">
+            {/* Image upload area */}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/50 text-slate-400 hover:border-emerald-400 dark:border-emerald-600/40 dark:bg-emerald-500/5"
+            >
+              {uploading ? (
+                <span className="flex flex-col items-center gap-1 text-xs">
+                  <Spinner className="h-5 w-5" /> Uploading…
+                </span>
+              ) : form.image ? (
+                <img src={form.image} alt="" className="h-full w-full object-cover rounded-2xl" />
+              ) : (
+                <span className="flex flex-col items-center gap-1 text-xs">
+                  <ImagePlus className="h-6 w-6" /> Click to upload
+                </span>
+              )}
+            </button>
+            {form.image && !uploading && (
+              <button
+                type="button"
+                onClick={() => patch({ image: null })}
+                className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 dark:hover:text-rose-400"
+              >
+                <X className="h-3.5 w-3.5" /> Remove image
+              </button>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
+
+            {/* Card preview */}
+            <div className="rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm">
               <p className="truncate font-semibold text-slate-800 dark:text-slate-100">
                 {form.reward_name || 'Untitled reward'}
               </p>
@@ -352,10 +353,10 @@ export default function RewardForm() {
               >
                 {form.active === 1 ? 'Active' : 'Inactive'} · {formatNumber(form.stock_quantity)} in stock
               </span>
-            </SectionCard>
-          </>
-        }
-      />
+            </div>
+          </div>
+        </BentoTile>
+      </BentoGrid>
     </form>
   )
 }
