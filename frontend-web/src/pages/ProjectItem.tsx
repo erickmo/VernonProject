@@ -46,6 +46,7 @@ import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { FocusOverlay } from '@web/components/FocusOverlay'
+import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import type { ProjectItemDetail, StatusKey } from '@/lib/types'
 
@@ -777,9 +778,9 @@ export default function ProjectItem() {
           <EditForm data={data} onClose={() => setEditing(false)} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-[1.5fr_1fr]">
+        <BentoGrid>
           {/* ── LEFT COLUMN ── */}
-          <div className="space-y-5">
+          <BentoTile span="wide" tone="plain" className="space-y-5">
             {/* Badges */}
             {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0) && (
               <div className="flex flex-wrap gap-2">
@@ -1049,10 +1050,10 @@ export default function ProjectItem() {
                 </ol>
               </div>
             )}
-          </div>
+          </BentoTile>
 
           {/* ── RIGHT COLUMN ── */}
-          <div className="space-y-5">
+          <BentoTile span="md" tone="tint" accent="sky" className="space-y-5">
             {/* Notes */}
             <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -1111,8 +1112,8 @@ export default function ProjectItem() {
 
             {/* Comments */}
             <CommentThread referenceDoctype="Project Todo" referenceName={todoName} />
-          </div>
-        </div>
+          </BentoTile>
+        </BentoGrid>
       )}
     </div>
   )
