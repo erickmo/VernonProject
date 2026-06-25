@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Store, Check, Gift } from 'lucide-react'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { ErrorState, rowButtonProps } from '@web/components/ui'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { formatNumber } from '@/lib/format'
@@ -38,29 +39,69 @@ export default function MarketplaceAdmin() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Marketplace Admin</h1>
-        {tab === 'rewards' && (
-          <button
-            onClick={() => navigate('/marketplace-admin/reward/new')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" /> New reward
-          </button>
-        )}
-      </div>
+      <h1 className="text-2xl font-bold">Marketplace Admin</h1>
 
-      <Segmented
-        options={[
-          { value: 'rewards', label: 'Rewards' },
-          { value: 'redemptions', label: 'Redemptions' },
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
+      <BentoGrid>
+        {/* Summary stat tile */}
+        <BentoTile span="sm" tone="tint" accent="emerald" title="Manage">
+          <div className="mt-1 flex flex-col gap-3">
+            <Segmented
+              options={[
+                { value: 'rewards', label: 'Rewards' },
+                { value: 'redemptions', label: 'Redemptions' },
+              ]}
+              value={tab}
+              onChange={setTab}
+            />
+            {tab === 'rewards' && (
+              <button
+                onClick={() => navigate('/marketplace-admin/reward/new')}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" /> New reward
+              </button>
+            )}
+          </div>
+        </BentoTile>
 
-      {tab === 'rewards' ? <RewardsTable /> : <RedemptionsTable />}
+        {/* Rewards/Redemptions count tile */}
+        <RewardsSummaryTile tab={tab} />
+
+        {/* Management list tile */}
+        <BentoTile span="full" tone="plain">
+          {tab === 'rewards' ? <RewardsTable /> : <RedemptionsTable />}
+        </BentoTile>
+      </BentoGrid>
     </div>
+  )
+}
+
+function RewardsSummaryTile({ tab }: { tab: Tab }) {
+  const rewardsQ = useRewardsAdmin()
+  const redemptionsQ = useRedemptionsAdmin('pending')
+
+  if (tab === 'rewards') {
+    const count = rewardsQ.data?.length ?? 0
+    const activeCount = rewardsQ.data?.filter((r) => r.active).length ?? 0
+    return (
+      <BentoTile span="sm" tone="tint" accent="emerald">
+        <BentoStat
+          value={count}
+          label={count === 1 ? 'reward' : 'rewards'}
+          delta={`${activeCount} active`}
+        />
+      </BentoTile>
+    )
+  }
+
+  const pendingCount = redemptionsQ.data?.length ?? 0
+  return (
+    <BentoTile span="sm" tone="tint" accent="emerald">
+      <BentoStat
+        value={pendingCount}
+        label="pending redemptions"
+      />
+    </BentoTile>
   )
 }
 
