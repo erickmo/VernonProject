@@ -12,10 +12,10 @@ interface StatusMeta {
 export const STATUS: Record<StatusKey, StatusMeta> = {
   planned: {
     label: 'Planned',
-    emoji: '⚪️',
-    pill: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300',
-    dot: 'bg-slate-400',
-    ring: 'border-slate-300 dark:border-slate-600',
+    emoji: '🔵',
+    pill: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300',
+    dot: 'bg-indigo-500',
+    ring: 'border-indigo-400',
   },
   done: {
     label: 'Done',
