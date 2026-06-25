@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
-import { PageGrid, FieldGrid, SectionCard } from '@web/components/layout'
+import { BentoGrid, BentoTile } from '@web/components/bento'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -175,10 +175,11 @@ export default function UserForm() {
         </button>
       </div>
 
-      <PageGrid
-        main={
-          <SectionCard title="Profile">
-            <FieldGrid>
+      <BentoGrid>
+        {/* Identity tile */}
+        <BentoTile span="md" tone="plain" title="Identity">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+            <div className="sm:col-span-2">
               <Field
                 label="Email"
                 required={!isEdit}
@@ -202,7 +203,8 @@ export default function UserForm() {
                   />
                 )}
               </Field>
-
+            </div>
+            <div className="sm:col-span-2">
               <Field label="Full name">
                 {(id) => (
                   <input
@@ -218,98 +220,129 @@ export default function UserForm() {
                   />
                 )}
               </Field>
-            </FieldGrid>
-          </SectionCard>
-        }
-        rail={
-          <>
-            <SectionCard title="Access">
-              <div className="space-y-4">
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roles</span>
-                  <MultiSelectChips
-                    options={VERNON_ROLE_OPTIONS}
-                    value={roles}
-                    onChange={(v) => {
-                      setRoles(v)
-                      setDirty(true)
-                    }}
-                    emptyText="No roles"
-                  />
-                </div>
+            </div>
+          </div>
+        </BentoTile>
 
-                {!isEdit && (
-                  <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
-                    <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
-                    <input
-                      type="checkbox"
-                      checked={sendWelcome}
-                      onChange={(e) => {
-                        setSendWelcome(e.target.checked)
-                        setDirty(true)
-                      }}
-                      className="h-5 w-5 accent-brand-600"
-                    />
-                  </label>
-                )}
-
-                {isEdit && (
-                  <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
-                    <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      onChange={(e) => {
-                        setEnabled(e.target.checked)
-                        setDirty(true)
-                      }}
-                      className="h-5 w-5 accent-brand-600"
-                    />
-                  </label>
-                )}
+        {/* Summary / preview tile */}
+        <BentoTile span="sm" tone="tint" accent="rose" title="Summary">
+          <div className="mt-1 space-y-2 text-sm">
+            <div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Email</span>
+              <p className="font-medium truncate text-slate-800 dark:text-slate-100">
+                {isEdit ? name : email || '—'}
+              </p>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Name</span>
+              <p className="font-medium truncate text-slate-800 dark:text-slate-100">
+                {fullName || '—'}
+              </p>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Roles</span>
+              <p className="font-medium text-slate-800 dark:text-slate-100">
+                {roles.length > 0 ? roles.join(', ') : 'None'}
+              </p>
+            </div>
+            {isEdit && (
+              <div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Status</span>
+                <p className={`font-medium ${enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  {enabled ? 'Enabled' : 'Disabled'}
+                </p>
               </div>
-            </SectionCard>
+            )}
+          </div>
+        </BentoTile>
+
+        {/* Role & access tile */}
+        <BentoTile span="md" tone="plain" title="Role & access">
+          <div className="mt-1 space-y-4">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roles</span>
+              <MultiSelectChips
+                options={VERNON_ROLE_OPTIONS}
+                value={roles}
+                onChange={(v) => {
+                  setRoles(v)
+                  setDirty(true)
+                }}
+                emptyText="No roles"
+              />
+            </div>
+
+            {!isEdit && (
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+                <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
+                <input
+                  type="checkbox"
+                  checked={sendWelcome}
+                  onChange={(e) => {
+                    setSendWelcome(e.target.checked)
+                    setDirty(true)
+                  }}
+                  className="h-5 w-5 accent-brand-600"
+                />
+              </label>
+            )}
 
             {isEdit && (
-              <SectionCard title="Password">
-                <div className="flex flex-col gap-4">
-                  <button
-                    type="button"
-                    onClick={onResetPassword}
-                    disabled={resetPw.isPending}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
-                  >
-                    {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
-                  </button>
-                  <Field label="Set new password">
-                    {(id) => (
-                      <div className="flex gap-2">
-                        <input
-                          id={id}
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="New password"
-                          autoComplete="new-password"
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={onSetPassword}
-                          disabled={!newPassword || setPw.isPending}
-                          className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
-                        >
-                          {setPw.isPending ? 'Setting…' : 'Set password'}
-                        </button>
-                      </div>
-                    )}
-                  </Field>
-                </div>
-              </SectionCard>
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+                <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => {
+                    setEnabled(e.target.checked)
+                    setDirty(true)
+                  }}
+                  className="h-5 w-5 accent-brand-600"
+                />
+              </label>
             )}
-          </>
-        }
-      />
+          </div>
+        </BentoTile>
+
+        {/* Password tile (edit mode only) */}
+        {isEdit && (
+          <BentoTile span="md" tone="plain" title="Password">
+            <div className="mt-1 flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={onResetPassword}
+                disabled={resetPw.isPending}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+              >
+                {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
+              </button>
+              <Field label="Set new password">
+                {(id) => (
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      id={id}
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New password"
+                      autoComplete="new-password"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onSetPassword}
+                      disabled={!newPassword || setPw.isPending}
+                      className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                    >
+                      {setPw.isPending ? 'Setting…' : 'Set password'}
+                    </button>
+                  </div>
+                )}
+              </Field>
+            </div>
+          </BentoTile>
+        )}
+      </BentoGrid>
     </form>
   )
 }
