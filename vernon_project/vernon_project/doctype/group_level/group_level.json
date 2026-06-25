@@ -5,13 +5,13 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": ["level_name", "level_id", "point"],
+ "field_order": ["level_name", "level_id", "difficulty_percent"],
  "fields": [
   {
    "fieldname": "level_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Level Name",
+   "label": "Type",
    "reqd": 1,
    "columns": 6
   },
@@ -24,12 +24,13 @@
    "no_copy": 1
   },
   {
-   "fieldname": "point",
-   "fieldtype": "Float",
+   "fieldname": "difficulty_percent",
+   "fieldtype": "Percent",
    "in_list_view": 1,
-   "label": "Point",
+   "label": "Difficulty %",
    "non_negative": 1,
    "reqd": 1,
+   "default": "100",
    "columns": 4
   }
  ],
