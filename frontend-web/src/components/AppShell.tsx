@@ -16,8 +16,30 @@ import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
 import { useModalA11y } from '@web/lib/useModalA11y'
 import { formatNumber } from '@/lib/format'
 import { CommandPalette, type Command } from '@web/components/CommandPalette'
+import type { Accent } from '@web/components/bento'
 
 const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' }
+
+// Domain accent per nav route — matches the bento page accents.
+function accentFor(to: string): Accent {
+  if (to === '/leaderboard' || to === '/badge-settings') return 'violet'
+  if (to === '/marketplace' || to === '/marketplace-admin') return 'emerald'
+  if (to === '/wallet' || to === '/gift-points' || to === '/grant-points') return 'amber'
+  if (to === '/users') return 'rose'
+  if (to === '/projects' || to.startsWith('/project')) return 'sky'
+  if (to === '/groups' || to === '/brands' || to === '/reports') return 'slate'
+  return 'brand' // Today, Calendar, Review, Me
+}
+
+const ACTIVE_PILL: Record<Accent, string> = {
+  brand:   'bg-brand-50 dark:bg-brand-600/15 text-brand-600 dark:text-brand-300',
+  amber:   'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  violet:  'bg-violet-50 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300',
+  sky:     'bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300',
+  emerald: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  rose:    'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300',
+  slate:   'bg-slate-100 dark:bg-slate-700/40 text-slate-700 dark:text-slate-200',
+}
 
 type NavItem = {
   to: string
@@ -134,9 +156,9 @@ export function AppShell() {
       end={end}
       onClick={() => setDrawerOpen(false)}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
+        `flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium ${
           isActive
-            ? 'bg-brand-50 dark:bg-brand-600/15 text-brand-600 dark:text-brand-300'
+            ? ACTIVE_PILL[accentFor(to)]
             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
         }`
       }
@@ -258,7 +280,7 @@ export function AppShell() {
           </button>
           <NavLink
             to="/wallet"
-            className="flex items-center gap-1.5 rounded-lg bg-brand-50 dark:bg-brand-600/15 px-3 py-1.5 text-sm font-semibold text-brand-700 dark:text-brand-200"
+            className="flex items-center gap-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 px-3 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300"
           >
             <Coins className="w-4 h-4" />
             {wallet.data ? formatNumber(wallet.data.balance) : '—'}
