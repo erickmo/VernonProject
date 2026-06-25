@@ -510,6 +510,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"is_leader": row.get("project_leader") == user,
 		"group": row.get("group"),
 		"level": row.get("level"),
+		"level_id": row.get("level_id"),
 		"point": row.get("point") or 0,
 		"assignee_earned": row.get("assignee_earned") or 0,
 		"leader_earned": row.get("leader_earned") or 0,
@@ -1307,6 +1308,7 @@ def update_todo(
 	assigned_to=None,
 	group=None,
 	level=None,
+	level_id=None,
 	is_recurring=None,
 	recurring_frequency=None,
 	recurring_until=None,
@@ -1355,6 +1357,11 @@ def update_todo(
 			row.assigned_to = assigned_to
 		if group is not None and group:
 			row.group = group
+		# `level_id` is the stable reference (truth); the controller's
+		# snapshot_point_from_level refreshes the cached `level` name + point from it.
+		# `level` is still accepted for backward compatibility with older clients.
+		if level_id is not None:
+			row.level_id = level_id or None
 		if level is not None:
 			row.level = level or None
 
