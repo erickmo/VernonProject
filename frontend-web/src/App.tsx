@@ -14,6 +14,7 @@ import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
 import { AppShell } from '@web/components/AppShell'
 import Today from '@web/pages/Today'
+import Calendar from '@web/pages/Calendar'
 import Projects from '@web/pages/Projects'
 import Project from '@web/pages/Project'
 import ProjectItem from '@web/pages/ProjectItem'
@@ -99,6 +100,7 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Today />} />
+          <Route path="/calendar" element={<Calendar />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/project/:name" element={<Project />}>
             <Route path="item/:itemName" element={<ProjectItem />} />

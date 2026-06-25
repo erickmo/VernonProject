@@ -671,6 +671,31 @@ def get_dashboard():
 
 
 @frappe.whitelist()
+def get_calendar():
+	"""All visible todos, shaped, for the Calendar view.
+
+	Returns the per-user visible set in one round-trip; the client buckets them
+	onto calendar days and applies scope / date-field / split-schedule toggles.
+	Shapes include deadline, owner_deadline, leader_deadline and per-day
+	allocations (the assignee's day-plan that drives "split schedule").
+	"""
+	user = frappe.session.user
+	projects = _visible_projects()
+	rows = _fetch_todos(projects)
+
+	emails = {r["assigned_to"] for r in rows}
+	for r in rows:
+		emails.update(
+			[r["developed_by"], r["tested_by"], r["completed_by"], r["project_owner"], r["project_leader"]]
+		)
+	name_map = _user_name_map(emails)
+	alloc_map = _allocations_map([r["name"] for r in rows])
+
+	todos = [_shape_todo(r, user, name_map, alloc_map=alloc_map) for r in rows]
+	return {"todos": todos}
+
+
+@frappe.whitelist()
 def get_projects():
 	"""Project cards with progress + overdue rollups for the Projects tab."""
 	user = frappe.session.user

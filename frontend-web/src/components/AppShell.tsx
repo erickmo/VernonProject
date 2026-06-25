@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
-  Home, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
+  Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
   Award, Store, Coins,
 } from 'lucide-react'
@@ -27,6 +27,7 @@ type NavItem = {
 
 const MAIN: NavItem[] = [
   { to: '/', label: 'Today', icon: Home, end: true },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/review', label: 'Review', icon: CheckCircle2, badge: 'review' },
 ]

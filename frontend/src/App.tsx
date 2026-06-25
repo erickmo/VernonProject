@@ -8,6 +8,7 @@ import { useConfirm } from './components/Confirm'
 import { pushSupported, subscribeToPush } from './lib/push'
 import Login from './pages/Login'
 import Today from './pages/Today'
+import Calendar from './pages/Calendar'
 import Reports from './pages/Reports'
 import ReportPage from './pages/ReportPage'
 import Review from './pages/Review'
@@ -102,6 +103,7 @@ export default function App() {
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
       <Routes>
         <Route path="/" element={<Today />} />
+        <Route path="/calendar" element={<Calendar />} />
         <Route path="/review" element={<Review />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/report/:name" element={<ReportPage />} />

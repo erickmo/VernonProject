@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   CheckCheck,
   FolderKanban,
+  CalendarDays,
   Clock,
   Coins,
   TrendingUp,
@@ -186,6 +187,13 @@ export default function Today() {
 
   const right = boot ? (
     <div className="flex items-center gap-1">
+      <button
+        onClick={() => navigate('/calendar')}
+        aria-label="Calendar"
+        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-200/70 dark:active:bg-slate-700"
+      >
+        <CalendarDays className="h-[22px] w-[22px]" />
+      </button>
       <NotificationBell />
       <button onClick={() => navigate('/me')} className="transition active:scale-95">
         <Avatar name={boot.full_name} image={boot.image} size={42} />

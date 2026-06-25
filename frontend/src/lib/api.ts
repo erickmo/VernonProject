@@ -79,6 +79,7 @@ const M = 'vernon_project.api.mobile.'
 export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),
   dashboard: () => api.get(M + 'get_dashboard'),
+  calendar: () => api.get(M + 'get_calendar'),
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),

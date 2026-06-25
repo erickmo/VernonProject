@@ -18,6 +18,7 @@ import type {
   ProjectDetailInput,
   ProjectFull,
   ProjectInput,
+  ProjectItem,
   ProjectItemDetail,
   GroupTodo,
   ScoringGroup,
@@ -37,6 +38,7 @@ import type { GanttGroup } from '@/lib/gantt'
 export const keys = {
   boot: ['boot'] as const,
   dashboard: ['dashboard'] as const,
+  calendar: ['calendar'] as const,
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
   projectGantt: (n: string) => ['project-gantt', n] as const,
@@ -67,6 +69,12 @@ export const useBoot = () =>
 
 export const useDashboard = () =>
   useQuery({ queryKey: keys.dashboard, queryFn: () => mobileApi.dashboard() as Promise<Dashboard> })
+
+export const useCalendar = () =>
+  useQuery({
+    queryKey: keys.calendar,
+    queryFn: () => mobileApi.calendar() as Promise<{ todos: ProjectItem[] }>,
+  })
 
 export const useProjects = () =>
   useQuery({ queryKey: keys.projects, queryFn: () => mobileApi.projects() as Promise<ProjectCard[]> })
