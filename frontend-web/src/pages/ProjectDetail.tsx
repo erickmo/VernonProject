@@ -8,7 +8,7 @@ import { sanitizeHtml, stripHtml } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
-import { PageGrid } from '@web/components/layout'
+import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { STATUS } from '@/lib/status'
 import type { StatusKey } from '@/lib/types'
 
@@ -43,7 +43,6 @@ export default function ProjectDetail() {
   const hasOutcome = !!stripHtml(outcomeHtml).trim()
   const hasSow = !!stripHtml(sowHtml).trim()
   const hasPricing = (d.price != null && d.price > 0) || (d.discount != null && d.discount > 0)
-  const hasMeta = hasCondition || hasOutcome || hasSow || hasPricing
 
   const items = d.project_items
   const completedCount = items.filter((t) => t.status_key === 'completed').length
@@ -84,51 +83,64 @@ export default function ProjectDetail() {
             )}
           </div>
         </div>
-
       </div>
 
-      <PageGrid
-        rail={
-          hasMeta ? (
-          <>
+      <BentoGrid>
+        {/* Header hero */}
+        <BentoTile span="wide" tone="gradient" accent="sky" title="Overview">
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+            <div>
+              <p className="text-xs uppercase tracking-wide opacity-70 mb-0.5">Project</p>
+              <p className="font-semibold">{d.project_name}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide opacity-70 mb-0.5">Status</p>
+              <p className="font-semibold">{d.status}</p>
+            </div>
+            {d.deadline_human && (
+              <div>
+                <p className="text-xs uppercase tracking-wide opacity-70 mb-0.5">Deadline</p>
+                <p className="font-semibold">{d.deadline_human}</p>
+              </div>
+            )}
+          </div>
+        </BentoTile>
+
+        {/* Key stats */}
+        <BentoTile span="sm" tone="tint" accent="sky">
+          <BentoStat value={openCount} label="Open todos" />
+        </BentoTile>
+        <BentoTile span="sm" tone="tint" accent="sky">
+          <BentoStat value={completedCount} label="Completed" delta={`of ${items.length} total`} />
+        </BentoTile>
+
+        {/* Meta rail: condition, outcome, SOW, pricing */}
         {hasCondition && (
-          <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card p-4">
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wide">
-              Current condition
-            </p>
+          <BentoTile span="md" tone="plain" title="Current condition">
             <div
               className="text-sm prose-notes text-slate-700 dark:text-slate-300"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(conditionHtml) }}
             />
-          </div>
+          </BentoTile>
         )}
         {hasOutcome && (
-          <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card p-4">
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wide">
-              Expected outcome
-            </p>
+          <BentoTile span="md" tone="plain" title="Expected outcome">
             <div
               className="text-sm prose-notes text-slate-700 dark:text-slate-300"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(outcomeHtml) }}
             />
-          </div>
+          </BentoTile>
         )}
         {hasSow && (
-          <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card p-4 md:col-span-2">
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wide">
-              Keterangan di SOW
-            </p>
+          <BentoTile span="full" tone="plain" title="Keterangan di SOW">
             <div
               className="text-sm prose-notes text-slate-700 dark:text-slate-300"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(sowHtml) }}
             />
-          </div>
+          </BentoTile>
         )}
-        {(d.price != null && d.price > 0) || (d.discount != null && d.discount > 0) ? (
-          <div className="rounded-xl bg-white dark:bg-slate-900 shadow-card p-4">
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wide">
-              Pricing
-            </p>
+        {hasPricing && (
+          <BentoTile span="md" tone="plain" title="Pricing">
             <div className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-300">
               {d.price != null && d.price > 0 && (
                 <div className="flex justify-between">
@@ -143,141 +155,139 @@ export default function ProjectDetail() {
                 </div>
               )}
             </div>
-          </div>
-        ) : null}
-          </>
-          ) : null
-        }
-        main={
-          <>
-            {/* Tasks section */}
-            <section>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
-            <ListChecks className="h-4 w-4" />
-            Todos ({items.length})
-          </h2>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <input
-                type="checkbox"
-                checked={showCancelled}
-                onChange={(e) => setShowCancelled(e.target.checked)}
-                className="h-3.5 w-3.5 accent-brand-600"
-              />
-              Show cancelled
-            </label>
-            {d.can_create && (
-              <button
-                onClick={() => setCreateOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5" /> Todo
-              </button>
-            )}
-          </div>
-        </div>
+          </BentoTile>
+        )}
 
-        {items.length === 0 ? (
-          <EmptyState icon={ListChecks} title="No todos in this detail" />
-        ) : visibleItems.length === 0 ? (
-          <EmptyState icon={ListChecks} title="No visible todos" />
-        ) : (
-          <div className="flex flex-col gap-3">
-            {[
-              {
-                label: 'Open',
-                sectionItems: visibleItems.filter(
-                  (t) => t.status_key !== 'completed' && t.status_key !== 'cancelled',
-                ),
-              },
-              {
-                label: 'Completed',
-                sectionItems: visibleItems.filter((t) => t.status_key === 'completed'),
-              },
-              ...(showCancelled
-                ? [
-                    {
-                      label: 'Cancelled',
-                      sectionItems: visibleItems.filter((t) => t.status_key === 'cancelled'),
-                    },
-                  ]
-                : []),
-            ]
-              .filter((s) => s.sectionItems.length > 0)
-              .map((s) => (
-                <div key={s.label}>
-                  <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    {s.label} ({s.sectionItems.length})
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    {s.sectionItems.map((t) => {
-                      const isCancelled = t.status_key === 'cancelled'
-                      const statusMeta = STATUS[t.status_key as StatusKey]
-                      return (
-                        <button
-                          key={t.name}
-                          onClick={() => nav(`/project-item/${encodeURIComponent(t.name)}`)}
-                          className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-card text-left transition active:scale-[0.99] w-full ${
-                            isCancelled
-                              ? 'bg-slate-50 dark:bg-slate-900 opacity-60'
-                              : 'bg-white dark:bg-slate-800'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className={`truncate text-sm font-medium ${
+        {/* Tasks section (full width) */}
+        <BentoTile span="full" tone="plain">
+          <section>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                <ListChecks className="h-4 w-4" />
+                Todos ({items.length})
+              </h2>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={showCancelled}
+                    onChange={(e) => setShowCancelled(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-brand-600"
+                  />
+                  Show cancelled
+                </label>
+                {d.can_create && (
+                  <button
+                    onClick={() => setCreateOpen(true)}
+                    className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Todo
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {items.length === 0 ? (
+              <EmptyState icon={ListChecks} title="No todos in this detail" />
+            ) : visibleItems.length === 0 ? (
+              <EmptyState icon={ListChecks} title="No visible todos" />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {[
+                  {
+                    label: 'Open',
+                    sectionItems: visibleItems.filter(
+                      (t) => t.status_key !== 'completed' && t.status_key !== 'cancelled',
+                    ),
+                  },
+                  {
+                    label: 'Completed',
+                    sectionItems: visibleItems.filter((t) => t.status_key === 'completed'),
+                  },
+                  ...(showCancelled
+                    ? [
+                        {
+                          label: 'Cancelled',
+                          sectionItems: visibleItems.filter((t) => t.status_key === 'cancelled'),
+                        },
+                      ]
+                    : []),
+                ]
+                  .filter((s) => s.sectionItems.length > 0)
+                  .map((s) => (
+                    <div key={s.label}>
+                      <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {s.label} ({s.sectionItems.length})
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {s.sectionItems.map((t) => {
+                          const isCancelled = t.status_key === 'cancelled'
+                          const statusMeta = STATUS[t.status_key as StatusKey]
+                          return (
+                            <button
+                              key={t.name}
+                              onClick={() => nav(`/project-item/${encodeURIComponent(t.name)}`)}
+                              className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-card text-left transition active:scale-[0.99] w-full ${
                                 isCancelled
-                                  ? 'text-slate-400 dark:text-slate-500 line-through'
-                                  : t.is_overdue
-                                  ? 'text-rose-700'
-                                  : 'text-slate-800 dark:text-slate-100'
+                                  ? 'bg-slate-50 dark:bg-slate-900 opacity-60'
+                                  : 'bg-white dark:bg-slate-800'
                               }`}
                             >
-                              {t.to_do}
-                            </p>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                              {statusMeta ? (
-                                <span
-                                  className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`truncate text-sm font-medium ${
+                                    isCancelled
+                                      ? 'text-slate-400 dark:text-slate-500 line-through'
+                                      : t.is_overdue
+                                      ? 'text-rose-700'
+                                      : 'text-slate-800 dark:text-slate-100'
+                                  }`}
                                 >
-                                  {statusMeta.emoji} {statusMeta.label}
-                                </span>
-                              ) : (
-                                <span>{t.status}</span>
-                              )}
-                              {t.deadline_human && (
-                                <>
-                                  <span>·</span>
-                                  <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
-                                    {t.deadline_human}
-                                  </span>
-                                </>
-                              )}
-                              {t.assigned_to_name && (
-                                <>
-                                  <span>·</span>
-                                  <span>{t.assigned_to_name}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </section>
+                                  {t.to_do}
+                                </p>
+                                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                                  {statusMeta ? (
+                                    <span
+                                      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}
+                                    >
+                                      {statusMeta.emoji} {statusMeta.label}
+                                    </span>
+                                  ) : (
+                                    <span>{t.status}</span>
+                                  )}
+                                  {t.deadline_human && (
+                                    <>
+                                      <span>·</span>
+                                      <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
+                                        {t.deadline_human}
+                                      </span>
+                                    </>
+                                  )}
+                                  {t.assigned_to_name && (
+                                    <>
+                                      <span>·</span>
+                                      <span>{t.assigned_to_name}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
+        </BentoTile>
 
-            {/* Comments */}
-            <CommentThread referenceDoctype="Project Detail" referenceName={id} />
-          </>
-        }
-      />
+        {/* Comments */}
+        <BentoTile span="full" tone="plain">
+          <CommentThread referenceDoctype="Project Detail" referenceName={id} />
+        </BentoTile>
+      </BentoGrid>
 
       {/* Create todo dialog */}
       <CreateProjectItemDialog
