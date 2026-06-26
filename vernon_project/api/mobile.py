@@ -2531,13 +2531,14 @@ def data_health():
 		SELECT name, to_do, `group`, status,
 		       CONCAT('estimated ', ROUND(estimated), ' min') AS detail
 		FROM `tabProject Todo`
-		WHERE status != '🚫 Cancelled' AND estimated > 1440
+		WHERE status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND estimated > 1440
 		ORDER BY estimated DESC LIMIT %(cap)s
 		""",
 		{"cap": CAP}, as_dict=True,
 	)
 	outliers_n = frappe.db.sql(
-		"SELECT COUNT(*) FROM `tabProject Todo` WHERE status != '🚫 Cancelled' AND estimated > 1440"
+		"SELECT COUNT(*) FROM `tabProject Todo` "
+		"WHERE status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND estimated > 1440"
 	)[0][0]
 
 	# 3. Missing fields (in-flight)
