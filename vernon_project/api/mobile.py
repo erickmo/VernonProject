@@ -60,6 +60,13 @@ def _status_key(status):
 	return STATUS_KEY.get(status, "planned")
 
 
+def _pct_minutes(m_done, m_total, c_done, c_total):
+	"""Minutes-based progress %, falling back to todo count when nothing is estimated."""
+	if m_total:
+		return round(m_done / m_total * 100)
+	return round(c_done / c_total * 100) if c_total else 0
+
+
 def _humanize_date(value):
 	"""Day-based relative label for a Date (deadline). pretty_date() can't be
 	used here because it does datetime arithmetic and fails on a plain date."""
@@ -556,6 +563,7 @@ def _shape_item_row(row, user, name_map):
 		"to_do": row["to_do"],
 		"status": row["status"],
 		"status_key": skey,
+		"estimated": row["estimated"] or 0,
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
 		"deadline_human": _humanize_date(row["deadline"]),
 		"is_overdue": bool(
@@ -735,13 +743,16 @@ def get_projects():
 	)
 	today = getdate(nowdate())
 
-	stats = {n: {"total": 0, "done": 0, "overdue": 0, "review": 0} for n in names}
+	stats = {n: {"total": 0, "done": 0, "overdue": 0, "review": 0, "minutes_total": 0, "minutes_done": 0} for n in names}
 	for r in rows:
 		s = stats[r["project"]]
 		s["total"] += 1
+		est = r["estimated"] or 0
+		s["minutes_total"] += est
 		skey = _status_key(r["status"])
 		if skey == "completed":
 			s["done"] += 1
+			s["minutes_done"] += est
 		else:
 			if r["deadline"] and getdate(r["deadline"]) < today:
 				s["overdue"] += 1
@@ -755,7 +766,9 @@ def get_projects():
 		p["item_done"] = s["done"]
 		p["overdue"] = s["overdue"]
 		p["review"] = s["review"]
-		p["progress"] = round(s["done"] / s["total"] * 100) if s["total"] else 0
+		p["minutes_total"] = s["minutes_total"]
+		p["minutes_done"] = s["minutes_done"]
+		p["progress"] = _pct_minutes(s["minutes_done"], s["minutes_total"], s["done"], s["total"])
 		p["start_date"] = str(p["start_date"]) if p["start_date"] else None
 		p["deadline"] = str(p["deadline"]) if p["deadline"] else None
 		p["owner_name"] = (name_map.get(p["project_owner"]) or {}).get("full_name") or p["project_owner"]
@@ -795,6 +808,8 @@ def get_project(project):
 			"total": 0,
 			"done": 0,
 			"overdue": 0,
+			"minutes_total": 0,
+			"minutes_done": 0,
 		}
 
 	# Daily allocation = per-role queue:
@@ -808,12 +823,15 @@ def get_project(project):
 	for r in rows:
 		wi = items.setdefault(
 			r["project_detail"],
-			{"name": r["project_detail"], "title": r["project_detail_title"], "total": 0, "done": 0, "overdue": 0},
+			{"name": r["project_detail"], "title": r["project_detail_title"], "total": 0, "done": 0, "overdue": 0, "minutes_total": 0, "minutes_done": 0},
 		)
 		wi["total"] += 1
+		est = r["estimated"] or 0
+		wi["minutes_total"] += est
 		skey = _status_key(r["status"])
 		if skey == "completed":
 			wi["done"] += 1
+			wi["minutes_done"] += est
 		elif r["deadline"] and getdate(r["deadline"]) < today:
 			wi["overdue"] += 1
 		if r["assigned_to"] and skey == "planned":
@@ -829,7 +847,7 @@ def get_project(project):
 		workload[doc.project_owner] = workload.get(doc.project_owner, 0) + checked_queue
 
 	for wi in items.values():
-		wi["progress"] = round(wi["done"] / wi["total"] * 100) if wi["total"] else 0
+		wi["progress"] = _pct_minutes(wi["minutes_done"], wi["minutes_total"], wi["done"], wi["total"])
 
 	# Effective roster: owner + leader + formal Project Team members, unioned
 	# with anyone carrying open-todo load (an assignee need not be a formal

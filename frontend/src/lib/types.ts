@@ -169,6 +169,8 @@ export interface ProjectCard {
   is_member: boolean
   item_total: number
   item_done: number
+  minutes_total: number
+  minutes_done: number
   overdue: number
   review: number
   progress: number
@@ -179,6 +181,8 @@ export interface ProjectDetailSummary {
   title: string
   total: number
   done: number
+  minutes_total: number
+  minutes_done: number
   overdue: number
   progress: number
 }
