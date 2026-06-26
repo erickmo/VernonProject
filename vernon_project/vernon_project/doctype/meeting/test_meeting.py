@@ -93,3 +93,18 @@ class TestMeetingPoints(MeetingTestBase):
 	def test_no_group_zero_point(self):
 		m = self.make_meeting(estimated=30)
 		self.assertEqual(m.point or 0, 0)
+
+
+class TestMeetingTeamGuard(MeetingTestBase):
+	def test_non_team_member_rejected(self):
+		if not frappe.db.exists("User", "outsider@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "outsider@example.com",
+				"first_name": "Out", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		with self.assertRaises(frappe.ValidationError):
+			self.make_meeting(participants=["outsider@example.com"])
+
+	def test_team_member_accepted(self):
+		m = self.make_meeting(participants=["m_user1@example.com"])
+		self.assertEqual(len(m.participants), 1)

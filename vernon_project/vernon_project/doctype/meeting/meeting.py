@@ -12,6 +12,19 @@ class Meeting(Document):
 		if self.is_new() and not self.organizer:
 			self.organizer = frappe.session.user
 		self.snapshot_point_from_level()
+		self.validate_participants_in_team()
+
+	def validate_participants_in_team(self):
+		if not self.project:
+			return
+		team = set(frappe.get_all(
+			"Project Team",
+			filters={"parent": self.project, "parenttype": "Project"},
+			pluck="user",
+		))
+		for row in self.participants:
+			if row.user and row.user not in team:
+				frappe.throw(_("Participant '{0}' is not a member of the Project Team.").format(row.user))
 
 	def snapshot_point_from_level(self):
 		"""point = group.base_rate_per_minute × estimated × difficulty%.
