@@ -2862,3 +2862,171 @@ def unshare_personal_note(note_id, user):
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()
 	return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Meetings
+# ---------------------------------------------------------------------------
+
+MEETING_SCHEDULED = "⚪️ Scheduled"
+MEETING_DONE = "✅ Done"
+
+
+def _meeting_can_manage(doc):
+	user = frappe.session.user
+	if "System Manager" in frappe.get_roles(user):
+		return True
+	owner, leader = frappe.get_value("Project", doc.project, ["project_owner", "project_leader"])
+	return user in (doc.organizer, owner, leader)
+
+
+@frappe.whitelist()
+def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
+				   level_id=None, participants=None, notes=None):
+	try:
+		if not frappe.db.exists("Project", project):
+			return {"status": "error", "message": "Project not found."}
+		user = frappe.session.user
+		owner, leader = frappe.get_value("Project", project, ["project_owner", "project_leader"])
+		if "System Manager" not in frappe.get_roles(user) and user not in (owner, leader):
+			return {"status": "error", "message": "Only the Project Owner or Leader can create meetings."}
+		rows = json.loads(participants) if isinstance(participants, str) else (participants or [])
+		doc = frappe.get_doc({
+			"doctype": "Meeting",
+			"project": project,
+			"title": title,
+			"organizer": user,
+			"scheduled_at": scheduled_at,
+			"estimated": int(estimated or 0),
+			"group": group,
+			"level_id": level_id,
+			"notes": notes,
+			"status": MEETING_SCHEDULED,
+			"participants": [{"user": u} for u in rows if u],
+		})
+		doc.insert()
+		return {"status": "success", "message": "Meeting created.", "name": doc.name}
+	except frappe.ValidationError as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def update_meeting(meeting, title=None, scheduled_at=None, estimated=None,
+				   group=None, level_id=None, notes=None):
+	try:
+		doc = frappe.get_doc("Meeting", meeting)
+		if not _meeting_can_manage(doc):
+			return {"status": "error", "message": "You cannot edit this meeting."}
+		if doc.status == MEETING_DONE:
+			return {"status": "error", "message": "A completed meeting cannot be edited."}
+		if title is not None:
+			doc.title = title
+		if scheduled_at is not None:
+			doc.scheduled_at = scheduled_at
+		if estimated is not None:
+			doc.estimated = int(estimated or 0)
+		if group is not None:
+			doc.group = group
+		if level_id is not None:
+			doc.level_id = level_id
+		if notes is not None:
+			doc.notes = notes
+		doc.save()
+		return {"status": "success", "message": "Meeting updated."}
+	except frappe.ValidationError as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def set_meeting_participants(meeting, users):
+	try:
+		doc = frappe.get_doc("Meeting", meeting)
+		if not _meeting_can_manage(doc):
+			return {"status": "error", "message": "You cannot edit this meeting."}
+		if doc.status == MEETING_DONE:
+			return {"status": "error", "message": "A completed meeting cannot be edited."}
+		rows = json.loads(users) if isinstance(users, str) else (users or [])
+		doc.set("participants", [{"user": u} for u in rows if u])
+		doc.save()
+		return {"status": "success", "message": "Participants updated."}
+	except frappe.ValidationError as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def list_meetings(project=None):
+	filters = {}
+	if project:
+		filters["project"] = project
+	rows = frappe.get_list(
+		"Meeting",
+		filters=filters,
+		fields=["name", "title", "project", "organizer", "scheduled_at",
+				"estimated", "point", "status"],
+		order_by="scheduled_at desc",
+	)
+	user = frappe.session.user
+	roles = frappe.get_roles(user)
+	for r in rows:
+		r["participants"] = frappe.get_all(
+			"Meeting Participant",
+			filters={"parent": r["name"], "parenttype": "Meeting"},
+			pluck="user",
+		)
+		owner, leader = frappe.get_value("Project", r["project"], ["project_owner", "project_leader"])
+		r["can_mark_done"] = (
+			"System Manager" in roles or user in (r["organizer"], owner, leader)
+		)
+	return {"meetings": rows}
+
+
+@frappe.whitelist()
+def mark_meeting_done(meeting):
+	try:
+		doc = frappe.get_doc("Meeting", meeting)
+		if not _meeting_can_manage(doc):
+			return {"status": "error", "message": "Only the organizer or Project Owner/Leader can mark this done."}
+		if doc.status == MEETING_DONE:
+			return {"status": "success", "message": "Already done."}
+		doc.status = MEETING_DONE
+		doc.save(ignore_permissions=True)
+		return {"status": "success", "message": "Meeting marked done; points awarded."}
+	except frappe.ValidationError as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def reopen_meeting(meeting):
+	try:
+		doc = frappe.get_doc("Meeting", meeting)
+		if not _meeting_can_manage(doc):
+			return {"status": "error", "message": "You cannot reopen this meeting."}
+		if doc.status == MEETING_SCHEDULED:
+			return {"status": "success", "message": "Already scheduled."}
+		doc.status = MEETING_SCHEDULED
+		doc.save(ignore_permissions=True)
+		return {"status": "success", "message": "Meeting reopened; points removed."}
+	except frappe.ValidationError as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def meeting_invitable_users(project, txt=""):
+	if not project:
+		return {"users": []}
+	team = frappe.get_all(
+		"Project Team",
+		filters={"parent": project, "parenttype": "Project"},
+		pluck="user",
+	)
+	if not team:
+		return {"users": []}
+	like = f"%{txt}%"
+	rows = frappe.db.sql(
+		"""SELECT name AS user, full_name FROM `tabUser`
+		   WHERE name IN %(team)s AND (name LIKE %(like)s OR full_name LIKE %(like)s)
+		   ORDER BY full_name""",
+		{"team": tuple(team), "like": like},
+		as_dict=True,
+	)
+	return {"users": rows}
