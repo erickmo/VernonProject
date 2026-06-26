@@ -33,6 +33,8 @@ import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
+import NotesScreen from './pages/NotesScreen'
+import NoteFormScreen from './pages/NoteFormScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -151,6 +153,9 @@ export default function App() {
           <Route path="/grant-points" element={<GrantPointsScreen />} />
         )}
         <Route path="/gift-points" element={<GiftPointsScreen />} />
+        <Route path="/notes" element={<NotesScreen />} />
+        <Route path="/notes/new" element={<NoteFormScreen />} />
+        <Route path="/notes/:name" element={<NoteFormScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />

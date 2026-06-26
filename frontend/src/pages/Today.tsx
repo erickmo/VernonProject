@@ -26,6 +26,7 @@ import { ProjectCard } from '@/components/ProjectCard'
 import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { NotificationBell } from '@/components/NotificationBell'
+import { NotesButton } from '@/components/NotesButton'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byDeadlineAsc, byDeadlineDesc, formatEstimate } from '@/lib/format'
@@ -194,6 +195,7 @@ export default function Today() {
       >
         <CalendarDays className="h-[22px] w-[22px]" />
       </button>
+      <NotesButton />
       <NotificationBell />
       <button onClick={() => navigate('/me')} className="transition active:scale-95">
         <Avatar name={boot.full_name} image={boot.image} size={42} />

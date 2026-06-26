@@ -33,6 +33,7 @@ import type {
   AdminRedemption,
   RewardFormPayload,
   BadgeTierInput,
+  PersonalNote,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -63,6 +64,7 @@ export const keys = {
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
   giftRecipients: ['gift-recipients'] as const,
   notifications: ['notifications'] as const,
+  personalNotes: ['personalNotes'] as const,
 }
 
 export const useBoot = () =>
@@ -828,4 +830,15 @@ export function useMarkAllRead() {
 
 export function useDataHealth() {
   return useQuery({ queryKey: ['data-health'], queryFn: () => mobileApi.dataHealth() as Promise<DataHealth>, retry: false })
+}
+
+export function usePersonalNotes() {
+  return useQuery({
+    queryKey: keys.personalNotes,
+    queryFn: () =>
+      mobileApi.getPersonalNotes() as Promise<{
+        owned: PersonalNote[]
+        shared: PersonalNote[]
+      }>,
+  })
 }

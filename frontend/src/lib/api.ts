@@ -223,6 +223,50 @@ export const mobileApi = {
   unregisterPushSubscription: (endpoint: string) =>
     api.post<{ ok: boolean }>(M + 'unregister_push_subscription', { endpoint }),
   dataHealth: () => api.get(M + 'data_health'),
+  getPersonalNotes: () =>
+    api.get<{
+      owned: import('./types').PersonalNote[]
+      shared: import('./types').PersonalNote[]
+    }>(M + 'get_personal_notes'),
+  getPersonalNote: (noteId: string) =>
+    api.get<{ status: string; message?: string; note?: import('./types').PersonalNote }>(
+      M + 'get_personal_note',
+      { note_id: noteId },
+    ),
+  createPersonalNote: (
+    title: string,
+    body: string,
+    items: import('./types').PersonalNoteItem[],
+  ) =>
+    api.post<{ status: string; message?: string; name?: string }>(M + 'create_personal_note', {
+      title,
+      body,
+      items: JSON.stringify(items),
+    }),
+  updatePersonalNote: (
+    noteId: string,
+    title: string,
+    body: string,
+    items: import('./types').PersonalNoteItem[],
+  ) =>
+    api.post<{ status: string; message?: string }>(M + 'update_personal_note', {
+      note_id: noteId,
+      title,
+      body,
+      items: JSON.stringify(items),
+    }),
+  deletePersonalNote: (noteId: string) =>
+    api.post<{ status: string; message?: string }>(M + 'delete_personal_note', { note_id: noteId }),
+  sharePersonalNote: (noteId: string, users: string[]) =>
+    api.post<{ status: string; message?: string; shares?: import('./types').PersonalNoteShare[] }>(
+      M + 'share_personal_note',
+      { note_id: noteId, users: JSON.stringify(users) },
+    ),
+  unsharePersonalNote: (noteId: string, user: string) =>
+    api.post<{ status: string; message?: string }>(M + 'unshare_personal_note', {
+      note_id: noteId,
+      user,
+    }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.

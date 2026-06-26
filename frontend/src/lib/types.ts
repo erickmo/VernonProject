@@ -466,6 +466,31 @@ export interface BadgeTierInput {
   icon: string
 }
 
+export interface PersonalNoteItem {
+  label: string
+  checked: number
+  idx?: number
+}
+
+export interface PersonalNoteShare {
+  user: string
+  full_name: string
+  image?: string
+}
+
+export interface PersonalNote {
+  name: string
+  title: string
+  body: string
+  items: PersonalNoteItem[]
+  shares: PersonalNoteShare[]
+  is_owner: boolean
+  can_edit: boolean
+  owner_user: string
+  owner_name: string
+  modified: string
+}
+
 export interface DataHealthItem {
   name: string
   to_do: string

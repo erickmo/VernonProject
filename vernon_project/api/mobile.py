@@ -2615,3 +2615,220 @@ def data_health():
 		"missing": pack(missing_rows),
 		"orphaned": pack(orphaned),
 	}
+
+
+# ================================================================================
+# Personal Notes
+# --------------------------------------------------------------------------------
+# Private freetext + checklist notes, unrelated to projects (no points/deadline/
+# project link). Owners may share read-only access with other users. See
+# docs/superpowers/specs/2026-06-26-personal-notes-design.md for the contract.
+# ================================================================================
+
+
+def _require_user():
+	"""Reject Guest; return the session user."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	return user
+
+
+def _parse_items(items):
+	"""Normalize the `items` param (JSON string or list) into a clean list of
+	{label, checked} dicts, dropping rows with an empty label and preserving order."""
+	if items is None:
+		return []
+	if isinstance(items, str):
+		items = frappe.parse_json(items) if items.strip() else []
+	out = []
+	for row in (items or []):
+		label = (row.get("label") or "").strip()
+		if not label:
+			continue
+		out.append({"label": label, "checked": 1 if row.get("checked") else 0})
+	return out
+
+
+def _parse_users(users):
+	"""Normalize the `users` param (JSON string or list) into a list of emails."""
+	if users is None:
+		return []
+	if isinstance(users, str):
+		users = frappe.parse_json(users) if users.strip() else []
+	return [u for u in (users or []) if u]
+
+
+def _shape_note(doc, user):
+	"""Build the Note JSON for the session user. `shares` is populated only for the
+	owner; shared viewers see [] and read-only (`can_edit == is_owner`)."""
+	is_owner = doc.user == user
+	name_map = _user_name_map({doc.user} | {r.shared_user for r in (doc.shares or [])})
+	owner_row = name_map.get(doc.user) or {}
+	shares = []
+	if is_owner:
+		for r in (doc.shares or []):
+			info = name_map.get(r.shared_user) or {}
+			shares.append({
+				"user": r.shared_user,
+				"full_name": info.get("full_name") or r.shared_user,
+				"image": info.get("user_image"),
+			})
+	return {
+		"name": doc.name,
+		"title": doc.title or "",
+		"body": doc.body or "",
+		"items": [
+			{"label": r.label, "checked": 1 if r.checked else 0, "idx": r.idx}
+			for r in (doc.items or [])
+		],
+		"shares": shares,
+		"is_owner": is_owner,
+		"can_edit": is_owner,
+		"owner_user": doc.user,
+		"owner_name": owner_row.get("full_name") or doc.user,
+		"modified": str(doc.modified),
+	}
+
+
+def _get_note_for_user(note_id, user):
+	"""Load a Personal Note the user may read (owner OR shared-with), else None."""
+	if not frappe.db.exists("Personal Note", note_id):
+		return None
+	doc = frappe.get_doc("Personal Note", note_id)
+	if doc.user == user:
+		return doc
+	if any(r.shared_user == user for r in (doc.shares or [])):
+		return doc
+	return None
+
+
+@frappe.whitelist()
+def get_personal_notes():
+	"""Notes owned by the session user and notes shared with them."""
+	user = _require_user()
+	owned_names = frappe.get_all(
+		"Personal Note", filters={"user": user}, pluck="name",
+		order_by="modified desc", limit_page_length=0,
+	)
+	shared_names = frappe.get_all(
+		"Personal Note Share", filters={"shared_user": user}, pluck="parent",
+		limit_page_length=0,
+	)
+	owned, shared = [], []
+	for n in owned_names:
+		owned.append(_shape_note(frappe.get_doc("Personal Note", n), user))
+	# Shared list ordered newest-first by note modified; exclude any the user owns.
+	shared_docs = [
+		frappe.get_doc("Personal Note", n) for n in shared_names
+	]
+	shared_docs = [d for d in shared_docs if d.user != user]
+	shared_docs.sort(key=lambda d: str(d.modified), reverse=True)
+	for d in shared_docs:
+		shared.append(_shape_note(d, user))
+	return {"owned": owned, "shared": shared}
+
+
+@frappe.whitelist()
+def get_personal_note(note_id):
+	"""A single note the session user owns or has been shared."""
+	user = _require_user()
+	doc = _get_note_for_user(note_id, user)
+	if not doc:
+		return {"status": "error", "message": "Not found"}
+	return {"status": "ok", "note": _shape_note(doc, user)}
+
+
+@frappe.whitelist()
+def create_personal_note(title=None, body=None, items=None):
+	"""Create a note owned by the session user. An entirely empty note
+	(no title, body, or items) is discarded."""
+	user = _require_user()
+	title = (title or "").strip()
+	body = (body or "").strip()
+	parsed_items = _parse_items(items)
+	if not title and not body and not parsed_items:
+		return {"status": "ok"}
+	doc = frappe.get_doc({
+		"doctype": "Personal Note",
+		"user": user,
+		"title": title,
+		"body": body,
+		"items": [
+			{"label": it["label"], "checked": it["checked"]} for it in parsed_items
+		],
+	})
+	doc.insert(ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok", "name": doc.name}
+
+
+@frappe.whitelist()
+def update_personal_note(note_id, title=None, body=None, items=None):
+	"""Update a note. Owner only. `items` is fully replaced, preserving order."""
+	user = _require_user()
+	if not frappe.db.exists("Personal Note", note_id):
+		return {"status": "error", "message": "Not found"}
+	doc = frappe.get_doc("Personal Note", note_id)
+	if doc.user != user:
+		return {"status": "error", "message": "Not permitted"}
+	doc.title = (title or "").strip()
+	doc.body = (body or "").strip()
+	doc.set("items", [])
+	for it in _parse_items(items):
+		doc.append("items", {"label": it["label"], "checked": it["checked"]})
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def delete_personal_note(note_id):
+	"""Delete a note (cascades child items + shares). Owner only."""
+	user = _require_user()
+	if not frappe.db.exists("Personal Note", note_id):
+		return {"status": "error", "message": "Not found"}
+	owner = frappe.db.get_value("Personal Note", note_id, "user")
+	if owner != user:
+		return {"status": "error", "message": "Not permitted"}
+	frappe.delete_doc("Personal Note", note_id, ignore_permissions=True, force=True)
+	frappe.db.commit()
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def share_personal_note(note_id, users):
+	"""Share a note with one or more users (read-only). Owner only. Self,
+	duplicates, and unknown users are skipped. Returns the resulting share list."""
+	user = _require_user()
+	if not frappe.db.exists("Personal Note", note_id):
+		return {"status": "error", "message": "Not found"}
+	doc = frappe.get_doc("Personal Note", note_id)
+	if doc.user != user:
+		return {"status": "error", "message": "Not permitted"}
+	existing = {r.shared_user for r in (doc.shares or [])}
+	for email in _parse_users(users):
+		if email == user or email in existing:
+			continue
+		if not frappe.db.exists("User", email):
+			continue
+		doc.append("shares", {"shared_user": email})
+		existing.add(email)
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok", "shares": _shape_note(doc, user)["shares"]}
+
+
+@frappe.whitelist()
+def unshare_personal_note(note_id, user):
+	"""Remove a user's share from a note. Owner only. (`user` is the share target.)"""
+	caller = _require_user()
+	if not frappe.db.exists("Personal Note", note_id):
+		return {"status": "error", "message": "Not found"}
+	doc = frappe.get_doc("Personal Note", note_id)
+	if doc.user != caller:
+		return {"status": "error", "message": "Not permitted"}
+	doc.set("shares", [r for r in (doc.shares or []) if r.shared_user != user])
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok"}
