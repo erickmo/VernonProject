@@ -116,6 +116,9 @@ export default function GroupFormScreen() {
     if (blocked) navigate('/', { replace: true })
   }, [blocked, navigate])
 
+  // All hooks must run before any early return (React hooks order).
+  const types = useMemo(() => groupByType(form.levels), [form.levels])
+
   if (blocked) return null
 
   if (isEdit && isLoading) {
@@ -182,8 +185,6 @@ export default function GroupFormScreen() {
       levels: [...f.levels, { _key: tmpKey(), type_name: candidate, level_name: 'Standard', difficulty_percent: 100 }],
     }))
   }
-
-  const types = useMemo(() => groupByType(form.levels), [form.levels])
 
   const validate = (): string | null => {
     if (!form.group_name.trim()) return 'Group name is required'
