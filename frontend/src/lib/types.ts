@@ -514,3 +514,21 @@ export interface DataHealth {
 export interface AppSettings {
   max_estimated_minutes: number
 }
+
+export interface MeetingListItem {
+  name: string
+  title: string
+  project: string
+  organizer: string
+  scheduled_at: string | null
+  estimated: number
+  point: number
+  status: string
+  participants: string[]
+  can_mark_done: boolean
+}
+
+export interface MeetingInvitableUser {
+  user: string
+  full_name: string
+}

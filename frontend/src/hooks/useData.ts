@@ -14,6 +14,8 @@ import type {
   FormOptions,
   Group,
   ManagedUser,
+  MeetingInvitableUser,
+  MeetingListItem,
   MemberTodo,
   ProjectCard,
   ProjectDetail,
@@ -66,6 +68,8 @@ export const keys = {
   giftRecipients: ['gift-recipients'] as const,
   notifications: ['notifications'] as const,
   personalNotes: ['personalNotes'] as const,
+  meetings: ['meetings'] as const,
+  meeting: (n: string) => ['meeting', n] as const,
 }
 
 export const useBoot = () =>
@@ -855,3 +859,62 @@ export function usePersonalNotes() {
       }>,
   })
 }
+
+export const useMeetings = (project?: string) =>
+  useQuery({
+    queryKey: project ? (['meetings', project] as const) : keys.meetings,
+    queryFn: () => mobileApi.listMeetings(project),
+  })
+
+export const useMeetingInvitableUsers = (project: string) =>
+  useQuery({
+    queryKey: ['meeting-invitable', project] as const,
+    queryFn: () => mobileApi.meetingInvitableUsers(project),
+    enabled: !!project,
+  })
+
+export function useCreateMeeting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (fields: Record<string, unknown>) => {
+      const res = await mobileApi.createMeeting(fields)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.meetings })
+    },
+  })
+}
+
+export function useMarkMeetingDone() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (meeting: string) => {
+      const res = await mobileApi.markMeetingDone(meeting)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.meetings })
+      qc.invalidateQueries({ queryKey: keys.wallet })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+export function useReopenMeeting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (meeting: string) => {
+      const res = await mobileApi.reopenMeeting(meeting)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.meetings })
+      qc.invalidateQueries({ queryKey: keys.wallet })
+    },
+  })
+}
+

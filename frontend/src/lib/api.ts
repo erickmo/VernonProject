@@ -272,6 +272,28 @@ export const mobileApi = {
       note_id: noteId,
       user,
     }),
+  createMeeting: (fields: Record<string, unknown>) =>
+    api.post<{ status: string; message: string; name?: string }>(M + 'create_meeting', fields),
+  updateMeeting: (fields: Record<string, unknown>) =>
+    api.post<{ status: string; message: string }>(M + 'update_meeting', fields),
+  listMeetings: (project?: string) =>
+    api.get<{ meetings: import('./types').MeetingListItem[] }>(M + 'list_meetings', {
+      ...(project ? { project } : {}),
+    }),
+  setMeetingParticipants: (meeting: string, users: string[]) =>
+    api.post<{ status: string; message: string }>(M + 'set_meeting_participants', {
+      meeting,
+      users: JSON.stringify(users),
+    }),
+  markMeetingDone: (meeting: string) =>
+    api.post<{ status: string; message: string }>(M + 'mark_meeting_done', { meeting }),
+  reopenMeeting: (meeting: string) =>
+    api.post<{ status: string; message: string }>(M + 'reopen_meeting', { meeting }),
+  meetingInvitableUsers: (project: string, txt = '') =>
+    api.get<{ users: import('./types').MeetingInvitableUser[] }>(M + 'meeting_invitable_users', {
+      project,
+      txt,
+    }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
