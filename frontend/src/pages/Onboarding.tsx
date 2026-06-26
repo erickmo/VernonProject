@@ -7,19 +7,19 @@ const SLIDES = [
     icon: Home,
     title: 'Your day, at a glance',
     body: 'The Today tab shows everything assigned to you — overdue, due today, and upcoming. No hunting through projects.',
-    accent: 'from-brand-500 to-brand-700',
+    accent: 'bg-brand-500',
   },
   {
     icon: MousePointerClick,
     title: 'Move work forward in one tap',
     body: 'Tap the action to advance a task: Planned → Done → Leader approved → Owner approved. A team member marks it Done; the leader then the owner approve. You only see the steps you’re allowed to take.',
-    accent: 'from-amber-500 to-orange-600',
+    accent: 'bg-amber-500',
   },
   {
     icon: CheckCheck,
     title: 'Review what needs you',
     body: 'Leaders get a Review tab with everything waiting for their approval, most urgent first. Approve with a single tap.',
-    accent: 'from-emerald-500 to-teal-600',
+    accent: 'bg-emerald-500',
   },
 ]
 
@@ -40,7 +40,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
         <div
           className={clsx(
-            'mb-8 flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-br text-white shadow-lg',
+            'mb-8 flex h-28 w-28 items-center justify-center rounded-3xl text-white shadow-sm',
             slide.accent,
           )}
         >

@@ -73,7 +73,7 @@ export default function GrantPointsScreen() {
     <DetailScreen title="Grant Points" right={null}>
       {selected ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
             <Avatar name={selected.full_name} image={selected.user_image} size={44} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{selected.full_name}</p>
@@ -84,7 +84,7 @@ export default function GrantPointsScreen() {
             </button>
           </div>
 
-          <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card space-y-3">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm space-y-3">
             <label className="block">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Points</span>
               <input
@@ -134,7 +134,7 @@ export default function GrantPointsScreen() {
           ) : filtered.length === 0 ? (
             <EmptyState icon={Users} title="No users" />
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+            <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
               {filtered.map((u) => (
                 <button
                   key={u.name}

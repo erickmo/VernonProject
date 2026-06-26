@@ -42,9 +42,12 @@ export default function BrandsScreen() {
             <button
               key={b.name}
               onClick={() => navigate(`/brands/${encodeURIComponent(b.name)}`)}
-              className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50 dark:bg-slate-800 dark:active:bg-slate-700/50"
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm active:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:active:bg-slate-700/50"
             >
-              <div className="min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400">
+                <Store className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{b.brand_name}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">

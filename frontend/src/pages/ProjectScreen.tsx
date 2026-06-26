@@ -72,7 +72,7 @@ export default function ProjectScreen() {
   return (
     <DetailScreen title={data.project_name}>
       {/* Hero summary */}
-      <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
+      <div className="rounded-2xl bg-brand-600 border border-brand-700/50 p-5 text-white shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-brand-200">{data.brand}</p>
         <h2 className="mt-1 text-xl font-bold leading-snug">{data.project_name}</h2>
         <div className="mt-4 flex items-center gap-2">
@@ -111,13 +111,13 @@ export default function ProjectScreen() {
         <div className="mt-3 flex gap-2">
           {flags.can_edit && (
             <button onClick={() => setEditOpen(true)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-card active:scale-95">
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95">
               <Pencil className="h-4 w-4" /> Edit
             </button>
           )}
           {flags.can_edit && (
             <button onClick={() => setTeamOpen(true)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-card active:scale-95">
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95">
               <Users className="h-4 w-4" /> Team
             </button>
           )}
@@ -133,7 +133,7 @@ export default function ProjectScreen() {
                   onError: (e) => toast('error', (e as Error).message),
                 })
               }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-rose-600 shadow-card active:scale-95 disabled:cursor-not-allowed disabled:text-slate-300 disabled:active:scale-100">
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-rose-600 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:text-slate-300 disabled:active:scale-100">
               <Trash2 className="h-4 w-4" /> Delete
             </button>
           )}
@@ -141,7 +141,7 @@ export default function ProjectScreen() {
       )}
 
       {data.goal && (
-        <div className="mt-3 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <div className="mt-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Target className="h-3.5 w-3.5" /> Goal
           </p>
@@ -171,7 +171,7 @@ export default function ProjectScreen() {
                 <button
                   key={m.user}
                   onClick={() => setWorkloadMember(m)}
-                  className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl bg-white dark:bg-slate-800 p-3 text-center shadow-card active:scale-95"
+                  className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 text-center shadow-sm active:scale-95"
                 >
                   <Avatar name={m.name} image={m.image} size={42} />
                   <p className="w-full truncate text-xs font-medium text-slate-700 dark:text-slate-200">{m.name}</p>
@@ -227,7 +227,7 @@ export default function ProjectScreen() {
         </div>
         {view === 'gantt' ? (
           ganttLoading ? (
-            <div className="rounded-2xl bg-white dark:bg-slate-800 p-8 text-center text-sm text-slate-400 dark:text-slate-500 shadow-card">Loading timeline…</div>
+            <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm">Loading timeline…</div>
           ) : (
             <GanttChart
               groups={gantt ?? []}
@@ -266,7 +266,7 @@ export default function ProjectScreen() {
                 key={w.name}
                 onClick={() => navigate(`/project-detail/${encodeURIComponent(w.name)}`)}
                 role="button"
-                className="w-full cursor-pointer rounded-2xl bg-white dark:bg-slate-800 p-4 text-left shadow-card transition active:scale-[0.99]"
+                className="w-full cursor-pointer rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-left shadow-sm transition active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-slate-100">{w.title}</p>

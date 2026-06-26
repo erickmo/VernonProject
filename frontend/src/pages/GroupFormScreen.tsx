@@ -260,27 +260,27 @@ export default function GroupFormScreen() {
         </div>
 
         {/* How scoring works */}
-        <div className="rounded-2xl bg-brand-50 p-3 text-xs leading-relaxed text-brand-900 dark:bg-brand-500/15 dark:text-brand-200">
-          <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+        <div className="rounded-2xl border border-slate-200 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-900 dark:border-slate-700 dark:bg-emerald-500/15 dark:text-emerald-200">
+          <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
             <Info className="h-3.5 w-3.5" /> How points are scored
           </p>
           <p className="mb-1">
             When a todo is completed, the <b>assignee</b> earns points based on{' '}
             <b>base rate × estimated minutes × difficulty%</b>, then adjusted for timing:
           </p>
-          <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
+          <p className="mb-1 rounded-lg bg-white px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">
             assignee = base_rate × minutes × difficulty% × (1 − late_days×late% + early_days×early%)
           </p>
           <p className="mb-1">
             The <b>leader</b> earns a share of the assignee's points:
           </p>
-          <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
+          <p className="rounded-lg bg-white px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">
             leader = assignee × (leader% − late_days×lead_late% + early_days×lead_early%)
           </p>
         </div>
 
         {(['Assignee', 'Leader'] as const).map((grp) => (
-          <div key={grp} className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
+          <div key={grp} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{grp}</p>
             <div className="flex flex-col gap-2">
               {WEIGHTS.filter((w) => w.group === grp).map((w) => (
@@ -299,13 +299,13 @@ export default function GroupFormScreen() {
           </div>
         ))}
 
-        <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Types</p>
           <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
             Add, rename, set difficulty, delete, or drag to reorder. Todos list types in this order.
           </p>
           {/* Fill difficulty by step: sets each type to (index+1) × step (0=step, 1=2×step, 2=3×step, …). */}
-          <div className="mb-3 flex items-center gap-2 rounded-xl bg-white px-2 py-2 dark:bg-slate-800/80">
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-white px-2 py-2 dark:bg-slate-800">
             <span className="min-w-0 flex-1 text-[11px] text-slate-500 dark:text-slate-400">
               Fill difficulty by step
             </span>
@@ -373,7 +373,7 @@ export default function GroupFormScreen() {
         </button>
 
         {isEdit && (
-          <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               <ListChecks className="h-3.5 w-3.5" /> Linked tasks
               {linkedTodos && (
@@ -413,7 +413,7 @@ export default function GroupFormScreen() {
           <button
             onClick={remove}
             disabled={del.isPending}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60 dark:bg-slate-800 dark:active:bg-rose-500/15"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-sm active:bg-rose-50 disabled:opacity-60 dark:bg-slate-800 dark:active:bg-rose-500/15"
           >
             {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete group
           </button>

@@ -50,17 +50,17 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Accent tile (narrow) — the one warm pop */}
-          <div className="vnl-rise relative col-span-1 overflow-hidden rounded-3xl border border-amber-500/40 bg-amber-400 p-4 shadow-sm" style={{ animationDelay: '110ms' }}>
-            <div className="absolute right-3 top-3 h-3 w-3 rounded-[4px] bg-slate-900/80" />
-            <Sparkles className="absolute bottom-3 left-3 h-8 w-8 text-slate-900" strokeWidth={2.25} />
+          {/* Accent tile (narrow) — pink pop */}
+          <div className="vnl-rise relative col-span-1 overflow-hidden rounded-3xl border border-pink-600/40 bg-pink-500 p-4 shadow-sm" style={{ animationDelay: '110ms' }}>
+            <div className="absolute right-3 top-3 h-3 w-3 rounded-[4px] bg-white/80" />
+            <Sparkles className="absolute bottom-3 left-3 h-8 w-8 text-white" strokeWidth={2.25} />
           </div>
 
-          {/* Geometry tile (narrow) — deep indigo + flat dot grid */}
-          <div className="vnl-rise relative col-span-1 overflow-hidden rounded-3xl border border-black/20 bg-brand-900 shadow-sm" style={{ animationDelay: '180ms' }}>
+          {/* Geometry tile (narrow) — emerald + flat dot grid, multi-hue shapes */}
+          <div className="vnl-rise relative col-span-1 overflow-hidden rounded-3xl border border-emerald-700/40 bg-emerald-500 shadow-sm" style={{ animationDelay: '180ms' }}>
             <div className="vnl-dots absolute inset-0" />
-            <div className="absolute -bottom-5 -right-5 h-16 w-16 rounded-2xl bg-brand-500" />
-            <div className="absolute left-3 top-3 h-3 w-3 rounded-full bg-amber-400" />
+            <div className="absolute -bottom-5 -right-5 h-16 w-16 rounded-2xl bg-sky-400" />
+            <div className="absolute left-3 top-3 h-3 w-3 rounded-full bg-amber-300" />
           </div>
 
           {/* Tagline tile (wide) — white card */}
@@ -69,7 +69,13 @@ export default function Login() {
               Your work,<br />
               <span className="text-brand-600">one place.</span>
             </p>
-            <div className="h-3.5 w-3.5 shrink-0 rounded-[5px] bg-brand-600" />
+            {/* multi-hue swatch — the palette signature */}
+            <div className="grid shrink-0 grid-cols-2 gap-1.5">
+              <div className="h-3 w-3 rounded-[4px] bg-brand-600" />
+              <div className="h-3 w-3 rounded-[4px] bg-pink-500" />
+              <div className="h-3 w-3 rounded-[4px] bg-emerald-500" />
+              <div className="h-3 w-3 rounded-[4px] bg-amber-400" />
+            </div>
           </div>
         </div>
 

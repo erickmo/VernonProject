@@ -39,7 +39,7 @@ const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
 
 function Splash() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-br from-brand-600 to-brand-800 text-white">
+    <div className="flex h-full flex-col items-center justify-center gap-4 bg-brand-600 border border-brand-700/50 text-white">
       <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/15">
         <FolderKanban className="h-10 w-10" />
       </div>

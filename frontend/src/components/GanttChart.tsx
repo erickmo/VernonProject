@@ -175,7 +175,7 @@ ${rowsHtml}
 
   if (!bars.length) {
     return (
-      <div className="rounded-2xl bg-white dark:bg-slate-800 p-8 text-center shadow-card">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 text-center shadow-sm">
         <CalendarRange className="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
         <p className="text-sm text-slate-400 dark:text-slate-500">No dated tasks to chart yet.</p>
       </div>
@@ -206,7 +206,7 @@ ${rowsHtml}
           <FileSpreadsheet className="h-4 w-4" />
         </button>
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
         <div className="relative bg-white dark:bg-slate-800" style={{ width: LABEL_W + totalW }}>
         {/* Today marker */}
         {todayOffset !== null && (
@@ -253,7 +253,7 @@ ${rowsHtml}
           g.bars.length ? (
             <div key={g.title}>
               <div
-                className="sticky left-0 z-20 bg-slate-50/80 dark:bg-slate-900/60 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
                 style={{ width: LABEL_W + totalW }}
               >
                 {g.title}

@@ -13,12 +13,12 @@ export default function WalletLogScreen() {
 
   return (
     <DetailScreen title="Points log">
-      <div className="mb-4 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 text-white shadow-card">
+      <div className="mb-4 flex items-center gap-3 rounded-3xl bg-amber-600 border border-amber-700/50 p-5 text-white shadow-sm">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
           <Wallet className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-brand-200">Spendable balance</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-amber-200">Spendable balance</p>
           <p className="text-2xl font-bold leading-tight">
             {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
           </p>
@@ -30,13 +30,13 @@ export default function WalletLogScreen() {
       ) : !log || log.length === 0 ? (
         <EmptyState icon={Wallet} title="No activity yet" subtitle="Earned and spent points will show up here." />
       ) : (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+        <ul className="divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
           {log.map((e, i) => {
             const credit = e.kind === 'credit'
             return (
               <li key={i} className="flex items-center gap-3 px-4 py-3">
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 ring-amber-200 dark:ring-amber-500/30 ${
                     credit
                       ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                       : 'bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400'

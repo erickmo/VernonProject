@@ -24,7 +24,9 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
       <div className="w-7 shrink-0 text-center text-sm font-bold text-slate-500 dark:text-slate-400">
         {medal(e.rank) ?? e.rank}
       </div>
-      <Avatar name={e.full_name} image={e.image} size={36} />
+      <div className="shrink-0 rounded-full ring-2 ring-violet-200 dark:ring-violet-500/30">
+        <Avatar name={e.full_name} image={e.image} size={36} />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
           {e.full_name} {isMe && <span className="text-brand-600 dark:text-brand-300">· you</span>}
@@ -83,14 +85,14 @@ export default function LeaderboardScreen() {
         <EmptyState icon={Trophy} title="No points yet" subtitle="Complete work to climb the board." />
       ) : (
         <>
-          <ul className="mt-4 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+          <ul className="mt-4 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
             {data.entries.map((e) => (
               <Row key={e.user} e={e} isMe={e.user === boot?.user} />
             ))}
           </ul>
 
           {data.me && !meInTop && (
-            <ul className="mt-3 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card ring-1 ring-brand-200 dark:ring-brand-500/30">
+            <ul className="mt-3 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-brand-200 dark:ring-brand-500/30">
               <Row e={data.me} isMe />
             </ul>
           )}

@@ -171,9 +171,11 @@ function UsersBody({
             <button
               key={u.name}
               onClick={() => onSelect(u.name)}
-              className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-card active:bg-slate-50 dark:bg-slate-800 dark:active:bg-slate-700/50"
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm active:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:active:bg-slate-700/50"
             >
-              <Avatar name={u.full_name || u.name} image={u.user_image} size={40} />
+              <div className="shrink-0 rounded-full ring-2 ring-sky-200 dark:ring-sky-500/30">
+                <Avatar name={u.full_name || u.name} image={u.user_image} size={40} />
+              </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                   {u.full_name || u.name}
@@ -184,7 +186,7 @@ function UsersBody({
                     {u.roles.map((r) => (
                       <span
                         key={r}
-                        className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
+                        className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
                       >
                         {ROLE_LABEL[r] ?? r}
                       </span>

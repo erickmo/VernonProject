@@ -3,7 +3,7 @@
 // controls the app. Uses only absolute URLs + runtime caching, so it works
 // regardless of where the script itself is served from.
 
-const ASSET_CACHE = 'vernon-assets-v6'
+const ASSET_CACHE = 'vernon-assets-v7'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {

@@ -193,7 +193,7 @@ export default function RewardFormScreen() {
           </div>
         </div>
 
-        <label className="flex items-center justify-between rounded-xl bg-white px-3 py-3 shadow-card dark:bg-slate-800">
+        <label className="flex items-center justify-between rounded-xl bg-white px-3 py-3 shadow-sm dark:bg-slate-800">
           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Active</span>
           <input
             type="checkbox"
@@ -227,7 +227,7 @@ export default function RewardFormScreen() {
           <button
             onClick={remove}
             disabled={del.isPending}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60 dark:bg-slate-800 dark:active:bg-rose-500/15"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-3 text-sm font-semibold text-rose-600 shadow-sm active:bg-rose-50 disabled:opacity-60 dark:bg-slate-800 dark:active:bg-rose-500/15"
           >
             {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete reward
           </button>

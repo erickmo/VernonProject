@@ -69,7 +69,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-8 py-16 text-center">
-      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
         <Icon className="h-7 w-7 text-brand-400" />
       </div>
       <p className="font-semibold text-slate-700 dark:text-slate-200">{title}</p>

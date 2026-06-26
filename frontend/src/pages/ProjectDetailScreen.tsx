@@ -51,7 +51,7 @@ export default function ProjectDetailScreen() {
 
   return (
     <DetailScreen title={data.title}>
-      <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
           {data.project_name}
         </p>
@@ -166,7 +166,7 @@ export default function ProjectDetailScreen() {
               <Link
                 key={t.name}
                 to={`/project-item/${encodeURIComponent(t.name)}`}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-card transition active:scale-[0.99] ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 opacity-60' : 'bg-white dark:bg-slate-800'}`}
+                className={`flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm transition active:scale-[0.99] ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 opacity-60' : 'bg-white dark:bg-slate-800'}`}
               >
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-medium ${isCancelled ? 'text-slate-400 dark:text-slate-500 line-through' : t.is_overdue ? 'text-rose-700' : 'text-slate-800 dark:text-slate-100'}`}>

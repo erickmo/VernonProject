@@ -9,7 +9,7 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
   return (
     <button
       onClick={() => navigate(`/project/${encodeURIComponent(p.name)}`)}
-      className="w-full rounded-2xl bg-white dark:bg-slate-800 p-4 text-left shadow-card transition active:scale-[0.99]"
+      className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-left shadow-sm transition active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

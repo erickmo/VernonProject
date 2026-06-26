@@ -8,7 +8,7 @@ export default function Reports() {
   const navigate = useNavigate()
   return (
     <TabScreen title="Reports" subtitle="Live data, same as the desk" right={<NotificationBell />}>
-      <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 text-white shadow-card">
+      <div className="mb-4 flex items-center gap-3 rounded-2xl bg-slate-900 border border-slate-700/50 p-4 text-white shadow-sm">
         <BarChart3 className="h-7 w-7 shrink-0 text-brand-300" />
         <p className="text-sm leading-snug text-slate-200">
           Run project reports on the go. Tap one, set the filters, and see results instantly.
@@ -22,7 +22,7 @@ export default function Reports() {
             <button
               key={r.name}
               onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
-              className="flex w-full items-center gap-3 rounded-2xl bg-white dark:bg-slate-800 p-4 text-left shadow-card transition active:scale-[0.99]"
+              className="flex w-full items-center gap-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-left shadow-sm transition active:scale-[0.99]"
             >
               <div
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${r.accent} text-white`}

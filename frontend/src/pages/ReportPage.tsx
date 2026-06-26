@@ -104,7 +104,7 @@ export default function ReportPage() {
   return (
     <DetailScreen title={def.title}>
       {/* Filters */}
-      <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
         <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <Filter className="h-3.5 w-3.5" /> Filters
         </p>
@@ -261,7 +261,7 @@ export default function ReportPage() {
                 <span className="text-xs text-slate-400 dark:text-slate-500">Tap a row to open the task</span>
               ) : null}
             </div>
-            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-card">
+            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-sm">
               <table className="min-w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">

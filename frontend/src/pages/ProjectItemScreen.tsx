@@ -164,7 +164,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-[15px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
 
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
@@ -542,7 +542,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+    <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <CalendarRange className="h-4 w-4" /> Split across days
@@ -721,7 +721,7 @@ export default function ProjectItemScreen() {
       {editing ? (
         <EditForm data={data} onClose={() => setEditing(false)} />
       ) : (
-        <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {data.project_name}
           </p>
@@ -860,7 +860,7 @@ export default function ProjectItemScreen() {
         <AllocationCard data={data} />
       ) : (
         (data.allocations ?? []).length > 0 && (
-          <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+          <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               <CalendarRange className="h-4 w-4" /> Day split
             </p>
@@ -880,7 +880,7 @@ export default function ProjectItemScreen() {
       )}
 
       {/* Workflow */}
-      <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 pb-5 shadow-card">
+      <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 pb-5 shadow-sm">
         <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Workflow</p>
         <Stepper current={data.status_key} />
 
@@ -962,7 +962,7 @@ export default function ProjectItemScreen() {
 
       {/* Recurrence history */}
       {data.occurrences.length > 1 && (
-        <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Repeat className="h-3.5 w-3.5" /> Recurrence history ({data.occurrences.length})
           </p>
@@ -996,7 +996,7 @@ export default function ProjectItemScreen() {
       )}
 
       {/* Notes */}
-      <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+      <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <FileText className="h-3.5 w-3.5" /> Notes
         </p>
@@ -1005,7 +1005,7 @@ export default function ProjectItemScreen() {
 
       {/* Dependencies */}
       {(data.blocked_by.length > 0 || data.blocking.length > 0) && (
-        <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Link2 className="h-3.5 w-3.5" /> Dependencies
           </p>
@@ -1028,7 +1028,7 @@ export default function ProjectItemScreen() {
 
       {/* Timeline */}
       {data.timeline.length > 0 && (
-        <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-card">
+        <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <History className="h-3.5 w-3.5" /> Activity
           </p>

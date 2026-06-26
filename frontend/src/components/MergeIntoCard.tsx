@@ -43,7 +43,7 @@ export function MergeIntoCard({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-3 text-sm font-semibold text-amber-700 dark:text-amber-300 shadow-card active:bg-amber-50 dark:active:bg-amber-500/15"
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-3 text-sm font-semibold text-amber-700 dark:text-amber-300 shadow-sm active:bg-amber-50 dark:active:bg-amber-500/15"
       >
         <GitMerge className="h-4 w-4" /> Merge into another {entity}
       </button>
@@ -51,7 +51,7 @@ export function MergeIntoCard({
   }
 
   return (
-    <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
       <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
         <GitMerge className="h-3.5 w-3.5" /> Merge into another {entity}
       </p>

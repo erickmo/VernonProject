@@ -103,7 +103,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
     <TabScreen title="Me">
       {boot && (
         <>
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-card">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
             <Avatar name={boot.full_name} image={boot.image} size={72} />
             <div className="text-center">
               <p className="text-lg font-bold text-slate-900 dark:text-slate-50">{boot.full_name}</p>
@@ -126,7 +126,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               {boot.roles.map((r) => (
                 <span
                   key={r}
-                  className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/15 px-2.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300"
+                  className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/15 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-300"
                 >
                   <ShieldCheck className="h-3 w-3" />
                   {r}
@@ -147,14 +147,14 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           </div>
 
           {/* Appearance */}
-          <div className="mt-3 rounded-2xl bg-white dark:bg-slate-800 px-4 py-3.5 shadow-card">
+          <div className="mt-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 shadow-sm">
             <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Appearance
             </p>
             <Segmented options={THEME_OPTIONS} value={theme} onChange={handleThemeChange} />
           </div>
 
-          <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+          <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
             {pushSupported() && (
               <Row
                 icon={pushOn ? Bell : BellOff}
@@ -188,7 +188,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
 
           <a
             href="/app/vernon-project"
-            className="mt-3 flex items-center justify-between rounded-2xl bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-card"
+            className="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm"
           >
             Open full desktop app
             <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
@@ -197,7 +197,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           <button
             onClick={doLogout}
             disabled={loggingOut}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white dark:bg-slate-800 py-3.5 font-semibold text-rose-600 shadow-card active:bg-rose-50 disabled:opacity-60"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3.5 font-semibold text-rose-600 shadow-sm active:bg-rose-50 disabled:opacity-60"
           >
             {loggingOut ? (
               <Spinner className="h-4 w-4" />
@@ -231,7 +231,9 @@ function Row({
       onClick={onClick}
       className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:active:bg-slate-700/50"
     >
-      <Icon className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400">
+        <Icon className="h-5 w-5" />
+      </div>
       <span className="flex-1">{label}</span>
       <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
     </button>

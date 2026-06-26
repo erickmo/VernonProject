@@ -162,7 +162,7 @@ export default function UserFormScreen() {
         </div>
 
         {!isEdit && (
-          <label className="flex items-center justify-between rounded-xl bg-white p-3 shadow-card dark:bg-slate-800">
+          <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
             <input
               type="checkbox"
@@ -175,7 +175,7 @@ export default function UserFormScreen() {
 
         {isEdit && (
           <>
-            <label className="flex items-center justify-between rounded-xl bg-white p-3 shadow-card dark:bg-slate-800">
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:bg-slate-800 dark:border-slate-700">
               <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
               <input
                 type="checkbox"
