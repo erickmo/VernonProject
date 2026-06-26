@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus, Layers } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
@@ -6,7 +6,6 @@ import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
-import { Sortable } from '@/components/Sortable'
 import { deleteErrorMessage, formatDate } from '@/lib/format'
 import {
   useScoringGroup,
@@ -32,13 +31,28 @@ const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee
   { key: 'leader_early_bonus', label: 'Leader early bonus % / day', group: 'Leader' },
 ]
 
-type LevelRow = { _key: string; name?: string; level_id?: string; level_name: string; difficulty_percent: number }
+type LevelRow = { _key: string; name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number }
 
 let _tmp = 0
 const tmpKey = () => `new-${_tmp++}`
 const rowKey = (l: { level_id?: string; name?: string }) => l.level_id || l.name || tmpKey()
 
-const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), level_name: '1', difficulty_percent: 100 }]
+const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), type_name: 'New Type', level_name: 'Standard', difficulty_percent: 100 }]
+
+type TypeGroup = { type_name: string; rows: LevelRow[] }
+
+function groupByType(levels: LevelRow[]): TypeGroup[] {
+  const order: string[] = []
+  const map: Record<string, LevelRow[]> = {}
+  for (const l of levels) {
+    if (!map[l.type_name]) {
+      order.push(l.type_name)
+      map[l.type_name] = []
+    }
+    map[l.type_name].push(l)
+  }
+  return order.map((t) => ({ type_name: t, rows: map[t] }))
+}
 
 export default function GroupFormScreen() {
   const navigate = useNavigate()
@@ -70,9 +84,6 @@ export default function GroupFormScreen() {
     levels: defaultLevels(),
   })
 
-  // Step value for the "fill levels by increment" helper.
-  const [stepFill, setStepFill] = useState('')
-
   useEffect(() => {
     if (isEdit && existing) {
       setForm({
@@ -91,6 +102,7 @@ export default function GroupFormScreen() {
             _key: rowKey(l),
             name: l.name,
             level_id: l.level_id,
+            type_name: l.type_name,
             level_name: l.level_name,
             difficulty_percent: l.difficulty_percent,
           })),
@@ -118,47 +130,73 @@ export default function GroupFormScreen() {
     setForm((f) => ({ ...f, [key]: v === '' ? 0 : Number(v) }))
 
   const LEVEL_STEP = 5
-  const patchLevel = (i: number, patch: Partial<LevelRow>) =>
-    setForm((f) => ({ ...f, levels: f.levels.map((l, j) => (j === i ? { ...l, ...patch } : l)) }))
-  const setLevelName = (i: number, level_name: string) => patchLevel(i, { level_name })
-  const setLevelDifficulty = (i: number, difficulty_percent: number) => patchLevel(i, { difficulty_percent })
-  const bumpLevelDifficulty = (i: number, delta: number) =>
-    patchLevel(i, { difficulty_percent: Math.max(0, (Number(form.levels[i].difficulty_percent) || 0) + delta) })
-  const addLevel = () =>
+
+  // Patch a row by _key (stable across grouping)
+  const patchByKey = (key: string, patch: Partial<LevelRow>) =>
+    setForm((f) => ({ ...f, levels: f.levels.map((l) => (l._key === key ? { ...l, ...patch } : l)) }))
+
+  const setLevelName = (key: string, level_name: string) => patchByKey(key, { level_name })
+  const setLevelDifficulty = (key: string, difficulty_percent: number) => patchByKey(key, { difficulty_percent })
+  const bumpLevelDifficulty = (key: string, delta: number) =>
     setForm((f) => ({
       ...f,
-      levels: [...f.levels, { _key: tmpKey(), level_name: String(f.levels.length + 1), difficulty_percent: 0 }],
+      levels: f.levels.map((l) =>
+        l._key === key ? { ...l, difficulty_percent: Math.max(0, (Number(l.difficulty_percent) || 0) + delta) } : l,
+      ),
     }))
-  const removeLevel = (i: number) =>
-    setForm((f) => ({ ...f, levels: f.levels.filter((_, j) => j !== i) }))
-  const reorderLevel = (from: number, to: number) =>
+
+  // Rename type_name on ALL rows belonging to oldName
+  const renameType = (oldName: string, newName: string) =>
+    setForm((f) => ({
+      ...f,
+      levels: f.levels.map((l) => (l.type_name === oldName ? { ...l, type_name: newName } : l)),
+    }))
+
+  // Add a new level row under an existing type
+  const addLevelToType = (type_name: string) =>
     setForm((f) => {
+      // insert after the last row of this type
+      const lastIdx = f.levels.reduce((acc, l, i) => (l.type_name === type_name ? i : acc), -1)
+      const newRow: LevelRow = { _key: tmpKey(), type_name, level_name: 'Standard', difficulty_percent: 100 }
       const next = f.levels.slice()
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
+      next.splice(lastIdx + 1, 0, newRow)
       return { ...f, levels: next }
     })
 
-  // Auto-fill every level as (index + 1) × step, so level 0 = step (not 0),
-  // level 1 = 2×step, level 2 = 3×step, …
-  const applyStepFill = () => {
-    const step = Number(stepFill)
-    if (!stepFill.trim() || isNaN(step)) {
-      toast('error', 'Enter a step value first')
-      return
-    }
-    setForm((f) => ({ ...f, levels: f.levels.map((l, i) => ({ ...l, difficulty_percent: Math.max(0, (i + 1) * step) })) }))
+  // Remove a single level row by _key
+  const removeLevelByKey = (key: string) =>
+    setForm((f) => ({ ...f, levels: f.levels.filter((l) => l._key !== key) }))
+
+  // Remove all rows for a type
+  const removeType = (type_name: string) =>
+    setForm((f) => ({ ...f, levels: f.levels.filter((l) => l.type_name !== type_name) }))
+
+  // Add a whole new type (one row with fresh unique type_name)
+  const addType = () => {
+    const existingTypes = new Set(form.levels.map((l) => l.type_name))
+    let candidate = 'New Type'
+    let n = 2
+    while (existingTypes.has(candidate)) candidate = `New Type ${n++}`
+    setForm((f) => ({
+      ...f,
+      levels: [...f.levels, { _key: tmpKey(), type_name: candidate, level_name: 'Standard', difficulty_percent: 100 }],
+    }))
   }
+
+  const types = useMemo(() => groupByType(form.levels), [form.levels])
 
   const validate = (): string | null => {
     if (!form.group_name.trim()) return 'Group name is required'
     if (form.levels.length === 0) return 'Add at least one level'
-    const names = new Set<string>()
+    const pairs = new Set<string>()
     for (const l of form.levels) {
-      const nm = l.level_name.trim()
-      if (!nm) return 'Level names cannot be empty'
-      if (names.has(nm)) return `Duplicate level name: ${nm}`
-      names.add(nm)
+      const tn = l.type_name.trim()
+      const ln = l.level_name.trim()
+      if (!tn) return 'Type names cannot be empty'
+      if (!ln) return 'Level names cannot be empty'
+      const pair = `${tn}|||${ln}`
+      if (pairs.has(pair)) return `Duplicate level "${ln}" in type "${tn}"`
+      pairs.add(pair)
       if (typeof l.difficulty_percent !== 'number' || isNaN(l.difficulty_percent)) return 'Difficulty must be a number'
       if (l.difficulty_percent < 0) return 'Difficulty cannot be negative'
     }
@@ -179,6 +217,7 @@ export default function GroupFormScreen() {
       levels: form.levels.map((l) => ({
         name: l.name,
         level_id: l.level_id,
+        type_name: l.type_name.trim(),
         level_name: l.level_name.trim(),
         difficulty_percent: Number(l.difficulty_percent),
       })),
@@ -302,66 +341,98 @@ export default function GroupFormScreen() {
           </div>
         ))}
 
+        {/* Types & Levels */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Types</p>
-          <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
-            Add, rename, set difficulty, delete, or drag to reorder. Todos list types in this order.
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Types &amp; Levels</p>
+          <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+            Organise difficulty levels into named types. Each type can have multiple levels with their own difficulty %.
           </p>
-          {/* Fill difficulty by step: sets each type to (index+1) × step (0=step, 1=2×step, 2=3×step, …). */}
-          <div className="mb-3 flex items-center gap-2 rounded-xl bg-white px-2 py-2 dark:bg-slate-800">
-            <span className="min-w-0 flex-1 text-[11px] text-slate-500 dark:text-slate-400">
-              Fill difficulty by step
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-              value={stepFill}
-              onChange={(e) => setStepFill(e.target.value)}
-              placeholder="Step"
-            />
-            <button
-              type="button"
-              onClick={applyStepFill}
-              className="shrink-0 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white active:scale-95"
-            >
-              Update
-            </button>
-          </div>
-          <Sortable
-            items={form.levels}
-            keyFor={(l) => (l as LevelRow)._key}
-            onReorder={reorderLevel}
-            renderItem={(l, i) => (
-              <div className="flex items-center gap-2">
-                <input
-                  className={field + ' flex-1'}
-                  value={(l as LevelRow).level_name}
-                  onChange={(e) => setLevelName(i, e.target.value)}
-                  placeholder="Type name"
-                />
-                <button type="button" aria-label="Decrease difficulty" onClick={() => bumpLevelDifficulty(i, -LEVEL_STEP)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300">
-                  <Minus className="h-4 w-4" />
-                </button>
-                <input type="number" inputMode="decimal"
-                  className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                  value={String((l as LevelRow).difficulty_percent)}
-                  onChange={(e) => setLevelDifficulty(i, e.target.value === '' ? 0 : Number(e.target.value))}
-                  placeholder="Difficulty %" />
-                <button type="button" aria-label="Increase difficulty" onClick={() => bumpLevelDifficulty(i, LEVEL_STEP)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300">
-                  <Plus className="h-4 w-4" />
-                </button>
-                <button type="button" aria-label="Delete type" onClick={() => removeLevel(i)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 active:scale-95 dark:border-slate-700 dark:hover:bg-red-500/10">
-                  <Trash2 className="h-4 w-4" />
+
+          <div className="flex flex-col gap-3">
+            {types.map(({ type_name, rows }) => (
+              <div key={type_name} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                {/* Type header: editable name + remove-type */}
+                <div className="mb-2 flex items-center gap-2">
+                  <input
+                    className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-brand-600 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+                    value={type_name}
+                    onChange={(e) => renameType(type_name, e.target.value)}
+                    placeholder="Type name"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove type"
+                    onClick={() => removeType(type_name)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 active:scale-95 dark:border-slate-700 dark:hover:bg-red-500/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Level rows for this type */}
+                <div className="flex flex-col gap-2">
+                  {rows.map((l) => (
+                    <div key={l._key} className="flex items-center gap-2">
+                      <input
+                        className={field + ' flex-1'}
+                        value={l.level_name}
+                        onChange={(e) => setLevelName(l._key, e.target.value)}
+                        placeholder="Level name"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Decrease difficulty"
+                        onClick={() => bumpLevelDifficulty(l._key, -LEVEL_STEP)}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                        value={String(l.difficulty_percent)}
+                        onChange={(e) => setLevelDifficulty(l._key, e.target.value === '' ? 0 : Number(e.target.value))}
+                        placeholder="Difficulty %"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Increase difficulty"
+                        onClick={() => bumpLevelDifficulty(l._key, LEVEL_STEP)}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Remove level"
+                        onClick={() => removeLevelByKey(l._key)}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 active:scale-95 dark:border-slate-700 dark:hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add level to this type */}
+                <button
+                  type="button"
+                  onClick={() => addLevelToType(type_name)}
+                  className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 active:scale-95 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add level
                 </button>
               </div>
-            )}
-          />
-          <button type="button" onClick={addLevel}
-            className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 active:scale-95 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60">
+            ))}
+          </div>
+
+          {/* Add type */}
+          <button
+            type="button"
+            onClick={addType}
+            className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 active:scale-95 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60"
+          >
             <Plus className="h-4 w-4" /> Add type
           </button>
         </div>
