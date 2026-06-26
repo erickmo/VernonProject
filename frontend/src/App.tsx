@@ -19,6 +19,7 @@ import ProjectItemScreen from './pages/ProjectItemScreen'
 import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 import GroupsScreen from './pages/GroupsScreen'
+import DataHealthScreen from './pages/DataHealthScreen'
 import GroupFormScreen from './pages/GroupFormScreen'
 import BrandsScreen from './pages/BrandsScreen'
 import BrandFormScreen from './pages/BrandFormScreen'
@@ -119,6 +120,7 @@ export default function App() {
             <Route path="/groups" element={<GroupsScreen />} />
             <Route path="/groups/new" element={<GroupFormScreen />} />
             <Route path="/groups/:name" element={<GroupFormScreen />} />
+            <Route path="/data-health" element={<DataHealthScreen />} />
           </>
         )}
         {canManageBrands(boot) && (

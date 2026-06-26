@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
@@ -168,6 +168,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             {canManageGroups(boot) && (
               <Row icon={Layers} label="Manage Groups" hue="emerald" onClick={() => navigate('/groups')} />
             )}
+            {canManageGroups(boot) && (
+              <Row icon={ShieldAlert} label="Data Health" hue="rose" onClick={() => navigate('/data-health')} />
+            )}
             {canManageBrands(boot) && (
               <Row icon={Store} label="Manage Brands" hue="pink" onClick={() => navigate('/brands')} />
             )}
@@ -223,6 +226,7 @@ const ROW_HUE: Record<string, string> = {
   amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
   emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
   pink: 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400',
+  rose: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400',
   violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400',
   slate: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300',
 }
