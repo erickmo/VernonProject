@@ -190,14 +190,6 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             <Row icon={BookOpen} label="Replay quick tour" hue="slate" onClick={onReplayOnboarding} />
           </div>
 
-          <a
-            href="/app/vernon-project"
-            className="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm"
-          >
-            Open full desktop app
-            <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-          </a>
-
           <button
             onClick={doLogout}
             disabled={loggingOut}
