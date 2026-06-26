@@ -13,3 +13,5 @@ vernon_project.patches.v1_0.remap_levels_neg5to5_to_0to10
 vernon_project.patches.v1_0.backfill_level_id
 vernon_project.patches.v1_0.work_type_points
 vernon_project.patches.v1_0.nest_type_levels
+vernon_project.patches.v1_0.backfill_todo_start_date
+vernon_project.patches.v1_0.fair_economy_calibration
