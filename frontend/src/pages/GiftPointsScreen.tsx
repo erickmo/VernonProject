@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Search, Send, Users } from 'lucide-react'
+import { Gift, Search, Send, Users } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { useGiftRecipients, useGiftPoints, useWallet } from '@/hooks/useData'
@@ -53,6 +53,9 @@ export default function GiftPointsScreen() {
 
   return (
     <DetailScreen title="Gift Points" right={null}>
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+        <Gift className="h-6 w-6" />
+      </div>
       <p className="mb-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-500 shadow-sm">
         Your balance: <span className="font-semibold text-slate-900 dark:text-slate-50">{balance}</span>
       </p>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3 } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -266,8 +266,12 @@ export default function ProjectScreen() {
                 key={w.name}
                 onClick={() => navigate(`/project-detail/${encodeURIComponent(w.name)}`)}
                 role="button"
-                className="w-full cursor-pointer rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-left shadow-sm transition active:scale-[0.99]"
+                className="flex w-full cursor-pointer items-start gap-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-left shadow-sm transition active:scale-[0.99]"
               >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                  <FolderKanban className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-slate-100">{w.title}</p>
                   {flags.can_edit ? (
@@ -310,6 +314,7 @@ export default function ProjectScreen() {
                     <AlertCircle className="h-3.5 w-3.5" /> {w.overdue} overdue
                   </p>
                 )}
+                </div>
               </div>
                   ))}
                 </div>

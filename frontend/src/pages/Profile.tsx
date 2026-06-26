@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Trophy, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
@@ -159,31 +159,32 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               <Row
                 icon={pushOn ? Bell : BellOff}
                 label={pushBusy ? 'Working…' : pushOn ? 'Notifications: On' : 'Enable notifications'}
+                hue="sky"
                 onClick={togglePush}
               />
             )}
-            <Row icon={KeyRound} label="Change password" onClick={() => setShowChangePw(true)} />
-            <Row icon={Send} label="Gift Points" onClick={() => navigate('/gift-points')} />
+            <Row icon={KeyRound} label="Change password" hue="sky" onClick={() => setShowChangePw(true)} />
+            <Row icon={Send} label="Gift Points" hue="amber" onClick={() => navigate('/gift-points')} />
             {canManageGroups(boot) && (
-              <Row icon={Trophy} label="Manage Groups" onClick={() => navigate('/groups')} />
+              <Row icon={Layers} label="Manage Groups" hue="emerald" onClick={() => navigate('/groups')} />
             )}
             {canManageBrands(boot) && (
-              <Row icon={Store} label="Manage Brands" onClick={() => navigate('/brands')} />
+              <Row icon={Store} label="Manage Brands" hue="pink" onClick={() => navigate('/brands')} />
             )}
             {canManageUsers(boot) && (
-              <Row icon={Users} label="Manage Users" onClick={() => navigate('/users')} />
+              <Row icon={Users} label="Manage Users" hue="sky" onClick={() => navigate('/users')} />
             )}
             {canManageBadges(boot) && (
-              <Row icon={Award} label="Manage Badges" onClick={() => navigate('/badge-settings')} />
+              <Row icon={Award} label="Manage Badges" hue="violet" onClick={() => navigate('/badge-settings')} />
             )}
             {canManageMarketplace(boot) && (
-              <Row icon={Settings} label="Manage Marketplace" onClick={() => navigate('/marketplace-admin')} />
+              <Row icon={Settings} label="Manage Marketplace" hue="amber" onClick={() => navigate('/marketplace-admin')} />
             )}
             {canGrantPoints(boot) && (
-              <Row icon={Gift} label="Grant Points" onClick={() => navigate('/grant-points')} />
+              <Row icon={Gift} label="Grant Points" hue="amber" onClick={() => navigate('/grant-points')} />
             )}
-            <Row icon={RefreshCw} label="Refresh data" onClick={refresh} />
-            <Row icon={BookOpen} label="Replay quick tour" onClick={onReplayOnboarding} />
+            <Row icon={RefreshCw} label="Refresh data" hue="slate" onClick={refresh} />
+            <Row icon={BookOpen} label="Replay quick tour" hue="slate" onClick={onReplayOnboarding} />
           </div>
 
           <a
@@ -217,21 +218,32 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   )
 }
 
+const ROW_HUE: Record<string, string> = {
+  sky: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400',
+  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
+  emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+  pink: 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400',
+  violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400',
+  slate: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300',
+}
+
 function Row({
   icon: Icon,
   label,
   onClick,
+  hue = 'sky',
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   onClick: () => void
+  hue?: keyof typeof ROW_HUE
 }) {
   return (
     <button
       onClick={onClick}
       className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:active:bg-slate-700/50"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${ROW_HUE[hue]}`}>
         <Icon className="h-5 w-5" />
       </div>
       <span className="flex-1">{label}</span>

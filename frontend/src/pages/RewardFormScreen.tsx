@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Check, ImagePlus } from 'lucide-react'
+import { Trash2, Check, ImagePlus, Gift } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -138,6 +138,9 @@ export default function RewardFormScreen() {
   return (
     <DetailScreen title={isEdit ? 'Edit reward' : 'New reward'}>
       <div className="flex flex-col gap-4">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+          <Gift className="h-6 w-6" />
+        </div>
         {/* Image */}
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Image</label>

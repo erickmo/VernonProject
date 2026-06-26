@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Plus, Trash2 } from 'lucide-react'
+import { Award, Check, Plus, Trash2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -73,6 +73,9 @@ export default function BadgeSettingsScreen() {
   return (
     <DetailScreen title="Badges">
       <div className="flex flex-col gap-4">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+          <Award className="h-6 w-6" />
+        </div>
         <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
           A user's badge is the highest tier whose <b>Min Points</b> is ≤ their lifetime
           Todo-source points earned. Grants and gifts never change the badge.

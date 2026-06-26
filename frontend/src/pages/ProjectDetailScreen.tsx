@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3 } from 'lucide-react'
+import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { GanttChart } from '@/components/GanttChart'
@@ -168,6 +168,9 @@ export default function ProjectDetailScreen() {
                 to={`/project-item/${encodeURIComponent(t.name)}`}
                 className={`flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm transition active:scale-[0.99] ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 opacity-60' : 'bg-white dark:bg-slate-800'}`}
               >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                  <FolderKanban className="h-5 w-5" />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-medium ${isCancelled ? 'text-slate-400 dark:text-slate-500 line-through' : t.is_overdue ? 'text-rose-700' : 'text-slate-800 dark:text-slate-100'}`}>
                     {t.to_do}

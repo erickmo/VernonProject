@@ -11,6 +11,7 @@ import {
   Check,
   Clock,
   FileText,
+  FolderKanban,
   History,
   Link2,
   Lock,
@@ -866,12 +867,17 @@ export default function ProjectItemScreen() {
             </p>
             <div className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
               {(data.allocations ?? []).map((a, i) => (
-                <div key={i}>
-                  <div className="flex justify-between">
-                    <span>{a.date}</span>
-                    <span className="font-medium">{a.minutes}m</span>
+                <div key={i} className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                    <FolderKanban className="h-5 w-5" />
                   </div>
-                  {a.note && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{a.note}</p>}
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <span>{a.date}</span>
+                      <span className="font-medium">{a.minutes}m</span>
+                    </div>
+                    {a.note && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{a.note}</p>}
+                  </div>
                 </div>
               ))}
             </div>
@@ -975,7 +981,7 @@ export default function ProjectItemScreen() {
                     onClick={() => !o.is_current && navigate(`/project-item/${encodeURIComponent(o.name)}`)}
                     className={clsx(
                       'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition',
-                      o.is_current ? 'bg-brand-50 dark:bg-brand-500/15 ring-1 ring-brand-200' : 'bg-slate-50 dark:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-700',
+                      o.is_current ? 'bg-brand-50 dark:bg-brand-500/15 ring-1 ring-brand-200' : 'bg-slate-50 dark:bg-slate-800/60 ring-2 ring-brand-200 dark:ring-brand-500/30 active:bg-slate-100 dark:active:bg-slate-700',
                     )}
                   >
                     <span>{meta.emoji}</span>

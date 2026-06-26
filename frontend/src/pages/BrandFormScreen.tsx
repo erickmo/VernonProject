@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Trash2, Check } from 'lucide-react'
+import { Trash2, Check, Store } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -117,6 +117,9 @@ export default function BrandFormScreen() {
   return (
     <DetailScreen title={isEdit ? 'Edit brand' : 'New brand'}>
       <div className="flex flex-col gap-4">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400">
+          <Store className="h-6 w-6" />
+        </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Brand name</label>
           <input

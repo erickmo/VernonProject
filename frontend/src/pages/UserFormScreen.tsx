@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { User } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
@@ -129,6 +130,9 @@ export default function UserFormScreen() {
       }
     >
       <div className="flex flex-col gap-4">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400">
+          <User className="h-6 w-6" />
+        </div>
         <label className="block">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Email</span>
           <input

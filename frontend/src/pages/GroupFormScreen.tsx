@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus } from 'lucide-react'
+import { Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus, Layers } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -227,6 +227,9 @@ export default function GroupFormScreen() {
   return (
     <DetailScreen title={isEdit ? 'Edit group' : 'New group'}>
       <div className="flex flex-col gap-4">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+          <Layers className="h-6 w-6" />
+        </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Group name</label>
           <input

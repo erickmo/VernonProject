@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Gift, Users } from 'lucide-react'
+import { Search, Gift, Users, Coins } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { useBoot, canGrantPoints } from '@/hooks/useData'
@@ -71,6 +71,9 @@ export default function GrantPointsScreen() {
 
   return (
     <DetailScreen title="Grant Points" right={null}>
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+        <Coins className="h-6 w-6" />
+      </div>
       {selected ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
