@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, CheckCheck } from 'lucide-react'
 import { Avatar, ProgressBar } from './ui'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatEstimateRatio } from '@/lib/format'
 import type { ProjectCard as ProjectCardType } from '@/lib/types'
 
 export function ProjectCard({ p }: { p: ProjectCardType }) {
@@ -41,7 +41,10 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
 
       <div className="mt-3 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          <span className="text-slate-500 dark:text-slate-400">
+          <span className="font-medium text-slate-600 dark:text-slate-300">
+            {formatEstimateRatio(p.minutes_done, p.minutes_total)}
+          </span>
+          <span className="text-slate-400 dark:text-slate-500">
             {p.item_done}/{p.item_total} todos
           </span>
           {p.overdue > 0 && (
