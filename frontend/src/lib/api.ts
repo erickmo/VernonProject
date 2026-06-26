@@ -222,7 +222,7 @@ export const mobileApi = {
     }),
   unregisterPushSubscription: (endpoint: string) =>
     api.post<{ ok: boolean }>(M + 'unregister_push_subscription', { endpoint }),
-  dataHealth: () => api.get('vernon_project.api.mobile.data_health'),
+  dataHealth: () => api.get(M + 'data_health'),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
