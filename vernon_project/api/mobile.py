@@ -2485,3 +2485,133 @@ def list_gift_recipients():
 		order_by="full_name asc",
 	)
 	return {"users": users}
+
+
+@frappe.whitelist()
+def data_health():
+	"""Manager-only data-quality report over Project Todo. See
+	docs/superpowers/specs/2026-06-26-data-health-report-design.md."""
+	roles = set(frappe.get_roles(frappe.session.user))
+	if not ({"System Manager", "Group Manager", "Project Owner"} & roles):
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	INFLIGHT = ("⚪️ Planned", "🟠 Done", "🔷 Checked By PL")
+	CAP = 200
+
+	def pack(rows):
+		return [
+			{
+				"name": r.name,
+				"to_do": r.to_do,
+				"group": r.group,
+				"status": r.status,
+				"detail": r.detail,
+			}
+			for r in rows
+		]
+
+	# 1. Unmapped type/level
+	unmapped = frappe.db.sql(
+		"""
+		SELECT name, to_do, `group`, status, 'no type/level' AS detail
+		FROM `tabProject Todo`
+		WHERE status IN %(inflight)s AND level_id IS NULL
+		ORDER BY modified DESC LIMIT %(cap)s
+		""",
+		{"inflight": INFLIGHT, "cap": CAP}, as_dict=True,
+	)
+	unmapped_n = frappe.db.sql(
+		"SELECT COUNT(*) FROM `tabProject Todo` WHERE status IN %(inflight)s AND level_id IS NULL",
+		{"inflight": INFLIGHT},
+	)[0][0]
+
+	# 2. Outlier estimate (> 24h on one task)
+	outliers = frappe.db.sql(
+		"""
+		SELECT name, to_do, `group`, status,
+		       CONCAT('estimated ', ROUND(estimated), ' min') AS detail
+		FROM `tabProject Todo`
+		WHERE status != '🚫 Cancelled' AND estimated > 1440
+		ORDER BY estimated DESC LIMIT %(cap)s
+		""",
+		{"cap": CAP}, as_dict=True,
+	)
+	outliers_n = frappe.db.sql(
+		"SELECT COUNT(*) FROM `tabProject Todo` WHERE status != '🚫 Cancelled' AND estimated > 1440"
+	)[0][0]
+
+	# 3. Missing fields (in-flight)
+	missing_rows = frappe.db.sql(
+		"""
+		SELECT name, to_do, `group`, status, estimated, deadline, start_date
+		FROM `tabProject Todo`
+		WHERE status IN %(inflight)s AND (
+			`group` IS NULL OR `group` = '' OR estimated IS NULL OR estimated = 0
+			OR deadline IS NULL OR start_date IS NULL
+		)
+		ORDER BY modified DESC LIMIT %(cap)s
+		""",
+		{"inflight": INFLIGHT, "cap": CAP}, as_dict=True,
+	)
+	for r in missing_rows:
+		miss = []
+		if not r.group:
+			miss.append("group")
+		if not r.estimated:
+			miss.append("estimate")
+		if not r.deadline:
+			miss.append("deadline")
+		if not r.start_date:
+			miss.append("start_date")
+		r.detail = "missing: " + ", ".join(miss)
+	missing_n = frappe.db.sql(
+		"""
+		SELECT COUNT(*) FROM `tabProject Todo`
+		WHERE status IN %(inflight)s AND (
+			`group` IS NULL OR `group` = '' OR estimated IS NULL OR estimated = 0
+			OR deadline IS NULL OR start_date IS NULL)
+		""",
+		{"inflight": INFLIGHT},
+	)[0][0]
+
+	# 4. Orphaned level_id or junk title
+	orphaned = frappe.db.sql(
+		"""
+		SELECT t.name, t.to_do, t.`group`, t.status,
+		       CASE
+		         WHEN t.level_id IS NOT NULL AND gl.level_id IS NULL THEN 'orphaned level_id'
+		         ELSE 'junk title'
+		       END AS detail
+		FROM `tabProject Todo` t
+		LEFT JOIN `tabGroup Level` gl ON gl.level_id = t.level_id
+		WHERE t.status != '🚫 Cancelled' AND (
+		      (t.level_id IS NOT NULL AND gl.level_id IS NULL)
+		   OR LOWER(TRIM(t.to_do)) IN ('x','seed','test','testing')
+		   OR CHAR_LENGTH(TRIM(t.to_do)) <= 2
+		)
+		ORDER BY t.modified DESC LIMIT %(cap)s
+		""",
+		{"cap": CAP}, as_dict=True,
+	)
+	orphaned_n = frappe.db.sql(
+		"""
+		SELECT COUNT(*) FROM `tabProject Todo` t
+		LEFT JOIN `tabGroup Level` gl ON gl.level_id = t.level_id
+		WHERE t.status != '🚫 Cancelled' AND (
+		      (t.level_id IS NOT NULL AND gl.level_id IS NULL)
+		   OR LOWER(TRIM(t.to_do)) IN ('x','seed','test','testing')
+		   OR CHAR_LENGTH(TRIM(t.to_do)) <= 2)
+		"""
+	)[0][0]
+
+	return {
+		"counts": {
+			"unmapped": unmapped_n, "outliers": outliers_n,
+			"missing": missing_n, "orphaned": orphaned_n,
+			"total": unmapped_n + outliers_n + missing_n + orphaned_n,
+		},
+		"unmapped": pack(unmapped),
+		"outliers": pack(outliers),
+		"missing": pack(missing_rows),
+		"orphaned": pack(orphaned),
+	}
