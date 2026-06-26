@@ -1,0 +1,51 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-06-26 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title", "project", "organizer", "column_break_a",
+  "scheduled_at", "estimated", "status", "section_break_b",
+  "group", "level", "level_type", "level_id", "point", "section_break_c",
+  "participants", "notes"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project", "reqd": 1, "in_standard_filter": 1, "search_index": 1},
+  {"fieldname": "organizer", "fieldtype": "Link", "label": "Organizer", "options": "User", "read_only": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "scheduled_at", "fieldtype": "Datetime", "label": "Scheduled At"},
+  {"fieldname": "estimated", "fieldtype": "Int", "label": "Estimated (minutes)", "default": "0"},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "⚪️ Scheduled\n✅ Done", "default": "⚪️ Scheduled", "reqd": 1, "read_only": 1, "in_list_view": 1},
+  {"fieldname": "section_break_b", "fieldtype": "Section Break", "label": "Points"},
+  {"fieldname": "group", "fieldtype": "Link", "label": "Group", "options": "Group"},
+  {"fieldname": "level", "fieldtype": "Data", "label": "Level", "read_only": 1},
+  {"fieldname": "level_type", "fieldtype": "Data", "label": "Level Type", "read_only": 1},
+  {"fieldname": "level_id", "fieldtype": "Data", "label": "Level ID", "hidden": 1, "no_copy": 1},
+  {"fieldname": "point", "fieldtype": "Float", "label": "Point", "read_only": 1},
+  {"fieldname": "section_break_c", "fieldtype": "Section Break", "label": "Participants"},
+  {"fieldname": "participants", "fieldtype": "Table", "label": "Participants", "options": "Meeting Participant"},
+  {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Meeting",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Project Owner", "create": 1, "delete": 1, "read": 1, "report": 1, "write": 1, "export": 1, "print": 1},
+  {"role": "Project Leader", "create": 1, "delete": 1, "read": 1, "report": 1, "write": 1, "export": 1, "print": 1},
+  {"role": "Project Team", "read": 1, "report": 1, "export": 1, "print": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
