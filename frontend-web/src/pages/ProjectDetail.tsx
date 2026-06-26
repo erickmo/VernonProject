@@ -4,7 +4,7 @@ import {
   ArrowLeft, CalendarClock, ListChecks, Plus, ChevronRight,
 } from 'lucide-react'
 import { useProjectDetail } from '@/hooks/useData'
-import { sanitizeHtml, stripHtml } from '@/lib/format'
+import { sanitizeHtml, stripHtml, formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
@@ -47,6 +47,11 @@ export default function ProjectDetail() {
   const items = d.project_items
   const completedCount = items.filter((t) => t.status_key === 'completed').length
   const openCount = items.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
+  const notCancelled = items.filter((t) => t.status_key !== 'cancelled')
+  const minutesTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
+  const minutesDone = notCancelled
+    .filter((t) => t.status_key === 'completed')
+    .reduce((s, t) => s + (t.estimated || 0), 0)
   const visibleItems = showCancelled
     ? items
     : items.filter((t) => t.status_key !== 'cancelled')
@@ -112,6 +117,9 @@ export default function ProjectDetail() {
         </BentoTile>
         <BentoTile span="sm" tone="tint" accent="sky">
           <BentoStat value={completedCount} label="Completed" delta={`of ${items.length} total`} />
+        </BentoTile>
+        <BentoTile span="sm" tone="tint" accent="sky">
+          <BentoStat value={formatEstimateRatio(minutesDone, minutesTotal)} label="Est. done" />
         </BentoTile>
 
         {/* Meta rail: condition, outcome, SOW, pricing */}

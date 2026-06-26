@@ -8,7 +8,7 @@ import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useProjectDetail } from '@/hooks/useData'
-import { stripHtml, sanitizeHtml, byDeadlineAsc } from '@/lib/format'
+import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimateRatio } from '@/lib/format'
 import { STATUS } from '@/lib/status'
 
 export default function ProjectDetailScreen() {
@@ -45,6 +45,11 @@ export default function ProjectDetailScreen() {
   const projectItems = data.project_items.slice().sort(byDeadlineAsc)
   const completedCount = projectItems.filter((t) => t.status_key === 'completed').length
   const openCount = projectItems.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
+  const notCancelled = projectItems.filter((t) => t.status_key !== 'cancelled')
+  const minutesTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
+  const minutesDone = notCancelled
+    .filter((t) => t.status_key === 'completed')
+    .reduce((s, t) => s + (t.estimated || 0), 0)
   const filteredItems = projectItems.filter((t) =>
     todoFilter === 'all' ? true : todoFilter === 'completed' ? t.status_key === 'completed' : (t.status_key !== 'completed' && t.status_key !== 'cancelled'),
   )
@@ -65,6 +70,9 @@ export default function ProjectDetailScreen() {
               <CalendarClock className="h-3.5 w-3.5" /> {data.deadline_human}
             </span>
           )}
+          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+            {formatEstimateRatio(minutesDone, minutesTotal)} done
+          </span>
         </div>
 
         <div className="mt-3 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-sm">
