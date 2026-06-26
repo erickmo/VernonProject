@@ -10,7 +10,7 @@ import { ProgressBar, Avatar, Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatEstimateRatio, progressPct } from '@/lib/format'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
@@ -72,7 +72,9 @@ export default function Project() {
   const totalTasks = p.project_details.reduce((s, w) => s + w.total, 0)
   const doneTasks = p.project_details.reduce((s, w) => s + w.done, 0)
   const overdue = p.project_details.reduce((s, w) => s + w.overdue, 0)
-  const progress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
+  const minutesTotal = p.project_details.reduce((s, w) => s + w.minutes_total, 0)
+  const minutesDone = p.project_details.reduce((s, w) => s + w.minutes_done, 0)
+  const progress = progressPct(minutesDone, minutesTotal, doneTasks, totalTasks)
 
   const doDelete = async () => {
     if (!(await confirm({ title: 'Delete this project?', confirmLabel: 'Delete', destructive: true }))) return
@@ -99,6 +101,7 @@ export default function Project() {
               <span className="text-sm font-semibold">{progress}%</span>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-80">
+              <span className="font-semibold">{formatEstimateRatio(minutesDone, minutesTotal)}</span>
               <span>{doneTasks}/{totalTasks} todos done</span>
               {overdue > 0 && <span className="font-semibold text-rose-600 dark:text-rose-400">{overdue} overdue</span>}
               <span className="inline-flex items-center gap-1">
@@ -302,7 +305,7 @@ export default function Project() {
                                 <div className="mt-2.5 flex items-center gap-2">
                                   <ProgressBar value={w.progress} />
                                   <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                    {w.done}/{w.total}
+                                    {formatEstimateRatio(w.minutes_done, w.minutes_total)} · {w.done}/{w.total}
                                   </span>
                                 </div>
                                 {w.overdue > 0 && (

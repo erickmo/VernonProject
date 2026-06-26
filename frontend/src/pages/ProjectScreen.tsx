@@ -14,7 +14,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatEstimateRatio, progressPct } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
 
 export default function ProjectScreen() {
@@ -60,7 +60,9 @@ export default function ProjectScreen() {
   const totalTasks = data.project_details.reduce((s, w) => s + w.total, 0)
   const doneTasks = data.project_details.reduce((s, w) => s + w.done, 0)
   const overdue = data.project_details.reduce((s, w) => s + w.overdue, 0)
-  const progress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0
+  const minutesTotal = data.project_details.reduce((s, w) => s + w.minutes_total, 0)
+  const minutesDone = data.project_details.reduce((s, w) => s + w.minutes_done, 0)
+  const progress = progressPct(minutesDone, minutesTotal, doneTasks, totalTasks)
 
   // A detail counts as "completed" when it has todos and all are done.
   const isDetailCompleted = (w: typeof data.project_details[number]) => w.total > 0 && w.done === w.total
@@ -82,6 +84,7 @@ export default function ProjectScreen() {
           <span className="text-sm font-semibold">{progress}%</span>
         </div>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-100">
+          <span className="font-semibold text-white">{formatEstimateRatio(minutesDone, minutesTotal)}</span>
           <span>
             {doneTasks}/{totalTasks} todos done
           </span>
@@ -306,7 +309,7 @@ export default function ProjectScreen() {
                 <div className="mt-2.5 flex items-center gap-2">
                   <ProgressBar value={w.progress} />
                   <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {w.done}/{w.total}
+                    {formatEstimateRatio(w.minutes_done, w.minutes_total)} · {w.done}/{w.total}
                   </span>
                 </div>
                 {w.overdue > 0 && (
