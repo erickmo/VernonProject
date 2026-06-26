@@ -39,7 +39,7 @@ const rowKey = (l: { level_id?: string; name?: string }) => l.level_id || l.name
 
 const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), type_name: 'New Type', level_name: 'Standard', difficulty_percent: 100 }]
 
-type TypeGroup = { type_name: string; rows: LevelRow[] }
+type TypeGroup = { type_name: string; rows: LevelRow[]; _groupKey: string }
 
 function groupByType(levels: LevelRow[]): TypeGroup[] {
   const order: string[] = []
@@ -51,7 +51,7 @@ function groupByType(levels: LevelRow[]): TypeGroup[] {
     }
     map[l.type_name].push(l)
   }
-  return order.map((t) => ({ type_name: t, rows: map[t] }))
+  return order.map((t) => ({ type_name: t, rows: map[t], _groupKey: map[t][0]._key }))
 }
 
 export default function GroupFormScreen() {
@@ -349,8 +349,8 @@ export default function GroupFormScreen() {
           </p>
 
           <div className="flex flex-col gap-3">
-            {types.map(({ type_name, rows }) => (
-              <div key={type_name} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+            {types.map(({ type_name, rows, _groupKey }) => (
+              <div key={_groupKey} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                 {/* Type header: editable name + remove-type */}
                 <div className="mb-2 flex items-center gap-2">
                   <input
