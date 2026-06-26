@@ -1912,6 +1912,29 @@ def save_badge_settings(tiers):
 	return {"ok": True}
 
 
+@frappe.whitelist()
+def get_app_settings():
+	return {
+		"max_estimated_minutes": int(
+			frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
+		)
+	}
+
+
+@frappe.whitelist()
+def save_app_settings(max_estimated_minutes):
+	roles = set(frappe.get_roles(frappe.session.user))
+	if not ({"System Manager", "Group Manager"} & roles):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	val = int(max_estimated_minutes)
+	if val < 0:
+		frappe.throw("Max estimated minutes cannot be negative.")
+	settings = frappe.get_single("Vernon Settings")
+	settings.max_estimated_minutes = val
+	settings.save(ignore_permissions=True)
+	return {"max_estimated_minutes": val}
+
+
 # --------------------------------------------------------------------------------
 # Points wallet — balance, transaction log
 # Balance is computed live: sum(Point Ledger credits) - sum(Reward Redemption debits).
@@ -2497,6 +2520,7 @@ def data_health():
 
 	INFLIGHT = ("⚪️ Planned", "🟠 Done", "🔷 Checked By PL")
 	CAP = 200
+	mx = frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
 
 	def pack(rows):
 		return [
@@ -2525,21 +2549,25 @@ def data_health():
 		{"inflight": INFLIGHT},
 	)[0][0]
 
-	# 2. Outlier estimate (> 24h on one task)
-	outliers = frappe.db.sql(
-		"""
-		SELECT name, to_do, `group`, status,
-		       CONCAT('estimated ', ROUND(estimated), ' min') AS detail
-		FROM `tabProject Todo`
-		WHERE status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND estimated > 1440
-		ORDER BY estimated DESC LIMIT %(cap)s
-		""",
-		{"cap": CAP}, as_dict=True,
-	)
-	outliers_n = frappe.db.sql(
-		"SELECT COUNT(*) FROM `tabProject Todo` "
-		"WHERE status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND estimated > 1440"
-	)[0][0]
+	# 2. Outlier estimate (> max_estimated_minutes on one task)
+	if mx and mx > 0:
+		outliers = frappe.db.sql(
+			"""
+			SELECT name, to_do, `group`, status,
+			       CONCAT('estimated ', ROUND(estimated), ' min') AS detail
+			FROM `tabProject Todo`
+			WHERE status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND estimated > %(mx)s
+			ORDER BY estimated DESC LIMIT %(cap)s
+			""",
+			{"mx": mx, "cap": CAP}, as_dict=True,
+		)
+		outliers_n = frappe.db.sql(
+			"SELECT COUNT(*) FROM `tabProject Todo` "
+			"WHERE status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND estimated > %(mx)s",
+			{"mx": mx},
+		)[0][0]
+	else:
+		outliers, outliers_n = [], 0
 
 	# 3. Missing fields (in-flight)
 	missing_rows = frappe.db.sql(

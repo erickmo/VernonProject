@@ -16,3 +16,4 @@ vernon_project.patches.v1_0.nest_type_levels
 vernon_project.patches.v1_0.backfill_todo_start_date
 vernon_project.patches.v1_0.fair_economy_calibration
 vernon_project.patches.v1_0.round_points_to_integer
+vernon_project.patches.v1_0.seed_vernon_settings

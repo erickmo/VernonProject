@@ -17,6 +17,7 @@ class ProjectTodo(Document):
 		self.validate_assigned_to_team_member()
 		self.validate_start_date()
 		self.validate_done_todo_fields()
+		self.validate_estimated_max()
 		self.validate_project_admin_status_update()
 		self.calculate_total_estimated_hours()
 		self.track_phase_changes()
@@ -193,6 +194,13 @@ class ProjectTodo(Document):
 				"Project Admin tidak memiliki izin untuk mengupdate status todo. "
 				"Silakan hubungi Project Owner atau Project Leader.",
 				title="Permission Denied"
+			)
+
+	def validate_estimated_max(self):
+		mx = frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
+		if mx and self.estimated and float(self.estimated) > mx:
+			frappe.throw(
+				f"Estimated minutes ({int(float(self.estimated))}) exceeds the maximum ({int(mx)})."
 			)
 
 	def validate_done_todo_fields(self):
