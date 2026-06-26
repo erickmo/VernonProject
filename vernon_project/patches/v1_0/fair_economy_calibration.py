@@ -23,6 +23,10 @@ TAXONOMY = {
             "Content / Influencer": [("Standard", 80), ("Campaign", 140)],
             "Sales Analysis (CAC)": [("Standard", 100), ("Deep", 160)],
             "Lead Outreach": [("Standard", 70), ("Key Account", 130)],
+            "Prospecting / Lead Gen": [("List-build", 70), ("Qualify", 110)],
+            "Demo / Presentation": [("Standard", 100), ("High-stakes", 160)],
+            "Negotiation / Closing": [("Standard", 130), ("Complex/Enterprise", 200)],
+            "Account Mgmt / Upsell": [("Check-in", 80), ("Upsell/Renewal", 150)],
         },
     },
     "Partnerships": {
