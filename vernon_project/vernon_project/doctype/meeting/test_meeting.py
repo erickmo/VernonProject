@@ -151,3 +151,27 @@ class TestMeetingAward(TestMeetingPoints):
 		m.status = "⚪️ Scheduled"
 		m.save(ignore_permissions=True)
 		self.assertEqual(len(self._ledger_for(m.name)), 0)
+
+
+class TestMeetingPermissions(MeetingTestBase):
+	def test_team_member_can_read_non_member_cannot(self):
+		m = self.make_meeting(participants=["m_user1@example.com"])
+		frappe.set_user("m_user1@example.com")
+		names = frappe.get_list("Meeting", filters={"name": m.name}, pluck="name")
+		self.assertIn(m.name, names)
+		frappe.set_user("Administrator")
+
+		if not frappe.db.exists("User", "outsider2@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "outsider2@example.com",
+				"first_name": "Out2", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		# Give outsider the base read role so query conditions (not role block) do the filtering
+		outsider = frappe.get_doc("User", "outsider2@example.com")
+		if not any(r.role == "Project Team" for r in outsider.roles):
+			outsider.append("roles", {"role": "Project Team"})
+			outsider.save(ignore_permissions=True)
+		frappe.set_user("outsider2@example.com")
+		names = frappe.get_list("Meeting", filters={"name": m.name}, pluck="name")
+		self.assertNotIn(m.name, names)
+		frappe.set_user("Administrator")

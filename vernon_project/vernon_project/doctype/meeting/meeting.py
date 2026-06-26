@@ -121,10 +121,46 @@ class Meeting(Document):
 				recipient=user,
 				type="Points",
 				title="You earned points",
-				body=f"“{self.title}” meeting completed: +{int(self.point or 0)} points.",
+				body=f'"{self.title}" meeting completed: +{int(self.point or 0)} points.',
 				reference_doctype="Meeting",
 				reference_name=self.name,
 				actor=frappe.session.user,
 			)
 		except Exception:
 			frappe.log_error(title="Meeting _notify_award failed")
+
+
+def get_permission_query_conditions(user):
+	if not user or user == "Guest":
+		return ""
+	if "System Manager" in frappe.get_roles(user):
+		return ""
+	user_esc = frappe.db.escape(user)
+	return f"""
+		EXISTS (
+			SELECT 1 FROM `tabProject` p
+			WHERE p.name = `tabMeeting`.project
+				AND (
+					p.project_owner = {user_esc}
+					OR p.project_leader = {user_esc}
+					OR p.project_admin = {user_esc}
+					OR EXISTS (
+						SELECT 1 FROM `tabProject Team` pt
+						WHERE pt.parent = p.name AND pt.user = {user_esc}
+					)
+				)
+		)
+	"""
+
+
+def has_permission(doc, ptype, user):
+	if "System Manager" in frappe.get_roles(user):
+		return True
+	if not doc.project:
+		return False
+	project = frappe.get_doc("Project", doc.project)
+	if user in (project.project_owner, project.project_leader, project.project_admin):
+		return True
+	if any(t.user == user for t in project.team_members):
+		return True
+	return False

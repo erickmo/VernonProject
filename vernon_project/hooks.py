@@ -146,6 +146,7 @@ permission_query_conditions = {
 	"Glossary": "vernon_project.vernon_project.doctype.glossary.glossary.get_permission_query_conditions",
 	"Project Todo": "vernon_project.vernon_project.doctype.project_todo.project_todo.get_permission_query_conditions",
 	"Personal Note": "vernon_project.vernon_project.doctype.personal_note.personal_note.get_permission_query_conditions",
+	"Meeting": "vernon_project.vernon_project.doctype.meeting.meeting.get_permission_query_conditions",
 }
 
 has_permission = {
@@ -154,6 +155,7 @@ has_permission = {
 	"Project Todo": "vernon_project.vernon_project.doctype.project_todo.project_todo.has_permission",
 	"Glossary": "vernon_project.vernon_project.doctype.glossary.glossary.has_permission",
 	"Personal Note": "vernon_project.vernon_project.doctype.personal_note.personal_note.has_permission",
+	"Meeting": "vernon_project.vernon_project.doctype.meeting.meeting.has_permission",
 }
 
 # DocType Class
