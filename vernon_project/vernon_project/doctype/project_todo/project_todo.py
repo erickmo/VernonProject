@@ -71,7 +71,8 @@ class ProjectTodo(Document):
 			base_rate = frappe.db.get_value("Group", self.group, "base_rate_per_minute") or 0
 			minutes = float(self.estimated or 0)
 			pct = float(difficulty_percent or 0)
-			return round(float(base_rate) * minutes * (pct / 100.0), 4)
+			# Points are always whole numbers.
+			return round(float(base_rate) * minutes * (pct / 100.0))
 
 		if self.level_id:
 			row = frappe.db.get_value(
@@ -261,7 +262,8 @@ class ProjectTodo(Document):
 			- late_days * llp * assignee
 			+ early_days * leb * assignee
 		)
-		return round(assignee, 4), round(leader, 4), late_days, early_days
+		# Earned points are always whole numbers.
+		return round(assignee), round(leader), late_days, early_days
 
 	def _upsert_ledger_row(self, role, user, points, late_days, early_days):
 		if not user:

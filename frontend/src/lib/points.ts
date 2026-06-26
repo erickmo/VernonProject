@@ -7,5 +7,6 @@ export function computeTodoPoints(
   const base = Number(baseRatePerMinute) || 0
   const minutes = Number(estimatedMinutes) || 0
   const pct = Number(difficultyPercent) || 0
-  return Math.round(base * minutes * (pct / 100) * 10000) / 10000
+  // Points are always whole numbers.
+  return Math.round(base * minutes * (pct / 100))
 }
