@@ -23,6 +23,7 @@
       "group",
       "level",
       "level_id",
+      "level_type",
       "point",
       "column_break_points",
       "assignee_earned",
@@ -192,6 +193,12 @@
          "no_copy": 1,
          "in_standard_filter": 1,
          "description": "Stable reference to the chosen Group Level row."
+      },
+      {
+         "fieldname": "level_type",
+         "fieldtype": "Data",
+         "label": "Type",
+         "read_only": 1
       },
       {
          "fieldname": "point",
