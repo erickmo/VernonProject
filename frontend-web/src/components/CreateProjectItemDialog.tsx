@@ -35,7 +35,8 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   const [frequency, setFrequency] = useState('Daily')
   const [until, setUntil] = useState('')
   const [group, setGroup] = useState(defaultGroup ?? '')
-  const [level, setLevel] = useState('')
+  const [typeName, setTypeName] = useState('')
+  const [levelId, setLevelId] = useState('')
   const [blockedBy, setBlockedBy] = useState<string[]>([])
   const [blocking, setBlocking] = useState<string[]>([])
 
@@ -43,21 +44,22 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   const { data: groupDoc } = useScoringGroup(group, !!group)
 
   useEffect(() => {
-    setLevel('')
+    setTypeName('')
+    setLevelId('')
   }, [group])
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
-    setGroup(defaultGroup ?? ''); setLevel(''); setBlockedBy([]); setBlocking([])
+    setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
   const close = () => { reset(); onClose() }
 
   const submit = () => {
-    if (!toDo.trim() || !assignedTo || !deadline || !group || !level) {
-      toast('error', 'Name, assignee, deadline, group and type are required')
+    if (!toDo.trim() || !assignedTo || !deadline || !group || !typeName || !levelId) {
+      toast('error', 'Name, assignee, deadline, group, type and level are required')
       return
     }
     const fields: Record<string, unknown> = {
@@ -66,7 +68,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       deadline,
       notes,
       group,
-      level,
+      level_id: levelId,
     }
     if (estimated) fields.estimated = Number(estimated)
     if (leaderDeadline) fields.leader_deadline = leaderDeadline
@@ -180,16 +182,26 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
         <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
           Type<span className="text-red-500"> *</span>
           <SearchableSelect
-            value={level}
-            onChange={setLevel}
-            options={(groupDoc?.levels ?? [])
-              .map((l) => ({ value: l.level_name, label: `${l.level_name} (${l.difficulty_percent}%)` }))}
+            value={typeName}
+            onChange={(t) => { setTypeName(t); setLevelId('') }}
+            options={[...new Set((groupDoc?.levels ?? []).map((l) => l.type_name))].map((t) => ({ value: t, label: t }))}
             placeholder={group ? 'Select a type…' : 'Pick a group first…'}
             disabled={!group}
           />
         </label>
-        {group && level && (() => {
-          const lvl = (groupDoc?.levels ?? []).find((l) => l.level_name === level)
+
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Level<span className="text-red-500"> *</span>
+          <SearchableSelect
+            value={levelId}
+            onChange={setLevelId}
+            options={(groupDoc?.levels ?? []).filter((l) => l.type_name === typeName).map((l) => ({ value: l.level_id!, label: `${l.level_name} (${l.difficulty_percent}%)` }))}
+            placeholder={typeName ? 'Select a level…' : 'Pick a type first…'}
+            disabled={!typeName}
+          />
+        </label>
+        {group && levelId && (() => {
+          const lvl = (groupDoc?.levels ?? []).find((l) => l.level_id === levelId)
           const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
           return (
             <div className="text-sm text-slate-500 dark:text-slate-400">
