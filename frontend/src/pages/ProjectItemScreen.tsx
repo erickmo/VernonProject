@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Ban,
+  CalendarCheck,
   CalendarDays,
   Check,
   Clock,
@@ -33,7 +34,7 @@ import CommentThread from '@/components/CommentThread'
 import FocusOverlay from '@/components/FocusOverlay'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatClock, formatEstimate, stripHtml } from '@/lib/format'
+import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
 import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo } from '@/hooks/useData'
 import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
@@ -649,6 +650,7 @@ export default function ProjectItemScreen() {
   const advanceConfirm = useAdvance()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
+  const setDeadlineToday = useUpdateTodo(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -697,6 +699,20 @@ export default function ProjectItemScreen() {
       toast('error', e?.message || 'Restore failed')
     }
   }
+
+  // Quick action for leads/assignee: pull a slipping deadline forward to today.
+  const onDeadlineToday = () => {
+    if (setDeadlineToday.isPending) return
+    setDeadlineToday.mutate(
+      { deadline: todayISO() },
+      {
+        onSuccess: () => toast('success', 'Deadline set to today'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+  const canSetDeadlineToday =
+    data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
 
   const editBtn =
     data.can_edit && !editing ? (
@@ -856,6 +872,17 @@ export default function ProjectItemScreen() {
               />
             )}
           </div>
+
+          {canSetDeadlineToday && (
+            <button
+              onClick={onDeadlineToday}
+              disabled={setDeadlineToday.isPending}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30 active:bg-brand-50 disabled:opacity-60"
+            >
+              {setDeadlineToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
+              Set deadline to today
+            </button>
+          )}
 
           <button
             onClick={openFocus}

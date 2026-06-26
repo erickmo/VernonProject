@@ -37,6 +37,12 @@ export function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// Local calendar date as YYYY-MM-DD — matches Frappe Date fields + <input type="date">.
+export function todayISO(): string {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
 export function stripHtml(html: string): string {
   if (!html) return ''
   const tmp = document.createElement('div')

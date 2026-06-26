@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Ban,
+  CalendarCheck,
   CalendarDays,
   CalendarRange,
   Check,
@@ -38,7 +39,7 @@ import {
 } from '@/hooks/useData'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatClock, formatEstimate, formatDate, formatNumber, stripHtml } from '@/lib/format'
+import { formatClock, formatEstimate, formatDate, formatNumber, stripHtml, todayISO } from '@/lib/format'
 import { computeTodoPoints } from '@/lib/points'
 import { Avatar, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -696,6 +697,7 @@ export default function ProjectItem() {
   const advanceConfirm = useAdvance()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
+  const setDeadlineToday = useUpdateTodo(todoName)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -748,6 +750,20 @@ export default function ProjectItem() {
       toast('error', e instanceof Error ? e.message : 'Restore failed')
     }
   }
+
+  // Quick action for leads/assignee: pull a slipping deadline forward to today.
+  const onDeadlineToday = () => {
+    if (setDeadlineToday.isPending) return
+    setDeadlineToday.mutate(
+      { deadline: todayISO() },
+      {
+        onSuccess: () => toast('success', 'Deadline set to today'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+  const canSetDeadlineToday =
+    data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
 
   const focusActive = focus.timer?.taskId === data.name
   const openFocus = () => {
@@ -912,6 +928,18 @@ export default function ProjectItem() {
                 <StatTile icon={Clock} label="Today" tone="brand" value={formatEstimate(data.today_allocation)} sub="allocated" />
               )}
             </div>
+
+            {/* Set deadline to today — leads/assignee only, hidden once locked/cancelled */}
+            {canSetDeadlineToday && (
+              <button
+                onClick={onDeadlineToday}
+                disabled={setDeadlineToday.isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30 transition hover:bg-brand-50 disabled:opacity-60"
+              >
+                {setDeadlineToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
+                Set deadline to today
+              </button>
+            )}
 
             {/* Focus button */}
             <button
