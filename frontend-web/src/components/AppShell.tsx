@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
-  Award, Store, Coins, ChevronRight, Search, ShieldAlert,
+  Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
@@ -89,6 +89,7 @@ const SECTION: Record<string, { label: string; to: string }> = {
   'marketplace-admin': { label: 'Marketplace Admin', to: '/marketplace-admin' },
   'grant-points': { label: 'Grant Points', to: '/grant-points' },
   'data-health': { label: 'Data Health', to: '/data-health' },
+  settings: { label: 'Settings', to: '/settings' },
   me: { label: 'Me', to: '/me' },
 }
 
@@ -139,6 +140,7 @@ export function AppShell() {
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', icon: UsersIcon } as NavItem] : []),
     ...(canManageGroups(b) ? [{ to: '/groups', label: 'Groups', icon: Layers } as NavItem] : []),
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', icon: ShieldAlert } as NavItem] : []),
+    ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', icon: SettingsIcon } as NavItem] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', icon: Tag } as NavItem] : []),
     ...(canManageBadges(b) ? [{ to: '/badge-settings', label: 'Badges', icon: Award } as NavItem] : []),
     ...(canManageMarketplace(b) ? [{ to: '/marketplace-admin', label: 'Marketplace Admin', icon: Store } as NavItem] : []),

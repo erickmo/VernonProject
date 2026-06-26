@@ -35,6 +35,7 @@ import GroupForm from '@web/pages/GroupForm'
 import Brands from '@web/pages/Brands'
 import BrandForm from '@web/pages/BrandForm'
 import BadgeSettings from '@web/pages/BadgeSettings'
+import Settings from '@web/pages/Settings'
 import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
 import RewardForm from '@web/pages/RewardForm'
 import GrantPoints from '@web/pages/GrantPoints'
@@ -145,6 +146,9 @@ export default function App() {
           )}
           {canManageBadges(b) && (
             <Route path="/badge-settings" element={<BadgeSettings />} />
+          )}
+          {canManageGroups(b) && (
+            <Route path="/settings" element={<Settings />} />
           )}
           {canManageMarketplace(b) && (
             <>
