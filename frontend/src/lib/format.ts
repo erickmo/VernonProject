@@ -18,6 +18,22 @@ export function formatEstimate(minutes: number): string {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
+// "2h 30m / 8h" — done/total estimate. 0 done renders "0m" (formatEstimate alone gives "—").
+export function formatEstimateRatio(done: number, total: number): string {
+  return `${done ? formatEstimate(done) : '0m'} / ${formatEstimate(total)}`
+}
+
+// Minutes-based progress %, falling back to todo count when nothing is estimated.
+export function progressPct(
+  minutesDone: number,
+  minutesTotal: number,
+  countDone: number,
+  countTotal: number,
+): number {
+  if (minutesTotal > 0) return Math.round((minutesDone / minutesTotal) * 100)
+  return countTotal > 0 ? Math.round((countDone / countTotal) * 100) : 0
+}
+
 // Format a millisecond duration as a clock countdown. Always shows MM:SS, and
 // prepends H: once an hour or more remains (e.g. "1:05:09"). Negative input is
 // treated as its magnitude — the caller adds any "over" sign/label.
