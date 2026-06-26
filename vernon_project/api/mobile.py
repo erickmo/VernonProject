@@ -2584,7 +2584,7 @@ def data_health():
 		       END AS detail
 		FROM `tabProject Todo` t
 		LEFT JOIN `tabGroup Level` gl ON gl.level_id = t.level_id
-		WHERE t.status != '🚫 Cancelled' AND (
+		WHERE t.status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND (
 		      (t.level_id IS NOT NULL AND gl.level_id IS NULL)
 		   OR LOWER(TRIM(t.to_do)) IN ('x','seed','test','testing')
 		   OR CHAR_LENGTH(TRIM(t.to_do)) <= 2
@@ -2597,7 +2597,7 @@ def data_health():
 		"""
 		SELECT COUNT(*) FROM `tabProject Todo` t
 		LEFT JOIN `tabGroup Level` gl ON gl.level_id = t.level_id
-		WHERE t.status != '🚫 Cancelled' AND (
+		WHERE t.status IN ('⚪️ Planned', '🟠 Done', '🔷 Checked By PL') AND (
 		      (t.level_id IS NOT NULL AND gl.level_id IS NULL)
 		   OR LOWER(TRIM(t.to_do)) IN ('x','seed','test','testing')
 		   OR CHAR_LENGTH(TRIM(t.to_do)) <= 2)
