@@ -2922,9 +2922,9 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 			"status": MEETING_SCHEDULED,
 			"participants": [{"user": u} for u in rows if u],
 		})
-		doc.insert()
+		doc.insert(ignore_permissions=True)
 		return {"status": "success", "message": "Meeting created.", "name": doc.name}
-	except frappe.ValidationError as e:
+	except (frappe.ValidationError, ValueError, TypeError) as e:
 		return {"status": "error", "message": str(e)}
 
 
@@ -2949,9 +2949,9 @@ def update_meeting(meeting, title=None, scheduled_at=None, estimated=None,
 			doc.level_id = level_id
 		if notes is not None:
 			doc.notes = notes
-		doc.save()
+		doc.save(ignore_permissions=True)
 		return {"status": "success", "message": "Meeting updated."}
-	except frappe.ValidationError as e:
+	except (frappe.ValidationError, ValueError, TypeError) as e:
 		return {"status": "error", "message": str(e)}
 
 
@@ -2965,9 +2965,9 @@ def set_meeting_participants(meeting, users):
 			return {"status": "error", "message": "A completed meeting cannot be edited."}
 		rows = json.loads(users) if isinstance(users, str) else (users or [])
 		doc.set("participants", [{"user": u} for u in rows if u])
-		doc.save()
+		doc.save(ignore_permissions=True)
 		return {"status": "success", "message": "Participants updated."}
-	except frappe.ValidationError as e:
+	except (frappe.ValidationError, ValueError, TypeError) as e:
 		return {"status": "error", "message": str(e)}
 
 
@@ -3032,6 +3032,12 @@ def reopen_meeting(meeting):
 def meeting_invitable_users(project, txt=""):
 	if not project:
 		return {"users": []}
+	user = frappe.session.user
+	if "System Manager" not in frappe.get_roles(user):
+		owner, leader = frappe.get_value("Project", project, ["project_owner", "project_leader"]) or (None, None)
+		is_team = frappe.db.exists("Project Team", {"parent": project, "parenttype": "Project", "user": user})
+		if user not in (owner, leader) and not is_team:
+			return {"users": []}
 	team = frappe.get_all(
 		"Project Team",
 		filters={"parent": project, "parenttype": "Project"},
