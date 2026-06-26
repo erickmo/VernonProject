@@ -51,15 +51,24 @@ frappe.ui.form.on("Project Todo", {
 	},
 	async group(frm) {
 		await set_level_options(frm);
-		// Clear the type if the previous one no longer belongs to this group.
-		if (frm.doc.level && !(frm._group_levels || {}).hasOwnProperty(frm.doc.level)) {
+		// Clear the chosen level if it no longer belongs to this group.
+		if (frm.doc.level_id && !(frm._level_by_label || {})[label_of_selected(frm)]) {
 			frm.set_value("level", null);
+			frm.set_value("level_id", null);
+			frm.set_value("level_type", null);
 		}
 	},
 
 	level(frm) {
-		// Point is computed server-side from estimated minutes × difficulty %.
-		// Nothing to set here; the value refreshes on save.
+		// `level` holds the combined "Type · Level" label; resolve it to the row.
+		const row = (frm._level_by_label || {})[frm.doc.level];
+		if (row) {
+			frm.set_value("level_id", row.level_id);
+			frm.set_value("level_type", row.type_name);
+		} else {
+			frm.set_value("level_id", null);
+			frm.set_value("level_type", null);
+		}
 	},
 
 	action(frm) {
@@ -99,17 +108,22 @@ frappe.ui.form.on("Project Todo", {
 	},
 });
 
+function label_of_selected(frm) {
+	return frm.doc.level || "";
+}
+
 async function set_level_options(frm) {
-	frm._group_levels = {};
+	frm._level_by_label = {};
 	if (!frm.doc.group) {
 		frm.set_df_property("level", "options", [""]);
 		return;
 	}
 	const grp = await frappe.db.get_doc("Group", frm.doc.group);
-	const names = [""];
+	const labels = [""];
 	(grp.levels || []).forEach((row) => {
-		frm._group_levels[row.level_name] = row.difficulty_percent;
-		names.push(row.level_name);
+		const label = `${row.type_name} · ${row.level_name}`;
+		frm._level_by_label[label] = row;
+		labels.push(label);
 	});
-	frm.set_df_property("level", "options", names);
+	frm.set_df_property("level", "options", labels);
 }
