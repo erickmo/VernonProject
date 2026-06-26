@@ -1932,6 +1932,7 @@ def save_app_settings(max_estimated_minutes):
 	settings = frappe.get_single("Vernon Settings")
 	settings.max_estimated_minutes = val
 	settings.save(ignore_permissions=True)
+	frappe.db.commit()
 	return {"max_estimated_minutes": val}
 
 
