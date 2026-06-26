@@ -62,3 +62,34 @@ class TestMeetingBasics(MeetingTestBase):
 		self.assertEqual(m.status, "⚪️ Scheduled")
 		self.assertEqual(m.point or 0, 0)
 		self.assertEqual(m.organizer, "Administrator")
+
+
+class TestMeetingPoints(MeetingTestBase):
+	def setUp(self):
+		super().setUp()
+		self.group = frappe.get_doc({
+			"doctype": "Group",
+			"group_name": "Meeting Group",
+			"base_rate_per_minute": 2,
+			"levels": [
+				{"type_name": "Sync", "level_name": "Easy", "difficulty_percent": 50},
+			],
+		})
+		self.group.insert(ignore_permissions=True)
+		self.level_id = self.group.levels[0].level_id
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.delete_doc("Group", self.group.name, force=True, ignore_permissions=True)
+		super().tearDown()
+
+	def test_point_is_rate_times_minutes_times_difficulty(self):
+		# 2 /min × 30 min × 50% = 30
+		m = self.make_meeting(group=self.group.name, level_id=self.level_id, estimated=30)
+		self.assertEqual(m.point, 30)
+		self.assertEqual(m.level, "Easy")
+		self.assertEqual(m.level_type, "Sync")
+
+	def test_no_group_zero_point(self):
+		m = self.make_meeting(estimated=30)
+		self.assertEqual(m.point or 0, 0)
