@@ -22,6 +22,7 @@ import ProjectDetail from '@web/pages/ProjectDetail'
 import Review from '@web/pages/Review'
 import Me from '@web/pages/Me'
 import Reports from '@web/pages/Reports'
+import DataHealth from '@web/pages/DataHealth'
 import ReportPage from '@web/pages/ReportPage'
 import Leaderboard from '@web/pages/Leaderboard'
 import Marketplace from '@web/pages/Marketplace'
@@ -113,6 +114,9 @@ export default function App() {
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
+          {canManageGroups(b) && (
+            <Route path="/data-health" element={<DataHealth />} />
+          )}
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/wallet" element={<WalletLog />} />

@@ -465,3 +465,19 @@ export interface BadgeTierInput {
   color: string
   icon: string
 }
+
+export interface DataHealthItem {
+  name: string
+  to_do: string
+  group: string | null
+  status: string
+  detail: string
+}
+
+export interface DataHealth {
+  counts: { unmapped: number; outliers: number; missing: number; orphaned: number; total: number }
+  unmapped: DataHealthItem[]
+  outliers: DataHealthItem[]
+  missing: DataHealthItem[]
+  orphaned: DataHealthItem[]
+}

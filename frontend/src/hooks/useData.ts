@@ -9,6 +9,7 @@ import type {
   Brand,
   Comment,
   Dashboard,
+  DataHealth,
   FormOptions,
   Group,
   ManagedUser,
@@ -823,4 +824,8 @@ export function useMarkAllRead() {
     mutationFn: () => mobileApi.markAllRead(),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
   })
+}
+
+export function useDataHealth() {
+  return useQuery({ queryKey: ['data-health'], queryFn: () => mobileApi.dataHealth() as Promise<DataHealth>, retry: false })
 }
