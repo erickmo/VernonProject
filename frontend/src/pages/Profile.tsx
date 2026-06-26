@@ -180,6 +180,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             {canManageBadges(boot) && (
               <Row icon={Award} label="Manage Badges" hue="violet" onClick={() => navigate('/badge-settings')} />
             )}
+            {canManageGroups(boot) && (
+              <Row icon={Settings} label="Settings" hue="slate" onClick={() => navigate('/settings')} />
+            )}
             {canManageMarketplace(boot) && (
               <Row icon={Settings} label="Manage Marketplace" hue="amber" onClick={() => navigate('/marketplace-admin')} />
             )}

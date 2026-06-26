@@ -211,6 +211,11 @@ export const mobileApi = {
     api.get<{ tiers: import('./types').BadgeTierInput[] }>(M + 'get_badge_settings'),
   saveBadgeSettings: (tiers: import('./types').BadgeTierInput[]) =>
     api.post<{ ok: boolean }>(M + 'save_badge_settings', { tiers: JSON.stringify(tiers) }),
+  getAppSettings: () => api.get<import('./types').AppSettings>(M + 'get_app_settings'),
+  saveAppSettings: (maxEstimatedMinutes: number) =>
+    api.post<import('./types').AppSettings>(M + 'save_app_settings', {
+      max_estimated_minutes: maxEstimatedMinutes,
+    }),
   getNotifications: (limit = 30) =>
     api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit }),
   markNotificationRead: (name: string) =>

@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-query'
 import { mobileApi, resource, renameDoc } from '@/lib/api'
 import type {
+  AppSettings,
   Boot,
   Brand,
   Comment,
@@ -800,6 +801,18 @@ export function useSaveBadgeSettings() {
       qc.invalidateQueries({ queryKey: keys.boot })
       qc.invalidateQueries({ queryKey: ['leaderboard'] })
     },
+  })
+}
+
+export function useAppSettings() {
+  return useQuery({ queryKey: ['app-settings'], queryFn: () => mobileApi.getAppSettings() as Promise<AppSettings> })
+}
+
+export function useSaveAppSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (maxEstimatedMinutes: number) => mobileApi.saveAppSettings(maxEstimatedMinutes),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['app-settings'] }),
   })
 }
 

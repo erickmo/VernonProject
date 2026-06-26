@@ -506,3 +506,7 @@ export interface DataHealth {
   missing: DataHealthItem[]
   orphaned: DataHealthItem[]
 }
+
+export interface AppSettings {
+  max_estimated_minutes: number
+}

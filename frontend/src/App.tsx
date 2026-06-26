@@ -33,6 +33,7 @@ import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
+import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
@@ -123,6 +124,7 @@ export default function App() {
             <Route path="/groups/new" element={<GroupFormScreen />} />
             <Route path="/groups/:name" element={<GroupFormScreen />} />
             <Route path="/data-health" element={<DataHealthScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
           </>
         )}
         {canManageBrands(boot) && (
