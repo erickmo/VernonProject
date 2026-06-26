@@ -107,6 +107,7 @@ export interface ProjectItemDetail extends ProjectItem {
   is_missed: boolean
   group?: string | null
   level?: string | null
+  level_type?: string
   level_id?: string | null
   point?: number
   assignee_earned?: number
@@ -309,6 +310,7 @@ export interface MentionUser {
 export interface GroupLevel {
   name?: string
   level_id?: string
+  type_name: string
   level_name: string
   difficulty_percent: number
   idx?: number
@@ -344,7 +346,7 @@ export interface ScoringGroupPayload {
   leader_late_penalty: number
   leader_early_bonus: number
   base_rate_per_minute: number
-  levels: { name?: string; level_id?: string; level_name: string; difficulty_percent: number }[]
+  levels: { name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number }[]
 }
 
 export interface Brand {
