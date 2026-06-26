@@ -106,11 +106,25 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const { data: groups } = useScoringGroups()
   const { data: groupDoc } = useScoringGroup(group, !!group)
 
+  // Seed typeName from the current level's row; clear on group change.
+  const [typeName, setTypeName] = useState<string>(() => {
+    return data.level_type ?? ''
+  })
+
   useEffect(() => {
     if (group !== (data.group ?? '')) {
       setLevel('')
+      setTypeName('')
     }
   }, [group]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When groupDoc loads, re-seed typeName if not yet set but level_id is known.
+  useEffect(() => {
+    if (!typeName && level && groupDoc) {
+      const row = groupDoc.levels.find((l) => l.level_id === level)
+      if (row) setTypeName(row.type_name)
+    }
+  }, [groupDoc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
@@ -301,14 +315,25 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Type <span className="text-red-500">*</span></label>
       <div className="mb-3">
         <SearchableSelect
+          value={typeName}
+          onChange={(t) => { setTypeName(t); setLevel('') }}
+          options={[...new Set((groupDoc?.levels ?? []).map((l) => l.type_name))].map((t) => ({ value: t, label: t }))}
+          placeholder={group ? 'Select a type…' : 'Pick a group first…'}
+          disabled={!group}
+        />
+      </div>
+
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Level <span className="text-red-500">*</span></label>
+      <div className="mb-3">
+        <SearchableSelect
           value={level}
           onChange={setLevel}
-          options={(groupDoc?.levels ?? []).map((l) => ({
+          options={(groupDoc?.levels ?? []).filter((l) => l.type_name === typeName).map((l) => ({
             value: l.level_id ?? '',
             label: `${l.level_name} (${l.difficulty_percent}%)`,
           }))}
-          placeholder={group ? 'Select a type…' : 'Pick a group first…'}
-          disabled={!group}
+          placeholder={typeName ? 'Select a level…' : 'Pick a type first…'}
+          disabled={!typeName}
         />
         {group && level && (() => {
           const lvl = (groupDoc?.levels ?? []).find((l) => (l.level_id ?? '') === level)
@@ -703,7 +728,7 @@ export default function ProjectItemScreen() {
             deadlineHuman: data.deadline_human || undefined,
             overdue: data.is_overdue,
             estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
-            group: data.group ? [data.group, data.level].filter(Boolean).join(' · ') : undefined,
+            group: data.group ? [data.group, data.level_type && data.level ? `${data.level_type} · ${data.level}` : (data.level_type || data.level)].filter(Boolean).join(' · ') : undefined,
           }}
           displayMs={focus.hasEstimate ? focus.remainingMs : focus.elapsedMs}
           fraction={focus.fraction}
@@ -791,7 +816,10 @@ export default function ProjectItemScreen() {
                 tone="brand"
                 value={data.group}
                 sub={
-                  [data.level, data.point != null ? `${data.point} pts` : '']
+                  [
+                    data.level_type && data.level ? `${data.level_type} · ${data.level}` : (data.level_type || data.level),
+                    data.point != null ? `${data.point} pts` : '',
+                  ]
                     .filter(Boolean)
                     .join(' · ') || undefined
                 }
