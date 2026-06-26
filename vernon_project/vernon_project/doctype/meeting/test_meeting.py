@@ -108,3 +108,46 @@ class TestMeetingTeamGuard(MeetingTestBase):
 	def test_team_member_accepted(self):
 		m = self.make_meeting(participants=["m_user1@example.com"])
 		self.assertEqual(len(m.participants), 1)
+
+
+class TestMeetingAward(TestMeetingPoints):
+	def _ledger_for(self, meeting):
+		return frappe.get_all(
+			"Point Ledger",
+			filters={"meeting": meeting},
+			fields=["user", "points_earned", "role", "source"],
+		)
+
+	def test_done_credits_each_participant_once(self):
+		m = self.make_meeting(
+			group=self.group.name, level_id=self.level_id, estimated=30,
+			participants=["m_user1@example.com", "m_user2@example.com"],
+		)
+		m.status = "✅ Done"
+		m.save(ignore_permissions=True)
+		rows = self._ledger_for(m.name)
+		self.assertEqual(len(rows), 2)
+		self.assertTrue(all(r.points_earned == 30 for r in rows))
+		self.assertTrue(all(r.role == "Participant" and r.source == "Meeting" for r in rows))
+
+	def test_resaving_done_does_not_double_credit(self):
+		m = self.make_meeting(
+			group=self.group.name, level_id=self.level_id, estimated=30,
+			participants=["m_user1@example.com"],
+		)
+		m.status = "✅ Done"
+		m.save(ignore_permissions=True)
+		m.notes = "touch"
+		m.save(ignore_permissions=True)
+		self.assertEqual(len(self._ledger_for(m.name)), 1)
+
+	def test_reopen_removes_ledger(self):
+		m = self.make_meeting(
+			group=self.group.name, level_id=self.level_id, estimated=30,
+			participants=["m_user1@example.com"],
+		)
+		m.status = "✅ Done"
+		m.save(ignore_permissions=True)
+		m.status = "⚪️ Scheduled"
+		m.save(ignore_permissions=True)
+		self.assertEqual(len(self._ledger_for(m.name)), 0)

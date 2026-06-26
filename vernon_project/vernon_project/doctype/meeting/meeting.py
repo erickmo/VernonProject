@@ -67,3 +67,64 @@ class Meeting(Document):
 				self.point = _compute(row.difficulty_percent)
 			return
 		self.point = 0
+
+	DONE = "✅ Done"
+
+	def on_change(self):
+		old = self.get_doc_before_save()
+		prev = old.status if old else None
+		if prev == self.status:
+			return
+		if self.status == self.DONE:
+			self.sync_point_ledger()
+		elif prev == self.DONE:
+			self.remove_ledger()
+
+	def sync_point_ledger(self):
+		"""Credit each participant once. Idempotent on (meeting, user)."""
+		for row in self.participants:
+			self._upsert_ledger_row(row.user)
+			self._notify_award(row.user)
+
+	def _upsert_ledger_row(self, user):
+		if not user:
+			return
+		existing = frappe.db.exists("Point Ledger", {"meeting": self.name, "user": user})
+		values = {
+			"user": user,
+			"role": "Participant",
+			"source": "Meeting",
+			"meeting": self.name,
+			"group": self.group,
+			"project": self.project,
+			"level_name": self.level,
+			"point": self.point,
+			"points_earned": self.point,
+			"credited_on": now_datetime(),
+		}
+		if existing:
+			doc = frappe.get_doc("Point Ledger", existing)
+			doc.update(values)
+			doc.save(ignore_permissions=True)
+		else:
+			frappe.get_doc({"doctype": "Point Ledger", **values}).insert(ignore_permissions=True)
+
+	def remove_ledger(self):
+		for name in frappe.get_all("Point Ledger", filters={"meeting": self.name}, pluck="name"):
+			frappe.delete_doc("Point Ledger", name, ignore_permissions=True, force=True)
+
+	def _notify_award(self, user):
+		"""Best-effort in-app + push notification; never breaks the save."""
+		try:
+			from vernon_project.api.mobile import _notify
+			_notify(
+				recipient=user,
+				type="Points",
+				title="You earned points",
+				body=f"“{self.title}” meeting completed: +{int(self.point or 0)} points.",
+				reference_doctype="Meeting",
+				reference_name=self.name,
+				actor=frappe.session.user,
+			)
+		except Exception:
+			frappe.log_error(title="Meeting _notify_award failed")
