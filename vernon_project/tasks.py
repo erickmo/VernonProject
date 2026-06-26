@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import getdate, nowdate
+from frappe.utils import add_days, getdate, nowdate
 
 
 def create_recurring_todos():
@@ -16,9 +16,9 @@ def create_recurring_todos():
 
     heads = frappe.db.sql(
         """
-        SELECT name, project_detail, to_do, assigned_to, deadline, estimated,
-               notes, recurring_frequency, recurring_until, next_occurrence,
-               original_todo, status
+        SELECT name, project_detail, to_do, assigned_to, start_date, deadline, estimated,
+               notes, `group`, level, level_id, recurring_frequency, recurring_until,
+               next_occurrence, original_todo, status
         FROM `tabProject Todo`
         WHERE is_recurring = 1
           AND recurring_frequency IS NOT NULL
@@ -55,9 +55,19 @@ def create_recurring_todos():
                     "project_detail": h.project_detail,
                     "to_do": h.to_do,
                     "assigned_to": h.assigned_to,
+                    # Shift the start date forward by the same gap, keeping start→deadline span.
+                    "start_date": (
+                        add_days(getdate(h.start_date), (getdate(next_date) - getdate(h.deadline)).days)
+                        if h.start_date and h.deadline
+                        else next_date
+                    ),
                     "deadline": next_date,
                     "estimated": h.estimated,
                     "notes": h.notes,
+                    # group/level are required on Project Todo; mirror create_next_occurrence.
+                    "group": h.group,
+                    "level": h.level,
+                    "level_id": h.level_id,
                     "is_recurring": 1,
                     "recurring_frequency": h.recurring_frequency,
                     "recurring_until": h.recurring_until,

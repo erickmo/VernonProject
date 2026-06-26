@@ -90,6 +90,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const locked = data.fields_locked
   const [toDo, setToDo] = useState(data.to_do)
   const [assignee, setAssignee] = useState(data.assigned_to)
+  const [startDate, setStartDate] = useState(data.start_date ?? '')
   const [deadline, setDeadline] = useState(data.deadline ?? '')
   const [leaderDeadline, setLeaderDeadline] = useState(data.leader_deadline ?? '')
   const [ownerDeadline, setOwnerDeadline] = useState(data.owner_deadline ?? '')
@@ -144,9 +145,18 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       toast('error', 'Deadline is required')
       return
     }
+    if (!locked && !startDate) {
+      toast('error', 'Start date is required')
+      return
+    }
+    if (!locked && startDate && deadline && startDate > deadline) {
+      toast('error', 'Start date cannot be after the deadline')
+      return
+    }
     const fields: Record<string, unknown> = { to_do: toDo }
     if (!locked) {
       fields.assigned_to = assignee
+      fields.start_date = startDate
       fields.deadline = deadline
       fields.estimated = estimated === '' ? 0 : Number(estimated)
     }
@@ -199,6 +209,17 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           onChange={setAssignee}
           options={team.map((m) => ({ value: m.user, label: m.name }))}
           placeholder="Select a team member…"
+        />
+      </div>
+
+      <div className="mb-3">
+        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Start date</label>
+        <input
+          type="date"
+          value={startDate}
+          disabled={locked}
+          onChange={(e) => setStartDate(e.target.value)}
+          className={field}
         />
       </div>
 
@@ -372,7 +393,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       {locked && (
         <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           <Lock className="h-3.5 w-3.5" />
-          Assignee, deadline &amp; estimate are locked once a todo is Done.
+          Assignee, start date, deadline &amp; estimate are locked once a todo is Done.
         </p>
       )}
 
@@ -805,6 +826,12 @@ export default function ProjectItemScreen() {
                 <span className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{data.assigned_to_name}</span>
               </div>
             </div>
+
+            <StatTile
+              icon={CalendarDays}
+              label="Start date"
+              value={data.start_date_human || '—'}
+            />
 
             <StatTile
               icon={CalendarDays}

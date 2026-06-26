@@ -15,6 +15,7 @@ class ProjectTodo(Document):
 		self.snapshot_point_from_level()
 		self.validate_create_permission()
 		self.validate_assigned_to_team_member()
+		self.validate_start_date()
 		self.validate_done_todo_fields()
 		self.validate_project_admin_status_update()
 		self.calculate_total_estimated_hours()
@@ -98,6 +99,11 @@ class ProjectTodo(Document):
 				self.point = _compute(row.difficulty_percent)
 			return
 		self.point = 0
+
+	def validate_start_date(self):
+		"""Start date must be on or before the deadline."""
+		if self.start_date and self.deadline and getdate(self.start_date) > getdate(self.deadline):
+			frappe.throw(_("Start Date cannot be after the Deadline."))
 
 	def validate_assigned_to_team_member(self):
 		if not self.assigned_to or not self.project_detail:
@@ -207,6 +213,7 @@ class ProjectTodo(Document):
 		protected_fields = {
 			"assigned_to": "Assigned To",
 			"estimated": "Estimated (minutes)",
+			"start_date": "Start Date",
 			"deadline": "Deadline"
 		}
 
@@ -589,6 +596,12 @@ class ProjectTodo(Document):
 			"project_detail": self.project_detail,
 			"to_do": self.to_do,
 			"assigned_to": self.assigned_to,
+			# Shift the start date forward by the same gap, keeping start→deadline span.
+			"start_date": (
+				add_days(getdate(self.start_date), (getdate(next_date) - getdate(self.deadline)).days)
+				if self.start_date and self.deadline
+				else next_date
+			),
 			"deadline": next_date,
 			"estimated": self.estimated,
 			"notes": self.notes,

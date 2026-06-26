@@ -12,6 +12,7 @@
       "ongoing",
       "to_do",
       "assigned_to",
+      "start_date",
       "deadline",
       "leader_deadline",
       "owner_deadline",
@@ -111,6 +112,15 @@
          "label": "Assigned To",
          "options": "User",
          "reqd": 1
+      },
+      {
+         "columns": 1,
+         "fieldname": "start_date",
+         "fieldtype": "Date",
+         "in_list_view": 1,
+         "label": "Start Date",
+         "reqd": 1,
+         "description": "When work on this task begins. Must be on or before the deadline."
       },
       {
          "columns": 1,

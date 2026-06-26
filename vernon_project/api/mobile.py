@@ -357,7 +357,7 @@ def _fetch_todos(project_names, include_cancelled=False):
 	return frappe.db.sql(
 		f"""
 		SELECT
-			t.name, t.to_do, t.status, t.deadline, t.leader_deadline, t.owner_deadline,
+			t.name, t.to_do, t.status, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.ongoing, t.notes, t.is_recurring,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
@@ -477,6 +477,8 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"status_key": skey,
 		"next_status_label": NEXT_LABEL.get(skey),
 		"can_advance": can_advance,
+		"start_date": str(row["start_date"]) if row.get("start_date") else None,
+		"start_date_human": _humanize_date(row.get("start_date")),
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
 		"deadline_human": _humanize_date(row["deadline"]),
 		"is_overdue": overdue,
@@ -1306,6 +1308,7 @@ def get_project_item(project_item):
 def update_todo(
 	project_item,
 	to_do=None,
+	start_date=None,
 	deadline=None,
 	leader_deadline=None,
 	owner_deadline=None,
@@ -1348,6 +1351,8 @@ def update_todo(
 
 		if to_do is not None and to_do.strip():
 			row.to_do = to_do.strip()
+		if start_date is not None:
+			row.start_date = start_date
 		if deadline is not None:
 			row.deadline = deadline
 		# Optional phase deadlines: empty string clears them.

@@ -50,6 +50,8 @@ export interface ProjectItem {
   status_key: StatusKey
   next_status_label: string | null
   can_advance: boolean
+  start_date: string | null
+  start_date_human: string | null
   deadline: string | null
   deadline_human: string | null
   is_overdue: boolean
@@ -120,6 +122,7 @@ export interface ProjectItemDetail extends ProjectItem {
 
 export interface ProjectItemEdit {
   to_do?: string
+  start_date?: string | null
   deadline?: string | null
   estimated?: number
   assigned_to?: string

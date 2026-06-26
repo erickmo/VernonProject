@@ -24,6 +24,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
 
   const [toDo, setToDo] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [deadline, setDeadline] = useState('')
   const [leaderDeadline, setLeaderDeadline] = useState('')
   const [ownerDeadline, setOwnerDeadline] = useState('')
@@ -49,7 +50,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   }, [group])
 
   const reset = () => {
-    setToDo(''); setAssignedTo(''); setDeadline(''); setEstimated('')
+    setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
     setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
@@ -58,13 +59,18 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   const close = () => { reset(); onClose() }
 
   const submit = () => {
-    if (!toDo.trim() || !assignedTo || !deadline || !group || !typeName || !levelId) {
-      toast('error', 'Name, assignee, deadline, group, type and level are required')
+    if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !typeName || !levelId) {
+      toast('error', 'Name, assignee, start date, deadline, group, type and level are required')
+      return
+    }
+    if (startDate > deadline) {
+      toast('error', 'Start date cannot be after the deadline')
       return
     }
     const fields: Record<string, unknown> = {
       to_do: toDo.trim(),
       assigned_to: assignedTo,
+      start_date: startDate,
       deadline,
       notes,
       group,
@@ -134,6 +140,11 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
             options={team.map((m) => ({ value: m.user, label: m.name }))}
             placeholder="Select a team member…"
           />
+        </label>
+
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          Start date<span className="text-red-500"> *</span>
+          <input type="date" className={field + ' mt-1'} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </label>
 
         <div className="grid grid-cols-2 gap-3">
