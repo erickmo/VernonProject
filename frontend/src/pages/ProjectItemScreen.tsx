@@ -35,7 +35,7 @@ import FocusOverlay from '@/components/FocusOverlay'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo, useDeleteTodo } from '@/hooks/useData'
 import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -671,6 +671,7 @@ export default function ProjectItemScreen() {
   const advanceConfirm = useAdvance()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
+  const deleteTodo = useDeleteTodo()
   const setDeadlineToday = useUpdateTodo(id)
   const confirm = useConfirm()
   const toast = useToast()
@@ -718,6 +719,23 @@ export default function ProjectItemScreen() {
       toast(res.status === 'ok' ? 'success' : 'info', res.message)
     } catch (e: any) {
       toast('error', e?.message || 'Restore failed')
+    }
+  }
+
+  const onDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete this task?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    })
+    if (!ok) return
+    try {
+      const res = await deleteTodo.mutateAsync(data.name)
+      toast(res.status === 'ok' ? 'success' : 'info', res.message ?? '')
+      if (res.status === 'ok') navigate(-1)
+    } catch (e: any) {
+      toast('error', e?.message || 'Delete failed')
     }
   }
 
@@ -1045,6 +1063,17 @@ export default function ProjectItemScreen() {
               )
             )}
           </>
+        )}
+
+        {data.can_delete && (
+          <button
+            onClick={onDelete}
+            disabled={deleteTodo.isPending}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-700 ring-1 ring-rose-300 dark:ring-rose-500/40 active:bg-rose-50 disabled:opacity-60"
+          >
+            {deleteTodo.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+            Delete task
+          </button>
         )}
       </div>
 
