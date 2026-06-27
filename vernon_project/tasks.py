@@ -1,6 +1,8 @@
 # Copyright (c) 2026, Vernon and contributors
 # For license information, please see license.txt
 
+from datetime import date
+
 import frappe
 from frappe.utils import add_days, getdate, nowdate
 
@@ -88,3 +90,79 @@ def create_recurring_todos():
         frappe.logger().info(f"Created {created_count} recurring todos")
 
     return created_count
+
+
+def _due_message(to_do, deadline, today):
+    """Pure (no DB): the (title, body) for a due/overdue Planned todo, or None
+    when the deadline is still in the future. `deadline`/`today` accept a date or
+    an ISO 'YYYY-MM-DD' string. Kept frappe-free so the date logic is unit-testable
+    without a site (see test_tasks.py)."""
+    if not deadline:
+        return None
+    d = deadline if isinstance(deadline, date) else date.fromisoformat(str(deadline)[:10])
+    t = today if isinstance(today, date) else date.fromisoformat(str(today)[:10])
+    if d > t:
+        return None
+    label = (str(to_do).strip() if to_do else "") or "Your task"
+    if d < t:
+        return ("Task overdue", f'"{label}" was due {d.strftime("%-d %b %Y")}.')
+    return ("Task due today", f'"{label}" is due today.')
+
+
+def notify_due_todos():
+    """Daily: nudge assignees about Planned todos due today or overdue.
+
+    Mirrors the Today dashboard's overdue/due_today buckets (assigned, still
+    Planned) and reuses _notify (in-app Vernon Notification + Web Push). Idempotent
+    per calendar day: a todo already nudged today is skipped, so a manual re-run or
+    a second scheduler tick never double-sends.
+    """
+    from vernon_project.api.mobile import _notify
+
+    today = nowdate()
+    # ponytail: status LIKE '%Planned' sidesteps the emoji/variation-selector in
+    # the canonical '⚪️ Planned' value; no other status ends in "Planned".
+    rows = frappe.db.sql(
+        """
+        SELECT name, to_do, assigned_to, deadline
+        FROM `tabProject Todo`
+        WHERE status LIKE %(planned)s
+          AND assigned_to IS NOT NULL AND assigned_to != ''
+          AND deadline IS NOT NULL
+          AND deadline <= %(today)s
+        """,
+        {"planned": "%Planned", "today": today},
+        as_dict=True,
+    )
+
+    sent = 0
+    for r in rows:
+        msg = _due_message(r.to_do, r.deadline, today)
+        if not msg:
+            continue
+        # Idempotent: at most one deadline nudge per todo per calendar day.
+        if frappe.db.exists(
+            "Vernon Notification",
+            {
+                "recipient": r.assigned_to,
+                "reference_doctype": "Project Todo",
+                "reference_name": r.name,
+                "type": "Deadline",
+                "creation": [">=", today],
+            },
+        ):
+            continue
+        title, body = msg
+        _notify(
+            recipient=r.assigned_to,
+            type="Deadline",
+            title=title,
+            body=body,
+            reference_doctype="Project Todo",
+            reference_name=r.name,
+        )
+        sent += 1
+
+    if sent:
+        frappe.logger().info(f"Sent {sent} deadline notifications")
+    return sent
