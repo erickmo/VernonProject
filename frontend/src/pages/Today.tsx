@@ -30,6 +30,7 @@ import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { NotificationBell } from '@/components/NotificationBell'
 import { NotesButton } from '@/components/NotesButton'
+import { RecapCard } from '@/components/RecapCard'
 import { PlanDaySheet } from '@/components/PlanDaySheet'
 import { Fab } from '@/components/Fab'
 import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
@@ -369,6 +370,9 @@ export default function Today() {
                   </button>
                 )
               })()}
+
+              {/* Weekly recap — auto-surfaces Mon–Wed, dismissible per week */}
+              <RecapCard />
 
               {/* Lens switcher */}
               <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4">
