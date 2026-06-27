@@ -17,11 +17,9 @@ class TestMeetingApi(unittest.TestCase):
 				}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group", "project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Meeting API Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [
