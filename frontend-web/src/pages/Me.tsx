@@ -1,10 +1,13 @@
-import { useState } from 'react'
-import { LogOut, KeyRound, Smartphone, Sparkles } from 'lucide-react'
-import { useBoot } from '@/hooks/useData'
+import { useEffect, useState } from 'react'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2 } from 'lucide-react'
+import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
+import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 
 export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
@@ -28,6 +31,15 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
             <div className="min-w-0">
               <div className="text-xl font-semibold">{b?.full_name}</div>
               <div className="text-sm text-slate-500 dark:text-slate-400">{b?.user}</div>
+              {b?.badge && (
+                <span
+                  className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+                  style={b.badge.color ? { backgroundColor: `${b.badge.color}22`, color: b.badge.color } : undefined}
+                >
+                  {b.badge.icon && <span>{b.badge.icon}</span>}
+                  {b.badge.tier_name}
+                </span>
+              )}
               <div className="flex flex-wrap gap-1 mt-3">
                 {(b?.roles ?? []).map((r) => (
                   <span
@@ -77,9 +89,99 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
             </button>
           </div>
         </BentoTile>
+
+        <PasskeyTile />
       </BentoGrid>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
     </div>
   )
+}
+
+function PasskeyTile() {
+  const [available, setAvailable] = useState(false)
+  const { data, isLoading } = usePasskeys()
+  const enroll = useEnrollPasskey()
+  const revoke = useRevokePasskey()
+  const toast = useToast()
+  const confirm = useConfirm()
+
+  useEffect(() => {
+    platformAuthenticatorAvailable().then(setAvailable)
+  }, [])
+
+  if (!available) return null
+
+  const list = data?.passkeys ?? []
+
+  const add = async () => {
+    try {
+      await enroll.mutateAsync(defaultDeviceLabel())
+      toast('success', 'Fingerprint sign-in enabled')
+    } catch (e) {
+      if (!isPasskeyCancel(e)) toast('error', 'Passkey — ' + describePasskeyError(e))
+    }
+  }
+
+  const remove = async (name: string, label: string | null) => {
+    const ok = await confirm({
+      title: 'Remove passkey',
+      message: `Remove “${label || 'this device'}”? You'll need your password to sign in there again.`,
+      confirmLabel: 'Remove',
+      destructive: true,
+    })
+    if (!ok) return
+    try {
+      await revoke.mutateAsync(name)
+      toast('success', 'Passkey removed')
+    } catch {
+      toast('error', 'Could not remove passkey')
+    }
+  }
+
+  return (
+    <BentoTile span="md" tone="tint" accent="sky" title="Fingerprint sign-in">
+      <div className="mt-1 space-y-2">
+        {list.map((pk) => (
+          <div key={pk.name} className="flex items-center gap-3">
+            <Fingerprint className="w-4 h-4 shrink-0 text-brand-600" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{pk.label || 'This device'}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {pk.last_used ? `Last used ${fmtDate(pk.last_used)}` : `Added ${fmtDate(pk.creation)}`}
+              </div>
+            </div>
+            <button
+              onClick={() => remove(pk.name, pk.label)}
+              disabled={revoke.isPending}
+              className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/10"
+              aria-label="Remove passkey"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+        {!isLoading && list.length === 0 && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Use Touch ID / fingerprint to sign in on this device — no password needed.
+          </p>
+        )}
+        <button
+          onClick={add}
+          disabled={enroll.isPending}
+          className="mt-1 inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-slate-100/60 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800/60"
+        >
+          {enroll.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+          {list.length > 0 ? 'Add this device' : 'Set up fingerprint sign-in'}
+        </button>
+      </div>
+    </BentoTile>
+  )
+}
+
+function fmtDate(s: string): string {
+  const d = new Date(s.replace(' ', 'T'))
+  return isNaN(d.getTime())
+    ? s
+    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }

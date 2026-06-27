@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useProjects, useMeetings, useMarkMeetingDone, useReopenMeeting } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { formatDate } from '@/lib/format'
 import { useToast } from '@/components/Toast'
 import { CreateMeetingDialog } from '../components/CreateMeetingDialog'
 
@@ -52,6 +53,9 @@ export function Meetings() {
             <div>
               <div className="font-semibold text-slate-900 dark:text-slate-50">{m.title}</div>
               <div className="text-xs text-slate-500">
+                {m.scheduled_at && (
+                  <>{formatDate(m.scheduled_at)}{m.scheduled_at.length > 10 ? ` ${m.scheduled_at.slice(11, 16)}` : ''} · </>
+                )}
                 {m.participants.length} invited · {Math.round(m.point)} pts each · {m.status}
               </div>
             </div>
