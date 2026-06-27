@@ -11,6 +11,12 @@ import { useEffect, useRef } from 'react'
  */
 export function useModalA11y(open: boolean, onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null)
+  // Keep the latest onClose without making it an effect dependency. Callers pass
+  // an inline handler (new identity every render); if the effect depended on it,
+  // it would tear down and re-run on EVERY keystroke inside the panel — a
+  // querySelectorAll + listener churn + focus() steal per character.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return
@@ -33,7 +39,7 @@ export function useModalA11y(open: boolean, onClose: () => void) {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') return
@@ -63,7 +69,7 @@ export function useModalA11y(open: boolean, onClose: () => void) {
       document.body.style.overflow = prevOverflow
       restoreTo?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   return ref
 }
