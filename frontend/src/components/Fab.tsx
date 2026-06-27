@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
+import { useFocusTimer } from '@/hooks/useFocusTimer'
 
 // One-time hint persists across sessions once dismissed (or after first use).
 const TIP_KEY = 'vernon.fabTipDismissed'
@@ -11,6 +12,9 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
   const longFired = useRef(false)
   const armed = useRef(false) // true only between pointerdown and its resolution
   const [showTip, setShowTip] = useState(false)
+  // Lift above the focus mini-bar (z-40, ~+4.25rem) when a timer is running so
+  // the two don't overlap in the bottom-right corner.
+  const focusing = useFocusTimer().timer != null
 
   useEffect(() => {
     try {
@@ -86,7 +90,7 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
         onPointerCancel={onCancel}
         onContextMenu={(e) => e.preventDefault()}
         style={{ touchAction: 'manipulation' }}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-30 flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card animate-float transition active:scale-90"
+        className={`fixed ${focusing ? 'bottom-[calc(env(safe-area-inset-bottom)+8.5rem)]' : 'bottom-[calc(env(safe-area-inset-bottom)+5rem)]'} right-4 z-30 flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card animate-float transition-all active:scale-90`}
       >
         <Plus className="h-7 w-7" strokeWidth={2.4} />
       </button>
