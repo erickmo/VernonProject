@@ -3086,3 +3086,167 @@ def meeting_invitable_users(project, txt=""):
 		as_dict=True,
 	)
 	return {"users": rows}
+
+
+# --------------------------------------------------------------------------------
+# Kudos / reactions — react to a teammate's completed work in a team activity feed.
+# One reaction per (todo, user); enforced app-level (toggle/replace). Social only:
+# no points awarded. Cannot react to a todo assigned to yourself.
+# --------------------------------------------------------------------------------
+
+REACTION_LABELS = {"clap": "Clap", "celebrate": "Celebrate", "fire": "Fire", "heart": "Heart"}
+
+
+def _reaction_counts(todo, me=None):
+	"""Per-reaction counts for one todo, plus the caller's own reaction (or None)."""
+	rows = frappe.get_all(
+		"Todo Reaction",
+		filters={"todo": todo},
+		fields=["user", "reaction"],
+		limit_page_length=0,
+	)
+	counts = {"clap": 0, "celebrate": 0, "fire": 0, "heart": 0}
+	mine = None
+	for r in rows:
+		if r["reaction"] in counts:
+			counts[r["reaction"]] += 1
+		if me and r["user"] == me:
+			mine = r["reaction"]
+	return counts, mine
+
+
+@frappe.whitelist()
+def get_team_activity(days=14, limit=50):
+	"""Recent Completed todos in the caller's projects, newest first, each with a
+	reaction-count summary, the caller's own reaction, and a few recent reactor
+	names. Drives the /activity feed."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	days = frappe.utils.cint(days) or 14
+	limit = frappe.utils.cint(limit) or 50
+	cutoff = add_days(getdate(nowdate()), -days)
+
+	projects = _visible_projects()
+	rows = _fetch_todos(projects)
+	done = [
+		r
+		for r in rows
+		if _status_key(r["status"]) == "completed"
+		and r["completed_at"]
+		and getdate(r["completed_at"]) >= cutoff
+	]
+	done.sort(key=lambda r: str(r["completed_at"]), reverse=True)
+	done = done[:limit]
+	if not done:
+		return {"items": []}
+
+	names = [r["name"] for r in done]
+	reaction_rows = frappe.get_all(
+		"Todo Reaction",
+		filters={"todo": ["in", names]},
+		fields=["todo", "user", "reaction"],
+		limit_page_length=0,
+	)
+	by_todo = {}
+	for rr in reaction_rows:
+		by_todo.setdefault(rr["todo"], []).append(rr)
+
+	emails = {r["assigned_to"] for r in done if r.get("assigned_to")}
+	emails |= {rr["user"] for rr in reaction_rows}
+	name_map = _user_name_map(emails)
+
+	items = []
+	for r in done:
+		counts = {"clap": 0, "celebrate": 0, "fire": 0, "heart": 0}
+		my_reaction = None
+		reactors = []
+		for rr in by_todo.get(r["name"], []):
+			if rr["reaction"] in counts:
+				counts[rr["reaction"]] += 1
+			if rr["user"] == user:
+				my_reaction = rr["reaction"]
+			reactors.append((name_map.get(rr["user"]) or {}).get("full_name") or rr["user"])
+		assignee = name_map.get(r["assigned_to"], {})
+		items.append({
+			"name": r["name"],
+			"to_do": r["to_do"],
+			"project": r["project"],
+			"project_name": r["project_name"],
+			"assigned_to": r["assigned_to"],
+			"assigned_to_name": assignee.get("full_name") or r["assigned_to"],
+			"assigned_to_image": assignee.get("user_image"),
+			"completed_at": str(r["completed_at"]),
+			"completed_at_human": _humanize_datetime(r["completed_at"]),
+			"point": float(r["point"] or 0),
+			"reactions": counts,
+			"my_reaction": my_reaction,
+			"reactors": reactors[:3],
+			"total": sum(counts.values()),
+			"is_mine": r["assigned_to"] == user,
+		})
+	return {"items": items}
+
+
+@frappe.whitelist()
+def toggle_reaction(todo, reaction):
+	"""Upsert/remove the caller's reaction on a todo. Same reaction again removes
+	it; a different reaction replaces it; the first reaction notifies the assignee.
+	Forbidden on a todo assigned to yourself."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	if reaction not in REACTION_LABELS:
+		frappe.throw("Unknown reaction")
+
+	assignee, project_detail = frappe.db.get_value(
+		"Project Todo", todo, ["assigned_to", "project_detail"]
+	) or (None, None)
+	if not project_detail:
+		frappe.throw("Todo not found")
+	project = frappe.db.get_value("Project Detail", project_detail, "project")
+	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+	if assignee == user:
+		frappe.throw("You can't react to your own work")
+
+	# ponytail: app-level (todo,user) uniqueness via read-then-write; a rapid
+	# double-tap before commit could insert two rows. Acceptable for a social
+	# counter — add a DB unique index on (todo,user) if it ever matters.
+	existing = frappe.get_all(
+		"Todo Reaction",
+		filters={"todo": todo, "user": user},
+		fields=["name", "reaction"],
+		limit_page_length=1,
+	)
+	notify = False
+	if existing:
+		e = existing[0]
+		if e["reaction"] == reaction:
+			frappe.delete_doc("Todo Reaction", e["name"], ignore_permissions=True, force=True)
+		else:
+			frappe.db.set_value("Todo Reaction", e["name"], "reaction", reaction)
+	else:
+		frappe.get_doc({
+			"doctype": "Todo Reaction",
+			"todo": todo,
+			"user": user,
+			"reaction": reaction,
+		}).insert(ignore_permissions=True)
+		notify = True
+	frappe.db.commit()
+
+	if notify:
+		actor_name = frappe.db.get_value("User", user, "full_name") or user
+		_notify(
+			assignee,
+			"Kudos",
+			f"{actor_name} cheered your work",
+			REACTION_LABELS[reaction],
+			"Project Todo",
+			todo,
+			actor=user,
+		)
+
+	counts, mine = _reaction_counts(todo, user)
+	return {"reactions": counts, "my_reaction": mine, "total": sum(counts.values())}
