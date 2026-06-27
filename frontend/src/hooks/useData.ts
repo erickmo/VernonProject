@@ -707,6 +707,28 @@ export const useWallet = () =>
 export const useWalletLog = () =>
   useQuery({ queryKey: keys.walletLog, queryFn: () => mobileApi.getWalletLog() as Promise<WalletLogEntry[]> })
 
+export interface WeeklyRecap {
+  week_offset: number
+  week_label: string
+  week_start: string
+  week_end: string
+  completed: number
+  minutes: number
+  points: number
+  best_day: { label: string; count: number } | null
+  streak: number
+  top_project: { name: string; count: number } | null
+  kudos_received: number
+}
+
+// Read-only weekly summary. weekOffset 0 = current week, -1 = last week.
+export const useWeeklyRecap = (weekOffset = 0) =>
+  useQuery({
+    queryKey: ['weekly-recap', weekOffset] as const,
+    queryFn: () => mobileApi.getWeeklyRecap(weekOffset) as Promise<WeeklyRecap>,
+    staleTime: 1000 * 60 * 5,
+  })
+
 export function useGiftRecipients() {
   return useQuery({
     queryKey: keys.giftRecipients,

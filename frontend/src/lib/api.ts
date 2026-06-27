@@ -190,6 +190,7 @@ export const mobileApi = {
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
   getWallet: () => api.get(M + 'get_wallet'),
   getWalletLog: () => api.get(M + 'get_wallet_log'),
+  getWeeklyRecap: (weekOffset = 0) => api.get(M + 'get_weekly_recap', { week_offset: weekOffset }),
   getLeaderboard: (period: string, brand?: string | null) =>
     api.get(M + 'get_leaderboard', { period, ...(brand ? { brand } : {}) }),
   getMarketplace: () => api.get(M + 'get_marketplace'),
