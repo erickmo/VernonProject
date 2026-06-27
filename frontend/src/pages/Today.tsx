@@ -30,6 +30,7 @@ import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { NotificationBell } from '@/components/NotificationBell'
 import { NotesButton } from '@/components/NotesButton'
+import { PlanDaySheet } from '@/components/PlanDaySheet'
 import { Fab } from '@/components/Fab'
 import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
@@ -117,6 +118,7 @@ export default function Today() {
   const [lens, setLens] = useState<Lens>('me')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
+  const [planOpen, setPlanOpen] = useState(false)
   const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null)
   // Which deadline bucket to show: today / overdue / upcoming.
   const [group, setGroup] = useState<'today' | 'overdue' | 'upcoming'>('today')
@@ -195,6 +197,16 @@ export default function Today() {
     return [...byId.values()].sort(byEstimatedAsc)
   })()
   const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
+
+  // Plan-my-day candidates: everything due today + overdue, plus anything already
+  // allocated to today (even if its deadline is future) so re-planning is complete.
+  const planCandidates = useMemo(() => {
+    if (!data) return []
+    const byId = new Map<string, ProjectItem>()
+    for (const t of [...data.due_today, ...data.overdue]) byId.set(t.name, t)
+    for (const t of data.upcoming) if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
+    return [...byId.values()]
+  }, [data])
 
   const right = boot ? (
     <div className="flex items-center gap-1">
@@ -401,6 +413,23 @@ export default function Today() {
                       />
                     </div>
                   </div>
+                  <button
+                    onClick={() => setPlanOpen(true)}
+                    className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3.5 text-left transition active:scale-[0.99] dark:border-brand-500/30 dark:bg-brand-500/15"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
+                      <Sparkles className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-brand-800 dark:text-brand-300">Plan my day</span>
+                      <span className="block text-xs text-brand-600/80 dark:text-brand-300/70">
+                        {plannedTodayMin > 0
+                          ? `${formatEstimate(plannedTodayMin)} planned for today`
+                          : "Allocate minutes to today's tasks"}
+                      </span>
+                    </span>
+                    <ChevronRight className="h-5 w-5 text-brand-400" />
+                  </button>
                   {(() => {
                     const groups: { key: GroupKey; label: string; todos: ProjectItem[] }[] = [
                       { key: 'today', label: 'Today', todos: todayTodos },
@@ -507,6 +536,8 @@ export default function Today() {
         onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
         onClear={() => setFilters((f) => ({ status: f.status || '' }))}
       />
+
+      {planOpen && <PlanDaySheet todos={planCandidates} onClose={() => setPlanOpen(false)} />}
 
       <Fab onTap={() => setQuickAdd('task')} onLongPress={() => setQuickAdd('note')} />
       <QuickAddSheet open={quickAdd !== null} mode={quickAdd ?? 'task'} onClose={() => setQuickAdd(null)} />
