@@ -5,7 +5,8 @@ import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { RichEditor } from '@/components/RichEditor'
-import { Dialog } from '@web/components/overlays/Dialog'
+import { Drawer } from '@web/components/overlays/Drawer'
+import { Button } from '@web/components/ui'
 
 interface Props {
   open: boolean
@@ -61,27 +62,21 @@ export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
   }
 
   return (
-    <Dialog
+    <Drawer
       open={open}
       onClose={close}
       title="New detail"
-      widthClass="max-w-2xl"
+      widthClass="max-w-lg"
+      onSubmit={submit}
       footer={
         <>
-          <button
-            onClick={close}
-            className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
+          <Button variant="ghost" onClick={close}>
             Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={create.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold disabled:opacity-60"
-          >
+          </Button>
+          <Button variant="primary" type="submit" disabled={create.isPending}>
             {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             Create detail
-          </button>
+          </Button>
         </>
       }
     >
@@ -156,6 +151,6 @@ export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
           </label>
         </div>
       </div>
-    </Dialog>
+    </Drawer>
   )
 }

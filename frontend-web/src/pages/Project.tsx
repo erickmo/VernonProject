@@ -7,6 +7,8 @@ import {
 import { useProject, useProjectDetail, useProjectGantt, permFlags, useBoot, useDeleteProject } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Avatar, Spinner, EmptyState } from '@/components/ui'
+import { Button } from '@web/components/ui'
+import { useSetCrumbs } from '@web/lib/crumbs'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -42,6 +44,9 @@ export default function Project() {
   // Quick-add targets a single detail; load it so the create form can offer
   // the Blocked-by / Blocking pickers (siblings) like the detail-page add does.
   const itemDetail = useProjectDetail(createItemFor ?? '')
+
+  // Hook must run every render, so call it before the loading/error early returns.
+  useSetCrumbs(project.data ? [{ label: 'Projects', to: '/projects' }, { label: project.data.project_name }] : [])
 
   if (project.isLoading) {
     return (
@@ -113,24 +118,22 @@ export default function Project() {
               </span>
             </div>
             {(perms.can_edit || perms.can_delete) && (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 {perms.can_edit && (
-                  <button
-                    onClick={() => setEditOpen(true)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-sky-600/20 dark:bg-sky-400/20 py-2 text-sm font-semibold hover:bg-sky-600/30 dark:hover:bg-sky-400/30 transition"
-                  >
+                  <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
                     <Pencil className="h-4 w-4" /> Edit
-                  </button>
+                  </Button>
                 )}
                 {perms.can_delete && (
-                  <button
+                  <Button
+                    variant="danger"
+                    size="sm"
                     disabled={p.project_details.length > 0}
                     title={p.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
                     onClick={doDelete}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-sky-600/20 dark:bg-sky-400/20 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     <Trash2 className="h-4 w-4" /> Delete
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

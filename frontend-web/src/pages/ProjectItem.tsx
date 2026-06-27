@@ -43,6 +43,7 @@ import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, formatDate, formatNumber, stripHtml, todayISO } from '@/lib/format'
 import { computeTodoPoints } from '@/lib/points'
 import { Avatar, Spinner } from '@/components/ui'
+import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -348,20 +349,13 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
           </p>
         )}
       </div>
-      <div className="mt-3 flex gap-2">
-        <button
-          onClick={addRow}
-          className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-        >
+      <div className="mt-3 flex items-center gap-2">
+        <Button variant="secondary" onClick={addRow}>
           <Plus className="h-4 w-4" /> Add day
-        </button>
-        <button
-          onClick={onSave}
-          disabled={save.isPending}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-        >
+        </Button>
+        <Button variant="primary" onClick={onSave} disabled={save.isPending}>
           {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save split
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -690,20 +684,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </p>
       )}
 
-      <div className="flex gap-2">
-        <button
-          onClick={onClose}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-        >
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>
           <X className="h-4 w-4" /> Cancel
-        </button>
-        <button
-          onClick={save}
-          disabled={update.isPending || !toDo.trim()}
-          className="flex flex-[2] items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-        >
+        </Button>
+        <Button variant="primary" onClick={save} disabled={update.isPending || !toDo.trim()}>
           {update.isPending ? <Spinner className="h-4 w-4" /> : <><Save className="h-4 w-4" /> Save changes</>}
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -844,7 +831,7 @@ export default function ProjectItem() {
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {data.project_name}
           </p>
@@ -856,13 +843,51 @@ export default function ProjectItem() {
           </Link>
           <h2 className="mt-1 text-xl font-bold leading-snug text-slate-900 dark:text-slate-50">{data.to_do}</h2>
         </div>
-        {data.can_edit && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/15 px-3.5 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 transition hover:bg-brand-100"
-          >
-            <Pencil className="h-4 w-4" /> Edit
-          </button>
+
+        {!editing && (
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Focus — the primary "start working" action */}
+            <Button
+              variant={focusActive ? 'secondary' : 'primary'}
+              size="sm"
+              onClick={openFocus}
+              className={clsx(focusActive && focusOver && 'text-rose-600 dark:text-rose-400')}
+            >
+              <Timer className="h-4 w-4" />
+              {focusActive ? (
+                <>
+                  {focus.timer?.status === 'paused' ? 'Resume' : 'Focus'}
+                  <span className="font-mono tabular-nums">{focusOver ? '+' : ''}{formatClock(focusValueMs)}</span>
+                </>
+              ) : (
+                'Focus'
+              )}
+            </Button>
+
+            {data.can_edit && (
+              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-4 w-4" /> Edit
+              </Button>
+            )}
+
+            <OverflowMenu
+              size="sm"
+              items={[
+                ...(canSetDeadlineToday
+                  ? [{ label: 'Set deadline to today', icon: CalendarCheck, onClick: onDeadlineToday, disabled: setDeadlineToday.isPending }]
+                  : []),
+                ...(data.status_key === 'cancelled' && data.can_edit
+                  ? [{ label: 'Restore to Planned', icon: RotateCcw, onClick: onRestore, disabled: restoreTodo.isPending }]
+                  : []),
+                ...(data.can_edit && data.status_key !== 'completed' && data.status_key !== 'cancelled'
+                  ? [{ label: 'Cancel task', icon: Ban, danger: true, onClick: () => setShowCancel(true) }]
+                  : []),
+                ...(data.can_delete
+                  ? [{ label: 'Delete task', icon: Trash2, danger: true, onClick: onDelete, disabled: deleteTodo.isPending }]
+                  : []),
+              ] as MenuItem[]}
+            />
+          </div>
         )}
       </div>
 
@@ -976,44 +1001,6 @@ export default function ProjectItem() {
               )}
             </div>
 
-            {/* Set deadline to today — leads/assignee only, hidden once locked/cancelled */}
-            {canSetDeadlineToday && (
-              <button
-                onClick={onDeadlineToday}
-                disabled={setDeadlineToday.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30 transition hover:bg-brand-50 disabled:opacity-60"
-              >
-                {setDeadlineToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
-                Set deadline to today
-              </button>
-            )}
-
-            {/* Focus button */}
-            <button
-              onClick={openFocus}
-              className={clsx(
-                'flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition hover:brightness-105',
-                focusActive
-                  ? focusOver
-                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
-                    : 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
-                  : 'bg-brand-600 text-white hover:bg-brand-700',
-              )}
-            >
-              <Timer className="h-4 w-4" />
-              {focusActive ? (
-                <>
-                  {focus.timer?.status === 'paused' ? 'Resume focus' : 'Open focus'}
-                  <span className="font-mono tabular-nums">
-                    {focusOver ? '+' : ''}
-                    {formatClock(focusValueMs)}
-                  </span>
-                </>
-              ) : (
-                'Focus mode'
-              )}
-            </button>
-
             {/* Day allocations — editable for assignee, read-only for others */}
             {data.is_mine ? (
               <AllocationCard data={data} />
@@ -1046,34 +1033,19 @@ export default function ProjectItem() {
               <Stepper current={data.status_key} />
 
               {data.status_key === 'cancelled' ? (
-                <div className="mt-5 space-y-3">
-                  {data.cancellation_reason && (
-                    <p className="rounded-xl bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
-                      Reason: {data.cancellation_reason}
-                    </p>
-                  )}
-                  {data.can_edit && (
-                    <button
-                      onClick={onRestore}
-                      disabled={restoreTodo.isPending}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 disabled:opacity-60"
-                    >
-                      {restoreTodo.isPending ? <Spinner className="h-5 w-5" /> : <RotateCcw className="h-4 w-4" />}
-                      Restore to Planned
-                    </button>
-                  )}
-                </div>
+                data.cancellation_reason ? (
+                  <p className="mt-5 rounded-xl bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+                    Reason: {data.cancellation_reason}
+                  </p>
+                ) : null
               ) : (
                 <>
                   {data.status_key !== 'completed' &&
                     (data.can_advance ? (
-                      <button
-                        onClick={onAdvance}
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition hover:bg-brand-700"
-                      >
+                      <Button variant="primary" onClick={onAdvance} className="mt-5">
                         {data.next_status_label}
                         <ArrowRight className="h-4 w-4" />
-                      </button>
+                      </Button>
                     ) : (
                       <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
                         <Lock className="h-4 w-4" />
@@ -1081,56 +1053,38 @@ export default function ProjectItem() {
                       </div>
                     ))}
 
-                  {data.can_edit && data.status_key !== 'completed' &&
-                    (showCancel ? (
-                      <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
-                        <textarea
-                          value={cancelReason}
-                          onChange={(e) => setCancelReason(e.target.value)}
-                          rows={2}
-                          placeholder="Reason (optional)"
-                          className="w-full resize-none rounded-lg border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={onCancel}
-                            disabled={cancelTodo.isPending}
-                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
-                          >
-                            {cancelTodo.isPending ? <Spinner className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                            Confirm cancel
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowCancel(false)
-                              setCancelReason('')
-                            }}
-                            className="rounded-lg bg-white dark:bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-200"
-                          >
-                            Back
-                          </button>
-                        </div>
+                  {/* Cancel reason form — opened from the ⋮ menu */}
+                  {data.can_edit && data.status_key !== 'completed' && showCancel && (
+                    <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
+                      <textarea
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        rows={2}
+                        placeholder="Reason (optional)"
+                        className="w-full resize-none rounded-lg border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={onCancel}
+                          disabled={cancelTodo.isPending}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                        >
+                          {cancelTodo.isPending ? <Spinner className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                          Confirm cancel
+                        </button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setShowCancel(false)
+                            setCancelReason('')
+                          }}
+                        >
+                          Back
+                        </Button>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => setShowCancel(true)}
-                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-600 ring-1 ring-rose-200 dark:ring-rose-500/30 hover:bg-rose-50"
-                      >
-                        <Ban className="h-4 w-4" /> Cancel task
-                      </button>
-                    ))}
+                    </div>
+                  )}
                 </>
-              )}
-
-              {data.can_delete && (
-                <button
-                  onClick={onDelete}
-                  disabled={deleteTodo.isPending}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-700 ring-1 ring-rose-300 dark:ring-rose-500/40 hover:bg-rose-50 disabled:opacity-60"
-                >
-                  {deleteTodo.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-                  Delete task
-                </button>
               )}
             </div>
 

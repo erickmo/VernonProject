@@ -17,6 +17,7 @@ import { useModalA11y } from '@web/lib/useModalA11y'
 import { formatNumber } from '@/lib/format'
 import { CommandPalette, type Command } from '@web/components/CommandPalette'
 import type { Accent } from '@web/components/bento'
+import { useCrumbs } from '@web/lib/crumbs'
 
 const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' }
 
@@ -120,7 +121,8 @@ export function AppShell() {
   const wallet = useWallet()
   const { pathname } = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const crumbs = buildCrumbs(pathname)
+  const { crumbs: pageCrumbs } = useCrumbs()
+  const crumbs = pageCrumbs ?? buildCrumbs(pathname)
 
   // ⌘K / Ctrl+K toggles the command palette from anywhere.
   useEffect(() => {

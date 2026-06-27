@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
 import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
+import { Button } from '@web/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
-import { Dialog } from '@web/components/overlays/Dialog'
+import { Drawer } from '@web/components/overlays/Drawer'
 import { computeTodoPoints } from '@/lib/points'
 
 interface Props {
@@ -49,6 +50,8 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
     setLevelId('')
   }, [group])
 
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
@@ -56,9 +59,17 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
     setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
+  // After "Save & add another": clear only the per-todo fields, keep assignee,
+  // dates, and group/type/level so adding several similar todos is fast.
+  const resetForNext = () => {
+    setToDo(''); setEstimated(''); setNotes(''); setBlockedBy([]); setBlocking([])
+    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
+    firstFieldRef.current?.focus()
+  }
+
   const close = () => { reset(); onClose() }
 
-  const submit = () => {
+  const submit = (addAnother = false) => {
     if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !typeName || !levelId) {
       toast('error', 'Name, assignee, start date, deadline, group, type and level are required')
       return
@@ -89,7 +100,11 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       if (until) fields.recurring_until = until
     }
     create.mutate(fields, {
-      onSuccess: () => { toast('success', 'Todo created'); close() },
+      onSuccess: () => {
+        toast('success', 'Todo created')
+        if (addAnother) resetForNext()
+        else close()
+      },
       onError: (err) => toast('error', (err as Error).message),
     })
   }
@@ -97,27 +112,23 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
 
   return (
-    <Dialog
+    <Drawer
       open={open}
       onClose={close}
       title="New todo"
-      widthClass="max-w-2xl"
+      widthClass="max-w-xl"
+      scrim="bg-black/20"
+      onSubmit={() => submit(false)}
       footer={
         <>
-          <button
-            onClick={close}
-            className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={create.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold disabled:opacity-60"
-          >
+          <Button variant="ghost" onClick={close}>Cancel</Button>
+          <Button variant="secondary" onClick={() => submit(true)} disabled={create.isPending}>
+            Save &amp; add another
+          </Button>
+          <Button variant="primary" type="submit" disabled={create.isPending}>
             {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Create todo
-          </button>
+            Add todo
+          </Button>
         </>
       }
     >
@@ -125,6 +136,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
         <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
           Todo<span className="text-red-500"> *</span>
           <input
+            ref={firstFieldRef}
             className={field + ' mt-1'}
             value={toDo}
             onChange={(e) => setToDo(e.target.value)}
@@ -274,6 +286,6 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           </div>
         )}
       </div>
-    </Dialog>
+    </Drawer>
   )
 }

@@ -98,6 +98,14 @@ export function MultiSelectSearch({ options, value, onChange, placeholder = 'Sel
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter toggles the top match; must not bubble to submit an
+                // enclosing <form> (the drawer forms wrap these selects).
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (shown.length) toggle(shown[0].value)
+                }
+              }}
               placeholder="Search…"
               className="w-full rounded-lg bg-slate-50 dark:bg-slate-900 py-1.5 pl-9 pr-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:bg-white dark:focus:bg-slate-800"
             />

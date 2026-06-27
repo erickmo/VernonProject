@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import {
-  ArrowLeft, CalendarClock, ListChecks, Plus, ChevronRight,
+  ArrowLeft, CalendarClock, ListChecks, Plus, ChevronRight, ArrowRight, MousePointerClick,
 } from 'lucide-react'
 import { useProjectDetail } from '@/hooks/useData'
 import { sanitizeHtml, stripHtml, formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
+import { Button, rowButtonProps } from '@web/components/ui'
+import { useAdvance } from '@/components/AdvanceProvider'
+import { useSetCrumbs } from '@web/lib/crumbs'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
@@ -13,14 +16,26 @@ import { STATUS } from '@/lib/status'
 import type { StatusKey } from '@/lib/types'
 
 export default function ProjectDetail() {
-  const { name = '' } = useParams()
+  const { name = '', itemName } = useParams()
   const id = decodeURIComponent(name)
   const nav = useNavigate()
+  const advance = useAdvance()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
 
   const detail = useProjectDetail(id, showCancelled)
+  const itemSelected = !!itemName
+
+  useSetCrumbs(
+    detail.data
+      ? [
+          { label: 'Projects', to: '/projects' },
+          { label: detail.data.project_name, to: `/project/${encodeURIComponent(detail.data.project)}` },
+          { label: detail.data.title },
+        ]
+      : [],
+  )
 
   if (detail.isLoading && !detail.data) {
     return (
@@ -166,129 +181,160 @@ export default function ProjectDetail() {
           </BentoTile>
         )}
 
-        {/* Tasks section (full width) */}
+        {/* Tasks — master/detail: todo list (left) + selected todo pane (right) */}
         <BentoTile span="full" tone="plain">
-          <section>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                <ListChecks className="h-4 w-4" />
-                Todos ({items.length})
-              </h2>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <input
-                    type="checkbox"
-                    checked={showCancelled}
-                    onChange={(e) => setShowCancelled(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-brand-600"
-                  />
-                  Show cancelled
-                </label>
-                {d.can_create && (
-                  <button
-                    onClick={() => setCreateOpen(true)}
-                    className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Todo
-                  </button>
-                )}
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[22rem,1fr]">
+            {/* Left: todo list */}
+            <section className="min-w-0">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  <ListChecks className="h-4 w-4" />
+                  Todos ({items.length})
+                </h2>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={showCancelled}
+                      onChange={(e) => setShowCancelled(e.target.checked)}
+                      className="h-3.5 w-3.5 accent-brand-600"
+                    />
+                    Show cancelled
+                  </label>
+                  {d.can_create && (
+                    <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" /> Todo
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {items.length === 0 ? (
-              <EmptyState icon={ListChecks} title="No todos in this detail" />
-            ) : visibleItems.length === 0 ? (
-              <EmptyState icon={ListChecks} title="No visible todos" />
-            ) : (
-              <div className="flex flex-col gap-3">
-                {[
-                  {
-                    label: 'Open',
-                    sectionItems: visibleItems.filter(
-                      (t) => t.status_key !== 'completed' && t.status_key !== 'cancelled',
-                    ),
-                  },
-                  {
-                    label: 'Completed',
-                    sectionItems: visibleItems.filter((t) => t.status_key === 'completed'),
-                  },
-                  ...(showCancelled
-                    ? [
-                        {
-                          label: 'Cancelled',
-                          sectionItems: visibleItems.filter((t) => t.status_key === 'cancelled'),
-                        },
-                      ]
-                    : []),
-                ]
-                  .filter((s) => s.sectionItems.length > 0)
-                  .map((s) => (
-                    <div key={s.label}>
-                      <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                        {s.label} ({s.sectionItems.length})
-                      </p>
-                      <div className="flex flex-col gap-1.5">
-                        {s.sectionItems.map((t) => {
-                          const isCancelled = t.status_key === 'cancelled'
-                          const statusMeta = STATUS[t.status_key as StatusKey]
-                          return (
-                            <button
-                              key={t.name}
-                              onClick={() => nav(`/project-item/${encodeURIComponent(t.name)}`)}
-                              className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-card text-left transition active:scale-[0.99] w-full ${
-                                isCancelled
-                                  ? 'bg-slate-50 dark:bg-slate-900 opacity-60'
-                                  : 'bg-white dark:bg-slate-800'
-                              }`}
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p
-                                  className={`truncate text-sm font-medium ${
-                                    isCancelled
-                                      ? 'text-slate-400 dark:text-slate-500 line-through'
-                                      : t.is_overdue
-                                      ? 'text-rose-700'
-                                      : 'text-slate-800 dark:text-slate-100'
-                                  }`}
-                                >
-                                  {t.to_do}
-                                </p>
-                                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                                  {statusMeta ? (
-                                    <span
-                                      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}
-                                    >
-                                      {statusMeta.emoji} {statusMeta.label}
-                                    </span>
-                                  ) : (
-                                    <span>{t.status}</span>
-                                  )}
-                                  {t.deadline_human && (
-                                    <>
-                                      <span>·</span>
-                                      <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
-                                        {t.deadline_human}
+              {items.length === 0 ? (
+                <EmptyState icon={ListChecks} title="No todos in this detail" />
+              ) : visibleItems.length === 0 ? (
+                <EmptyState icon={ListChecks} title="No visible todos" />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {[
+                    {
+                      label: 'Open',
+                      sectionItems: visibleItems.filter(
+                        (t) => t.status_key !== 'completed' && t.status_key !== 'cancelled',
+                      ),
+                    },
+                    {
+                      label: 'Completed',
+                      sectionItems: visibleItems.filter((t) => t.status_key === 'completed'),
+                    },
+                    ...(showCancelled
+                      ? [
+                          {
+                            label: 'Cancelled',
+                            sectionItems: visibleItems.filter((t) => t.status_key === 'cancelled'),
+                          },
+                        ]
+                      : []),
+                  ]
+                    .filter((s) => s.sectionItems.length > 0)
+                    .map((s) => (
+                      <div key={s.label}>
+                        <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          {s.label} ({s.sectionItems.length})
+                        </p>
+                        <div className="flex flex-col gap-1.5">
+                          {s.sectionItems.map((t) => {
+                            const isCancelled = t.status_key === 'cancelled'
+                            const statusMeta = STATUS[t.status_key as StatusKey]
+                            const selected = itemName === t.name
+                            return (
+                              <div
+                                key={t.name}
+                                {...rowButtonProps(() =>
+                                  nav(`/project-detail/${encodeURIComponent(d.name)}/item/${encodeURIComponent(t.name)}`),
+                                )}
+                                className={`group flex cursor-pointer items-center gap-2.5 rounded-xl px-4 py-3 text-left shadow-card transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+                                  selected
+                                    ? 'bg-white dark:bg-slate-800 ring-2 ring-brand-500'
+                                    : isCancelled
+                                    ? 'bg-slate-50 dark:bg-slate-900 opacity-60 hover:opacity-80'
+                                    : 'bg-white dark:bg-slate-800 hover:shadow-md'
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className={`truncate text-sm font-medium ${
+                                      isCancelled
+                                        ? 'text-slate-400 dark:text-slate-500 line-through'
+                                        : t.is_overdue
+                                        ? 'text-rose-700'
+                                        : 'text-slate-800 dark:text-slate-100'
+                                    }`}
+                                  >
+                                    {t.to_do}
+                                  </p>
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                                    {statusMeta ? (
+                                      <span
+                                        className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}
+                                      >
+                                        {statusMeta.emoji} {statusMeta.label}
                                       </span>
-                                    </>
-                                  )}
-                                  {t.assigned_to_name && (
-                                    <>
-                                      <span>·</span>
-                                      <span>{t.assigned_to_name}</span>
-                                    </>
-                                  )}
+                                    ) : (
+                                      <span>{t.status}</span>
+                                    )}
+                                    {t.deadline_human && (
+                                      <>
+                                        <span>·</span>
+                                        <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
+                                          {t.deadline_human}
+                                        </span>
+                                      </>
+                                    )}
+                                    {t.assigned_to_name && (
+                                      <>
+                                        <span>·</span>
+                                        <span>{t.assigned_to_name}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
+                                {/* Inline advance — confirms via dialog, does not open the todo */}
+                                {t.can_advance && t.next_status_label && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      advance(t.name, t.next_status_label!, t.to_do)
+                                    }}
+                                    title={t.next_status_label}
+                                    aria-label={`${t.to_do}: ${t.next_status_label}`}
+                                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
+                                  >
+                                    <ArrowRight className="h-4 w-4" />
+                                  </button>
+                                )}
+                                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
                               </div>
-                              <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
-                            </button>
-                          )
-                        })}
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </section>
+                    ))}
+                </div>
+              )}
+            </section>
+
+            {/* Right: selected todo pane */}
+            <div className="min-w-0 rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-card min-h-[320px]">
+              {itemSelected ? (
+                <Outlet />
+              ) : (
+                <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                  <MousePointerClick className="h-8 w-8 opacity-50" />
+                  Select a todo to view its details here — or tap the arrow to advance it inline.
+                </div>
+              )}
+            </div>
+          </div>
         </BentoTile>
 
         {/* Comments */}

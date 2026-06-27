@@ -42,6 +42,7 @@ import GrantPoints from '@web/pages/GrantPoints'
 import Onboarding from '@web/pages/Onboarding'
 import BentoDemo from '@web/pages/BentoDemo'
 import { Meetings } from './pages/Meetings'
+import { CrumbProvider } from '@web/lib/crumbs'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -99,7 +100,7 @@ export default function App() {
   const b = boot.data
 
   return (
-    <>
+    <CrumbProvider>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
       <Routes>
         <Route element={<AppShell />}>
@@ -111,7 +112,9 @@ export default function App() {
             <Route path="item/:itemName" element={<ProjectItem />} />
           </Route>
           <Route path="/project-item/:name" element={<ProjectItem />} />
-          <Route path="/project-detail/:name" element={<ProjectDetail />} />
+          <Route path="/project-detail/:name" element={<ProjectDetail />}>
+            <Route path="item/:itemName" element={<ProjectItem />} />
+          </Route>
           <Route path="/review" element={<Review />} />
           <Route path="/meetings" element={<Meetings />} />
           {/* Rewards / reports (all users) */}
@@ -166,6 +169,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </>
+    </CrumbProvider>
   )
 }

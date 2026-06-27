@@ -4,7 +4,8 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { useToast } from '@/components/Toast'
 import { parseFrappeError } from '@/lib/format'
-import { Dialog } from '@web/components/overlays/Dialog'
+import { Drawer } from '@web/components/overlays/Drawer'
+import { Button } from '@web/components/ui'
 import type { ProjectFull, ProjectInput } from '@/lib/types'
 
 const STATUS_OPTS = [
@@ -101,26 +102,20 @@ export function ProjectFormDialog({
     .map((p) => ({ value: p.name, label: p.project_name }))
 
   return (
-    <Dialog
+    <Drawer
       open={open}
       onClose={onClose}
       title={isEdit ? 'Edit project' : 'New project'}
-      widthClass="max-w-2xl"
+      widthClass="max-w-xl"
+      onSubmit={submit}
       footer={
         <>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={busy}
-            className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold disabled:opacity-60"
-          >
+          </Button>
+          <Button variant="primary" type="submit" disabled={busy}>
             {isEdit ? 'Save changes' : 'Create project'}
-          </button>
+          </Button>
         </>
       }
     >
@@ -262,6 +257,6 @@ export function ProjectFormDialog({
           />
         </div>
       </div>
-    </Dialog>
+    </Drawer>
   )
 }
