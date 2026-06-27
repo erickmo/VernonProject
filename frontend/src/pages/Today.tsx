@@ -30,6 +30,8 @@ import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { NotificationBell } from '@/components/NotificationBell'
 import { NotesButton } from '@/components/NotesButton'
+import { Fab } from '@/components/Fab'
+import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byDeadlineAsc, byDeadlineDesc, byEstimatedAsc, formatEstimate, formatEstimateRatio } from '@/lib/format'
@@ -115,6 +117,7 @@ export default function Today() {
   const [lens, setLens] = useState<Lens>('me')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
+  const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null)
   // Which deadline bucket to show: today / overdue / upcoming.
   const [group, setGroup] = useState<'today' | 'overdue' | 'upcoming'>('today')
 
@@ -504,6 +507,9 @@ export default function Today() {
         onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
         onClear={() => setFilters((f) => ({ status: f.status || '' }))}
       />
+
+      <Fab onTap={() => setQuickAdd('task')} onLongPress={() => setQuickAdd('note')} />
+      <QuickAddSheet open={quickAdd !== null} mode={quickAdd ?? 'task'} onClose={() => setQuickAdd(null)} />
     </TabScreen>
   )
 }
