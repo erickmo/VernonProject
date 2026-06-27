@@ -457,9 +457,10 @@ class ProjectTodo(Document):
 		other.save(ignore_permissions=True)
 
 	def on_trash(self):
-		# Cannot delete unless status is Planned ("Scheduled").
-		if self.status != "⚪️ Planned":
-			frappe.throw("Cannot delete Project Todo unless its status is 'Scheduled'.")
+		# Deletable only while Planned ("Scheduled") or Cancelled — never once it has
+		# progressed (Done/Checked) or earned points (Completed).
+		if self.status not in ("⚪️ Planned", "🚫 Cancelled"):
+			frappe.throw("Cannot delete Project Todo unless its status is 'Scheduled' or 'Cancelled'.")
 		# Drop mirror references from the other side so no dangling links remain.
 		for r in self.blocking:
 			self._remove_block_link(r.todo, "blocked_by")

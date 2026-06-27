@@ -1232,6 +1232,11 @@ def get_project_item(project_item):
 		r["project_owner"], r["project_leader"], r["assigned_to"]
 	)
 	shaped["fields_locked"] = shaped["status_key"] in ("done", "completed")
+	# Delete is a lead-only action and only while Planned or Cancelled.
+	shaped["can_delete"] = (
+		(is_sm or user in (r["project_owner"], r["project_leader"]))
+		and shaped["status_key"] in ("planned", "cancelled")
+	)
 
 	# Per-phase estimates + recurrence settings + occurrence history
 	extra = frappe.get_value(
@@ -1498,6 +1503,33 @@ def restore_todo(project_item):
 	row.cancellation_reason = None
 	row.save(ignore_permissions=True)
 	return {"status": "ok", "message": "Task restored."}
+
+
+@frappe.whitelist()
+def delete_todo(project_item):
+	"""Permanently delete a Planned or Cancelled todo. Owner/Leader/System Manager only.
+
+	Distinct from cancel_todo (reversible status flip): this removes the row.
+	The doctype's on_trash is the real enforcement of the status gate; the checks
+	here add the Owner/Leader permission and return a clean error message."""
+	user = frappe.session.user
+	if not frappe.db.exists("Project Todo", project_item):
+		return {"status": "error", "message": "Task not found."}
+	row = frappe.get_doc("Project Todo", project_item)
+	detail_project = (
+		frappe.get_value("Project Detail", row.project_detail, "project")
+		if row.project_detail else None
+	)
+	if not detail_project:
+		return {"status": "error", "message": "Task not found."}
+	project = frappe.get_doc("Project", detail_project)
+	is_sm = "System Manager" in frappe.get_roles(user)
+	if not (is_sm or user in (project.project_owner, project.project_leader)):
+		return {"status": "error", "message": "Only the Project Owner or Project Leader can delete a task."}
+	if row.status not in (STATUS_PLANNED, STATUS_CANCELLED):
+		return {"status": "error", "message": "Only a Scheduled or Cancelled task can be deleted."}
+	frappe.delete_doc("Project Todo", project_item, ignore_permissions=True)
+	return {"status": "ok", "message": "Task deleted."}
 
 
 @frappe.whitelist()
