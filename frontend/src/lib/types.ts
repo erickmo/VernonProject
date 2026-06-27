@@ -23,6 +23,7 @@ export type NotificationType =
   | 'Mention'
   | 'Points'
   | 'Redemption'
+  | 'Kudos'
 
 export interface AppNotification {
   name: string
@@ -41,6 +42,39 @@ export interface AppNotification {
 export interface NotificationsResponse {
   items: AppNotification[]
   unread: number
+}
+
+export type ReactionKey = 'clap' | 'celebrate' | 'fire' | 'heart'
+
+export interface ReactionCounts {
+  clap: number
+  celebrate: number
+  fire: number
+  heart: number
+}
+
+export interface ActivityItem {
+  name: string
+  to_do: string
+  project: string
+  project_name: string
+  assigned_to: string
+  assigned_to_name: string
+  assigned_to_image: string | null
+  completed_at: string | null
+  completed_at_human: string | null
+  point: number
+  reactions: ReactionCounts
+  my_reaction: ReactionKey | null
+  reactors: string[]
+  total: number
+  is_mine: boolean
+}
+
+export interface ToggleReactionResult {
+  reactions: ReactionCounts
+  my_reaction: ReactionKey | null
+  total: number
 }
 
 export interface ProjectItem {

@@ -3,7 +3,8 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi } from '@/lib/api'
+import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
   Boot,
@@ -37,6 +38,8 @@ import type {
   RewardFormPayload,
   BadgeTierInput,
   PersonalNote,
+  ActivityItem,
+  ReactionKey,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -70,6 +73,8 @@ export const keys = {
   personalNotes: ['personalNotes'] as const,
   meetings: ['meetings'] as const,
   meeting: (n: string) => ['meeting', n] as const,
+  passkeys: ['passkeys'] as const,
+  teamActivity: ['team-activity'] as const,
 }
 
 export const useBoot = () =>
@@ -676,6 +681,26 @@ export function useChangeMyPassword() {
   })
 }
 
+export function usePasskeys() {
+  return useQuery({ queryKey: keys.passkeys, queryFn: () => passkeyApi.listPasskeys() })
+}
+
+export function useEnrollPasskey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (label: string) => enrollPasskey(label),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.passkeys }),
+  })
+}
+
+export function useRevokePasskey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => passkeyApi.revokePasskey(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.passkeys }),
+  })
+}
+
 export const useWallet = () =>
   useQuery({ queryKey: keys.wallet, queryFn: () => mobileApi.getWallet() as Promise<Wallet> })
 
@@ -932,6 +957,54 @@ export function useReopenMeeting() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.meetings })
       qc.invalidateQueries({ queryKey: keys.wallet })
+    },
+  })
+}
+
+export function useTeamActivity(days = 14) {
+  return useQuery({
+    queryKey: keys.teamActivity,
+    queryFn: async () => (await mobileApi.getTeamActivity(days)).items,
+  })
+}
+
+const REACTION_KEYS: ReactionKey[] = ['clap', 'celebrate', 'fire', 'heart']
+
+// Mirror the server's toggle math so the optimistic update matches: same
+// reaction removes it; a different one replaces; none adds.
+function applyToggle(item: ActivityItem, reaction: ReactionKey): ActivityItem {
+  const reactions = { ...item.reactions }
+  let my = item.my_reaction
+  if (my === reaction) {
+    reactions[reaction] = Math.max(0, reactions[reaction] - 1)
+    my = null
+  } else {
+    if (my) reactions[my] = Math.max(0, reactions[my] - 1)
+    reactions[reaction] = reactions[reaction] + 1
+    my = reaction
+  }
+  const total = REACTION_KEYS.reduce((s, k) => s + reactions[k], 0)
+  return { ...item, reactions, my_reaction: my, total }
+}
+
+export function useToggleReaction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ todo, reaction }: { todo: string; reaction: ReactionKey }) =>
+      mobileApi.toggleReaction(todo, reaction),
+    onMutate: async ({ todo, reaction }) => {
+      await qc.cancelQueries({ queryKey: keys.teamActivity })
+      const prev = qc.getQueryData<ActivityItem[]>(keys.teamActivity)
+      qc.setQueryData<ActivityItem[]>(keys.teamActivity, (old) =>
+        (old ?? []).map((it) => (it.name === todo ? applyToggle(it, reaction) : it)),
+      )
+      return { prev }
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(keys.teamActivity, ctx.prev)
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.teamActivity })
     },
   })
 }

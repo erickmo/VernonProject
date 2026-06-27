@@ -298,6 +298,10 @@ export const mobileApi = {
       project,
       txt,
     }),
+  getTeamActivity: (days = 14, limit = 50) =>
+    api.get<{ items: import('./types').ActivityItem[] }>(M + 'get_team_activity', { days, limit }),
+  toggleReaction: (todo: string, reaction: import('./types').ReactionKey) =>
+    api.post<import('./types').ToggleReactionResult>(M + 'toggle_reaction', { todo, reaction }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
@@ -405,6 +409,83 @@ export async function logout(): Promise<void> {
   // Drop the persisted cache so the next session doesn't see stale data.
   try {
     window.localStorage.removeItem(CACHE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+// --- Passkey / WebAuthn auth ------------------------------------------------
+// Enroll endpoints require a session (CSRF via api.post). Login endpoints are
+// allow_guest, so they post raw like login() — no CSRF needed for Guest.
+
+const PK = 'vernon_project.api.passkey.'
+
+export interface PasskeyRow {
+  name: string
+  label: string | null
+  creation: string
+  last_used: string | null
+}
+
+export const passkeyApi = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerBegin: () => api.post<any>(PK + 'register_begin'),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerComplete: (credential: unknown, label: string) =>
+    api.post<{ ok: boolean; name: string; label: string }>(PK + 'register_complete', {
+      credential,
+      label,
+    }),
+  listPasskeys: () => api.get<{ passkeys: PasskeyRow[] }>(PK + 'list_passkeys'),
+  revokePasskey: (name: string) => api.post<{ ok: boolean }>(PK + 'revoke_passkey', { name }),
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function passkeyLoginBegin(): Promise<any> {
+  const res = await fetch(METHOD + PK + 'login_begin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: '{}',
+    credentials: 'same-origin',
+  })
+  if (!res.ok) throw new ApiError('Could not start passkey sign-in', res.status)
+  const data = await res.json()
+  return data?.message ?? data
+}
+
+export async function passkeyLoginComplete(credential: unknown, handle: string): Promise<void> {
+  const res = await fetch(METHOD + PK + 'login_complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ credential, handle }),
+    credentials: 'same-origin',
+  })
+  if (!res.ok) {
+    let msg = 'Passkey sign-in failed'
+    try {
+      const d = await res.json()
+      if (d?.message && typeof d.message === 'string') msg = d.message
+      else if (d?._server_messages) {
+        const parsed = JSON.parse(d._server_messages)
+        if (Array.isArray(parsed) && parsed.length) msg = JSON.parse(parsed[0]).message || msg
+      }
+    } catch {
+      /* keep default */
+    }
+    throw new ApiError(msg, res.status)
+  }
+}
+
+// Diagnostic: fire-and-forget the exact browser passkey error to the server log.
+export function reportPasskeyClientError(detail: string): void {
+  try {
+    fetch(METHOD + PK + 'client_log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ detail }),
+      credentials: 'same-origin',
+      keepalive: true,
+    }).catch(() => {})
   } catch {
     /* ignore */
   }
