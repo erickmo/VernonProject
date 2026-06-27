@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 // Single, app-wide focus timer persisted to localStorage so it survives reloads
 // and navigation. Wall-clock based: while running we store the segment start
 // time and recompute remaining from `Date.now()`, so a backgrounded tab/closed
 // PWA still reflects real elapsed time on return. No backend involvement.
+//
+// Backed by a module-level store (not per-hook useState) so EVERY consumer — the
+// card Focus button, the global mini-bar, the global overlay — observes the same
+// timer the instant any of them starts/pauses/stops it.
 
 const KEY = 'vernon.focusTimer'
 
@@ -28,12 +32,28 @@ function load(): FocusTimer | null {
   }
 }
 
-function save(t: FocusTimer | null) {
+let current: FocusTimer | null = load()
+const listeners = new Set<() => void>()
+
+function emit() {
+  listeners.forEach((l) => l())
+}
+
+function setTimerState(next: FocusTimer | null) {
+  current = next
   try {
-    if (t) localStorage.setItem(KEY, JSON.stringify(t))
+    if (next) localStorage.setItem(KEY, JSON.stringify(next))
     else localStorage.removeItem(KEY)
   } catch {
-    /* storage unavailable — timer stays in-memory only */
+    /* storage unavailable — store stays in-memory only */
+  }
+  emit()
+}
+
+function subscribe(l: () => void) {
+  listeners.add(l)
+  return () => {
+    listeners.delete(l)
   }
 }
 
@@ -42,28 +62,25 @@ function elapsedOf(t: FocusTimer, now: number): number {
 }
 
 export function useFocusTimer() {
-  const [timer, setTimer] = useState<FocusTimer | null>(() => load())
+  const timer = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => current,
+  )
   const [now, setNow] = useState(() => Date.now())
-  const tick = useRef<ReturnType<typeof setInterval>>()
 
   // Tick once a second only while a timer is actively running.
   useEffect(() => {
     if (timer?.status === 'running') {
       setNow(Date.now())
-      tick.current = setInterval(() => setNow(Date.now()), 1000)
-      return () => clearInterval(tick.current)
+      const id = setInterval(() => setNow(Date.now()), 1000)
+      return () => clearInterval(id)
     }
   }, [timer?.status])
 
-  const update = useCallback((next: FocusTimer | null) => {
-    save(next)
-    setTimer(next)
-    setNow(Date.now())
-  }, [])
-
   const start = useCallback(
     (taskId: string, taskTitle: string, estimatedMinutes: number) => {
-      update({
+      setTimerState({
         taskId,
         taskTitle,
         estimatedMs: estimatedMinutes * 60_000,
@@ -72,43 +89,29 @@ export function useFocusTimer() {
         elapsedBeforeMs: 0,
       })
     },
-    [update],
+    [],
   )
 
   const pause = useCallback(() => {
-    setTimer((t) => {
-      if (!t || t.status !== 'running') return t
-      const next: FocusTimer = {
-        ...t,
-        status: 'paused',
-        elapsedBeforeMs: t.elapsedBeforeMs + (Date.now() - t.startedAt),
-      }
-      save(next)
-      return next
+    if (!current || current.status !== 'running') return
+    setTimerState({
+      ...current,
+      status: 'paused',
+      elapsedBeforeMs: current.elapsedBeforeMs + (Date.now() - current.startedAt),
     })
   }, [])
 
   const resume = useCallback(() => {
-    setTimer((t) => {
-      if (!t || t.status !== 'paused') return t
-      const next: FocusTimer = { ...t, status: 'running', startedAt: Date.now() }
-      save(next)
-      setNow(Date.now())
-      return next
-    })
+    if (!current || current.status !== 'paused') return
+    setTimerState({ ...current, status: 'running', startedAt: Date.now() })
   }, [])
 
   const reset = useCallback(() => {
-    setTimer((t) => {
-      if (!t) return t
-      const next: FocusTimer = { ...t, startedAt: Date.now(), elapsedBeforeMs: 0 }
-      save(next)
-      setNow(Date.now())
-      return next
-    })
+    if (!current) return
+    setTimerState({ ...current, startedAt: Date.now(), elapsedBeforeMs: 0 })
   }, [])
 
-  const stop = useCallback(() => update(null), [update])
+  const stop = useCallback(() => setTimerState(null), [])
 
   const elapsedMs = timer ? elapsedOf(timer, now) : 0
   const hasEstimate = !!timer && timer.estimatedMs > 0
