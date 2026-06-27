@@ -2027,6 +2027,131 @@ def get_wallet():
 	}
 
 
+# Weekday index (Mon=0 .. Sun=6, matching datetime.date.weekday()) -> label.
+WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+@frappe.whitelist()
+def get_weekly_recap(week_offset=0):
+	"""Read-only weekly summary for the logged-in user. Week = Monday–Sunday;
+	week_offset 0 = current week, -1 = last week, etc. Nothing is materialized
+	and there is no scheduler — everything is computed live from existing data."""
+	from datetime import timedelta
+
+	user = frappe.session.user
+	week_offset = int(week_offset or 0)
+
+	today = getdate(nowdate())  # datetime.date
+	monday = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
+	sunday = monday + timedelta(days=6)
+	week_end_excl = sunday + timedelta(days=1)  # exclusive upper bound for datetimes
+
+	# Completed todos assigned to me, completed within the week.
+	completed_rows = frappe.db.sql(
+		"""
+		SELECT t.estimated, t.completed_at, t.project, p.project_name
+		FROM `tabProject Todo` t
+		LEFT JOIN `tabProject` p ON t.project = p.name
+		WHERE t.assigned_to = %(user)s
+		  AND t.status = %(completed)s
+		  AND t.completed_at >= %(start)s
+		  AND t.completed_at < %(end)s
+		""",
+		{"user": user, "completed": STATUS_COMPLETED, "start": str(monday), "end": str(week_end_excl)},
+		as_dict=True,
+	)
+
+	completed = len(completed_rows)
+	minutes = sum(int(r["estimated"] or 0) for r in completed_rows)
+
+	# Best day (most completions) + top project (most completions), in one pass.
+	per_day = {}
+	per_project = {}
+	for r in completed_rows:
+		wd = getdate(r["completed_at"]).weekday()
+		per_day[wd] = per_day.get(wd, 0) + 1
+		pname = r.get("project_name") or r.get("project")
+		if pname:
+			per_project[pname] = per_project.get(pname, 0) + 1
+
+	best_day = None
+	if per_day:
+		wd, cnt = max(per_day.items(), key=lambda kv: kv[1])
+		best_day = {"label": WEEKDAY_LABELS[wd], "count": cnt}
+
+	top_project = None
+	if per_project:
+		pname, cnt = max(per_project.items(), key=lambda kv: kv[1])
+		top_project = {"name": pname, "count": cnt}
+
+	# Points credited this week from real work only (Todo + Meeting; never Grant/Gift).
+	points = float(frappe.db.sql(
+		"""
+		SELECT COALESCE(SUM(points_earned), 0)
+		FROM `tabPoint Ledger`
+		WHERE user = %(user)s
+		  AND credited_on >= %(start)s AND credited_on < %(end)s
+		  AND source IN ('Todo', 'Meeting')
+		""",
+		{"user": user, "start": str(monday), "end": str(week_end_excl)},
+	)[0][0])
+
+	# Streak = consecutive days up to *today* with >=1 completion (independent of
+	# the viewed week). ponytail: 60-day lookback cap is plenty for a streak
+	# badge; widen the `since` bound if anyone ever needs a longer streak.
+	streak_rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT DATE(completed_at) AS d
+		FROM `tabProject Todo`
+		WHERE assigned_to = %(user)s
+		  AND status = %(completed)s
+		  AND completed_at >= %(since)s
+		""",
+		{"user": user, "completed": STATUS_COMPLETED, "since": str(today - timedelta(days=60))},
+	)
+	done_days = {str(r[0]) for r in streak_rows}
+	streak = 0
+	cur = today
+	while str(cur) in done_days:
+		streak += 1
+		cur = cur - timedelta(days=1)
+
+	# Kudos received = Todo Reaction rows on my todos created this week. Feature 3
+	# (the Todo Reaction doctype) may not be shipped yet — return 0 safely.
+	kudos_received = 0
+	if frappe.db.exists("DocType", "Todo Reaction"):
+		kudos_received = int(frappe.db.sql(
+			"""
+			SELECT COUNT(*)
+			FROM `tabTodo Reaction` r
+			JOIN `tabProject Todo` t ON r.todo = t.name
+			WHERE t.assigned_to = %(user)s
+			  AND r.creation >= %(start)s AND r.creation < %(end)s
+			""",
+			{"user": user, "start": str(monday), "end": str(week_end_excl)},
+		)[0][0])
+
+	# Week label, e.g. "Jun 23–29" (same month) or "Jun 30–Jul 6" (spans months).
+	if monday.month == sunday.month:
+		week_label = f"{monday.strftime('%b')} {monday.day}–{sunday.day}"
+	else:
+		week_label = f"{monday.strftime('%b')} {monday.day}–{sunday.strftime('%b')} {sunday.day}"
+
+	return {
+		"week_offset": week_offset,
+		"week_label": week_label,
+		"week_start": str(monday),
+		"week_end": str(sunday),
+		"completed": completed,
+		"minutes": minutes,
+		"points": round(points, 1),
+		"best_day": best_day,
+		"streak": streak,
+		"top_project": top_project,
+		"kudos_received": kudos_received,
+	}
+
+
 @frappe.whitelist()
 def get_wallet_log():
 	"""Unified credit/debit timeline (latest 100), newest first, with a running
