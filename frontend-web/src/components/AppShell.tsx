@@ -16,6 +16,7 @@ import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
 import { useModalA11y } from '@web/lib/useModalA11y'
 import { formatNumber } from '@/lib/format'
 import { CommandPalette, type Command } from '@web/components/CommandPalette'
+import { NotificationBell } from '@web/components/NotificationBell'
 import type { Accent } from '@web/components/bento'
 import { useCrumbs } from '@web/lib/crumbs'
 
@@ -262,6 +263,8 @@ export function AppShell() {
           <span className="flex items-center gap-2 text-brand-600 font-bold">
             <FolderKanban className="w-5 h-5" /> Vernon
           </span>
+          <div className="flex-1" />
+          <NotificationBell />
         </header>
         {/* desktop header — breadcrumb + global search + points (mobile uses its own bar above) */}
         <header className="hidden lg:flex sticky top-0 z-30 items-center gap-4 h-14 px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
@@ -286,6 +289,7 @@ export function AppShell() {
             <span className="hidden xl:inline">Search…</span>
             <kbd className="hidden xl:inline-flex items-center rounded border border-slate-200 dark:border-slate-700 px-1.5 text-[10px] font-medium">⌘K</kbd>
           </button>
+          <NotificationBell />
           <NavLink
             to="/wallet"
             className="flex items-center gap-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 px-3 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300"
