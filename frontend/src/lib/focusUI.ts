@@ -19,6 +19,13 @@ let state: FocusUI = { open: false, meta: undefined }
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 
+// Hoisted (stable) subscribe — an inline arrow would re-subscribe every render
+// of a consumer; the 1Hz mini-bar makes that churn real.
+function subscribe(l: () => void) {
+  listeners.add(l)
+  return () => listeners.delete(l)
+}
+
 export function openFocusOverlay(meta?: FocusMeta) {
   // Reopening from the mini-bar (no meta) keeps the last meta shown.
   state = { open: true, meta: meta ?? state.meta }
@@ -31,12 +38,5 @@ export function closeFocusOverlay() {
 }
 
 export function useFocusOverlay(): FocusUI {
-  return useSyncExternalStore(
-    (l) => {
-      listeners.add(l)
-      return () => listeners.delete(l)
-    },
-    () => state,
-    () => state,
-  )
+  return useSyncExternalStore(subscribe, () => state, () => state)
 }
