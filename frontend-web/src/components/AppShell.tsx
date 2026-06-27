@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
-  Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon,
+  Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon, Video,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
@@ -53,6 +53,7 @@ const MAIN: NavItem[] = [
   { to: '/', label: 'Today', icon: Home, end: true },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/meetings', label: 'Meetings', icon: Video },
   { to: '/review', label: 'Review', icon: CheckCircle2, badge: 'review' },
 ]
 
@@ -76,6 +77,7 @@ const SECTION: Record<string, { label: string; to: string }> = {
   'project-detail': { label: 'Projects', to: '/projects' },
   'project-item': { label: 'Projects', to: '/projects' },
   review: { label: 'Review', to: '/review' },
+  meetings: { label: 'Meetings', to: '/meetings' },
   reports: { label: 'Reports', to: '/reports' },
   report: { label: 'Reports', to: '/reports' },
   leaderboard: { label: 'Leaderboard', to: '/leaderboard' },

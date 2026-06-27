@@ -41,6 +41,7 @@ import RewardForm from '@web/pages/RewardForm'
 import GrantPoints from '@web/pages/GrantPoints'
 import Onboarding from '@web/pages/Onboarding'
 import BentoDemo from '@web/pages/BentoDemo'
+import { Meetings } from './pages/Meetings'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -112,6 +113,7 @@ export default function App() {
           <Route path="/project-item/:name" element={<ProjectItem />} />
           <Route path="/project-detail/:name" element={<ProjectDetail />} />
           <Route path="/review" element={<Review />} />
+          <Route path="/meetings" element={<Meetings />} />
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
