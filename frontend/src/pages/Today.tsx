@@ -29,7 +29,7 @@ import { NotificationBell } from '@/components/NotificationBell'
 import { NotesButton } from '@/components/NotesButton'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { byDeadlineAsc, byDeadlineDesc, formatEstimate } from '@/lib/format'
+import { byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
@@ -147,9 +147,11 @@ export default function Today() {
     in: memberIn.length,
   }
 
-  // Today progress ring
-  const todayTotal = data ? data.counts.completed_today + data.counts.overdue + data.counts.due_today : 0
-  const pct = todayTotal ? data!.counts.completed_today / todayTotal : 1
+  // Today progress ring — minutes done vs planned today (completed + due-today estimates; overdue excluded).
+  const completedMin = data?.counts.completed_minutes_today ?? 0
+  const dueMin = data ? data.due_today.reduce((s, t) => s + (t.estimated || 0), 0) : 0
+  const todayTotalMin = completedMin + dueMin
+  const pct = todayTotalMin ? completedMin / todayTotalMin : 1
 
   // "For me" filtering
   const statusCount = (k: StatusKey) => all.filter((t) => t.status_key === k).length
@@ -228,9 +230,9 @@ export default function Today() {
                   <p className="mt-0.5 text-lg font-bold leading-tight">
                     {data.counts.completed_today} done · {data.counts.due_today} due
                   </p>
-                  {data.counts.completed_minutes_today > 0 && (
+                  {todayTotalMin > 0 && (
                     <p className="text-xs font-medium text-brand-200">
-                      {formatEstimate(data.counts.completed_minutes_today)} completed today
+                      {formatEstimateRatio(completedMin, todayTotalMin)} done
                     </p>
                   )}
                   <div className="mt-1.5 flex flex-wrap gap-2 text-xs">

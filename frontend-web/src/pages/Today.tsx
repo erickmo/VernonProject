@@ -6,7 +6,7 @@ import { ErrorState, Skeleton } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { FilterButton, activeFilterCount, type FilterDimension, type FilterValue } from '@/components/FilterSheet'
 import { applyProjectItemFilters, buildOptions } from '@/lib/filters'
-import { formatNumber, formatEstimate } from '@/lib/format'
+import { formatNumber, formatEstimateRatio } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { CheckCircle2 } from 'lucide-react'
@@ -97,9 +97,10 @@ export default function Today() {
   }
 
   const counts = dash.data.counts
-  const donePct = counts.completed_today + counts.due_today > 0
-    ? Math.round((counts.completed_today / (counts.completed_today + counts.due_today)) * 100)
-    : 0
+  const completedMin = counts.completed_minutes_today
+  const dueMin = dash.data.due_today.reduce((s, t) => s + (t.estimated || 0), 0)
+  const todayTotalMin = completedMin + dueMin
+  const donePct = todayTotalMin > 0 ? Math.round((completedMin / todayTotalMin) * 100) : 0
   const w = wallet.data
 
   const groups: { title: string; items: ProjectItem[] }[] = [
@@ -125,7 +126,7 @@ export default function Today() {
               <div><span className="font-semibold">{counts.due_today}</span> due today</div>
               <div><span className="font-semibold">{counts.overdue}</span> overdue</div>
               <div><span className="font-semibold">{counts.upcoming}</span> upcoming</div>
-              <div><span className="font-semibold">{formatEstimate(counts.completed_minutes_today)}</span> done today</div>
+              <div><span className="font-semibold">{formatEstimateRatio(completedMin, todayTotalMin)}</span> done today</div>
             </div>
           </div>
         </BentoTile>
