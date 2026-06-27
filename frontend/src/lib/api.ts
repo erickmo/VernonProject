@@ -112,6 +112,10 @@ export const mobileApi = {
     api.post<{ status: string; message: string }>(M + 'restore_todo', {
       project_item: projectItem,
     }),
+  deleteTodo: (projectItem: string) =>
+    api.post<{ status: string; message?: string }>(M + 'delete_todo', {
+      project_item: projectItem,
+    }),
   saveNotes: (todoId: string, notes: string) =>
     api.post<{ status: string; message: string }>(
       'vernon_project.api.project_todo.save_notes',

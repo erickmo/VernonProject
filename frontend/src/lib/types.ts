@@ -88,6 +88,7 @@ export interface ProjectItemDetail extends ProjectItem {
   notes: string
   can_edit_notes: boolean
   can_edit: boolean
+  can_delete: boolean
   fields_locked: boolean
   team: { user: string; name: string; image: string | null }[]
   timeline: TimelineEvent[]

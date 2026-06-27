@@ -184,6 +184,24 @@ export function useRestoreTodo() {
   })
 }
 
+export function useDeleteTodo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (projectItem: string) => {
+      const res = await mobileApi.deleteTodo(projectItem)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
 export interface Opt {
   value: string
   label: string
