@@ -16,8 +16,8 @@ export function BottomNav() {
   const reviewCount = data?.counts.review ?? 0
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-nav pb-safe">
-      <div className="mx-auto flex max-w-md items-stretch justify-around">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-edge dark:border-slate-800 bg-paper-card dark:bg-slate-800 shadow-nav pb-safe">
+      <div className="mx-auto flex max-w-[448px] items-stretch justify-around">
         {TABS.map((t) => {
           const Icon = t.icon
           const badge = 'badgeKey' in t && t.badgeKey === 'review' ? reviewCount : 0
@@ -29,7 +29,7 @@ export function BottomNav() {
               className={({ isActive }) =>
                 clsx(
                   'relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors',
-                  isActive ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500',
+                  isActive ? 'text-brand-600' : 'text-stone-400 dark:text-slate-500',
                 )
               }
             >

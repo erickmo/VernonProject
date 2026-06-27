@@ -6,6 +6,12 @@
   color-scheme: light;
 }
 
+/* Global type scale — root 14px (~2pt smaller than the 16px default). Scales
+   all rem-based text proportionally; the 16px inputs stay 16px for iOS. */
+html {
+  font-size: 87.5%;
+}
+
 html,
 body,
 #root {
@@ -14,11 +20,28 @@ body,
 
 body {
   margin: 0;
-  background: #f1f5f9;
-  color: #0f172a;
+  /* Warm cream paper canvas + faint warm dot grain for tactile paper feel. */
+  background-color: #faf7f0;
+  background-image: radial-gradient(rgba(120, 90, 60, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: #3a2f28;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
+}
+
+/* Tighten the display face a touch so headings read crisp, not wide. */
+.font-display {
+  letter-spacing: -0.015em;
+}
+
+/* Respect reduced-motion for the playful infinite micro-animations. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-wiggle,
+  .animate-float,
+  .animate-pop {
+    animation: none !important;
+  }
 }
 
 html.dark {

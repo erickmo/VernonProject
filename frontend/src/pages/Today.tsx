@@ -16,8 +16,11 @@ import {
   CalendarDays,
   Clock,
   Coins,
-  TrendingUp,
   TrendingDown,
+  Flame,
+  Coffee,
+  Sparkles,
+  Star,
   ArrowUpRight,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
@@ -29,7 +32,7 @@ import { NotificationBell } from '@/components/NotificationBell'
 import { NotesButton } from '@/components/NotesButton'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio } from '@/lib/format'
+import { byDeadlineAsc, byDeadlineDesc, byEstimatedAsc, formatEstimate, formatEstimateRatio } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
@@ -72,11 +75,12 @@ const LENS_META: Record<Lens, { label: string; icon: React.ComponentType<{ class
 
 type GroupKey = 'today' | 'overdue' | 'upcoming'
 
-// Active-tab styling per deadline bucket.
+// Active-tab styling per deadline bucket — warm fills; overdue is a gentle
+// amber (not an alarm-red) so a late task nudges rather than scolds.
 const GROUP_TONE: Record<GroupKey, { active: string; badge: string }> = {
-  today: { active: 'bg-amber-500 text-white border-amber-500', badge: 'bg-white/25' },
-  overdue: { active: 'bg-rose-500 text-white border-rose-500', badge: 'bg-white/25' },
-  upcoming: { active: 'bg-slate-600 text-white border-slate-600 dark:bg-slate-500 dark:border-slate-500', badge: 'bg-white/25' },
+  today: { active: 'bg-brand-600 text-white shadow-sm', badge: 'bg-white/25 text-white' },
+  overdue: { active: 'bg-amber-500 text-white shadow-sm', badge: 'bg-white/25 text-white' },
+  upcoming: { active: 'bg-stone-600 text-white shadow-sm dark:bg-slate-600', badge: 'bg-white/25 text-white' },
 }
 
 function ActionBanner({
@@ -184,7 +188,8 @@ export default function Today() {
     for (const t of [...filtered.overdue, ...filtered.upcoming]) {
       if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
     }
-    return [...byId.values()].sort(byDeadlineAsc)
+    // Today tab sorts quickest-first so short wins surface at the top.
+    return [...byId.values()].sort(byEstimatedAsc)
   })()
   const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
@@ -213,41 +218,68 @@ export default function Today() {
         <PullToRefresh onRefresh={refetch}>
           {data && (
             <>
-              {/* Hero */}
-              <div className="relative flex items-center gap-4 overflow-hidden rounded-3xl border border-brand-700/50 bg-brand-600 p-5 text-white shadow-sm">
-                {/* flat dot-grid motif — echoes the login bento geometry tile */}
+              {/* Hero — playful indigo "day card": soft-pop gradient, confetti
+                  specks, a floating sticker, copy that nudges not nags. */}
+              <div className="relative flex items-center gap-4 overflow-hidden rounded-[26px] bg-gradient-to-br from-brand-600 via-[#7A5AF8] to-[#E879C7] p-5 text-white shadow-card">
+                {/* washi-tape strip */}
+                <div aria-hidden className="pointer-events-none absolute -left-6 top-3 h-7 w-28 -rotate-[18deg] bg-white/25" />
+                {/* confetti specks */}
+                <div aria-hidden className="pointer-events-none absolute inset-0">
+                  <span className="absolute left-[20%] top-3 h-2 w-2 rotate-12 rounded-[2px] bg-amber-300" />
+                  <span className="absolute right-[14%] top-6 h-2.5 w-2.5 rounded-full bg-sky-300/90 animate-float" />
+                  <span className="absolute right-[30%] bottom-4 h-2 w-2 rotate-45 rounded-[2px] bg-emerald-300" />
+                  <span className="absolute left-[46%] bottom-3 h-1.5 w-1.5 rounded-full bg-white/80" />
+                </div>
+                {/* paper dot motif */}
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0"
-                  style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1.4px)', backgroundSize: '14px 14px' }}
+                  className="pointer-events-none absolute inset-0 opacity-60"
+                  style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.16) 1px, transparent 1.4px)', backgroundSize: '15px 15px' }}
                 />
+                {/* floating icon stickers */}
+                <Sparkles aria-hidden strokeWidth={2.25} className="pointer-events-none absolute -right-1 -top-1 h-7 w-7 animate-float text-amber-200" />
+                <Star aria-hidden fill="currentColor" className="pointer-events-none absolute right-10 bottom-3 h-3.5 w-3.5 animate-float text-white/80" style={{ animationDelay: '0.7s' }} />
                 <div className="relative z-10 flex h-[68px] w-[68px] items-center justify-center">
                   <Ring pct={pct} />
-                  <span className="absolute text-sm font-bold">{Math.round(pct * 100)}%</span>
+                  {/* key forces a remount so the pop replays when the ring hits 100% */}
+                  <span
+                    key={Math.round(pct * 100)}
+                    className={clsx('absolute font-display text-base font-semibold', pct >= 1 && 'animate-pop')}
+                  >
+                    {Math.round(pct * 100)}%
+                  </span>
                 </div>
                 <div className="relative z-10 min-w-0 flex-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-brand-200">Today</p>
-                  <p className="mt-0.5 text-lg font-bold leading-tight">
-                    {data.counts.completed_today} done · {data.counts.due_today} due
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">Your day</p>
+                  <p className="mt-0.5 font-display text-xl font-semibold leading-tight">
+                    {data.counts.completed_today} done
+                    {data.counts.completed_today > 0 && (
+                      <PartyPopper aria-hidden className="mx-1 inline-block h-5 w-5 animate-wiggle align-[-0.2em] text-amber-200" />
+                    )}{' '}· {data.counts.due_today} to go
                   </p>
-                  {todayTotalMin > 0 && (
-                    <p className="text-xs font-medium text-brand-200">
-                      {formatEstimateRatio(completedMin, todayTotalMin)} done
+                  {todayTotalMin > 0 ? (
+                    <p className="text-xs font-semibold text-white/85">
+                      {formatEstimateRatio(completedMin, todayTotalMin)} done —{' '}
+                      {pct >= 1 ? 'all wrapped up!' : pct >= 0.5 ? 'over halfway, nice!' : "you've got this"}
+                    </p>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-white/85">
+                      Nothing due — enjoy the breathing room <Coffee aria-hidden className="h-3.5 w-3.5" />
                     </p>
                   )}
                   <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
                     {data.counts.overdue > 0 && (
                       <button
                         onClick={goOverdue}
-                        className="inline-flex items-center gap-1 rounded-full bg-rose-500/90 px-2 py-0.5 font-semibold active:scale-95"
+                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold active:scale-95"
                       >
-                        <AlertCircle className="h-3 w-3" /> {data.counts.overdue} overdue
+                        <AlertCircle className="h-3 w-3" /> {data.counts.overdue} waiting
                       </button>
                     )}
                     {data.counts.review > 0 && (
                       <button
                         onClick={() => navigate('/review')}
-                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-semibold active:scale-95"
+                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold active:scale-95"
                       >
                         <CheckCheck className="h-3 w-3" /> {data.counts.review} to review
                       </button>
@@ -266,7 +298,7 @@ export default function Today() {
                 return (
                   <button
                     onClick={() => navigate('/marketplace')}
-                    className="mt-3 w-full rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-4 shadow-sm active:scale-[0.99] transition text-left"
+                    className="mt-3 w-full rounded-3xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-4 shadow-card active:scale-[0.99] transition text-left"
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400">
@@ -301,8 +333,8 @@ export default function Today() {
                           <span className="text-xs font-semibold text-amber-500">Earn your first points today →</span>
                         ) : isBeating ? (
                           <>
-                            <TrendingUp className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">🔥 Beating yesterday!</span>
+                            <Flame aria-hidden fill="currentColor" className="h-4 w-4 shrink-0 animate-wiggle text-orange-500" />
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Beating yesterday!</span>
                           </>
                         ) : (
                           <>
@@ -330,7 +362,7 @@ export default function Today() {
                         'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition active:scale-95',
                         active
                           ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+                          : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 text-stone-600 dark:text-slate-300',
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -338,7 +370,7 @@ export default function Today() {
                       <span
                         className={clsx(
                           'rounded-full px-1.5 text-[11px] font-bold',
-                          active ? 'bg-white/25' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+                          active ? 'bg-white/25' : 'bg-paper-line dark:bg-slate-800 text-stone-500 dark:text-slate-400',
                         )}
                       >
                         {lensCount[k]}
@@ -375,7 +407,7 @@ export default function Today() {
                     const active = groups.find((g) => g.key === group) ?? groups[0]
                     return (
                       <div id="today-groups" className="scroll-mt-4">
-                        <div className="mt-5 grid grid-cols-3 gap-2">
+                        <div className="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-paper-line p-1 dark:bg-slate-800/70">
                           {groups.map((g) => {
                             const on = g.key === group
                             return (
@@ -383,17 +415,17 @@ export default function Today() {
                                 key={g.key}
                                 onClick={() => setGroup(g.key)}
                                 className={clsx(
-                                  'flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold transition active:scale-95',
+                                  'flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition active:scale-95',
                                   on
                                     ? GROUP_TONE[g.key].active
-                                    : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
+                                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
                                 )}
                               >
                                 {g.label}
                                 <span
                                   className={clsx(
-                                    'rounded-full px-1.5 text-[11px] font-bold',
-                                    on ? GROUP_TONE[g.key].badge : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
+                                    'rounded-full px-1.5 text-[11px] font-bold tabular-nums',
+                                    on ? GROUP_TONE[g.key].badge : 'bg-white text-slate-500 dark:bg-slate-700 dark:text-slate-400',
                                   )}
                                 >
                                   {g.todos.length}
@@ -417,9 +449,9 @@ export default function Today() {
                             ))}
                           </div>
                         ) : all.length ? (
-                          <EmptyState icon={SearchX} title={`Nothing ${active.label.toLowerCase()}`} subtitle="Try another tab or clear filters." />
+                          <EmptyState icon={SearchX} title={`Nothing ${active.label.toLowerCase()}`} subtitle="Peek at another tab, or clear the filters." />
                         ) : (
-                          <EmptyState icon={PartyPopper} title="You're all caught up!" subtitle="Nothing assigned to you right now." />
+                          <EmptyState icon={PartyPopper} title="All caught up!" subtitle="Nothing on your plate right now. Go you." />
                         )}
                       </div>
                     )

@@ -60,22 +60,22 @@ export default function Review() {
         <PullToRefresh onRefresh={refetch}>
           {review.length > 0 && (
             <div className="mb-2 flex flex-col gap-2">
-              <div className="inline-flex self-start rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-sm font-semibold">
+              <div className="inline-flex self-start rounded-xl bg-paper-line dark:bg-slate-800 p-0.5 text-sm font-semibold">
                 <button
                   onClick={() => setRel('all')}
-                  className={`rounded-lg px-4 py-1.5 ${rel === 'all' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                  className={`rounded-lg px-4 py-1.5 ${rel === 'all' ? 'bg-paper-card dark:bg-slate-700 text-stone-800 dark:text-slate-100 shadow-sm' : 'text-stone-500 dark:text-slate-400'}`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setRel('owned')}
-                  className={`rounded-lg px-4 py-1.5 ${rel === 'owned' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                  className={`rounded-lg px-4 py-1.5 ${rel === 'owned' ? 'bg-paper-card dark:bg-slate-700 text-stone-800 dark:text-slate-100 shadow-sm' : 'text-stone-500 dark:text-slate-400'}`}
                 >
                   I own
                 </button>
                 <button
                   onClick={() => setRel('led')}
-                  className={`rounded-lg px-4 py-1.5 ${rel === 'led' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                  className={`rounded-lg px-4 py-1.5 ${rel === 'led' ? 'bg-paper-card dark:bg-slate-700 text-stone-800 dark:text-slate-100 shadow-sm' : 'text-stone-500 dark:text-slate-400'}`}
                 >
                   I led
                 </button>
@@ -89,7 +89,7 @@ export default function Review() {
               {groups.map((g) => (
                 <section key={g.name}>
                   <div className="mb-2 flex items-center justify-between px-1">
-                    <h2 className="truncate text-sm font-semibold text-slate-600 dark:text-slate-300">{g.name}</h2>
+                    <h2 className="truncate text-sm font-semibold text-stone-600 dark:text-slate-300">{g.name}</h2>
                     <span className="shrink-0 rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300">
                       {g.items.length}
                     </span>

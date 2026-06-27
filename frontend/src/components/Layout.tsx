@@ -17,12 +17,12 @@ export function TabScreen({
   children: React.ReactNode
 }) {
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col">
-      <header className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-900 px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
+    <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
+      <header className="sticky top-0 z-20 bg-paper/95 dark:bg-slate-900 backdrop-blur-sm px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{title}</h1>
-            {subtitle && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
+            <h1 className="font-display text-[1.7rem] font-semibold tracking-tight text-stone-800 dark:text-slate-50">{title}</h1>
+            {subtitle && <p className="mt-0.5 text-sm text-stone-500 dark:text-slate-400">{subtitle}</p>}
           </div>
           {right}
         </div>
@@ -45,7 +45,7 @@ export function DetailScreen({
 }) {
   const navigate = useNavigate()
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col">
+    <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
         <button
           onClick={() => navigate(-1)}
