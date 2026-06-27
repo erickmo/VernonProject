@@ -13,20 +13,20 @@ def execute(filters=None):
 	# --------------------------------------------------------------------------
 	# Define Columns
 	# --------------------------------------------------------------------------
-	# Filter Project
+	# Filter Project (values escaped — frappe.db.escape returns a quoted literal).
 	filter_project = ""
 	if filters and filters.get("project"):
-		filter_project = f" AND pd.project = '{filters.get('project')}' "
+		filter_project = f" AND pd.project = {frappe.db.escape(filters.get('project'))} "
 
 	# Filter Grouping
 	filter_grouping = ""
 	if filters and filters.get("grouping"):
-		filter_grouping = f" AND pd.grouping = '{filters.get('grouping')}' "
+		filter_grouping = f" AND pd.grouping = {frappe.db.escape(filters.get('grouping'))} "
 
 	# Filter Assigned To
 	filter_assigned_to = ""
 	if filters and filters.get("assigned_to"):
-		filter_assigned_to = f" AND pt.assigned_to = '{filters.get('assigned_to')}' "
+		filter_assigned_to = f" AND pt.assigned_to = {frappe.db.escape(filters.get('assigned_to'))} "
 
 	# Filter Status (Project Detail status) — supports a single value or a list
 	filter_status = ""
@@ -43,8 +43,8 @@ def execute(filters=None):
 	if filters and filters.get("date_range"):
 		date_range = filters.get("date_range")
 		if len(date_range) == 2:
-			filter_deadline_from = f" AND pt.deadline >= '{date_range[0]}' "
-			filter_deadline_to = f" AND pt.deadline <= '{date_range[1]}' "
+			filter_deadline_from = f" AND pt.deadline >= {frappe.db.escape(date_range[0])} "
+			filter_deadline_to = f" AND pt.deadline <= {frappe.db.escape(date_range[1])} "
 
 	# Filter Todo Status — supports a single value or a list
 	filter_todo_status = ""
