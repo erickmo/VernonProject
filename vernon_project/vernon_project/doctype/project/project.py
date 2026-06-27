@@ -97,23 +97,25 @@ class Project(Document):
 				)
 		if frappe.db.exists("Project Detail", {"project": self.name}):
 			frappe.throw("Cannot delete a project that has project details.")
-@staticmethod
+
+
 def get_permission_query_conditions(user):
 	if not user or user == "Guest":
 		return ""
 
-	# optional: batasi hanya untuk role tertentu
-	if "Project Owner" not in frappe.get_roles(user):
+	# System Managers see every project (mirrors Project Detail).
+	if "System Manager" in frappe.get_roles(user):
 		return ""
 
 	user_esc = frappe.db.escape(user)
 
-	# Hanya tampilkan project:
-	# - yang dia create (owner)
-	# - ATAU dia ada di Project Team
+	# Show only projects where the user is the owner, leader, admin, or a team member.
+	# (Without this, non-owners fell through to an empty condition and saw ALL projects.)
 	return f"""
 		(
 				`tabProject`.project_owner = {user_esc}
+				OR `tabProject`.project_leader = {user_esc}
+				OR `tabProject`.project_admin = {user_esc}
 				OR EXISTS (
 					SELECT 1
 					FROM `tabProject Team` pt
