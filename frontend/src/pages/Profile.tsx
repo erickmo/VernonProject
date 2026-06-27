@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
@@ -165,6 +165,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             )}
             <Row icon={KeyRound} label="Change password" hue="sky" onClick={() => setShowChangePw(true)} />
             <Row icon={Send} label="Gift Points" hue="amber" onClick={() => navigate('/gift-points')} />
+            <Row icon={CalendarClock} label="Meetings" hue="sky" onClick={() => navigate('/meetings')} />
             {canManageGroups(boot) && (
               <Row icon={Layers} label="Manage Groups" hue="emerald" onClick={() => navigate('/groups')} />
             )}
