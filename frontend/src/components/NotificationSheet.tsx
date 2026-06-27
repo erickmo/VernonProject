@@ -1,11 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck, ClipboardList, MessageCircle, AtSign, Coins, Gift, Hand } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useData'
-import type { AppNotification } from '@/lib/types'
+import type { AppNotification, NotificationType } from '@/lib/types'
 
 const ANIM_MS = 260
+
+const TYPE_ICON: Record<NotificationType, LucideIcon> = {
+  Assignment: ClipboardList,
+  Approval: CheckCheck,
+  Comment: MessageCircle,
+  Mention: AtSign,
+  Points: Coins,
+  Redemption: Gift,
+  Kudos: Hand,
+}
+
+const TYPE_LABEL: Record<NotificationType, string> = {
+  Assignment: 'Assignment',
+  Approval: 'Approval',
+  Comment: 'Comment',
+  Mention: 'Mention',
+  Points: 'Points',
+  Redemption: 'Redemption',
+  Kudos: 'Kudos',
+}
 
 function deepLink(n: AppNotification): string {
   const d = n.reference_doctype || ''
@@ -114,33 +135,42 @@ export function NotificationSheet({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-700">
-              {items.map((n) => (
-                <li key={n.name}>
-                  <button
-                    onClick={() => open(n)}
-                    className="flex w-full items-start gap-3 px-1 py-3 text-left active:bg-slate-50 dark:active:bg-slate-700/50"
-                  >
-                    <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                        n.is_read ? 'bg-transparent' : 'bg-brand-500'
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-slate-900 dark:text-slate-50">
-                        {n.title}
+              {items.map((n) => {
+                const Icon = TYPE_ICON[n.type] ?? Bell
+                return (
+                  <li key={n.name}>
+                    <button
+                      onClick={() => open(n)}
+                      className="flex w-full items-start gap-3 px-1 py-3 text-left active:bg-slate-50 dark:active:bg-slate-700/50"
+                    >
+                      <span
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                          n.is_read ? 'bg-transparent' : 'bg-brand-500'
+                        }`}
+                      />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
+                        <Icon className="h-[18px] w-[18px]" />
                       </span>
-                      {n.body && (
-                        <span className="mt-0.5 block truncate text-sm text-slate-500 dark:text-slate-400">
-                          {n.body}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          {TYPE_LABEL[n.type] ?? n.type}
                         </span>
-                      )}
-                      <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
-                        {n.at_human}
+                        <span className="block text-sm font-semibold text-slate-900 dark:text-slate-50">
+                          {n.title}
+                        </span>
+                        {n.body && (
+                          <span className="mt-0.5 block truncate text-sm text-slate-500 dark:text-slate-400">
+                            {n.body}
+                          </span>
+                        )}
+                        <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
+                          {n.at_human}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
