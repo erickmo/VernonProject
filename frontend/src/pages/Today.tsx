@@ -218,6 +218,13 @@ export default function Today() {
         <CalendarDays className="h-[22px] w-[22px]" />
       </button>
       <NotesButton />
+      <button
+        onClick={() => navigate('/activity')}
+        aria-label="Team activity"
+        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-200/70 dark:active:bg-slate-700"
+      >
+        <Sparkles className="h-6 w-6" />
+      </button>
       <NotificationBell />
       <button onClick={() => navigate('/me')} className="transition active:scale-95">
         <Avatar name={boot.full_name} image={boot.image} size={42} />
