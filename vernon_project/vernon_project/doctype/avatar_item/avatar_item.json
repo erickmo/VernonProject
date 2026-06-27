@@ -1,0 +1,36 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:item_name",
+ "creation": "2026-06-27 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["item_name","slot","active","is_default","column_break_a","model_url","socket","thumbnail"],
+ "fields": [
+  {"fieldname":"item_name","fieldtype":"Data","label":"Item Name","reqd":1,"unique":1,"in_list_view":1},
+  {"fieldname":"slot","fieldtype":"Select","label":"Slot","options":"Base\nHat\nFace","reqd":1,"in_list_view":1},
+  {"fieldname":"active","fieldtype":"Check","label":"Active","default":"1","in_list_view":1},
+  {"fieldname":"is_default","fieldtype":"Check","label":"Default (free for all)","default":"0","in_list_view":1},
+  {"fieldname":"column_break_a","fieldtype":"Column Break"},
+  {"fieldname":"model_url","fieldtype":"Data","label":"Model URL (GLB path)"},
+  {"fieldname":"socket","fieldtype":"Data","label":"Socket (anchor node)"},
+  {"fieldname":"thumbnail","fieldtype":"Attach Image","label":"Thumbnail"}
+ ],
+ "image_field":"thumbnail",
+ "index_web_pages_for_search":1,
+ "links":[],
+ "modified":"2026-06-27 00:00:00.000000",
+ "modified_by":"Administrator",
+ "module":"Vernon Project",
+ "name":"Avatar Item",
+ "naming_rule":"By fieldname",
+ "owner":"Administrator",
+ "permissions":[
+  {"role":"System Manager","create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"share":1,"write":1},
+  {"role":"Marketplace Manager","create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"share":1,"write":1}
+ ],
+ "row_format":"Dynamic",
+ "sort_field":"modified",
+ "sort_order":"DESC",
+ "states":[]
+}
