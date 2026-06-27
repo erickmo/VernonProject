@@ -7,6 +7,8 @@ import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useProjects, useBoot, canCreateProject } from '@/hooks/useData'
+import { Fab } from '@/components/Fab'
+import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { buildOptions } from '@/lib/filters'
 
 type StatusFilter = 'Ongoing' | 'Closed' | 'all'
@@ -19,6 +21,7 @@ export default function Projects() {
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
+  const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
       return new Set<string>(JSON.parse(localStorage.getItem('projectsCollapsedGroups') || '[]'))
@@ -201,6 +204,9 @@ export default function Projects() {
       />
 
       <ProjectFormSheet open={formOpen} onClose={() => setFormOpen(false)} />
+
+      <Fab onTap={() => setQuickAdd('task')} onLongPress={() => setQuickAdd('note')} />
+      <QuickAddSheet open={quickAdd !== null} mode={quickAdd ?? 'task'} onClose={() => setQuickAdd(null)} />
     </TabScreen>
   )
 }
