@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -36,6 +36,7 @@ import {
   useScoringGroup,
   useCancelTodo,
   useRestoreTodo,
+  useDeleteTodo,
 } from '@/hooks/useData'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
@@ -718,8 +719,10 @@ export default function ProjectItem() {
   const advanceConfirm = useAdvance()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
+  const deleteTodo = useDeleteTodo()
   const setDeadlineToday = useUpdateTodo(todoName)
   const confirm = useConfirm()
+  const navigate = useNavigate()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
@@ -769,6 +772,23 @@ export default function ProjectItem() {
       toast(res.status === 'ok' ? 'success' : 'info', res.message)
     } catch (e: unknown) {
       toast('error', e instanceof Error ? e.message : 'Restore failed')
+    }
+  }
+
+  const onDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete this task?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    })
+    if (!ok) return
+    try {
+      const res = await deleteTodo.mutateAsync(data.name)
+      toast(res.status === 'ok' ? 'success' : 'info', res.message ?? '')
+      if (res.status === 'ok') navigate(-1)
+    } catch (e: unknown) {
+      toast('error', e instanceof Error ? e.message : 'Delete failed')
     }
   }
 
@@ -1100,6 +1120,17 @@ export default function ProjectItem() {
                       </button>
                     ))}
                 </>
+              )}
+
+              {data.can_delete && (
+                <button
+                  onClick={onDelete}
+                  disabled={deleteTodo.isPending}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-700 ring-1 ring-rose-300 dark:ring-rose-500/40 hover:bg-rose-50 disabled:opacity-60"
+                >
+                  {deleteTodo.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                  Delete task
+                </button>
               )}
             </div>
 
