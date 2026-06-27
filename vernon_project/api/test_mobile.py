@@ -15,17 +15,10 @@ class TestMobileGetWorkItem(unittest.TestCase):
 				"brand_name": "Test Customer",
 			}).insert(ignore_permissions=True)
 
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({
-				"doctype": "Project Group",
-				"project_name": "Test Project Group",
-			}).insert(ignore_permissions=True)
-
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Mobile WorkItem Test",
 			"brand": "Test Customer",
-			"project_group": "Test Project Group",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
 			"status": "Ongoing",
@@ -76,12 +69,9 @@ class TestMobileGetProjectExtras(unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group",
-				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Extras Test Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})
@@ -104,7 +94,7 @@ class TestMobileGetProjectExtras(unittest.TestCase):
 		r = get_project(self.project.name)
 		self.assertEqual(r["project_owner"], "Administrator")
 		self.assertEqual(r["project_leader"], "Administrator")
-		self.assertIn("project_group", r)
+		self.assertIn("brand", r)
 		self.assertIn("Extras Grouping", r["groupings"])
 
 
@@ -112,9 +102,6 @@ class TestMobileFormOptions(unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group",
-				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		if not frappe.db.exists("User", "fo_lead@example.com"):
 			frappe.get_doc({"doctype": "User", "email": "fo_lead@example.com",
 				"first_name": "FO", "send_welcome_email": 0}).insert(ignore_permissions=True)
@@ -133,8 +120,7 @@ class TestMobileFormOptions(unittest.TestCase):
 			r = get_form_options()
 		finally:
 			frappe.set_user("Administrator")
-		self.assertIn("customers", r)
-		self.assertIn("project_groups", r)
+		self.assertIn("brands", r)
 		self.assertTrue(len(r["users"]) > 0)
 		self.assertTrue(any(o["value"] == "fo_lead@example.com" for o in r["users"]))
 		self.assertTrue(all("value" in o and "label" in o for o in r["users"]))
@@ -144,12 +130,9 @@ class TestMobileGetWorkItemExtras(unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group",
-				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "WI Extras Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})
@@ -185,16 +168,13 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group",
-				"project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		for email in ("tm_member@example.com", "tm_assignee@example.com"):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc({"doctype": "User", "email": email,
 					"first_name": email.split("@")[0], "send_welcome_email": 0}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Team Roster Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "tm_member@example.com"}],
@@ -209,9 +189,12 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		self.detail.insert(ignore_permissions=True)
 		# One open todo assigned to a formal team member (assignee must be a team
 		# member: Project Todo enforces validate_assigned_to_team_member).
+		if not frappe.db.exists("Group", "Test Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Test Group"}).insert(ignore_permissions=True)
 		self.todo = frappe.get_doc({"doctype": "Project Todo", "project_detail": self.detail.name,
 			"to_do": "Open task", "assigned_to": "tm_member@example.com",
-			"status": "⚪️ Planned", "deadline": add_days(nowdate(), 5)}).insert(ignore_permissions=True)
+			"status": "⚪️ Planned", "start_date": nowdate(), "deadline": add_days(nowdate(), 5),
+			"group": "Test Group", "level": "1"}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
 	def tearDown(self):
@@ -292,7 +275,6 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 			"doctype": "Project",
 			"project_name": "Owner Leader Order Project",
 			"brand": "Test Customer",
-			"project_group": "Test Project Group",
 			"project_owner": "tm_member@example.com",
 			"project_leader": "tm_assignee@example.com",
 			"status": "Ongoing",
@@ -341,5 +323,111 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		try:
 			with self.assertRaises(frappe.PermissionError):
 				get_comments("Project", self.project.name)
+		finally:
+			frappe.set_user("Administrator")
+
+
+class TestMobileWallet(unittest.TestCase):
+	"""Money paths: gift (zero-sum transfer) and redeem (instant deduct). These
+	mutate balances, so a regression here loses or mints points silently."""
+
+	A = "wallet_a@example.com"
+	B = "wallet_b@example.com"
+	REWARD = "Test Reward"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		for email in (self.A, self.B):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({
+					"doctype": "User", "email": email, "first_name": email.split("@")[0],
+					"send_welcome_email": 0,
+				}).insert(ignore_permissions=True)
+		self._clear_money()
+		# Seed user A with 100 spendable points (Point Ledger only requires `user`).
+		frappe.get_doc({
+			"doctype": "Point Ledger", "user": self.A, "points_earned": 100, "point": 100,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		self._clear_money()
+		frappe.db.commit()
+
+	def _clear_money(self):
+		frappe.db.delete("Reward Redemption", {"user": ["in", (self.A, self.B)]})
+		frappe.db.delete("Point Ledger", {"user": ["in", (self.A, self.B)]})
+		if frappe.db.exists("Marketplace Reward", self.REWARD):
+			frappe.delete_doc("Marketplace Reward", self.REWARD, force=True, ignore_permissions=True)
+
+	def _make_reward(self, point_cost=40, stock=2, active=1):
+		return frappe.get_doc({
+			"doctype": "Marketplace Reward", "reward_name": self.REWARD,
+			"point_cost": point_cost, "stock_quantity": stock, "active": active,
+		}).insert(ignore_permissions=True).name
+
+	def test_user_balance_counts_ledger(self):
+		from vernon_project.api.mobile import _user_balance
+		earned, redeemed, balance = _user_balance(self.A)
+		self.assertEqual((earned, redeemed, balance), (100, 0, 100))
+
+	def test_gift_points_is_zero_sum(self):
+		from vernon_project.api.mobile import gift_points, _user_balance
+		frappe.set_user(self.A)
+		try:
+			gift_points(self.B, 30)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(_user_balance(self.A)[2], 70)
+		self.assertEqual(_user_balance(self.B)[2], 30)
+		# Zero-sum: total earned across both users is unchanged by the transfer.
+		total = frappe.db.sql(
+			"select coalesce(sum(points_earned),0) from `tabPoint Ledger` where user in (%s,%s)",
+			(self.A, self.B),
+		)[0][0]
+		self.assertEqual(float(total), 100)
+
+	def test_gift_rejects_overdraft_self_and_fraction(self):
+		from vernon_project.api.mobile import gift_points
+		frappe.set_user(self.A)
+		try:
+			with self.assertRaises(frappe.ValidationError):
+				gift_points(self.B, 1000)  # more than balance
+			with self.assertRaises(frappe.ValidationError):
+				gift_points(self.A, 10)  # cannot gift yourself
+			with self.assertRaises(frappe.ValidationError):
+				gift_points(self.B, 1.5)  # whole numbers only
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_redeem_deducts_balance_and_stock(self):
+		from vernon_project.api.mobile import redeem_reward, _user_balance
+		name = self._make_reward(point_cost=40, stock=2)
+		frappe.db.commit()
+		frappe.set_user(self.A)
+		try:
+			res = redeem_reward(name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(res["balance"], 60)
+		self.assertEqual(frappe.db.get_value("Marketplace Reward", name, "stock_quantity"), 1)
+		self.assertEqual(_user_balance(self.A)[2], 60)
+		self.assertTrue(frappe.db.exists("Reward Redemption", res["redemption"]))
+
+	def test_redeem_rejects_overdraft_and_inactive(self):
+		from vernon_project.api.mobile import redeem_reward
+		frappe.set_user(self.A)
+		try:
+			name = self._make_reward(point_cost=1000, stock=2)
+			frappe.db.commit()
+			with self.assertRaises(frappe.ValidationError):
+				redeem_reward(name)  # cost exceeds balance
+			frappe.set_user("Administrator")
+			frappe.db.set_value("Marketplace Reward", name, {"point_cost": 10, "active": 0})
+			frappe.db.commit()
+			frappe.set_user(self.A)
+			with self.assertRaises(frappe.ValidationError):
+				redeem_reward(name)  # inactive reward
 		finally:
 			frappe.set_user("Administrator")

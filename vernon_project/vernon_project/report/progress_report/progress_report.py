@@ -12,24 +12,24 @@ def execute(filters=None):
 	# --------------------------------------------------------------------------
 	# Define Columns
 	# --------------------------------------------------------------------------
-	# Filter Project
+	# Filter Project (values escaped — frappe.db.escape returns a quoted literal).
 	filter_project = ""
 	if filters and filters.get("project"):
-		filter_project = f" AND pd.project = '{filters.get('project')}' "
+		filter_project = f" AND pd.project = {frappe.db.escape(filters.get('project'))} "
 
 	# Filter User
 	filter_user = ""
 	if filters and filters.get("user"):
-		filter_user = f" AND pt.assigned_to = '{filters.get('user')}' "
+		filter_user = f" AND pt.assigned_to = {frappe.db.escape(filters.get('user'))} "
 
 	# Filter Date
 	filter_date = ""
 	if filters and filters.get("date_range"):
 		date_range = filters.get("date_range")
 		if len(date_range) == 2:
-			date_from = date_range[0]
-			date_to = add_days(date_range[1], 1)	
-			filter_date = f" AND ((pt.developed_at >= '{date_from}' AND pt.developed_at < '{date_to}') OR (pt.tested_at >= '{date_from}' AND pt.tested_at < '{date_to}') OR (pt.completed_at >= '{date_from}' AND pt.completed_at < '{date_to}')) "
+			date_from = frappe.db.escape(date_range[0])
+			date_to = frappe.db.escape(add_days(date_range[1], 1))
+			filter_date = f" AND ((pt.developed_at >= {date_from} AND pt.developed_at < {date_to}) OR (pt.tested_at >= {date_from} AND pt.tested_at < {date_to}) OR (pt.completed_at >= {date_from} AND pt.completed_at < {date_to})) "
 
 	# --------------------------------------------------------------------------
 

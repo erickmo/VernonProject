@@ -181,7 +181,8 @@ doc_events = {
 
 scheduler_events = {
 	"daily": [
-		"vernon_project.tasks.create_recurring_todos"
+		"vernon_project.tasks.create_recurring_todos",
+		"vernon_project.tasks.notify_due_todos"
 	]
 }
 
