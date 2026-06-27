@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Check, Users } from 'lucide-react'
+import { TabScreen } from '@/components/Layout'
 import { useProjects } from '@/hooks/useData'
 import { useMeetings, useMarkMeetingDone, useReopenMeeting } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -17,7 +18,7 @@ export function MeetingsScreen() {
 
   const projectOptions = (projects.data ?? []).map((p) => ({
     value: p.name,
-    label: p.project_name,
+    label: p.project_name ?? p.name,
   }))
 
   const onDone = (name: string) =>
@@ -31,19 +32,18 @@ export function MeetingsScreen() {
       onError: (e) => toast('error', (e as Error).message),
     })
 
-  return (
-    <div className="mx-auto max-w-xl px-4 pb-24 pt-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Meetings</h1>
-        <button
-          disabled={!project}
-          onClick={() => setSheet(true)}
-          className="flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          <Plus className="h-4 w-4" /> New
-        </button>
-      </div>
+  const newButton = (
+    <button
+      disabled={!project}
+      onClick={() => setSheet(true)}
+      className="flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+    >
+      <Plus className="h-4 w-4" /> New
+    </button>
+  )
 
+  return (
+    <TabScreen title="Meetings" right={newButton}>
       <div className="mb-4">
         <SearchableSelect
           value={project}
@@ -97,6 +97,6 @@ export function MeetingsScreen() {
       {project && (
         <CreateMeetingSheet open={sheet} onClose={() => setSheet(false)} project={project} />
       )}
-    </div>
+    </TabScreen>
   )
 }
