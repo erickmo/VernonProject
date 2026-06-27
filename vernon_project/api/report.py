@@ -61,9 +61,21 @@ def _build_daily_matrix(active_users, rows, from_date, to_date, threshold):
 	}
 
 
+def _is_system_manager():
+	return "System Manager" in frappe.get_roles(frappe.session.user)
+
+
 def _require_system_manager():
-	if "System Manager" not in frappe.get_roles(frappe.session.user):
+	if not _is_system_manager():
 		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+@frappe.whitelist()
+def daily_estimated_time_access():
+	"""Whether the current user may view the Daily Estimated Time report.
+	Single source for the web/mobile nav+page gate — same rule the report
+	endpoint enforces, so the UI can hide the entry without a 403 round-trip."""
+	return {"can_view": _is_system_manager()}
 
 
 def _active_users():
@@ -112,6 +124,7 @@ def daily_estimated_time(from_date, to_date):
 			FROM `tabProject Todo Allocation` AS alloc
 			JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
 			WHERE todo.assigned_to IN %(users)s
+			  AND alloc.parenttype = 'Project Todo'
 			  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
 			GROUP BY todo.assigned_to, alloc.allocation_date
 			""",

@@ -1,7 +1,7 @@
 import unittest
 
 import frappe
-from vernon_project.api.report import _date_list, _build_daily_matrix, daily_estimated_time
+from vernon_project.api.report import _date_list, _build_daily_matrix, daily_estimated_time, daily_estimated_time_access
 
 
 class TestBuildDailyMatrix(unittest.TestCase):
@@ -62,6 +62,9 @@ class TestBuildDailyMatrix(unittest.TestCase):
 class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
+		if frappe.db.exists("User", "report_guest@example.com"):
+			frappe.delete_doc("User", "report_guest@example.com", force=True, ignore_permissions=True)
+		frappe.db.commit()
 
 	def test_requires_system_manager(self):
 		# A user without System Manager must be rejected.
@@ -86,3 +89,24 @@ class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
 		self.assertIn("threshold", out)
 		self.assertEqual(out["dates"], ["2026-06-22", "2026-06-23"])
 		self.assertIsInstance(out["rows"], list)
+
+
+class TestDailyEstimatedTimeAccess(unittest.TestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		if frappe.db.exists("User", "report_access_guest@example.com"):
+			frappe.delete_doc("User", "report_access_guest@example.com", force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_system_manager_can_view(self):
+		frappe.set_user("Administrator")  # Administrator has System Manager
+		self.assertEqual(daily_estimated_time_access(), {"can_view": True})
+
+	def test_non_system_manager_cannot_view(self):
+		if not frappe.db.exists("User", "report_access_guest@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "report_access_guest@example.com",
+				"first_name": "Access", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		frappe.set_user("report_access_guest@example.com")
+		self.assertEqual(daily_estimated_time_access(), {"can_view": False})
