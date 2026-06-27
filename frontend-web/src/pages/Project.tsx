@@ -4,10 +4,10 @@ import {
   Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers,
   Pencil, Trash2, Plus, ListPlus, BarChart3, List,
 } from 'lucide-react'
-import { useProject, useProjectDetail, useProjectGantt, permFlags, useBoot, useDeleteProject } from '@/hooks/useData'
+import { useProject, useProjectDetail, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Avatar, Spinner, EmptyState } from '@/components/ui'
-import { Button } from '@web/components/ui'
+import { Button, OverflowMenu } from '@web/components/ui'
 import { useSetCrumbs } from '@web/lib/crumbs'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
@@ -17,6 +17,7 @@ import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { TeamWorkloadDrawer } from '@web/components/TeamWorkloadDrawer'
+import { TeamManagerDrawer } from '@web/components/TeamManagerDrawer'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import type { TeamMember } from '@/lib/types'
 
@@ -30,6 +31,7 @@ export default function Project() {
   const project = useProject(id)
   const boot = useBoot()
   const del = useDeleteProject()
+  const delDetail = useDeleteProjectDetail()
   const confirm = useConfirm()
   const toast = useToast()
 
@@ -37,6 +39,8 @@ export default function Project() {
   const [detailFilter, setDetailFilter] = useState<DetailFilter>('all')
   const [editOpen, setEditOpen] = useState(false)
   const [detailFormOpen, setDetailFormOpen] = useState(false)
+  const [editDetail, setEditDetail] = useState<string | null>(null)
+  const [teamOpen, setTeamOpen] = useState(false)
   const [createItemFor, setCreateItemFor] = useState<string | null>(null)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
 
@@ -85,6 +89,15 @@ export default function Project() {
     if (!(await confirm({ title: 'Delete this project?', confirmLabel: 'Delete', destructive: true }))) return
     del.mutate(p.name, {
       onSuccess: () => { toast('success', 'Project deleted'); nav('/projects') },
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
+
+  const doDeleteDetail = async (w: typeof p.project_details[number]) => {
+    if (w.total > 0) return // backend won't cascade — remove todos first
+    if (!(await confirm({ title: 'Delete this detail?', message: `"${w.title}" will be removed.`, confirmLabel: 'Delete', destructive: true }))) return
+    delDetail.mutate(w.name, {
+      onSuccess: () => toast('success', 'Project detail deleted'),
       onError: (e) => toast('error', (e as Error).message),
     })
   }
@@ -179,7 +192,17 @@ export default function Project() {
 
         {/* Team workload */}
         {p.team.length > 0 && (
-          <BentoTile span="full" tone="tint" accent="slate" icon={Users} title="Team workload">
+          <BentoTile
+            span="full" tone="tint" accent="slate" icon={Users} title="Team workload"
+            actions={perms.can_edit ? (
+              <button
+                onClick={() => setTeamOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+              >
+                <Users className="h-3.5 w-3.5" /> Manage
+              </button>
+            ) : undefined}
+          >
             <div className="no-scrollbar -mx-1 flex gap-2.5 overflow-x-auto pb-1 md:flex-wrap">
               {p.team.map((m) => {
                 const role = m.is_owner && m.is_leader ? 'Owner · Leader'
@@ -303,7 +326,21 @@ export default function Project() {
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-slate-100">{w.title}</p>
-                                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    {perms.can_edit && (
+                                      <span onClick={(e) => e.stopPropagation()}>
+                                        <OverflowMenu
+                                          size="sm"
+                                          items={[
+                                            { label: 'Edit', icon: Pencil, onClick: () => setEditDetail(w.name) },
+                                            { divider: true },
+                                            { label: 'Delete', icon: Trash2, danger: true, disabled: w.total > 0, onClick: () => doDeleteDetail(w) },
+                                          ]}
+                                        />
+                                      </span>
+                                    )}
+                                    <ChevronRight className="h-5 w-5 text-slate-300 dark:text-slate-600" />
+                                  </div>
                                 </div>
                                 <div className="mt-2.5 flex items-center gap-2">
                                   <ProgressBar value={w.progress} />
@@ -355,6 +392,13 @@ export default function Project() {
         onClose={() => setDetailFormOpen(false)}
         project={p.name}
       />
+      <ProjectDetailFormDialog
+        key={editDetail ?? 'edit'}
+        open={!!editDetail}
+        onClose={() => setEditDetail(null)}
+        project={p.name}
+        detail={editDetail ?? undefined}
+      />
       {createItemFor && (
         <CreateProjectItemDialog
           open={!!createItemFor}
@@ -370,6 +414,12 @@ export default function Project() {
         onClose={() => setWorkloadMember(null)}
         member={workloadMember}
         project={p.name}
+      />
+      <TeamManagerDrawer
+        open={teamOpen}
+        onClose={() => setTeamOpen(false)}
+        project={p}
+        canReassign={perms.can_reassign}
       />
     </div>
   )

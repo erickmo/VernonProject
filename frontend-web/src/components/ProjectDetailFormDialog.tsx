@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { useCreateProjectDetail, useGroups } from '@/hooks/useData'
+import { useCreateProjectDetail, useUpdateProjectDetail, useProjectDetail, useGroups } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
@@ -11,12 +11,19 @@ import { Button } from '@web/components/ui'
 interface Props {
   open: boolean
   onClose: () => void
+  /** Project name (parent). */
   project: string
+  /** Project Detail name to edit; omit for create. */
+  detail?: string
 }
 
-export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
+export function ProjectDetailFormDialog({ open, onClose, project, detail }: Props) {
   const toast = useToast()
+  const isEdit = !!detail
   const create = useCreateProjectDetail(project)
+  const update = useUpdateProjectDetail(detail ?? '')
+  // In edit mode, refetch the full detail to hydrate condition/outcome/etc.
+  const detailQuery = useProjectDetail(detail ?? '')
   const { data: glossaryList } = useGroups(project, open && !!project)
   const [title, setTitle] = useState('')
   const [isPending, setIsPending] = useState(false)
@@ -26,6 +33,21 @@ export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
   const [discount, setDiscount] = useState('')
   const [price, setPrice] = useState('')
   const [glossaries, setGlossaries] = useState<string[]>([])
+
+  // Hydrate from the loaded detail when editing.
+  useEffect(() => {
+    if (open && detail && detailQuery.data) {
+      const d = detailQuery.data
+      setTitle(d.title)
+      setIsPending(!!d.is_pending)
+      setCondition(d.current_condition ?? '')
+      setOutcome(d.expected_outcome ?? '')
+      setSow(d.keterangan_di_sow ?? '')
+      setDiscount(d.discount != null ? String(d.discount) : '')
+      setPrice(d.price != null ? String(d.price) : '')
+      setGlossaries(d.glossaries ?? [])
+    }
+  }, [open, detail, detailQuery.data])
 
   const reset = () => {
     setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
@@ -43,29 +65,31 @@ export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
       toast('error', 'Title is required')
       return
     }
-    create.mutate(
-      {
-        title: title.trim(),
-        is_pending: isPending ? 1 : 0,
-        current_condition: condition,
-        expected_outcome: outcome,
-        keterangan_di_sow: sow,
-        discount: Number(discount) || 0,
-        price: Number(price) || 0,
-        glossaries: glossaries.map((g) => ({ glossary: g })),
-      },
-      {
-        onSuccess: () => { toast('success', 'Project detail created'); close() },
-        onError: (e) => toast('error', (e as Error).message),
-      },
-    )
+    const payload = {
+      title: title.trim(),
+      is_pending: isPending ? 1 : 0,
+      current_condition: condition,
+      expected_outcome: outcome,
+      keterangan_di_sow: sow,
+      discount: Number(discount) || 0,
+      price: Number(price) || 0,
+      glossaries: glossaries.map((g) => ({ glossary: g })),
+    }
+    const handlers = {
+      onSuccess: () => { toast('success', isEdit ? 'Project detail updated' : 'Project detail created'); close() },
+      onError: (e: unknown) => toast('error', (e as Error).message),
+    }
+    if (isEdit) update.mutate(payload, handlers)
+    else create.mutate(payload, handlers)
   }
+
+  const busy = create.isPending || update.isPending
 
   return (
     <Drawer
       open={open}
       onClose={close}
-      title="New detail"
+      title={isEdit ? 'Edit detail' : 'New detail'}
       widthClass="max-w-lg"
       onSubmit={submit}
       footer={
@@ -73,13 +97,18 @@ export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
           <Button variant="ghost" onClick={close}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" disabled={create.isPending}>
-            {create.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Create detail
+          <Button variant="primary" type="submit" disabled={busy}>
+            {busy ? <Spinner className="h-4 w-4" /> : !isEdit && <Plus className="h-4 w-4" />}
+            {isEdit ? 'Save changes' : 'Create detail'}
           </Button>
         </>
       }
     >
+      {isEdit && detailQuery.isLoading ? (
+        <div className="flex justify-center py-12">
+          <Spinner />
+        </div>
+      ) : (
       <div className="flex flex-col gap-4">
         <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
           Title<span className="text-red-500"> *</span>
@@ -151,6 +180,7 @@ export function ProjectDetailFormDialog({ open, onClose, project }: Props) {
           </label>
         </div>
       </div>
+      )}
     </Drawer>
   )
 }
