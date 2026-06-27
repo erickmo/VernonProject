@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Check } from 'lucide-react'
 import { useDashboard } from '@/hooks/useData'
 import { byDeadlineAsc, formatDate } from '@/lib/format'
-import { Avatar, EmptyState, Spinner } from '@/components/ui'
+import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { buildOptions } from '@/lib/filters'
 import { FilterButton, activeFilterCount, type FilterValue } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -11,11 +11,18 @@ import { Popover } from '@web/components/overlays/Popover'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
+const REL_TABS: { value: 'all' | 'owned' | 'led'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'owned', label: 'I own' },
+  { value: 'led', label: 'I led' },
+]
+
 export default function Review() {
   const navigate = useNavigate()
   const dash = useDashboard()
   const advanceConfirm = useAdvance()
   const [filters, setFilters] = useState<FilterValue>({})
+  const [rel, setRel] = useState<'all' | 'owned' | 'led'>('all')
   const filterRef = useRef<HTMLSpanElement>(null)
   const [filterOpen, setFilterOpen] = useState(false)
 
@@ -47,13 +54,14 @@ export default function Review() {
       all
         .filter(
           (t) =>
+            (rel === 'all' || (rel === 'owned' ? t.is_owner : t.is_leader)) &&
             (!filters.project || t.project === filters.project) &&
             (!filters.brand || (t.brand ?? '') === filters.brand) &&
             (!filters.assignee || t.assigned_to === filters.assignee),
         )
         .slice()
         .sort(byDeadlineAsc),
-    [all, filters],
+    [all, filters, rel],
   )
 
   const byProject = useMemo(() => {
@@ -126,6 +134,11 @@ export default function Review() {
         </BentoTile>
 
         <BentoTile span="full" tone="plain">
+          {all.length > 0 && (
+            <div className="mb-4">
+              <Segmented options={REL_TABS} value={rel} onChange={setRel} />
+            </div>
+          )}
           {visible.length === 0 ? (
             <EmptyState
               icon={CheckCircle2}

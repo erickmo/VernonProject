@@ -1,15 +1,16 @@
 import { useMemo, useRef, useState } from 'react'
-import { useDashboard, useWallet } from '@/hooks/useData'
+import { useDashboard, useWallet, useProjects } from '@/hooks/useData'
 import { TodoCard } from '@/components/TodoCard'
+import { ProjectCard } from '@/components/ProjectCard'
 import { Segmented, EmptyState } from '@/components/ui'
-import { ErrorState, Skeleton } from '@web/components/ui'
+import { ErrorState, Skeleton, CardGridSkeleton } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { FilterButton, activeFilterCount, type FilterDimension, type FilterValue } from '@/components/FilterSheet'
-import { applyProjectItemFilters, buildOptions } from '@/lib/filters'
+import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { formatNumber, formatEstimateRatio } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, CheckCheck, FolderKanban } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
 
 // Rebuilt locally — mobile's Ring is inline in its Today.tsx and not importable
@@ -56,6 +57,7 @@ const LENSES: { value: Lens; label: string }[] = [
 export default function Today() {
   const dash = useDashboard()
   const wallet = useWallet()
+  const projects = useProjects()
   const [lens, setLens] = useState<Lens>('mine')
   const [filters, setFilters] = useState<FilterValue>({})
   // FilterButton does NOT forwardRef — anchor the Popover via a wrapping span
@@ -68,25 +70,19 @@ export default function Today() {
     return [...d.overdue, ...d.due_today, ...d.upcoming]
   }, [dash.data])
 
-  // Lens predicates — v1 approximation.
-  // CONCERN: 'owned' and 'led' use truthy-check on the owner/leader field string
-  // rather than comparing to the current user's email. This means "Owned" shows
-  // all tasks that have any owner set, not tasks owned by me. Exact matching
-  // requires boot.user from useBoot() and is deferred to a later refinement.
-  const lensed = useMemo(() => allTasks.filter((t) => {
-    if (lens === 'mine') return t.is_mine
-    if (lens === 'owned') return !!t.project_owner
-    if (lens === 'led') return !!t.project_leader
-    // 'in' — all tasks the user has any association with (implicit via dashboard)
-    return true
-  }), [allTasks, lens])
-
+  // 'For me' = all dashboard tasks (the dashboard is already scoped to the user);
+  // advanced filters apply only here. Owned / Led / I'm-in are PROJECT lenses,
+  // sliced off useProjects() flags, matching the mobile Today page.
   const dimensions: FilterDimension[] = useMemo(() => [
-    { key: 'status', label: 'Status', options: buildOptions(lensed, (t) => t.status_key, (t) => t.status) },
-    { key: 'project', label: 'Project', options: buildOptions(lensed, (t) => t.project, (t) => t.project_name) },
-  ], [lensed])
+    { key: 'status', label: 'Status', options: buildOptions(allTasks, (t) => t.status_key, (t) => t.status) },
+    { key: 'project', label: 'Project', options: buildOptions(allTasks, (t) => t.project, (t) => t.project_name) },
+    { key: 'brand', label: 'Brand', options: buildOptions(allTasks, (t) => t.brand, (t) => t.brand) },
+    { key: 'owner', label: 'Project Owner', options: buildOptions(allTasks, (t) => t.project_owner, (t) => t.project_owner_name) },
+    { key: 'leader', label: 'Project Leader', options: buildOptions(allTasks, (t) => t.project_leader, (t) => t.project_leader_name) },
+    { key: 'estimate', label: 'Estimated time', options: ESTIMATE_OPTIONS },
+  ], [allTasks])
 
-  const visible = useMemo(() => applyProjectItemFilters(lensed, filters), [lensed, filters])
+  const visible = useMemo(() => applyProjectItemFilters(allTasks, filters), [allTasks, filters])
 
   if (!dash.data) {
     return dash.isError ? (
@@ -103,10 +99,29 @@ export default function Today() {
   const donePct = todayTotalMin > 0 ? Math.round((completedMin / todayTotalMin) * 100) : 0
   const w = wallet.data
 
+  // Owner/leader review banners (same status_key split as mobile).
+  const review = dash.data.review ?? []
+  const ownerApprovals = review.filter((t) => t.status_key === 'checked').length
+  const leadChecks = review.filter((t) => t.status_key === 'done').length
+
+  // Project lenses.
+  const projList = projects.data ?? []
+  const owned = projList.filter((p) => p.is_owner)
+  const led = projList.filter((p) => p.is_leader)
+  const memberIn = projList.filter((p) => p.is_member && !p.is_owner && !p.is_leader)
+  const lensProjects = lens === 'owned' ? owned : lens === 'led' ? led : memberIn
+  const lensEmpty =
+    lens === 'owned' ? "You don't own any projects yet."
+    : lens === 'led' ? "You're not leading any projects yet."
+    : "You're not a member of other projects."
+
+  // A task due today belongs in "Today" even with no allocation (mobile parity);
+  // upcoming tasks the user allocated time to today get promoted into it too.
+  const dueTodayIds = new Set(dash.data.due_today.map((t) => t.name))
   const groups: { title: string; items: ProjectItem[] }[] = [
     { title: 'Overdue', items: visible.filter((t) => t.is_overdue) },
-    { title: 'Today', items: visible.filter((t) => !t.is_overdue && !!t.today_allocation) },
-    { title: 'Upcoming', items: visible.filter((t) => !t.is_overdue && !t.today_allocation) },
+    { title: 'Today', items: visible.filter((t) => !t.is_overdue && (dueTodayIds.has(t.name) || !!t.today_allocation)) },
+    { title: 'Upcoming', items: visible.filter((t) => !t.is_overdue && !dueTodayIds.has(t.name) && !t.today_allocation) },
   ]
 
   return (
@@ -155,48 +170,78 @@ export default function Today() {
         <BentoTile span="full" tone="plain">
           <div className="flex items-center justify-between gap-3">
             <Segmented options={LENSES} value={lens} onChange={setLens} />
-            <div className="relative">
-              <span ref={filterRef}>
-                <FilterButton count={activeFilterCount(filters)} onClick={() => setFilterOpen((o) => !o)} />
-              </span>
-              <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
-                <div className="space-y-4">
-                  {dimensions.map((d) => (
-                    <div key={d.key} className="space-y-1">
-                      <div className="text-xs font-semibold text-slate-500">{d.label}</div>
-                      <SearchableSelect
-                        value={filters[d.key] ?? ''}
-                        onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
-                        options={d.options.map((o) => ({
-                          value: o.value,
-                          label: `${o.label}${o.count != null ? ` (${o.count})` : ''}`,
-                        }))}
-                        allowClear
-                        placeholder="Any"
-                      />
-                    </div>
-                  ))}
-                  <button onClick={() => setFilters({})} className="text-sm text-brand-600">
-                    Clear all
-                  </button>
-                </div>
-              </Popover>
-            </div>
+            {lens === 'mine' && (
+              <div className="relative">
+                <span ref={filterRef}>
+                  <FilterButton count={activeFilterCount(filters)} onClick={() => setFilterOpen((o) => !o)} />
+                </span>
+                <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
+                  <div className="space-y-4">
+                    {dimensions.map((d) => (
+                      <div key={d.key} className="space-y-1">
+                        <div className="text-xs font-semibold text-slate-500">{d.label}</div>
+                        <SearchableSelect
+                          value={filters[d.key] ?? ''}
+                          onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
+                          options={d.options.map((o) => ({
+                            value: o.value,
+                            label: `${o.label}${o.count != null ? ` (${o.count})` : ''}`,
+                          }))}
+                          allowClear
+                          placeholder="Any"
+                        />
+                      </div>
+                    ))}
+                    <button onClick={() => setFilters({})} className="text-sm text-brand-600">
+                      Clear all
+                    </button>
+                  </div>
+                </Popover>
+              </div>
+            )}
           </div>
         </BentoTile>
 
-        {groups.map((g) => (
-          <BentoTile key={g.title} span="md" tone="plain" title={`${g.title} · ${g.items.length}`}>
-            <div className="space-y-2">
-              {g.items.length === 0
-                ? <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">Nothing here</div>
-                : g.items.map((t) => <TodoCard key={t.name} todo={t} showProject />)}
-            </div>
-          </BentoTile>
-        ))}
+        {lens === 'mine' ? (
+          groups.map((g) => (
+            <BentoTile key={g.title} span="md" tone="plain" title={`${g.title} · ${g.items.length}`}>
+              <div className="space-y-2">
+                {g.items.length === 0
+                  ? <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">Nothing here</div>
+                  : g.items.map((t) => <TodoCard key={t.name} todo={t} showProject />)}
+              </div>
+            </BentoTile>
+          ))
+        ) : (
+          <>
+            {lens === 'owned' && ownerApprovals > 0 && (
+              <BentoTile
+                span="full" tone="tint" accent="emerald" to="/review" icon={ShieldCheck}
+                title={`${ownerApprovals} todo${ownerApprovals === 1 ? '' : 's'} awaiting your final approval`}
+              />
+            )}
+            {lens === 'led' && leadChecks > 0 && (
+              <BentoTile
+                span="full" tone="tint" accent="amber" to="/review" icon={CheckCheck}
+                title={`${leadChecks} todo${leadChecks === 1 ? '' : 's'} to check & approve`}
+              />
+            )}
+            <BentoTile span="full" tone="plain">
+              {!projects.data ? (
+                <CardGridSkeleton />
+              ) : lensProjects.length === 0 ? (
+                <EmptyState icon={FolderKanban} title="Nothing here" subtitle={lensEmpty} />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                  {lensProjects.map((p) => <ProjectCard key={p.name} p={p} />)}
+                </div>
+              )}
+            </BentoTile>
+          </>
+        )}
       </BentoGrid>
 
-      {visible.length === 0 && (
+      {lens === 'mine' && visible.length === 0 && (
         <EmptyState icon={CheckCircle2} title="All clear" subtitle="No tasks match." />
       )}
     </div>
