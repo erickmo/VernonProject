@@ -1,6 +1,7 @@
 import unittest
 
-from vernon_project.api.report import _date_list, _build_daily_matrix
+import frappe
+from vernon_project.api.report import _date_list, _build_daily_matrix, daily_estimated_time
 
 
 class TestBuildDailyMatrix(unittest.TestCase):
@@ -56,3 +57,32 @@ class TestBuildDailyMatrix(unittest.TestCase):
 		self.assertEqual(out["to_date"], "2026-06-23")
 		self.assertEqual(out["dates"], ["2026-06-22", "2026-06-23"])
 		self.assertEqual(out["rows"], [])
+
+
+class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_requires_system_manager(self):
+		# A user without System Manager must be rejected.
+		if not frappe.db.exists("User", "report_guest@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "report_guest@example.com",
+				"first_name": "Report", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		frappe.set_user("report_guest@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			daily_estimated_time("2026-06-22", "2026-06-28")
+
+	def test_rejects_oversize_span(self):
+		frappe.set_user("Administrator")
+		with self.assertRaises(frappe.ValidationError):
+			daily_estimated_time("2026-01-01", "2026-12-31")
+
+	def test_admin_gets_contract_shape(self):
+		frappe.set_user("Administrator")
+		out = daily_estimated_time("2026-06-22", "2026-06-23")
+		# threshold echoes settings; dates inclusive; rows is a list
+		self.assertIn("threshold", out)
+		self.assertEqual(out["dates"], ["2026-06-22", "2026-06-23"])
+		self.assertIsInstance(out["rows"], list)

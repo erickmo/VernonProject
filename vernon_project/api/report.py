@@ -59,3 +59,64 @@ def _build_daily_matrix(active_users, rows, from_date, to_date, threshold):
 		"dates": dates,
 		"rows": out_rows,
 	}
+
+
+def _require_system_manager():
+	if "System Manager" not in frappe.get_roles(frappe.session.user):
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+def _active_users():
+	"""Enabled System Users, excluding Guest/Administrator. [{name, full_name}]."""
+	return frappe.get_all(
+		"User",
+		filters={
+			"enabled": 1,
+			"user_type": "System User",
+			"name": ["not in", ("Guest", "Administrator")],
+		},
+		fields=["name", "full_name"],
+		order_by="full_name asc",
+		limit_page_length=0,
+	)
+
+
+@frappe.whitelist()
+def daily_estimated_time(from_date, to_date):
+	"""Per-active-user daily estimated minutes (Project Todo day-allocations)
+	for the inclusive [from_date, to_date] range, with below-threshold days flagged.
+	Shared by the web app and the mobile PWA."""
+	_require_system_manager()
+
+	start = getdate(from_date)
+	end = getdate(to_date)
+	if end < start:
+		frappe.throw("from_date must be on or before to_date.", frappe.ValidationError)
+	if date_diff(end, start) > MAX_SPAN_DAYS:
+		frappe.throw(f"Date range too large (max {MAX_SPAN_DAYS} days).", frappe.ValidationError)
+
+	threshold = frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0
+
+	users = _active_users()
+	names = [u["name"] for u in users]
+
+	rows = []
+	if names:
+		# GROUP BY in SQL (precedent: daily_assignment_report.py). assigned_to lives on
+		# the parent Project Todo; estimated_minutes on its Allocation child rows.
+		rows = frappe.db.sql(
+			"""
+			SELECT todo.assigned_to AS user,
+			       alloc.allocation_date AS day,
+			       SUM(alloc.estimated_minutes) AS minutes
+			FROM `tabProject Todo Allocation` AS alloc
+			JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
+			WHERE todo.assigned_to IN %(users)s
+			  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
+			GROUP BY todo.assigned_to, alloc.allocation_date
+			""",
+			{"users": names, "from_date": str(start), "to_date": str(end)},
+			as_dict=True,
+		)
+
+	return _build_daily_matrix(users, rows, start, end, threshold)
