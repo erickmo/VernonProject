@@ -7,6 +7,8 @@ import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/Confirm'
 import { AdvanceProvider } from './components/AdvanceProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import FocusOverlay from './components/FocusOverlay'
+import { FocusMiniBar } from './components/FocusMiniBar'
 import './index.css'
 import { initTheme } from './lib/theme'
 
@@ -51,6 +53,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <ErrorBoundary>
                 <App />
               </ErrorBoundary>
+              <FocusMiniBar />
+              <FocusOverlay />
             </AdvanceProvider>
           </ConfirmProvider>
         </ToastProvider>

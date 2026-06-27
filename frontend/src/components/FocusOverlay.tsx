@@ -16,64 +16,30 @@ import {
 } from 'lucide-react'
 import { formatClock } from '@/lib/format'
 import { ambient, loadSoundPrefs, saveSoundPrefs } from '@/lib/ambientSound'
+import { useFocusTimer } from '@/hooks/useFocusTimer'
+import { useFocusOverlay, closeFocusOverlay } from '@/lib/focusUI'
 
-export type FocusMeta = {
-  project?: string
-  deadlineHuman?: string
-  overdue?: boolean
-  estimateLabel?: string
-  group?: string
-}
+// Single app-global focus overlay. Mounted once at the app root; shows when a
+// timer exists AND the overlay store is open. Presentational only — all timer
+// state lives in the shared useFocusTimer store. The X closes the overlay but
+// leaves the timer running (the mini-bar stays); Stop ends the timer.
+export default function FocusOverlay() {
+  const { timer, elapsedMs, remainingMs, fraction, hasEstimate, pause, resume, reset, stop } =
+    useFocusTimer()
+  const { open, meta } = useFocusOverlay()
 
-// Distraction-free full-screen countdown. Presentational only — all timer state
-// lives in useFocusTimer. The X closes the overlay but leaves the timer running
-// in the background; Stop ends it.
-export default function FocusOverlay({
-  title,
-  meta,
-  displayMs,
-  fraction,
-  stopwatch,
-  paused,
-  onPause,
-  onResume,
-  onReset,
-  onStop,
-  onClose,
-}: {
-  title: string
-  meta?: FocusMeta
-  displayMs: number // countdown: remaining (negative = overtime). stopwatch: elapsed.
-  fraction: number // 1 → full estimate left, 0 → time up
-  stopwatch: boolean // no estimate → count up, no overtime
-  paused: boolean
-  onPause: () => void
-  onResume: () => void
-  onReset: () => void
-  onStop: () => void
-  onClose: () => void
-}) {
-  const over = !stopwatch && displayMs < 0
-  const R = 130
-  const C = 2 * Math.PI * R
-  // Countdown: ring drains as time passes, pinned empty (red) in overtime.
-  // Stopwatch: no target, so show a full static ring.
-  const offset = stopwatch ? 0 : over ? C : C * (1 - fraction)
-
-  // ---- ambient sound (coffeeshop) ----
+  // ---- ambient sound (coffeeshop) ---- hooks must run unconditionally, so
+  // they sit before the early return. Sound plays only while the overlay is up.
   const [prefs, setPrefs] = useState(() => loadSoundPrefs())
   const { enabled, volume } = prefs
-
   useEffect(() => {
-    if (enabled) ambient.play()
+    if (open && enabled) ambient.play()
     else ambient.stop()
-  }, [enabled])
+  }, [open, enabled])
   useEffect(() => {
     ambient.setVolume(volume)
   }, [volume])
-  // Stop sound when leaving focus mode entirely.
   useEffect(() => () => ambient.stop(), [])
-
   const patch = (p: Partial<typeof prefs>) =>
     setPrefs((prev) => {
       const next = { ...prev, ...p }
@@ -81,26 +47,44 @@ export default function FocusOverlay({
       return next
     })
 
+  if (!open || !timer) return null
+
+  const stopwatch = !hasEstimate
+  const paused = timer.status === 'paused'
+  const over = !stopwatch && remainingMs < 0
+  const displayMs = stopwatch ? elapsedMs : remainingMs
+
+  const R = 130
+  const C = 2 * Math.PI * R
+  // Countdown: ring drains as time passes, pinned empty (rose) in overtime.
+  // Stopwatch: no target, so show a full static ring.
+  const offset = stopwatch ? 0 : over ? C : C * (1 - fraction)
+
+  const onStop = () => {
+    stop()
+    closeFocusOverlay()
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white px-6 dark:bg-slate-950">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-paper via-paper to-brand-50 px-6 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
       <button
-        onClick={onClose}
+        onClick={closeFocusOverlay}
         aria-label="Close focus mode"
-        className="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition active:scale-90 dark:text-slate-500"
+        className="absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] rounded-full p-2 text-stone-400 transition active:scale-90 dark:text-slate-500"
       >
         <X className="h-6 w-6" />
       </button>
 
-      <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-brand-500">Focus mode</p>
-      <h2 className="line-clamp-2 max-w-xs text-center text-lg font-bold text-slate-800 dark:text-slate-100">
-        {title}
+      <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-brand-500">Focus mode</p>
+      <h2 className="line-clamp-2 max-w-xs text-center font-display text-xl font-semibold text-stone-800 dark:text-slate-100">
+        {timer.taskTitle}
       </h2>
 
       {/* Task detail */}
       {meta && (
-        <div className="mt-2 mb-7 flex max-w-xs flex-col items-center gap-2">
+        <div className="mb-7 mt-2 flex max-w-xs flex-col items-center gap-2">
           {meta.project && (
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">{meta.project}</p>
+            <p className="text-xs font-medium text-stone-400 dark:text-slate-500">{meta.project}</p>
           )}
           <div className="flex flex-wrap items-center justify-center gap-1.5">
             {meta.deadlineHuman && (
@@ -109,7 +93,7 @@ export default function FocusOverlay({
                   'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
                   meta.overdue
                     ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+                    : 'bg-paper-line text-stone-600 dark:bg-slate-800 dark:text-slate-300',
                 )}
               >
                 {meta.overdue ? <AlertCircle className="h-3.5 w-3.5" /> : <CalendarDays className="h-3.5 w-3.5" />}
@@ -117,7 +101,7 @@ export default function FocusOverlay({
               </span>
             )}
             {meta.estimateLabel && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1 rounded-full bg-paper-line px-2.5 py-1 text-xs font-semibold text-stone-600 dark:bg-slate-800 dark:text-slate-300">
                 <Clock className="h-3.5 w-3.5" /> {meta.estimateLabel}
               </span>
             )}
@@ -139,7 +123,7 @@ export default function FocusOverlay({
             r={R}
             fill="none"
             strokeWidth="14"
-            className="stroke-slate-100 dark:stroke-slate-800"
+            className="stroke-paper-edge dark:stroke-slate-800"
           />
           <circle
             cx="150"
@@ -150,22 +134,26 @@ export default function FocusOverlay({
             strokeLinecap="round"
             strokeDasharray={C}
             strokeDashoffset={offset}
-            className={clsx('transition-[stroke-dashoffset] duration-1000 ease-linear', over ? 'stroke-rose-500' : 'stroke-brand-500')}
+            className={clsx(
+              'transition-[stroke-dashoffset] duration-1000 ease-linear',
+              over ? 'stroke-rose-500' : 'stroke-brand-500',
+            )}
           />
         </svg>
         <div className="absolute flex flex-col items-center">
           <span
             className={clsx(
               'font-mono text-5xl font-bold tabular-nums',
-              over ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-50',
+              over ? 'text-rose-600 dark:text-rose-400' : 'text-stone-900 dark:text-slate-50',
             )}
           >
+            {over ? '+' : ''}
             {formatClock(displayMs)}
           </span>
           <span
             className={clsx(
               'mt-2 text-xs font-semibold uppercase tracking-wide',
-              over ? 'text-rose-500' : paused ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500',
+              over ? 'text-rose-500' : paused ? 'text-amber-500' : 'text-stone-400 dark:text-slate-500',
             )}
           >
             {over ? 'over estimate' : paused ? 'paused' : stopwatch ? 'elapsed' : 'remaining'}
@@ -175,17 +163,17 @@ export default function FocusOverlay({
 
       <div className="mt-10 flex items-center gap-3">
         <button
-          onClick={onReset}
+          onClick={reset}
           aria-label="Reset timer"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition active:scale-90 dark:bg-slate-800 dark:text-slate-300"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-paper-line text-stone-600 transition active:scale-90 dark:bg-slate-800 dark:text-slate-300"
         >
           <RotateCcw className="h-6 w-6" />
         </button>
 
         <button
-          onClick={paused ? onResume : onPause}
+          onClick={paused ? resume : pause}
           aria-label={paused ? 'Resume timer' : 'Pause timer'}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition active:scale-90"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition active:scale-90"
         >
           {paused ? <Play className="ml-1 h-9 w-9" /> : <Pause className="h-9 w-9" />}
         </button>
@@ -207,7 +195,7 @@ export default function FocusOverlay({
             'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition active:scale-95',
             enabled
               ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
-              : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+              : 'bg-paper-line text-stone-500 dark:bg-slate-800 dark:text-slate-400',
           )}
         >
           {enabled ? <Coffee className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
@@ -215,21 +203,19 @@ export default function FocusOverlay({
         </button>
 
         {enabled && (
-          <>
-            <div className="flex w-full items-center gap-2 px-2">
-              <VolumeX className="h-4 w-4 shrink-0 text-slate-400" />
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(e) => patch({ volume: Number(e.target.value) })}
-                className="h-1.5 flex-1 cursor-pointer accent-brand-600"
-              />
-              <Volume2 className="h-4 w-4 shrink-0 text-slate-400" />
-            </div>
-          </>
+          <div className="flex w-full items-center gap-2 px-2">
+            <VolumeX className="h-4 w-4 shrink-0 text-stone-400" />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => patch({ volume: Number(e.target.value) })}
+              className="h-1.5 flex-1 cursor-pointer accent-brand-600"
+            />
+            <Volume2 className="h-4 w-4 shrink-0 text-stone-400" />
+          </div>
         )}
       </div>
     </div>

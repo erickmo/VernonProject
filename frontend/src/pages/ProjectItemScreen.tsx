@@ -9,6 +9,7 @@ import {
   Ban,
   CalendarCheck,
   CalendarDays,
+  CalendarPlus,
   Check,
   Clock,
   FileText,
@@ -31,8 +32,8 @@ import {
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
-import FocusOverlay from '@/components/FocusOverlay'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
+import { openFocusOverlay } from '@/lib/focusUI'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
 import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo, useDeleteTodo } from '@/hooks/useData'
@@ -673,13 +674,13 @@ export default function ProjectItemScreen() {
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
   const setDeadlineToday = useUpdateTodo(id)
+  const splitToday = useSetTodoAllocations(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const focus = useFocusTimer()
-  const [focusOpen, setFocusOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
@@ -753,6 +754,22 @@ export default function ProjectItemScreen() {
   const canSetDeadlineToday =
     data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
 
+  // One-tap: drop the whole todo onto today's plan so it surfaces in the Today
+  // home (today_allocation > 0). Only offered to the assignee when no day-split
+  // exists yet — once it does, the AllocationCard below owns the multi-day plan.
+  const onSplitToday = () => {
+    if (splitToday.isPending) return
+    // ponytail: 30m default when there's no estimate. Backend only requires the
+    // split to sum to the estimate when estimate > 0; today just needs to be > 0.
+    const minutes = data.estimated > 0 ? data.estimated : 30
+    splitToday.mutate([{ date: todayISO(), minutes, note: '' }], {
+      onSuccess: () => toast('success', 'Split to today'),
+      onError: (err) => toast('error', (err as Error).message),
+    })
+  }
+  const canSplitToday =
+    data.is_mine && data.status_key === 'planned' && (data.allocations ?? []).length === 0
+
   const editBtn =
     data.can_edit && !editing ? (
       <button
@@ -766,7 +783,22 @@ export default function ProjectItemScreen() {
   const focusActive = focus.timer?.taskId === data.name
   const openFocus = () => {
     if (!focusActive) focus.start(data.name, data.to_do, data.estimated)
-    setFocusOpen(true)
+    openFocusOverlay({
+      project: data.project_name,
+      deadlineHuman: data.deadline_human || undefined,
+      overdue: data.is_overdue,
+      estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
+      group: data.group
+        ? [
+            data.group,
+            data.level_type && data.level
+              ? `${data.level_type} · ${data.level}`
+              : data.level_type || data.level,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : undefined,
+    })
   }
   // Active overtime only matters with a real estimate; a no-estimate timer just
   // counts up and never goes "over".
@@ -775,30 +807,6 @@ export default function ProjectItemScreen() {
 
   return (
     <DetailScreen title="Todo" right={editBtn}>
-      {focusOpen && focusActive && focus.timer && (
-        <FocusOverlay
-          title={focus.timer.taskTitle}
-          meta={{
-            project: data.project_name,
-            deadlineHuman: data.deadline_human || undefined,
-            overdue: data.is_overdue,
-            estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
-            group: data.group ? [data.group, data.level_type && data.level ? `${data.level_type} · ${data.level}` : (data.level_type || data.level)].filter(Boolean).join(' · ') : undefined,
-          }}
-          displayMs={focus.hasEstimate ? focus.remainingMs : focus.elapsedMs}
-          fraction={focus.fraction}
-          stopwatch={!focus.hasEstimate}
-          paused={focus.timer.status === 'paused'}
-          onPause={focus.pause}
-          onResume={focus.resume}
-          onReset={focus.reset}
-          onStop={() => {
-            focus.stop()
-            setFocusOpen(false)
-          }}
-          onClose={() => setFocusOpen(false)}
-        />
-      )}
       {editing ? (
         <EditForm data={data} onClose={() => setEditing(false)} />
       ) : (
@@ -926,6 +934,17 @@ export default function ProjectItemScreen() {
             >
               {setDeadlineToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
               Set deadline to today
+            </button>
+          )}
+
+          {canSplitToday && (
+            <button
+              onClick={onSplitToday}
+              disabled={splitToday.isPending}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30 active:bg-brand-50 disabled:opacity-60"
+            >
+              {splitToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarPlus className="h-4 w-4" />}
+              Split to today
             </button>
           )}
 
