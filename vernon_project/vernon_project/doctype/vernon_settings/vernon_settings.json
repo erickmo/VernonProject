@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes"],
+ "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes"],
  "fields": [
   {
    "fieldname": "max_estimated_minutes",
@@ -12,6 +12,14 @@
    "non_negative": 1,
    "default": "1440",
    "description": "Maximum estimated minutes allowed on a single todo. 0 = no limit."
+  },
+  {
+   "fieldname": "min_daily_estimated_minutes",
+   "fieldtype": "Int",
+   "label": "Min Daily Estimated Minutes (per user)",
+   "non_negative": 1,
+   "default": "480",
+   "description": "Days where a user's total allocated estimated minutes fall below this are flagged in the Daily Estimated Time report. 0 = never flag."
   }
  ],
  "issingle": 1,
