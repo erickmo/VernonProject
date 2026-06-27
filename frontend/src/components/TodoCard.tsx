@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate } from '@/lib/format'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { useFocusTimer } from '@/hooks/useFocusTimer'
+import { openFocusOverlay } from '@/lib/focusUI'
 import type { ProjectItem } from '@/lib/types'
 
 interface Props {
@@ -18,6 +20,23 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const navigate = useNavigate()
   const advanceConfirm = useAdvance()
   const meta = STATUS[todo.status_key]
+  // ponytail: this subscribes the card to the per-second timer tick, so every
+  // visible card re-renders ~1×/s while a timer runs. Fine for the Today list's
+  // handful of cards; if a screen ever renders hundreds, swap this for an
+  // imperative store start that doesn't subscribe.
+  const focus = useFocusTimer()
+  const focusActive = focus.timer?.taskId === todo.name
+
+  const startFocus = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!focusActive) focus.start(todo.name, todo.to_do, todo.estimated)
+    openFocusOverlay({
+      project: todo.project_name,
+      deadlineHuman: todo.deadline_human || undefined,
+      overdue: todo.is_overdue,
+      estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
+    })
+  }
 
   const onAdvance = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -42,6 +61,21 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
           <p className="line-clamp-2 font-semibold leading-snug text-stone-800 dark:text-slate-100">{todo.to_do}</p>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={startFocus}
+              title={focusActive ? 'Open focus timer' : 'Start focus timer'}
+              className={clsx(
+                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95',
+                focusActive
+                  ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300'
+                  : 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300',
+              )}
+            >
+              {focusActive ? <Timer className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {focusActive ? 'Focusing' : 'Focus'}
+            </span>
             <Pill className={meta.pill}>
               <span>{meta.emoji}</span>
               {meta.label}
