@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-06-28 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["employee", "attendance_date", "status", "shift_template", "expected_start", "expected_end", "first_scan", "last_scan", "station_first", "station_last", "late_minutes", "early_minutes", "penalty_points"],
+ "fields": [
+  {"fieldname": "employee", "fieldtype": "Link", "label": "Employee", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "attendance_date", "fieldtype": "Date", "label": "Date", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "OffDay\nHoliday\nExcused-WFH\nExcused-Leave\nPresent\nLate\nEarlyLeave\nLate+EarlyLeave\nAbsent", "in_list_view": 1},
+  {"fieldname": "shift_template", "fieldtype": "Link", "label": "Shift Template", "options": "Shift Template"},
+  {"fieldname": "expected_start", "fieldtype": "Datetime", "label": "Expected Start"},
+  {"fieldname": "expected_end", "fieldtype": "Datetime", "label": "Expected End"},
+  {"fieldname": "first_scan", "fieldtype": "Datetime", "label": "First Scan"},
+  {"fieldname": "last_scan", "fieldtype": "Datetime", "label": "Last Scan"},
+  {"fieldname": "station_first", "fieldtype": "Link", "label": "First Station", "options": "Attendance Station"},
+  {"fieldname": "station_last", "fieldtype": "Link", "label": "Last Station", "options": "Attendance Station"},
+  {"fieldname": "late_minutes", "fieldtype": "Int", "label": "Late Minutes"},
+  {"fieldname": "early_minutes", "fieldtype": "Int", "label": "Early-Leave Minutes"},
+  {"fieldname": "penalty_points", "fieldtype": "Float", "label": "Penalty Points"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Daily Attendance",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
