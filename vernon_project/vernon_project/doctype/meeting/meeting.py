@@ -80,6 +80,12 @@ class Meeting(Document):
 		elif prev == self.DONE:
 			self.remove_ledger()
 
+	def on_trash(self):
+		# A Done meeting has credited points; deleting it would orphan/duplicate
+		# ledger rows. Require reopening (which clears the award) before deletion.
+		if self.status == self.DONE:
+			frappe.throw(_("A Done meeting cannot be deleted. Reopen it first."))
+
 	def sync_point_ledger(self):
 		"""Credit each participant once. Idempotent on (meeting, user)."""
 		for row in self.participants:

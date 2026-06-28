@@ -37,6 +37,8 @@ class MeetingTestBase(unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		for name in frappe.get_all("Meeting", filters={"project": self.project.name}, pluck="name"):
+			# Reopen via DB so on_trash (Done meetings are protected) allows cleanup.
+			frappe.db.set_value("Meeting", name, "status", "⚪️ Scheduled", update_modified=False)
 			frappe.delete_doc("Meeting", name, force=True, ignore_permissions=True)
 		frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
 		frappe.db.commit()
@@ -133,6 +135,15 @@ class TestMeetingAward(TestMeetingPoints):
 		self.assertEqual(len(rows), 2)
 		self.assertTrue(all(r.points_earned == 30 for r in rows))
 		self.assertTrue(all(r.role == "Participant" and r.source == "Meeting" for r in rows))
+
+	def test_done_meeting_not_deletable(self):
+		# No participants -> no Point Ledger rows, so link-integrity does not block;
+		# only the status guard should prevent deletion.
+		m = self.make_meeting(group=self.group.name, level_id=self.level_id, estimated=30)
+		m.status = "✅ Done"
+		m.save(ignore_permissions=True)
+		with self.assertRaises(frappe.ValidationError):
+			frappe.delete_doc("Meeting", m.name, ignore_permissions=True)
 
 	def test_resaving_done_does_not_double_credit(self):
 		m = self.make_meeting(
