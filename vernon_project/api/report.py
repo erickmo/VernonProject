@@ -20,45 +20,44 @@ def _date_list(from_date, to_date):
 	return [str(add_days(start, i)) for i in range(span + 1)]
 
 
-def _build_daily_matrix(active_users, rows, from_date, to_date, threshold):
-	"""Pure pivot. `active_users`: [{name, full_name}]. `rows`: [{user, day, minutes}].
-	Returns the report contract dict. Days with total < threshold are flagged."""
+def _build_daily_matrix(active_users, assigned_rows, planned_rows, from_date, to_date, threshold):
+	"""Pivot two row-sets into a user x day matrix. `assigned_rows`/`planned_rows`:
+	[{user, day, minutes}]. Days whose ASSIGNED total < threshold are flagged."""
 	dates = _date_list(from_date, to_date)
 	threshold = int(threshold or 0)
 
-	by_user = {}
-	for r in rows:
-		day = str(r["day"])
-		by_user.setdefault(r["user"], {})
-		by_user[r["user"]][day] = by_user[r["user"]].get(day, 0) + int(r["minutes"] or 0)
+	def pivot(rows):
+		by_user = {}
+		for r in rows:
+			by_user.setdefault(r["user"], {})
+			day = str(r["day"])
+			by_user[r["user"]][day] = by_user[r["user"]].get(day, 0) + int(r["minutes"] or 0)
+		return by_user
+
+	a_by_user = pivot(assigned_rows)
+	p_by_user = pivot(planned_rows)
 
 	out_rows = []
 	for u in active_users:
-		umap = by_user.get(u["name"], {})
-		per_day = {}
-		flagged = []
-		total = 0
+		a = a_by_user.get(u["name"], {})
+		p = p_by_user.get(u["name"], {})
+		per_a, per_p, flagged = {}, {}, []
+		a_total = p_total = 0
 		for d in dates:
-			m = int(umap.get(d, 0))
-			per_day[d] = m
-			total += m
-			if m < threshold:
+			am, pm = int(a.get(d, 0)), int(p.get(d, 0))
+			per_a[d], per_p[d] = am, pm
+			a_total += am
+			p_total += pm
+			if am < threshold:
 				flagged.append(d)
 		out_rows.append({
-			"user": u["name"],
-			"full_name": u.get("full_name") or u["name"],
-			"per_day": per_day,
-			"total": total,
-			"flagged_dates": flagged,
+			"user": u["name"], "full_name": u.get("full_name") or u["name"],
+			"per_day_assigned": per_a, "per_day_planned": per_p,
+			"assigned_total": a_total, "planned_total": p_total, "flagged_dates": flagged,
 		})
 
-	return {
-		"threshold": threshold,
-		"from_date": str(getdate(from_date)),
-		"to_date": str(getdate(to_date)),
-		"dates": dates,
-		"rows": out_rows,
-	}
+	return {"threshold": threshold, "from_date": str(getdate(from_date)),
+		"to_date": str(getdate(to_date)), "dates": dates, "rows": out_rows}
 
 
 def _is_system_manager():
@@ -132,4 +131,38 @@ def daily_estimated_time(from_date, to_date):
 			as_dict=True,
 		)
 
-	return _build_daily_matrix(users, rows, start, end, threshold)
+	planned_rows = rows  # existing Project Todo Allocation aggregation
+
+	assigned_rows = []
+	if names:
+		# Explicit assigned allocation rows in range.
+		explicit = frappe.db.sql(
+			"""
+			SELECT todo.assigned_to AS user, alloc.allocation_date AS day,
+			       SUM(alloc.estimated_minutes) AS minutes, todo.name AS todo
+			FROM `tabProject Todo Assigned Allocation` AS alloc
+			JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
+			WHERE todo.assigned_to IN %(users)s AND alloc.parenttype = 'Project Todo'
+			  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
+			GROUP BY todo.assigned_to, alloc.allocation_date, todo.name
+			""",
+			{"users": names, "from_date": str(start), "to_date": str(end)}, as_dict=True,
+		)
+		todos_with_explicit = {r["todo"] for r in explicit}
+		assigned_rows = [{"user": r["user"], "day": r["day"], "minutes": r["minutes"]} for r in explicit]
+		# Virtual default: todos with NO explicit assigned rows contribute their whole
+		# estimate on their deadline (if the deadline falls in range).
+		defaults = frappe.db.sql(
+			"""
+			SELECT name AS todo, assigned_to AS user, deadline AS day, estimated AS minutes
+			FROM `tabProject Todo`
+			WHERE assigned_to IN %(users)s AND IFNULL(estimated, 0) > 0
+			  AND deadline BETWEEN %(from_date)s AND %(to_date)s
+			""",
+			{"users": names, "from_date": str(start), "to_date": str(end)}, as_dict=True,
+		)
+		for r in defaults:
+			if r["todo"] not in todos_with_explicit:
+				assigned_rows.append({"user": r["user"], "day": r["day"], "minutes": r["minutes"]})
+
+	return _build_daily_matrix(users, assigned_rows, planned_rows, start, end, threshold)
