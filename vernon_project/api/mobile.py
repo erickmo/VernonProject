@@ -3522,17 +3522,17 @@ def _save_snapshot(user, dataurl):
 		prefix = f"avatar-{frappe.scrub(user)}"
 		saved = save_file(f"{prefix}.png", content, "User", user, is_private=0)
 		# Prune older snapshots for this user (best-effort; never lose the new url).
-		old = frappe.get_all("File", filters={
-			"attached_to_doctype": "User",
-			"attached_to_name": user,
-			"file_name": ["like", f"{prefix}%"],
-			"name": ["!=", saved.name],
-		}, pluck="name")
-		for f in old:
-			try:
+		try:
+			old = frappe.get_all("File", filters={
+				"attached_to_doctype": "User",
+				"attached_to_name": user,
+				"file_name": ["like", f"{prefix}%"],
+				"name": ["!=", saved.name],
+			}, pluck="name")
+			for f in old:
 				frappe.delete_doc("File", f, ignore_permissions=True, force=True)
-			except Exception:
-				pass
+		except Exception:
+			pass
 		return saved.file_url
 	except frappe.ValidationError:
 		raise
