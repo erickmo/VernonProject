@@ -178,6 +178,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           <PasskeyCard />
 
           <div className="mt-3 divide-y divide-paper-edge dark:divide-slate-700 overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card">
+            <Row icon={Palette} label="Customize Avatar" hue="violet" onClick={() => navigate('/avatar')} />
             {pushSupported() && (
               <Row
                 icon={pushOn ? Bell : BellOff}
