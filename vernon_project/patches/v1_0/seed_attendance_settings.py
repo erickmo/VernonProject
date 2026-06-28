@@ -12,5 +12,7 @@ def execute():
 		"absence_penalty": 0,
 	}
 	for field, value in defaults.items():
-		if frappe.db.get_single_value("Vernon Settings", field) is None:
+		# Falsy guard, not `is None`: Frappe stores 0 (not NULL) for new Int
+		# fields on existing Singles, so `is None` would never fire.
+		if not frappe.db.get_single_value("Vernon Settings", field):
 			frappe.db.set_single_value("Vernon Settings", field, value)
