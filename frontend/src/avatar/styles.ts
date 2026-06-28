@@ -6,7 +6,7 @@ export type StyleKey = keyof typeof STYLES
 export const STYLE_LIST: StyleKey[] = ['lorelei', 'adventurer', 'notionists']
 
 // Curated, user-meaningful slots; only those a style actually has are shown.
-export const CURATED_SLOTS = ['hair','eyes','eyebrows','brows','mouth','lips','glasses','earrings','nose','features','hairAccessories','gesture']
+export const CURATED_SLOTS = ['hair','eyes','eyebrows','brows','mouth','lips','glasses','earrings','nose','features','hairAccessories','gesture','beard','head','freckles','body','bodyIcon']
 // Slots that are optional (need a probability flag to show/hide).
 export const PROB_SLOTS = ['glasses','earrings','features','hairAccessories','gesture','beard']
 export const COLOR_SLOTS = ['skinColor','hairColor','backgroundColor']

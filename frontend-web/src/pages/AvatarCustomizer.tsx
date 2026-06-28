@@ -6,7 +6,7 @@ import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
 import { captureAvatarPng } from '@/avatar/capture'
 import {
   STYLE_LIST, slotsForStyle, colorSlotsForStyle, paletteForColorSlot,
-  PROB_SLOTS, PREMIUM_FREE_COUNT, variantLabel,
+  PROB_SLOTS, PREMIUM_FREE_COUNT, variantLabel, BG_PALETTE,
 } from '@/avatar/styles'
 import type { StyleKey } from '@/avatar/styles'
 import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption } from '@/hooks/useData'
@@ -93,6 +93,35 @@ export default function AvatarCustomizer() {
   const slots = slotsForStyle(draft.style as StyleKey)
   const colorSlots = colorSlotsForStyle(draft.style as StyleKey)
 
+  // Background gradient — derived from draft (ponytail: no extra useState)
+  const isGradient = draft.options.backgroundType?.[0] === 'gradientLinear'
+  const bgColor1 = draft.options.backgroundColor?.[0] ?? ''
+  const bgColor2 = draft.options.backgroundColor?.[1] ?? ''
+
+  const setBgColor1 = (c: string) => setDraft(d => {
+    if (!d) return d
+    const g = d.options.backgroundType?.[0] === 'gradientLinear'
+    const c2 = d.options.backgroundColor?.[1] ?? 'c0aede'
+    return { ...d, options: { ...d.options, backgroundColor: g ? [c, c2] : [c] } }
+  })
+  const setBgColor2 = (c: string) => setDraft(d => {
+    if (!d) return d
+    return { ...d, options: { ...d.options, backgroundColor: [d.options.backgroundColor?.[0] ?? 'b6e3f4', c] } }
+  })
+  const toggleGradient = () => setDraft(d => {
+    if (!d) return d
+    const opts = { ...d.options }
+    if (opts.backgroundType?.[0] === 'gradientLinear') {
+      delete opts.backgroundType
+      opts.backgroundColor = [opts.backgroundColor?.[0] ?? 'b6e3f4']
+    } else {
+      opts.backgroundType = ['gradientLinear']
+      const c1 = opts.backgroundColor?.[0] ?? 'b6e3f4'
+      opts.backgroundColor = [c1, 'c0aede']
+    }
+    return { ...d, options: opts }
+  })
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -105,8 +134,8 @@ export default function AvatarCustomizer() {
       </div>
 
       <BentoGrid>
-        {/* DiceBear preview */}
-        <BentoTile span="lg" tone="plain" className="min-h-[18rem]">
+        {/* DiceBear preview — sticky so it stays visible while controls scroll */}
+        <BentoTile span="lg" tone="plain" className="min-h-[18rem] sticky top-14 lg:top-4 self-start">
           <div ref={previewRef} className="flex flex-1 min-h-0 h-72 items-center justify-center overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
             <DiceBearAvatar config={draft} className="h-56 w-56" />
           </div>
@@ -188,12 +217,26 @@ export default function AvatarCustomizer() {
           {colorSlots.length > 0 && (
             <div className="mb-5 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
               {colorSlots.map((cSlot) => {
-                const cur = draft.options[cSlot]?.[0] ?? ''
+                const isBg = cSlot === 'backgroundColor'
+                const cur = isBg ? bgColor1 : (draft.options[cSlot]?.[0] ?? '')
                 return (
                   <div key={cSlot}>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {cSlot.replace(/([A-Z])/g, ' $1').trim()}
-                    </p>
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        {cSlot.replace(/([A-Z])/g, ' $1').trim()}
+                      </p>
+                      {isBg && (
+                        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                          <input
+                            type="checkbox"
+                            checked={isGradient}
+                            onChange={toggleGradient}
+                            className="accent-indigo-500 cursor-pointer"
+                          />
+                          Gradient
+                        </label>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {paletteForColorSlot(cSlot).map((c) => {
                         const isTransparent = c === 'transparent'
@@ -202,7 +245,10 @@ export default function AvatarCustomizer() {
                           <button
                             type="button"
                             key={c}
-                            onClick={() => setDraft((d) => d ? { ...d, options: { ...d.options, [cSlot]: [c] } } : d)}
+                            onClick={() => isBg
+                              ? setBgColor1(c)
+                              : setDraft((d) => d ? { ...d, options: { ...d.options, [cSlot]: [c] } } : d)
+                            }
                             className={[
                               'h-9 w-9 rounded-full border-2 transition active:scale-95',
                               active ? 'border-brand-500 scale-110' : 'border-slate-200 dark:border-slate-600',
@@ -218,6 +264,29 @@ export default function AvatarCustomizer() {
                         )
                       })}
                     </div>
+                    {isBg && isGradient && (
+                      <div className="mt-3">
+                        <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Gradient end</p>
+                        <div className="flex flex-wrap gap-2">
+                          {BG_PALETTE.filter(c => c !== 'transparent').map((c) => {
+                            const active = bgColor2 === c
+                            return (
+                              <button
+                                type="button"
+                                key={c}
+                                onClick={() => setBgColor2(c)}
+                                className={[
+                                  'h-9 w-9 rounded-full border-2 transition active:scale-95',
+                                  active ? 'border-brand-500 scale-110' : 'border-slate-200 dark:border-slate-600',
+                                ].join(' ')}
+                                style={{ background: `#${c}` }}
+                                aria-label={c}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
