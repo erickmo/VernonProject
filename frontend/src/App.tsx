@@ -40,6 +40,9 @@ import FeedbackScreen from './pages/FeedbackScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
 import AvatarCustomizerScreen from './pages/AvatarCustomizerScreen'
+import Scan from './pages/Scan'
+import MyAttendance from './pages/MyAttendance'
+import RequestException from './pages/RequestException'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -166,6 +169,9 @@ export default function App() {
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
         <Route path="/avatar" element={<AvatarCustomizerScreen />} />
+        <Route path="/scan" element={<Scan />} />
+        <Route path="/attendance" element={<MyAttendance />} />
+        <Route path="/attendance/request" element={<RequestException />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
