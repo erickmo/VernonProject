@@ -6,7 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "brand_name"
+  "brand_name", "holiday_list"
  ],
  "fields": [
   {
@@ -16,7 +16,8 @@
    "label": "Brand Name",
    "reqd": 1,
    "unique": 1
-  }
+  },
+  {"fieldname": "holiday_list", "fieldtype": "Link", "label": "Holiday List", "options": "Attendance Holiday List"}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
