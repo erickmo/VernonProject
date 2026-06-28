@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
 import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -135,6 +135,19 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       rows: [
         { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
         { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },
+        ...(canManageAttendance(boot)
+          ? [
+              {
+                icon: ClipboardList,
+                label: 'Manage attendance',
+                hue: 'emerald' as const,
+                // Admin pages (schedules, stations, enrol, reports) live on the web app.
+                onClick: () => {
+                  window.location.href = '/w/attendance-report'
+                },
+              },
+            ]
+          : []),
       ],
     },
     {
