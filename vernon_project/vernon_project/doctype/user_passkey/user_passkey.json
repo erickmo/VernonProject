@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-06-27 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "label",
+  "credential_id",
+  "public_key",
+  "sign_count",
+  "user_handle",
+  "transports",
+  "backed_up",
+  "last_used"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Device Label"
+  },
+  {
+   "fieldname": "credential_id",
+   "fieldtype": "Data",
+   "label": "Credential ID",
+   "length": 512,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "public_key",
+   "fieldtype": "Long Text",
+   "label": "Public Key",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "sign_count",
+   "fieldtype": "Int",
+   "label": "Sign Count"
+  },
+  {
+   "fieldname": "user_handle",
+   "fieldtype": "Data",
+   "label": "User Handle",
+   "length": 255
+  },
+  {
+   "fieldname": "transports",
+   "fieldtype": "Data",
+   "label": "Transports"
+  },
+  {
+   "default": "0",
+   "fieldname": "backed_up",
+   "fieldtype": "Check",
+   "label": "Backed Up"
+  },
+  {
+   "fieldname": "last_used",
+   "fieldtype": "Datetime",
+   "label": "Last Used"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-06-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "User Passkey",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

@@ -394,6 +394,36 @@ class TestProjectTodo(unittest.TestCase):
 		self.assertEqual(after, before + 1)
 		self.assertIsNone(frappe.db.get_value("Project Todo", head.name, "next_occurrence"))
 
+	def test_complete_does_not_duplicate_scheduler_occurrence(self):
+		"""Both generators target the same next occurrence; completing a recurring
+		todo after the scheduler already rolled it forward must not duplicate it.
+
+		Invariant in real use: next_occurrence == calculate_next_occurrence(deadline).
+		Weekly + deadline 8 days ago => next_occurrence is yesterday (due now) and
+		equals calculate_next_occurrence(deadline), so both paths target the same date.
+		"""
+		from vernon_project.tasks import create_recurring_todos
+		head = self._make_todo(
+			is_recurring=1,
+			recurring_frequency="Weekly",
+			deadline=add_days(nowdate(), -8),
+		)
+		# Scheduler is due now -> creates the next occurrence and clears head.next_occurrence.
+		create_recurring_todos()
+		after_scheduler = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+
+		# Completing the head fires create_next_occurrence, which must dedup, not duplicate.
+		head.reload()
+		head.status = "✅ Completed"
+		head.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		after_complete = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+		self.assertEqual(
+			after_complete, after_scheduler,
+			"Completing a recurring todo must not duplicate the scheduler's occurrence",
+		)
+
 
 class TestProjectTodoPhaseTracking(unittest.TestCase):
 	"""Test cases for Phase Estimation and Time Tracking"""

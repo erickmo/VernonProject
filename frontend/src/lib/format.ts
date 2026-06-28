@@ -189,6 +189,15 @@ export function byDeadlineAsc(
   return a.deadline.localeCompare(b.deadline)
 }
 
+/** Sort by estimated minutes ascending (quickest first); deadline as tiebreak. */
+export function byEstimatedAsc(
+  a: { estimated: number; deadline: string | null },
+  b: { estimated: number; deadline: string | null },
+): number {
+  const d = (a.estimated || 0) - (b.estimated || 0)
+  return d !== 0 ? d : byDeadlineAsc(a, b)
+}
+
 /** Sort by ISO date string descending (latest first); nulls last. */
 export function byDeadlineDesc(
   a: { deadline: string | null },

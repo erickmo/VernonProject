@@ -22,7 +22,15 @@ class ProjectTodo(Document):
 		self.calculate_total_estimated_hours()
 		self.track_phase_changes()
 		self.validate_block_links()
-		if self.is_recurring and self.recurring_frequency and not self.next_occurrence:
+		# Arm next_occurrence only while the todo is still active. Re-arming a
+		# Completed/Cancelled head (e.g. on a later notes edit) would let the
+		# scheduler spawn a duplicate of an occurrence already generated.
+		if (
+			self.is_recurring
+			and self.recurring_frequency
+			and not self.next_occurrence
+			and self.status not in ("✅ Completed", "🚫 Cancelled")
+		):
 			self.next_occurrence = self.calculate_next_occurrence(self.deadline)
 
 	def validate_block_links(self):
@@ -600,6 +608,18 @@ class ProjectTodo(Document):
 
 		# Check if next occurrence is beyond recurring_until
 		if self.recurring_until and getdate(next_date) > getdate(self.recurring_until):
+			return
+
+		# Dedup against the scheduler path (create_recurring_todos): both paths target
+		# the same next_date, so if that occurrence already exists, don't create a
+		# second one — whichever path ran first wins, the other no-ops.
+		if frappe.db.exists("Project Todo", {
+			"project_detail": self.project_detail,
+			"to_do": self.to_do,
+			"deadline": next_date,
+			"assigned_to": self.assigned_to,
+		}):
+			frappe.db.set_value("Project Todo", self.name, "next_occurrence", None, update_modified=False)
 			return
 
 		frappe.get_doc({

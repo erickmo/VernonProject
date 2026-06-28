@@ -15,6 +15,29 @@ const REACTIONS: { key: ReactionKey; icon: LucideIcon; tint: string }[] = [
 
 function ReactionBar({ item }: { item: ActivityItem }) {
   const toggle = useToggleReaction()
+
+  // You can't react to your own work (the server rejects it). Rendering dead,
+  // disabled buttons read as "broken" — tapping them silently does nothing.
+  // Instead, on your own card show the kudos you've received as read-only chips,
+  // and nothing at all until someone cheers.
+  if (item.is_mine) {
+    const got = REACTIONS.filter(({ key }) => item.reactions[key] > 0)
+    if (got.length === 0) return null
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {got.map(({ key, icon: Icon, tint }) => (
+          <span
+            key={key}
+            className="inline-flex items-center gap-1 rounded-full border border-paper-edge bg-paper-card px-2.5 py-1 text-sm font-semibold text-stone-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+          >
+            <Icon className={clsx('h-4 w-4', tint)} />
+            <span className="tabular-nums">{item.reactions[key]}</span>
+          </span>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
       {REACTIONS.map(({ key, icon: Icon, tint }) => {
@@ -23,12 +46,11 @@ function ReactionBar({ item }: { item: ActivityItem }) {
         return (
           <button
             key={key}
-            disabled={item.is_mine}
             onClick={() => toggle.mutate({ todo: item.name, reaction: key })}
             aria-label={key}
             aria-pressed={active}
             className={clsx(
-              'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-semibold transition active:scale-95 disabled:opacity-40 disabled:active:scale-100',
+              'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-semibold transition active:scale-95',
               active
                 ? 'border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/15 dark:text-brand-300'
                 : 'border-paper-edge bg-paper-card text-stone-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',

@@ -9,6 +9,13 @@ readme = "README.md"
 dynamic = ["version"]
 dependencies = [
     # "frappe~=15.0.0" # Installed and managed by bench.
+    # passkey / fingerprint login (server-side verification).
+    # Pinned <2.8: webauthn 2.8+ requires cryptography>=46 / pyOpenSSL>=26, which
+    # conflict with Frappe's pins (cryptography~=44, pyOpenSSL~=25). 2.7.1 works
+    # with that baseline.
+    "webauthn~=2.7.1",
+    # Web Push delivery for Vernon Notifications (see api/mobile.py _push_to_subscriptions).
+    "pywebpush~=2.3.0",
 ]
 
 [build-system]

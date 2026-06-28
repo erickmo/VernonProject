@@ -4,6 +4,7 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
   Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon, Video,
+  StickyNote, MessageSquarePlus, Inbox,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
@@ -56,6 +57,8 @@ const MAIN: NavItem[] = [
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/meetings', label: 'Meetings', icon: Video },
+  { to: '/notes', label: 'Notes', icon: StickyNote },
+  { to: '/feedback', label: 'Send feedback', icon: MessageSquarePlus },
   { to: '/review', label: 'Review', icon: CheckCircle2, badge: 'review' },
 ]
 
@@ -80,6 +83,9 @@ const SECTION: Record<string, { label: string; to: string }> = {
   'project-item': { label: 'Projects', to: '/projects' },
   review: { label: 'Review', to: '/review' },
   meetings: { label: 'Meetings', to: '/meetings' },
+  notes: { label: 'Notes', to: '/notes' },
+  feedback: { label: 'Send feedback', to: '/feedback' },
+  'feedback-inbox': { label: 'Feedback', to: '/feedback-inbox' },
   reports: { label: 'Reports', to: '/reports' },
   report: { label: 'Reports', to: '/reports' },
   leaderboard: { label: 'Leaderboard', to: '/leaderboard' },
@@ -108,7 +114,7 @@ function buildCrumbs(pathname: string): { label: string; to?: string }[] {
   let leaf = 'Detail'
   if (rest.includes('new')) leaf = 'New'
   else if (rest.includes('item') || top === 'project-item') leaf = 'Item'
-  else if (['users', 'groups', 'brands', 'marketplace-admin'].includes(top)) leaf = 'Edit'
+  else if (['users', 'groups', 'brands', 'marketplace-admin', 'notes'].includes(top)) leaf = 'Edit'
   return [{ label: section.label, to: section.to }, { label: leaf }]
 }
 
@@ -143,6 +149,7 @@ export function AppShell() {
   const b = boot.data
   const admin: NavItem[] = [
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', icon: UsersIcon } as NavItem] : []),
+    ...(canManageUsers(b) ? [{ to: '/feedback-inbox', label: 'Feedback', icon: Inbox } as NavItem] : []),
     ...(canManageGroups(b) ? [{ to: '/groups', label: 'Groups', icon: Layers } as NavItem] : []),
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', icon: ShieldAlert } as NavItem] : []),
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', icon: SettingsIcon } as NavItem] : []),

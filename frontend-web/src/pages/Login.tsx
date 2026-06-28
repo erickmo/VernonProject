@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Eye, EyeOff, FolderKanban, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Eye, EyeOff, FolderKanban, Loader2, Fingerprint } from 'lucide-react'
 import { login } from '@/lib/api'
 import { parseFrappeError } from '@/lib/format'
+import { loginWithPasskey, platformAuthenticatorAvailable, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -9,6 +10,24 @@ export default function Login() {
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [pkAvailable, setPkAvailable] = useState(false)
+  const [pkBusy, setPkBusy] = useState(false)
+
+  useEffect(() => {
+    platformAuthenticatorAvailable().then(setPkAvailable)
+  }, [])
+
+  const passkeySignIn = async () => {
+    if (pkBusy || busy) return
+    setPkBusy(true); setErr('')
+    try {
+      await loginWithPasskey()
+      window.location.href = '/w'
+    } catch (ex) {
+      if (!isPasskeyCancel(ex)) setErr('Passkey — ' + describePasskeyError(ex))
+      setPkBusy(false)
+    }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +70,24 @@ export default function Login() {
         <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand-600 text-white py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} Sign in
         </button>
+        {pkAvailable && (
+          <>
+            <div className="flex items-center gap-3 text-xs font-medium text-slate-400">
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              or
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            </div>
+            <button
+              type="button"
+              onClick={passkeySignIn}
+              disabled={pkBusy || busy}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              {pkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4 text-brand-600" />}
+              Sign in with fingerprint
+            </button>
+          </>
+        )}
         <a href="/login#forgot?redirect-to=/w" className="block text-center text-sm text-brand-600">Forgot password?</a>
       </form>
     </div>

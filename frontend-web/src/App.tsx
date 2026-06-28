@@ -36,6 +36,8 @@ import Brands from '@web/pages/Brands'
 import BrandForm from '@web/pages/BrandForm'
 import Notes from '@web/pages/Notes'
 import NoteForm from '@web/pages/NoteForm'
+import Feedback from '@web/pages/Feedback'
+import FeedbackInbox from '@web/pages/FeedbackInbox'
 import BadgeSettings from '@web/pages/BadgeSettings'
 import Settings from '@web/pages/Settings'
 import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
@@ -123,6 +125,7 @@ export default function App() {
           <Route path="/notes" element={<Notes />} />
           <Route path="/notes/new" element={<NoteForm />} />
           <Route path="/notes/:name" element={<NoteForm />} />
+          <Route path="/feedback" element={<Feedback />} />
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
@@ -139,6 +142,7 @@ export default function App() {
               <Route path="/users" element={<Users />} />
               <Route path="/users/new" element={<UserForm />} />
               <Route path="/users/:name" element={<UserForm />} />
+              <Route path="/feedback-inbox" element={<FeedbackInbox />} />
             </>
           )}
           {canManageGroups(b) && (

@@ -18,21 +18,22 @@ const ICON = {
   error: AlertTriangle,
   info: Info,
 }
+// Icon + text + close all sit on a solid colored fill — white reads in both themes.
 const ACCENT = {
-  success: 'text-emerald-600 dark:text-emerald-400',
-  error: 'text-rose-600 dark:text-rose-400',
-  info: 'text-brand-600 dark:text-brand-400',
+  success: 'text-white',
+  error: 'text-white',
+  info: 'text-white',
 }
-// Status-tinted background + border so the toast color reads at a glance.
+// Solid status-colored fill (fully opaque in light + dark) with a darker hairline border.
 const SURFACE = {
-  success: 'border-emerald-200 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/15',
-  error: 'border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/15',
-  info: 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/15',
+  success: 'border-emerald-700 bg-emerald-600',
+  error: 'border-rose-700 bg-rose-600',
+  info: 'border-brand-700 bg-brand-600',
 }
 const TEXT = {
-  success: 'text-emerald-900 dark:text-emerald-100',
-  error: 'text-rose-900 dark:text-rose-100',
-  info: 'text-brand-900 dark:text-brand-100',
+  success: 'text-white',
+  error: 'text-white',
+  info: 'text-white',
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
