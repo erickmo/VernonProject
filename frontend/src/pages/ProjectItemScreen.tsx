@@ -36,7 +36,7 @@ import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useCancelTodo, useRestoreTodo, useDeleteTodo } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo } from '@/hooks/useData'
 import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -159,7 +159,9 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       fields.assigned_to = assignee
       fields.start_date = startDate
       fields.deadline = deadline
-      fields.estimated = estimated === '' ? 0 : Number(estimated)
+      if (data.can_edit_estimate) {
+        fields.estimated = estimated === '' ? 0 : Number(estimated)
+      }
     }
     // Approval-phase estimates in minutes (summed into the task total server-side).
     // Planned→Done is the main `estimated` field above.
@@ -237,15 +239,19 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </div>
         <div className="w-28">
           <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Est. (min)</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={estimated}
-            disabled={locked}
-            onChange={(e) => setEstimated(e.target.value)}
-            className={field}
-          />
+          {data.can_edit_estimate ? (
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={estimated}
+              disabled={locked}
+              onChange={(e) => setEstimated(e.target.value)}
+              className={field}
+            />
+          ) : (
+            <p className="py-2.5 text-sm text-slate-500 dark:text-slate-400">{data.estimated}m (leader-set)</p>
+          )}
         </div>
       </div>
 
@@ -577,12 +583,6 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
       toast('error', 'Add a date to every allocation row')
       return
     }
-    // Daily split must add up to the task estimate (planning consistency).
-    if (data.estimated > 0 && total !== data.estimated) {
-      const diff = data.estimated - total
-      toast('error', diff > 0 ? `${diff}m short of the ${data.estimated}m estimate` : `${-diff}m over the ${data.estimated}m estimate`)
-      return
-    }
     const clean = rows.filter((r) => r.date)
     save.mutate(clean, {
       onSuccess: () => toast('success', 'Allocations saved'),
@@ -594,19 +594,10 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
     <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          <CalendarRange className="h-4 w-4" /> Split across days
+          <CalendarRange className="h-4 w-4" /> My day plan
         </p>
-        <span
-          className={
-            'rounded-full px-2 py-0.5 text-[11px] font-bold ' +
-            (!data.estimated
-              ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-              : total === data.estimated
-                ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                : 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300')
-          }
-        >
-          {total}m{data.estimated ? ` / ${data.estimated}m est` : ''}
+        <span className="rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 text-[11px] font-bold text-brand-700 dark:text-brand-300">
+          {total}m
         </span>
       </div>
       <div className="flex flex-col gap-2">
@@ -660,6 +651,141 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
           {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save split
         </button>
       </div>
+    </div>
+  )
+}
+
+function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
+  const save = useSetAssignedAllocation(data.name)
+  const toast = useToast()
+  const [rows, setRows] = useState<AllocRow[]>(
+    (data.assigned_allocation ?? []).map((a) => ({ date: a.date, minutes: a.minutes, note: a.note ?? '' })),
+  )
+
+  const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
+  const field =
+    'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none dark:placeholder-slate-500'
+
+  const addRow = () => setRows((r) => [...r, { date: '', minutes: 0, note: '' }])
+  const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
+  const setRow = (i: number, patch: Partial<AllocRow>) =>
+    setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+
+  const onSave = () => {
+    if (rows.some((r) => !r.date && Number(r.minutes) > 0)) {
+      toast('error', 'Add a date to every allocation row')
+      return
+    }
+    if (data.estimated > 0 && total !== data.estimated) {
+      const diff = data.estimated - total
+      toast('error', diff > 0 ? `${diff}m short of the ${data.estimated}m estimate` : `${-diff}m over the ${data.estimated}m estimate`)
+      return
+    }
+    const clean = rows.filter((r) => r.date)
+    save.mutate(clean, {
+      onSuccess: () => toast('success', 'Assigned plan saved'),
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
+
+  const alloc = data.assigned_allocation ?? []
+
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <CalendarRange className="h-4 w-4" /> Assigned plan
+        </p>
+        <span
+          className={
+            'rounded-full px-2 py-0.5 text-[11px] font-bold ' +
+            (!data.estimated
+              ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
+              : total === data.estimated
+                ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300')
+          }
+        >
+          {total}m{data.estimated ? ` / ${data.estimated}m est` : ''}
+        </span>
+      </div>
+
+      {data.can_edit_assigned ? (
+        <>
+          <div className="flex flex-col gap-2">
+            {rows.map((r, i) => (
+              <div key={i} className="flex flex-col gap-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={r.date}
+                    onChange={(e) => setRow(i, { date: e.target.value })}
+                    className={field + ' min-w-0 flex-1'}
+                  />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    value={String(r.minutes || '')}
+                    placeholder="min"
+                    onChange={(e) => setRow(i, { minutes: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    className={field + ' w-20 shrink-0 text-center'}
+                  />
+                  <button onClick={() => removeRow(i)} className="shrink-0 rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={r.note}
+                  placeholder="Note…"
+                  onChange={(e) => setRow(i, { note: e.target.value })}
+                  className={field + ' w-full'}
+                />
+              </div>
+            ))}
+            {!rows.length && (
+              <p className="py-1 text-center text-xs text-slate-400 dark:text-slate-500">No assigned plan yet — add a day.</p>
+            )}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={addRow}
+              className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-700"
+            >
+              <Plus className="h-4 w-4" /> Add day
+            </button>
+            <button
+              onClick={onSave}
+              disabled={save.isPending}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white active:bg-brand-700 disabled:opacity-60"
+            >
+              {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save plan
+            </button>
+          </div>
+        </>
+      ) : (
+        alloc.length > 0 ? (
+          <div className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            {alloc.map((a, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                  <FolderKanban className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between">
+                    <span>{a.date}</span>
+                    <span className="font-medium">{a.minutes}m</span>
+                  </div>
+                  {a.note && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{a.note}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-1 text-center text-xs text-slate-400 dark:text-slate-500">No assigned plan yet.</p>
+        )
+      )}
     </div>
   )
 }
@@ -975,14 +1101,14 @@ export default function ProjectItemScreen() {
         </div>
       )}
 
-      {/* Day allocations: editor for the assignee, read-only list for others */}
+      {/* My day plan: editable for assignee, read-only for others */}
       {data.is_mine ? (
         <AllocationCard data={data} />
       ) : (
         (data.allocations ?? []).length > 0 && (
           <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              <CalendarRange className="h-4 w-4" /> Day split
+              <CalendarRange className="h-4 w-4" /> My day plan
             </p>
             <div className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
               {(data.allocations ?? []).map((a, i) => (
@@ -1003,6 +1129,9 @@ export default function ProjectItemScreen() {
           </div>
         )
       )}
+
+      {/* Assigned plan: editable for leaders, read-only for others */}
+      <AssignedAllocationCard data={data} />
 
       {/* Workflow */}
       <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 pb-5 shadow-sm">
