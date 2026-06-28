@@ -103,6 +103,90 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
     setTheme(v)
   }
 
+  // Grouped menu. Admin rows are gated; sections with no visible rows are hidden.
+  const menu: {
+    title: string
+    rows: {
+      icon: React.ComponentType<{ className?: string }>
+      label: string
+      hue: keyof typeof ROW_HUE
+      onClick: () => void
+    }[]
+  }[] = [
+    {
+      title: 'Account',
+      rows: [
+        { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
+        ...(pushSupported()
+          ? [
+              {
+                icon: pushOn ? Bell : BellOff,
+                label: pushBusy ? 'Working…' : pushOn ? 'Notifications: On' : 'Enable notifications',
+                hue: 'sky' as const,
+                onClick: togglePush,
+              },
+            ]
+          : []),
+        { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
+      ],
+    },
+    {
+      title: 'Work',
+      rows: [
+        { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
+        { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },
+      ],
+    },
+    {
+      title: 'Points & Rewards',
+      rows: [
+        { icon: Send, label: 'Gift Points', hue: 'amber', onClick: () => navigate('/gift-points') },
+        ...(canGrantPoints(boot)
+          ? [{ icon: Gift, label: 'Grant Points', hue: 'amber' as const, onClick: () => navigate('/grant-points') }]
+          : []),
+        ...(canManageBadges(boot)
+          ? [{ icon: Award, label: 'Manage Badges', hue: 'violet' as const, onClick: () => navigate('/badge-settings') }]
+          : []),
+        ...(canManageMarketplace(boot)
+          ? [{ icon: Store, label: 'Manage Marketplace', hue: 'amber' as const, onClick: () => navigate('/marketplace-admin') }]
+          : []),
+      ],
+    },
+    {
+      title: 'Users & Access',
+      rows: [
+        ...(canManageUsers(boot)
+          ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]
+          : []),
+        ...(canManageBrands(boot)
+          ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
+          : []),
+        ...(canManageGroups(boot)
+          ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
+          : []),
+      ],
+    },
+    {
+      title: 'System',
+      rows: [
+        ...(canManageGroups(boot)
+          ? [{ icon: ShieldAlert, label: 'Data Health', hue: 'rose' as const, onClick: () => navigate('/data-health') }]
+          : []),
+        ...(canManageGroups(boot)
+          ? [{ icon: Settings, label: 'Settings', hue: 'slate' as const, onClick: () => navigate('/settings') }]
+          : []),
+      ],
+    },
+    {
+      title: 'App',
+      rows: [
+        { icon: MessageSquarePlus, label: 'Send feedback', hue: 'violet', onClick: () => navigate('/feedback') },
+        { icon: RefreshCw, label: 'Refresh data', hue: 'slate', onClick: refresh },
+        { icon: BookOpen, label: 'Replay quick tour', hue: 'slate', onClick: onReplayOnboarding },
+      ],
+    },
+  ]
+
   return (
     <TabScreen title="Me">
       {boot && (
@@ -173,48 +257,20 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
 
           <PasskeyCard />
 
-          <div className="mt-3 divide-y divide-paper-edge dark:divide-slate-700 overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card">
-            <Row icon={Palette} label="Customize Avatar" hue="violet" onClick={() => navigate('/avatar')} />
-            {pushSupported() && (
-              <Row
-                icon={pushOn ? Bell : BellOff}
-                label={pushBusy ? 'Working…' : pushOn ? 'Notifications: On' : 'Enable notifications'}
-                hue="sky"
-                onClick={togglePush}
-              />
-            )}
-            <Row icon={KeyRound} label="Change password" hue="sky" onClick={() => setShowChangePw(true)} />
-            <Row icon={Send} label="Gift Points" hue="amber" onClick={() => navigate('/gift-points')} />
-            <Row icon={CalendarClock} label="Meetings" hue="sky" onClick={() => navigate('/meetings')} />
-            <Row icon={QrCode} label="Attendance" hue="sky" onClick={() => navigate('/attendance')} />
-            {canManageGroups(boot) && (
-              <Row icon={Layers} label="Manage Groups" hue="emerald" onClick={() => navigate('/groups')} />
-            )}
-            {canManageGroups(boot) && (
-              <Row icon={ShieldAlert} label="Data Health" hue="rose" onClick={() => navigate('/data-health')} />
-            )}
-            {canManageBrands(boot) && (
-              <Row icon={Store} label="Manage Brands" hue="pink" onClick={() => navigate('/brands')} />
-            )}
-            {canManageUsers(boot) && (
-              <Row icon={Users} label="Manage Users" hue="sky" onClick={() => navigate('/users')} />
-            )}
-            {canManageBadges(boot) && (
-              <Row icon={Award} label="Manage Badges" hue="violet" onClick={() => navigate('/badge-settings')} />
-            )}
-            {canManageGroups(boot) && (
-              <Row icon={Settings} label="Settings" hue="slate" onClick={() => navigate('/settings')} />
-            )}
-            {canManageMarketplace(boot) && (
-              <Row icon={Settings} label="Manage Marketplace" hue="amber" onClick={() => navigate('/marketplace-admin')} />
-            )}
-            {canGrantPoints(boot) && (
-              <Row icon={Gift} label="Grant Points" hue="amber" onClick={() => navigate('/grant-points')} />
-            )}
-            <Row icon={MessageSquarePlus} label="Send feedback" hue="violet" onClick={() => navigate('/feedback')} />
-            <Row icon={RefreshCw} label="Refresh data" hue="slate" onClick={refresh} />
-            <Row icon={BookOpen} label="Replay quick tour" hue="slate" onClick={onReplayOnboarding} />
-          </div>
+          {menu.map((section) =>
+            section.rows.length === 0 ? null : (
+              <div key={section.title} className="mt-4">
+                <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+                  {section.title}
+                </p>
+                <div className="divide-y divide-paper-edge dark:divide-slate-700 overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card">
+                  {section.rows.map((r) => (
+                    <Row key={r.label} icon={r.icon} label={r.label} hue={r.hue} onClick={r.onClick} />
+                  ))}
+                </div>
+              </div>
+            ),
+          )}
 
           <button
             onClick={doLogout}
