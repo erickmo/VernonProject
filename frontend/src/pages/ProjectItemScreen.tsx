@@ -885,8 +885,8 @@ export default function ProjectItemScreen() {
   // exists yet — once it does, the AllocationCard below owns the multi-day plan.
   const onSplitToday = () => {
     if (splitToday.isPending) return
-    // ponytail: 30m default when there's no estimate. Backend only requires the
-    // split to sum to the estimate when estimate > 0; today just needs to be > 0.
+    // ponytail: 30m default when there's no estimate. The assignee day-plan is
+    // free-form; a positive today minutes just surfaces the todo in the Today home.
     const minutes = data.estimated > 0 ? data.estimated : 30
     splitToday.mutate([{ date: todayISO(), minutes, note: '' }], {
       onSuccess: () => toast('success', 'Split to today'),

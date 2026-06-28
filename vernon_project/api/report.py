@@ -124,6 +124,7 @@ def daily_estimated_time(from_date, to_date):
 			JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
 			WHERE todo.assigned_to IN %(users)s
 			  AND alloc.parenttype = 'Project Todo'
+			  AND todo.status != '\U0001f6ab Cancelled'
 			  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
 			GROUP BY todo.assigned_to, alloc.allocation_date
 			""",
@@ -143,6 +144,7 @@ def daily_estimated_time(from_date, to_date):
 			FROM `tabProject Todo Assigned Allocation` AS alloc
 			JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
 			WHERE todo.assigned_to IN %(users)s AND alloc.parenttype = 'Project Todo'
+			  AND todo.status != '\U0001f6ab Cancelled'
 			  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
 			GROUP BY todo.assigned_to, alloc.allocation_date, todo.name
 			""",
@@ -157,6 +159,7 @@ def daily_estimated_time(from_date, to_date):
 			SELECT name AS todo, assigned_to AS user, deadline AS day, estimated AS minutes
 			FROM `tabProject Todo`
 			WHERE assigned_to IN %(users)s AND IFNULL(estimated, 0) > 0
+			  AND status != '\U0001f6ab Cancelled'
 			  AND deadline BETWEEN %(from_date)s AND %(to_date)s
 			""",
 			{"users": names, "from_date": str(start), "to_date": str(end)}, as_dict=True,
