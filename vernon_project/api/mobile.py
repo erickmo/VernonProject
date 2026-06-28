@@ -1372,6 +1372,14 @@ def update_todo(
 				"message": "You don't have permission to edit this task.",
 			}
 
+		# `estimated` drives scoring — only leader/owner/SM may change it.
+		if estimated is not None and int(estimated) != int(row.estimated or 0):
+			if not (is_sm or user in (project.project_owner, project.project_leader)):
+				return {"status": "error", "message": "Only the project leader or owner can change the estimate."}
+			# A new estimate invalidates any explicit assigned split — fall back to
+			# the virtual default; the leader can re-split afterward.
+			row.set("assigned_allocation", [])
+
 		if to_do is not None and to_do.strip():
 			row.to_do = to_do.strip()
 		if start_date is not None:
