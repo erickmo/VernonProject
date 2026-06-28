@@ -57,6 +57,17 @@ class TestUserAvatar(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			save_my_avatar('{"style":"bogus","options":{}}')
 
+	def test_save_survives_dangling_legacy_base_link(self):
+		# Simulate a migrated row whose legacy base Link points at a now-deleted item.
+		tmp = _mk_premium("T Doomed Base", "lorelei", "hair", "variant02")
+		name = frappe.db.exists("User Avatar", {"user": USER}) or frappe.get_doc(
+			{"doctype": "User Avatar", "user": USER}).insert(ignore_permissions=True).name
+		frappe.db.set_value("User Avatar", name, "base", tmp)
+		frappe.delete_doc("Avatar Item", tmp, ignore_permissions=True, force=True)  # base now dangles
+		# Must NOT raise LinkValidationError:
+		save_my_avatar('{"style":"lorelei","options":{}}')
+		self.assertIsNone(frappe.db.get_value("User Avatar", name, "base"))
+
 	def test_snapshot_sets_identity_image(self):
 		png = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
 			"AAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")

@@ -3461,11 +3461,11 @@ def _premium_index():
 def _my_avatar_config(user):
 	raw = frappe.db.get_value("User Avatar", {"user": user}, "config_json")
 	if not raw:
-		return dict(DEFAULT_AVATAR)
+		return {"style": DEFAULT_AVATAR["style"], "options": {}}
 	try:
 		cfg = _json.loads(raw)
 	except Exception:
-		return dict(DEFAULT_AVATAR)
+		return {"style": DEFAULT_AVATAR["style"], "options": {}}
 	if cfg.get("style") not in ALLOWED_STYLES:
 		cfg["style"] = DEFAULT_AVATAR["style"]
 	if not isinstance(cfg.get("options"), dict):
@@ -3515,7 +3515,12 @@ def save_my_avatar(config_json, snapshot_dataurl=None):
 	"""Persist the caller's DiceBear config. Any selected option that is a premium
 	Avatar Item must be owned, or the save is rejected."""
 	user = frappe.session.user
-	cfg = _json.loads(config_json) if isinstance(config_json, str) else config_json
+	try:
+		cfg = _json.loads(config_json) if isinstance(config_json, str) else config_json
+	except Exception:
+		frappe.throw("Invalid avatar config", frappe.ValidationError)
+	if not isinstance(cfg, dict):
+		frappe.throw("Invalid avatar config", frappe.ValidationError)
 	style = cfg.get("style")
 	if style not in ALLOWED_STYLES:
 		frappe.throw("Unknown avatar style", frappe.ValidationError)
@@ -3543,6 +3548,7 @@ def save_my_avatar(config_json, snapshot_dataurl=None):
 		url = _save_snapshot(user, snapshot_dataurl)
 		if url:
 			doc.snapshot = url
+	doc.base = doc.hat = doc.face = None  # clear deprecated dangling links (old GLB items were deleted)
 	doc.save(ignore_permissions=True)
 	if url:
 		frappe.db.set_value("User", user, "user_image", url)
