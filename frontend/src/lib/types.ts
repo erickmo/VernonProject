@@ -97,6 +97,8 @@ export interface ProjectItem {
   owner_appr_overdue: boolean
   allocations: { date: string; minutes: number; note?: string }[]
   allocated_total: number
+  assigned_allocation: { date: string; minutes: number; note?: string }[]
+  assigned_total: number
   today_allocation: number
   estimated: number
   ongoing: boolean
@@ -122,6 +124,8 @@ export interface ProjectItemDetail extends ProjectItem {
   notes: string
   can_edit_notes: boolean
   can_edit: boolean
+  can_edit_assigned: boolean
+  can_edit_estimate: boolean
   can_delete: boolean
   fields_locked: boolean
   team: { user: string; name: string; image: string | null }[]

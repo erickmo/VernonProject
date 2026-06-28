@@ -276,6 +276,21 @@ export function useSetTodoAllocations(todoId: string) {
   })
 }
 
+export function useSetAssignedAllocation(todoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (allocations: { date: string; minutes: number; note?: string }[]) => {
+      const res = await mobileApi.setAssignedAllocation(todoId, allocations)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
 export function useCreateProjectItem(projectDetail: string) {
   const qc = useQueryClient()
   return useMutation({

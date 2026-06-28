@@ -131,6 +131,11 @@ export const mobileApi = {
       M + 'set_todo_allocations',
       { project_item: todoId, allocations: JSON.stringify(allocations) },
     ),
+  setAssignedAllocation: (todoId: string, allocations: { date: string; minutes: number; note?: string }[]) =>
+    api.post<{ status: string; message: string; allocations: { date: string; minutes: number; note?: string }[] }>(
+      M + 'set_assigned_allocation',
+      { project_item: todoId, allocations: JSON.stringify(allocations) },
+    ),
   createTask: (fields: Record<string, unknown>) =>
     api.post('frappe.client.insert', {
       doc: JSON.stringify({
