@@ -35,6 +35,8 @@ class TestUserAvatar(FrappeTestCase):
 	def test_catalog_marks_locked_item(self):
 		cat = get_avatar_catalog()
 		by_name = {i["name"]: i for i in cat["items"]}
+		self.assertIn("T Human", by_name)
+		self.assertIn("T Crown", by_name)
 		self.assertTrue(by_name["T Human"]["owned"])
 		self.assertFalse(by_name["T Crown"]["owned"])
 
@@ -57,6 +59,8 @@ class TestUserAvatar(FrappeTestCase):
 		# 1x1 transparent PNG
 		png = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
 			"AAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
+		before = frappe.db.get_value("User", USER, "user_image") or ""
 		save_my_avatar({"base": "T Human"}, snapshot_dataurl=png)
 		img = frappe.db.get_value("User", USER, "user_image") or ""
-		self.assertIn("avatar-administrator", img)  # identity now points at the snapshot
+		self.assertNotEqual(img, before)
+		self.assertIn("avatar-administrator", img)
