@@ -5,7 +5,7 @@ import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
 import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
-import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
+import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { logout } from '@/lib/api'
@@ -206,8 +206,14 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
         <>
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-6 shadow-card">
             {catalog ? (
-              <div className="h-[72px] w-[72px] overflow-hidden rounded-full border-2 border-paper-edge dark:border-slate-700">
-                <DiceBearAvatar config={catalog.my} className="h-full w-full" />
+              <div className="relative h-[72px] w-[72px] overflow-hidden rounded-full border-2 border-paper-edge dark:border-slate-700">
+                <AvatarScene config={catalog.my} assets={catalog.assets} className="h-full w-full" />
+                {catalog.my.featured_collectible && (() => {
+                  const fc = catalog.assets.find((a) => a.asset_name === catalog.my.featured_collectible)
+                  return fc?.emoji ? (
+                    <span className="pointer-events-none absolute bottom-0 right-0 select-none text-base leading-none">{fc.emoji}</span>
+                  ) : null
+                })()}
               </div>
             ) : (
               <Avatar name={boot.full_name} image={boot.image} size={72} />

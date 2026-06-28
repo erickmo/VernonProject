@@ -582,14 +582,28 @@ export type StyleKey = 'lorelei' | 'adventurer' | 'notionists'
 export interface AvatarConfig {
   style: StyleKey
   options: Record<string, string[]>
+  scene?: string | null
+  props?: string[]
+  featured_collectible?: string | null
 }
 export interface AvatarUnlock { style: string; slot: string; option_value: string }
+export interface AvatarAsset {
+  asset_name: string
+  asset_type: 'Scene' | 'Prop' | 'Collectible'
+  emoji: string | null
+  gradient: string | null
+  anchor: string | null
+  is_default: number
+  price: number | null
+  owned: boolean
+}
 export interface AvatarCatalog {
   free_count: number
   price: number
   balance: number
   unlocked: AvatarUnlock[]
   my: AvatarConfig
+  assets: AvatarAsset[]
 }
 
 export type FeedbackItem = {
