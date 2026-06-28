@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes"],
+ "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty"],
  "fields": [
   {
    "fieldname": "max_estimated_minutes",
@@ -20,6 +20,54 @@
    "non_negative": 1,
    "default": "480",
    "description": "Days where a user's total allocated estimated minutes fall below this are flagged in the Daily Estimated Time report. 0 = never flag."
+  },
+  {
+   "fieldname": "attendance_section",
+   "fieldtype": "Section Break",
+   "label": "Attendance"
+  },
+  {
+   "fieldname": "attendance_enabled",
+   "fieldtype": "Check",
+   "label": "Attendance Enabled",
+   "default": "0"
+  },
+  {
+   "fieldname": "qr_validity_seconds",
+   "fieldtype": "Int",
+   "label": "QR Validity (seconds)",
+   "non_negative": 1,
+   "default": "30",
+   "description": "How long each rotating station QR token stays valid."
+  },
+  {
+   "fieldname": "attendance_grace_minutes",
+   "fieldtype": "Int",
+   "label": "Grace Minutes",
+   "non_negative": 1,
+   "default": "5",
+   "description": "Minutes of tolerance before late / early-leave is penalised."
+  },
+  {
+   "fieldname": "late_penalty_per_minute",
+   "fieldtype": "Float",
+   "label": "Late Penalty (points/min)",
+   "non_negative": 1,
+   "default": "0"
+  },
+  {
+   "fieldname": "early_leave_penalty_per_minute",
+   "fieldtype": "Float",
+   "label": "Early-Leave Penalty (points/min)",
+   "non_negative": 1,
+   "default": "0"
+  },
+  {
+   "fieldname": "absence_penalty",
+   "fieldtype": "Float",
+   "label": "Absence Penalty (flat points)",
+   "non_negative": 1,
+   "default": "0"
   }
  ],
  "issingle": 1,
