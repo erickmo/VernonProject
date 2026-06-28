@@ -4,13 +4,14 @@ import { Coins, Lock } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
+import { AvatarScene } from '@/avatar/AvatarScene'
 import { captureAvatarPng } from '@/avatar/capture'
 import {
   STYLE_LIST, slotsForStyle, colorSlotsForStyle, paletteForColorSlot,
   PROB_SLOTS, PREMIUM_FREE_COUNT, variantLabel, BG_PALETTE,
 } from '@/avatar/styles'
 import type { StyleKey } from '@/avatar/styles'
-import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption } from '@/hooks/useData'
+import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import type { AvatarConfig } from '@/lib/types'
 
@@ -24,13 +25,20 @@ export default function AvatarCustomizerScreen() {
   const { data: catalog, isLoading, error } = useAvatarCatalog()
   const saveAvatar = useSaveAvatar()
   const buyAvatar = useBuyAvatarOption()
+  const buyAsset = useBuyAvatarAsset()
   const toast = useToast()
   const previewRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState<AvatarConfig | null>(null)
 
   // Seed draft once; never reset after that (preserves in-progress edits)
   useEffect(() => {
-    if (catalog && !draft) setDraft({ style: catalog.my.style, options: { ...catalog.my.options } })
+    if (catalog && !draft) setDraft({
+      style: catalog.my.style,
+      options: { ...catalog.my.options },
+      scene: catalog.my.scene ?? null,
+      props: [...(catalog.my.props ?? [])],
+      featured_collectible: catalog.my.featured_collectible ?? null,
+    })
   }, [catalog, draft])
 
   if (error) {
@@ -79,8 +87,19 @@ export default function AvatarCustomizerScreen() {
     )
   })
 
+  // Save gate: unowned assets in draft
+  const assetOwned = (name: string | null | undefined) => {
+    if (!name) return true
+    const a = catalog.assets.find(x => x.asset_name === name)
+    return !a || a.owned
+  }
+  const hasUnownedAssets =
+    !assetOwned(draft.scene) ||
+    (draft.props || []).some(n => !assetOwned(n)) ||
+    !assetOwned(draft.featured_collectible)
+
   const handleSave = async () => {
-    if (hasUnownedPremium) {
+    if (hasUnownedPremium || hasUnownedAssets) {
       toast('error', 'Unlock the 🔒 items you previewed first')
       return
     }
@@ -127,6 +146,10 @@ export default function AvatarCustomizerScreen() {
     return { ...d, options: opts }
   })
 
+  const scenes = catalog.assets.filter(a => a.asset_type === 'Scene')
+  const assetProps = catalog.assets.filter(a => a.asset_type === 'Prop')
+  const collectibles = catalog.assets.filter(a => a.asset_type === 'Collectible')
+
   return (
     <DetailScreen title="Customize Avatar">
       {/* Balance chip */}
@@ -136,13 +159,13 @@ export default function AvatarCustomizerScreen() {
         <span className="text-stone-400 dark:text-slate-500">pts</span>
       </div>
 
-      {/* DiceBear preview — sticky so it stays visible while slots scroll */}
+      {/* AvatarScene preview — sticky so it stays visible while slots scroll */}
       <div className="sticky top-16 z-10 -mx-4 px-4 bg-paper dark:bg-slate-950 pb-2">
         <div
           ref={previewRef}
           className="flex h-48 items-center justify-center overflow-hidden rounded-3xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card"
         >
-          <DiceBearAvatar config={draft} className="h-44 w-44" />
+          <AvatarScene config={draft} assets={catalog.assets} className="h-full w-full" />
         </div>
       </div>
 
@@ -151,7 +174,7 @@ export default function AvatarCustomizerScreen() {
         <Segmented
           options={STYLE_TABS}
           value={draft.style}
-          onChange={(s) => setDraft({ style: s as StyleKey, options: {} })}
+          onChange={(s) => setDraft((d) => ({ style: s as StyleKey, options: {}, scene: d?.scene ?? null, props: d?.props ?? [], featured_collectible: d?.featured_collectible ?? null }))}
         />
       </div>
 
@@ -283,6 +306,143 @@ export default function AvatarCustomizerScreen() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Scene */}
+      {scenes.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">Scene</p>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            <Chip label="None" active={!draft.scene} onClick={() => setDraft(d => d ? { ...d, scene: null } : d)} />
+            {scenes.map(a => {
+              const active = draft.scene === a.asset_name
+              return (
+                <div key={a.asset_name} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => a.owned && setDraft(d => d ? { ...d, scene: d.scene === a.asset_name ? null : a.asset_name } : d)}
+                    className={[
+                      'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition active:scale-95',
+                      active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
+                    ].join(' ')}
+                  >
+                    <div className="h-10 w-10 rounded-lg" style={{ background: a.gradient ?? '#e5e7eb' }} />
+                    <span className="text-[10px] font-medium text-stone-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                  </button>
+                  {!a.owned && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1">
+                      <Lock className="h-3.5 w-3.5 text-white" />
+                      <span className="text-[9px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
+                      <button
+                        type="button"
+                        onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                        disabled={buyAsset.isPending}
+                        className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white active:bg-amber-600 disabled:opacity-60"
+                      >Buy</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Props */}
+      {assetProps.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">Props</p>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {assetProps.map(a => {
+              const active = (draft.props || []).includes(a.asset_name)
+              return (
+                <div key={a.asset_name} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!a.owned) return
+                      setDraft(d => {
+                        if (!d) return d
+                        const others = (d.props || []).filter(n => {
+                          const o = catalog.assets.find(x => x.asset_name === n)
+                          return o && o.anchor !== a.anchor
+                        })
+                        const has = (d.props || []).includes(a.asset_name)
+                        return { ...d, props: has ? (d.props || []).filter(n => n !== a.asset_name) : [...others, a.asset_name] }
+                      })
+                    }}
+                    className={[
+                      'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition active:scale-95',
+                      active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
+                    ].join(' ')}
+                  >
+                    <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                    <span className="text-[10px] font-medium text-stone-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                  </button>
+                  {!a.owned && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1">
+                      <Lock className="h-3.5 w-3.5 text-white" />
+                      <span className="text-[9px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
+                      <button
+                        type="button"
+                        onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                        disabled={buyAsset.isPending}
+                        className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white active:bg-amber-600 disabled:opacity-60"
+                      >Buy</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Collectibles */}
+      {collectibles.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">Collectibles</p>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {collectibles.map(a => {
+              const featured = draft.featured_collectible === a.asset_name
+              return (
+                <div key={a.asset_name} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!a.owned) return
+                      setDraft(d => d ? { ...d, featured_collectible: d.featured_collectible === a.asset_name ? null : a.asset_name } : d)
+                    }}
+                    className={[
+                      'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition active:scale-95',
+                      featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
+                    ].join(' ')}
+                  >
+                    <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                    <span className="text-[10px] font-medium text-stone-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                    {a.owned && (
+                      <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400 dark:text-slate-500'].join(' ')}>
+                        {featured ? 'Featured' : 'Feature'}
+                      </span>
+                    )}
+                  </button>
+                  {!a.owned && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1">
+                      <Lock className="h-3.5 w-3.5 text-white" />
+                      <span className="text-[9px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
+                      <button
+                        type="button"
+                        onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                        disabled={buyAsset.isPending}
+                        className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white active:bg-amber-600 disabled:opacity-60"
+                      >Buy</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
