@@ -181,7 +181,11 @@ export function QuickAddSheet({
       ;(acc[b] ||= []).push(p)
       return acc
     }, {}),
-  ).sort((a, b) => (a[0] === 'No brand' ? 1 : b[0] === 'No brand' ? -1 : a[0].localeCompare(b[0])))
+  )
+    // sort projects within each brand A→Z by name…
+    .map(([brand, ps]) => [brand, ps.sort((a, b) => a.project_name.localeCompare(b.project_name))] as const)
+    // …then brands A→Z, unbranded last.
+    .sort((a, b) => (a[0] === 'No brand' ? 1 : b[0] === 'No brand' ? -1 : a[0].localeCompare(b[0])))
   const toggleBrand = (b: string) =>
     setOpenBrands((s) => {
       const n = new Set(s)
