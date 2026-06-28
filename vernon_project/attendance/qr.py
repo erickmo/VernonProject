@@ -20,6 +20,8 @@ def _token(secret, counter):
 def current_payload(station_name):
 	"""Live rotating QR payload for a station's kiosk display."""
 	secret = frappe.db.get_value("Attendance Station", station_name, "secret_key")
+	if not secret:
+		frappe.throw(f"Station {station_name!r} has no secret_key configured")
 	counter = int(time.time()) // _window()
 	return {"station": station_name, "counter": counter, "token": _token(secret, counter)}
 
