@@ -28,7 +28,7 @@ export default function Kiosk() {
         if (alive) setError((e as Error).message || 'Station error')
       }
       // re-poll a bit faster than the validity window so the code never goes stale on screen
-      timer = window.setTimeout(tick, 5000)
+      if (alive) timer = window.setTimeout(tick, 5000)
     }
     tick()
     return () => {
