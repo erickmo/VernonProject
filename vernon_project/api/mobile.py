@@ -1232,6 +1232,15 @@ def get_project_item(project_item):
 		r["project_owner"], r["project_leader"], r["assigned_to"]
 	)
 	shaped["fields_locked"] = shaped["status_key"] in ("done", "completed")
+	is_leader = user == r["project_leader"]
+	is_owner = user == r["project_owner"]
+	shaped["can_edit_estimate"] = is_sm or is_leader or is_owner
+	shaped["can_edit_assigned"] = is_sm or is_leader
+	_assigned = _assigned_allocations_map([r["name"]]).get(r["name"], [])
+	shaped["assigned_allocation"] = _assigned_allocation_for(
+		_assigned, shaped.get("deadline"), shaped.get("estimated") or 0
+	)
+	shaped["assigned_total"] = sum((a["minutes"] or 0) for a in shaped["assigned_allocation"])
 	# Delete is a lead-only action and only while Planned or Cancelled.
 	shaped["can_delete"] = (
 		(is_sm or user in (r["project_owner"], r["project_leader"]))
