@@ -3480,6 +3480,24 @@ import json as _json
 DEFAULT_AVATAR = {"style": "lorelei", "options": {}}
 ALLOWED_STYLES = ("lorelei", "adventurer", "notionists")
 
+# First-3 free variants per (style, slot); 4th+ are premium. Generated from the
+# installed DiceBear v9 enums (same order the frontend introspects).
+AVATAR_FREE = {
+	"lorelei": {"hair": ["variant48", "variant47", "variant46"], "eyes": ["variant24", "variant23", "variant22"], "eyebrows": ["variant13", "variant12", "variant11"], "mouth": ["happy01", "happy02", "happy03"], "glasses": ["variant01", "variant02", "variant03"], "earrings": ["variant01", "variant02", "variant03"], "nose": ["variant01", "variant02", "variant03"], "hairAccessories": ["flowers"]},
+	"adventurer": {"hair": ["short16", "short15", "short14"], "eyes": ["variant26", "variant25", "variant24"], "eyebrows": ["variant10", "variant09", "variant08"], "mouth": ["variant30", "variant29", "variant28"], "glasses": ["variant01", "variant02", "variant03"], "earrings": ["variant06", "variant01", "variant02"], "features": ["mustache", "blush", "birthmark"]},
+	"notionists": {"hair": ["variant63", "variant62", "variant61"], "eyes": ["variant05", "variant04", "variant03"], "brows": ["variant13", "variant12", "variant11"], "lips": ["variant30", "variant29", "variant28"], "glasses": ["variant11", "variant10", "variant09"], "nose": ["variant20", "variant19", "variant18"], "gesture": ["wavePointLongArms", "waveOkLongArms", "waveLongArms"]},
+}
+PREMIUM_PRICE = 5000
+
+
+def _is_free(style, slot, value):
+	"""A value is free iff it's a first-3 variant of a premium-checked slot.
+	Slots not in the map (colors, *Probability) are always free."""
+	slot_free = AVATAR_FREE.get(style, {}).get(slot)
+	if slot_free is None:
+		return True
+	return value in slot_free
+
 
 def _premium_index():
 	"""Map (style, slot, option_value) -> Avatar Item name, active items only.
