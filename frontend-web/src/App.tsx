@@ -9,6 +9,7 @@ import {
   canManageBadges,
   canManageMarketplace,
   canGrantPoints,
+  canManageAttendance,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -47,6 +48,12 @@ import Onboarding from '@web/pages/Onboarding'
 import BentoDemo from '@web/pages/BentoDemo'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
+import AttendanceReport from '@web/pages/AttendanceReport'
+import Stations from '@web/pages/Stations'
+import Schedules from '@web/pages/Schedules'
+import Exceptions from '@web/pages/Exceptions'
+import HolidayLists from '@web/pages/HolidayLists'
+import Kiosk from '@web/pages/Kiosk'
 import { CrumbProvider } from '@web/lib/crumbs'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -90,6 +97,16 @@ export default function App() {
     setShowOnboarding(false)
   }
 
+  // Kiosk runs on unattended (often logged-out) station screens; it only needs
+  // the allow_guest station_token endpoint, so render it before the login wall.
+  if (window.location.pathname.includes('/kiosk/')) {
+    return (
+      <Routes>
+        <Route path="/kiosk/:station" element={<Kiosk />} />
+      </Routes>
+    )
+  }
+
   if (boot.isLoading) return <Splash />
 
   const err = boot.error
@@ -108,6 +125,7 @@ export default function App() {
     <CrumbProvider>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
       <Routes>
+        <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Today />} />
           <Route path="/calendar" element={<Calendar />} />
@@ -174,6 +192,15 @@ export default function App() {
           )}
           {canGrantPoints(b) && (
             <Route path="/grant-points" element={<GrantPoints />} />
+          )}
+          {canManageAttendance(b) && (
+            <>
+              <Route path="/attendance-report" element={<AttendanceReport />} />
+              <Route path="/attendance/stations" element={<Stations />} />
+              <Route path="/attendance/schedules" element={<Schedules />} />
+              <Route path="/attendance/exceptions" element={<Exceptions />} />
+              <Route path="/attendance/holidays" element={<HolidayLists />} />
+            </>
           )}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />

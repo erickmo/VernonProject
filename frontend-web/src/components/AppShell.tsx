@@ -4,12 +4,12 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
   Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon, Video,
-  StickyNote, MessageSquarePlus, Inbox,
+  StickyNote, MessageSquarePlus, Inbox, QrCode,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
-  canManageMarketplace, canGrantPoints,
+  canManageMarketplace, canGrantPoints, canManageAttendance,
 } from '@/hooks/useData'
 import { Avatar } from '@/components/ui'
 import { logout } from '@/lib/api'
@@ -101,6 +101,8 @@ const SECTION: Record<string, { label: string; to: string }> = {
   'data-health': { label: 'Data Health', to: '/data-health' },
   settings: { label: 'Settings', to: '/settings' },
   me: { label: 'Me', to: '/me' },
+  'attendance-report': { label: 'Attendance', to: '/attendance-report' },
+  attendance: { label: 'Attendance', to: '/attendance-report' },
 }
 
 // Breadcrumb for the desktop header: a clickable section crumb, plus a
@@ -157,6 +159,11 @@ export function AppShell() {
     ...(canManageBadges(b) ? [{ to: '/badge-settings', label: 'Badges', icon: Award } as NavItem] : []),
     ...(canManageMarketplace(b) ? [{ to: '/marketplace-admin', label: 'Marketplace Admin', icon: Store } as NavItem] : []),
     ...(canGrantPoints(b) ? [{ to: '/grant-points', label: 'Grant Points', icon: Coins } as NavItem] : []),
+    ...(canManageAttendance(b) ? [{ to: '/attendance-report', label: 'Attendance', icon: QrCode } as NavItem] : []),
+    ...(canManageAttendance(b) ? [{ to: '/attendance/schedules', label: 'Schedules', icon: CalendarDays } as NavItem] : []),
+    ...(canManageAttendance(b) ? [{ to: '/attendance/stations', label: 'Stations', icon: Monitor } as NavItem] : []),
+    ...(canManageAttendance(b) ? [{ to: '/attendance/exceptions', label: 'Leave/WFH', icon: Inbox } as NavItem] : []),
+    ...(canManageAttendance(b) ? [{ to: '/attendance/holidays', label: 'Holidays', icon: CalendarDays } as NavItem] : []),
   ]
 
   const navCommands: Command[] = [
