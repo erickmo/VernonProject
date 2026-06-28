@@ -148,6 +148,15 @@ class TestEstimateGuard(_AllocFixture):
 		self.assertEqual(res["status"], "error")
 		self.assertEqual(frappe.db.get_value("Project Todo", self.todo.name, "estimated"), 60)
 
+	def test_estimate_change_clears_assigned_rows(self):
+		from vernon_project.api.mobile import update_todo, set_assigned_allocation
+		frappe.set_user("Administrator")
+		set_assigned_allocation(self.todo.name, [{"date": str(add_days(nowdate(), 1)), "minutes": 60, "note": ""}])
+		self.assertEqual(len(_assigned_allocations_map([self.todo.name])[self.todo.name]), 1)
+		update_todo(self.todo.name, estimated=120)
+		frappe.set_user("Administrator")
+		self.assertEqual(len(_assigned_allocations_map([self.todo.name])[self.todo.name]), 0)
+
 
 class TestDetailPayload(_AllocFixture):
 	def _detail(self):
@@ -173,12 +182,3 @@ class TestDetailPayload(_AllocFixture):
 		frappe.set_user("Administrator")
 		self.assertFalse(d["can_edit_assigned"])
 		self.assertFalse(d["can_edit_estimate"])
-
-	def test_estimate_change_clears_assigned_rows(self):
-		from vernon_project.api.mobile import update_todo, set_assigned_allocation
-		frappe.set_user("Administrator")
-		set_assigned_allocation(self.todo.name, [{"date": str(add_days(nowdate(), 1)), "minutes": 60, "note": ""}])
-		self.assertEqual(len(_assigned_allocations_map([self.todo.name])[self.todo.name]), 1)
-		update_todo(self.todo.name, estimated=120)
-		frappe.set_user("Administrator")
-		self.assertEqual(len(_assigned_allocations_map([self.todo.name])[self.todo.name]), 0)
