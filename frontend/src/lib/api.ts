@@ -312,6 +312,8 @@ export const mobileApi = {
     api.post<import('./types').ToggleReactionResult>(M + 'toggle_reaction', { todo, reaction }),
   getAvatarCatalog: () =>
     api.get<import('./types').AvatarCatalog>(M + 'get_avatar_catalog'),
+  buyAvatarOption: (style: string, slot: string, value: string) =>
+    api.post<{ balance: number }>(M + 'buy_avatar_option', { style, slot, value }),
   getMyAvatar: () =>
     api.get<import('./types').AvatarConfig>(M + 'get_my_avatar'),
   saveMyAvatar: (config: import('./types').AvatarConfig, snapshot_dataurl?: string) =>

@@ -37,6 +37,11 @@ export function slotsForStyle(style: StyleKey): { slot: string; values: string[]
   return out
 }
 
+export const PREMIUM_FREE_COUNT = 3
+export function variantLabel(index: number): string {
+  return `Style ${index + 1}`
+}
+
 export function colorSlotsForStyle(style: StyleKey): string[] {
   const col: any = STYLES[style] || STYLES.lorelei
   const props = col.schema?.properties || {}

@@ -583,19 +583,12 @@ export interface AvatarConfig {
   style: StyleKey
   options: Record<string, string[]>
 }
-export interface PremiumItem {
-  name: string
-  item_name: string
-  style: string
-  slot: string
-  option_value: string
-  thumbnail: string | null
-  owned: boolean
-  price: number | null
-  reward: string | null
-}
+export interface AvatarUnlock { style: string; slot: string; option_value: string }
 export interface AvatarCatalog {
-  premium: PremiumItem[]
+  free_count: number
+  price: number
+  balance: number
+  unlocked: AvatarUnlock[]
   my: AvatarConfig
 }
 

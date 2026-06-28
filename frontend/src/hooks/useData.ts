@@ -1062,6 +1062,18 @@ export function useAvatarCatalog() {
   })
 }
 
+export function useBuyAvatarOption() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ style, slot, value }: { style: string; slot: string; value: string }) =>
+      mobileApi.buyAvatarOption(style, slot, value),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.avatarCatalog })
+      qc.invalidateQueries({ queryKey: keys.boot })
+    },
+  })
+}
+
 export function useSaveAvatar() {
   const qc = useQueryClient()
   return useMutation({
