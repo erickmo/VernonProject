@@ -2071,7 +2071,11 @@ def _user_balance(user):
 		user,
 	)[0][0]
 	earned, redeemed = float(earned), float(redeemed)
-	return earned, redeemed, earned - redeemed
+	unlocked = frappe.db.sql(
+		"select coalesce(sum(cost),0) from `tabAvatar Unlock` where user=%s", user
+	)[0][0] or 0
+	balance = earned - redeemed - float(unlocked)
+	return earned, redeemed, balance
 
 
 @frappe.whitelist()
@@ -3499,6 +3503,42 @@ def _is_free(style, slot, value):
 	return value in slot_free
 
 
+def _avatar_owned_options(user):
+	rows = frappe.get_all("Avatar Unlock", filters={"user": user},
+		fields=["style", "slot", "option_value"])
+	return {(r["style"], r["slot"], r["option_value"]) for r in rows}
+
+
+@frappe.whitelist()
+def buy_avatar_option(style, slot, value):
+	"""Unlock one premium variant for PREMIUM_PRICE. Row-locked per user so
+	concurrent buys can't overspend."""
+	user = frappe.session.user
+	if _is_free(style, slot, value):
+		frappe.throw("That option is free", frappe.ValidationError)
+	if frappe.db.exists("Avatar Unlock", {"user": user, "style": style, "slot": slot, "option_value": value}):
+		_, _, bal = _user_balance(user)
+		return {"balance": bal}
+	lock_key = f"vernon_avatar_buy:{user}"
+	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+		frappe.throw("Busy, please retry", frappe.ValidationError)
+	try:
+		if frappe.db.exists("Avatar Unlock", {"user": user, "style": style, "slot": slot, "option_value": value}):
+			_, _, bal = _user_balance(user)
+			return {"balance": bal}
+		_, _, balance = _user_balance(user)
+		if balance < PREMIUM_PRICE:
+			frappe.throw("Insufficient balance", frappe.ValidationError)
+		frappe.get_doc({
+			"doctype": "Avatar Unlock", "user": user, "style": style, "slot": slot,
+			"option_value": value, "cost": PREMIUM_PRICE, "unlocked_on": now_datetime(),
+		}).insert(ignore_permissions=True)
+		_, _, new_balance = _user_balance(user)
+		return {"balance": new_balance}
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
+
+
 def _premium_index():
 	"""Map (style, slot, option_value) -> Avatar Item name, active items only.
 	A selected option is 'premium' iff it appears here; everything else is free."""
@@ -3529,34 +3569,17 @@ def _my_avatar_config(user):
 
 @frappe.whitelist()
 def get_avatar_catalog():
-	"""Premium attribute catalog (with ownership + price) + the caller's config.
-	Free options are not listed — the client derives them from the DiceBear schema."""
+	"""Freemium avatar catalog: balance, price, unlocked options, current config."""
 	user = frappe.session.user
-	owned = _avatar_owned_items(user)
-	items = frappe.get_all(
-		"Avatar Item",
-		filters={"active": 1},
-		fields=["name", "item_name", "style", "slot", "option_value", "thumbnail"],
-		order_by="style asc, slot asc, item_name asc",
-	)
-	priced = frappe.get_all(
-		"Marketplace Reward",
-		filters={"active": 1, "avatar_item": ["is", "set"]},
-		fields=["name", "avatar_item", "point_cost"],
-		order_by="point_cost asc",
-	)
-	price_map = {}
-	for p in priced:
-		price_map.setdefault(p["avatar_item"], p)  # first (cheapest) wins
-	premium = []
-	for it in items:
-		is_owned = it["name"] in owned
-		p = price_map.get(it["name"])
-		it["owned"] = is_owned
-		it["price"] = float(p["point_cost"]) if (p and not is_owned) else None
-		it["reward"] = p["name"] if (p and not is_owned) else None
-		premium.append(it)
-	return {"premium": premium, "my": _my_avatar_config(user)}
+	_, _, balance = _user_balance(user)
+	unlocked = [
+		{"style": s, "slot": sl, "option_value": v}
+		for (s, sl, v) in _avatar_owned_options(user)
+	]
+	return {
+		"free_count": 3, "price": PREMIUM_PRICE, "unlocked": unlocked,
+		"my": _my_avatar_config(user), "balance": balance,
+	}
 
 
 @frappe.whitelist()
@@ -3582,14 +3605,14 @@ def save_my_avatar(config_json, snapshot_dataurl=None):
 	if not isinstance(options, dict):
 		frappe.throw("Invalid avatar options", frappe.ValidationError)
 
-	owned = _avatar_owned_items(user)
-	premium = _premium_index()
+	owned = _avatar_owned_options(user)
 	for slot, vals in options.items():
+		if slot not in AVATAR_FREE.get(style, {}):
+			continue  # color/probability/unmapped slots are always free
 		values = vals if isinstance(vals, list) else [vals]
 		for v in values:
-			pname = premium.get((style, slot, v))
-			if pname and pname not in owned:
-				frappe.throw("You don't own that item", frappe.ValidationError)
+			if not _is_free(style, slot, v) and (style, slot, v) not in owned:
+				frappe.throw("Unlock that item first", frappe.ValidationError)
 
 	clean = {"style": style, "options": options}
 	name = frappe.db.exists("User Avatar", {"user": user})
