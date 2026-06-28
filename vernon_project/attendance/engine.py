@@ -184,7 +184,6 @@ def _upsert_penalty_ledger(daily_name, employee, penalty_points):
 		"source": "Attendance",
 		"attendance": daily_name,
 		"points_earned": -flt(penalty_points),
-		"credited_on": now_datetime(),
 	}
 	existing = frappe.db.exists("Point Ledger", {"attendance": daily_name})
 	if existing:
@@ -192,7 +191,7 @@ def _upsert_penalty_ledger(daily_name, employee, penalty_points):
 		doc.update(values)
 		doc.save(ignore_permissions=True)
 	else:
-		frappe.get_doc({"doctype": "Point Ledger", **values}).insert(ignore_permissions=True)
+		frappe.get_doc({"doctype": "Point Ledger", **values, "credited_on": now_datetime()}).insert(ignore_permissions=True)
 
 
 def recompute_range(employee, from_date, to_date):
