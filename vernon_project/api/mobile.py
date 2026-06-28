@@ -3524,6 +3524,41 @@ def buy_avatar_option(style, slot, value):
 
 
 
+def _asset_owned(user):
+	owned = set(frappe.get_all("Avatar Asset", filters={"is_default": 1, "active": 1}, pluck="asset_name"))
+	for v in frappe.get_all("Avatar Unlock", filters={"user": user, "style": "_asset"}, pluck="option_value"):
+		owned.add(v)
+	return owned
+
+
+@frappe.whitelist()
+def buy_avatar_asset(asset_name):
+	user = frappe.session.user
+	a = frappe.db.get_value("Avatar Asset", asset_name, ["asset_type", "is_default", "price", "active"], as_dict=True)
+	if not a or not a["active"]:
+		frappe.throw("Unavailable", frappe.ValidationError)
+	if a["is_default"]:
+		frappe.throw("That item is free", frappe.ValidationError)
+	if frappe.db.exists("Avatar Unlock", {"user": user, "style": "_asset", "option_value": asset_name}):
+		_, _, bal = _user_balance(user); return {"balance": bal}
+	lock_key = f"vernon_spend:{user}"
+	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+		frappe.throw("Busy, please retry", frappe.ValidationError)
+	try:
+		if frappe.db.exists("Avatar Unlock", {"user": user, "style": "_asset", "option_value": asset_name}):
+			_, _, bal = _user_balance(user); return {"balance": bal}
+		cost = float(a["price"] or 0)
+		_, _, balance = _user_balance(user)
+		if balance < cost:
+			frappe.throw("Insufficient balance", frappe.ValidationError)
+		frappe.get_doc({"doctype": "Avatar Unlock", "user": user, "style": "_asset",
+			"slot": (a["asset_type"] or "").lower(), "option_value": asset_name,
+			"cost": cost, "unlocked_on": now_datetime()}).insert(ignore_permissions=True)
+		_, _, nb = _user_balance(user); return {"balance": nb}
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
+
+
 def grandfather_avatar_unlocks():
 	"""One-time: give every user a free (cost=0) unlock for the premium variants
 	already in their saved config, so the freemium rule doesn't block re-saving
@@ -3580,9 +3615,17 @@ def get_avatar_catalog():
 		{"style": s, "slot": sl, "option_value": v}
 		for (s, sl, v) in _avatar_owned_options(user)
 	]
+	owned_assets = _asset_owned(user)
+	assets = frappe.get_all("Avatar Asset", filters={"active": 1},
+		fields=["asset_name", "asset_type", "emoji", "gradient", "anchor", "is_default", "price"],
+		order_by="asset_type asc, asset_name asc")
+	for a in assets:
+		a["owned"] = (a["asset_name"] in owned_assets) or bool(a["is_default"])
+		a["price"] = None if a["owned"] else float(a["price"] or 0)
 	return {
 		"free_count": 3, "price": PREMIUM_PRICE, "unlocked": unlocked,
 		"my": _my_avatar_config(user), "balance": balance,
+		"assets": assets,
 	}
 
 
@@ -3618,7 +3661,22 @@ def save_my_avatar(config_json, snapshot_dataurl=None):
 			if not _is_free(style, slot, v) and (style, slot, v) not in owned:
 				frappe.throw("Unlock that item first", frappe.ValidationError)
 
+	asset_owned = _asset_owned(user)
+	def _check_asset(name, want_type):
+		if not name:
+			return None
+		atype = frappe.db.get_value("Avatar Asset", name, "asset_type")
+		if atype != want_type:
+			frappe.throw("Unknown item", frappe.ValidationError)
+		if name not in asset_owned:
+			frappe.throw("Unlock that item first", frappe.ValidationError)
+		return name
+	scene = _check_asset(cfg.get("scene"), "Scene")
+	feat = _check_asset(cfg.get("featured_collectible"), "Collectible")
+	props = [p for p in (cfg.get("props") or []) if _check_asset(p, "Prop")]
+
 	clean = {"style": style, "options": options}
+	clean["scene"] = scene; clean["props"] = props; clean["featured_collectible"] = feat
 	name = frappe.db.exists("User Avatar", {"user": user})
 	doc = frappe.get_doc("User Avatar", name) if name else frappe.new_doc("User Avatar")
 	doc.user = user
@@ -3750,3 +3808,44 @@ def set_assigned_allocation(project_item, allocations):
 	except Exception as e:
 		msg = frappe.utils.strip_html(str(e)).strip() or "Could not save the assigned allocation."
 		return {"status": "error", "message": msg}
+
+
+# --------------------------------------------------------------------------------
+# Avatar Asset seed — scenes (CSS gradient) + props/collectibles (emoji).
+# --------------------------------------------------------------------------------
+
+AVATAR_ASSETS = [
+	{"asset_name": "Sky", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#b6e3f4,#eef7ff)", "is_default": 1},
+	{"asset_name": "Sunset", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#ffafbd,#ffc3a0)", "is_default": 1},
+	{"asset_name": "Space", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#0f2027,#2c5364)"},
+	{"asset_name": "Forest", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#5a3f37,#2c7744)"},
+	{"asset_name": "Candy", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#ffd1ff,#fad0c4)"},
+	{"asset_name": "Top Hat", "asset_type": "Prop", "emoji": "🎩", "anchor": "top", "is_default": 1},
+	{"asset_name": "Crown", "asset_type": "Prop", "emoji": "👑", "anchor": "top"},
+	{"asset_name": "Cap", "asset_type": "Prop", "emoji": "🧢", "anchor": "top"},
+	{"asset_name": "Star Badge", "asset_type": "Prop", "emoji": "⭐", "anchor": "corner", "is_default": 1},
+	{"asset_name": "Fire Badge", "asset_type": "Prop", "emoji": "🔥", "anchor": "corner"},
+	{"asset_name": "Gem Badge", "asset_type": "Prop", "emoji": "💎", "anchor": "corner"},
+	{"asset_name": "Red Car", "asset_type": "Collectible", "emoji": "🚗"},
+	{"asset_name": "Race Car", "asset_type": "Collectible", "emoji": "🏎️"},
+	{"asset_name": "Sword", "asset_type": "Collectible", "emoji": "⚔️"},
+	{"asset_name": "Shield", "asset_type": "Collectible", "emoji": "🛡️"},
+	{"asset_name": "Bow", "asset_type": "Collectible", "emoji": "🏹"},
+	{"asset_name": "Dragon", "asset_type": "Collectible", "emoji": "🐉"},
+	{"asset_name": "Unicorn", "asset_type": "Collectible", "emoji": "🦄"},
+	{"asset_name": "Rocket", "asset_type": "Collectible", "emoji": "🚀"},
+]
+
+
+def seed_avatar_assets():
+	created = 0
+	for a in AVATAR_ASSETS:
+		vals = {"asset_type": a["asset_type"], "emoji": a.get("emoji"), "gradient": a.get("gradient"),
+			"anchor": a.get("anchor"), "is_default": a.get("is_default", 0), "price": a.get("price", 5000), "active": 1}
+		if frappe.db.exists("Avatar Asset", a["asset_name"]):
+			frappe.db.set_value("Avatar Asset", a["asset_name"], vals)
+		else:
+			frappe.get_doc({"doctype": "Avatar Asset", "asset_name": a["asset_name"], **vals}).insert(ignore_permissions=True)
+			created += 1
+	frappe.db.commit()
+	return {"created": created}
