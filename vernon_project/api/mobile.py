@@ -3439,48 +3439,70 @@ def _avatar_owned_items(user):
 	return owned
 
 
+import json as _json
+
+DEFAULT_AVATAR = {"style": "lorelei", "options": {}}
+ALLOWED_STYLES = ("lorelei", "adventurer", "notionists")
+
+
+def _premium_index():
+	"""Map (style, slot, option_value) -> Avatar Item name, active items only.
+	A selected option is 'premium' iff it appears here; everything else is free."""
+	idx = {}
+	for it in frappe.get_all(
+		"Avatar Item",
+		filters={"active": 1},
+		fields=["name", "style", "slot", "option_value"],
+	):
+		idx[(it["style"], it["slot"], it["option_value"])] = it["name"]
+	return idx
+
+
 def _my_avatar_config(user):
-	"""Current equipped config, or sensible defaults if the user has no row yet."""
-	name = frappe.db.exists("User Avatar", {"user": user})
-	if not name:
-		base = frappe.db.get_value(
-			"Avatar Item", {"slot": "Base", "is_default": 1, "active": 1}, "name"
-		)
-		return {
-			"base": base, "hat": None, "face": None,
-			"skin_color": DEFAULT_SKIN, "accent_color": DEFAULT_ACCENT, "snapshot": None,
-		}
-	return frappe.db.get_value(
-		"User Avatar", name,
-		["base", "hat", "face", "skin_color", "accent_color", "snapshot"],
-		as_dict=True,
-	)
+	raw = frappe.db.get_value("User Avatar", {"user": user}, "config_json")
+	if not raw:
+		return dict(DEFAULT_AVATAR)
+	try:
+		cfg = _json.loads(raw)
+	except Exception:
+		return dict(DEFAULT_AVATAR)
+	if cfg.get("style") not in ALLOWED_STYLES:
+		cfg["style"] = DEFAULT_AVATAR["style"]
+	if not isinstance(cfg.get("options"), dict):
+		cfg["options"] = {}
+	return cfg
 
 
 @frappe.whitelist()
 def get_avatar_catalog():
-	"""Active catalog with per-item ownership + price, plus the caller's config."""
+	"""Premium attribute catalog (with ownership + price) + the caller's config.
+	Free options are not listed — the client derives them from the DiceBear schema."""
 	user = frappe.session.user
 	owned = _avatar_owned_items(user)
 	items = frappe.get_all(
 		"Avatar Item",
 		filters={"active": 1},
-		fields=["name", "item_name", "slot", "model_url", "socket", "thumbnail"],
-		order_by="slot asc, item_name asc",
+		fields=["name", "item_name", "style", "slot", "option_value", "thumbnail"],
+		order_by="style asc, slot asc, item_name asc",
 	)
 	priced = frappe.get_all(
 		"Marketplace Reward",
 		filters={"active": 1, "avatar_item": ["is", "set"]},
 		fields=["name", "avatar_item", "point_cost"],
+		order_by="point_cost asc",
 	)
-	price_map = {p["avatar_item"]: p for p in priced}
+	price_map = {}
+	for p in priced:
+		price_map.setdefault(p["avatar_item"], p)  # first (cheapest) wins
+	premium = []
 	for it in items:
 		is_owned = it["name"] in owned
-		it["owned"] = is_owned
 		p = price_map.get(it["name"])
+		it["owned"] = is_owned
 		it["price"] = float(p["point_cost"]) if (p and not is_owned) else None
 		it["reward"] = p["name"] if (p and not is_owned) else None
-	return {"items": items, "my": _my_avatar_config(user)}
+		premium.append(it)
+	return {"premium": premium, "my": _my_avatar_config(user)}
 
 
 @frappe.whitelist()
@@ -3489,47 +3511,38 @@ def get_my_avatar():
 
 
 @frappe.whitelist()
-def save_my_avatar(config, snapshot_dataurl=None):
-	"""Persist the caller's avatar. Server is the source of truth: every equipped
-	item must be owned and in the right slot, or the save is rejected."""
-	import json as _json
-
+def save_my_avatar(config_json, snapshot_dataurl=None):
+	"""Persist the caller's DiceBear config. Any selected option that is a premium
+	Avatar Item must be owned, or the save is rejected."""
 	user = frappe.session.user
-	if isinstance(config, str):
-		config = _json.loads(config)
+	cfg = _json.loads(config_json) if isinstance(config_json, str) else config_json
+	style = cfg.get("style")
+	if style not in ALLOWED_STYLES:
+		frappe.throw("Unknown avatar style", frappe.ValidationError)
+	options = cfg.get("options") or {}
+	if not isinstance(options, dict):
+		frappe.throw("Invalid avatar options", frappe.ValidationError)
 
 	owned = _avatar_owned_items(user)
+	premium = _premium_index()
+	for slot, vals in options.items():
+		values = vals if isinstance(vals, list) else [vals]
+		for v in values:
+			pname = premium.get((style, slot, v))
+			if pname and pname not in owned:
+				frappe.throw("You don't own that item", frappe.ValidationError)
 
-	def _check(item, want_slot):
-		if not item:
-			return None
-		if item not in owned:
-			frappe.throw("You don't own that item", frappe.ValidationError)
-		if frappe.db.get_value("Avatar Item", item, "slot") != want_slot:
-			frappe.throw(f"That item is not a {want_slot}", frappe.ValidationError)
-		return item
-
-	base = _check(config.get("base"), "Base")
-	if not base:
-		frappe.throw("Base style is required", frappe.ValidationError)
-	hat = _check(config.get("hat"), "Hat")
-	face = _check(config.get("face"), "Face")
-
+	clean = {"style": style, "options": options}
 	name = frappe.db.exists("User Avatar", {"user": user})
 	doc = frappe.get_doc("User Avatar", name) if name else frappe.new_doc("User Avatar")
 	doc.user = user
-	doc.base = base
-	doc.hat = hat
-	doc.face = face
-	doc.skin_color = (config.get("skin_color") or DEFAULT_SKIN)[:9]
-	doc.accent_color = (config.get("accent_color") or DEFAULT_ACCENT)[:9]
+	doc.config_json = _json.dumps(clean)
 
 	url = None
 	if snapshot_dataurl:
 		url = _save_snapshot(user, snapshot_dataurl)
 		if url:
 			doc.snapshot = url
-
 	doc.save(ignore_permissions=True)
 	if url:
 		frappe.db.set_value("User", user, "user_image", url)
