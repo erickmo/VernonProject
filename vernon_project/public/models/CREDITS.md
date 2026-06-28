@@ -5,31 +5,42 @@ To upgrade any model, replace the file in place (keep the same filename) and reb
 
 | File | Source | License |
 |------|--------|---------|
-| `base_cat.glb` | "Fox" by PixelMannen (low-poly animated fox), via [KhronosGroup/glTF-Sample-Assets](https://github.com/KhronosGroup/glTF-Sample-Assets) | CC0 1.0 (public domain) |
-| `base_human.glb` | "Lowpoly Chibi Character" by **mehreen1919** ([Behance](https://www.behance.net/mehreenadeel)), via [Poly Pizza](https://poly.pizza/m/nfrpFnfKh3) | [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/) — attribution required (recorded here) |
+| `base_human.glb` | "miku" by **sugamo**, via [Poly Pizza](https://poly.pizza/m/2KgrjYOJPmf) | [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/) — attribution required (recorded here) |
+| `base_cat.glb` | "Kitten" by **jeremy**, via [Poly Pizza](https://poly.pizza/m/dXyLRVNOalM) | [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/) — attribution required (recorded here) |
 | `hat_cap.glb` | Procedural low-poly placeholder | CC0 / project-owned |
 | `hat_crown.glb` | Procedural low-poly placeholder | CC0 / project-owned |
 | `face_glasses.glb` | Procedural low-poly placeholder | CC0 / project-owned |
 
 ## Attribution (CC-BY)
 
-- **`base_human.glb`** — "Lowpoly Chibi Character" by mehreen1919, source <https://poly.pizza/m/nfrpFnfKh3>,
+- **`base_human.glb`** — "miku" by sugamo, source <https://poly.pizza/m/2KgrjYOJPmf>,
   licensed under Creative Commons Attribution 3.0 (<https://creativecommons.org/licenses/by/3.0/>).
-  Downloaded as GLB, then normalized with `@gltf-transform/cli` (centered, feet at y=0, uniformly
-  scaled to 1.5 units tall; weld/dedup/prune). A big-head/small-body chibi base — the ideal shape for
-  this avatar system, which tints the whole base body to a single `skin_color` and layers hat/face
-  overlays on top (see `frontend/src/avatar/AvatarViewer.tsx` + `anchors.ts`).
+  A colorful chibi character (big head / small body) with 7 distinct authored material colors —
+  teal twin-tail hair (`58A398`/`47B39E`), cream skin (`FFF0C0`), pink accents (`FF6C94`), grey top,
+  black skirt/boots, white. Eyes and mouth are flat-colored geometry (not a texture). Downloaded as
+  GLB, then normalized with `@gltf-transform` (centered x/z, feet at y=0, uniformly scaled to 1.5
+  units tall; weld/dedup/prune). Faces +Z (camera).
+
+- **`base_cat.glb`** — "Kitten" by jeremy, source <https://poly.pizza/m/dXyLRVNOalM>,
+  licensed under Creative Commons Attribution 3.0 (<https://creativecommons.org/licenses/by/3.0/>).
+  A cute chibi cat (big head / small body) with 4 authored material colors — dark orange (`DD9944`),
+  light-orange belly (`FFCC88`), purple nose (`BA68C8`), black eyes (`1A1A1A`). Normalized with
+  `@gltf-transform` (centered x/z, feet at y=0, scaled to 1.5 tall, yawed -90° to face +Z/camera;
+  weld/dedup/prune).
 
 ## Notes
 
-`base_cat.glb` was kept as the CC0 Fox. CC0 chibi cat candidates were evaluated (Quaternius "Cat",
-"cat loaf", etc.) but the avatar viewer **overwrites every base material's color with `skin_color`**.
-The Fox is *textured*, so its fur pattern and eyes survive the tint (texture × skin_color); the cute
-candidate cats are *flat untextured* multi-material (Eye_White/Eye_Black as separate flat colors), so
-under the tint they collapse to one uniform skin tone — eyes and markings vanish, looking worse than
-the Fox. Per the "replace only if clearly cuter in-app" rule, the Fox stays.
+Both bases now carry their **authored multi-material colors**. The avatar viewer was updated to
+preserve each model's material colors and only tint meshes literally named `skin` — so a colorful,
+multi-material chibi (visible eyes/face/hair/clothing) is exactly the right kind of base. Neither
+base contains a mesh named `skin`, so all authored colors are preserved as-is.
 
-For the same reason a **single-material** base (like the chibi above) is the right kind of base here:
-it becomes a clean, uniform skin-toned body at any `skin_color`. Textured/multi-color characters get
-warm-shifted with light skins and darken badly with dark skins. Swap in CC0 art by overwriting the
-file at the same path — no code change needed; anchor fit is tuned in `frontend/src/avatar/anchors.ts`.
+Replaced (2026-06): `base_human.glb` was a single-color chibi blob (one flat `lambert1` material) →
+swapped for the colorful Miku chibi. `base_cat.glb` was the CC0 "Fox" (textured, muted grey-blue,
+not actually a cat) → swapped for the cuter, colorful "Kitten" (an actual cat, big-head chibi facing
+the camera). Both are clearly cuter and more colorful than what they replaced.
+
+The viewer auto-fits any bbox (`<Center>` + drei `<Bounds fit>`), so absolute scale is not critical,
+but each base is normalized upright (Y-up), feet at y=0, centered, ~1.5 units tall. Swap in new art by
+overwriting the file at the same path — no code change needed; anchor fit is tuned in
+`frontend/src/avatar/anchors.ts` (head_top / face sockets derived from the base bounding box).
