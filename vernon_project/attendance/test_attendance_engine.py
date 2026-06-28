@@ -89,6 +89,25 @@ class TestEvaluateDay(unittest.TestCase):
 		self.assertEqual(r["last_scan"], datetime(2026, 6, 1, 17, 1))
 		self.assertEqual(r["status"], "Present")
 
+	def test_single_scan_is_present_not_earlyleave(self):
+		# one scan (checked in on time, not yet out) must NOT be early-leave
+		r = evaluate_day(**_args(scans=[datetime(2026, 6, 1, 9, 0)]))
+		self.assertEqual(r["status"], "Present")
+		self.assertEqual(r["early_minutes"], 0)
+		self.assertEqual(r["penalty_points"], 0)
+
+	def test_single_late_scan_still_late(self):
+		# a lone late check-in is still Late (late detection stays on single scan)
+		r = evaluate_day(**_args(scans=[datetime(2026, 6, 1, 9, 20)]))
+		self.assertEqual(r["status"], "Late")
+		self.assertEqual(r["late_minutes"], 15)
+		self.assertEqual(r["early_minutes"], 0)
+
+	def test_late_at_grace_boundary(self):
+		# exactly at grace = no penalty; one minute past = 1
+		self.assertEqual(evaluate_day(**_args(scans=[datetime(2026,6,1,9,5), datetime(2026,6,1,17,0)]))["late_minutes"], 0)
+		self.assertEqual(evaluate_day(**_args(scans=[datetime(2026,6,1,9,6), datetime(2026,6,1,17,0)]))["late_minutes"], 1)
+
 
 if __name__ == "__main__":
 	unittest.main()

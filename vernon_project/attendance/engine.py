@@ -38,7 +38,7 @@ def evaluate_day(*, has_assignment, expected_start, expected_end, exception_type
 	first = min(scans)
 	last = max(scans)
 	raw_late = int((first - expected_start).total_seconds() // 60)
-	raw_early = int((expected_end - last).total_seconds() // 60)
+	raw_early = int((expected_end - last).total_seconds() // 60) if last > first else 0
 	late_min = max(0, raw_late - grace_minutes)
 	early_min = max(0, raw_early - grace_minutes)
 	penalty = late_min * late_rate + early_min * early_rate
