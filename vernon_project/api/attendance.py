@@ -78,6 +78,68 @@ def my_attendance(limit=30):
 	return {"status": "ok", "rows": rows}
 
 
+def _require_attendance_admin():
+	if "System Manager" not in frappe.get_roles(frappe.session.user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+
+@frappe.whitelist()
+def attendance_report(from_date, to_date, employee=None, brand=None, status=None):
+	"""Daily Attendance rows for the admin report, with summary stats."""
+	_require_attendance_admin()
+	conditions = ["da.attendance_date BETWEEN %(from_date)s AND %(to_date)s"]
+	params = {"from_date": from_date, "to_date": to_date}
+	if employee:
+		conditions.append("da.employee = %(employee)s")
+		params["employee"] = employee
+	if status:
+		conditions.append("da.status = %(status)s")
+		params["status"] = status
+	if brand:
+		conditions.append("ap.brand = %(brand)s")
+		params["brand"] = brand
+	where = " AND ".join(conditions)
+
+	rows = frappe.db.sql(
+		f"""
+		SELECT da.employee, ap.brand, da.attendance_date, da.status,
+			   da.first_scan, da.last_scan, da.late_minutes, da.early_minutes,
+			   da.penalty_points
+		FROM `tabDaily Attendance` da
+		LEFT JOIN `tabAttendance Profile` ap ON ap.user = da.employee
+		WHERE {where}
+		ORDER BY da.attendance_date DESC, da.employee ASC
+		""",
+		params,
+		as_dict=True,
+	)
+
+	stats = {"present": 0, "late": 0, "absent": 0, "excused": 0, "penalty": 0.0}
+	for r in rows:
+		stats["penalty"] += float(r.penalty_points or 0)
+		if r.status in ("Present",):
+			stats["present"] += 1
+		elif r.status in ("Late", "EarlyLeave", "Late+EarlyLeave"):
+			stats["late"] += 1
+		elif r.status == "Absent":
+			stats["absent"] += 1
+		elif r.status in ("Excused-WFH", "Excused-Leave", "Holiday", "OffDay"):
+			stats["excused"] += 1
+
+	columns = [
+		{"label": "Employee", "fieldname": "employee", "fieldtype": "Link"},
+		{"label": "Brand", "fieldname": "brand", "fieldtype": "Data"},
+		{"label": "Date", "fieldname": "attendance_date", "fieldtype": "Date"},
+		{"label": "Status", "fieldname": "status", "fieldtype": "Data"},
+		{"label": "In", "fieldname": "first_scan", "fieldtype": "Datetime"},
+		{"label": "Out", "fieldname": "last_scan", "fieldtype": "Datetime"},
+		{"label": "Late (min)", "fieldname": "late_minutes", "fieldtype": "Int"},
+		{"label": "Early (min)", "fieldname": "early_minutes", "fieldtype": "Int"},
+		{"label": "Penalty", "fieldname": "penalty_points", "fieldtype": "Float"},
+	]
+	return {"columns": columns, "rows": rows, "stats": stats}
+
+
 @frappe.whitelist()
 def request_exception(from_date, to_date, exception_type, reason=None):
 	user = frappe.session.user
