@@ -3252,7 +3252,11 @@ def get_team_activity(days=14, limit=50):
 	limit = frappe.utils.cint(limit) or 50
 	cutoff = add_days(getdate(nowdate()), -days)
 
-	projects = _visible_projects()
+	# Activity feed is scoped to projects the caller is involved in
+	# (owner/leader/admin, team member, or assignee) — even for System Managers,
+	# who otherwise see every project. The point is to cheer your own teams, not
+	# the whole company.
+	projects = list(_involved_project_names(user))
 	rows = _fetch_todos(projects)
 	done = [
 		r
@@ -3503,7 +3507,8 @@ def save_my_avatar(config, snapshot_dataurl=None):
 
 def _save_snapshot(user, dataurl):
 	"""Decode a `data:image/png;base64,...` URL, save as a public File, return its
-	URL. Returns None on malformed input so the config still saves."""
+	URL. Returns None on malformed input so the config still saves. Prunes the
+	user's prior avatar snapshots so repeated saves don't leak File rows/disk."""
 	import base64
 	from frappe.utils.file_manager import save_file
 
@@ -3514,7 +3519,20 @@ def _save_snapshot(user, dataurl):
 		content = base64.b64decode(b64)
 		if len(content) > MAX_IMAGE_BYTES:
 			frappe.throw("Snapshot too large", frappe.ValidationError)
-		saved = save_file(f"avatar-{frappe.scrub(user)}.png", content, "User", user, is_private=0)
+		prefix = f"avatar-{frappe.scrub(user)}"
+		saved = save_file(f"{prefix}.png", content, "User", user, is_private=0)
+		# Prune older snapshots for this user (best-effort; never lose the new url).
+		old = frappe.get_all("File", filters={
+			"attached_to_doctype": "User",
+			"attached_to_name": user,
+			"file_name": ["like", f"{prefix}%"],
+			"name": ["!=", saved.name],
+		}, pluck="name")
+		for f in old:
+			try:
+				frappe.delete_doc("File", f, ignore_permissions=True, force=True)
+			except Exception:
+				pass
 		return saved.file_url
 	except frappe.ValidationError:
 		raise
