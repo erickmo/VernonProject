@@ -5,7 +5,7 @@ import hmac
 
 import frappe
 from frappe import _
-from frappe.utils import cint, now_datetime, nowdate
+from frappe.utils import cint, getdate, now_datetime, nowdate
 
 from vernon_project.attendance import qr
 from vernon_project.attendance.engine import recompute_daily
@@ -73,7 +73,7 @@ def my_attendance(limit=30):
 		fields=["attendance_date", "status", "first_scan", "last_scan",
 				"late_minutes", "early_minutes", "penalty_points"],
 		order_by="attendance_date desc",
-		limit=cint(limit),
+		limit=min(cint(limit), 200),
 	)
 	return {"status": "ok", "rows": rows}
 
@@ -85,6 +85,8 @@ def request_exception(from_date, to_date, exception_type, reason=None):
 		frappe.throw(_("Please log in"), frappe.PermissionError)
 	if exception_type not in ("WFH", "Leave"):
 		return {"status": "error", "message": _("Invalid type.")}
+	if getdate(to_date) < getdate(from_date):
+		return {"status": "error", "message": _("To Date cannot be before From Date.")}
 	doc = frappe.get_doc({
 		"doctype": "Attendance Exception",
 		"employee": user,
