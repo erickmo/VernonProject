@@ -34,6 +34,8 @@ import Groups from '@web/pages/Groups'
 import GroupForm from '@web/pages/GroupForm'
 import Brands from '@web/pages/Brands'
 import BrandForm from '@web/pages/BrandForm'
+import Notes from '@web/pages/Notes'
+import NoteForm from '@web/pages/NoteForm'
 import BadgeSettings from '@web/pages/BadgeSettings'
 import Settings from '@web/pages/Settings'
 import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
@@ -42,6 +44,7 @@ import GrantPoints from '@web/pages/GrantPoints'
 import Onboarding from '@web/pages/Onboarding'
 import BentoDemo from '@web/pages/BentoDemo'
 import { Meetings } from './pages/Meetings'
+import AvatarCustomizer from '@web/pages/AvatarCustomizer'
 import { CrumbProvider } from '@web/lib/crumbs'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -117,6 +120,9 @@ export default function App() {
           </Route>
           <Route path="/review" element={<Review />} />
           <Route path="/meetings" element={<Meetings />} />
+          <Route path="/notes" element={<Notes />} />
+          <Route path="/notes/new" element={<NoteForm />} />
+          <Route path="/notes/:name" element={<NoteForm />} />
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
@@ -166,6 +172,7 @@ export default function App() {
             <Route path="/grant-points" element={<GrantPoints />} />
           )}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
+          <Route path="/avatar" element={<AvatarCustomizer />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

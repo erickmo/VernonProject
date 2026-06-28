@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2 } from 'lucide-react'
-import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey } from '@/hooks/useData'
+import { useNavigate } from 'react-router-dom'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2 } from 'lucide-react'
+import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -8,6 +9,8 @@ import { useConfirm } from '@/components/Confirm'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
+import { AvatarViewer } from '@/avatar/AvatarViewer'
+import { AvatarBoundary } from '@/avatar/AvatarBoundary'
 
 export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
@@ -90,11 +93,46 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
           </div>
         </BentoTile>
 
+        <AvatarTile />
         <PasskeyTile />
       </BentoGrid>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
     </div>
+  )
+}
+
+function AvatarTile() {
+  const navigate = useNavigate()
+  const { data: catalog } = useAvatarCatalog()
+
+  return (
+    <BentoTile span="md" tone="tint" accent="violet" title="My Avatar" icon={Wand2}
+      actions={
+        <button
+          onClick={() => navigate('/avatar')}
+          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition"
+        >
+          Customize
+        </button>
+      }
+    >
+      <div className="mt-1 h-44 overflow-hidden rounded-xl">
+        {catalog ? (
+          <AvatarBoundary fallback={
+            <div className="flex h-full items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-xs text-slate-400">
+              3D preview unavailable
+            </div>
+          }>
+            <AvatarViewer interactive={false} config={catalog.my} items={catalog.items} />
+          </AvatarBoundary>
+        ) : (
+          <div className="flex h-full items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-xs text-slate-400">
+            Loading avatar…
+          </div>
+        )}
+      </div>
+    </BentoTile>
   )
 }
 
