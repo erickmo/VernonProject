@@ -1,0 +1,35 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:station_name",
+ "creation": "2026-06-28 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["station_name", "location", "active", "secret_key", "display_key"],
+ "fields": [
+  {"fieldname": "station_name", "fieldtype": "Data", "label": "Station Name", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"fieldname": "location", "fieldtype": "Small Text", "label": "Location"},
+  {"fieldname": "active", "fieldtype": "Check", "label": "Active", "default": "1", "in_list_view": 1},
+  {"fieldname": "secret_key", "fieldtype": "Data", "label": "Secret Key", "read_only": 1, "no_copy": 1, "hidden": 1},
+  {"fieldname": "display_key", "fieldtype": "Data", "label": "Display Key", "read_only": 1, "no_copy": 1}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Attendance Station",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "station_name",
+ "track_changes": 1
+}
