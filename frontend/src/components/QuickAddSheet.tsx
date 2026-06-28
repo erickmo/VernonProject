@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, FolderKanban, ListChecks, Send, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, FolderKanban, ListChecks, Send, X } from 'lucide-react'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { EmptyState, Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -38,6 +38,8 @@ export function QuickAddSheet({
   const [detail, setDetail] = useState<string | null>(null)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
+  // Which brand groups are expanded in the project picker (step 1).
+  const [openBrands, setOpenBrands] = useState<Set<string>>(() => new Set())
   // Both queries are gated by their `enabled: !!name` — passing '' is a no-op.
   const { data: projectFull, isLoading: projLoading, isError: projError } = useProject(project ?? '')
   const { data: detailData, isLoading: detailLoading } = useProjectDetail(detail ?? '')
@@ -169,30 +171,65 @@ export function QuickAddSheet({
     )
   }
 
-  // ----- Task mode, step 1: pick a project you own or manage -----
+  // ----- Task mode, step 1: pick a project you own or manage, grouped by brand -----
   // Only projects you own / lead / admin — the ones you add work to.
   const ownedManaged = (projects ?? []).filter((p) => p.is_owner || p.is_leader || p.is_admin)
+  // Group by brand, brands sorted A→Z (unbranded last).
+  const brandGroups = Object.entries(
+    ownedManaged.reduce<Record<string, typeof ownedManaged>>((acc, p) => {
+      const b = p.brand || 'No brand'
+      ;(acc[b] ||= []).push(p)
+      return acc
+    }, {}),
+  ).sort((a, b) => (a[0] === 'No brand' ? 1 : b[0] === 'No brand' ? -1 : a[0].localeCompare(b[0])))
+  const toggleBrand = (b: string) =>
+    setOpenBrands((s) => {
+      const n = new Set(s)
+      n.has(b) ? n.delete(b) : n.add(b)
+      return n
+    })
   return (
     <SheetShell title="Pick a project" onClose={onClose}>
-      {ownedManaged.length ? (
+      {brandGroups.length ? (
         <div className="flex flex-col gap-2">
-          {ownedManaged.map((p) => (
-            <button
-              key={p.name}
-              onClick={() => chooseProject(p.name)}
-              className="flex items-center gap-3 rounded-2xl border border-paper-edge bg-paper-card px-4 py-3 text-left active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800"
-            >
-              <FolderKanban className="h-5 w-5 shrink-0 text-brand-500" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-stone-700 dark:text-slate-100">
-                  {p.project_name}
-                </span>
-                {p.brand && (
-                  <span className="block truncate text-xs text-stone-400 dark:text-slate-500">{p.brand}</span>
-                )}
-              </span>
-            </button>
-          ))}
+          {brandGroups.map(([brand, ps]) => {
+            // A lone brand group stays open — no reason to make the user expand it.
+            const isOpen = brandGroups.length === 1 || openBrands.has(brand)
+            return (
+              <div
+                key={brand}
+                className="overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700"
+              >
+                <button
+                  onClick={() => toggleBrand(brand)}
+                  className="flex w-full items-center gap-2 bg-paper-line px-4 py-2.5 text-left active:bg-paper-edge dark:bg-slate-800/70 dark:active:bg-slate-700"
+                >
+                  <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+                    {brand}
+                  </span>
+                  <span className="rounded-full bg-paper-card px-1.5 text-[11px] font-bold text-stone-500 dark:bg-slate-700 dark:text-slate-400">
+                    {ps.length}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-stone-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isOpen &&
+                  ps.map((p) => (
+                    <button
+                      key={p.name}
+                      onClick={() => chooseProject(p.name)}
+                      className="flex w-full items-center gap-3 border-t border-paper-edge bg-paper-card px-4 py-3 text-left active:bg-paper-line dark:border-slate-700 dark:bg-slate-800 dark:active:bg-slate-700/60"
+                    >
+                      <FolderKanban className="h-5 w-5 shrink-0 text-brand-500" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-stone-700 dark:text-slate-100">
+                        {p.project_name}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )
+          })}
         </div>
       ) : (
         <EmptyState
