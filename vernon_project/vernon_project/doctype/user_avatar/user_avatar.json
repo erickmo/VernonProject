@@ -5,9 +5,10 @@
  "creation": "2026-06-27 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["user","base","hat","face","column_break_a","skin_color","accent_color","snapshot"],
+ "field_order": ["user","config_json","base","hat","face","column_break_a","skin_color","accent_color","snapshot"],
  "fields": [
   {"fieldname":"user","fieldtype":"Link","label":"User","options":"User","reqd":1,"unique":1,"in_list_view":1},
+  {"fieldname":"config_json","fieldtype":"Long Text","label":"Avatar Config (JSON)"},
   {"fieldname":"base","fieldtype":"Link","label":"Base","options":"Avatar Item","reqd":1},
   {"fieldname":"hat","fieldtype":"Link","label":"Hat","options":"Avatar Item"},
   {"fieldname":"face","fieldtype":"Link","label":"Face","options":"Avatar Item"},
