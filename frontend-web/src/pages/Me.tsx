@@ -9,8 +9,7 @@ import { useConfirm } from '@/components/Confirm'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
-import { AvatarViewer } from '@/avatar/AvatarViewer'
-import { AvatarBoundary } from '@/avatar/AvatarBoundary'
+import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
 
 export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
@@ -120,19 +119,11 @@ function AvatarTile() {
         </button>
       }
     >
-      <div className="mt-1 h-44 overflow-hidden rounded-xl">
+      <div className="mt-1 flex h-44 items-center justify-center overflow-hidden rounded-xl bg-violet-50 dark:bg-violet-500/10">
         {catalog ? (
-          <AvatarBoundary fallback={
-            <div className="flex h-full items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10">
-              <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={72} />
-            </div>
-          }>
-            <AvatarViewer interactive={false} config={catalog.my} items={catalog.items} />
-          </AvatarBoundary>
+          <DiceBearAvatar config={catalog.my} className="h-40 w-40" />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-xs text-slate-400">
-            Loading avatar…
-          </div>
+          <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={72} />
         )}
       </div>
     </BentoTile>
