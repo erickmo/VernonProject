@@ -22,9 +22,6 @@ export default defineConfig({
       '@tanstack/react-query-persist-client',
       '@tanstack/query-sync-storage-persister',
       '@tanstack/query-core',
-      'three',
-      '@react-three/fiber',
-      '@react-three/drei',
     ],
   },
   build: {
