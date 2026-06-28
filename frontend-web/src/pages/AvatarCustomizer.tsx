@@ -159,7 +159,7 @@ export default function AvatarCustomizer() {
       <BentoGrid>
         {/* AvatarScene preview — sticky so it stays visible while controls scroll */}
         <BentoTile span="lg" tone="plain" className="min-h-[18rem] sticky top-14 lg:top-4 self-start">
-          <div ref={previewRef} className="relative flex flex-1 min-h-0 h-72 items-center justify-center overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
+          <div ref={previewRef} className="relative mx-auto flex aspect-square w-72 max-w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
             <AvatarScene config={draft} assets={catalog.assets} className="h-full w-full" />
             {(() => {
               const fc = draft.featured_collectible

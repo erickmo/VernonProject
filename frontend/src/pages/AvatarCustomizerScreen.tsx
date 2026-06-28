@@ -163,7 +163,7 @@ export default function AvatarCustomizerScreen() {
       <div className="sticky top-16 z-10 -mx-4 px-4 bg-paper dark:bg-slate-950 pb-2">
         <div
           ref={previewRef}
-          className="relative flex h-48 items-center justify-center overflow-hidden rounded-3xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card"
+          className="relative mx-auto flex aspect-square w-56 max-w-full items-center justify-center overflow-hidden rounded-3xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card"
         >
           <AvatarScene config={draft} assets={catalog.assets} className="h-full w-full" />
           {(() => {
