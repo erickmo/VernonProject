@@ -53,6 +53,7 @@ import Stations from '@web/pages/Stations'
 import Schedules from '@web/pages/Schedules'
 import Exceptions from '@web/pages/Exceptions'
 import HolidayLists from '@web/pages/HolidayLists'
+import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import Kiosk from '@web/pages/Kiosk'
 import { CrumbProvider } from '@web/lib/crumbs'
 
@@ -200,6 +201,7 @@ export default function App() {
               <Route path="/attendance/schedules" element={<Schedules />} />
               <Route path="/attendance/exceptions" element={<Exceptions />} />
               <Route path="/attendance/holidays" element={<HolidayLists />} />
+              <Route path="/attendance/profiles" element={<AttendanceProfiles />} />
             </>
           )}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />

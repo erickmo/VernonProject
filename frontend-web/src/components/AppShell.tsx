@@ -4,7 +4,7 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
   Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon, Video,
-  StickyNote, MessageSquarePlus, Inbox, QrCode,
+  StickyNote, MessageSquarePlus, Inbox, QrCode, UserCheck,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
@@ -164,6 +164,7 @@ export function AppShell() {
     ...(canManageAttendance(b) ? [{ to: '/attendance/stations', label: 'Stations', icon: Monitor } as NavItem] : []),
     ...(canManageAttendance(b) ? [{ to: '/attendance/exceptions', label: 'Leave/WFH', icon: Inbox } as NavItem] : []),
     ...(canManageAttendance(b) ? [{ to: '/attendance/holidays', label: 'Holidays', icon: CalendarDays } as NavItem] : []),
+    ...(canManageAttendance(b) ? [{ to: '/attendance/profiles', label: 'Enrolled', icon: UserCheck } as NavItem] : []),
   ]
 
   const navCommands: Command[] = [
