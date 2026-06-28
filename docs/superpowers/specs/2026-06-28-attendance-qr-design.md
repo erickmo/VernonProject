@@ -160,7 +160,9 @@ safe to run repeatedly.
    else:
      check_in  = earliest ; check_out = latest
      late_min  = max(0, minutes(check_in  − expected_start) − grace_minutes)
-     early_min = max(0, minutes(expected_end − check_out)   − grace_minutes)
+     # early-leave only when a DISTINCT checkout exists; a single scan is a
+     # check-in, not an early departure (else a lone morning scan = huge early-leave)
+     early_min = (check_out > check_in) ? max(0, minutes(expected_end − check_out) − grace_minutes) : 0
      penalty   = late_min * late_penalty_per_minute + early_min * early_leave_penalty_per_minute
      status    = Present | Late | EarlyLeave | Late+EarlyLeave
 5. upsert Daily Attendance (employee, date)
