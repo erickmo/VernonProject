@@ -141,10 +141,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
                 icon: ClipboardList,
                 label: 'Manage attendance',
                 hue: 'emerald' as const,
-                // Admin pages (schedules, stations, enrol, reports) live on the web app.
-                onClick: () => {
-                  window.location.href = '/w/attendance-report'
-                },
+                onClick: () => navigate('/attendance/manage'),
               },
             ]
           : []),

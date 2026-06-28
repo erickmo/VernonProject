@@ -43,7 +43,14 @@ import AvatarCustomizerScreen from './pages/AvatarCustomizerScreen'
 import Scan from './pages/Scan'
 import MyAttendance from './pages/MyAttendance'
 import RequestException from './pages/RequestException'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
+import AttendanceAdminScreen from './pages/AttendanceAdminScreen'
+import AttendanceProfilesScreen from './pages/AttendanceProfilesScreen'
+import AttendanceSchedulesScreen from './pages/AttendanceSchedulesScreen'
+import AttendanceStationsScreen from './pages/AttendanceStationsScreen'
+import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
+import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
+import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -172,6 +179,17 @@ export default function App() {
         <Route path="/scan" element={<Scan />} />
         <Route path="/attendance" element={<MyAttendance />} />
         <Route path="/attendance/request" element={<RequestException />} />
+        {canManageAttendance(boot) && (
+          <>
+            <Route path="/attendance/manage" element={<AttendanceAdminScreen />} />
+            <Route path="/attendance/manage/enrolled" element={<AttendanceProfilesScreen />} />
+            <Route path="/attendance/manage/schedules" element={<AttendanceSchedulesScreen />} />
+            <Route path="/attendance/manage/stations" element={<AttendanceStationsScreen />} />
+            <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
+            <Route path="/attendance/manage/holidays" element={<AttendanceHolidaysScreen />} />
+            <Route path="/attendance/manage/report" element={<AttendanceReportAdminScreen />} />
+          </>
+        )}
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
