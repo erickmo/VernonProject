@@ -19,7 +19,6 @@ export default function Scan() {
   useEffect(() => {
     const qr = new Html5Qrcode(REGION_ID)
     qrRef.current = qr
-    let stopped = false
 
     const onDecode = async (text: string) => {
       if (busy.current) return
@@ -47,7 +46,7 @@ export default function Scan() {
           detail: bits.join(' · ') || 'No penalty',
         })
       } catch (e) {
-        setResult({ ok: false, title: 'Scan failed', detail: (e as Error).message })
+        setResult({ ok: false, title: 'Scan failed', detail: String(e instanceof Error ? e.message : e) })
       } finally {
         // allow another scan after a short cooldown
         setTimeout(() => (busy.current = false), 1500)
@@ -58,11 +57,10 @@ export default function Scan() {
       .catch((e) => setError(e?.message || 'Camera unavailable'))
 
     return () => {
-      stopped = true
       qr.stop().then(() => qr.clear()).catch(() => {})
-      void stopped
     }
-  }, [scan])
+    // ponytail: scan.mutateAsync is stable; [scan] restarted the camera on every mutation tick (stop/start race)
+  }, [])
 
   return (
     <DetailScreen title="Scan attendance">
