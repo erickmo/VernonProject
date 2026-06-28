@@ -4,6 +4,7 @@ import { Coins, Palette, Wand2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { AvatarViewer } from '@/avatar/AvatarViewer'
+import { AvatarBoundary } from '@/avatar/AvatarBoundary'
 import { useAvatarCatalog, useSaveAvatar, useWallet, keys } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -121,12 +122,18 @@ export default function AvatarCustomizerScreen() {
 
       {/* 3-D preview */}
       <div className="mb-3 h-56 overflow-hidden rounded-3xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card">
-        <AvatarViewer
-          config={draft}
-          items={catalog.items}
-          interactive
-          onCapture={(fn) => { captureRef.current = fn }}
-        />
+        <AvatarBoundary fallback={
+          <div className="flex h-full items-center justify-center rounded-3xl bg-paper-card dark:bg-slate-800 text-sm text-stone-400 dark:text-slate-500">
+            3D preview not available on this device
+          </div>
+        }>
+          <AvatarViewer
+            config={draft}
+            items={catalog.items}
+            interactive
+            onCapture={(fn) => { captureRef.current = fn }}
+          />
+        </AvatarBoundary>
       </div>
 
       {/* Slot tabs */}
@@ -193,7 +200,7 @@ export default function AvatarCustomizerScreen() {
       {/* Save */}
       <button
         onClick={handleSave}
-        disabled={saveAvatar.isPending}
+        disabled={saveAvatar.isPending || buying}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3.5 font-semibold text-white shadow-sm active:bg-brand-700 disabled:opacity-60"
       >
         {saveAvatar.isPending ? <Spinner className="h-4 w-4" /> : 'Save avatar'}

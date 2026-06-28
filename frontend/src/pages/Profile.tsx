@@ -6,6 +6,7 @@ import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
 import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
 import { AvatarViewer } from '@/avatar/AvatarViewer'
+import { AvatarBoundary } from '@/avatar/AvatarBoundary'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { logout } from '@/lib/api'
@@ -110,9 +111,11 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-6 shadow-card">
             {/* ponytail: fallback to image Avatar while catalog loads or if no WebGL */}
             {catalog ? (
-              <div className="h-[72px] w-[72px] overflow-hidden rounded-full border-2 border-paper-edge dark:border-slate-700">
-                <AvatarViewer interactive={false} config={catalog.my} items={catalog.items} />
-              </div>
+              <AvatarBoundary fallback={<Avatar name={boot.full_name} image={boot.image} size={72} />}>
+                <div className="h-[72px] w-[72px] overflow-hidden rounded-full border-2 border-paper-edge dark:border-slate-700">
+                  <AvatarViewer interactive={false} config={catalog.my} items={catalog.items} />
+                </div>
+              </AvatarBoundary>
             ) : (
               <Avatar name={boot.full_name} image={boot.image} size={72} />
             )}
