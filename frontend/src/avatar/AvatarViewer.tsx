@@ -17,11 +17,14 @@ function Model({ url }: { url: string }) {
   return <primitive object={cloned} />
 }
 
-function Avatar({ config, items }: { config: AvatarConfig; items: AvatarItem[] }) {
+function Avatar({ config, items, readyRef }: { config: AvatarConfig; items: AvatarItem[]; readyRef: React.MutableRefObject<boolean> }) {
   const baseUrl = urlFor(items, config.base)
   const hatUrl = urlFor(items, config.hat)
   const faceUrl = urlFor(items, config.face)
   const baseRef = useRef<THREE.Group>(null)
+
+  // ponytail: Avatar mounts only after Suspense resolves (GLTF loaded), so this is the right place to mark ready
+  useEffect(() => { if (baseUrl) readyRef.current = true }, [baseUrl, readyRef])
 
   // Tint the base body with skin_color (Task 5 may refine which meshes).
   useEffect(() => {
@@ -61,9 +64,9 @@ function Attachment({ baseRef, url, socket, baseName }: {
   return <group ref={ref}><Model url={url} /></group>
 }
 
-function CaptureBridge({ onReady }: { onReady?: (fn: () => string) => void }) {
+function CaptureBridge({ onReady, readyRef }: { onReady?: (fn: () => string | null) => void; readyRef: React.MutableRefObject<boolean> }) {
   const gl = useThree((s) => s.gl)
-  useEffect(() => { onReady?.(() => captureCanvas(gl)) }, [gl, onReady])
+  useEffect(() => { onReady?.(() => readyRef.current ? captureCanvas(gl) : null) }, [gl, onReady, readyRef])
   return null
 }
 
@@ -71,8 +74,9 @@ export function AvatarViewer({ config, items, interactive = true, onCapture }: {
   config: AvatarConfig
   items: AvatarItem[]
   interactive?: boolean
-  onCapture?: (fn: () => string) => void
+  onCapture?: (fn: () => string | null) => void
 }) {
+  const readyRef = useRef<boolean>(false)
   return (
     <Canvas
       camera={{ position: [0, 1.2, 3], fov: 40 }}
@@ -84,11 +88,11 @@ export function AvatarViewer({ config, items, interactive = true, onCapture }: {
       <directionalLight position={[-3, 2, -2]} intensity={0.4} />
       <Suspense fallback={null}>
         <Bounds fit clip observe margin={1.2}>
-          <Avatar config={config} items={items} />
+          <Avatar config={config} items={items} readyRef={readyRef} />
         </Bounds>
       </Suspense>
       {interactive && <OrbitControls enablePan={false} enableZoom={false} />}
-      <CaptureBridge onReady={onCapture} />
+      <CaptureBridge onReady={onCapture} readyRef={readyRef} />
     </Canvas>
   )
 }

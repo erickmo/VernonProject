@@ -19,7 +19,6 @@ const SLOT_MAP = { Base: 'base', Hat: 'hat', Face: 'face' } as const
 type SlotKey = (typeof SLOT_MAP)[keyof typeof SLOT_MAP]
 
 const SKIN_PRESETS = ['#FDDBB4', '#F1C27D', '#E0AC69', '#C68642', '#8D5524', '#2C1A0E']
-const ACCENT_PRESETS = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#EF4444', '#06B6D4']
 
 const TAB_OPTIONS: { value: Tab; label: string }[] = [
   { value: 'Base', label: 'Base' },
@@ -36,7 +35,7 @@ export default function AvatarCustomizerScreen() {
   const toast = useToast()
   const confirm = useConfirm()
   const qc = useQueryClient()
-  const captureRef = useRef<(() => string) | null>(null)
+  const captureRef = useRef<(() => string | null) | null>(null)
 
   const [draft, setDraft] = useState<AvatarConfig | null>(null)
   const [tab, setTab] = useState<Tab>('Base')
@@ -188,12 +187,6 @@ export default function AvatarCustomizerScreen() {
             presets={SKIN_PRESETS}
             value={draft.skin_color}
             onChange={(c) => setDraft((d) => d ? { ...d, skin_color: c } : d)}
-          />
-          <ColorPicker
-            label="Accent"
-            presets={ACCENT_PRESETS}
-            value={draft.accent_color}
-            onChange={(c) => setDraft((d) => d ? { ...d, accent_color: c } : d)}
           />
         </div>
       )}
