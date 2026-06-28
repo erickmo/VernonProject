@@ -38,6 +38,7 @@ import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
+import AvatarCustomizerScreen from './pages/AvatarCustomizerScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -162,6 +163,7 @@ export default function App() {
         <Route path="/notes/:name" element={<NoteFormScreen />} />
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
+        <Route path="/avatar" element={<AvatarCustomizerScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />

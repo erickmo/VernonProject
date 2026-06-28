@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2 } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, usePasskeys, useEnrollPasskey, useRevokePasskey } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
+import { AvatarViewer } from '@/avatar/AvatarViewer'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { logout } from '@/lib/api'
@@ -36,6 +37,7 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 
 export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: () => void }) {
   const { data: boot, isLoading } = useBoot()
+  const { data: catalog } = useAvatarCatalog()
   const qc = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
@@ -106,11 +108,25 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       {boot && (
         <>
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-6 shadow-card">
-            <Avatar name={boot.full_name} image={boot.image} size={72} />
+            {/* ponytail: fallback to image Avatar while catalog loads or if no WebGL */}
+            {catalog ? (
+              <div className="h-[72px] w-[72px] overflow-hidden rounded-full border-2 border-paper-edge dark:border-slate-700">
+                <AvatarViewer interactive={false} config={catalog.my} items={catalog.items} />
+              </div>
+            ) : (
+              <Avatar name={boot.full_name} image={boot.image} size={72} />
+            )}
             <div className="text-center">
               <p className="font-display text-lg font-bold text-stone-800 dark:text-slate-50">{boot.full_name}</p>
               <p className="text-sm text-stone-400 dark:text-slate-500">{boot.user}</p>
             </div>
+            <button
+              onClick={() => navigate('/avatar')}
+              className="flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/15 px-3 py-1.5 text-sm font-semibold text-brand-600 dark:text-brand-300 transition active:scale-95"
+            >
+              <Palette className="h-3.5 w-3.5" />
+              Customize
+            </button>
             {boot.badge && (
               <span
                 className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
