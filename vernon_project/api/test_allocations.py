@@ -48,3 +48,56 @@ class TestAllocationHelpers(unittest.TestCase):
 	def test_explicit_rows_pass_through(self):
 		allocs = [{"date": "2026-07-01", "minutes": 20, "note": "a"}]
 		self.assertEqual(_assigned_allocation_for(allocs, "2026-07-02", 60), allocs)
+
+
+from frappe.utils import nowdate, add_days
+
+
+class _AllocFixture(unittest.TestCase):
+	"""Project (owner+leader=Administrator) / Detail / Todo assigned to a
+	non-leader user, mirroring test_project_todo.py's setup."""
+
+	def setUp(self):
+		for email, fn in (("alloc_assignee@example.com", "Assignee"),):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
+					"send_welcome_email": 0}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Alloc Brand"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Alloc Brand"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Project Group", "Alloc Group"):
+			frappe.get_doc({"doctype": "Project Group", "project_name": "Alloc Group"}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Alloc Project", "brand": "Alloc Brand",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"project_group": "Alloc Group", "status": "Ongoing", "start_date": nowdate(),
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}, {"user": "alloc_assignee@example.com"}],
+		}).insert(ignore_permissions=True)
+		self.grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Alloc Grouping",
+			"project": self.project.name}).insert(ignore_permissions=True).name
+		self.detail = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
+			"title": "Alloc Detail", "grouping": self.grouping,
+			"project_deadline": add_days(nowdate(), 30), "estimated": 100}).insert(ignore_permissions=True)
+		self.todo = frappe.get_doc({"doctype": "Project Todo", "project_detail": self.detail.name,
+			"to_do": "Alloc Todo", "assigned_to": "alloc_assignee@example.com",
+			"deadline": add_days(nowdate(), 5), "estimated": 60, "status": "⚪️ Planned"}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for name in frappe.get_all("Project Todo", filters={"project_detail": self.detail.name}, pluck="name"):
+			frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
+			frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True)
+		frappe.delete_doc("Project Detail", self.detail.name, ignore_permissions=True, force=True)
+		frappe.delete_doc("Glossary", self.grouping, ignore_permissions=True, force=True)
+		frappe.delete_doc("Project", self.project.name, ignore_permissions=True, force=True)
+		frappe.db.commit()
+
+
+class TestAssigneePlanFreeForm(_AllocFixture):
+	def test_assignee_plan_allows_mismatched_sum(self):
+		from vernon_project.api.mobile import set_todo_allocations
+		frappe.set_user("alloc_assignee@example.com")
+		res = set_todo_allocations(self.todo.name, [{"date": str(add_days(nowdate(), 1)), "minutes": 15, "note": ""}])
+		frappe.set_user("Administrator")
+		self.assertEqual(res["status"], "ok")  # 15 != estimate 60, but assignee plan is free-form

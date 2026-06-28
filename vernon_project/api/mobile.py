@@ -1559,10 +1559,7 @@ def _assigned_allocation_for(allocs, deadline, estimated):
 
 @frappe.whitelist()
 def set_todo_allocations(project_item, allocations):
-	"""Assignee-only: replace a todo's day allocations (planning only, not scored).
-
-	`allocations` is a JSON list of {date, minutes, note}. Returns the saved rows.
-	"""
+	"""Assignee-only: replace a todo's personal day-plan (free-form minutes, not scored)."""
 	try:
 		user = frappe.session.user
 		if not frappe.db.exists("Project Todo", project_item):
@@ -1576,24 +1573,16 @@ def set_todo_allocations(project_item, allocations):
 
 		doc = frappe.get_doc("Project Todo", project_item)
 		doc.set("allocations", [])
-		alloc_sum = 0
 		for a in allocations or []:
 			d = a.get("date") or a.get("allocation_date")
 			if not d:
 				continue
 			minutes = int(a.get("minutes") or a.get("estimated_minutes") or 0)
-			alloc_sum += minutes
 			doc.append("allocations", {
 				"allocation_date": d,
 				"estimated_minutes": minutes,
 				"note": (a.get("note") or "").strip(),
 			})
-		# Daily split must add up to the task estimate (planning consistency).
-		estimated = int(doc.estimated or 0)
-		if estimated > 0 and alloc_sum != estimated:
-			diff = estimated - alloc_sum
-			short = f"{diff}m short of" if diff > 0 else f"{-diff}m over"
-			return {"status": "error", "message": f"Daily split is {short} the {estimated}m estimate."}
 		doc.save(ignore_permissions=True)
 		frappe.db.commit()
 		return {
