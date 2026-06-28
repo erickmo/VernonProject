@@ -7,6 +7,8 @@ import { mobileApi, resource, renameDoc, passkeyApi } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
+  AvatarCatalog,
+  AvatarConfig,
   Boot,
   Brand,
   Comment,
@@ -75,6 +77,7 @@ export const keys = {
   meeting: (n: string) => ['meeting', n] as const,
   passkeys: ['passkeys'] as const,
   teamActivity: ['team-activity'] as const,
+  avatarCatalog: ['avatar-catalog'] as const,
 }
 
 export const useBoot = () =>
@@ -1027,6 +1030,25 @@ export function useToggleReaction() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.teamActivity })
+    },
+  })
+}
+
+export function useAvatarCatalog() {
+  return useQuery({
+    queryKey: keys.avatarCatalog,
+    queryFn: () => mobileApi.getAvatarCatalog() as Promise<AvatarCatalog>,
+  })
+}
+
+export function useSaveAvatar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ config, snapshot }: { config: Partial<AvatarConfig>; snapshot?: string }) =>
+      mobileApi.saveMyAvatar(config, snapshot),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.avatarCatalog })
+      qc.invalidateQueries({ queryKey: keys.boot })
     },
   })
 }

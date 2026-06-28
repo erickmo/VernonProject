@@ -303,6 +303,15 @@ export const mobileApi = {
     api.get<{ items: import('./types').ActivityItem[] }>(M + 'get_team_activity', { days, limit }),
   toggleReaction: (todo: string, reaction: import('./types').ReactionKey) =>
     api.post<import('./types').ToggleReactionResult>(M + 'toggle_reaction', { todo, reaction }),
+  getAvatarCatalog: () =>
+    api.get<import('./types').AvatarCatalog>(M + 'get_avatar_catalog'),
+  getMyAvatar: () =>
+    api.get<import('./types').AvatarConfig>(M + 'get_my_avatar'),
+  saveMyAvatar: (config: Partial<import('./types').AvatarConfig>, snapshot_dataurl?: string) =>
+    api.post<import('./types').AvatarConfig>(M + 'save_my_avatar', {
+      config: JSON.stringify(config),
+      snapshot_dataurl,
+    }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
