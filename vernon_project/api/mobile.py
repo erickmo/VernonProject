@@ -3586,46 +3586,52 @@ def _save_snapshot(user, dataurl):
 
 # --------------------------------------------------------------------------------
 # Avatar catalog seed
-# v1 avatar catalog. model_url files are bundled in Plan 2 (frontend); the paths
-# are stable and shared by both SPAs at /assets/vernon_project/models/.
+# Premium DiceBear attributes sold in the marketplace. style/slot/value are real
+# DiceBear v9 variant ids. is_default items are free for everyone.
 # --------------------------------------------------------------------------------
 
 AVATAR_SEED = [
-	{"item_name": "Human",   "slot": "Base", "is_default": 1, "model_url": "/assets/vernon_project/models/base_human.glb",   "socket": None,        "price": None},
-	{"item_name": "Cat",     "slot": "Base", "is_default": 0, "model_url": "/assets/vernon_project/models/base_cat.glb",     "socket": None,        "price": 200},
-	{"item_name": "Cap",     "slot": "Hat",  "is_default": 1, "model_url": "/assets/vernon_project/models/hat_cap.glb",      "socket": "head_top",  "price": None},
-	{"item_name": "Crown",   "slot": "Hat",  "is_default": 0, "model_url": "/assets/vernon_project/models/hat_crown.glb",    "socket": "head_top",  "price": 500},
-	{"item_name": "Glasses", "slot": "Face", "is_default": 0, "model_url": "/assets/vernon_project/models/face_glasses.glb", "socket": "face",      "price": 150},
+	{"item_name": "Adventurer Long Hair", "style": "adventurer", "slot": "hair",            "option_value": "long26",    "is_default": 0, "price": 150},
+	{"item_name": "Adventurer Glasses",   "style": "adventurer", "slot": "glasses",         "option_value": "variant05", "is_default": 0, "price": 120},
+	{"item_name": "Adventurer Earrings",  "style": "adventurer", "slot": "earrings",        "option_value": "variant06", "is_default": 0, "price": 100},
+	{"item_name": "Lorelei Fancy Hair",   "style": "lorelei",    "slot": "hair",            "option_value": "variant48", "is_default": 0, "price": 150},
+	{"item_name": "Lorelei Flowers",      "style": "lorelei",    "slot": "hairAccessories", "option_value": "flowers",   "is_default": 0, "price": 200},
+	{"item_name": "Notionists Phone",     "style": "notionists", "slot": "gesture",         "option_value": "handPhone", "is_default": 0, "price": 90},
 ]
 
 
 def seed_avatar_catalog():
-	"""Idempotent: create v1 Avatar Items + a linked Marketplace Reward for each
-	priced one. Re-running updates model_url/socket/default flags in place."""
+	"""Idempotent re-seed of premium DiceBear items + their marketplace rewards.
+	Removes any old GLB-era items (those with a model_url and no style)."""
+	# clean up old GLB-era items + their rewards (old rows have no style)
+	old = frappe.get_all("Avatar Item", filters={"style": ["is", "not set"]}, pluck="name")
+	for nm in old:
+		for rw in frappe.get_all("Marketplace Reward", filters={"avatar_item": nm}, pluck="name"):
+			frappe.delete_doc("Marketplace Reward", rw, ignore_permissions=True, force=True)
+		frappe.delete_doc("Avatar Item", nm, ignore_permissions=True, force=True)
+
 	created_items, created_rewards = 0, 0
 	for s in AVATAR_SEED:
 		if frappe.db.exists("Avatar Item", s["item_name"]):
 			frappe.db.set_value("Avatar Item", s["item_name"], {
-				"slot": s["slot"], "is_default": s["is_default"],
-				"model_url": s["model_url"], "socket": s["socket"], "active": 1,
+				"style": s["style"], "slot": s["slot"], "option_value": s["option_value"],
+				"is_default": s["is_default"], "active": 1,
 			})
 		else:
 			frappe.get_doc({
-				"doctype": "Avatar Item",
-				"item_name": s["item_name"], "slot": s["slot"],
-				"is_default": s["is_default"], "model_url": s["model_url"],
-				"socket": s["socket"], "active": 1,
+				"doctype": "Avatar Item", "item_name": s["item_name"],
+				"style": s["style"], "slot": s["slot"], "option_value": s["option_value"],
+				"is_default": s["is_default"], "active": 1,
 			}).insert(ignore_permissions=True)
 			created_items += 1
-
-		if s["price"] is not None:
+		if s.get("price") is not None:
 			reward_name = f"Avatar: {s['item_name']}"
 			if not frappe.db.exists("Marketplace Reward", reward_name):
 				frappe.get_doc({
-					"doctype": "Marketplace Reward",
-					"reward_name": reward_name, "point_cost": s["price"],
-					"stock_quantity": 9999, "active": 1, "avatar_item": s["item_name"],
-					"description": f"Unlock the {s['item_name']} avatar item.",
+					"doctype": "Marketplace Reward", "reward_name": reward_name,
+					"point_cost": s["price"], "stock_quantity": 9999, "active": 1,
+					"avatar_item": s["item_name"],
+					"description": f"Unlock the {s['item_name']} avatar attribute.",
 				}).insert(ignore_permissions=True)
 				created_rewards += 1
 			else:
