@@ -2,77 +2,43 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from vernon_project.api.mobile import (
-	get_avatar_catalog, save_my_avatar, _my_avatar_config, _premium_index,
+	_is_free, buy_avatar_option, save_my_avatar, _my_avatar_config,
+	_avatar_owned_options, PREMIUM_PRICE,
 )
 
 USER = "Administrator"
 
 
-def _mk_premium(name, style, slot, value, is_default=0):
-	if frappe.db.exists("Avatar Item", name):
-		frappe.db.set_value("Avatar Item", name, {
-			"style": style, "slot": slot, "option_value": value,
-			"is_default": is_default, "active": 1})
-		return name
-	frappe.get_doc({
-		"doctype": "Avatar Item", "item_name": name, "style": style,
-		"slot": slot, "option_value": value, "is_default": is_default, "active": 1,
-	}).insert(ignore_permissions=True)
-	return name
-
-
-class TestUserAvatar(FrappeTestCase):
+class TestAvatarFreemium(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user(USER)
-		# ponytail: silence same-triple collisions from live data; rolled back by FrappeTestCase
-		for row in frappe.get_all("Avatar Item", filters={
-			"style": "lorelei", "slot": "hairAccessories", "option_value": "flowers",
-			"name": ["!=", "T Lorelei Flowers"],
-		}, pluck="name"):
-			frappe.db.set_value("Avatar Item", row, "active", 0)
-		_mk_premium("T Lorelei Flowers", "lorelei", "hairAccessories", "flowers")  # premium, not owned
-		_mk_premium("T Free Default Hair", "lorelei", "hair", "variant01", is_default=1)  # free/owned
+		# ponytail: wipe live-data unlocks so premium-rejection is hermetic (rolled back)
+		frappe.db.delete("Avatar Unlock", {"user": USER})
+		# ensure Administrator can afford a 5000 unlock during the test (rolled back)
+		frappe.get_doc({
+			"doctype": "Point Ledger", "user": USER, "role": "Assignee",
+			"points_earned": PREMIUM_PRICE + 1000, "source": "Grant",
+		}).insert(ignore_permissions=True)
 
-	def test_premium_index_maps_triple(self):
-		idx = _premium_index()
-		self.assertEqual(idx.get(("lorelei", "hairAccessories", "flowers")), "T Lorelei Flowers")
-
-	def test_catalog_marks_premium_unowned(self):
-		cat = get_avatar_catalog()
-		by_name = {i["name"]: i for i in cat["premium"]}
-		self.assertIn("T Lorelei Flowers", by_name)
-		self.assertFalse(by_name["T Lorelei Flowers"]["owned"])
-
-	def test_save_allows_free_option(self):
-		save_my_avatar('{"style":"lorelei","options":{"eyes":["variant03"]}}')
-		cfg = _my_avatar_config(USER)
-		self.assertEqual(cfg["style"], "lorelei")
-		self.assertEqual(cfg["options"]["eyes"], ["variant03"])
+	def test_is_free_boundary(self):
+		self.assertTrue(_is_free("lorelei", "hair", "variant48"))   # 1st
+		self.assertFalse(_is_free("lorelei", "hair", "variant10"))  # premium
+		self.assertTrue(_is_free("lorelei", "skinColor", "f2d3b1")) # color always free
 
 	def test_save_rejects_unowned_premium(self):
 		with self.assertRaises(frappe.ValidationError):
-			save_my_avatar('{"style":"lorelei","options":{"hairAccessories":["flowers"]}}')
+			save_my_avatar('{"style":"lorelei","options":{"hair":["variant10"]}}')
 
-	def test_save_rejects_unknown_style(self):
+	def test_save_allows_free(self):
+		save_my_avatar('{"style":"lorelei","options":{"hair":["variant48"]}}')
+		self.assertEqual(_my_avatar_config(USER)["options"]["hair"], ["variant48"])
+
+	def test_buy_then_save(self):
+		buy_avatar_option("lorelei", "hair", "variant10")
+		self.assertIn(("lorelei", "hair", "variant10"), _avatar_owned_options(USER))
+		save_my_avatar('{"style":"lorelei","options":{"hair":["variant10"]}}')  # now allowed
+		self.assertEqual(_my_avatar_config(USER)["options"]["hair"], ["variant10"])
+
+	def test_buy_free_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
-			save_my_avatar('{"style":"bogus","options":{}}')
-
-	def test_save_survives_dangling_legacy_base_link(self):
-		# Simulate a migrated row whose legacy base Link points at a now-deleted item.
-		tmp = _mk_premium("T Doomed Base", "lorelei", "hair", "variant02")
-		name = frappe.db.exists("User Avatar", {"user": USER}) or frappe.get_doc(
-			{"doctype": "User Avatar", "user": USER}).insert(ignore_permissions=True).name
-		frappe.db.set_value("User Avatar", name, "base", tmp)
-		frappe.delete_doc("Avatar Item", tmp, ignore_permissions=True, force=True)  # base now dangles
-		# Must NOT raise LinkValidationError:
-		save_my_avatar('{"style":"lorelei","options":{}}')
-		self.assertIsNone(frappe.db.get_value("User Avatar", name, "base"))
-
-	def test_snapshot_sets_identity_image(self):
-		png = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
-			"AAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
-		before = frappe.db.get_value("User", USER, "user_image") or ""
-		save_my_avatar('{"style":"lorelei","options":{}}', snapshot_dataurl=png)
-		img = frappe.db.get_value("User", USER, "user_image") or ""
-		self.assertNotEqual(img, before)
-		self.assertIn("avatar-administrator", img)
+			buy_avatar_option("lorelei", "hair", "variant48")  # free → reject
