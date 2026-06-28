@@ -3604,3 +3604,65 @@ def seed_avatar_catalog():
 				})
 	frappe.db.commit()
 	return {"created_items": created_items, "created_rewards": created_rewards}
+
+
+def _assigned_allocations_map(names):
+	"""{todo_name: [{date, minutes, note}]} for the leader assigned allocation."""
+	out = {n: [] for n in names}
+	if not names:
+		return out
+	rows = frappe.get_all(
+		"Project Todo Assigned Allocation",
+		filters={"parent": ["in", names], "parenttype": "Project Todo"},
+		fields=["parent", "allocation_date", "estimated_minutes", "note"],
+		order_by="allocation_date asc",
+		limit_page_length=0,
+	)
+	for r in rows:
+		out.setdefault(r["parent"], []).append({
+			"date": str(r["allocation_date"]) if r["allocation_date"] else None,
+			"minutes": r["estimated_minutes"] or 0,
+			"note": r.get("note") or "",
+		})
+	return out
+
+
+@frappe.whitelist()
+def set_assigned_allocation(project_item, allocations):
+	"""Leader-only: replace a todo's authoritative assigned allocation. Must sum
+	to the estimate. `allocations` is a JSON list of {date, minutes, note}."""
+	try:
+		user = frappe.session.user
+		if not frappe.db.exists("Project Todo", project_item):
+			return {"status": "error", "message": "Task not found."}
+		todo = frappe.get_doc("Project Todo", project_item)
+		project_detail = frappe.get_value("Project Todo", project_item, "project_detail")
+		detail_project = frappe.get_value("Project Detail", project_detail, "project")
+		leader = frappe.get_value("Project", detail_project, "project_leader")
+		is_sm = "System Manager" in frappe.get_roles(user)
+		if not (is_sm or user == leader):
+			return {"status": "error", "message": "Only the project leader can set the assigned allocation."}
+		if todo.status in ("🟠 Done", "✅ Completed"):
+			return {"status": "error", "message": "Assigned allocation is locked once the task is Done or Completed."}
+
+		if isinstance(allocations, str):
+			allocations = json.loads(allocations or "[]")
+		clean = [a for a in (allocations or []) if (a.get("date") or a.get("allocation_date"))]
+		err = _alloc_sum_error(clean, todo.estimated)
+		if err:
+			return {"status": "error", "message": err}
+
+		todo.set("assigned_allocation", [])
+		for a in clean:
+			todo.append("assigned_allocation", {
+				"allocation_date": a.get("date") or a.get("allocation_date"),
+				"estimated_minutes": int(a.get("minutes") or a.get("estimated_minutes") or 0),
+				"note": (a.get("note") or "").strip(),
+			})
+		todo.save(ignore_permissions=True)
+		frappe.db.commit()
+		return {"status": "ok", "message": "Assigned allocation saved.",
+			"allocations": _assigned_allocations_map([project_item]).get(project_item, [])}
+	except Exception as e:
+		msg = frappe.utils.strip_html(str(e)).strip() or "Could not save the assigned allocation."
+		return {"status": "error", "message": msg}

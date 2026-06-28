@@ -101,3 +101,39 @@ class TestAssigneePlanFreeForm(_AllocFixture):
 		res = set_todo_allocations(self.todo.name, [{"date": str(add_days(nowdate(), 1)), "minutes": 15, "note": ""}])
 		frappe.set_user("Administrator")
 		self.assertEqual(res["status"], "ok")  # 15 != estimate 60, but assignee plan is free-form
+
+
+class TestAssignedAllocation(_AllocFixture):
+	def _rows(self, *pairs):
+		return [{"date": str(add_days(nowdate(), d)), "minutes": m, "note": ""} for d, m in pairs]
+
+	def test_leader_can_set_matching_sum(self):
+		from vernon_project.api.mobile import set_assigned_allocation
+		frappe.set_user("Administrator")  # leader + SM
+		res = set_assigned_allocation(self.todo.name, self._rows((1, 60)))
+		self.assertEqual(res["status"], "ok")
+		self.assertEqual(len(res["allocations"]), 1)
+
+	def test_sum_mismatch_rejected(self):
+		from vernon_project.api.mobile import set_assigned_allocation
+		frappe.set_user("Administrator")
+		res = set_assigned_allocation(self.todo.name, self._rows((1, 10)))
+		self.assertEqual(res["status"], "error")
+		self.assertIn("short of", res["message"])
+
+	def test_assignee_cannot_set_assigned(self):
+		from vernon_project.api.mobile import set_assigned_allocation
+		frappe.set_user("alloc_assignee@example.com")  # assignee, not leader, not SM
+		res = set_assigned_allocation(self.todo.name, self._rows((1, 60)))
+		frappe.set_user("Administrator")
+		self.assertEqual(res["status"], "error")
+		self.assertIn("leader", res["message"].lower())
+
+	def test_locked_when_done(self):
+		from vernon_project.api.mobile import set_assigned_allocation
+		frappe.db.set_value("Project Todo", self.todo.name, "status", "🟠 Done", update_modified=False)
+		frappe.set_user("Administrator")
+		res = set_assigned_allocation(self.todo.name, self._rows((1, 60)))
+		frappe.db.set_value("Project Todo", self.todo.name, "status", "⚪️ Planned", update_modified=False)
+		self.assertEqual(res["status"], "error")
+		self.assertIn("locked", res["message"].lower())
