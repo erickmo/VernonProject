@@ -171,9 +171,19 @@ has_permission = {
 # Hook on document methods and events
 
 doc_events = {
-	# "Project Todo": {
-	# 	"on_change": "vernon_project.vernon_project.doctype.project_.project_todo.update_project_details",
-	# }
+	"Shift Assignment": {
+		"on_update": "vernon_project.attendance.triggers.shift_assignment_changed",
+		"on_trash": "vernon_project.attendance.triggers.shift_assignment_changed",
+	},
+	"Attendance Exception": {
+		"on_update": "vernon_project.attendance.triggers.exception_changed",
+	},
+	"Attendance Holiday List": {
+		"on_update": "vernon_project.attendance.triggers.holiday_list_changed",
+	},
+	"Brand": {
+		"on_update": "vernon_project.attendance.triggers.brand_changed",
+	},
 }
 
 # Scheduled Tasks
@@ -182,7 +192,8 @@ doc_events = {
 scheduler_events = {
 	"daily": [
 		"vernon_project.tasks.create_recurring_todos",
-		"vernon_project.tasks.notify_due_todos"
+		"vernon_project.tasks.notify_due_todos",
+		"vernon_project.attendance.engine.nightly_finalize"
 	]
 }
 
