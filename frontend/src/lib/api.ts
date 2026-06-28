@@ -75,6 +75,7 @@ export const api = {
 }
 
 const M = 'vernon_project.api.mobile.'
+const A = 'vernon_project.api.attendance.'
 
 export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),
@@ -332,6 +333,41 @@ export const mobileApi = {
     api.post<{ status: string }>('vernon_project.api.feedback.set_feedback_status', {
       name,
       status,
+    }),
+  stationToken: (station: string, key: string) =>
+    api.get<{ station: string; counter: number; token: string }>(A + 'station_token', { station, key }),
+  attendanceScan: (station: string, counter: number, token: string) =>
+    api.post<{
+      status: string
+      message?: string
+      daily?: {
+        status: string
+        late_minutes: number
+        early_minutes: number
+        penalty_points: number
+        first_scan: string | null
+        last_scan: string | null
+      } | null
+    }>(A + 'attendance_scan', { station, counter, token }),
+  myAttendance: (limit = 30) =>
+    api.get<{
+      status: string
+      rows: {
+        attendance_date: string
+        status: string
+        first_scan: string | null
+        last_scan: string | null
+        late_minutes: number
+        early_minutes: number
+        penalty_points: number
+      }[]
+    }>(A + 'my_attendance', { limit }),
+  requestException: (from_date: string, to_date: string, exception_type: 'WFH' | 'Leave', reason?: string) =>
+    api.post<{ status: string; message?: string; name?: string }>(A + 'request_exception', {
+      from_date,
+      to_date,
+      exception_type,
+      reason,
     }),
 }
 

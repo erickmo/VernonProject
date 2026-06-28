@@ -79,6 +79,7 @@ export const keys = {
   teamActivity: ['team-activity'] as const,
   avatarCatalog: ['avatar-catalog'] as const,
   feedbackInbox: (status?: string) => ['feedback-inbox', status ?? 'all'] as const,
+  myAttendance: ['my-attendance'] as const,
 }
 
 export const useBoot = () =>
@@ -1089,6 +1090,48 @@ export function useSetFeedbackStatus() {
     mutationFn: (v: { name: string; status: string }) =>
       mobileApi.setFeedbackStatus(v.name, v.status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['feedback-inbox'] }),
+  })
+}
+
+export function useMyAttendance() {
+  return useQuery({
+    queryKey: keys.myAttendance,
+    queryFn: () => mobileApi.myAttendance() as Promise<{
+      status: string
+      rows: {
+        attendance_date: string
+        status: string
+        first_scan: string | null
+        last_scan: string | null
+        late_minutes: number
+        early_minutes: number
+        penalty_points: number
+      }[]
+    }>,
+  })
+}
+
+export function useScanAttendance() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: { station: string; counter: number; token: string }) => {
+      const res = await mobileApi.attendanceScan(vars.station, vars.counter, vars.token)
+      if (res.status !== 'ok') throw new Error(res.message || 'Scan failed')
+      return res
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.myAttendance }),
+  })
+}
+
+export function useRequestException() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: { from_date: string; to_date: string; exception_type: 'WFH' | 'Leave'; reason?: string }) => {
+      const res = await mobileApi.requestException(vars.from_date, vars.to_date, vars.exception_type, vars.reason)
+      if (res.status !== 'ok') throw new Error(res.message || 'Request failed')
+      return res
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.myAttendance }),
   })
 }
 
