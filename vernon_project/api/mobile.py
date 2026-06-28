@@ -3451,3 +3451,70 @@ def get_avatar_catalog():
 @frappe.whitelist()
 def get_my_avatar():
 	return _my_avatar_config(frappe.session.user)
+
+
+@frappe.whitelist()
+def save_my_avatar(config, snapshot_dataurl=None):
+	"""Persist the caller's avatar. Server is the source of truth: every equipped
+	item must be owned and in the right slot, or the save is rejected."""
+	import json as _json
+
+	user = frappe.session.user
+	if isinstance(config, str):
+		config = _json.loads(config)
+
+	owned = _avatar_owned_items(user)
+
+	def _check(item, want_slot):
+		if not item:
+			return None
+		if item not in owned:
+			frappe.throw("You don't own that item", frappe.ValidationError)
+		if frappe.db.get_value("Avatar Item", item, "slot") != want_slot:
+			frappe.throw(f"That item is not a {want_slot}", frappe.ValidationError)
+		return item
+
+	base = _check(config.get("base"), "Base")
+	if not base:
+		frappe.throw("Base style is required", frappe.ValidationError)
+	hat = _check(config.get("hat"), "Hat")
+	face = _check(config.get("face"), "Face")
+
+	name = frappe.db.exists("User Avatar", {"user": user})
+	doc = frappe.get_doc("User Avatar", name) if name else frappe.new_doc("User Avatar")
+	doc.user = user
+	doc.base = base
+	doc.hat = hat
+	doc.face = face
+	doc.skin_color = (config.get("skin_color") or DEFAULT_SKIN)[:9]
+	doc.accent_color = (config.get("accent_color") or DEFAULT_ACCENT)[:9]
+
+	if snapshot_dataurl:
+		url = _save_snapshot(user, snapshot_dataurl)
+		if url:
+			doc.snapshot = url
+			frappe.db.set_value("User", user, "user_image", url)
+
+	doc.save(ignore_permissions=True)
+	return _my_avatar_config(user)
+
+
+def _save_snapshot(user, dataurl):
+	"""Decode a `data:image/png;base64,...` URL, save as a public File, return its
+	URL. Returns None on malformed input so the config still saves."""
+	import base64
+	from frappe.utils.file_manager import save_file
+
+	try:
+		header, b64 = dataurl.split(",", 1)
+		if "image/png" not in header:
+			return None
+		content = base64.b64decode(b64)
+		if len(content) > MAX_IMAGE_BYTES:
+			frappe.throw("Snapshot too large")
+		saved = save_file(f"avatar-{frappe.scrub(user)}.png", content, "User", user, is_private=0)
+		return saved.file_url
+	except frappe.ValidationError:
+		raise
+	except Exception:
+		return None
