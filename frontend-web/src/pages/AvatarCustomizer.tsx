@@ -4,7 +4,7 @@ import { Coins } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
 import { captureAvatarPng } from '@/avatar/capture'
-import { STYLE_LIST, slotsForStyle, colorSlotsForStyle, COLOR_PALETTE, PROB_SLOTS } from '@/avatar/styles'
+import { STYLE_LIST, slotsForStyle, colorSlotsForStyle, paletteForColorSlot, PROB_SLOTS } from '@/avatar/styles'
 import type { StyleKey } from '@/avatar/styles'
 import { useAvatarCatalog, useSaveAvatar, useWallet, keys } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
@@ -187,7 +187,7 @@ export default function AvatarCustomizer() {
                       {cSlot.replace(/([A-Z])/g, ' $1').trim()}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {COLOR_PALETTE.map((c) => {
+                      {paletteForColorSlot(cSlot).map((c) => {
                         const isTransparent = c === 'transparent'
                         const active = cur === c
                         return (
