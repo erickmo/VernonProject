@@ -3489,13 +3489,15 @@ def save_my_avatar(config, snapshot_dataurl=None):
 	doc.skin_color = (config.get("skin_color") or DEFAULT_SKIN)[:9]
 	doc.accent_color = (config.get("accent_color") or DEFAULT_ACCENT)[:9]
 
+	url = None
 	if snapshot_dataurl:
 		url = _save_snapshot(user, snapshot_dataurl)
 		if url:
 			doc.snapshot = url
-			frappe.db.set_value("User", user, "user_image", url)
 
 	doc.save(ignore_permissions=True)
+	if url:
+		frappe.db.set_value("User", user, "user_image", url)
 	return _my_avatar_config(user)
 
 
@@ -3511,7 +3513,7 @@ def _save_snapshot(user, dataurl):
 			return None
 		content = base64.b64decode(b64)
 		if len(content) > MAX_IMAGE_BYTES:
-			frappe.throw("Snapshot too large")
+			frappe.throw("Snapshot too large", frappe.ValidationError)
 		saved = save_file(f"avatar-{frappe.scrub(user)}.png", content, "User", user, is_private=0)
 		return saved.file_url
 	except frappe.ValidationError:
