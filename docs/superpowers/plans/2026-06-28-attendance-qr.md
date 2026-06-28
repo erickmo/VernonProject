@@ -787,13 +787,13 @@ git commit -m "feat(attendance): Vernon Settings fields + seed defaults"
 
 ## Phase B — Core logic (QR token + recompute engine)
 
-Module dir: `vernon_project/vernon_project/attendance/` → dotted `vernon_project.attendance.*`. This phase contains the **only** pytest in the plan (the money path), test-first.
+Module dir: `vernon_project/attendance/` → dotted `vernon_project.attendance.*`. This phase contains the **only** pytest in the plan (the money path), test-first.
 
 ### Task B1: QR token module (`qr.py`)
 
 **Files:**
-- Create: `vernon_project/vernon_project/attendance/__init__.py` (empty)
-- Create: `vernon_project/vernon_project/attendance/qr.py`
+- Create: `vernon_project/attendance/__init__.py` (empty)
+- Create: `vernon_project/attendance/qr.py`
 
 **Interfaces:**
 - Produces: `current_payload(station_name) -> {"station": str, "counter": int, "token": str}` and `verify(station_name, counter, token) -> bool`. Stateless HMAC-TOTP over the station's `secret_key`; window = `Vernon Settings.qr_validity_seconds`; accepts current counter and the one just before it (clock-skew tolerance).
@@ -861,15 +861,15 @@ Expected: `True` then `False`.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add vernon_project/vernon_project/attendance/__init__.py vernon_project/vernon_project/attendance/qr.py
+git add vernon_project/attendance/__init__.py vernon_project/attendance/qr.py
 git commit -m "feat(attendance): stateless HMAC-TOTP QR token module"
 ```
 
 ### Task B2: Pure penalty core `evaluate_day()` — TEST FIRST
 
 **Files:**
-- Create: `vernon_project/vernon_project/attendance/engine.py` (this task adds only `evaluate_day` + helpers)
-- Create: `vernon_project/vernon_project/attendance/test_attendance_engine.py`
+- Create: `vernon_project/attendance/engine.py` (this task adds only `evaluate_day` + helpers)
+- Create: `vernon_project/attendance/test_attendance_engine.py`
 
 **Interfaces:**
 - Produces: `evaluate_day(*, has_assignment, expected_start, expected_end, exception_type, is_holiday, scans, grace_minutes, late_rate, early_rate, absence_penalty) -> dict`. Pure (stdlib `datetime` only, no `frappe`). Returns keys: `status, late_minutes, early_minutes, penalty_points, first_scan, last_scan`. `scans` is a list of `datetime`. `exception_type` is `"WFH"`, `"Leave"`, or `None`. Decision order: no assignment → `OffDay`; Leave → `Excused-Leave`; WFH → `Excused-WFH`; holiday → `Holiday`; no scans → `Absent`; else compute late/early beyond grace.
@@ -1043,14 +1043,14 @@ Expected: PASS (10 tests OK).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vernon_project/vernon_project/attendance/engine.py vernon_project/vernon_project/attendance/test_attendance_engine.py
+git add vernon_project/attendance/engine.py vernon_project/attendance/test_attendance_engine.py
 git commit -m "feat(attendance): pure evaluate_day penalty core + unit tests"
 ```
 
 ### Task B3: DB-bound `recompute_daily` + range + nightly
 
 **Files:**
-- Modify: `vernon_project/vernon_project/attendance/engine.py` (append the IO shell below `evaluate_day`)
+- Modify: `vernon_project/attendance/engine.py` (append the IO shell below `evaluate_day`)
 
 **Interfaces:**
 - Consumes: `evaluate_day` (B2), `Vernon Settings` fields (A9), doctypes from Phase A.
@@ -1253,7 +1253,7 @@ Expected: dict with `'status': 'OffDay'`.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vernon_project/vernon_project/attendance/engine.py
+git add vernon_project/attendance/engine.py
 git commit -m "feat(attendance): recompute_daily/range + nightly finalize + penalty ledger upsert"
 ```
 
@@ -1264,7 +1264,7 @@ git commit -m "feat(attendance): recompute_daily/range + nightly finalize + pena
 ### Task C1: Whitelisted API (`api/attendance.py`)
 
 **Files:**
-- Create: `vernon_project/vernon_project/api/attendance.py`
+- Create: `vernon_project/api/attendance.py`
 
 **Interfaces:**
 - Consumes: `qr` (B1), `recompute_daily` (B3).
@@ -1381,14 +1381,14 @@ def request_exception(from_date, to_date, exception_type, reason=None):
 - [ ] **Step 3: Commit**
 
 ```bash
-git add vernon_project/vernon_project/api/attendance.py
+git add vernon_project/api/attendance.py
 git commit -m "feat(attendance): scan / my_attendance / request_exception / station_token API"
 ```
 
 ### Task C2: Admin report endpoint
 
 **Files:**
-- Modify: `vernon_project/vernon_project/api/attendance.py` (append)
+- Modify: `vernon_project/api/attendance.py` (append)
 
 **Interfaces:**
 - Produces: `attendance_report(from_date, to_date, employee=None, brand=None, status=None)` — System-Manager-only; returns `{columns, rows, stats}` where rows are `Daily Attendance` joined to the employee's brand (via Attendance Profile), filtered, plus summary counts. Consumed by the web report page (Task E1).
@@ -1463,14 +1463,14 @@ def attendance_report(from_date, to_date, employee=None, brand=None, status=None
 - [ ] **Step 3: Commit**
 
 ```bash
-git add vernon_project/vernon_project/api/attendance.py
+git add vernon_project/api/attendance.py
 git commit -m "feat(attendance): admin attendance_report endpoint with stats"
 ```
 
 ### Task C3: Recompute trigger functions (`triggers.py`)
 
 **Files:**
-- Create: `vernon_project/vernon_project/attendance/triggers.py`
+- Create: `vernon_project/attendance/triggers.py`
 
 **Interfaces:**
 - Consumes: `recompute_range`, `recompute_daily` (B3).
@@ -1545,7 +1545,7 @@ def brand_changed(doc, method=None):
 - [ ] **Step 2: Commit**
 
 ```bash
-git add vernon_project/vernon_project/attendance/triggers.py
+git add vernon_project/attendance/triggers.py
 git commit -m "feat(attendance): recompute trigger handlers for schedule/exception/holiday edits"
 ```
 
