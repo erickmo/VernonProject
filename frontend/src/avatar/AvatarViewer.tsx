@@ -26,13 +26,23 @@ function Avatar({ config, items, readyRef }: { config: AvatarConfig; items: Avat
   // ponytail: Avatar mounts only after Suspense resolves (GLTF loaded), so this is the right place to mark ready
   useEffect(() => { if (baseUrl) readyRef.current = true }, [baseUrl, readyRef])
 
-  // Tint the base body with skin_color (Task 5 may refine which meshes).
+  // Tint only skin-named meshes; colorful characters keep their authored colors.
   useEffect(() => {
     const g = baseRef.current
     if (!g) return
     g.traverse((o) => {
-      const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
-      if (m && 'color' in m) m.color = new THREE.Color(config.skin_color)
+      const mesh = o as THREE.Mesh
+      const mats = Array.isArray(mesh.material) ? mesh.material : (mesh.material ? [mesh.material] : [])
+      for (const mat of mats) {
+        const m = mat as THREE.MeshStandardMaterial
+        if (!m || !('color' in m)) continue
+        const nm = `${mesh.name || ''} ${m.name || ''}`.toLowerCase()
+        // Only recolor designated skin meshes; everything else keeps its authored color
+        // so colorful characters render as designed. (ponytail: skin-tint is opt-in by mesh name)
+        if (/\b(skin|body|head|face|hand|arm|leg|torso)\b/.test(nm) || /skin/.test(nm)) {
+          m.color = new THREE.Color(config.skin_color)
+        }
+      }
     })
   }, [config.skin_color, config.base])
 
