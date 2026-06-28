@@ -587,6 +587,11 @@ export function canManageBadges(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
 
+// ponytail: System Manager only for v1. Add an 'Attendance Manager' role + check here if delegation is needed.
+export function canManageAttendance(boot: Boot | undefined): boolean {
+  return !!boot && boot.roles.includes('System Manager')
+}
+
 // The Vernon roles assignable from the mobile user-management screen.
 export const VERNON_ROLE_OPTIONS = [
   { value: 'Project Owner', label: 'Owner' },
@@ -1132,6 +1137,18 @@ export function useRequestException() {
       return res
     },
     onSettled: () => qc.invalidateQueries({ queryKey: keys.myAttendance }),
+  })
+}
+
+export function useAttendanceReport(
+  filters: { from_date: string; to_date: string; employee?: string; brand?: string; status?: string },
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['attendance-report', filters],
+    queryFn: () => mobileApi.attendanceReport(filters),
+    enabled,
+    staleTime: 1000 * 30,
   })
 }
 

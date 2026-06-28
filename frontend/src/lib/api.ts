@@ -369,6 +369,18 @@ export const mobileApi = {
       exception_type,
       reason,
     }),
+  attendanceReport: (filters: {
+    from_date: string
+    to_date: string
+    employee?: string
+    brand?: string
+    status?: string
+  }) =>
+    api.get<{
+      columns: { label: string; fieldname: string; fieldtype: string }[]
+      rows: Record<string, unknown>[]
+      stats: { present: number; late: number; absent: number; excused: number; penalty: number }
+    }>(A + 'attendance_report', filters),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
