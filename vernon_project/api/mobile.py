@@ -3375,3 +3375,79 @@ def toggle_reaction(todo, reaction):
 
 	counts, mine = _reaction_counts(todo, user)
 	return {"reactions": counts, "my_reaction": mine, "total": sum(counts.values())}
+
+
+# --------------------------------------------------------------------------------
+# Avatar — customizable 3D avatar config + cosmetic catalog/ownership.
+# Ownership = default items + items granted by a redeemed Marketplace Reward.
+# The composed PNG snapshot is written to User.user_image (the identity image).
+# --------------------------------------------------------------------------------
+
+DEFAULT_SKIN = "#E8B894"
+DEFAULT_ACCENT = "#6366F1"
+
+
+def _avatar_owned_items(user):
+	"""Set of Avatar Item names the user owns: every active default item, plus
+	items granted by a Marketplace Reward the user has redeemed."""
+	owned = set(
+		frappe.get_all("Avatar Item", filters={"is_default": 1, "active": 1}, pluck="name")
+	)
+	redeemed = frappe.get_all("Reward Redemption", filters={"user": user}, pluck="reward")
+	if redeemed:
+		linked = frappe.get_all(
+			"Marketplace Reward",
+			filters={"name": ["in", list(set(redeemed))], "avatar_item": ["is", "set"]},
+			fields=["avatar_item"],
+		)
+		owned.update(r["avatar_item"] for r in linked if r.get("avatar_item"))
+	return owned
+
+
+def _my_avatar_config(user):
+	"""Current equipped config, or sensible defaults if the user has no row yet."""
+	name = frappe.db.exists("User Avatar", {"user": user})
+	if not name:
+		base = frappe.db.get_value(
+			"Avatar Item", {"slot": "Base", "is_default": 1, "active": 1}, "name"
+		)
+		return {
+			"base": base, "hat": None, "face": None,
+			"skin_color": DEFAULT_SKIN, "accent_color": DEFAULT_ACCENT, "snapshot": None,
+		}
+	return frappe.db.get_value(
+		"User Avatar", name,
+		["base", "hat", "face", "skin_color", "accent_color", "snapshot"],
+		as_dict=True,
+	)
+
+
+@frappe.whitelist()
+def get_avatar_catalog():
+	"""Active catalog with per-item ownership + price, plus the caller's config."""
+	user = frappe.session.user
+	owned = _avatar_owned_items(user)
+	items = frappe.get_all(
+		"Avatar Item",
+		filters={"active": 1},
+		fields=["name", "item_name", "slot", "model_url", "socket", "thumbnail"],
+		order_by="slot asc, item_name asc",
+	)
+	priced = frappe.get_all(
+		"Marketplace Reward",
+		filters={"active": 1, "avatar_item": ["is", "set"]},
+		fields=["name", "avatar_item", "point_cost"],
+	)
+	price_map = {p["avatar_item"]: p for p in priced}
+	for it in items:
+		is_owned = it["name"] in owned
+		it["owned"] = is_owned
+		p = price_map.get(it["name"])
+		it["price"] = float(p["point_cost"]) if (p and not is_owned) else None
+		it["reward"] = p["name"] if (p and not is_owned) else None
+	return {"items": items, "my": _my_avatar_config(user)}
+
+
+@frappe.whitelist()
+def get_my_avatar():
+	return _my_avatar_config(frappe.session.user)
