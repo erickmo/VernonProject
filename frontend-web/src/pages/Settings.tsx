@@ -16,9 +16,22 @@ export default function Settings() {
   const save = useSaveAppSettings()
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<string>('0')
+  const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
+  const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
+  const [graceMinutes, setGraceMinutes] = useState<string>('0')
+  const [lateRate, setLateRate] = useState<string>('0')
+  const [earlyRate, setEarlyRate] = useState<string>('0')
+  const [absencePenalty, setAbsencePenalty] = useState<string>('0')
 
   useEffect(() => {
-    if (loaded) setMaxEstimatedMinutes(String(loaded.max_estimated_minutes))
+    if (!loaded) return
+    setMaxEstimatedMinutes(String(loaded.max_estimated_minutes))
+    setAttendanceEnabled(!!loaded.attendance_enabled)
+    setQrValiditySeconds(String(loaded.qr_validity_seconds))
+    setGraceMinutes(String(loaded.attendance_grace_minutes))
+    setLateRate(String(loaded.late_penalty_per_minute))
+    setEarlyRate(String(loaded.early_leave_penalty_per_minute))
+    setAbsencePenalty(String(loaded.absence_penalty))
   }, [loaded])
 
   const isManager = boot ? canManageGroups(boot) : null
@@ -47,12 +60,23 @@ export default function Settings() {
     )
   }
 
+  const n = (s: string) => (s === '' ? 0 : Number(s))
   const doSave = () => {
-    const value = maxEstimatedMinutes === '' ? 0 : Number(maxEstimatedMinutes)
-    save.mutate(value, {
-      onSuccess: () => toast('success', 'Settings saved'),
-      onError: (e) => toast('error', (e as Error).message),
-    })
+    save.mutate(
+      {
+        max_estimated_minutes: n(maxEstimatedMinutes),
+        attendance_enabled: attendanceEnabled ? 1 : 0,
+        qr_validity_seconds: n(qrValiditySeconds),
+        attendance_grace_minutes: n(graceMinutes),
+        late_penalty_per_minute: n(lateRate),
+        early_leave_penalty_per_minute: n(earlyRate),
+        absence_penalty: n(absencePenalty),
+      },
+      {
+        onSuccess: () => toast('success', 'Settings saved'),
+        onError: (e) => toast('error', (e as Error).message),
+      },
+    )
   }
 
   return (
@@ -85,25 +109,63 @@ export default function Settings() {
                 />
               )}
             </Field>
-
-            <button
-              type="submit"
-              disabled={save.isPending}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
-            >
-              {save.isPending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-              Save settings
-            </button>
           </div>
         </BentoTile>
 
-        <BentoTile span="sm" tone="plain" title="About this setting">
-          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 mt-1">
-            <b>Max estimated minutes</b> caps the value a user can enter when estimating a
-            Todo's duration. Set to <b>0</b> to allow any value (no limit).
-          </p>
+        <BentoTile span="md" tone="tint" accent="brand" title="Attendance">
+          <div className="mt-3 space-y-4">
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Enable attendance</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={attendanceEnabled}
+                onChange={(e) => setAttendanceEnabled(e.target.checked)}
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="QR validity (sec)">
+                {(id) => (
+                  <input id={id} type="number" min={0} className={field} value={qrValiditySeconds} onChange={(e) => setQrValiditySeconds(e.target.value)} placeholder="30" />
+                )}
+              </Field>
+              <Field label="Grace (min)">
+                {(id) => (
+                  <input id={id} type="number" min={0} className={field} value={graceMinutes} onChange={(e) => setGraceMinutes(e.target.value)} placeholder="5" />
+                )}
+              </Field>
+              <Field label="Late penalty / min">
+                {(id) => (
+                  <input id={id} type="number" min={0} step="any" className={field} value={lateRate} onChange={(e) => setLateRate(e.target.value)} placeholder="0" />
+                )}
+              </Field>
+              <Field label="Early-leave / min">
+                {(id) => (
+                  <input id={id} type="number" min={0} step="any" className={field} value={earlyRate} onChange={(e) => setEarlyRate(e.target.value)} placeholder="0" />
+                )}
+              </Field>
+              <Field label="Absence penalty">
+                {(id) => (
+                  <input id={id} type="number" min={0} step="any" className={field} value={absencePenalty} onChange={(e) => setAbsencePenalty(e.target.value)} placeholder="0" />
+                )}
+              </Field>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Points deducted per minute late / early-leave; flat for absence. 0 = no penalty.
+            </p>
+          </div>
         </BentoTile>
       </BentoGrid>
+
+      <button
+        type="submit"
+        disabled={save.isPending}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors sm:w-auto sm:px-8"
+      >
+        {save.isPending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+        Save settings
+      </button>
     </form>
   )
 }

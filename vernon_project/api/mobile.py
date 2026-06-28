@@ -1995,26 +1995,62 @@ def save_badge_settings(tiers):
 
 @frappe.whitelist()
 def get_app_settings():
+	def g(field):
+		return frappe.db.get_single_value("Vernon Settings", field)
+
 	return {
-		"max_estimated_minutes": int(
-			frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
-		)
+		"max_estimated_minutes": int(g("max_estimated_minutes") or 0),
+		"attendance_enabled": int(g("attendance_enabled") or 0),
+		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
+		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
+		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
+		"early_leave_penalty_per_minute": float(g("early_leave_penalty_per_minute") or 0),
+		"absence_penalty": float(g("absence_penalty") or 0),
 	}
 
 
 @frappe.whitelist()
-def save_app_settings(max_estimated_minutes):
+def save_app_settings(
+	max_estimated_minutes=None,
+	attendance_enabled=None,
+	qr_validity_seconds=None,
+	attendance_grace_minutes=None,
+	late_penalty_per_minute=None,
+	early_leave_penalty_per_minute=None,
+	absence_penalty=None,
+):
 	roles = set(frappe.get_roles(frappe.session.user))
 	if not ({"System Manager", "Group Manager"} & roles):
 		frappe.throw("Not permitted", frappe.PermissionError)
-	val = int(max_estimated_minutes)
-	if val < 0:
-		frappe.throw("Max estimated minutes cannot be negative.")
+
 	settings = frappe.get_single("Vernon Settings")
-	settings.max_estimated_minutes = val
+	# Each field is optional; only the ones provided in the request are updated.
+	int_fields = {
+		"max_estimated_minutes": max_estimated_minutes,
+		"attendance_enabled": attendance_enabled,
+		"qr_validity_seconds": qr_validity_seconds,
+		"attendance_grace_minutes": attendance_grace_minutes,
+	}
+	float_fields = {
+		"late_penalty_per_minute": late_penalty_per_minute,
+		"early_leave_penalty_per_minute": early_leave_penalty_per_minute,
+		"absence_penalty": absence_penalty,
+	}
+	for field, value in int_fields.items():
+		if value is not None:
+			ival = int(value)
+			if ival < 0:
+				frappe.throw(f"{field} cannot be negative.")
+			settings.set(field, ival)
+	for field, value in float_fields.items():
+		if value is not None:
+			fval = float(value)
+			if fval < 0:
+				frappe.throw(f"{field} cannot be negative.")
+			settings.set(field, fval)
 	settings.save(ignore_permissions=True)
 	frappe.db.commit()
-	return {"max_estimated_minutes": val}
+	return get_app_settings()
 
 
 # --------------------------------------------------------------------------------

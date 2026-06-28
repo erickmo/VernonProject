@@ -904,7 +904,7 @@ export function useAppSettings() {
 export function useSaveAppSettings() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (maxEstimatedMinutes: number) => mobileApi.saveAppSettings(maxEstimatedMinutes),
+    mutationFn: (settings: Partial<AppSettings>) => mobileApi.saveAppSettings(settings),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['app-settings'] }),
   })
 }

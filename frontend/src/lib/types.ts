@@ -552,6 +552,12 @@ export interface DataHealth {
 
 export interface AppSettings {
   max_estimated_minutes: number
+  attendance_enabled: number
+  qr_validity_seconds: number
+  attendance_grace_minutes: number
+  late_penalty_per_minute: number
+  early_leave_penalty_per_minute: number
+  absence_penalty: number
 }
 
 export interface MeetingListItem {
