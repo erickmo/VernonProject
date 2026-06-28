@@ -1532,6 +1532,31 @@ def delete_todo(project_item):
 	return {"status": "ok", "message": "Task deleted."}
 
 
+def _alloc_sum_error(rows, estimated):
+	"""Return a friendly message if the rows' minutes don't sum to `estimated`
+	(only enforced when estimated > 0), else None."""
+	estimated = int(estimated or 0)
+	if estimated <= 0:
+		return None
+	total = sum(int(r.get("minutes") or r.get("estimated_minutes") or 0) for r in (rows or []))
+	if total == estimated:
+		return None
+	diff = estimated - total
+	short = f"{diff}m short of" if diff > 0 else f"{-diff}m over"
+	return f"Assigned split is {short} the {estimated}m estimate."
+
+
+def _assigned_allocation_for(allocs, deadline, estimated):
+	"""Explicit assigned rows, or the virtual default (whole estimate on the
+	deadline) when none exist. Returns a list of {date, minutes, note}."""
+	if allocs:
+		return allocs
+	estimated = int(estimated or 0)
+	if estimated > 0 and deadline:
+		return [{"date": str(deadline), "minutes": estimated, "note": ""}]
+	return []
+
+
 @frappe.whitelist()
 def set_todo_allocations(project_item, allocations):
 	"""Assignee-only: replace a todo's day allocations (planning only, not scored).
