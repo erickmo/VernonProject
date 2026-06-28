@@ -95,9 +95,10 @@ export default function AvatarCustomizerScreen() {
   }
 
   const handleSave = async () => {
+    const configSnap = draft // ponytail: snapshot before async to avoid stale-closure race
     const png = await captureAvatarPng(previewRef.current!)
     saveAvatar.mutate(
-      { config: draft, snapshot: png ?? undefined },
+      { config: configSnap, snapshot: png ?? undefined },
       {
         onSuccess: () => { toast('success', 'Avatar saved'); navigate(-1) },
         onError: (e) => toast('error', e instanceof Error ? e.message : 'Save failed'),
@@ -185,6 +186,7 @@ export default function AvatarCustomizerScreen() {
                     const active = cur === c
                     return (
                       <button
+                        type="button"
                         key={c}
                         onClick={() => setDraft((d) => d ? { ...d, options: { ...d.options, [cSlot]: [c] } } : d)}
                         className={[
@@ -210,6 +212,7 @@ export default function AvatarCustomizerScreen() {
 
       {/* Save */}
       <button
+        type="button"
         onClick={handleSave}
         disabled={saveAvatar.isPending || buying}
         className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3.5 font-semibold text-white shadow-sm active:bg-brand-700 disabled:opacity-60"
@@ -235,6 +238,7 @@ function Chip({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={[
