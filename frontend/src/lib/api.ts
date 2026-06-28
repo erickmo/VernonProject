@@ -317,6 +317,22 @@ export const mobileApi = {
       config: JSON.stringify(config),
       snapshot_dataurl,
     }),
+  submitFeedback: (feedback_type: string, message: string, is_anonymous: boolean) =>
+    api.post<{ status: string }>('vernon_project.api.feedback.submit_feedback', {
+      feedback_type,
+      message,
+      is_anonymous: is_anonymous ? 1 : 0,
+    }),
+  listFeedback: (status?: string) =>
+    api.get<{ items: import('./types').FeedbackItem[] }>(
+      'vernon_project.api.feedback.list_feedback',
+      status ? { status } : {},
+    ),
+  setFeedbackStatus: (name: string, status: string) =>
+    api.post<{ status: string }>('vernon_project.api.feedback.set_feedback_status', {
+      name,
+      status,
+    }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.

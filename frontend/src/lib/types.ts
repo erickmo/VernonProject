@@ -596,3 +596,14 @@ export interface AvatarCatalog {
   items: AvatarItem[]
   my: AvatarConfig
 }
+
+export type FeedbackItem = {
+  name: string
+  feedback_type: string
+  message: string
+  status: string
+  is_anonymous: boolean
+  submitter: string
+  at: string
+  at_human: string
+}

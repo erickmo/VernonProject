@@ -78,6 +78,7 @@ export const keys = {
   passkeys: ['passkeys'] as const,
   teamActivity: ['team-activity'] as const,
   avatarCatalog: ['avatar-catalog'] as const,
+  feedbackInbox: (status?: string) => ['feedback-inbox', status ?? 'all'] as const,
 }
 
 export const useBoot = () =>
@@ -1065,6 +1066,29 @@ export function useSaveAvatar() {
       qc.invalidateQueries({ queryKey: keys.avatarCatalog })
       qc.invalidateQueries({ queryKey: keys.boot })
     },
+  })
+}
+
+export function useSubmitFeedback() {
+  return useMutation({
+    mutationFn: (v: { feedback_type: string; message: string; is_anonymous: boolean }) =>
+      mobileApi.submitFeedback(v.feedback_type, v.message, v.is_anonymous),
+  })
+}
+
+export function useFeedbackInbox(status?: string) {
+  return useQuery({
+    queryKey: keys.feedbackInbox(status),
+    queryFn: () => mobileApi.listFeedback(status),
+  })
+}
+
+export function useSetFeedbackStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { name: string; status: string }) =>
+      mobileApi.setFeedbackStatus(v.name, v.status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feedback-inbox'] }),
   })
 }
 
