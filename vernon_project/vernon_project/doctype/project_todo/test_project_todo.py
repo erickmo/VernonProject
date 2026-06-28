@@ -40,12 +40,9 @@ class TestProjectTodo(unittest.TestCase):
 				"brand_name": "Test Customer",
 			}).insert(ignore_permissions=True)
 
-		# Create test project group if not exists
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({
-				"doctype": "Project Group",
-				"project_name": "Test Project Group",
-			}).insert(ignore_permissions=True)
+		# Project Todo requires a Group (link) + level; create a shared one.
+		if not frappe.db.exists("Group", "Test Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Test Group"}).insert(ignore_permissions=True)
 
 		# Create test project with team members so validate_assigned_to_team_member passes
 		self.project = frappe.get_doc({
@@ -54,7 +51,6 @@ class TestProjectTodo(unittest.TestCase):
 			"brand": "Test Customer",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
-			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
@@ -93,6 +89,9 @@ class TestProjectTodo(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "Test Todo Item",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
+			"group": "Test Group",
+			"level": "L1",
 			"deadline": add_days(nowdate(), 7),
 			"estimated": 60,
 			"status": "⚪️ Planned",
@@ -134,11 +133,15 @@ class TestProjectTodo(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "standalone task",
 			"assigned_to": self.owner_user,
+			"group": "Test Group",
+			"level": "L1",
 			"deadline": add_days(nowdate(), 5),
 			"estimated": 60,
 			"status": "⚪️ Planned",
 		}
 		fields.update(overrides)
+		# start_date must be <= deadline; recurring tests use past deadlines.
+		fields.setdefault("start_date", fields["deadline"])
 		return frappe.get_doc(fields).insert(ignore_permissions=True)
 
 	# ------------------------------------------------------------------
@@ -321,6 +324,9 @@ class TestProjectTodo(unittest.TestCase):
 				"project_detail": self.project_detail.name,
 				"to_do": "Sneaky task",
 				"assigned_to": "test_user2@example.com",
+				"start_date": nowdate(),
+				"group": "Test Group",
+				"level": "L1",
 				"deadline": add_days(nowdate(), 5),
 				"status": "⚪️ Planned",
 			}).insert(ignore_permissions=True)
@@ -332,7 +338,6 @@ class TestProjectTodo(unittest.TestCase):
 			"doctype": "Project",
 			"project_name": "Lead Create Test",
 			"brand": "Test Customer",
-			"project_group": "Test Project Group",
 			"project_owner": "test_user@example.com",
 			"project_leader": "test_user@example.com",
 			"status": "Ongoing",
@@ -366,6 +371,9 @@ class TestProjectTodo(unittest.TestCase):
 			"project_detail": pd.name,
 			"to_do": "Legit task",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
+			"group": "Test Group",
+			"level": "L1",
 			"deadline": add_days(nowdate(), 5),
 			"status": "⚪️ Planned",
 		}).insert(ignore_permissions=True)
@@ -448,12 +456,9 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 				"brand_name": "Test Customer Phase",
 			}).insert(ignore_permissions=True)
 
-		# Create test project group if not exists
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({
-				"doctype": "Project Group",
-				"project_name": "Test Project Group",
-			}).insert(ignore_permissions=True)
+		# Project Todo requires a Group (link) + level; create a shared one.
+		if not frappe.db.exists("Group", "Test Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Test Group"}).insert(ignore_permissions=True)
 
 		# Create test project with team members so validate_assigned_to_team_member passes
 		self.project = frappe.get_doc({
@@ -462,7 +467,6 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"brand": "Test Customer Phase",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
-			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
@@ -499,6 +503,9 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "Test Phase Tracking Todo",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
+			"group": "Test Group",
+			"level": "L1",
 			"deadline": add_days(nowdate(), 7),
 			"estimated": 60,
 			"status": "⚪️ Planned",
@@ -534,12 +541,17 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_calculate_total_estimated_hours(self):
-		"""Test that total estimated hours are calculated correctly"""
+		"""total = estimated + done_to_checked + checked_to_completed (minutes; see controller)."""
+		self.todo.reload()
+		self.todo.estimated = 60
+		self.todo.estimated_done_to_checked = 30
+		self.todo.estimated_checked_to_completed = 15
+		self.todo.save(ignore_permissions=True)
 		self.todo.reload()
 
-		expected_total = 2.5 + 1.0 + 0.5  # 4.0
+		expected_total = 60 + 30 + 15  # 105
 		self.assertEqual(self.todo.total_estimated_hours, expected_total,
-			f"Total estimated hours should be {expected_total}")
+			f"Total estimated minutes should be {expected_total}")
 
 	def test_planned_started_at_timestamp(self):
 		"""Test that planned_started_at is set when todo is created"""
@@ -670,15 +682,17 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"total_actual_hours should be greater than 0")
 
 	def test_update_estimated_hours_recalculates_total(self):
-		"""Test that changing individual phase estimates updates total"""
+		"""Test that changing a phase estimate updates the total."""
 		self.todo.reload()
-		self.todo.estimated_planned_to_done = 5.0
+		self.todo.estimated = 90
+		self.todo.estimated_done_to_checked = 30
+		self.todo.estimated_checked_to_completed = 15
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
 		self.todo.reload()
 
-		expected_total = 5.0 + 1.0 + 0.5  # 6.5
+		expected_total = 90 + 30 + 15  # 135
 		self.assertEqual(self.todo.total_estimated_hours, expected_total,
 			f"Total should be updated to {expected_total}")
 
@@ -726,6 +740,9 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "Todo with No Estimates",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
+			"group": "Test Group",
+			"level": "L1",
 			"deadline": add_days(nowdate(), 7),
 			"status": "⚪️ Planned",
 		}).insert(ignore_permissions=True)

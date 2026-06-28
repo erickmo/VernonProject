@@ -15,8 +15,6 @@ class TestProjectGuards(unittest.TestCase):
 	def setUp(self):
 		_ensure("Brand", "Test Customer", {
 			"doctype": "Brand", "brand_name": "Test Customer"})
-		_ensure("Project Group", "Test Project Group", {
-			"doctype": "Project Group", "project_name": "Test Project Group"})
 		for u in ("owner_u@example.com", "leader_u@example.com", "other_u@example.com"):
 			if not frappe.db.exists("User", u):
 				frappe.get_doc({"doctype": "User", "email": u, "first_name": u.split("@")[0],
@@ -24,7 +22,7 @@ class TestProjectGuards(unittest.TestCase):
 
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Guard Test Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "owner_u@example.com", "project_leader": "leader_u@example.com",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})

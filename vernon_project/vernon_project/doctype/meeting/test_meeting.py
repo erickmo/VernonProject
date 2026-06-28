@@ -16,13 +16,10 @@ class MeetingTestBase(unittest.TestCase):
 				}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group", "project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Meeting Test Project",
 			"brand": "Test Customer",
-			"project_group": "Test Project Group",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
 			"status": "Ongoing",
@@ -67,6 +64,8 @@ class TestMeetingBasics(MeetingTestBase):
 class TestMeetingPoints(MeetingTestBase):
 	def setUp(self):
 		super().setUp()
+		if frappe.db.exists("Group", "Meeting Group"):
+			frappe.delete_doc("Group", "Meeting Group", force=True, ignore_permissions=True)
 		self.group = frappe.get_doc({
 			"doctype": "Group",
 			"group_name": "Meeting Group",
@@ -80,8 +79,13 @@ class TestMeetingPoints(MeetingTestBase):
 		frappe.db.commit()
 
 	def tearDown(self):
-		frappe.delete_doc("Group", self.group.name, force=True, ignore_permissions=True)
+		# Delete meetings/project first: deleting a Done meeting re-fires on_change ->
+		# sync_point_ledger, which needs the Group to still exist. Then clean up.
 		super().tearDown()
+		for pl in frappe.get_all("Point Ledger", filters={"group": self.group.name}, pluck="name"):
+			frappe.delete_doc("Point Ledger", pl, force=True, ignore_permissions=True)
+		frappe.delete_doc("Group", self.group.name, force=True, ignore_permissions=True)
+		frappe.db.commit()
 
 	def test_point_is_rate_times_minutes_times_difficulty(self):
 		# 2 /min × 30 min × 50% = 30
@@ -156,6 +160,11 @@ class TestMeetingAward(TestMeetingPoints):
 class TestMeetingPermissions(MeetingTestBase):
 	def test_team_member_can_read_non_member_cannot(self):
 		m = self.make_meeting(participants=["m_user1@example.com"])
+		# m_user1 needs the base read role; team query conditions then scope visibility.
+		mu = frappe.get_doc("User", "m_user1@example.com")
+		if not any(r.role == "Project Team" for r in mu.roles):
+			mu.append("roles", {"role": "Project Team"})
+			mu.save(ignore_permissions=True)
 		frappe.set_user("m_user1@example.com")
 		names = frappe.get_list("Meeting", filters={"name": m.name}, pluck="name")
 		self.assertIn(m.name, names)
