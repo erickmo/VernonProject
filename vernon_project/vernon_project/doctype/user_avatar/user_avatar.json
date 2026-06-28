@@ -9,7 +9,7 @@
  "fields": [
   {"fieldname":"user","fieldtype":"Link","label":"User","options":"User","reqd":1,"unique":1,"in_list_view":1},
   {"fieldname":"config_json","fieldtype":"Long Text","label":"Avatar Config (JSON)"},
-  {"fieldname":"base","fieldtype":"Link","label":"Base","options":"Avatar Item","reqd":1},
+  {"fieldname":"base","fieldtype":"Link","label":"(deprecated) Base","options":"Avatar Item"},
   {"fieldname":"hat","fieldtype":"Link","label":"Hat","options":"Avatar Item"},
   {"fieldname":"face","fieldtype":"Link","label":"Face","options":"Avatar Item"},
   {"fieldname":"column_break_a","fieldtype":"Column Break"},
