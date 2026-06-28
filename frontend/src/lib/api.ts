@@ -313,9 +313,9 @@ export const mobileApi = {
     api.get<import('./types').AvatarCatalog>(M + 'get_avatar_catalog'),
   getMyAvatar: () =>
     api.get<import('./types').AvatarConfig>(M + 'get_my_avatar'),
-  saveMyAvatar: (config: Partial<import('./types').AvatarConfig>, snapshot_dataurl?: string) =>
+  saveMyAvatar: (config: import('./types').AvatarConfig, snapshot_dataurl?: string) =>
     api.post<import('./types').AvatarConfig>(M + 'save_my_avatar', {
-      config: JSON.stringify(config),
+      config_json: JSON.stringify(config),
       snapshot_dataurl,
     }),
   submitFeedback: (feedback_type: string, message: string, is_anonymous: boolean) =>

@@ -572,28 +572,24 @@ export interface MeetingInvitableUser {
   full_name: string
 }
 
-export type AvatarSlot = 'Base' | 'Hat' | 'Face'
-export interface AvatarItem {
+export type StyleKey = 'lorelei' | 'adventurer' | 'notionists'
+export interface AvatarConfig {
+  style: StyleKey
+  options: Record<string, string[]>
+}
+export interface PremiumItem {
   name: string
   item_name: string
-  slot: AvatarSlot
-  model_url: string
-  socket: string | null
+  style: string
+  slot: string
+  option_value: string
   thumbnail: string | null
   owned: boolean
   price: number | null
   reward: string | null
 }
-export interface AvatarConfig {
-  base: string | null
-  hat: string | null
-  face: string | null
-  skin_color: string
-  accent_color: string
-  snapshot: string | null
-}
 export interface AvatarCatalog {
-  items: AvatarItem[]
+  premium: PremiumItem[]
   my: AvatarConfig
 }
 

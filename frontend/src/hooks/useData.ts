@@ -8,7 +8,6 @@ import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
   AvatarCatalog,
-  AvatarConfig,
   Boot,
   Brand,
   Comment,
@@ -1066,7 +1065,7 @@ export function useAvatarCatalog() {
 export function useSaveAvatar() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ config, snapshot }: { config: Partial<AvatarConfig>; snapshot?: string }) =>
+    mutationFn: ({ config, snapshot }: { config: import('../lib/types').AvatarConfig; snapshot?: string }) =>
       mobileApi.saveMyAvatar(config, snapshot),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.avatarCatalog })
