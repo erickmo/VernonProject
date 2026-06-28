@@ -91,7 +91,8 @@ export default function AvatarCustomizerScreen() {
     try {
       await mobileApi.redeemReward(item.reward)
       await qc.invalidateQueries({ queryKey: keys.avatarCatalog })
-      if (slotKey) setDraft((d) => d ? { ...d, [slotKey]: item.name } : d)
+      const itemSlot = SLOT_MAP[item.slot as keyof typeof SLOT_MAP] ?? null
+      if (itemSlot) setDraft((d) => d ? { ...d, [itemSlot]: item.name } : d)
       toast('success', `Unlocked ${item.item_name}`)
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Purchase failed')

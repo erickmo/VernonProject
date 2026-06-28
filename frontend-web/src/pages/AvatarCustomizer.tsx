@@ -76,7 +76,8 @@ export default function AvatarCustomizer() {
     try {
       await mobileApi.redeemReward(item.reward)
       await qc.invalidateQueries({ queryKey: keys.avatarCatalog })
-      if (slotKey) setDraft((d) => d ? { ...d, [slotKey]: item.name } : d)
+      const itemSlot = SLOT_MAP[item.slot as keyof typeof SLOT_MAP] ?? null
+      if (itemSlot) setDraft((d) => d ? { ...d, [itemSlot]: item.name } : d)
       toast('success', `Unlocked ${item.item_name}`)
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Purchase failed')
@@ -132,6 +133,7 @@ export default function AvatarCustomizer() {
           <div className="mb-4 flex flex-wrap gap-2">
             {TABS.map((t) => (
               <button
+                type="button"
                 key={t}
                 onClick={() => setTab(t)}
                 className={[
@@ -153,6 +155,7 @@ export default function AvatarCustomizer() {
                 const active = draft[slotKey] === item.name
                 return (
                   <button
+                    type="button"
                     key={item.name}
                     onClick={() => item.owned ? equip(item) : setBuyItem(item)}
                     disabled={buying}

@@ -105,11 +105,14 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
 function AvatarTile() {
   const navigate = useNavigate()
   const { data: catalog } = useAvatarCatalog()
+  const boot = useBoot()
+  const b = boot.data
 
   return (
     <BentoTile span="md" tone="tint" accent="violet" title="My Avatar" icon={Wand2}
       actions={
         <button
+          type="button"
           onClick={() => navigate('/avatar')}
           className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition"
         >
@@ -120,8 +123,8 @@ function AvatarTile() {
       <div className="mt-1 h-44 overflow-hidden rounded-xl">
         {catalog ? (
           <AvatarBoundary fallback={
-            <div className="flex h-full items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10 text-xs text-slate-400">
-              3D preview unavailable
+            <div className="flex h-full items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-500/10">
+              <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={72} />
             </div>
           }>
             <AvatarViewer interactive={false} config={catalog.my} items={catalog.items} />
