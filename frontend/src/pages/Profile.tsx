@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
@@ -213,6 +213,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             {canGrantPoints(boot) && (
               <Row icon={Gift} label="Grant Points" hue="amber" onClick={() => navigate('/grant-points')} />
             )}
+            <Row icon={MessageSquarePlus} label="Send feedback" hue="violet" onClick={() => navigate('/feedback')} />
             <Row icon={RefreshCw} label="Refresh data" hue="slate" onClick={refresh} />
             <Row icon={BookOpen} label="Replay quick tour" hue="slate" onClick={onReplayOnboarding} />
           </div>

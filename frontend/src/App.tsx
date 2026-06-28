@@ -36,6 +36,7 @@ import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
+import FeedbackScreen from './pages/FeedbackScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
 import AvatarCustomizerScreen from './pages/AvatarCustomizerScreen'
@@ -161,6 +162,7 @@ export default function App() {
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/notes/new" element={<NoteFormScreen />} />
         <Route path="/notes/:name" element={<NoteFormScreen />} />
+        <Route path="/feedback" element={<FeedbackScreen />} />
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
         <Route path="/avatar" element={<AvatarCustomizerScreen />} />
