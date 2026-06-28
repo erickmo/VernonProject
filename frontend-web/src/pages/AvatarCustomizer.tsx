@@ -253,10 +253,9 @@ function VariantTile({
   onBuy: () => void
   buyPending: boolean
 }) {
-  const previewConfig: AvatarConfig = {
-    style: draft.style,
-    options: { ...draft.options, [slot]: [value] },
-  }
+  const previewOptions: Record<string, string[]> = { ...draft.options, [slot]: [value] }
+  if (PROB_SLOTS.includes(slot)) previewOptions[`${slot}Probability`] = ['100']
+  const previewConfig: AvatarConfig = { style: draft.style, options: previewOptions }
   return (
     <div className="relative shrink-0">
       <button
