@@ -1,0 +1,39 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-06-28 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "feedback_type",
+  "message",
+  "is_anonymous",
+  "submitted_by",
+  "status"
+ ],
+ "fields": [
+  {"fieldname": "feedback_type", "fieldtype": "Select", "label": "Type", "options": "Criticism\nSuggestion\nPraise\nBug", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "message", "fieldtype": "Long Text", "label": "Message", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "is_anonymous", "fieldtype": "Check", "label": "Anonymous", "default": "0", "in_list_view": 1},
+  {"fieldname": "submitted_by", "fieldtype": "Link", "label": "Submitted By", "options": "User", "in_list_view": 1, "search_index": 1},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "New\nReviewed\nResolved", "default": "New", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-06-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Company Feedback",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
