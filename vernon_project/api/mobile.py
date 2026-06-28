@@ -2334,7 +2334,7 @@ def get_marketplace():
 	_, _, balance = _user_balance(frappe.session.user)
 	rewards = frappe.get_all(
 		"Marketplace Reward",
-		filters={"active": 1},
+		filters={"active": 1, "avatar_item": ["is", "not set"]},
 		fields=["name", "reward_name", "point_cost", "image", "description", "stock_quantity"],
 		order_by="point_cost asc, reward_name asc",
 	)
@@ -3520,3 +3520,55 @@ def _save_snapshot(user, dataurl):
 		raise
 	except Exception:
 		return None
+
+
+# --------------------------------------------------------------------------------
+# Avatar catalog seed
+# v1 avatar catalog. model_url files are bundled in Plan 2 (frontend); the paths
+# are stable and shared by both SPAs at /assets/vernon_project/models/.
+# --------------------------------------------------------------------------------
+
+AVATAR_SEED = [
+	{"item_name": "Human",   "slot": "Base", "is_default": 1, "model_url": "/assets/vernon_project/models/base_human.glb",   "socket": None,        "price": None},
+	{"item_name": "Cat",     "slot": "Base", "is_default": 0, "model_url": "/assets/vernon_project/models/base_cat.glb",     "socket": None,        "price": 200},
+	{"item_name": "Cap",     "slot": "Hat",  "is_default": 1, "model_url": "/assets/vernon_project/models/hat_cap.glb",      "socket": "head_top",  "price": None},
+	{"item_name": "Crown",   "slot": "Hat",  "is_default": 0, "model_url": "/assets/vernon_project/models/hat_crown.glb",    "socket": "head_top",  "price": 500},
+	{"item_name": "Glasses", "slot": "Face", "is_default": 0, "model_url": "/assets/vernon_project/models/face_glasses.glb", "socket": "face",      "price": 150},
+]
+
+
+def seed_avatar_catalog():
+	"""Idempotent: create v1 Avatar Items + a linked Marketplace Reward for each
+	priced one. Re-running updates model_url/socket/default flags in place."""
+	created_items, created_rewards = 0, 0
+	for s in AVATAR_SEED:
+		if frappe.db.exists("Avatar Item", s["item_name"]):
+			frappe.db.set_value("Avatar Item", s["item_name"], {
+				"slot": s["slot"], "is_default": s["is_default"],
+				"model_url": s["model_url"], "socket": s["socket"], "active": 1,
+			})
+		else:
+			frappe.get_doc({
+				"doctype": "Avatar Item",
+				"item_name": s["item_name"], "slot": s["slot"],
+				"is_default": s["is_default"], "model_url": s["model_url"],
+				"socket": s["socket"], "active": 1,
+			}).insert(ignore_permissions=True)
+			created_items += 1
+
+		if s["price"] is not None:
+			reward_name = f"Avatar: {s['item_name']}"
+			if not frappe.db.exists("Marketplace Reward", reward_name):
+				frappe.get_doc({
+					"doctype": "Marketplace Reward",
+					"reward_name": reward_name, "point_cost": s["price"],
+					"stock_quantity": 9999, "active": 1, "avatar_item": s["item_name"],
+					"description": f"Unlock the {s['item_name']} avatar item.",
+				}).insert(ignore_permissions=True)
+				created_rewards += 1
+			else:
+				frappe.db.set_value("Marketplace Reward", reward_name, {
+					"avatar_item": s["item_name"], "point_cost": s["price"], "active": 1,
+				})
+	frappe.db.commit()
+	return {"created_items": created_items, "created_rewards": created_rewards}
