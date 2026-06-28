@@ -2420,7 +2420,7 @@ def redeem_reward(reward):
 	transaction (row-locked) so concurrent redeems cannot oversell or push a
 	balance negative."""
 	user = frappe.session.user
-	lock_key = f"vernon_redeem:{user}"
+	lock_key = f"vernon_spend:{user}"
 	# Serialize a single user's redeems so two concurrent requests can't both
 	# pass the balance check and drive the balance negative. Connection-scoped;
 	# released in finally. 10s timeout -> treat contention as a transient busy.
@@ -3462,22 +3462,6 @@ DEFAULT_SKIN = "#E8B894"
 DEFAULT_ACCENT = "#6366F1"
 
 
-def _avatar_owned_items(user):
-	"""Set of Avatar Item names the user owns: every active default item, plus
-	items granted by a Marketplace Reward the user has redeemed."""
-	owned = set(
-		frappe.get_all("Avatar Item", filters={"is_default": 1, "active": 1}, pluck="name")
-	)
-	redeemed = frappe.get_all("Reward Redemption", filters={"user": user}, pluck="reward")
-	if redeemed:
-		linked = frappe.get_all(
-			"Marketplace Reward",
-			filters={"name": ["in", list(set(redeemed))], "avatar_item": ["is", "set"]},
-			fields=["avatar_item"],
-		)
-		owned.update(r["avatar_item"] for r in linked if r.get("avatar_item"))
-	return owned
-
 
 import json as _json
 
@@ -3519,7 +3503,7 @@ def buy_avatar_option(style, slot, value):
 	if frappe.db.exists("Avatar Unlock", {"user": user, "style": style, "slot": slot, "option_value": value}):
 		_, _, bal = _user_balance(user)
 		return {"balance": bal}
-	lock_key = f"vernon_avatar_buy:{user}"
+	lock_key = f"vernon_spend:{user}"
 	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
 		frappe.throw("Busy, please retry", frappe.ValidationError)
 	try:
@@ -3539,17 +3523,37 @@ def buy_avatar_option(style, slot, value):
 		frappe.db.sql("select release_lock(%s)", lock_key)
 
 
-def _premium_index():
-	"""Map (style, slot, option_value) -> Avatar Item name, active items only.
-	A selected option is 'premium' iff it appears here; everything else is free."""
-	idx = {}
-	for it in frappe.get_all(
-		"Avatar Item",
-		filters={"active": 1},
-		fields=["name", "style", "slot", "option_value"],
-	):
-		idx[(it["style"], it["slot"], it["option_value"])] = it["name"]
-	return idx
+
+def grandfather_avatar_unlocks():
+	"""One-time: give every user a free (cost=0) unlock for the premium variants
+	already in their saved config, so the freemium rule doesn't block re-saving
+	avatars they built when everything was free."""
+	import json as _json
+	created = 0
+	for ua in frappe.get_all("User Avatar", fields=["user", "config_json"]):
+		if not ua.get("config_json"):
+			continue
+		try:
+			cfg = _json.loads(ua["config_json"])
+		except Exception:
+			continue
+		style = cfg.get("style")
+		options = cfg.get("options") or {}
+		for slot, vals in options.items():
+			if slot not in AVATAR_FREE.get(style, {}):
+				continue
+			for v in (vals if isinstance(vals, list) else [vals]):
+				if _is_free(style, slot, v):
+					continue
+				if frappe.db.exists("Avatar Unlock", {"user": ua["user"], "style": style, "slot": slot, "option_value": v}):
+					continue
+				frappe.get_doc({
+					"doctype": "Avatar Unlock", "user": ua["user"], "style": style,
+					"slot": slot, "option_value": v, "cost": 0, "unlocked_on": now_datetime(),
+				}).insert(ignore_permissions=True)
+				created += 1
+	frappe.db.commit()
+	return {"granted": created}
 
 
 def _my_avatar_config(user):
