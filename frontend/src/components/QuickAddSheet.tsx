@@ -9,6 +9,18 @@ import { keys, useProject, useProjectDetail, useProjects } from '@/hooks/useData
 
 export type QuickAddMode = 'task' | 'note'
 
+// Remember the last project the user added a todo to, so a second FAB tap jumps
+// straight to its work-item step instead of the project list again. Survives
+// sheet close + reload + both mount points (Today + Projects).
+const LAST_PROJECT_KEY = 'vernon.fab.lastProject'
+const readLastProject = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_PROJECT_KEY)
+  } catch {
+    return null
+  }
+}
+
 export function QuickAddSheet({
   open,
   mode,
@@ -21,19 +33,36 @@ export function QuickAddSheet({
   const toast = useToast()
   const qc = useQueryClient()
   const { data: projects } = useProjects()
-  const [project, setProject] = useState<string | null>(null)
+  // Init from the remembered project so a repeat tap reopens to its work items.
+  const [project, setProjectState] = useState<string | null>(() => readLastProject())
   const [detail, setDetail] = useState<string | null>(null)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   // Both queries are gated by their `enabled: !!name` — passing '' is a no-op.
-  const { data: projectFull, isLoading: projLoading } = useProject(project ?? '')
+  const { data: projectFull, isLoading: projLoading, isError: projError } = useProject(project ?? '')
   const { data: detailData, isLoading: detailLoading } = useProjectDetail(detail ?? '')
 
-  // Reset every transient choice whenever the sheet is dismissed, so the next
-  // open always starts at step 1 / a blank note.
+  // Persist (or clear) the chosen project so it survives close + reload.
+  const chooseProject = (name: string | null) => {
+    setProjectState(name)
+    try {
+      if (name) localStorage.setItem(LAST_PROJECT_KEY, name)
+      else localStorage.removeItem(LAST_PROJECT_KEY)
+    } catch {
+      /* storage disabled — in-memory only */
+    }
+  }
+
+  // A remembered project the user can no longer open (left it / it was deleted)
+  // → drop it and fall back to the project list.
+  useEffect(() => {
+    if (project && projError) chooseProject(null)
+  }, [project, projError])
+
+  // On close, KEEP the chosen project (next tap reopens to its work items) and
+  // only clear the within-project transient choices.
   useEffect(() => {
     if (!open) {
-      setProject(null)
       setDetail(null)
       setText('')
       setSaving(false)
@@ -109,7 +138,7 @@ export function QuickAddSheet({
   if (project) {
     const details = projectFull?.project_details ?? []
     return (
-      <SheetShell title="Pick a work item" onClose={onClose} onBack={() => setProject(null)}>
+      <SheetShell title="Pick a work item" onClose={onClose} onBack={() => chooseProject(null)}>
         {projLoading && !projectFull ? (
           <div className="flex justify-center py-8">
             <Spinner className="h-5 w-5 text-stone-400" />
@@ -140,15 +169,17 @@ export function QuickAddSheet({
     )
   }
 
-  // ----- Task mode, step 1: pick a project -----
+  // ----- Task mode, step 1: pick a project you own or manage -----
+  // Only projects you own / lead / admin — the ones you add work to.
+  const ownedManaged = (projects ?? []).filter((p) => p.is_owner || p.is_leader || p.is_admin)
   return (
     <SheetShell title="Pick a project" onClose={onClose}>
-      {projects && projects.length ? (
+      {ownedManaged.length ? (
         <div className="flex flex-col gap-2">
-          {projects.map((p) => (
+          {ownedManaged.map((p) => (
             <button
               key={p.name}
-              onClick={() => setProject(p.name)}
+              onClick={() => chooseProject(p.name)}
               className="flex items-center gap-3 rounded-2xl border border-paper-edge bg-paper-card px-4 py-3 text-left active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800"
             >
               <FolderKanban className="h-5 w-5 shrink-0 text-brand-500" />
@@ -166,8 +197,8 @@ export function QuickAddSheet({
       ) : (
         <EmptyState
           icon={FolderKanban}
-          title="Join a project first"
-          subtitle="You need to be on a project to add a todo."
+          title="No projects to add to"
+          subtitle="You can add todos to projects you own or manage."
         />
       )}
     </SheetShell>
