@@ -54,7 +54,7 @@ function AchievementTile({ a }: { a: Achievement }) {
 
 export default function Achievements() {
   const { data: gami, isLoading } = useGamification()
-  const list = gami?.achievements ?? []
+  const list = (gami?.achievements ?? []).filter((a) => !a.is_tier)
 
   return (
     <div className="space-y-6">

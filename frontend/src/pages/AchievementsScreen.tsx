@@ -55,7 +55,7 @@ export default function AchievementsScreen() {
     )
   }
 
-  const list = gami?.achievements ?? []
+  const list = (gami?.achievements ?? []).filter((a) => !a.is_tier)
 
   return (
     <DetailScreen title="Achievements">

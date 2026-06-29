@@ -37,7 +37,6 @@ import type {
   AdminReward,
   AdminRedemption,
   RewardFormPayload,
-  BadgeTierInput,
   PersonalNote,
   ActivityItem,
   ReactionKey,
@@ -886,24 +885,7 @@ export function useFulfillRedemption() {
   })
 }
 
-export function useBadgeSettings() {
-  return useQuery({
-    queryKey: ['badge-settings'],
-    queryFn: async () => (await mobileApi.getBadgeSettings()).tiers,
-  })
-}
 
-export function useSaveBadgeSettings() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (tiers: BadgeTierInput[]) => mobileApi.saveBadgeSettings(tiers),
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['badge-settings'] })
-      qc.invalidateQueries({ queryKey: keys.boot })
-      qc.invalidateQueries({ queryKey: ['leaderboard'] })
-    },
-  })
-}
 
 export function useGamificationSettings() {
   return useQuery({

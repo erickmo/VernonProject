@@ -32,7 +32,6 @@ import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
-import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
 import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
@@ -159,10 +158,7 @@ export default function App() {
           </>
         )}
         {canManageBadges(boot) && (
-          <>
-            <Route path="/badge-settings" element={<BadgeSettingsScreen />} />
-            <Route path="/gamification-settings" element={<GamificationSettingsScreen />} />
-          </>
+          <Route path="/gamification-settings" element={<GamificationSettingsScreen />} />
         )}
         {canManageMarketplace(boot) && (
           <>

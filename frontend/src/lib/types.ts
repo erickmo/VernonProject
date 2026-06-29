@@ -623,6 +623,7 @@ export interface Achievement {
   code: string
   title: string
   icon: string
+  color?: string
   condition: string
   threshold: number
   progress: number
@@ -630,6 +631,7 @@ export interface Achievement {
   claimed: boolean
   reward_points: number
   reward_asset: string | null
+  is_tier?: number
 }
 
 export interface Gamification {

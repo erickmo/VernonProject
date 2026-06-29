@@ -221,10 +221,6 @@ export const mobileApi = {
     }),
   listGiftRecipients: () =>
     api.get<{ users: import('./types').GiftUser[] }>(M + 'list_gift_recipients'),
-  getBadgeSettings: () =>
-    api.get<{ tiers: import('./types').BadgeTierInput[] }>(M + 'get_badge_settings'),
-  saveBadgeSettings: (tiers: import('./types').BadgeTierInput[]) =>
-    api.post<{ ok: boolean }>(M + 'save_badge_settings', { tiers: JSON.stringify(tiers) }),
   getAppSettings: () => api.get<import('./types').AppSettings>(M + 'get_app_settings'),
   saveAppSettings: (settings: Partial<import('./types').AppSettings>) =>
     api.post<import('./types').AppSettings>(
