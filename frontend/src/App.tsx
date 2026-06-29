@@ -33,12 +33,14 @@ import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import BadgeSettingsScreen from './pages/BadgeSettingsScreen'
+import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
+import NotificationsScreen from './pages/NotificationsScreen'
 import AvatarCustomizerScreen from './pages/AvatarCustomizerScreen'
 import Scan from './pages/Scan'
 import MyAttendance from './pages/MyAttendance'
@@ -157,7 +159,10 @@ export default function App() {
           </>
         )}
         {canManageBadges(boot) && (
-          <Route path="/badge-settings" element={<BadgeSettingsScreen />} />
+          <>
+            <Route path="/badge-settings" element={<BadgeSettingsScreen />} />
+            <Route path="/gamification-settings" element={<GamificationSettingsScreen />} />
+          </>
         )}
         {canManageMarketplace(boot) && (
           <>
@@ -176,6 +181,7 @@ export default function App() {
         <Route path="/feedback" element={<FeedbackScreen />} />
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
+        <Route path="/notifications" element={<NotificationsScreen />} />
         <Route path="/avatar" element={<AvatarCustomizerScreen />} />
         <Route path="/scan" element={<Scan />} />
         <Route path="/attendance" element={<MyAttendance />} />
