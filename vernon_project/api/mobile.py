@@ -4063,10 +4063,31 @@ def save_gamification_settings(premium_price=None, points_per_level=None, daily_
 	if daily_reward_points is not None: s.daily_reward_points = max(0.0, float(daily_reward_points))
 	if streak_bonus_points is not None: s.streak_bonus_points = max(0.0, float(streak_bonus_points))
 	if streak_cap is not None: s.streak_cap = max(1, int(streak_cap))
+	def _clean_asset_ref(name):
+		# ponytail: db.exists per row is fine at settings-save frequency
+		name = (name or "").strip() if isinstance(name, str) else name
+		return name if (name and frappe.db.exists("Avatar Asset", name)) else None
 	if level_rewards is not None:
-		s.set("level_rewards", _json.loads(level_rewards) if isinstance(level_rewards, str) else level_rewards)
+		raw_lr = _json.loads(level_rewards) if isinstance(level_rewards, str) else level_rewards
+		clean_lr = []
+		for row in (raw_lr or []):
+			lvl = row.get("level")
+			try:
+				lvl = float(lvl)
+			except (TypeError, ValueError):
+				continue
+			row["reward_asset"] = _clean_asset_ref(row.get("reward_asset"))
+			clean_lr.append(row)
+		s.set("level_rewards", clean_lr)
 	if achievements is not None:
-		s.set("achievements", _json.loads(achievements) if isinstance(achievements, str) else achievements)
+		raw_ac = _json.loads(achievements) if isinstance(achievements, str) else achievements
+		clean_ac = []
+		for row in (raw_ac or []):
+			if not (row.get("code") and row.get("title") and row.get("condition")):
+				continue
+			row["reward_asset"] = _clean_asset_ref(row.get("reward_asset"))
+			clean_ac.append(row)
+		s.set("achievements", clean_ac)
 	s.save(ignore_permissions=True)
 	frappe.clear_cache(doctype="Avatar Gamification Settings")
 	return {"ok": True}
