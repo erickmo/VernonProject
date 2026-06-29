@@ -20,3 +20,4 @@ vernon_project.patches.v1_0.seed_vernon_settings
 vernon_project.patches.v1_0.seed_min_daily_estimated_minutes
 vernon_project.patches.v1_0.seed_attendance_settings
 vernon_project.patches.v1_0.seed_avatar_assets
+vernon_project.patches.v1_0.seed_gamification_settings
