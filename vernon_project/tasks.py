@@ -166,3 +166,72 @@ def notify_due_todos():
     if sent:
         frappe.logger().info(f"Sent {sent} deadline notifications")
     return sent
+
+
+def notify_comeback_nudge():
+    """Daily: one warm nudge to people who have gone quiet.
+
+    A user with open Planned work but zero completions in the last 7 days gets a
+    single gentle Encouragement pointing at their smallest open task — an easy
+    re-entry, not a guilt trip. Cadence: at most one Encouragement per user per
+    7 days, and never on a day they were already deadline-nagged, so pressure
+    never stacks.
+    """
+    from vernon_project.api.mobile import _notify
+
+    today = nowdate()
+    week_ago = add_days(today, -7)
+
+    # Smallest-estimate open Planned todo per assignee (NULL/0 estimate sorts last).
+    # ponytail: status LIKE '%Planned' dodges the emoji variation-selector, same as
+    # notify_due_todos.
+    rows = frappe.db.sql(
+        """
+        SELECT assigned_to, name, to_do, estimated
+        FROM `tabProject Todo`
+        WHERE status LIKE %(planned)s
+          AND assigned_to IS NOT NULL AND assigned_to != ''
+        ORDER BY assigned_to, (estimated IS NULL OR estimated = 0), estimated ASC, deadline ASC
+        """,
+        {"planned": "%Planned"},
+        as_dict=True,
+    )
+    smallest = {}
+    for r in rows:
+        if r.assigned_to not in smallest:
+            smallest[r.assigned_to] = r
+
+    sent = 0
+    for user, todo in smallest.items():
+        # Completed anything in the last 7 days? Then they're active — no nudge.
+        if frappe.db.count(
+            "Project Todo",
+            {"assigned_to": user, "status": ["like", "%Completed"], "completed_at": [">=", week_ago]},
+        ):
+            continue
+        # Cadence: at most one Encouragement per user per 7 days.
+        if frappe.db.exists(
+            "Vernon Notification",
+            {"recipient": user, "type": "Encouragement", "creation": [">=", week_ago]},
+        ):
+            continue
+        # Don't stack on top of a deadline nag sent today.
+        if frappe.db.exists(
+            "Vernon Notification",
+            {"recipient": user, "type": "Deadline", "creation": [">=", today]},
+        ):
+            continue
+        label = (str(todo.to_do).strip() if todo.to_do else "") or "a small task"
+        _notify(
+            recipient=user,
+            type="Encouragement",
+            title="Ready when you are 💛",
+            body=f'No rush — "{label}" is a small one to ease back in whenever you like.',
+            reference_doctype="Project Todo",
+            reference_name=todo.name,
+        )
+        sent += 1
+
+    if sent:
+        frappe.logger().info(f"Sent {sent} comeback nudges")
+    return sent

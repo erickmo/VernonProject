@@ -91,6 +91,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const locked = data.fields_locked
   const [toDo, setToDo] = useState(data.to_do)
   const [assignee, setAssignee] = useState(data.assigned_to)
+  const [mentor, setMentor] = useState(data.mentor ?? '')
   const [startDate, setStartDate] = useState(data.start_date ?? '')
   const [deadline, setDeadline] = useState(data.deadline ?? '')
   const [leaderDeadline, setLeaderDeadline] = useState(data.leader_deadline ?? '')
@@ -163,6 +164,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         fields.estimated = estimated === '' ? 0 : Number(estimated)
       }
     }
+    // Mentor credit is leader/owner-set (backend re-checks). Empty clears it.
+    if (data.can_edit_estimate) {
+      fields.mentor = mentor
+    }
     // Approval-phase estimates in minutes (summed into the task total server-side).
     // Planned→Done is the main `estimated` field above.
     fields.estimated_done_to_checked = Number(pDC) || 0
@@ -214,6 +219,28 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           placeholder="Select a team member…"
         />
       </div>
+
+      {data.can_edit_estimate && (
+        <>
+          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            Mentor <span className="font-normal text-slate-400">· optional, earns a share for coaching</span>
+          </label>
+          <div className="mb-3">
+            <SearchableSelect
+              value={mentor}
+              onChange={setMentor}
+              options={[
+                { value: '', label: '— No mentor —' },
+                ...(data.mentor && !team.some((m) => m.user === data.mentor)
+                  ? [{ value: data.mentor, label: data.mentor_name || data.mentor }]
+                  : []),
+                ...team.filter((m) => m.user !== assignee).map((m) => ({ value: m.user, label: m.name })),
+              ]}
+              placeholder="Who helped on this task?"
+            />
+          </div>
+        </>
+      )}
 
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Start date</label>

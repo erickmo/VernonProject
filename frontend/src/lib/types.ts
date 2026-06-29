@@ -25,6 +25,10 @@ export type NotificationType =
   | 'Points'
   | 'Redemption'
   | 'Kudos'
+  | 'Feedback'
+  | 'Deadline'
+  | 'Encouragement'
+  | 'Attendance'
 
 export interface AppNotification {
   name: string
@@ -129,6 +133,8 @@ export interface ProjectItemDetail extends ProjectItem {
   can_edit_estimate: boolean
   can_delete: boolean
   fields_locked: boolean
+  mentor: string
+  mentor_name: string
   team: { user: string; name: string; image: string | null }[]
   timeline: TimelineEvent[]
   phase_estimates: {
@@ -451,10 +457,12 @@ export interface LeaderboardEntry {
 }
 
 export type LeaderboardPeriod = 'weekly' | 'monthly' | 'all'
+export type LeaderboardDimension = 'productivity' | 'character'
 
 export interface Leaderboard {
   period: LeaderboardPeriod
   brand: string | null
+  dimension: LeaderboardDimension
   brands: string[]
   entries: LeaderboardEntry[]
   me: LeaderboardEntry | null

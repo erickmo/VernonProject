@@ -117,8 +117,12 @@ def _scans_on(employee, date):
 	return rows
 
 
-def recompute_daily(employee, date):
-	"""Rebuild Daily Attendance for (employee, date) from current sources. Idempotent."""
+def recompute_daily(employee, date, notify=False):
+	"""Rebuild Daily Attendance for (employee, date) from current sources. Idempotent.
+
+	notify=True (nightly finalize only) sends a gentle heads-up when the finalized
+	day carries a penalty; intraday recomputes stay silent so users aren't nagged
+	on every exception/shift/holiday change."""
 	date = getdate(date)
 	if date > getdate(nowdate()):
 		return None  # never compute the future; direct callers rely on this guard
@@ -174,6 +178,8 @@ def recompute_daily(employee, date):
 		doc.insert(ignore_permissions=True)
 
 	_upsert_penalty_ledger(doc.name, employee, result["penalty_points"])
+	if notify and flt(result["penalty_points"]) > 0:
+		_notify_attendance_penalty(doc.name, employee, result["status"], date)
 	return result
 
 
@@ -194,6 +200,40 @@ def _upsert_penalty_ledger(daily_name, employee, penalty_points):
 		frappe.get_doc({"doctype": "Point Ledger", **values, "credited_on": now_datetime()}).insert(ignore_permissions=True)
 
 
+def _notify_attendance_penalty(daily_name, employee, status, date):
+	"""Gentle, number-free heads-up after a finalized day carries a penalty, with a
+	path to request an exception. Idempotent per Daily Attendance row so a manual
+	re-finalize never re-nags. Best-effort: never break the recompute."""
+	try:
+		if frappe.db.exists(
+			"Vernon Notification",
+			{
+				"recipient": employee,
+				"reference_doctype": "Daily Attendance",
+				"reference_name": daily_name,
+				"type": "Attendance",
+			},
+		):
+			return
+		from vernon_project.api.mobile import _notify
+
+		day = getdate(date).strftime("%-d %b")
+		if status == "Absent":
+			body = f"We didn't see you on {day} — everything okay? Let your lead know if this needs an exception."
+		else:
+			body = f"Your hours on {day} came up a little short. Reach out to your lead if there's context to add."
+		_notify(
+			recipient=employee,
+			type="Attendance",
+			title="Checking in on your attendance",
+			body=body,
+			reference_doctype="Daily Attendance",
+			reference_name=daily_name,
+		)
+	except Exception:
+		frappe.log_error(title="attendance heads-up notify failed")
+
+
 def recompute_range(employee, from_date, to_date):
 	"""Recompute each day in [from_date, min(to_date, today)]. Never computes the future."""
 	today = getdate(nowdate())
@@ -210,6 +250,6 @@ def nightly_finalize():
 	yesterday = add_days(nowdate(), -1)
 	for emp in frappe.get_all("Attendance Profile", filters={"active": 1}, pluck="user"):
 		try:
-			recompute_daily(emp, yesterday)
+			recompute_daily(emp, yesterday, notify=True)
 		except Exception:
 			frappe.log_error(title="attendance nightly_finalize failed")

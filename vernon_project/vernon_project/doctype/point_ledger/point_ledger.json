@@ -13,7 +13,7 @@
  ],
  "fields": [
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
-  {"fieldname": "role", "fieldtype": "Select", "label": "Role", "options": "Assignee\nLeader\nParticipant", "in_list_view": 1},
+  {"fieldname": "role", "fieldtype": "Select", "label": "Role", "options": "Assignee\nLeader\nParticipant\nMentor", "in_list_view": 1},
   {"fieldname": "todo", "fieldtype": "Link", "label": "Todo", "options": "Project Todo", "search_index": 1},
   {"fieldname": "column_break_a", "fieldtype": "Column Break"},
   {"fieldname": "group", "fieldtype": "Link", "label": "Group", "options": "Group"},
@@ -26,7 +26,7 @@
   {"fieldname": "column_break_c", "fieldtype": "Column Break"},
   {"fieldname": "points_earned", "fieldtype": "Float", "label": "Points Earned", "in_list_view": 1},
   {"fieldname": "credited_on", "fieldtype": "Datetime", "label": "Credited On"},
-  {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance\nDaily\nReward\nAchievement", "default": "Todo", "in_list_view": 1},
+  {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance\nDaily\nReward\nAchievement\nMentoring\nRecognition", "default": "Todo", "in_list_view": 1},
   {"fieldname": "note", "fieldtype": "Small Text", "label": "Note"},
   {"fieldname": "granted_by", "fieldtype": "Link", "label": "Granted By", "options": "User"},
   {"fieldname": "meeting", "fieldtype": "Link", "label": "Meeting", "options": "Meeting", "search_index": 1},

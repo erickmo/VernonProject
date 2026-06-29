@@ -12,6 +12,7 @@
       "ongoing",
       "to_do",
       "assigned_to",
+      "mentor",
       "start_date",
       "deadline",
       "leader_deadline",
@@ -113,6 +114,13 @@
          "label": "Assigned To",
          "options": "User",
          "reqd": 1
+      },
+      {
+         "fieldname": "mentor",
+         "fieldtype": "Link",
+         "label": "Mentor",
+         "options": "User",
+         "description": "Optional. Whoever coached/unblocked the assignee on this task; earns a share of points (Mentor Weight on the Group)."
       },
       {
          "columns": 1,

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Trophy } from 'lucide-react'
 import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
-import type { LeaderboardEntry, LeaderboardPeriod } from '@/lib/types'
+import type { LeaderboardEntry, LeaderboardPeriod, LeaderboardDimension } from '@/lib/types'
 import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -11,6 +11,11 @@ const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: 'weekly', label: 'Week' },
   { value: 'monthly', label: 'Month' },
   { value: 'all', label: 'All-time' },
+]
+
+const DIMENSIONS: { value: LeaderboardDimension; label: string }[] = [
+  { value: 'productivity', label: 'Productivity' },
+  { value: 'character', label: 'Character' },
 ]
 
 const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
@@ -55,8 +60,9 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
 export default function Leaderboard() {
   const { data: boot } = useBoot()
   const [period, setPeriod] = useState<LeaderboardPeriod>('monthly')
+  const [dimension, setDimension] = useState<LeaderboardDimension>('productivity')
   const [brand, setBrand] = useState<string>('')
-  const q = useLeaderboard(period, brand || null)
+  const q = useLeaderboard(period, brand || null, dimension)
   const { data, isLoading } = q
 
   // Top-3 entries for podium tile
@@ -64,7 +70,10 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Leaderboard</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Leaderboard</h1>
+        <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
+      </div>
 
       {q.isError ? (
         <ErrorState onRetry={() => q.refetch()} />
@@ -73,7 +82,15 @@ export default function Leaderboard() {
           <Spinner />
         </div>
       ) : !data || data.entries.length === 0 ? (
-        <EmptyState icon={Trophy} title="No points yet" subtitle="Complete work to climb the board." />
+        <EmptyState
+          icon={Trophy}
+          title="No points yet"
+          subtitle={
+            dimension === 'character'
+              ? "Cheer teammates' work and mentor others to climb."
+              : 'Complete work to climb the board.'
+          }
+        />
       ) : (
         <BentoGrid>
           {/* Top-3 podium */}

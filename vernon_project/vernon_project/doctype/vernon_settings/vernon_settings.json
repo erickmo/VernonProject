@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty"],
+ "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "recognition_weekly_cap"],
  "fields": [
   {
    "fieldname": "max_estimated_minutes",
@@ -68,6 +68,27 @@
    "label": "Absence Penalty (flat points)",
    "non_negative": 1,
    "default": "0"
+  },
+  {
+   "fieldname": "recognition_section",
+   "fieldtype": "Section Break",
+   "label": "Recognition"
+  },
+  {
+   "fieldname": "recognition_points",
+   "fieldtype": "Float",
+   "label": "Recognition Points (per kudos)",
+   "non_negative": 1,
+   "default": "2",
+   "description": "Points the assignee earns when a teammate reacts to their work. 0 = recognition mints no points."
+  },
+  {
+   "fieldname": "recognition_weekly_cap",
+   "fieldtype": "Int",
+   "label": "Recognition Weekly Cap (per giver)",
+   "non_negative": 1,
+   "default": "20",
+   "description": "Max recognition grants one person can mint per rolling 7 days (anti-farming). 0 = no cap."
   }
  ],
  "issingle": 1,

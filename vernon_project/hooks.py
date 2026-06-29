@@ -196,6 +196,7 @@ scheduler_events = {
 	"daily": [
 		"vernon_project.tasks.create_recurring_todos",
 		"vernon_project.tasks.notify_due_todos",
+		"vernon_project.tasks.notify_comeback_nudge",
 		"vernon_project.attendance.engine.nightly_finalize"
 	]
 }

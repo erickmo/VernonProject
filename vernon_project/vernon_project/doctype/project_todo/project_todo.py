@@ -247,7 +247,7 @@ class ProjectTodo(Document):
 			)
 
 	def _compute_earned(self):
-		"""Return (assignee_earned, leader_earned, late_days, early_days).
+		"""Return (assignee_earned, leader_earned, mentor_earned, late_days, early_days).
 
 		Uses phase_completed_at (fallback completed_at, then now) vs deadline.
 		Weights are percentages. No flooring; negatives allowed.
@@ -255,7 +255,7 @@ class ProjectTodo(Document):
 		grp = frappe.get_doc("Group", self.group) if self.group else None
 		point = float(self.point or 0)
 		if not grp:
-			return 0.0, 0.0, 0, 0
+			return 0.0, 0.0, 0.0, 0, 0
 
 		completed = self.phase_completed_at or self.completed_at or now_datetime()
 		completed_date = getdate(completed)
@@ -278,10 +278,14 @@ class ProjectTodo(Document):
 			- late_days * llp * assignee
 			+ early_days * leb * assignee
 		)
+		# Mentor earns a flat share of assignee_earned (timing already baked into
+		# assignee); no separate mentor late/early knobs.
+		mw = float(grp.mentor_weight or 0) / 100.0
+		mentor = assignee * mw
 		# Earned points are always whole numbers.
-		return round(assignee), round(leader), late_days, early_days
+		return round(assignee), round(leader), round(mentor), late_days, early_days
 
-	def _upsert_ledger_row(self, role, user, points, late_days, early_days):
+	def _upsert_ledger_row(self, role, user, points, late_days, early_days, source="Todo"):
 		if not user:
 			return
 		existing = frappe.db.exists(
@@ -298,6 +302,7 @@ class ProjectTodo(Document):
 			"late_days": late_days,
 			"early_days": early_days,
 			"points_earned": points,
+			"source": source,
 			"credited_on": now_datetime(),
 		}
 		if existing:
@@ -321,8 +326,8 @@ class ProjectTodo(Document):
 		)
 
 	def sync_point_ledger(self):
-		"""Credit assignee + leader. Idempotent on (todo, role)."""
-		assignee_earned, leader_earned, late_days, early_days = self._compute_earned()
+		"""Credit assignee + leader (+ optional mentor). Idempotent on (todo, role)."""
+		assignee_earned, leader_earned, mentor_earned, late_days, early_days = self._compute_earned()
 		self._set_earned("assignee_earned", assignee_earned)
 
 		self._upsert_ledger_row(
@@ -337,6 +342,20 @@ class ProjectTodo(Document):
 		self._upsert_ledger_row(
 			"Leader", leader, leader_earned, late_days, early_days
 		)
+
+		# Mentor credit: whoever coached the assignee on this todo earns a share
+		# (Group.mentor_weight). source='Mentoring' keeps it off the productivity
+		# leaderboard. Must differ from assignee and leader to avoid double-pay.
+		mentor = self.mentor if self.mentor not in (None, "", self.assigned_to, leader) else None
+		if mentor:
+			self._upsert_ledger_row(
+				"Mentor", mentor, mentor_earned, late_days, early_days, source="Mentoring"
+			)
+		else:
+			# Mentor cleared/invalid: drop any stale Mentor row so credit never lingers.
+			stale = frappe.db.exists("Point Ledger", {"todo": self.name, "role": "Mentor"})
+			if stale:
+				frappe.delete_doc("Point Ledger", stale, ignore_permissions=True, force=True)
 
 	def _remove_ledger(self):
 		"""Delete this todo's ledger rows and clear earned snapshots."""

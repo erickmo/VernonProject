@@ -750,6 +750,8 @@ export interface WeeklyRecap {
   streak: number
   top_project: { name: string; count: number } | null
   kudos_received: number
+  kudos_given: number
+  top_appreciator: { user: string; name: string; count: number } | null
 }
 
 // Read-only weekly summary. weekOffset 0 = current week, -1 = last week.
@@ -759,6 +761,18 @@ export const useWeeklyRecap = (weekOffset = 0) =>
     queryFn: () => mobileApi.getWeeklyRecap(weekOffset) as Promise<WeeklyRecap>,
     staleTime: 1000 * 60 * 5,
   })
+
+// Reciprocity: thank someone who cheered your work this week (fires a Kudos
+// notification to them; no points).
+export function useSayThanks() {
+  return useMutation({
+    mutationFn: async (toUser: string) => {
+      const res = await mobileApi.sayThanks(toUser)
+      if (res.status === 'error') throw new Error(res.message || 'Could not send thanks')
+      return res
+    },
+  })
+}
 
 export function useGiftRecipients() {
   return useQuery({
@@ -779,10 +793,10 @@ export function useGiftPoints() {
   })
 }
 
-export const useLeaderboard = (period: string, brand: string | null) =>
+export const useLeaderboard = (period: string, brand: string | null, dimension = 'productivity') =>
   useQuery({
-    queryKey: keys.leaderboard(period, brand),
-    queryFn: () => mobileApi.getLeaderboard(period, brand) as Promise<Leaderboard>,
+    queryKey: [...keys.leaderboard(period, brand), dimension],
+    queryFn: () => mobileApi.getLeaderboard(period, brand, dimension) as Promise<Leaderboard>,
   })
 
 export const useMarketplace = () =>

@@ -200,8 +200,10 @@ export const mobileApi = {
   getWallet: () => api.get(M + 'get_wallet'),
   getWalletLog: () => api.get(M + 'get_wallet_log'),
   getWeeklyRecap: (weekOffset = 0) => api.get(M + 'get_weekly_recap', { week_offset: weekOffset }),
-  getLeaderboard: (period: string, brand?: string | null) =>
-    api.get(M + 'get_leaderboard', { period, ...(brand ? { brand } : {}) }),
+  sayThanks: (toUser: string) =>
+    api.post<{ status: string; message?: string }>(M + 'say_thanks', { to_user: toUser }),
+  getLeaderboard: (period: string, brand?: string | null, dimension = 'productivity') =>
+    api.get(M + 'get_leaderboard', { period, dimension, ...(brand ? { brand } : {}) }),
   getMarketplace: () => api.get(M + 'get_marketplace'),
   redeemReward: (reward: string) =>
     api.post<{ balance: number; redemption: string }>(M + 'redeem_reward', { reward }),

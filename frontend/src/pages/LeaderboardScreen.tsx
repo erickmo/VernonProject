@@ -4,12 +4,17 @@ import { Trophy } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
-import type { LeaderboardEntry, LeaderboardPeriod } from '@/lib/types'
+import type { LeaderboardEntry, LeaderboardPeriod, LeaderboardDimension } from '@/lib/types'
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: 'weekly', label: 'Week' },
   { value: 'monthly', label: 'Month' },
   { value: 'all', label: 'All-time' },
+]
+
+const DIMENSIONS: { value: LeaderboardDimension; label: string }[] = [
+  { value: 'productivity', label: 'Productivity' },
+  { value: 'character', label: 'Character' },
 ]
 
 const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
@@ -55,14 +60,18 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
 export default function LeaderboardScreen() {
   const { data: boot } = useBoot()
   const [period, setPeriod] = useState<LeaderboardPeriod>('monthly')
+  const [dimension, setDimension] = useState<LeaderboardDimension>('productivity')
   const [brand, setBrand] = useState<string>('')
-  const { data, isLoading } = useLeaderboard(period, brand || null)
+  const { data, isLoading } = useLeaderboard(period, brand || null, dimension)
 
   const meInTop = !!data?.me && data.entries.some((e) => e.user === data.me!.user)
 
   return (
     <DetailScreen title="Leaderboard">
-      <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+      <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
+      <div className="mt-3">
+        <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+      </div>
 
       {data && data.brands.length > 0 && (
         <select
@@ -82,7 +91,15 @@ export default function LeaderboardScreen() {
       {isLoading && !data ? (
         <FullScreenLoader />
       ) : !data || data.entries.length === 0 ? (
-        <EmptyState icon={Trophy} title="No points yet" subtitle="Complete work to climb the board." />
+        <EmptyState
+          icon={Trophy}
+          title="No points yet"
+          subtitle={
+            dimension === 'character'
+              ? "Cheer teammates' work and mentor others to climb."
+              : 'Complete work to climb the board.'
+          }
+        />
       ) : (
         <>
           <ul className="mt-4 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import clsx from 'clsx'
-import { Sparkles, CheckCircle2, Clock, Flame, ChevronDown, ChevronUp, X } from 'lucide-react'
-import { useWeeklyRecap } from '@/hooks/useData'
+import { Sparkles, CheckCircle2, Clock, Flame, ChevronDown, ChevronUp, X, Heart } from 'lucide-react'
+import { useWeeklyRecap, useSayThanks } from '@/hooks/useData'
 import { formatEstimate } from '@/lib/format'
+import { useToast } from '@/components/Toast'
 import { RecapShareImage } from './RecapShareImage'
 
 const DISMISS_PREFIX = 'vernon.recap.dismissed.'
@@ -34,6 +35,39 @@ function MiniStat({
         <p className="text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-slate-500">{label}</p>
       </div>
     </div>
+  )
+}
+
+function ThankBack({ appreciator }: { appreciator: { user: string; name: string; count: number } }) {
+  const sayThanks = useSayThanks()
+  const toast = useToast()
+  const [done, setDone] = useState(false)
+  const first = appreciator.name.split(' ')[0] || appreciator.name
+
+  if (done) {
+    return (
+      <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-brand-50 dark:bg-brand-500/15 px-3.5 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300">
+        <Heart className="h-4 w-4 fill-current" /> Thanks sent to {first} 🙏
+      </div>
+    )
+  }
+  return (
+    <button
+      onClick={() =>
+        sayThanks.mutate(appreciator.user, {
+          onSuccess: () => {
+            setDone(true)
+            toast('success', `Thanks sent to ${first}`)
+          },
+          onError: (e) => toast('error', (e as Error).message),
+        })
+      }
+      disabled={sayThanks.isPending}
+      className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-brand-600 to-[#E879C7] py-2.5 text-sm font-semibold text-white transition active:scale-[0.98] disabled:opacity-60"
+    >
+      <Heart className="h-4 w-4" />
+      {first} cheered you {appreciator.count}× — say thanks
+    </button>
   )
 }
 
@@ -121,6 +155,13 @@ export function RecapCard() {
           {expanded && <RecapShareImage recap={recap} />}
         </>
       )}
+
+      {recap.kudos_given > 0 && (
+        <p className="mt-3 text-xs font-medium text-stone-500 dark:text-slate-400">
+          You cheered teammates {recap.kudos_given}× this week 💛
+        </p>
+      )}
+      {recap.top_appreciator && <ThankBack appreciator={recap.top_appreciator} />}
     </div>
   )
 }

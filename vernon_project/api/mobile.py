@@ -1240,6 +1240,9 @@ def get_project_item(project_item):
 	is_owner = user == r["project_owner"]
 	shaped["can_edit_estimate"] = is_sm or is_leader or is_owner
 	shaped["can_edit_assigned"] = is_sm or is_leader
+	_mentor = frappe.db.get_value("Project Todo", project_item, "mentor")
+	shaped["mentor"] = _mentor or ""
+	shaped["mentor_name"] = (frappe.db.get_value("User", _mentor, "full_name") or _mentor) if _mentor else ""
 	_assigned = _assigned_allocations_map([r["name"]]).get(r["name"], [])
 	shaped["assigned_allocation"] = _assigned_allocation_for(
 		_assigned, shaped.get("deadline"), shaped.get("estimated") or 0
@@ -1361,6 +1364,7 @@ def update_todo(
 	estimated_checked_to_completed=None,
 	blocked_by=None,
 	blocking=None,
+	mentor=None,
 ):
 	"""Edit a task's fields. Returns a clean status/message so the mobile UI can
 	show friendly feedback instead of a raw traceback."""
@@ -1409,6 +1413,12 @@ def update_todo(
 		_prev_assignee = row.assigned_to
 		if assigned_to is not None and assigned_to:
 			row.assigned_to = assigned_to
+		# Mentor credit is leader/owner-set only (assignees can't credit themselves).
+		# Empty string clears it.
+		if mentor is not None:
+			if not (is_sm or user in (project.project_owner, project.project_leader)):
+				return {"status": "error", "message": "Only the project leader or owner can set the mentor."}
+			row.mentor = mentor or None
 		if group is not None and group:
 			row.group = group
 		# `level_id` is the stable reference (truth); the controller's
@@ -1454,6 +1464,12 @@ def update_todo(
 			row.next_occurrence = row.calculate_next_occurrence(row.deadline)
 
 		row.save(ignore_permissions=True)
+
+		# Mentor credit normally lands on the Completed transition. If a leader sets
+		# or clears the mentor on an already-completed todo, re-sync so it still takes
+		# effect (idempotent on todo+role).
+		if mentor is not None and row.status == STATUS_COMPLETED:
+			row.sync_point_ledger()
 
 		if row.assigned_to and row.assigned_to != _prev_assignee:
 			actor_name = (_user_name_map({user}).get(user) or {}).get("full_name") or user
@@ -2212,6 +2228,40 @@ def get_weekly_recap(week_offset=0):
 			{"user": user, "start": str(monday), "end": str(week_end_excl)},
 		)[0][0])
 
+	# Reciprocity: how many kudos I gave this week, and who appreciated me most
+	# (so the recap can offer a one-tap thank-back). Safe if Todo Reaction is absent.
+	kudos_given = 0
+	top_appreciator = None
+	if frappe.db.exists("DocType", "Todo Reaction"):
+		kudos_given = int(frappe.db.sql(
+			"""
+			SELECT COUNT(*)
+			FROM `tabTodo Reaction` r
+			WHERE r.user = %(user)s
+			  AND r.creation >= %(start)s AND r.creation < %(end)s
+			""",
+			{"user": user, "start": str(monday), "end": str(week_end_excl)},
+		)[0][0])
+		top = frappe.db.sql(
+			"""
+			SELECT r.user AS u, COUNT(*) AS c
+			FROM `tabTodo Reaction` r
+			JOIN `tabProject Todo` t ON r.todo = t.name
+			WHERE t.assigned_to = %(user)s
+			  AND r.user != %(user)s
+			  AND r.creation >= %(start)s AND r.creation < %(end)s
+			GROUP BY r.user
+			ORDER BY c DESC
+			LIMIT 1
+			""",
+			{"user": user, "start": str(monday), "end": str(week_end_excl)},
+			as_dict=True,
+		)
+		if top:
+			appreciator = top[0]["u"]
+			name = frappe.db.get_value("User", appreciator, "full_name") or appreciator
+			top_appreciator = {"user": appreciator, "name": name, "count": int(top[0]["c"])}
+
 	# Week label, e.g. "Jun 23–29" (same month) or "Jun 30–Jul 6" (spans months).
 	if monday.month == sunday.month:
 		week_label = f"{monday.strftime('%b')} {monday.day}–{sunday.day}"
@@ -2230,7 +2280,32 @@ def get_weekly_recap(week_offset=0):
 		"streak": streak,
 		"top_project": top_project,
 		"kudos_received": kudos_received,
+		"kudos_given": kudos_given,
+		"top_appreciator": top_appreciator,
 	}
+
+
+@frappe.whitelist()
+def say_thanks(to_user):
+	"""Reciprocity: thank someone who cheered your work this week. Fires a Kudos
+	notification to them. No points (no Recognition ledger exists) — it just
+	closes the appreciation loop."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	if not to_user or to_user == user:
+		return {"status": "error", "message": "Nobody to thank."}
+	if not frappe.db.exists("User", to_user):
+		return {"status": "error", "message": "Unknown user."}
+	me = frappe.db.get_value("User", user, "full_name") or user
+	_notify(
+		to_user,
+		"Kudos",
+		f"{me} said thanks 🙏",
+		"Thanks for the kudos this week!",
+		actor=user,
+	)
+	return {"status": "ok"}
 
 
 @frappe.whitelist()
@@ -2346,17 +2421,26 @@ def _period_start(period):
 
 
 @frappe.whitelist()
-def get_leaderboard(period="monthly", brand=None):
-	"""Top 50 users by points earned in the period; plus the caller's own rank."""
+def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
+	"""Top 50 users by points earned in the period; plus the caller's own rank.
+
+	dimension='productivity' (default) ranks earned work (excludes gifts/grants and
+	the character sources). dimension='character' ranks gifts of attention —
+	Recognition (kudos) + Mentoring — so helping is celebrated on its own board."""
 	if period not in ("weekly", "monthly", "all"):
 		period = "monthly"
+	if dimension not in ("productivity", "character"):
+		dimension = "productivity"
 	brand = brand or None
 
 	start = _period_start(period)
 	conds = []
 	params = {}
 	join = ""
-	conds.append("coalesce(pl.source, 'Todo') not in ('Grant', 'Gift', 'Daily', 'Reward', 'Achievement')")
+	if dimension == "character":
+		conds.append("coalesce(pl.source, 'Todo') in ('Recognition', 'Mentoring')")
+	else:
+		conds.append("coalesce(pl.source, 'Todo') not in ('Grant', 'Gift', 'Daily', 'Reward', 'Achievement', 'Mentoring', 'Recognition')")
 	if start is not None:
 		conds.append("pl.credited_on >= %(start)s")
 		params["start"] = start
@@ -2401,7 +2485,7 @@ def get_leaderboard(period="monthly", brand=None):
 
 	brands = [b["brand_name"] for b in frappe.get_all("Brand", fields=["brand_name"], order_by="brand_name asc")]
 
-	return {"period": period, "brand": brand, "brands": brands, "entries": entries, "me": me}
+	return {"period": period, "brand": brand, "dimension": dimension, "brands": brands, "entries": entries, "me": me}
 
 
 # --------------------------------------------------------------------------------
@@ -3398,6 +3482,60 @@ def get_team_activity(days=14, limit=50):
 	return {"items": items}
 
 
+def _recognition_credit(todo, recipient, reactor, reaction):
+	"""Mint (or refresh) a small Recognition Point Ledger row: the assignee earns
+	points because a teammate noticed their work. Keyed on (todo, granted_by, source)
+	so one reactor credits a given todo at most once. A weekly per-giver cap blocks
+	farming. source='Recognition' is off the productivity leaderboard — it feeds the
+	Character board. Best-effort: a failure here never breaks the reaction."""
+	try:
+		settings = frappe.get_cached_doc("Vernon Settings")
+		pts = float(settings.recognition_points or 0)
+		if pts <= 0:
+			return
+		existing = frappe.db.exists(
+			"Point Ledger",
+			{"todo": todo, "granted_by": reactor, "source": "Recognition"},
+		)
+		if existing:
+			# Already credited for this todo — just refresh the note (reaction changed).
+			frappe.db.set_value(
+				"Point Ledger", existing, "note", REACTION_LABELS.get(reaction, reaction)
+			)
+			return
+		# Anti-farm: cap Recognition grants per giver per rolling 7 days.
+		cap = int(settings.recognition_weekly_cap or 0)
+		if cap > 0:
+			given = frappe.db.count(
+				"Point Ledger",
+				{"granted_by": reactor, "source": "Recognition", "credited_on": [">=", add_days(nowdate(), -7)]},
+			)
+			if given >= cap:
+				return
+		frappe.get_doc({
+			"doctype": "Point Ledger",
+			"user": recipient,
+			"source": "Recognition",
+			"todo": todo,
+			"granted_by": reactor,
+			"note": REACTION_LABELS.get(reaction, reaction),
+			"points_earned": pts,
+			"credited_on": now_datetime(),
+		}).insert(ignore_permissions=True)
+	except Exception:
+		frappe.log_error(title="recognition credit failed")
+
+
+def _recognition_remove(todo, reactor):
+	"""Remove the Recognition row a reactor minted on this todo (reaction taken back)."""
+	existing = frappe.db.exists(
+		"Point Ledger",
+		{"todo": todo, "granted_by": reactor, "source": "Recognition"},
+	)
+	if existing:
+		frappe.delete_doc("Point Ledger", existing, ignore_permissions=True, force=True)
+
+
 @frappe.whitelist()
 def toggle_reaction(todo, reaction):
 	"""Upsert/remove the caller's reaction on a todo. Same reaction again removes
@@ -3430,12 +3568,15 @@ def toggle_reaction(todo, reaction):
 		limit_page_length=1,
 	)
 	notify = False
+	credited_reaction = None  # reaction to (re)mint/refresh Recognition for, if any
 	if existing:
 		e = existing[0]
 		if e["reaction"] == reaction:
 			frappe.delete_doc("Todo Reaction", e["name"], ignore_permissions=True, force=True)
+			_recognition_remove(todo, user)  # reaction taken back → claw back the point
 		else:
 			frappe.db.set_value("Todo Reaction", e["name"], "reaction", reaction)
+			credited_reaction = reaction  # row already exists; just refresh the note
 	else:
 		frappe.get_doc({
 			"doctype": "Todo Reaction",
@@ -3444,7 +3585,12 @@ def toggle_reaction(todo, reaction):
 			"reaction": reaction,
 		}).insert(ignore_permissions=True)
 		notify = True
+		credited_reaction = reaction
 	frappe.db.commit()
+
+	if credited_reaction and assignee:
+		_recognition_credit(todo, assignee, user, credited_reaction)
+		frappe.db.commit()
 
 	if notify:
 		actor_name = frappe.db.get_value("User", user, "full_name") or user
