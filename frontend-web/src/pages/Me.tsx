@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2 } from 'lucide-react'
-import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy } from 'lucide-react'
+import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -13,6 +13,7 @@ import { AvatarScene } from '@/avatar/AvatarScene'
 
 export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
+  const navigate = useNavigate()
   const [pwOpen, setPwOpen] = useState(false)
   const b = boot.data
 
@@ -60,6 +61,13 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
         <BentoTile span="md" tone="tint" accent="slate" title="Settings">
           <div className="divide-y divide-slate-200/60 dark:divide-slate-700/60 -mx-5 mt-1">
             <button
+              onClick={() => navigate('/achievements')}
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+            >
+              <Trophy className="w-4 h-4" />
+              Achievements
+            </button>
+            <button
               onClick={() => setPwOpen(true)}
               className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
             >
@@ -92,12 +100,91 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
           </div>
         </BentoTile>
 
+        <GamificationTile />
+        <DailyTile />
         <AvatarTile />
         <PasskeyTile />
       </BentoGrid>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
     </div>
+  )
+}
+
+function GamificationTile() {
+  const { data: gami } = useGamification()
+  const toast = useToast()
+  const grantedFired = useRef(false)
+
+  useEffect(() => {
+    if (!gami || grantedFired.current) return
+    if (gami.newly_granted.length > 0) {
+      grantedFired.current = true
+      toast('success', `Reward unlocked! (${gami.newly_granted.length} new)`)
+    }
+  }, [gami, toast])
+
+  return (
+    <BentoTile span="md" tone="tint" accent="amber" title="Level" icon={Trophy}>
+      {gami ? (
+        <div className="mt-1 space-y-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-bold tabular-nums">{gami.level}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">/ Lifetime {gami.lifetime.toLocaleString()} pts</span>
+          </div>
+          <div>
+            <div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>XP progress</span>
+              <span>{gami.xp_into}/{gami.points_per_level}</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-amber-200/60 dark:bg-amber-500/20">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                style={{ width: `${Math.min(100, (gami.xp_into / gami.points_per_level) * 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading…</div>
+      )}
+    </BentoTile>
+  )
+}
+
+function DailyTile() {
+  const { data: gami } = useGamification()
+  const claimDaily = useClaimDaily()
+  const toast = useToast()
+
+  return (
+    <BentoTile span="md" tone="tint" accent="emerald" title="Daily Reward">
+      {gami ? (
+        <div className="mt-1 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-3xl leading-none">🔥</span>
+            <div>
+              <p className="text-lg font-bold">Streak {gami.daily.streak}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">+{gami.daily.claimable} pts today</p>
+            </div>
+          </div>
+          <button
+            disabled={!gami.daily.can_claim || claimDaily.isPending}
+            onClick={() =>
+              claimDaily.mutate(undefined, {
+                onSuccess: (r) => toast('success', `+${r.granted} pts!`),
+                onError: () => toast('error', 'Could not claim'),
+              })
+            }
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {claimDaily.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Claim'}
+          </button>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading…</div>
+      )}
+    </BentoTile>
   )
 }
 

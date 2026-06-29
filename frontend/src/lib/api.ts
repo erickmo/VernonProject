@@ -323,6 +323,12 @@ export const mobileApi = {
       config_json: JSON.stringify(config),
       snapshot_dataurl,
     }),
+  getGamification: () =>
+    api.get<import('./types').Gamification>(M + 'get_gamification'),
+  claimDaily: () =>
+    api.post<{ streak: number; granted: number; balance: number; last_claim: string; already?: boolean }>(
+      M + 'claim_daily',
+    ),
   submitFeedback: (feedback_type: string, message: string, is_anonymous: boolean) =>
     api.post<{ status: string }>('vernon_project.api.feedback.submit_feedback', {
       feedback_type,

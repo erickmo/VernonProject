@@ -55,6 +55,7 @@ import Exceptions from '@web/pages/Exceptions'
 import HolidayLists from '@web/pages/HolidayLists'
 import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import Kiosk from '@web/pages/Kiosk'
+import Achievements from '@web/pages/Achievements'
 import { CrumbProvider } from '@web/lib/crumbs'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -205,6 +206,7 @@ export default function App() {
             </>
           )}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
+          <Route path="/achievements" element={<Achievements />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

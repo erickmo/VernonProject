@@ -79,6 +79,7 @@ export const keys = {
   avatarCatalog: ['avatar-catalog'] as const,
   feedbackInbox: (status?: string) => ['feedback-inbox', status ?? 'all'] as const,
   myAttendance: ['my-attendance'] as const,
+  gamification: ['gamification'] as const,
 }
 
 export const useBoot = () =>
@@ -1159,6 +1160,24 @@ export function useRequestException() {
       return res
     },
     onSettled: () => qc.invalidateQueries({ queryKey: keys.myAttendance }),
+  })
+}
+
+export const useGamification = () =>
+  useQuery({
+    queryKey: keys.gamification,
+    queryFn: () => mobileApi.getGamification() as Promise<import('../lib/types').Gamification>,
+  })
+
+export function useClaimDaily() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => mobileApi.claimDaily(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.gamification })
+      qc.invalidateQueries({ queryKey: keys.boot })
+      qc.invalidateQueries({ queryKey: keys.avatarCatalog })
+    },
   })
 }
 

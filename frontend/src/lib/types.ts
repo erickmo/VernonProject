@@ -616,3 +616,28 @@ export type FeedbackItem = {
   at: string
   at_human: string
 }
+
+export interface Achievement {
+  code: string
+  title: string
+  icon: string
+  condition: string
+  threshold: number
+  progress: number
+  met: boolean
+  claimed: boolean
+  reward_points: number
+  reward_asset: string | null
+}
+
+export interface Gamification {
+  level: number
+  lifetime: number
+  points_per_level: number
+  xp_into: number
+  xp_to_next: number
+  balance: number
+  newly_granted: { kind: string; level?: number; code?: string; asset: string; points: number }[]
+  achievements: Achievement[]
+  daily: { streak: number; can_claim: boolean; claimable: number; last_claim: string | null }
+}

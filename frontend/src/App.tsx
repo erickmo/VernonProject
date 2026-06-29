@@ -50,6 +50,7 @@ import AttendanceStationsScreen from './pages/AttendanceStationsScreen'
 import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
+import AchievementsScreen from './pages/AchievementsScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -190,6 +191,7 @@ export default function App() {
             <Route path="/attendance/manage/report" element={<AttendanceReportAdminScreen />} />
           </>
         )}
+        <Route path="/achievements" element={<AchievementsScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />

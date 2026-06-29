@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
-import { Avatar, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
+import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -38,6 +38,8 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: () => void }) {
   const { data: boot, isLoading } = useBoot()
   const { data: catalog } = useAvatarCatalog()
+  const { data: gami } = useGamification()
+  const claimDaily = useClaimDaily()
   const qc = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
@@ -47,10 +49,20 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const [theme, setThemeState] = useState<Theme>(getStoredTheme)
   const [pushOn, setPushOn] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
+  const grantedFired = useRef(false)
 
   useEffect(() => {
     getPushSubscription().then((s) => setPushOn(!!s))
   }, [])
+
+  // Fire once per load if server pushed new rewards
+  useEffect(() => {
+    if (!gami || grantedFired.current) return
+    if (gami.newly_granted.length > 0) {
+      grantedFired.current = true
+      toast('success', `Reward unlocked! (${gami.newly_granted.length} new)`)
+    }
+  }, [gami, toast])
 
   const togglePush = async () => {
     if (pushBusy) return
@@ -150,6 +162,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
     {
       title: 'Points & Rewards',
       rows: [
+        { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
         { icon: Send, label: 'Gift Points', hue: 'amber', onClick: () => navigate('/gift-points') },
         ...(canGrantPoints(boot)
           ? [{ icon: Gift, label: 'Grant Points', hue: 'amber' as const, onClick: () => navigate('/grant-points') }]
@@ -250,6 +263,16 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
                 </span>
               ))}
             </div>
+
+            {gami && (
+              <div className="w-full pt-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">Level {gami.level}</span>
+                  <span className="text-xs text-stone-400 dark:text-slate-500">{gami.xp_into}/{gami.points_per_level} XP</span>
+                </div>
+                <ProgressBar value={(gami.xp_into / gami.points_per_level) * 100} />
+              </div>
+            )}
           </div>
 
           <div
@@ -262,6 +285,32 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
             {online ? 'Online — synced with server' : 'Offline — showing saved data'}
           </div>
+
+          {gami && (
+            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-3.5 shadow-card">
+              <div className="text-2xl leading-none">🔥</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-stone-700 dark:text-slate-200">
+                  Daily reward — streak {gami.daily.streak}
+                </p>
+                <p className="text-xs text-stone-400 dark:text-slate-500">
+                  +{gami.daily.claimable} pts available
+                </p>
+              </div>
+              <button
+                disabled={!gami.daily.can_claim || claimDaily.isPending}
+                onClick={() =>
+                  claimDaily.mutate(undefined, {
+                    onSuccess: (r) => toast('success', `+${r.granted} pts!`),
+                    onError: () => toast('error', 'Could not claim'),
+                  })
+                }
+                className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                {claimDaily.isPending ? <Spinner className="h-3.5 w-3.5" /> : 'Claim'}
+              </button>
+            </div>
+          )}
 
           {/* Appearance */}
           <div className="mt-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-3.5 shadow-card">
