@@ -27,6 +27,7 @@ import UsersScreen from './pages/UsersScreen'
 import UserFormScreen from './pages/UserFormScreen'
 import WalletLogScreen from './pages/WalletLogScreen'
 import LeaderboardScreen from './pages/LeaderboardScreen'
+import TeamWallScreen from './pages/TeamWallScreen'
 import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
@@ -196,6 +197,7 @@ export default function App() {
         <Route path="/achievements" element={<AchievementsScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
+        <Route path="/team-wall" element={<TeamWallScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
