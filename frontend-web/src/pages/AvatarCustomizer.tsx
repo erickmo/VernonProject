@@ -218,7 +218,7 @@ export default function AvatarCustomizer() {
                         isOwned={isOwned}
                         active={active}
                         price={catalog.price}
-                        onPreview={() => setOption(slot, v)}
+                        onPreview={() => { if (isOwned) setOption(slot, v); else toast('error', 'Buy to use this on your avatar') }}
                         onBuy={() =>
                           buyAvatar.mutate(
                             { style: draft.style, slot, value: v },
