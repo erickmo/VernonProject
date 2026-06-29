@@ -1,6 +1,6 @@
 {
  "actions": [], "creation": "2026-06-29 00:00:00.000000", "doctype": "DocType", "engine": "InnoDB",
- "field_order": ["code","title","icon","condition","threshold","reward_points","reward_asset"],
+ "field_order": ["code","title","icon","condition","threshold","reward_points","reward_asset","is_tier","color"],
  "fields": [
   {"fieldname":"code","fieldtype":"Data","label":"Code","reqd":1},
   {"fieldname":"title","fieldtype":"Data","label":"Title","reqd":1},
@@ -8,7 +8,9 @@
   {"fieldname":"condition","fieldtype":"Select","label":"Condition","options":"todos_completed\nbadge_points\nstreak_days","reqd":1},
   {"fieldname":"threshold","fieldtype":"Float","label":"Threshold"},
   {"fieldname":"reward_points","fieldtype":"Float","label":"Reward Points"},
-  {"fieldname":"reward_asset","fieldtype":"Link","label":"Reward Asset","options":"Avatar Asset"}
+  {"fieldname":"reward_asset","fieldtype":"Link","label":"Reward Asset","options":"Avatar Asset"},
+  {"fieldname":"is_tier","fieldtype":"Check","label":"Is Rank Tier"},
+  {"fieldname":"color","fieldtype":"Data","label":"Tier Color"}
  ],
  "index_web_pages_for_search":0, "istable":1, "links":[], "modified":"2026-06-29 00:00:00.000000",
  "modified_by":"Administrator", "module":"Vernon Project", "name":"Avatar Achievement",
