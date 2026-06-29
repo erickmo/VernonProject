@@ -1940,7 +1940,7 @@ def _user_badge(user):
 		return None
 	earned = float(frappe.db.sql(
 		"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
-		"where user = %s and coalesce(source, 'Todo') not in ('Grant', 'Gift')",
+		"where user = %s and coalesce(source, 'Todo') not in ('Grant', 'Gift', 'Daily', 'Reward', 'Achievement')",
 		user,
 	)[0][0])
 	for t in tiers:  # already sorted desc by min_points
@@ -2346,7 +2346,7 @@ def get_leaderboard(period="monthly", brand=None):
 	conds = []
 	params = {}
 	join = ""
-	conds.append("coalesce(pl.source, 'Todo') not in ('Grant', 'Gift')")
+	conds.append("coalesce(pl.source, 'Todo') not in ('Grant', 'Gift', 'Daily', 'Reward', 'Achievement')")
 	if start is not None:
 		conds.append("pl.credited_on >= %(start)s")
 		params["start"] = start
@@ -3919,4 +3919,125 @@ def seed_gamification_settings():
 	s.flags.ignore_permissions = True
 	s.save(ignore_permissions=True)
 	frappe.db.commit()
+	return {"ok": True}
+
+
+# ── Gamification Engine ──────────────────────────────────────────────────────
+
+def _todos_completed(user):
+	# completed-todo credits (assignee, Todo source) = proxy for completed todos
+	return int(frappe.db.sql("select count(*) from `tabPoint Ledger` where user=%s and source='Todo' and role='Assignee'", user)[0][0] or 0)
+
+
+def _badge_points(user):
+	# lifetime work points (excludes reward/grant sources) — mirrors badge tiers
+	return float(frappe.db.sql("""select coalesce(sum(points_earned),0) from `tabPoint Ledger`
+		where user=%s and source not in ('Grant','Gift','Daily','Reward','Achievement')""", user)[0][0] or 0)
+
+
+def _daily_state(user, s):
+	row = frappe.db.get_value("Avatar Daily", {"user": user}, ["last_claim", "streak"], as_dict=True) or {}
+	today = frappe.utils.today()
+	last = str(row.get("last_claim") or "")
+	streak = int(row.get("streak") or 0)
+	can_claim = last != str(today)
+	# next claim would be: yesterday-continued streak+1 else 1
+	next_streak = (streak + 1) if last == str(frappe.utils.add_days(today, -1)) else 1
+	cap = int(s.streak_cap or 7)
+	claimable = float(s.daily_reward_points or 10) + float(s.streak_bonus_points or 5) * (min(next_streak, cap) - 1)
+	return {"streak": streak, "can_claim": can_claim, "claimable": claimable, "last_claim": last}
+
+
+@frappe.whitelist()
+def get_gamification():
+	user = frappe.session.user
+	s = _gami_settings()
+	ppl = float(s.points_per_level or 100) or 100
+	lifetime = _lifetime_points(user)
+	level = int(lifetime // ppl) + 1
+	newly = []
+	for lr in (s.level_rewards or []):
+		if level >= int(lr.level or 0) and not _has_claim(user, "level", lr.level):
+			_grant_points(user, lr.reward_points, "Reward")
+			_grant_asset(user, lr.reward_asset)
+			_record_claim(user, "level", lr.level)
+			newly.append({"kind": "level", "level": lr.level, "asset": lr.reward_asset, "points": lr.reward_points})
+	streak = int(frappe.db.get_value("Avatar Daily", {"user": user}, "streak") or 0)
+	todos = _todos_completed(user)
+	badge_pts = _badge_points(user)
+	progress_by = {"todos_completed": todos, "badge_points": badge_pts, "streak_days": streak}
+	achievements = []
+	for ac in (s.achievements or []):
+		progress = progress_by.get(ac.condition, 0)
+		met = progress >= float(ac.threshold or 0)
+		claimed = _has_claim(user, "achievement", ac.code)
+		if met and not claimed:
+			_grant_points(user, ac.reward_points, "Achievement")
+			_grant_asset(user, ac.reward_asset)
+			_record_claim(user, "achievement", ac.code)
+			claimed = True
+			newly.append({"kind": "achievement", "code": ac.code, "asset": ac.reward_asset, "points": ac.reward_points})
+		achievements.append({"code": ac.code, "title": ac.title, "icon": ac.icon, "condition": ac.condition,
+			"threshold": float(ac.threshold or 0), "progress": progress, "met": met, "claimed": claimed,
+			"reward_points": ac.reward_points, "reward_asset": ac.reward_asset})
+	# recompute after grants
+	lifetime = _lifetime_points(user)
+	level = int(lifetime // ppl) + 1
+	xp_into = lifetime - (level - 1) * ppl
+	_, _, balance = _user_balance(user)
+	return {"level": level, "lifetime": lifetime, "points_per_level": ppl, "xp_into": xp_into,
+		"xp_to_next": ppl - xp_into, "balance": balance, "newly_granted": newly,
+		"achievements": achievements, "daily": _daily_state(user, s)}
+
+
+@frappe.whitelist()
+def claim_daily():
+	user = frappe.session.user
+	s = _gami_settings()
+	today = frappe.utils.today()
+	name = frappe.db.exists("Avatar Daily", {"user": user})
+	doc = frappe.get_doc("Avatar Daily", name) if name else frappe.new_doc("Avatar Daily")
+	doc.user = user
+	if str(doc.last_claim or "") == str(today):
+		_, _, bal = _user_balance(user)
+		return {"already": True, "streak": int(doc.streak or 0), "granted": 0, "balance": bal}
+	doc.streak = (int(doc.streak or 0) + 1) if str(doc.last_claim or "") == str(frappe.utils.add_days(today, -1)) else 1
+	cap = int(s.streak_cap or 7)
+	granted = float(s.daily_reward_points or 10) + float(s.streak_bonus_points or 5) * (min(int(doc.streak), cap) - 1)
+	doc.last_claim = today
+	doc.save(ignore_permissions=True)
+	_grant_points(user, granted, "Daily")
+	_, _, bal = _user_balance(user)
+	return {"streak": int(doc.streak), "granted": granted, "balance": bal, "last_claim": str(today)}
+
+
+@frappe.whitelist()
+def get_gamification_settings():
+	_require_marketplace_manager()  # reuse existing admin gate (System Manager / Marketplace Manager)
+	s = _gami_settings()
+	return {
+		"premium_price": s.premium_price, "points_per_level": s.points_per_level,
+		"daily_reward_points": s.daily_reward_points, "streak_bonus_points": s.streak_bonus_points,
+		"streak_cap": s.streak_cap,
+		"level_rewards": [{"level": r.level, "reward_points": r.reward_points, "reward_asset": r.reward_asset} for r in (s.level_rewards or [])],
+		"achievements": [{"code": a.code, "title": a.title, "icon": a.icon, "condition": a.condition, "threshold": a.threshold, "reward_points": a.reward_points, "reward_asset": a.reward_asset} for a in (s.achievements or [])],
+	}
+
+
+@frappe.whitelist()
+def save_gamification_settings(premium_price=None, points_per_level=None, daily_reward_points=None, streak_bonus_points=None, streak_cap=None, level_rewards=None, achievements=None):
+	_require_marketplace_manager()
+	import json as _json
+	s = _gami_settings()
+	if premium_price is not None: s.premium_price = float(premium_price)
+	if points_per_level is not None: s.points_per_level = float(points_per_level)
+	if daily_reward_points is not None: s.daily_reward_points = float(daily_reward_points)
+	if streak_bonus_points is not None: s.streak_bonus_points = float(streak_bonus_points)
+	if streak_cap is not None: s.streak_cap = int(streak_cap)
+	if level_rewards is not None:
+		s.set("level_rewards", _json.loads(level_rewards) if isinstance(level_rewards, str) else level_rewards)
+	if achievements is not None:
+		s.set("achievements", _json.loads(achievements) if isinstance(achievements, str) else achievements)
+	s.save(ignore_permissions=True)
+	frappe.clear_cache(doctype="Avatar Gamification Settings")
 	return {"ok": True}

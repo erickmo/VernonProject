@@ -26,7 +26,7 @@
   {"fieldname": "column_break_c", "fieldtype": "Column Break"},
   {"fieldname": "points_earned", "fieldtype": "Float", "label": "Points Earned", "in_list_view": 1},
   {"fieldname": "credited_on", "fieldtype": "Datetime", "label": "Credited On"},
-  {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance", "default": "Todo", "in_list_view": 1},
+  {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance\nDaily\nReward\nAchievement", "default": "Todo", "in_list_view": 1},
   {"fieldname": "note", "fieldtype": "Small Text", "label": "Note"},
   {"fieldname": "granted_by", "fieldtype": "Link", "label": "Granted By", "options": "User"},
   {"fieldname": "meeting", "fieldtype": "Link", "label": "Meeting", "options": "Meeting", "search_index": 1},
