@@ -8,7 +8,7 @@ import { AvatarScene } from '@/avatar/AvatarScene'
 import { captureAvatarPng } from '@/avatar/capture'
 import {
   STYLE_LIST, slotsForStyle, colorSlotsForStyle, paletteForColorSlot,
-  PROB_SLOTS, PREMIUM_FREE_COUNT, variantLabel, BG_PALETTE,
+  PROB_SLOTS, isFreeVariant, variantLabel, BG_PALETTE,
 } from '@/avatar/styles'
 import type { StyleKey } from '@/avatar/styles'
 import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset } from '@/hooks/useData'
@@ -82,7 +82,7 @@ export default function AvatarCustomizerScreen() {
     const v = draft.options[slot]?.[0]
     if (!v) return false
     const idx = values.indexOf(v)
-    if (idx < PREMIUM_FREE_COUNT) return false
+    if (isFreeVariant(draft.style as StyleKey, slot, v, idx)) return false
     return !catalog.unlocked.some(
       (u) => u.style === draft.style && u.slot === slot && u.option_value === v,
     )
@@ -194,7 +194,7 @@ export default function AvatarCustomizerScreen() {
                 <Chip label="None" active={isNone} onClick={() => clearProb(slot)} />
               )}
               {values.map((v, i) => {
-                const isFree = i < PREMIUM_FREE_COUNT
+                const isFree = isFreeVariant(draft.style as StyleKey, slot, v, i)
                 const isOwned =
                   isFree ||
                   catalog.unlocked.some(

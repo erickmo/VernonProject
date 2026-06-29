@@ -38,6 +38,14 @@ export function slotsForStyle(style: StyleKey): { slot: string; values: string[]
 }
 
 export const PREMIUM_FREE_COUNT = 3
+// Specific variants made free beyond the first-PREMIUM_FREE_COUNT, by style+slot.
+// notionists hair Style 5 (variant59) + Style 7 (variant57).
+const FREE_OVERRIDE: Record<string, Record<string, string[]>> = {
+  notionists: { hair: ['variant59', 'variant57'] },
+}
+export function isFreeVariant(style: StyleKey, slot: string, value: string, index: number): boolean {
+  return index < PREMIUM_FREE_COUNT || (FREE_OVERRIDE[style]?.[slot]?.includes(value) ?? false)
+}
 export function variantLabel(index: number): string {
   return `Style ${index + 1}`
 }
