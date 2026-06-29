@@ -4,7 +4,7 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
   Award, Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon, Video,
-  StickyNote, MessageSquarePlus, Inbox, QrCode, UserCheck,
+  StickyNote, MessageSquarePlus, Inbox, QrCode, UserCheck, Zap,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
@@ -26,6 +26,7 @@ const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', syste
 // Domain accent per nav route — matches the bento page accents.
 function accentFor(to: string): Accent {
   if (to === '/leaderboard' || to === '/badge-settings') return 'violet'
+  if (to === '/gamification-settings') return 'amber'
   if (to === '/marketplace' || to === '/marketplace-admin') return 'emerald'
   if (to === '/wallet' || to === '/gift-points' || to === '/grant-points') return 'amber'
   if (to === '/users') return 'rose'
@@ -96,6 +97,7 @@ const SECTION: Record<string, { label: string; to: string }> = {
   groups: { label: 'Groups', to: '/groups' },
   brands: { label: 'Brands', to: '/brands' },
   'badge-settings': { label: 'Badges', to: '/badge-settings' },
+  'gamification-settings': { label: 'Gamification Settings', to: '/gamification-settings' },
   'marketplace-admin': { label: 'Marketplace Admin', to: '/marketplace-admin' },
   'grant-points': { label: 'Grant Points', to: '/grant-points' },
   'data-health': { label: 'Data Health', to: '/data-health' },
@@ -157,6 +159,7 @@ export function AppShell() {
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', icon: SettingsIcon } as NavItem] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', icon: Tag } as NavItem] : []),
     ...(canManageBadges(b) ? [{ to: '/badge-settings', label: 'Badges', icon: Award } as NavItem] : []),
+    ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification Settings', icon: Zap } as NavItem] : []),
     ...(canManageMarketplace(b) ? [{ to: '/marketplace-admin', label: 'Marketplace Admin', icon: Store } as NavItem] : []),
     ...(canGrantPoints(b) ? [{ to: '/grant-points', label: 'Grant Points', icon: Coins } as NavItem] : []),
     ...(canManageAttendance(b) ? [{ to: '/attendance-report', label: 'Attendance', icon: QrCode } as NavItem] : []),

@@ -898,6 +898,22 @@ export function useSaveBadgeSettings() {
   })
 }
 
+export function useGamificationSettings() {
+  return useQuery({
+    queryKey: ['gamification-settings'],
+    queryFn: () => mobileApi.getGamificationSettings(),
+  })
+}
+
+export function useSaveGamificationSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (p: Parameters<typeof mobileApi.saveGamificationSettings>[0]) =>
+      mobileApi.saveGamificationSettings(p),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['gamification-settings'] }),
+  })
+}
+
 export function useAppSettings() {
   return useQuery({ queryKey: ['app-settings'], queryFn: () => mobileApi.getAppSettings() as Promise<AppSettings> })
 }

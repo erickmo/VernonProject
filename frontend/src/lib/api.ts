@@ -325,6 +325,30 @@ export const mobileApi = {
     }),
   getGamification: () =>
     api.get<import('./types').Gamification>(M + 'get_gamification'),
+  getGamificationSettings: () =>
+    api.get<{
+      premium_price: number
+      points_per_level: number
+      daily_reward_points: number
+      streak_bonus_points: number
+      streak_cap: number
+      level_rewards: { level: number; reward_points: number; reward_asset: string }[]
+      achievements: { code: string; title: string; icon: string; condition: string; threshold: number; reward_points: number; reward_asset: string }[]
+    }>(M + 'get_gamification_settings'),
+  saveGamificationSettings: (p: {
+    premium_price: number
+    points_per_level: number
+    daily_reward_points: number
+    streak_bonus_points: number
+    streak_cap: number
+    level_rewards: unknown[]
+    achievements: unknown[]
+  }) =>
+    api.post<{ ok: boolean }>(M + 'save_gamification_settings', {
+      ...p,
+      level_rewards: JSON.stringify(p.level_rewards),
+      achievements: JSON.stringify(p.achievements),
+    }),
   claimDaily: () =>
     api.post<{ streak: number; granted: number; balance: number; last_claim: string; already?: boolean }>(
       M + 'claim_daily',
