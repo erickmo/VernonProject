@@ -3565,7 +3565,7 @@ def buy_avatar_option(style, slot, value):
 			return {"balance": bal}
 		_, _, balance = _user_balance(user)
 		if balance < _premium_price():
-			frappe.throw("Insufficient balance", frappe.ValidationError)
+			frappe.throw(f"Not enough points — you need {int(round(_premium_price()))}, you have {int(round(balance))}.", frappe.ValidationError)
 		frappe.get_doc({
 			"doctype": "Avatar Unlock", "user": user, "style": style, "slot": slot,
 			"option_value": value, "cost": _premium_price(), "unlocked_on": now_datetime(),
@@ -3603,7 +3603,7 @@ def buy_avatar_asset(asset_name):
 		cost = float(a["price"] or 0)
 		_, _, balance = _user_balance(user)
 		if balance < cost:
-			frappe.throw("Insufficient balance", frappe.ValidationError)
+			frappe.throw(f"Not enough points — you need {int(round(cost))}, you have {int(round(balance))}.", frappe.ValidationError)
 		frappe.get_doc({"doctype": "Avatar Unlock", "user": user, "style": "_asset",
 			"slot": (a["asset_type"] or "").lower(), "option_value": asset_name,
 			"cost": cost, "unlocked_on": now_datetime()}).insert(ignore_permissions=True)
@@ -3887,6 +3887,35 @@ AVATAR_ASSETS = [
 	{"asset_name": "Dragon", "asset_type": "Collectible", "emoji": "🐉"},
 	{"asset_name": "Unicorn", "asset_type": "Collectible", "emoji": "🦄"},
 	{"asset_name": "Rocket", "asset_type": "Collectible", "emoji": "🚀"},
+	# more collectibles (cars / weapons / pets / flex)
+	{"asset_name": "SUV", "asset_type": "Collectible", "emoji": "🚙"},
+	{"asset_name": "Police Car", "asset_type": "Collectible", "emoji": "🚓"},
+	{"asset_name": "Motorcycle", "asset_type": "Collectible", "emoji": "🏍️"},
+	{"asset_name": "UFO", "asset_type": "Collectible", "emoji": "🛸"},
+	{"asset_name": "Pistol", "asset_type": "Collectible", "emoji": "🔫"},
+	{"asset_name": "Axe", "asset_type": "Collectible", "emoji": "🪓"},
+	{"asset_name": "Trident", "asset_type": "Collectible", "emoji": "🔱"},
+	{"asset_name": "Wolf", "asset_type": "Collectible", "emoji": "🐺"},
+	{"asset_name": "Lion", "asset_type": "Collectible", "emoji": "🦁"},
+	{"asset_name": "Tiger", "asset_type": "Collectible", "emoji": "🐯"},
+	{"asset_name": "Eagle", "asset_type": "Collectible", "emoji": "🦅"},
+	{"asset_name": "Octopus", "asset_type": "Collectible", "emoji": "🐙"},
+	{"asset_name": "Trophy", "asset_type": "Collectible", "emoji": "🏆", "is_default": 1},
+	{"asset_name": "Gold Medal", "asset_type": "Collectible", "emoji": "🥇"},
+	{"asset_name": "Money Bag", "asset_type": "Collectible", "emoji": "💰"},
+	{"asset_name": "Diamond", "asset_type": "Collectible", "emoji": "💎"},
+	{"asset_name": "Rainbow", "asset_type": "Collectible", "emoji": "🌈", "is_default": 1},
+	# more props
+	{"asset_name": "Wizard Hat", "asset_type": "Prop", "emoji": "🧙", "anchor": "top"},
+	{"asset_name": "Graduation Cap", "asset_type": "Prop", "emoji": "🎓", "anchor": "top"},
+	{"asset_name": "Halo", "asset_type": "Prop", "emoji": "😇", "anchor": "top"},
+	{"asset_name": "Heart Badge", "asset_type": "Prop", "emoji": "❤️", "anchor": "corner"},
+	{"asset_name": "Lightning Badge", "asset_type": "Prop", "emoji": "⚡", "anchor": "corner"},
+	# more scenes
+	{"asset_name": "Night", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#141e30,#243b55)"},
+	{"asset_name": "Ocean", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#2193b0,#6dd5ed)"},
+	{"asset_name": "Gold", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#f7971e,#ffd200)"},
+	{"asset_name": "Aurora", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#00c6ff,#0072ff)"},
 ]
 
 
