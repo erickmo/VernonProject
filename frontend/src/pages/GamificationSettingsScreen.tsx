@@ -12,6 +12,7 @@ const field =
 
 type LevelRow = { level: string; reward_points: string; reward_asset: string }
 type AchievRow = { code: string; title: string; icon: string; condition: string; threshold: string; reward_points: string; reward_asset: string; is_tier: number; color: string }
+type AssetRow = { asset_name: string; asset_type: string; price: number; is_default: number }
 
 const emptyLevel = (): LevelRow => ({ level: '', reward_points: '', reward_asset: '' })
 const emptyAchiev = (): AchievRow => ({ code: '', title: '', icon: '', condition: 'todos_completed', threshold: '', reward_points: '', reward_asset: '', is_tier: 0, color: '' })
@@ -48,6 +49,7 @@ export default function GamificationSettingsScreen() {
   const [streakCap, setStreakCap] = useState('')
   const [levels, setLevels] = useState<LevelRow[]>([])
   const [achievements, setAchievements] = useState<AchievRow[]>([])
+  const [assets, setAssets] = useState<AssetRow[]>([])
 
   useEffect(() => {
     if (!loaded) return
@@ -58,6 +60,7 @@ export default function GamificationSettingsScreen() {
     setStreakCap(String(loaded.streak_cap))
     setLevels(loaded.level_rewards.map((r) => ({ level: String(r.level), reward_points: String(r.reward_points), reward_asset: r.reward_asset ?? '' })))
     setAchievements(loaded.achievements.map((a) => ({ ...a, threshold: String(a.threshold), reward_points: String(a.reward_points), is_tier: a.is_tier ?? 0, color: a.color ?? '', reward_asset: a.reward_asset ?? '' })))
+    setAssets((loaded.assets ?? []).map((a) => ({ ...a, price: Number(a.price), is_default: Number(a.is_default) })))
   }, [loaded])
 
   const blocked = !boot ? false : !canManageBadges(boot)
@@ -77,6 +80,9 @@ export default function GamificationSettingsScreen() {
 
   const setAchiev = (i: number, patch: Partial<AchievRow>) =>
     setAchievements((as) => as.map((a, j) => (j === i ? { ...a, ...patch } : a)))
+
+  const setAsset = (i: number, patch: Partial<AssetRow>) =>
+    setAssets((as) => as.map((a, j) => (j === i ? { ...a, ...patch } : a)))
 
   const removeLevel = async (i: number) => {
     const r = levels[i]
@@ -106,6 +112,7 @@ export default function GamificationSettingsScreen() {
         streak_cap: Number(streakCap),
         level_rewards: levels.map((l) => ({ level: Number(l.level), reward_points: Number(l.reward_points), reward_asset: (l.reward_asset ?? '').trim() })),
         achievements: achievements.map((a) => ({ code: (a.code ?? '').trim(), title: (a.title ?? '').trim(), icon: (a.icon ?? '').trim(), condition: a.condition, threshold: Number(a.threshold), reward_points: Number(a.reward_points), reward_asset: (a.reward_asset ?? '').trim(), is_tier: a.is_tier, color: (a.color ?? '').trim() })),
+        assets: assets.map((a) => ({ asset_name: a.asset_name, asset_type: a.asset_type, price: Number(a.price), is_default: a.is_default ? 1 : 0 })),
       },
       {
         onSuccess: () => { toast('success', 'Gamification settings saved'); navigate(-1) },
@@ -260,6 +267,53 @@ export default function GamificationSettingsScreen() {
                 className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-3 text-sm font-semibold text-slate-500 dark:border-slate-600 dark:text-slate-400">
                 <Plus className="h-4 w-4" /> Add achievement
               </button>
+            </div>
+          )}
+        </Section>
+
+        {/* Item Prices */}
+        <Section title="Item Prices">
+          <p className="mb-3 text-xs text-stone-400 dark:text-slate-500">Harga Item — atur harga (poin) tiap item (scene/prop/koleksi). Centang 'Gratis' agar item bebas dipakai semua user.</p>
+          {assets.length === 0 ? (
+            <p className="text-xs text-stone-400 dark:text-slate-500">No assets loaded.</p>
+          ) : (
+            <div className="space-y-4">
+              {(['Scene', 'Prop', 'Collectible'] as const).map((type) => {
+                const group = assets.filter((a) => a.asset_type === type)
+                if (group.length === 0) return null
+                return (
+                  <div key={type}>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-slate-500">{type}</p>
+                    <div className="flex flex-col gap-1.5">
+                      {group.map((a) => {
+                        const idx = assets.indexOf(a)
+                        return (
+                          <div key={a.asset_name} className="flex items-center gap-2 rounded-xl bg-paper dark:bg-slate-900 px-3 py-2">
+                            <span className="flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-200" title={a.asset_name}>{a.asset_name}</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min={0}
+                              className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                              value={a.price}
+                              onChange={(e) => setAsset(idx, { price: Number(e.target.value) })}
+                            />
+                            <label className="flex cursor-pointer items-center gap-1 text-xs text-stone-500 dark:text-slate-400">
+                              <input
+                                type="checkbox"
+                                className="h-3.5 w-3.5 rounded accent-brand-600"
+                                checked={!!a.is_default}
+                                onChange={(e) => setAsset(idx, { is_default: e.target.checked ? 1 : 0 })}
+                              />
+                              Gratis
+                            </label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </Section>
