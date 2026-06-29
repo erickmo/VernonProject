@@ -153,12 +153,14 @@ export const mobileApi = {
     full_name: string
     roles: string[]
     send_welcome: boolean
+    member_type?: string
   }) =>
     api.post<{ name: string }>(M + 'create_user', {
       email: payload.email,
       full_name: payload.full_name,
       roles: JSON.stringify(payload.roles),
       send_welcome: payload.send_welcome ? 1 : 0,
+      member_type: payload.member_type,
     }),
   updateUser: (user: string, payload: import('./types').UserFormPayload) =>
     api.post<{ name: string }>(M + 'update_user', {
@@ -166,6 +168,7 @@ export const mobileApi = {
       full_name: payload.full_name,
       roles: JSON.stringify(payload.roles),
       enabled: payload.enabled,
+      member_type: payload.member_type,
     }),
   resetUserPassword: (user: string) =>
     api.post<{ ok: boolean }>(M + 'reset_user_password', { user }),
@@ -333,7 +336,7 @@ export const mobileApi = {
       streak_bonus_points: number
       streak_cap: number
       level_rewards: { level: number; reward_points: number; reward_asset: string }[]
-      achievements: { code: string; title: string; icon: string; condition: string; threshold: number; reward_points: number; reward_asset: string }[]
+      achievements: { code: string; title: string; icon: string; condition: string; threshold: number; reward_points: number; reward_asset: string; is_tier: number; color: string }[]
     }>(M + 'get_gamification_settings'),
   saveGamificationSettings: (p: {
     premium_price: number

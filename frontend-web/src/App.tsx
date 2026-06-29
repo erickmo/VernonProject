@@ -39,7 +39,6 @@ import Notes from '@web/pages/Notes'
 import NoteForm from '@web/pages/NoteForm'
 import Feedback from '@web/pages/Feedback'
 import FeedbackInbox from '@web/pages/FeedbackInbox'
-import BadgeSettings from '@web/pages/BadgeSettings'
 import GamificationSettings from '@web/pages/GamificationSettings'
 import Settings from '@web/pages/Settings'
 import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
@@ -179,9 +178,6 @@ export default function App() {
               <Route path="/brands/new" element={<BrandForm />} />
               <Route path="/brands/:name" element={<BrandForm />} />
             </>
-          )}
-          {canManageBadges(b) && (
-            <Route path="/badge-settings" element={<BadgeSettings />} />
           )}
           {canManageBadges(b) && (
             <Route path="/gamification-settings" element={<GamificationSettings />} />

@@ -12,10 +12,10 @@ const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 type LevelRow = { level: string; reward_points: string; reward_asset: string }
-type AchievRow = { code: string; title: string; icon: string; condition: string; threshold: string; reward_points: string; reward_asset: string }
+type AchievRow = { code: string; title: string; icon: string; condition: string; threshold: string; reward_points: string; reward_asset: string; is_tier: number; color: string }
 
 const emptyLevel = (): LevelRow => ({ level: '', reward_points: '', reward_asset: '' })
-const emptyAchiev = (): AchievRow => ({ code: '', title: '', icon: '', condition: 'todos_completed', threshold: '', reward_points: '', reward_asset: '' })
+const emptyAchiev = (): AchievRow => ({ code: '', title: '', icon: '', condition: 'todos_completed', threshold: '', reward_points: '', reward_asset: '', is_tier: 0, color: '' })
 
 const CONDITIONS = ['todos_completed', 'badge_points', 'streak_days']
 
@@ -43,7 +43,7 @@ export default function GamificationSettings() {
     setStreakBonusPoints(String(loaded.streak_bonus_points))
     setStreakCap(String(loaded.streak_cap))
     setLevels(loaded.level_rewards.map((r) => ({ level: String(r.level), reward_points: String(r.reward_points), reward_asset: r.reward_asset })))
-    setAchievements(loaded.achievements.map((a) => ({ ...a, threshold: String(a.threshold), reward_points: String(a.reward_points) })))
+    setAchievements(loaded.achievements.map((a) => ({ ...a, threshold: String(a.threshold), reward_points: String(a.reward_points), is_tier: a.is_tier ?? 0, color: a.color ?? '' })))
   }, [loaded])
 
   const blocked = !boot ? false : !canManageBadges(boot)
@@ -87,7 +87,7 @@ export default function GamificationSettings() {
         streak_bonus_points: Number(streakBonusPoints),
         streak_cap: Number(streakCap),
         level_rewards: levels.map((l) => ({ level: Number(l.level), reward_points: Number(l.reward_points), reward_asset: l.reward_asset.trim() })),
-        achievements: achievements.map((a) => ({ code: a.code.trim(), title: a.title.trim(), icon: a.icon.trim(), condition: a.condition, threshold: Number(a.threshold), reward_points: Number(a.reward_points), reward_asset: a.reward_asset.trim() })),
+        achievements: achievements.map((a) => ({ code: a.code.trim(), title: a.title.trim(), icon: a.icon.trim(), condition: a.condition, threshold: Number(a.threshold), reward_points: Number(a.reward_points), reward_asset: a.reward_asset.trim(), is_tier: a.is_tier, color: a.color.trim() })),
       },
       {
         onSuccess: () => toast('success', 'Gamification settings saved'),
@@ -234,6 +234,17 @@ export default function GamificationSettings() {
                         </Field>
                         <Field label="Reward asset">
                           {(id) => <input id={id} className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })} placeholder="Avatar Asset name" />}
+                        </Field>
+                        <Field label="Color (tier pill)">
+                          {(id) => <input id={id} className={field} value={a.color} onChange={(e) => setAchiev(i, { color: e.target.value })} placeholder="#6366f1" />}
+                        </Field>
+                        <Field label="Is tier">
+                          {(id) => (
+                            <label className="flex items-center gap-2 pt-2 cursor-pointer">
+                              <input id={id} type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={!!a.is_tier} onChange={(e) => setAchiev(i, { is_tier: e.target.checked ? 1 : 0 })} />
+                              <span className="text-sm text-slate-600 dark:text-slate-300">Rank tier</span>
+                            </label>
+                          )}
                         </Field>
                       </div>
                     </div>
