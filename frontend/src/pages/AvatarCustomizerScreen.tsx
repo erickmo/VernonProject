@@ -13,6 +13,7 @@ import {
 import type { StyleKey } from '@/avatar/styles'
 import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
+import { CollectibleIcon } from '@/avatar/collectibleIcons'
 import type { AvatarConfig } from '@/lib/types'
 
 const STYLE_TABS = STYLE_LIST.map((s) => ({
@@ -429,7 +430,10 @@ export default function AvatarCustomizerScreen() {
                       featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
                     ].join(' ')}
                   >
-                    <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                    {a.icon
+                      ? <CollectibleIcon name={a.icon} className="h-8 w-8 text-stone-700 dark:text-slate-200" />
+                      : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                    }
                     <span className="text-[10px] font-medium text-stone-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
                     {a.owned ? (
                       <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400 dark:text-slate-500'].join(' ')}>

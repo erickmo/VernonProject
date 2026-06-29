@@ -593,6 +593,7 @@ export interface AvatarAsset {
   asset_name: string
   asset_type: 'Scene' | 'Prop' | 'Collectible'
   emoji: string | null
+  icon?: string | null
   gradient: string | null
   anchor: string | null
   is_default: number

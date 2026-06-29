@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { DiceBearAvatar } from './DiceBearAvatar'
+import { CollectibleIcon } from './collectibleIcons'
 import type { AvatarConfig, AvatarAsset } from '../lib/types'
 
 function anchorStyle(anchor?: string | null): CSSProperties {
@@ -23,8 +24,9 @@ export function AvatarScene({ config, assets, className }: { config: AvatarConfi
       {props.map((p, i) => (
         <span key={i} className="pointer-events-none absolute select-none" style={anchorStyle(p.anchor)}>{p.emoji}</span>
       ))}
-      {fc?.emoji && (
-        <span className="pointer-events-none absolute bottom-[4%] right-[4%] select-none text-4xl leading-none">{fc.emoji}</span>
+      {fc && (fc.icon
+        ? <CollectibleIcon name={fc.icon} className="pointer-events-none absolute bottom-[4%] right-[4%] h-10 w-10 select-none" />
+        : fc.emoji && <span className="pointer-events-none absolute bottom-[4%] right-[4%] select-none text-4xl leading-none">{fc.emoji}</span>
       )}
     </div>
   )
