@@ -184,6 +184,9 @@ doc_events = {
 	"Brand": {
 		"on_update": "vernon_project.attendance.triggers.brand_changed",
 	},
+	"User": {
+		"on_update": "vernon_project.user_offboarding.transfer_open_todos_on_disable",
+	},
 }
 
 # Scheduled Tasks
