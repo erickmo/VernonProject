@@ -26,6 +26,7 @@ import Reports from '@web/pages/Reports'
 import DataHealth from '@web/pages/DataHealth'
 import ReportPage from '@web/pages/ReportPage'
 import Leaderboard from '@web/pages/Leaderboard'
+import TeamWall from '@web/pages/TeamWall'
 import Marketplace from '@web/pages/Marketplace'
 import WalletLog from '@web/pages/WalletLog'
 import GiftPoints from '@web/pages/GiftPoints'
@@ -153,6 +154,7 @@ export default function App() {
             <Route path="/data-health" element={<DataHealth />} />
           )}
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/team-wall" element={<TeamWall />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/wallet" element={<WalletLog />} />
           <Route path="/gift-points" element={<GiftPoints />} />

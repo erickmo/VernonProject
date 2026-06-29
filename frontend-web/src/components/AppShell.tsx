@@ -4,7 +4,7 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Menu, X, Sun, Moon, Monitor, LogOut,
   Trophy, ShoppingBag, Wallet, Gift, BarChart3, Users as UsersIcon, Layers, Tag,
   Store, Coins, ChevronRight, Search, ShieldAlert, Settings as SettingsIcon, Video,
-  StickyNote, MessageSquarePlus, Inbox, QrCode, UserCheck, Zap,
+  StickyNote, MessageSquarePlus, Inbox, QrCode, UserCheck, Zap, UsersRound,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useWallet,
@@ -26,6 +26,7 @@ const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', syste
 // Domain accent per nav route — matches the bento page accents.
 function accentFor(to: string): Accent {
   if (to === '/leaderboard') return 'violet'
+  if (to === '/team-wall') return 'violet'
   if (to === '/gamification-settings') return 'amber'
   if (to === '/marketplace' || to === '/marketplace-admin') return 'emerald'
   if (to === '/wallet' || to === '/gift-points' || to === '/grant-points') return 'amber'
@@ -65,6 +66,7 @@ const MAIN: NavItem[] = [
 
 const REWARDS: NavItem[] = [
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { to: '/team-wall', label: 'Team Wall', icon: UsersRound },
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { to: '/wallet', label: 'Wallet', icon: Wallet },
   { to: '/gift-points', label: 'Gift Points', icon: Gift },
