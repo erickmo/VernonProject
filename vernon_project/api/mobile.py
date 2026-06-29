@@ -3475,7 +3475,48 @@ AVATAR_FREE = {
 	"adventurer": {"hair": ["short16", "short15", "short14"], "eyes": ["variant26", "variant25", "variant24"], "eyebrows": ["variant10", "variant09", "variant08"], "mouth": ["variant30", "variant29", "variant28"], "glasses": ["variant01", "variant02", "variant03"], "earrings": ["variant06", "variant01", "variant02"], "features": ["mustache", "blush", "birthmark"]},
 	"notionists": {"hair": ["variant63", "variant62", "variant61"], "eyes": ["variant05", "variant04", "variant03"], "brows": ["variant13", "variant12", "variant11"], "lips": ["variant30", "variant29", "variant28"], "glasses": ["variant11", "variant10", "variant09"], "nose": ["variant20", "variant19", "variant18"], "beard": ["variant12", "variant11", "variant10"], "body": ["variant25", "variant24", "variant23"], "bodyIcon": ["electric", "saturn", "galaxy"], "gesture": ["wavePointLongArms", "waveOkLongArms", "waveLongArms"]},
 }
-PREMIUM_PRICE = 5000
+PREMIUM_PRICE = 50  # ponytail: fallback only; live value from Avatar Gamification Settings
+
+
+def _gami_settings():
+	return frappe.get_cached_doc("Avatar Gamification Settings")
+
+
+def _premium_price():
+	try:
+		v = _gami_settings().premium_price
+		return float(v) if v else 50.0
+	except Exception:
+		return 50.0
+
+
+def _lifetime_points(user):
+	return float(frappe.db.sql("select coalesce(sum(points_earned),0) from `tabPoint Ledger` where user=%s", user)[0][0] or 0)
+
+
+def _grant_points(user, amount, source):
+	if not amount:
+		return
+	frappe.get_doc({"doctype": "Point Ledger", "user": user, "role": "Assignee",
+		"points_earned": float(amount), "source": source, "credited_on": now_datetime()}).insert(ignore_permissions=True)
+
+
+def _grant_asset(user, asset_name):
+	if not asset_name or not frappe.db.exists("Avatar Asset", asset_name):
+		return
+	if frappe.db.exists("Avatar Unlock", {"user": user, "style": "_asset", "option_value": asset_name}):
+		return
+	atype = frappe.db.get_value("Avatar Asset", asset_name, "asset_type")
+	frappe.get_doc({"doctype": "Avatar Unlock", "user": user, "style": "_asset",
+		"slot": (atype or "").lower(), "option_value": asset_name, "cost": 0, "unlocked_on": now_datetime()}).insert(ignore_permissions=True)
+
+
+def _has_claim(user, claim_type, claim_ref):
+	return bool(frappe.db.exists("Avatar Reward Claim", {"user": user, "claim_type": claim_type, "claim_ref": str(claim_ref)}))
+
+
+def _record_claim(user, claim_type, claim_ref):
+	frappe.get_doc({"doctype": "Avatar Reward Claim", "user": user, "claim_type": claim_type, "claim_ref": str(claim_ref)}).insert(ignore_permissions=True)
 
 
 def _is_free(style, slot, value):
@@ -3511,11 +3552,11 @@ def buy_avatar_option(style, slot, value):
 			_, _, bal = _user_balance(user)
 			return {"balance": bal}
 		_, _, balance = _user_balance(user)
-		if balance < PREMIUM_PRICE:
+		if balance < _premium_price():
 			frappe.throw("Insufficient balance", frappe.ValidationError)
 		frappe.get_doc({
 			"doctype": "Avatar Unlock", "user": user, "style": style, "slot": slot,
-			"option_value": value, "cost": PREMIUM_PRICE, "unlocked_on": now_datetime(),
+			"option_value": value, "cost": _premium_price(), "unlocked_on": now_datetime(),
 		}).insert(ignore_permissions=True)
 		_, _, new_balance = _user_balance(user)
 		return {"balance": new_balance}
@@ -3623,7 +3664,7 @@ def get_avatar_catalog():
 		a["owned"] = (a["asset_name"] in owned_assets) or bool(a["is_default"])
 		a["price"] = None if a["owned"] else float(a["price"] or 0)
 	return {
-		"free_count": 3, "price": PREMIUM_PRICE, "unlocked": unlocked,
+		"free_count": 3, "price": _premium_price(), "unlocked": unlocked,
 		"my": _my_avatar_config(user), "balance": balance,
 		"assets": assets,
 	}
@@ -3849,3 +3890,33 @@ def seed_avatar_assets():
 			created += 1
 	frappe.db.commit()
 	return {"created": created}
+
+
+def seed_gamification_settings():
+	s = frappe.get_single("Avatar Gamification Settings")
+	if not s.premium_price:
+		s.premium_price = 50
+	if not s.points_per_level:
+		s.points_per_level = 100
+	if not s.daily_reward_points:
+		s.daily_reward_points = 10
+	if not s.streak_bonus_points:
+		s.streak_bonus_points = 5
+	if not s.streak_cap:
+		s.streak_cap = 7
+	if not s.level_rewards:
+		s.set("level_rewards", [
+			{"level": 2, "reward_points": 0, "reward_asset": "Crown"},
+			{"level": 5, "reward_points": 50, "reward_asset": "Dragon"},
+			{"level": 10, "reward_points": 100, "reward_asset": "Rocket"},
+		])
+	if not s.achievements:
+		s.set("achievements", [
+			{"code": "todos10", "title": "Getting Started", "icon": "✅", "condition": "todos_completed", "threshold": 10, "reward_points": 20, "reward_asset": "Sword"},
+			{"code": "pts300", "title": "Knight", "icon": "🛡️", "condition": "badge_points", "threshold": 300, "reward_points": 0, "reward_asset": "Shield"},
+			{"code": "streak3", "title": "On a Roll", "icon": "🔥", "condition": "streak_days", "threshold": 3, "reward_points": 30, "reward_asset": "Race Car"},
+		])
+	s.flags.ignore_permissions = True
+	s.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"ok": True}
