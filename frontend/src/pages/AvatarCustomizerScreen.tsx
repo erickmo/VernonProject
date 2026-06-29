@@ -211,7 +211,7 @@ export default function AvatarCustomizerScreen() {
                     isOwned={isOwned}
                     active={active}
                     price={catalog.price}
-                    onPreview={() => { if (isOwned) setOption(slot, v); else toast('error', 'Buy to use this on your avatar') }}
+                    onPreview={() => setOption(slot, v)}
                     onBuy={() =>
                       buyAvatar.mutate(
                         { style: draft.style, slot, value: v },
@@ -322,7 +322,7 @@ export default function AvatarCustomizerScreen() {
                 <div key={a.asset_name} className="flex shrink-0 flex-col items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => a.owned && setDraft(d => d ? { ...d, scene: d.scene === a.asset_name ? null : a.asset_name } : d)}
+                    onClick={() => setDraft(d => d ? { ...d, scene: d.scene === a.asset_name ? null : a.asset_name } : d)}
                     className={[
                       'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition active:scale-95',
                       active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
@@ -366,7 +366,6 @@ export default function AvatarCustomizerScreen() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!a.owned) return
                       setDraft(d => {
                         if (!d) return d
                         const others = (d.props || []).filter(n => {
@@ -421,10 +420,7 @@ export default function AvatarCustomizerScreen() {
                 <div key={a.asset_name} className="flex shrink-0 flex-col items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!a.owned) return
-                      setDraft(d => d ? { ...d, featured_collectible: d.featured_collectible === a.asset_name ? null : a.asset_name } : d)
-                    }}
+                    onClick={() => setDraft(d => d ? { ...d, featured_collectible: d.featured_collectible === a.asset_name ? null : a.asset_name } : d)}
                     className={[
                       'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition active:scale-95',
                       featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
