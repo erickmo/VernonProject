@@ -221,7 +221,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
                 <AvatarScene config={catalog.my} assets={catalog.assets} className="h-full w-full" />
               </div>
             ) : (
-              <Avatar name={boot.full_name} image={boot.image} size={72} />
+              <Avatar name={boot.full_name} image={boot.image} config={boot.avatar_config} size={72} />
             )}
             <div className="text-center">
               <p className="font-display text-lg font-bold text-stone-800 dark:text-slate-50">{boot.full_name}</p>

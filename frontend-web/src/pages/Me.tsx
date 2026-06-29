@@ -212,7 +212,7 @@ function AvatarTile() {
             <AvatarScene config={catalog.my} assets={catalog.assets} className="h-full w-full" />
           </div>
         ) : (
-          <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={72} />
+          <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config} size={72} />
         )}
       </div>
     </BentoTile>
