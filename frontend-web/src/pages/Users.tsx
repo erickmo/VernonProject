@@ -3,12 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Users as UsersIcon, Search } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { ErrorState, rowButtonProps } from '@web/components/ui'
-import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
+import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
   VERNON_ROLE_OPTIONS.map((o) => [o.value, o.label]),
 )
+
+const MEMBER_BADGE: Record<string, string> = {
+  'Internal Team': 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+  Intern: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+}
 
 type StatusFilter = 'all' | 'active' | 'disabled'
 
@@ -34,6 +39,7 @@ export default function Users() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [roleFilter, setRoleFilter] = useState('')
+  const [memberFilter, setMemberFilter] = useState('')
 
   const blocked = !!boot && !canManageUsers(boot)
   useEffect(() => {
@@ -48,9 +54,10 @@ export default function Users() {
       if (status === 'active' && u.enabled !== 1) return false
       if (status === 'disabled' && u.enabled !== 0) return false
       if (roleFilter && !u.roles.includes(roleFilter)) return false
+      if (memberFilter && u.member_type !== memberFilter) return false
       return true
     })
-  }, [users, search, status, roleFilter])
+  }, [users, search, status, roleFilter, memberFilter])
 
   if (bootLoading || isLoading) {
     return (
@@ -122,6 +129,20 @@ export default function Users() {
                 </button>
               ))}
             </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setMemberFilter('')} className={chip(memberFilter === '')}>
+                All types
+              </button>
+              {MEMBER_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setMemberFilter(memberFilter === opt.value ? '' : opt.value)}
+                  className={chip(memberFilter === opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </BentoTile>
 
@@ -153,6 +174,7 @@ export default function Users() {
                   <tr>
                     <th className="px-4 py-2.5">User</th>
                     <th className="px-4 py-2.5">Roles</th>
+                    <th className="px-4 py-2.5">Type</th>
                     <th className="px-4 py-2.5">Status</th>
                   </tr>
                 </thead>
@@ -188,6 +210,19 @@ export default function Users() {
                             <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {u.member_type ? (
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                              MEMBER_BADGE[u.member_type] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {u.member_type}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5">
                         {u.enabled ? (

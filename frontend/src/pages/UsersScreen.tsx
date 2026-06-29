@@ -3,12 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Users, ChevronRight, Search } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
-import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
+import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
 import type { ManagedUser } from '@/lib/types'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
   VERNON_ROLE_OPTIONS.map((o) => [o.value, o.label]),
 )
+
+const MEMBER_BADGE: Record<string, string> = {
+  'Internal Team': 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+  Intern: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+}
 
 type StatusFilter = 'all' | 'active' | 'disabled'
 
@@ -88,6 +93,8 @@ function UsersBody({
   setRoleFilter,
   onSelect,
 }: UsersBodyProps) {
+  const [memberFilter, setMemberFilter] = useState('')
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return users.filter((u) => {
@@ -96,9 +103,10 @@ function UsersBody({
       if (status === 'active' && u.enabled !== 1) return false
       if (status === 'disabled' && u.enabled !== 0) return false
       if (roleFilter && !u.roles.includes(roleFilter)) return false
+      if (memberFilter && u.member_type !== memberFilter) return false
       return true
     })
-  }, [users, search, status, roleFilter])
+  }, [users, search, status, roleFilter, memberFilter])
 
   const hasUsers = users.length > 0
 
@@ -160,6 +168,33 @@ function UsersBody({
         ))}
       </div>
 
+      {/* Member-type chips */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setMemberFilter('')}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            memberFilter === ''
+              ? 'bg-brand-600 text-white'
+              : 'bg-slate-100 text-slate-600 active:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:active:bg-slate-700'
+          }`}
+        >
+          All types
+        </button>
+        {MEMBER_TYPE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setMemberFilter(memberFilter === opt.value ? '' : opt.value)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              memberFilter === opt.value
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-600 active:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:active:bg-slate-700'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* List or empty states */}
       {!hasUsers ? (
         <EmptyState icon={Users} title="No users yet" />
@@ -181,8 +216,17 @@ function UsersBody({
                   {u.full_name || u.name}
                 </p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.name}</p>
-                {u.roles.length > 0 && (
+                {(u.roles.length > 0 || u.member_type) && (
                   <div className="mt-1 flex flex-wrap gap-1">
+                    {u.member_type && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          MEMBER_BADGE[u.member_type] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {u.member_type}
+                      </span>
+                    )}
                     {u.roles.map((r) => (
                       <span
                         key={r}

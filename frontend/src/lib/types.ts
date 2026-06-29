@@ -407,12 +407,14 @@ export interface ManagedUser {
   user_image: string | null
   last_active: string | null
   roles: string[]
+  member_type: string
 }
 
 export interface UserFormPayload {
   full_name: string
   roles: string[]
   enabled: 0 | 1
+  member_type?: string // optional marking; omit to leave unchanged
 }
 
 export type GrantUser = { name: string; full_name: string; user_image?: string | null }

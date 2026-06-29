@@ -13,6 +13,7 @@ import {
   useResetUserPassword,
   useSetUserPassword,
   VERNON_ROLE_OPTIONS,
+  MEMBER_TYPE_OPTIONS,
 } from '@/hooks/useData'
 
 export default function UserFormScreen() {
@@ -36,6 +37,7 @@ export default function UserFormScreen() {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [roles, setRoles] = useState<string[]>([])
+  const [memberType, setMemberType] = useState('')
   const [enabled, setEnabled] = useState(true)
   const [sendWelcome, setSendWelcome] = useState(true)
   const [newPassword, setNewPassword] = useState('')
@@ -44,6 +46,7 @@ export default function UserFormScreen() {
     if (existing) {
       setFullName(existing.full_name || '')
       setRoles(existing.roles)
+      setMemberType(existing.member_type || '')
       setEnabled(!!existing.enabled)
     }
   }, [existing])
@@ -55,7 +58,7 @@ export default function UserFormScreen() {
       if (isEdit) {
         await update.mutateAsync({
           user: name as string,
-          payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0 },
+          payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0, member_type: memberType },
         })
         toast('success', 'User updated')
       } else {
@@ -68,6 +71,7 @@ export default function UserFormScreen() {
           full_name: fullName.trim() || email.trim(),
           roles,
           send_welcome: sendWelcome,
+          member_type: memberType,
         })
         toast('success', 'User created')
       }
@@ -164,6 +168,22 @@ export default function UserFormScreen() {
             emptyText="No roles"
           />
         </div>
+
+        <label className="block">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Member type</span>
+          <select
+            value={memberType}
+            onChange={(e) => setMemberType(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+          >
+            <option value="">External / none</option>
+            {MEMBER_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         {!isEdit && (
           <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:bg-slate-800 dark:border-slate-700">

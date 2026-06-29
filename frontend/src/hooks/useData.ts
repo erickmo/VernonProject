@@ -601,6 +601,12 @@ export const VERNON_ROLE_OPTIONS = [
   { value: 'Points Granter', label: 'Points Granter' },
 ]
 
+// Member-type marking on a user. '' = external/unset. Must match MEMBER_TYPES in mobile.py.
+export const MEMBER_TYPE_OPTIONS = [
+  { value: 'Internal Team', label: 'Internal Team' },
+  { value: 'Intern', label: 'Intern' },
+]
+
 export function useBrands() {
   return useQuery({
     queryKey: keys.brands,
@@ -672,6 +678,7 @@ export function useCreateUser() {
       full_name: string
       roles: string[]
       send_welcome: boolean
+      member_type?: string
     }) => mobileApi.createUser(payload),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
   })

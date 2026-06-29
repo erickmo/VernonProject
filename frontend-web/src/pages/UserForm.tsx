@@ -14,6 +14,7 @@ import {
   useResetUserPassword,
   useSetUserPassword,
   VERNON_ROLE_OPTIONS,
+  MEMBER_TYPE_OPTIONS,
 } from '@/hooks/useData'
 
 const field =
@@ -40,6 +41,7 @@ export default function UserForm() {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [roles, setRoles] = useState<string[]>([])
+  const [memberType, setMemberType] = useState('')
   const [enabled, setEnabled] = useState(true)
   const [sendWelcome, setSendWelcome] = useState(true)
   const [newPassword, setNewPassword] = useState('')
@@ -50,6 +52,7 @@ export default function UserForm() {
     if (existing) {
       setFullName(existing.full_name || '')
       setRoles(existing.roles)
+      setMemberType(existing.member_type || '')
       setEnabled(!!existing.enabled)
     }
   }, [existing])
@@ -74,7 +77,7 @@ export default function UserForm() {
       if (isEdit) {
         await update.mutateAsync({
           user: name as string,
-          payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0 },
+          payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0, member_type: memberType },
         })
         toast('success', 'User updated')
       } else {
@@ -89,6 +92,7 @@ export default function UserForm() {
           full_name: fullName.trim() || email.trim(),
           roles,
           send_welcome: sendWelcome,
+          member_type: memberType,
         })
         toast('success', 'User created')
       }
@@ -245,6 +249,12 @@ export default function UserForm() {
                 {roles.length > 0 ? roles.join(', ') : 'None'}
               </p>
             </div>
+            <div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Member type</span>
+              <p className="font-medium text-slate-800 dark:text-slate-100">
+                {memberType || 'External / none'}
+              </p>
+            </div>
             {isEdit && (
               <div>
                 <span className="text-xs text-slate-500 dark:text-slate-400">Status</span>
@@ -271,6 +281,27 @@ export default function UserForm() {
                 emptyText="No roles"
               />
             </div>
+
+            <Field label="Member type">
+              {(id) => (
+                <select
+                  id={id}
+                  value={memberType}
+                  onChange={(e) => {
+                    setMemberType(e.target.value)
+                    setDirty(true)
+                  }}
+                  className={field}
+                >
+                  <option value="">External / none</option>
+                  {MEMBER_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
 
             {!isEdit && (
               <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
