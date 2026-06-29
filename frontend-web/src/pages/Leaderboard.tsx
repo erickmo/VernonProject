@@ -28,7 +28,7 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <Avatar name={e.full_name} image={e.image} size={36} />
+          <Avatar name={e.full_name} image={e.image} config={e.avatar_config} size={36} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
               {e.full_name}{' '}
@@ -99,7 +99,7 @@ export default function Leaderboard() {
               {top3.map((e) => (
                 <div key={e.user} className="flex items-center gap-3 min-w-0">
                   <div className="text-2xl shrink-0">{medal(e.rank) ?? `#${e.rank}`}</div>
-                  <Avatar name={e.full_name} image={e.image} size={40} />
+                  <Avatar name={e.full_name} image={e.image} config={e.avatar_config} size={40} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{e.full_name}</p>
                     <p className="text-xs opacity-70">{e.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} pts</p>

@@ -165,6 +165,7 @@ export default function Review() {
                                 <Avatar
                                   name={t.assigned_to_name}
                                   image={t.assigned_to_image ?? undefined}
+                                  config={t.assigned_to_avatar_config}
                                   size={24}
                                 />
                                 <span className="text-slate-500 whitespace-nowrap">{t.assigned_to_name}</span>

@@ -127,7 +127,7 @@ export default function GiftPoints() {
                     aria-label={`Gift points to ${u.full_name}`}
                     className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
                   >
-                    <Avatar name={u.full_name} image={u.user_image} size={40} />
+                    <Avatar name={u.full_name} image={u.user_image} config={u.avatar_config} size={40} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                         {u.full_name}
@@ -175,7 +175,7 @@ export default function GiftPoints() {
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
-              <Avatar name={selected.full_name} image={selected.user_image} size={44} />
+              <Avatar name={selected.full_name} image={selected.user_image} config={selected.avatar_config} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{selected.full_name}</p>
                 <p className="truncate text-sm text-slate-400">{selected.name}</p>

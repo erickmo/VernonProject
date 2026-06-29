@@ -228,7 +228,7 @@ export function AppShell() {
             `flex items-center gap-2 px-1 py-1 rounded-lg ${isActive ? 'text-brand-600' : ''}`
           }
         >
-          <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={32} />
+          <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config} size={32} />
           <span className="text-sm font-medium truncate">{b?.full_name}</span>
         </NavLink>
         <div className="flex items-center gap-1">

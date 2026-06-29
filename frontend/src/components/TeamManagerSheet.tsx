@@ -44,6 +44,8 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
     email
   const imageFor = (email: string) =>
     project.team.find((t) => t.user === email)?.image ?? null
+  const configFor = (email: string) =>
+    project.team.find((t) => t.user === email)?.avatar_config ?? undefined
 
   const roleOf = (email: string): string | null => {
     if (email === owner) return 'Owner'
@@ -129,7 +131,7 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
             return (
               <div key={email} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <Avatar name={nameFor(email)} image={imageFor(email)} size={32} />
+                  <Avatar name={nameFor(email)} image={imageFor(email)} config={configFor(email)} size={32} />
                   <span className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{nameFor(email)}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

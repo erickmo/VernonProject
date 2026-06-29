@@ -1,6 +1,8 @@
 import clsx from 'clsx'
 import { Loader2 } from 'lucide-react'
 import { initials, colorFor } from '@/lib/format'
+import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
+import type { AvatarConfig } from '@/lib/types'
 
 export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={clsx('animate-spin', className)} />
@@ -18,15 +20,29 @@ export function FullScreenLoader({ label }: { label?: string }) {
 export function Avatar({
   name,
   image,
+  config,
   size = 36,
   square = false,
 }: {
   name: string
   image?: string | null
+  config?: AvatarConfig | null
   size?: number
   square?: boolean
 }) {
   const shape = square ? 'rounded-none' : 'rounded-full ring-2 ring-white dark:ring-slate-800'
+  // Prefer the live DiceBear config (always correctly framed) over the stored PNG
+  // snapshot, which is off-center for avatars saved before the capture fix (c860970).
+  if (config) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={clsx('shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-700', shape)}
+      >
+        <DiceBearAvatar config={config} className="h-full w-full" />
+      </div>
+    )
+  }
   if (image) {
     return (
       <img

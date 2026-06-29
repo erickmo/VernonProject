@@ -46,7 +46,7 @@ export function TeamWorkloadDrawer({ open, member, project, onClose }: Props) {
         <div className="flex flex-col gap-4">
           {/* Member header */}
           <div className="flex items-center gap-3">
-            <Avatar name={member.name} image={member.image} size={40} />
+            <Avatar name={member.name} image={member.image} config={member.avatar_config} size={40} />
             <div className="min-w-0">
               <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{member.name}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">

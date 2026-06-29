@@ -69,7 +69,7 @@ function ActivityCard({ item }: { item: ActivityItem }) {
   return (
     <div className="rounded-3xl border border-paper-edge bg-paper-card dark:border-slate-700 dark:bg-slate-800 p-4 shadow-card">
       <div className="flex items-start gap-3">
-        <Avatar name={item.assigned_to_name} image={item.assigned_to_image ?? undefined} size={40} />
+        <Avatar name={item.assigned_to_name} image={item.assigned_to_image ?? undefined} config={item.assigned_to_avatar_config} size={40} />
         <div className="min-w-0 flex-1">
           <p className="text-sm text-stone-500 dark:text-slate-400">
             <span className="font-semibold text-stone-800 dark:text-slate-100">{item.assigned_to_name}</span> completed

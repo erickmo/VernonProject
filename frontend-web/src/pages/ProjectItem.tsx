@@ -927,7 +927,7 @@ export default function ProjectItem() {
                   <Target className="h-3 w-3 text-slate-400 dark:text-slate-500" /> Assignee
                 </p>
                 <div className="flex items-center gap-1.5">
-                  <Avatar name={data.assigned_to_name} image={data.assigned_to_image} size={20} />
+                  <Avatar name={data.assigned_to_name} image={data.assigned_to_image} config={data.assigned_to_avatar_config} size={20} />
                   <span className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">
                     {data.assigned_to_name}
                   </span>

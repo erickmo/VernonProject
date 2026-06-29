@@ -30,7 +30,7 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
         {medal(e.rank) ?? e.rank}
       </div>
       <div className="shrink-0 rounded-full ring-2 ring-violet-200 dark:ring-violet-500/30">
-        <Avatar name={e.full_name} image={e.image} size={36} />
+        <Avatar name={e.full_name} image={e.image} config={e.avatar_config} size={36} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">

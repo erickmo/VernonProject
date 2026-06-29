@@ -26,7 +26,7 @@ export function TeamWallCanvas({ users, mode }: { users: TeamWallUser[]; mode: W
               onClick={() => pick(u)}
               className="flex flex-col items-center gap-2 transition active:scale-95"
             >
-              <Avatar name={label(u)} image={u.user_image} size={64} />
+              <Avatar name={label(u)} image={u.user_image} config={u.avatar_config} size={64} />
               <span className="line-clamp-1 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
                 {label(u)}
               </span>
@@ -41,7 +41,7 @@ export function TeamWallCanvas({ users, mode }: { users: TeamWallUser[]; mode: W
         <div className="flex flex-wrap justify-center leading-[0]">
           {users.map((u) => (
             <button key={u.name} onClick={() => pick(u)} title={label(u)}>
-              <Avatar name={label(u)} image={u.user_image} size={52} square />
+              <Avatar name={label(u)} image={u.user_image} config={u.avatar_config} size={52} square />
             </button>
           ))}
         </div>
@@ -58,7 +58,7 @@ export function TeamWallCanvas({ users, mode }: { users: TeamWallUser[]; mode: W
               className="-mb-1 -ml-3 transition first:ml-0 hover:z-10 active:scale-95"
               style={{ marginTop: i % 2 ? 14 : 0 }}
             >
-              <Avatar name={label(u)} image={u.user_image} size={56} />
+              <Avatar name={label(u)} image={u.user_image} config={u.avatar_config} size={56} />
             </button>
           ))}
         </div>

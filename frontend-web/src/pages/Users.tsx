@@ -187,7 +187,7 @@ export default function Users() {
                     >
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-3">
-                          <Avatar name={u.full_name || u.name} image={u.user_image ?? undefined} size={32} />
+                          <Avatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={32} />
                           <div className="min-w-0">
                             <p className="truncate font-medium text-slate-800 dark:text-slate-100">
                               {u.full_name || u.name}

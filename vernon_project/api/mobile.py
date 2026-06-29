@@ -116,6 +116,19 @@ def _can_advance(status_key, project, user, assigned_to):
 	return False
 
 
+def _avatar_config_map(users):
+	"""Map user -> parsed DiceBear avatar config (or None). Batch-reads User Avatar.config_json."""
+	out = {}
+	if not users:
+		return out
+	for row in frappe.get_all("User Avatar", filters={"user": ["in", list(set(users))]}, fields=["user", "config_json"]):
+		try:
+			out[row["user"]] = frappe.parse_json(row["config_json"]) if row.get("config_json") else None
+		except Exception:
+			out[row["user"]] = None
+	return out
+
+
 def _user_name_map(emails):
 	"""Resolve a set of user emails to full names in one query."""
 	emails = {e for e in emails if e}
@@ -126,7 +139,12 @@ def _user_name_map(emails):
 		filters={"name": ["in", list(emails)]},
 		fields=["name", "full_name", "user_image"],
 	)
-	return {r["name"]: r for r in rows}
+	result = {r["name"]: r for r in rows}
+	# Attach avatar_config to every entry so callers never need a second map.
+	avatar_map = _avatar_config_map(list(result.keys()))
+	for email, entry in result.items():
+		entry["avatar_config"] = avatar_map.get(email)
+	return result
 
 
 def _push_to_subscriptions(recipient, payload):
@@ -503,6 +521,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"assigned_to": row["assigned_to"],
 		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
 		"assigned_to_image": assignee.get("user_image"),
+		"assigned_to_avatar_config": assignee.get("avatar_config"),
 		"project_detail": row["project_detail"],
 		"project_detail_title": row["project_detail_title"],
 		"project": row["project"],
@@ -870,6 +889,7 @@ def get_project(project):
 			"user": email,
 			"name": (name_map.get(email) or {}).get("full_name") or email,
 			"image": (name_map.get(email) or {}).get("user_image"),
+			"avatar_config": (name_map.get(email) or {}).get("avatar_config"),
 			"open_todos": workload.get(email, 0),
 			"is_owner": email == doc.project_owner,
 			"is_leader": email == doc.project_leader,
@@ -974,6 +994,7 @@ def _shape_comment(row, name_map):
 		"by": by,
 		"by_name": person.get("full_name") or by,
 		"by_image": person.get("user_image"),
+		"by_avatar_config": person.get("avatar_config"),
 		"by_badge": _user_badge(by) if by else None,
 		"at": str(row["creation"]),
 		"at_human": _humanize_datetime(row["creation"]),
@@ -1117,6 +1138,7 @@ def get_mentionable_users(reference_doctype, reference_name):
 			"user": e,
 			"full_name": (name_map.get(e) or {}).get("full_name") or e,
 			"image": (name_map.get(e) or {}).get("user_image"),
+			"avatar_config": (name_map.get(e) or {}).get("avatar_config"),
 		}
 		for e in emails
 	]
@@ -1191,6 +1213,7 @@ def get_project_detail(project_detail, include_cancelled=0):
 			"user": tr["user"],
 			"name": (team_map.get(tr["user"]) or {}).get("full_name") or tr["user"],
 			"image": (team_map.get(tr["user"]) or {}).get("user_image"),
+			"avatar_config": (team_map.get(tr["user"]) or {}).get("avatar_config"),
 		}
 		for tr in team_rows
 	]
@@ -1337,6 +1360,7 @@ def get_project_item(project_item):
 			"user": e,
 			"name": (name_map.get(e) or {}).get("full_name") or e,
 			"image": (name_map.get(e) or {}).get("user_image"),
+			"avatar_config": (name_map.get(e) or {}).get("avatar_config"),
 		}
 		for e in sorted(team_emails)
 	]
@@ -1782,8 +1806,10 @@ def list_users():
 	roles_by_user = {}
 	for r in role_rows:
 		roles_by_user.setdefault(r["parent"], []).append(r["role"])
+	avatar_map = _avatar_config_map([u["name"] for u in users])
 	for u in users:
 		u["roles"] = sorted(roles_by_user.get(u["name"], []))
+		u["avatar_config"] = avatar_map.get(u["name"])
 	return {"users": users}
 
 
@@ -2469,6 +2495,7 @@ def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 			"user": row["user"],
 			"full_name": info.get("full_name") or row["user"],
 			"image": info.get("user_image"),
+			"avatar_config": info.get("avatar_config"),
 			"points": float(row["points"]),
 			"rank": rank,
 			"badge": _user_badge(row["user"]),
@@ -2765,6 +2792,9 @@ def list_grant_users():
 		limit_page_length=0,
 		order_by="full_name asc",
 	)
+	avatar_map = _avatar_config_map([u["name"] for u in users])
+	for u in users:
+		u["avatar_config"] = avatar_map.get(u["name"])
 	return {"users": users}
 
 
@@ -2783,6 +2813,9 @@ def get_team_wall():
 		limit_page_length=0,
 		order_by="full_name asc",
 	)
+	avatar_map = _avatar_config_map([u["name"] for u in users])
+	for u in users:
+		u["avatar_config"] = avatar_map.get(u["name"])
 	return {"users": users}
 
 
@@ -2866,6 +2899,9 @@ def list_gift_recipients():
 		limit_page_length=0,
 		order_by="full_name asc",
 	)
+	avatar_map = _avatar_config_map([u["name"] for u in users])
+	for u in users:
+		u["avatar_config"] = avatar_map.get(u["name"])
 	return {"users": users}
 
 
@@ -3061,6 +3097,7 @@ def _shape_note(doc, user):
 				"user": r.shared_user,
 				"full_name": info.get("full_name") or r.shared_user,
 				"image": info.get("user_image"),
+				"avatar_config": info.get("avatar_config"),
 			})
 	return {
 		"name": doc.name,
@@ -3488,6 +3525,7 @@ def get_team_activity(days=14, limit=50):
 			"assigned_to": r["assigned_to"],
 			"assigned_to_name": assignee.get("full_name") or r["assigned_to"],
 			"assigned_to_image": assignee.get("user_image"),
+			"assigned_to_avatar_config": assignee.get("avatar_config"),
 			"completed_at": str(r["completed_at"]),
 			"completed_at_human": _humanize_datetime(r["completed_at"]),
 			"point": float(r["point"] or 0),

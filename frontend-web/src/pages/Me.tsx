@@ -30,7 +30,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
         {/* Profile hero */}
         <BentoTile span="lg" tall tone="gradient" accent="violet" title="Profile">
           <div className="flex flex-1 items-center gap-5 pt-2">
-            <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={72} />
+            <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config} size={72} />
             <div className="min-w-0">
               <div className="text-xl font-semibold">{b?.full_name}</div>
               <div className="text-sm text-slate-500 dark:text-slate-400">{b?.user}</div>

@@ -62,7 +62,7 @@ export default function GiftPointsScreen() {
       {selected ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-            <Avatar name={selected.full_name} image={selected.user_image} size={44} />
+            <Avatar name={selected.full_name} image={selected.user_image} config={selected.avatar_config} size={44} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{selected.full_name}</p>
               <p className="truncate text-sm text-slate-400">{selected.name}</p>
@@ -130,7 +130,7 @@ export default function GiftPointsScreen() {
                   onClick={() => setSelected(u)}
                   className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-slate-50 dark:active:bg-slate-700/50"
                 >
-                  <Avatar name={u.full_name} image={u.user_image} size={36} />
+                  <Avatar name={u.full_name} image={u.user_image} config={u.avatar_config} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{u.full_name}</p>
                     <p className="truncate text-xs text-slate-400">{u.name}</p>

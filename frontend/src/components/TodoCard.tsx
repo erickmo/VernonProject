@@ -115,7 +115,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         </div>
 
         {showAssignee ? (
-          <Avatar name={todo.assigned_to_name} image={todo.assigned_to_image} size={34} />
+          <Avatar name={todo.assigned_to_name} image={todo.assigned_to_image} config={todo.assigned_to_avatar_config} size={34} />
         ) : (
           <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-stone-300 dark:text-slate-600" />
         )}

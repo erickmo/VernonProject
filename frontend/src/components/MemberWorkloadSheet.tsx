@@ -40,7 +40,7 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
       <div className="max-h-[88vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar name={member.name} image={member.image} size={40} />
+            <Avatar name={member.name} image={member.image} config={member.avatar_config} size={40} />
             <div className="min-w-0">
               <p className="truncate text-base font-bold text-slate-900 dark:text-slate-50">{member.name}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">

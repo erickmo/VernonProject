@@ -213,7 +213,7 @@ export default function Project() {
                     onClick={() => setWorkloadMember(m)}
                     className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl bg-white dark:bg-slate-900 p-3 text-center shadow-card hover:shadow-md transition"
                   >
-                    <Avatar name={m.name} image={m.image} size={42} />
+                    <Avatar name={m.name} image={m.image} config={m.avatar_config} size={42} />
                     <p className="w-full truncate text-xs font-medium text-slate-700 dark:text-slate-200">{m.name}</p>
                     {role && (
                       <span className="rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:text-brand-300">{role}</span>

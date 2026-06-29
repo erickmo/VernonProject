@@ -411,7 +411,7 @@ export default function NoteFormScreen() {
                     key={s.user}
                     className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2"
                   >
-                    <Avatar name={s.full_name} image={s.image} size={32} />
+                    <Avatar name={s.full_name} image={s.image} size={32} config={s.avatar_config} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{s.full_name}</p>
                       <p className="truncate text-xs text-slate-400">{s.user}</p>

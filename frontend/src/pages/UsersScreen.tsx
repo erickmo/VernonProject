@@ -209,7 +209,7 @@ function UsersBody({
               className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm active:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:active:bg-slate-700/50"
             >
               <div className="shrink-0 rounded-full ring-2 ring-sky-200 dark:ring-sky-500/30">
-                <Avatar name={u.full_name || u.name} image={u.user_image} size={40} />
+                <Avatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={40} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">

@@ -10,7 +10,7 @@ export interface Boot {
   user: string
   full_name: string
   image: string | null
-  avatar_config?: { style: string; options: Record<string, string[]> } | null
+  avatar_config?: AvatarConfig | null
   roles: string[]
   is_leader: boolean
   badge?: Badge | null
@@ -66,6 +66,7 @@ export interface ActivityItem {
   assigned_to: string
   assigned_to_name: string
   assigned_to_image: string | null
+  assigned_to_avatar_config?: AvatarConfig | null
   completed_at: string | null
   completed_at_human: string | null
   point: number
@@ -111,6 +112,7 @@ export interface ProjectItem {
   assigned_to: string
   assigned_to_name: string
   assigned_to_image: string | null
+  assigned_to_avatar_config?: AvatarConfig | null
   project_detail: string
   project_detail_title: string
   project: string
@@ -135,7 +137,7 @@ export interface ProjectItemDetail extends ProjectItem {
   fields_locked: boolean
   mentor: string
   mentor_name: string
-  team: { user: string; name: string; image: string | null }[]
+  team: { user: string; name: string; image: string | null; avatar_config?: AvatarConfig | null }[]
   timeline: TimelineEvent[]
   phase_estimates: {
     /** @deprecated covered by the main `estimated` field */
@@ -237,6 +239,7 @@ export interface TeamMember {
   user: string
   name: string
   image: string | null
+  avatar_config?: AvatarConfig | null
   open_todos: number
   is_owner: boolean
   is_leader: boolean
@@ -292,7 +295,7 @@ export interface ProjectDetail {
   deadline_human: string | null
   project_items: ProjectItem[]
   can_create: boolean
-  team: { user: string; name: string; image: string | null }[]
+  team: { user: string; name: string; image: string | null; avatar_config?: AvatarConfig | null }[]
   grouping: string
   can_edit: boolean
   groupings: string[]
@@ -349,6 +352,7 @@ export interface Comment {
   by: string
   by_name: string
   by_image: string | null
+  by_avatar_config?: AvatarConfig | null
   by_badge?: Badge | null
   at: string
   at_human: string
@@ -358,6 +362,7 @@ export interface MentionUser {
   user: string
   full_name: string
   image: string | null
+  avatar_config?: AvatarConfig | null
 }
 
 export interface GroupLevel {
@@ -412,6 +417,7 @@ export interface ManagedUser {
   full_name: string | null
   enabled: 0 | 1
   user_image: string | null
+  avatar_config?: AvatarConfig | null
   last_active: string | null
   roles: string[]
   member_type: string
@@ -424,7 +430,7 @@ export interface UserFormPayload {
   member_type?: string // optional marking; omit to leave unchanged
 }
 
-export type GrantUser = { name: string; full_name: string; user_image?: string | null }
+export type GrantUser = { name: string; full_name: string; user_image?: string | null; avatar_config?: AvatarConfig | null }
 
 export type GiftUser = GrantUser
 
@@ -451,6 +457,7 @@ export interface LeaderboardEntry {
   user: string
   full_name: string
   image: string | null
+  avatar_config?: AvatarConfig | null
   points: number
   rank: number
   badge?: Badge | null
@@ -530,6 +537,7 @@ export interface PersonalNoteShare {
   user: string
   full_name: string
   image?: string
+  avatar_config?: AvatarConfig | null
 }
 
 export interface PersonalNote {
@@ -660,6 +668,7 @@ export type TeamWallUser = {
   name: string
   full_name: string | null
   user_image: string | null
+  avatar_config?: AvatarConfig | null
 }
 
 export type TeamWallResponse = { users: TeamWallUser[] }
