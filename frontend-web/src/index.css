@@ -4,29 +4,30 @@
 
 :root {
   color-scheme: light;
+  --canvas: 255 255 255;
+  --surface: 255 255 255;
+  --ink: 55 53 47;
+  --muted: 120 119 116;
+  --line: 233 233 231;
+  --hover: 0 0 0;        /* used at low alpha via bg-hover/5 */
 }
-
-html,
-body,
-#root {
-  height: 100%;
+html.dark {
+  color-scheme: dark;
+  --canvas: 25 25 25;
+  --surface: 32 32 32;
+  --ink: 233 233 231;
+  --muted: 151 151 147;
+  --line: 47 47 47;
+  --hover: 255 255 255;
 }
-
+html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
-}
-
-html.dark {
-  color-scheme: dark;
-}
-html.dark body {
-  background: #0f172a;
-  color: #e2e8f0;
 }
 
 /* Hide scrollbars on horizontal strips but keep scrollability */
