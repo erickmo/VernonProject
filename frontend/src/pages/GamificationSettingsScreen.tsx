@@ -5,7 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings } from '@/hooks/useData'
+import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings, useAvatarCatalog } from '@/hooks/useData'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
@@ -38,6 +38,8 @@ export default function GamificationSettingsScreen() {
   const { data: boot } = useBoot()
   const { data: loaded, isLoading } = useGamificationSettings()
   const save = useSaveGamificationSettings()
+  const { data: catalog } = useAvatarCatalog()
+  const assetNames = catalog?.assets.map((a) => a.asset_name) ?? []
 
   const [premiumPrice, setPremiumPrice] = useState('')
   const [pointsPerLevel, setPointsPerLevel] = useState('')
@@ -120,19 +122,42 @@ export default function GamificationSettingsScreen() {
           <Zap className="h-6 w-6" />
         </div>
 
+        <p className="text-xs text-stone-500 dark:text-slate-400 leading-relaxed">Pengaturan Gamifikasi — atur ekonomi &amp; progres avatar: harga item, level/XP, hadiah harian, dan pencapaian. Semua tersimpan langsung saat disimpan.</p>
+
         {/* Global settings */}
         <Section title="Global settings">
           <div className="grid grid-cols-2 gap-3">
-            <div><Lbl>Premium price</Lbl><input type="number" inputMode="decimal" className={field} value={premiumPrice} onChange={(e) => setPremiumPrice(e.target.value)} placeholder="500" /></div>
-            <div><Lbl>Points/level</Lbl><input type="number" inputMode="decimal" className={field} value={pointsPerLevel} onChange={(e) => setPointsPerLevel(e.target.value)} placeholder="100" /></div>
-            <div><Lbl>Daily reward pts</Lbl><input type="number" inputMode="decimal" className={field} value={dailyRewardPoints} onChange={(e) => setDailyRewardPoints(e.target.value)} placeholder="10" /></div>
-            <div><Lbl>Streak bonus pts</Lbl><input type="number" inputMode="decimal" className={field} value={streakBonusPoints} onChange={(e) => setStreakBonusPoints(e.target.value)} placeholder="5" /></div>
-            <div><Lbl>Streak cap</Lbl><input type="number" inputMode="decimal" className={field} value={streakCap} onChange={(e) => setStreakCap(e.target.value)} placeholder="30" /></div>
+            <div>
+              <Lbl>Premium price</Lbl>
+              <input type="number" inputMode="decimal" className={field} value={premiumPrice} onChange={(e) => setPremiumPrice(e.target.value)} placeholder="500" />
+              <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Harga (poin) untuk membuka 1 varian/item premium.</p>
+            </div>
+            <div>
+              <Lbl>Points/level</Lbl>
+              <input type="number" inputMode="decimal" className={field} value={pointsPerLevel} onChange={(e) => setPointsPerLevel(e.target.value)} placeholder="100" />
+              <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Poin yang dibutuhkan untuk naik 1 level avatar.</p>
+            </div>
+            <div>
+              <Lbl>Daily reward pts</Lbl>
+              <input type="number" inputMode="decimal" className={field} value={dailyRewardPoints} onChange={(e) => setDailyRewardPoints(e.target.value)} placeholder="10" />
+              <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Poin hadiah saat klaim harian.</p>
+            </div>
+            <div>
+              <Lbl>Streak bonus pts</Lbl>
+              <input type="number" inputMode="decimal" className={field} value={streakBonusPoints} onChange={(e) => setStreakBonusPoints(e.target.value)} placeholder="5" />
+              <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Tambahan poin per hari beruntun (streak).</p>
+            </div>
+            <div>
+              <Lbl>Streak cap</Lbl>
+              <input type="number" inputMode="decimal" className={field} value={streakCap} onChange={(e) => setStreakCap(e.target.value)} placeholder="30" />
+              <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Maksimum hari beruntun yang dihitung untuk bonus.</p>
+            </div>
           </div>
         </Section>
 
         {/* Level Rewards */}
         <Section title="Level Rewards">
+          <p className="mb-3 text-xs text-stone-400 dark:text-slate-500">Hadiah Level — saat user mencapai level tertentu, beri poin + item kosmetik (sekali).</p>
           {levels.length === 0 ? (
             <button type="button" onClick={() => setLevels((ls) => [...ls, emptyLevel()])}
               className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-500 dark:border-slate-600 dark:text-slate-400">
@@ -151,7 +176,13 @@ export default function GamificationSettingsScreen() {
                   <div className="grid grid-cols-2 gap-2">
                     <div><Lbl>Level</Lbl><input type="number" className={field} value={l.level} onChange={(e) => setLevel(i, { level: e.target.value })} placeholder="5" /></div>
                     <div><Lbl>Reward pts</Lbl><input type="number" className={field} value={l.reward_points} onChange={(e) => setLevel(i, { reward_points: e.target.value })} placeholder="100" /></div>
-                    <div className="col-span-2"><Lbl>Reward asset</Lbl><input className={field} value={l.reward_asset} onChange={(e) => setLevel(i, { reward_asset: e.target.value })} placeholder="Avatar Asset name" /></div>
+                    <div className="col-span-2">
+                      <Lbl>Reward asset</Lbl>
+                      <select className={field} value={l.reward_asset} onChange={(e) => setLevel(i, { reward_asset: e.target.value })}>
+                        <option value="">(none)</option>
+                        {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -165,6 +196,7 @@ export default function GamificationSettingsScreen() {
 
         {/* Achievements */}
         <Section title="Achievements">
+          <p className="mb-3 text-xs text-stone-400 dark:text-slate-500">Pencapaian — saat kondisi tercapai, beri hadiah (sekali). Centang 'Tier' untuk menjadikannya tingkat peringkat (badge).</p>
           {achievements.length === 0 ? (
             <button type="button" onClick={() => setAchievements((as) => [...as, emptyAchiev()])}
               className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-500 dark:border-slate-600 dark:text-slate-400">
@@ -189,16 +221,37 @@ export default function GamificationSettingsScreen() {
                       <select className={field} value={a.condition} onChange={(e) => setAchiev(i, { condition: e.target.value })}>
                         {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
+                      <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">todos_completed · badge_points · streak_days</p>
                     </div>
-                    <div><Lbl>Threshold</Lbl><input type="number" className={field} value={a.threshold} onChange={(e) => setAchiev(i, { threshold: e.target.value })} placeholder="1" /></div>
-                    <div><Lbl>Reward pts</Lbl><input type="number" className={field} value={a.reward_points} onChange={(e) => setAchiev(i, { reward_points: e.target.value })} placeholder="50" /></div>
-                    <div className="col-span-2"><Lbl>Reward asset</Lbl><input className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })} placeholder="Avatar Asset name" /></div>
-                    <div><Lbl>Color (tier)</Lbl><input className={field} value={a.color} onChange={(e) => setAchiev(i, { color: e.target.value })} placeholder="#6366f1" /></div>
+                    <div>
+                      <Lbl>Threshold</Lbl>
+                      <input type="number" className={field} value={a.threshold} onChange={(e) => setAchiev(i, { threshold: e.target.value })} placeholder="1" />
+                      <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Ambang batas kondisi.</p>
+                    </div>
+                    <div>
+                      <Lbl>Reward pts</Lbl>
+                      <input type="number" className={field} value={a.reward_points} onChange={(e) => setAchiev(i, { reward_points: e.target.value })} placeholder="50" />
+                      <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Hadiah poin yang diberikan.</p>
+                    </div>
+                    <div className="col-span-2">
+                      <Lbl>Reward asset</Lbl>
+                      <select className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })}>
+                        <option value="">(none)</option>
+                        {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Item kosmetik yang diberikan sebagai hadiah.</p>
+                    </div>
+                    <div>
+                      <Lbl>Color (tier)</Lbl>
+                      <input className={field} value={a.color} onChange={(e) => setAchiev(i, { color: e.target.value })} placeholder="#6366f1" />
+                      <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Warna badge (hex), untuk baris tier.</p>
+                    </div>
                     <div className="flex items-end pb-1">
                       <label className="flex cursor-pointer items-center gap-2">
                         <input type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={!!a.is_tier} onChange={(e) => setAchiev(i, { is_tier: e.target.checked ? 1 : 0 })} />
                         <span className="text-sm text-slate-600 dark:text-slate-300">Rank tier</span>
                       </label>
+                      <p className="ml-2 text-xs text-stone-400 dark:text-slate-500">Jadikan tingkat peringkat.</p>
                     </div>
                   </div>
                 </div>

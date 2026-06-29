@@ -6,7 +6,7 @@ import { Field } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings } from '@/hooks/useData'
+import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings, useAvatarCatalog } from '@/hooks/useData'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
@@ -19,6 +19,8 @@ const emptyAchiev = (): AchievRow => ({ code: '', title: '', icon: '', condition
 
 const CONDITIONS = ['todos_completed', 'badge_points', 'streak_days']
 
+const hint = 'mt-1 text-xs text-slate-400 dark:text-slate-500'
+
 export default function GamificationSettings() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -26,6 +28,8 @@ export default function GamificationSettings() {
   const { data: boot } = useBoot()
   const { data: loaded, isLoading } = useGamificationSettings()
   const save = useSaveGamificationSettings()
+  const { data: catalog } = useAvatarCatalog()
+  const assetNames = catalog?.assets.map((a) => a.asset_name) ?? []
 
   const [premiumPrice, setPremiumPrice] = useState('')
   const [pointsPerLevel, setPointsPerLevel] = useState('')
@@ -98,45 +102,64 @@ export default function GamificationSettings() {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); doSave() }} className="space-y-6">
-      <h1 className="text-2xl font-bold">Gamification Settings</h1>
+      <div>
+        <h1 className="text-2xl font-bold">Gamification Settings</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pengaturan Gamifikasi — atur ekonomi &amp; progres avatar: harga item, level/XP, hadiah harian, dan pencapaian. Semua tersimpan langsung saat disimpan.</p>
+      </div>
 
       <BentoGrid>
         <BentoTile span="full" tone="plain" title="Global settings">
           <div className="mt-1 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <Field label="Premium price">
               {(id) => (
-                <input id={id} type="number" inputMode="decimal" className={field} value={premiumPrice}
-                  onChange={(e) => setPremiumPrice(e.target.value)} placeholder="e.g. 500" />
+                <>
+                  <input id={id} type="number" inputMode="decimal" className={field} value={premiumPrice}
+                    onChange={(e) => setPremiumPrice(e.target.value)} placeholder="e.g. 500" />
+                  <p className={hint}>Harga (poin) untuk membuka 1 varian/item premium.</p>
+                </>
               )}
             </Field>
             <Field label="Points per level">
               {(id) => (
-                <input id={id} type="number" inputMode="decimal" className={field} value={pointsPerLevel}
-                  onChange={(e) => setPointsPerLevel(e.target.value)} placeholder="e.g. 100" />
+                <>
+                  <input id={id} type="number" inputMode="decimal" className={field} value={pointsPerLevel}
+                    onChange={(e) => setPointsPerLevel(e.target.value)} placeholder="e.g. 100" />
+                  <p className={hint}>Poin yang dibutuhkan untuk naik 1 level avatar.</p>
+                </>
               )}
             </Field>
             <Field label="Daily reward pts">
               {(id) => (
-                <input id={id} type="number" inputMode="decimal" className={field} value={dailyRewardPoints}
-                  onChange={(e) => setDailyRewardPoints(e.target.value)} placeholder="e.g. 10" />
+                <>
+                  <input id={id} type="number" inputMode="decimal" className={field} value={dailyRewardPoints}
+                    onChange={(e) => setDailyRewardPoints(e.target.value)} placeholder="e.g. 10" />
+                  <p className={hint}>Poin hadiah saat klaim harian.</p>
+                </>
               )}
             </Field>
             <Field label="Streak bonus pts">
               {(id) => (
-                <input id={id} type="number" inputMode="decimal" className={field} value={streakBonusPoints}
-                  onChange={(e) => setStreakBonusPoints(e.target.value)} placeholder="e.g. 5" />
+                <>
+                  <input id={id} type="number" inputMode="decimal" className={field} value={streakBonusPoints}
+                    onChange={(e) => setStreakBonusPoints(e.target.value)} placeholder="e.g. 5" />
+                  <p className={hint}>Tambahan poin per hari beruntun (streak).</p>
+                </>
               )}
             </Field>
             <Field label="Streak cap">
               {(id) => (
-                <input id={id} type="number" inputMode="decimal" className={field} value={streakCap}
-                  onChange={(e) => setStreakCap(e.target.value)} placeholder="e.g. 30" />
+                <>
+                  <input id={id} type="number" inputMode="decimal" className={field} value={streakCap}
+                    onChange={(e) => setStreakCap(e.target.value)} placeholder="e.g. 30" />
+                  <p className={hint}>Maksimum hari beruntun yang dihitung untuk bonus.</p>
+                </>
               )}
             </Field>
           </div>
         </BentoTile>
 
         <BentoTile span="full" tone="plain" title="Level Rewards">
+          <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Hadiah Level — saat user mencapai level tertentu, beri poin + item kosmetik (sekali).</p>
           <div className="mt-1 space-y-3">
             {levels.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
@@ -171,7 +194,12 @@ export default function GamificationSettings() {
                         </div>
                         <div className="flex-1">
                           <Field label="Reward asset">
-                            {(id) => <input id={id} className={field} value={l.reward_asset} onChange={(e) => setLevel(i, { reward_asset: e.target.value })} placeholder="Avatar Asset name" />}
+                            {(id) => (
+                              <select id={id} className={field} value={l.reward_asset} onChange={(e) => setLevel(i, { reward_asset: e.target.value })}>
+                                <option value="">(none)</option>
+                                {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            )}
                           </Field>
                         </div>
                       </div>
@@ -188,6 +216,7 @@ export default function GamificationSettings() {
         </BentoTile>
 
         <BentoTile span="full" tone="plain" title="Achievements">
+          <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Pencapaian — saat kondisi tercapai, beri hadiah (sekali). Centang 'Tier' untuk menjadikannya tingkat peringkat (badge).</p>
           <div className="mt-1 space-y-3">
             {achievements.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
@@ -221,28 +250,52 @@ export default function GamificationSettings() {
                         </Field>
                         <Field label="Condition">
                           {(id) => (
-                            <select id={id} className={field} value={a.condition} onChange={(e) => setAchiev(i, { condition: e.target.value })}>
-                              {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <>
+                              <select id={id} className={field} value={a.condition} onChange={(e) => setAchiev(i, { condition: e.target.value })}>
+                                {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                              <p className={hint}>todos_completed = jumlah todo selesai · badge_points = poin kerja kumulatif · streak_days = hari beruntun.</p>
+                            </>
                           )}
                         </Field>
                         <Field label="Threshold">
-                          {(id) => <input id={id} type="number" className={field} value={a.threshold} onChange={(e) => setAchiev(i, { threshold: e.target.value })} placeholder="e.g. 1" />}
+                          {(id) => (
+                            <>
+                              <input id={id} type="number" className={field} value={a.threshold} onChange={(e) => setAchiev(i, { threshold: e.target.value })} placeholder="e.g. 1" />
+                              <p className={hint}>Ambang batas kondisi (angka yang harus dicapai).</p>
+                            </>
+                          )}
                         </Field>
                         <Field label="Reward points">
-                          {(id) => <input id={id} type="number" className={field} value={a.reward_points} onChange={(e) => setAchiev(i, { reward_points: e.target.value })} placeholder="e.g. 50" />}
+                          {(id) => (
+                            <>
+                              <input id={id} type="number" className={field} value={a.reward_points} onChange={(e) => setAchiev(i, { reward_points: e.target.value })} placeholder="e.g. 50" />
+                              <p className={hint}>Hadiah: poin dan/atau item kosmetik yang diberikan.</p>
+                            </>
+                          )}
                         </Field>
                         <Field label="Reward asset">
-                          {(id) => <input id={id} className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })} placeholder="Avatar Asset name" />}
+                          {(id) => (
+                            <select id={id} className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })}>
+                              <option value="">(none)</option>
+                              {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                          )}
                         </Field>
                         <Field label="Color (tier pill)">
-                          {(id) => <input id={id} className={field} value={a.color} onChange={(e) => setAchiev(i, { color: e.target.value })} placeholder="#6366f1" />}
+                          {(id) => (
+                            <>
+                              <input id={id} className={field} value={a.color} onChange={(e) => setAchiev(i, { color: e.target.value })} placeholder="#6366f1" />
+                              <p className={hint}>Warna badge (hex), untuk baris tier.</p>
+                            </>
+                          )}
                         </Field>
                         <Field label="Is tier">
                           {(id) => (
                             <label className="flex items-center gap-2 pt-2 cursor-pointer">
                               <input id={id} type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={!!a.is_tier} onChange={(e) => setAchiev(i, { is_tier: e.target.checked ? 1 : 0 })} />
                               <span className="text-sm text-slate-600 dark:text-slate-300">Rank tier</span>
+                              <span className={hint}>Jadikan baris ini tingkat peringkat.</span>
                             </label>
                           )}
                         </Field>
