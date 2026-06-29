@@ -8,5 +8,6 @@ export function DiceBearAvatar({ config, className }: { config: AvatarConfig; cl
     catch { return '' }
   }, [config])
   // SVG is library-generated (not user HTML) — safe to inline.
-  return <div className={className} aria-label="avatar" dangerouslySetInnerHTML={{ __html: svg }} />
+  // [&>svg] utils force the inlined svg to fill the box (deterministic for capture).
+  return <div className={`${className || ''} [&>svg]:block [&>svg]:h-full [&>svg]:w-full`} aria-label="avatar" dangerouslySetInnerHTML={{ __html: svg }} />
 }

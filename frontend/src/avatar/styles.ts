@@ -23,7 +23,11 @@ export function paletteForColorSlot(slot: string): string[] {
 
 export function renderAvatarSvg(style: StyleKey, options: Record<string, string[]>): string {
   const col = STYLES[style] || STYLES.lorelei
+  // DiceBear SVGs ship with only a viewBox (no width/height). The live DOM sizes
+  // them fine, but html-to-image (snapshot capture) mis-frames a dimensionless
+  // SVG. Inject explicit 100% size so the figure fills+centers in capture too.
   return createAvatar(col as any, options as any).toString()
+    .replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" ')
 }
 
 export function slotsForStyle(style: StyleKey): { slot: string; values: string[] }[] {
