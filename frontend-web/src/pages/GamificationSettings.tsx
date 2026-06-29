@@ -46,8 +46,8 @@ export default function GamificationSettings() {
     setDailyRewardPoints(String(loaded.daily_reward_points))
     setStreakBonusPoints(String(loaded.streak_bonus_points))
     setStreakCap(String(loaded.streak_cap))
-    setLevels(loaded.level_rewards.map((r) => ({ level: String(r.level), reward_points: String(r.reward_points), reward_asset: r.reward_asset })))
-    setAchievements(loaded.achievements.map((a) => ({ ...a, threshold: String(a.threshold), reward_points: String(a.reward_points), is_tier: a.is_tier ?? 0, color: a.color ?? '' })))
+    setLevels(loaded.level_rewards.map((r) => ({ level: String(r.level), reward_points: String(r.reward_points), reward_asset: r.reward_asset ?? '' })))
+    setAchievements(loaded.achievements.map((a) => ({ ...a, threshold: String(a.threshold), reward_points: String(a.reward_points), is_tier: a.is_tier ?? 0, color: a.color ?? '', reward_asset: a.reward_asset ?? '' })))
   }, [loaded])
 
   const blocked = !boot ? false : !canManageBadges(boot)
@@ -90,8 +90,8 @@ export default function GamificationSettings() {
         daily_reward_points: Number(dailyRewardPoints),
         streak_bonus_points: Number(streakBonusPoints),
         streak_cap: Number(streakCap),
-        level_rewards: levels.map((l) => ({ level: Number(l.level), reward_points: Number(l.reward_points), reward_asset: l.reward_asset.trim() })),
-        achievements: achievements.map((a) => ({ code: a.code.trim(), title: a.title.trim(), icon: a.icon.trim(), condition: a.condition, threshold: Number(a.threshold), reward_points: Number(a.reward_points), reward_asset: a.reward_asset.trim(), is_tier: a.is_tier, color: a.color.trim() })),
+        level_rewards: levels.map((l) => ({ level: Number(l.level), reward_points: Number(l.reward_points), reward_asset: (l.reward_asset ?? '').trim() })),
+        achievements: achievements.map((a) => ({ code: (a.code ?? '').trim(), title: (a.title ?? '').trim(), icon: (a.icon ?? '').trim(), condition: a.condition, threshold: Number(a.threshold), reward_points: Number(a.reward_points), reward_asset: (a.reward_asset ?? '').trim(), is_tier: a.is_tier, color: (a.color ?? '').trim() })),
       },
       {
         onSuccess: () => toast('success', 'Gamification settings saved'),
