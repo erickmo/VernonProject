@@ -10,6 +10,7 @@ export interface Boot {
   user: string
   full_name: string
   image: string | null
+  avatar_config?: { style: string; options: Record<string, string[]> } | null
   roles: string[]
   is_leader: boolean
   badge?: Badge | null

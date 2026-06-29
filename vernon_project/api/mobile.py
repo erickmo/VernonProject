@@ -610,10 +610,12 @@ def bootstrap():
 		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager", "Points Granter")
 		if r in roles
 	]
+	av_cfg = frappe.db.get_value("User Avatar", user, "config_json")
 	return {
 		"user": user,
 		"full_name": u.get("full_name") or user,
 		"image": u.get("user_image"),
+		"avatar_config": (frappe.parse_json(av_cfg) if av_cfg else None),
 		"roles": vernon_roles,
 		"is_leader": any(r in roles for r in ("Project Owner", "Project Leader", "System Manager")),
 		"badge": _user_badge(user),

@@ -29,6 +29,8 @@ import { ProjectCard } from '@/components/ProjectCard'
 import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { NotificationBell } from '@/components/NotificationBell'
+import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
+import type { AvatarConfig } from '@/lib/types'
 import { NotesButton } from '@/components/NotesButton'
 import { RecapCard } from '@/components/RecapCard'
 import { PlanDaySheet } from '@/components/PlanDaySheet'
@@ -228,7 +230,13 @@ export default function Today() {
       </button>
       <NotificationBell />
       <button onClick={() => navigate('/me')} className="transition active:scale-95">
-        <Avatar name={boot.full_name} image={boot.image} size={42} />
+        {boot.avatar_config ? (
+          <div className="h-[42px] w-[42px] shrink-0 overflow-hidden rounded-full bg-paper-card ring-2 ring-white dark:bg-slate-700 dark:ring-slate-800">
+            <DiceBearAvatar config={boot.avatar_config as AvatarConfig} className="h-full w-full" />
+          </div>
+        ) : (
+          <Avatar name={boot.full_name} image={boot.image} size={42} />
+        )}
       </button>
     </div>
   ) : null
