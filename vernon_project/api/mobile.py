@@ -19,6 +19,8 @@ from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff,
 # --------------------------------------------------------------------------------
 VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team", "Points Granter")
 PROTECTED_USERS = ("Guest", "Administrator")
+# Member-type marking on User (custom_member_type). "" = external/unset.
+MEMBER_TYPES = ("", "Internal Team", "Intern")
 
 
 def _require_system_manager():
@@ -1748,7 +1750,7 @@ def list_users():
 	users = frappe.get_all(
 		"User",
 		filters={"name": ["not in", PROTECTED_USERS]},
-		fields=["name", "full_name", "enabled", "user_image", "last_active"],
+		fields=["name", "full_name", "enabled", "user_image", "last_active", "custom_member_type as member_type"],
 		limit_page_length=0,
 		order_by="full_name asc",
 	)
@@ -1774,8 +1776,16 @@ def _clean_roles(roles):
 	return [r for r in (roles or []) if r in VERNON_ROLES]
 
 
+def _clean_member_type(value):
+	"""Validate a member-type marking; reject anything not in MEMBER_TYPES."""
+	value = (value or "").strip()
+	if value not in MEMBER_TYPES:
+		frappe.throw(f"Invalid member type: {value}")
+	return value
+
+
 @frappe.whitelist()
-def create_user(email, full_name=None, roles=None, send_welcome=1):
+def create_user(email, full_name=None, roles=None, send_welcome=1, member_type=None):
 	"""Create a User and assign Vernon roles (System Manager only)."""
 	_require_system_manager()
 	email = (email or "").strip().lower()
@@ -1790,6 +1800,7 @@ def create_user(email, full_name=None, roles=None, send_welcome=1):
 		"email": email,
 		"first_name": (full_name or email).strip(),
 		"enabled": 1,
+		"custom_member_type": _clean_member_type(member_type),
 		"send_welcome_email": 1 if frappe.utils.cint(send_welcome) else 0,
 	})
 	doc.insert(ignore_permissions=True)
@@ -1799,7 +1810,7 @@ def create_user(email, full_name=None, roles=None, send_welcome=1):
 
 
 @frappe.whitelist()
-def update_user(user, full_name=None, roles=None, enabled=1):
+def update_user(user, full_name=None, roles=None, enabled=1, member_type=None):
 	"""Edit name/enabled and sync the Vernon-role set (System Manager only)."""
 	_require_system_manager()
 	if user in PROTECTED_USERS:
@@ -1814,6 +1825,8 @@ def update_user(user, full_name=None, roles=None, enabled=1):
 		# first_name drives full_name for single-field names.
 		doc.first_name = full_name.strip()
 	doc.enabled = enabled
+	if member_type is not None:
+		doc.custom_member_type = _clean_member_type(member_type)
 	doc.save(ignore_permissions=True)
 
 	# Sync only the Vernon-role subset; leave System Manager etc. untouched.
@@ -1933,19 +1946,14 @@ def _badge_tiers():
 
 
 def _user_badge(user):
-	"""Return {tier_name, color, icon} for the highest tier the user clears, or None.
-	earned = lifetime Todo-source points (Grant/Gift excluded, matching the leaderboard)."""
-	tiers = _badge_tiers()
-	if not tiers:
-		return None
-	earned = float(frappe.db.sql(
-		"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` "
-		"where user = %s and coalesce(source, 'Todo') not in ('Grant', 'Gift', 'Daily', 'Reward', 'Achievement')",
-		user,
-	)[0][0])
-	for t in tiers:  # already sorted desc by min_points
-		if earned >= t["min_points"]:
-			return {"tier_name": t["tier_name"], "color": t["color"], "icon": t["icon"]}
+	"""Return {tier_name, color, icon} for the highest is_tier achievement the user clears, or None."""
+	pts = _badge_points(user)
+	s = _gami_settings()
+	tiers = [a for a in (s.achievements or []) if a.is_tier]
+	tiers.sort(key=lambda a: float(a.threshold or 0), reverse=True)
+	for t in tiers:
+		if pts >= float(t.threshold or 0):
+			return {"tier_name": t.title, "color": t.color, "icon": t.icon}
 	return None
 
 
@@ -4038,7 +4046,7 @@ def get_gamification_settings():
 		"daily_reward_points": s.daily_reward_points, "streak_bonus_points": s.streak_bonus_points,
 		"streak_cap": s.streak_cap,
 		"level_rewards": [{"level": r.level, "reward_points": r.reward_points, "reward_asset": r.reward_asset} for r in (s.level_rewards or [])],
-		"achievements": [{"code": a.code, "title": a.title, "icon": a.icon, "condition": a.condition, "threshold": a.threshold, "reward_points": a.reward_points, "reward_asset": a.reward_asset} for a in (s.achievements or [])],
+		"achievements": [{"code": a.code, "title": a.title, "icon": a.icon, "condition": a.condition, "threshold": a.threshold, "reward_points": a.reward_points, "reward_asset": a.reward_asset, "is_tier": int(a.is_tier or 0), "color": a.color} for a in (s.achievements or [])],
 	}
 
 
