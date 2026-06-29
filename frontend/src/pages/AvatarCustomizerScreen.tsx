@@ -382,7 +382,9 @@ export default function AvatarCustomizerScreen() {
                     ].join(' ')}
                   >
                     <div className="relative">
-                      <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                      {a.icon
+                        ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
+                        : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
                       {!a.owned && (
                         <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 bg-black/0">
                           <Lock className="h-3 w-3 text-white drop-shadow" />

@@ -388,7 +388,9 @@ export default function AvatarCustomizer() {
                           active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
                         ].join(' ')}
                       >
-                        <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                        {a.icon
+                          ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
+                          : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
                         <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
                         {!a.owned && (
                           <span className="text-[8px] leading-none text-amber-500 flex items-center gap-0.5">
