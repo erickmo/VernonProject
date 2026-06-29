@@ -40,6 +40,7 @@ import type {
   PersonalNote,
   ActivityItem,
   ReactionKey,
+  TeamWallResponse,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -79,6 +80,7 @@ export const keys = {
   feedbackInbox: (status?: string) => ['feedback-inbox', status ?? 'all'] as const,
   myAttendance: ['my-attendance'] as const,
   gamification: ['gamification'] as const,
+  teamWall: ['team-wall'] as const,
 }
 
 export const useBoot = () =>
@@ -798,6 +800,9 @@ export const useLeaderboard = (period: string, brand: string | null, dimension =
     queryKey: [...keys.leaderboard(period, brand), dimension],
     queryFn: () => mobileApi.getLeaderboard(period, brand, dimension) as Promise<Leaderboard>,
   })
+
+export const useTeamWall = () =>
+  useQuery({ queryKey: keys.teamWall, queryFn: () => mobileApi.getTeamWall() as Promise<TeamWallResponse> })
 
 export const useMarketplace = () =>
   useQuery({ queryKey: keys.marketplace, queryFn: () => mobileApi.getMarketplace() as Promise<MarketplaceData> })

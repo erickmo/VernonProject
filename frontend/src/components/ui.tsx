@@ -19,18 +19,21 @@ export function Avatar({
   name,
   image,
   size = 36,
+  square = false,
 }: {
   name: string
   image?: string | null
   size?: number
+  square?: boolean
 }) {
+  const shape = square ? 'rounded-none' : 'rounded-full ring-2 ring-white dark:ring-slate-800'
   if (image) {
     return (
       <img
         src={image}
         alt={name}
         style={{ width: size, height: size }}
-        className="shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-slate-800"
+        className={clsx('shrink-0 object-cover', shape)}
       />
     )
   }
@@ -38,7 +41,8 @@ export function Avatar({
     <div
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       className={clsx(
-        'flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-white dark:ring-slate-800',
+        'flex shrink-0 items-center justify-center font-semibold text-white',
+        shape,
         colorFor(name || '?'),
       )}
     >

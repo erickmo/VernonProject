@@ -655,3 +655,11 @@ export interface Gamification {
   achievements: Achievement[]
   daily: { streak: number; can_claim: boolean; claimable: number; last_claim: string | null }
 }
+
+export type TeamWallUser = {
+  name: string
+  full_name: string | null
+  user_image: string | null
+}
+
+export type TeamWallResponse = { users: TeamWallUser[] }

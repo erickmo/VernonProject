@@ -215,6 +215,7 @@ export const mobileApi = {
       ...(note ? { note } : {}),
     }),
   listGrantUsers: () => api.get<{ users: import('./types').GrantUser[] }>(M + 'list_grant_users'),
+  getTeamWall: () => api.get<import('./types').TeamWallResponse>(M + 'get_team_wall'),
   giftPoints: (toUser: string, amount: number, note?: string) =>
     api.post<{ balance: number; gifted: number; to: string }>(M + 'gift_points', {
       to_user: toUser,
