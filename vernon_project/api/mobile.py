@@ -3916,6 +3916,13 @@ AVATAR_ASSETS = [
 	{"asset_name": "Ocean", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#2193b0,#6dd5ed)"},
 	{"asset_name": "Gold", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#f7971e,#ffd200)"},
 	{"asset_name": "Aurora", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#00c6ff,#0072ff)"},
+	# richer SVG scenes (sky gradient + silhouette data-URI)
+	{"asset_name": "City", "asset_type": "Scene", "gradient": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'%3E%3Cg fill='%23222'%3E%3Crect x='5' y='25' width='12' height='25'/%3E%3Crect x='20' y='15' width='10' height='35'/%3E%3Crect x='33' y='30' width='14' height='20'/%3E%3Crect x='50' y='10' width='9' height='40'/%3E%3Crect x='62' y='22' width='13' height='28'/%3E%3Crect x='78' y='18' width='10' height='32'/%3E%3Crect x='91' y='28' width='12' height='22'/%3E%3Crect x='106' y='14' width='9' height='36'/%3E%3C/g%3E%3C/svg%3E\") bottom/100% 55% no-repeat, linear-gradient(180deg,#2c3e50,#fd746c)"},
+	{"asset_name": "Mountains", "asset_type": "Scene", "gradient": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'%3E%3Cpolygon points='0,50 30,10 60,50' fill='%23556677'/%3E%3Cpolygon points='20,50 55,5 90,50' fill='%23445566'/%3E%3Cpolygon points='60,50 90,15 120,50' fill='%23667788'/%3E%3C/svg%3E\") bottom/100% 55% no-repeat, linear-gradient(180deg,#89d0f5,#d4edf7)"},
+	{"asset_name": "Beach", "asset_type": "Scene", "gradient": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'%3E%3Ccircle cx='90' cy='12' r='9' fill='%23FFD700' opacity='0.9'/%3E%3Crect x='0' y='38' width='120' height='12' fill='%23D4A96A'/%3E%3C/svg%3E\") 0 0/100% 100% no-repeat, linear-gradient(180deg,#87CEEB,#1a9fc0)"},
+	{"asset_name": "Galaxy", "asset_type": "Scene", "gradient": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'%3E%3Ccircle cx='10' cy='8' r='1' fill='white'/%3E%3Ccircle cx='25' cy='20' r='1.5' fill='white'/%3E%3Ccircle cx='45' cy='5' r='1' fill='white'/%3E%3Ccircle cx='60' cy='15' r='1' fill='white'/%3E%3Ccircle cx='75' cy='25' r='1.5' fill='white'/%3E%3Ccircle cx='88' cy='8' r='1' fill='white'/%3E%3Ccircle cx='100' cy='18' r='1' fill='white'/%3E%3Ccircle cx='112' cy='10' r='1.5' fill='white'/%3E%3Ccircle cx='35' cy='35' r='1' fill='white'/%3E%3Ccircle cx='55' cy='40' r='1' fill='white'/%3E%3Ccircle cx='80' cy='38' r='1' fill='white'/%3E%3Ccircle cx='15' cy='42' r='1' fill='white'/%3E%3C/svg%3E\") 0 0/100% 100% no-repeat, linear-gradient(180deg,#0a0015,#1a0033)"},
+	{"asset_name": "Hills", "asset_type": "Scene", "gradient": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'%3E%3Cpath d='M0,50 Q15,20 30,30 Q45,40 60,25 Q75,10 90,28 Q105,45 120,35 L120,50 Z' fill='%23228B22'/%3E%3Cpath d='M0,50 Q20,30 40,40 Q60,50 80,38 Q100,25 120,42 L120,50 Z' fill='%2356A156'/%3E%3C/svg%3E\") bottom/100% 100% no-repeat, linear-gradient(180deg,#87CEEB,#d4f1f9)"},
+	{"asset_name": "Cyberpunk", "asset_type": "Scene", "gradient": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'%3E%3Cg fill='%23111'%3E%3Crect x='5' y='20' width='10' height='30'/%3E%3Crect x='18' y='10' width='8' height='40'/%3E%3Crect x='29' y='25' width='12' height='25'/%3E%3Crect x='44' y='8' width='7' height='42'/%3E%3Crect x='54' y='18' width='10' height='32'/%3E%3Crect x='67' y='14' width='8' height='36'/%3E%3Crect x='78' y='22' width='11' height='28'/%3E%3Crect x='92' y='12' width='9' height='38'/%3E%3Crect x='104' y='20' width='12' height='30'/%3E%3C/g%3E%3Crect x='18' y='10' width='8' height='2' fill='%23ff00ff'/%3E%3Crect x='44' y='8' width='7' height='2' fill='%2300ffff'/%3E%3Crect x='92' y='12' width='9' height='2' fill='%23ff00ff'/%3E%3C/svg%3E\") bottom/100% 55% no-repeat, linear-gradient(180deg,#0d0015,#1a0030)"},
 ]
 
 
@@ -4079,11 +4086,14 @@ def get_gamification_settings():
 		"streak_cap": s.streak_cap,
 		"level_rewards": [{"level": r.level, "reward_points": r.reward_points, "reward_asset": r.reward_asset} for r in (s.level_rewards or [])],
 		"achievements": [{"code": a.code, "title": a.title, "icon": a.icon, "condition": a.condition, "threshold": a.threshold, "reward_points": a.reward_points, "reward_asset": a.reward_asset, "is_tier": int(a.is_tier or 0), "color": a.color} for a in (s.achievements or [])],
+		"assets": frappe.get_all("Avatar Asset", filters={"active": 1},
+			fields=["asset_name", "asset_type", "price", "is_default"],
+			order_by="asset_type asc, asset_name asc"),
 	}
 
 
 @frappe.whitelist()
-def save_gamification_settings(premium_price=None, points_per_level=None, daily_reward_points=None, streak_bonus_points=None, streak_cap=None, level_rewards=None, achievements=None):
+def save_gamification_settings(premium_price=None, points_per_level=None, daily_reward_points=None, streak_bonus_points=None, streak_cap=None, level_rewards=None, achievements=None, assets=None):
 	_require_marketplace_manager()
 	import json as _json
 	s = _gami_settings()
@@ -4118,5 +4128,14 @@ def save_gamification_settings(premium_price=None, points_per_level=None, daily_
 			clean_ac.append(row)
 		s.set("achievements", clean_ac)
 	s.save(ignore_permissions=True)
+	if assets is not None:
+		rows = _json.loads(assets) if isinstance(assets, str) else assets
+		for a in rows:
+			nm = a.get("asset_name")
+			if nm and frappe.db.exists("Avatar Asset", nm):
+				frappe.db.set_value("Avatar Asset", nm, {
+					"price": float(a.get("price") or 0),
+					"is_default": 1 if a.get("is_default") else 0,
+				})
 	frappe.clear_cache(doctype="Avatar Gamification Settings")
 	return {"ok": True}
