@@ -3670,7 +3670,7 @@ def get_avatar_catalog():
 	]
 	owned_assets = _asset_owned(user)
 	assets = frappe.get_all("Avatar Asset", filters={"active": 1},
-		fields=["asset_name", "asset_type", "emoji", "gradient", "anchor", "is_default", "price"],
+		fields=["asset_name", "asset_type", "emoji", "icon", "gradient", "anchor", "is_default", "price"],
 		order_by="asset_type asc, asset_name asc")
 	for a in assets:
 		a["owned"] = (a["asset_name"] in owned_assets) or bool(a["is_default"])
@@ -3879,32 +3879,32 @@ AVATAR_ASSETS = [
 	{"asset_name": "Star Badge", "asset_type": "Prop", "emoji": "⭐", "anchor": "corner", "is_default": 1},
 	{"asset_name": "Fire Badge", "asset_type": "Prop", "emoji": "🔥", "anchor": "corner"},
 	{"asset_name": "Gem Badge", "asset_type": "Prop", "emoji": "💎", "anchor": "corner"},
-	{"asset_name": "Red Car", "asset_type": "Collectible", "emoji": "🚗"},
-	{"asset_name": "Race Car", "asset_type": "Collectible", "emoji": "🏎️"},
-	{"asset_name": "Sword", "asset_type": "Collectible", "emoji": "⚔️"},
-	{"asset_name": "Shield", "asset_type": "Collectible", "emoji": "🛡️"},
-	{"asset_name": "Bow", "asset_type": "Collectible", "emoji": "🏹"},
-	{"asset_name": "Dragon", "asset_type": "Collectible", "emoji": "🐉"},
-	{"asset_name": "Unicorn", "asset_type": "Collectible", "emoji": "🦄"},
-	{"asset_name": "Rocket", "asset_type": "Collectible", "emoji": "🚀"},
+	{"asset_name": "Red Car", "asset_type": "Collectible", "emoji": "", "icon": "Car"},
+	{"asset_name": "Race Car", "asset_type": "Collectible", "emoji": "", "icon": "CarFront"},
+	{"asset_name": "Sword", "asset_type": "Collectible", "emoji": "", "icon": "Sword"},
+	{"asset_name": "Shield", "asset_type": "Collectible", "emoji": "", "icon": "Shield"},
+	{"asset_name": "Bow", "asset_type": "Collectible", "emoji": "", "icon": "Target"},
+	{"asset_name": "Dragon", "asset_type": "Collectible", "emoji": "", "icon": "Flame"},
+	{"asset_name": "Unicorn", "asset_type": "Collectible", "emoji": "", "icon": "Sparkles"},
+	{"asset_name": "Rocket", "asset_type": "Collectible", "emoji": "", "icon": "Rocket"},
 	# more collectibles (cars / weapons / pets / flex)
-	{"asset_name": "SUV", "asset_type": "Collectible", "emoji": "🚙"},
-	{"asset_name": "Police Car", "asset_type": "Collectible", "emoji": "🚓"},
-	{"asset_name": "Motorcycle", "asset_type": "Collectible", "emoji": "🏍️"},
-	{"asset_name": "UFO", "asset_type": "Collectible", "emoji": "🛸"},
-	{"asset_name": "Pistol", "asset_type": "Collectible", "emoji": "🔫"},
-	{"asset_name": "Axe", "asset_type": "Collectible", "emoji": "🪓"},
-	{"asset_name": "Trident", "asset_type": "Collectible", "emoji": "🔱"},
-	{"asset_name": "Wolf", "asset_type": "Collectible", "emoji": "🐺"},
-	{"asset_name": "Lion", "asset_type": "Collectible", "emoji": "🦁"},
-	{"asset_name": "Tiger", "asset_type": "Collectible", "emoji": "🐯"},
-	{"asset_name": "Eagle", "asset_type": "Collectible", "emoji": "🦅"},
-	{"asset_name": "Octopus", "asset_type": "Collectible", "emoji": "🐙"},
-	{"asset_name": "Trophy", "asset_type": "Collectible", "emoji": "🏆", "is_default": 1},
-	{"asset_name": "Gold Medal", "asset_type": "Collectible", "emoji": "🥇"},
-	{"asset_name": "Money Bag", "asset_type": "Collectible", "emoji": "💰"},
-	{"asset_name": "Diamond", "asset_type": "Collectible", "emoji": "💎"},
-	{"asset_name": "Rainbow", "asset_type": "Collectible", "emoji": "🌈", "is_default": 1},
+	{"asset_name": "SUV", "asset_type": "Collectible", "emoji": "", "icon": "Truck"},
+	{"asset_name": "Police Car", "asset_type": "Collectible", "emoji": "", "icon": "Siren"},
+	{"asset_name": "Motorcycle", "asset_type": "Collectible", "emoji": "", "icon": "Bike"},
+	{"asset_name": "UFO", "asset_type": "Collectible", "emoji": "", "icon": "Rocket"},
+	{"asset_name": "Pistol", "asset_type": "Collectible", "emoji": "", "icon": "Crosshair"},
+	{"asset_name": "Axe", "asset_type": "Collectible", "emoji": "", "icon": "Axe"},
+	{"asset_name": "Trident", "asset_type": "Collectible", "emoji": "", "icon": "Swords"},
+	{"asset_name": "Wolf", "asset_type": "Collectible", "emoji": "", "icon": "Dog"},
+	{"asset_name": "Lion", "asset_type": "Collectible", "emoji": "", "icon": "Cat"},
+	{"asset_name": "Tiger", "asset_type": "Collectible", "emoji": "", "icon": "Cat"},
+	{"asset_name": "Eagle", "asset_type": "Collectible", "emoji": "", "icon": "Bird"},
+	{"asset_name": "Octopus", "asset_type": "Collectible", "emoji": "", "icon": "Fish"},
+	{"asset_name": "Trophy", "asset_type": "Collectible", "emoji": "", "icon": "Trophy", "is_default": 1},
+	{"asset_name": "Gold Medal", "asset_type": "Collectible", "emoji": "", "icon": "Medal"},
+	{"asset_name": "Money Bag", "asset_type": "Collectible", "emoji": "", "icon": "Coins"},
+	{"asset_name": "Diamond", "asset_type": "Collectible", "emoji": "", "icon": "Gem"},
+	{"asset_name": "Rainbow", "asset_type": "Collectible", "emoji": "", "icon": "Rainbow", "is_default": 1},
 	# more props
 	{"asset_name": "Wizard Hat", "asset_type": "Prop", "emoji": "🧙", "anchor": "top"},
 	{"asset_name": "Graduation Cap", "asset_type": "Prop", "emoji": "🎓", "anchor": "top"},
@@ -3922,7 +3922,7 @@ AVATAR_ASSETS = [
 def seed_avatar_assets():
 	created = 0
 	for a in AVATAR_ASSETS:
-		vals = {"asset_type": a["asset_type"], "emoji": a.get("emoji"), "gradient": a.get("gradient"),
+		vals = {"asset_type": a["asset_type"], "emoji": a.get("emoji"), "icon": a.get("icon"), "gradient": a.get("gradient"),
 			"anchor": a.get("anchor"), "is_default": a.get("is_default", 0), "price": a.get("price", 5000), "active": 1}
 		if frappe.db.exists("Avatar Asset", a["asset_name"]):
 			frappe.db.set_value("Avatar Asset", a["asset_name"], vals)

@@ -1,11 +1,12 @@
 {
  "actions": [], "allow_rename": 1, "autoname": "field:asset_name",
  "creation": "2026-06-28 00:00:00.000000", "doctype": "DocType", "engine": "InnoDB",
- "field_order": ["asset_name","asset_type","emoji","gradient","anchor","is_default","price","active"],
+ "field_order": ["asset_name","asset_type","emoji","icon","gradient","anchor","is_default","price","active"],
  "fields": [
   {"fieldname":"asset_name","fieldtype":"Data","label":"Asset Name","reqd":1,"unique":1,"in_list_view":1},
   {"fieldname":"asset_type","fieldtype":"Select","label":"Type","options":"Scene\nProp\nCollectible","reqd":1,"in_list_view":1},
   {"fieldname":"emoji","fieldtype":"Data","label":"Emoji"},
+  {"fieldname":"icon","fieldtype":"Data","label":"Icon (lucide name)"},
   {"fieldname":"gradient","fieldtype":"Data","label":"Gradient (CSS)"},
   {"fieldname":"anchor","fieldtype":"Select","label":"Anchor","options":"\ntop\ncorner\nframe\nnone"},
   {"fieldname":"is_default","fieldtype":"Check","label":"Default (free)","default":"0","in_list_view":1},
