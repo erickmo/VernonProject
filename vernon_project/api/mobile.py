@@ -2769,6 +2769,24 @@ def list_grant_users():
 
 
 @frappe.whitelist()
+def get_team_wall():
+	"""All enabled, non-protected users with avatar snapshot — for the team wall.
+
+	Org-wide read: returns only display name + avatar image, the same fields
+	get_leaderboard already exposes to every user. Ungated, unlike
+	list_grant_users (which gates on the grant-points permission).
+	"""
+	users = frappe.get_all(
+		"User",
+		filters={"name": ["not in", PROTECTED_USERS], "enabled": 1},
+		fields=["name", "full_name", "user_image"],
+		limit_page_length=0,
+		order_by="full_name asc",
+	)
+	return {"users": users}
+
+
+@frappe.whitelist()
 def gift_points(to_user, amount, note=None):
 	"""Transfer points from the logged-in user to another user. Zero-sum:
 	the sender is debited (negative ledger row), the recipient credited.

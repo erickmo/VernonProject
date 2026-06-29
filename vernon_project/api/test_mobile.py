@@ -4,7 +4,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
-from vernon_project.api.mobile import get_project_detail
+from vernon_project.api.mobile import get_project_detail, get_team_wall, PROTECTED_USERS
 
 
 class TestMobileGetWorkItem(unittest.TestCase):
@@ -431,3 +431,34 @@ class TestMobileWallet(unittest.TestCase):
 				redeem_reward(name)  # inactive reward
 		finally:
 			frappe.set_user("Administrator")
+
+
+class TestTeamWall(unittest.TestCase):
+	def setUp(self):
+		self.enabled_user = "team_wall_enabled@example.com"
+		self.disabled_user = "team_wall_disabled@example.com"
+		for email, enabled in ((self.enabled_user, 1), (self.disabled_user, 0)):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({
+					"doctype": "User",
+					"email": email,
+					"first_name": "Wall",
+					"enabled": enabled,
+				}).insert(ignore_permissions=True)
+			else:
+				frappe.db.set_value("User", email, "enabled", enabled)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for email in (self.enabled_user, self.disabled_user):
+			if frappe.db.exists("User", email):
+				frappe.delete_doc("User", email, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_returns_enabled_excludes_disabled_and_protected(self):
+		names = {u["name"] for u in get_team_wall()["users"]}
+		self.assertIn(self.enabled_user, names)
+		self.assertNotIn(self.disabled_user, names)
+		for protected in PROTECTED_USERS:
+			self.assertNotIn(protected, names)
