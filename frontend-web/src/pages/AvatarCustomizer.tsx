@@ -161,14 +161,6 @@ export default function AvatarCustomizer() {
         <BentoTile span="lg" tone="plain" className="min-h-[18rem] sticky top-14 lg:top-4 self-start">
           <div ref={previewRef} className="relative mx-auto flex aspect-square w-72 max-w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
             <AvatarScene config={draft} assets={catalog.assets} className="h-full w-full" />
-            {(() => {
-              const fc = draft.featured_collectible
-                ? catalog.assets.find((a) => a.asset_name === draft.featured_collectible)
-                : null
-              return fc?.emoji ? (
-                <span className="pointer-events-none absolute bottom-1 right-1 text-2xl select-none drop-shadow">{fc.emoji}</span>
-              ) : null
-            })()}
           </div>
         </BentoTile>
 
@@ -333,7 +325,7 @@ export default function AvatarCustomizer() {
                 {scenes.map(a => {
                   const active = draft.scene === a.asset_name
                   return (
-                    <div key={a.asset_name} className="relative">
+                    <div key={a.asset_name} className="flex flex-col items-center gap-1">
                       <button
                         type="button"
                         onClick={() => a.owned && setDraft(d => d ? { ...d, scene: d.scene === a.asset_name ? null : a.asset_name } : d)}
@@ -342,20 +334,24 @@ export default function AvatarCustomizer() {
                           active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
                         ].join(' ')}
                       >
-                        <div className="h-10 w-10 rounded-lg" style={{ background: a.gradient ?? '#e5e7eb' }} />
+                        <div className="relative h-10 w-10">
+                          <div className="h-full w-full rounded-lg" style={{ background: a.gradient ?? '#e5e7eb' }} />
+                          {!a.owned && (
+                            <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg bg-black/40">
+                              <Lock className="h-3 w-3 text-white" />
+                              <span className="text-[8px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
                       </button>
                       {!a.owned && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1">
-                          <Lock className="h-3.5 w-3.5 text-white" />
-                          <span className="text-[9px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
-                          <button
-                            type="button"
-                            onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
-                            disabled={buyAsset.isPending}
-                            className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-                          >Buy</button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                          disabled={buyAsset.isPending}
+                          className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+                        >Buy</button>
                       )}
                     </div>
                   )
@@ -372,7 +368,7 @@ export default function AvatarCustomizer() {
                 {assetProps.map(a => {
                   const active = (draft.props || []).includes(a.asset_name)
                   return (
-                    <div key={a.asset_name} className="relative">
+                    <div key={a.asset_name} className="flex flex-col items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -394,18 +390,19 @@ export default function AvatarCustomizer() {
                       >
                         <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
                         <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                        {!a.owned && (
+                          <span className="text-[8px] leading-none text-amber-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" />{a.price?.toLocaleString()}
+                          </span>
+                        )}
                       </button>
                       {!a.owned && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1">
-                          <Lock className="h-3.5 w-3.5 text-white" />
-                          <span className="text-[9px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
-                          <button
-                            type="button"
-                            onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
-                            disabled={buyAsset.isPending}
-                            className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-                          >Buy</button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                          disabled={buyAsset.isPending}
+                          className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+                        >Buy</button>
                       )}
                     </div>
                   )
@@ -422,7 +419,7 @@ export default function AvatarCustomizer() {
                 {collectibles.map(a => {
                   const featured = draft.featured_collectible === a.asset_name
                   return (
-                    <div key={a.asset_name} className="relative">
+                    <div key={a.asset_name} className="flex flex-col items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -436,23 +433,23 @@ export default function AvatarCustomizer() {
                       >
                         <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
                         <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
-                        {a.owned && (
+                        {a.owned ? (
                           <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'].join(' ')}>
                             {featured ? 'Featured' : 'Feature'}
+                          </span>
+                        ) : (
+                          <span className="text-[8px] leading-none text-amber-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" />{a.price?.toLocaleString()}
                           </span>
                         )}
                       </button>
                       {!a.owned && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1">
-                          <Lock className="h-3.5 w-3.5 text-white" />
-                          <span className="text-[9px] leading-none text-amber-300">{a.price?.toLocaleString()}</span>
-                          <button
-                            type="button"
-                            onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
-                            disabled={buyAsset.isPending}
-                            className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-                          >Buy</button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                          disabled={buyAsset.isPending}
+                          className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+                        >Buy</button>
                       )}
                     </div>
                   )
@@ -494,7 +491,7 @@ function VariantTile({
   if (PROB_SLOTS.includes(slot)) previewOptions[`${slot}Probability`] = ['100']
   const previewConfig: AvatarConfig = { style: draft.style, options: previewOptions }
   return (
-    <div className="relative shrink-0">
+    <div className="flex flex-col items-center gap-1">
       <button
         type="button"
         onClick={onPreview}
@@ -505,28 +502,28 @@ function VariantTile({
             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
         ].join(' ')}
       >
-        <DiceBearAvatar config={previewConfig} className="h-12 w-12" />
+        <div className="relative">
+          <DiceBearAvatar config={previewConfig} className="h-12 w-12" />
+          {!isOwned && (
+            <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg bg-black/40">
+              <Lock className="h-3 w-3 text-white" />
+              <span className="text-[8px] leading-none text-amber-300">{price.toLocaleString()}</span>
+            </span>
+          )}
+        </div>
         <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
           {variantLabel(index)}
         </span>
       </button>
       {!isOwned && (
-        // ponytail: overlay covers tile; clicking overlay = preview, Buy btn stops propagation
-        <div
-          onClick={onPreview}
-          className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl bg-black/50 p-1"
+        <button
+          type="button"
+          onClick={onBuy}
+          disabled={buyPending}
+          className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
         >
-          <Lock className="h-3.5 w-3.5 text-white" />
-          <span className="text-[9px] leading-none text-amber-300">{price.toLocaleString()}</span>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onBuy() }}
-            disabled={buyPending}
-            className="mt-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-          >
-            Buy
-          </button>
-        </div>
+          Buy
+        </button>
       )}
     </div>
   )

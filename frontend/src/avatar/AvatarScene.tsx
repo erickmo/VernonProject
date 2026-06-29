@@ -16,12 +16,16 @@ export function AvatarScene({ config, assets, className }: { config: AvatarConfi
     ? { ...config, options: { ...config.options, backgroundColor: [], backgroundType: [] } }
     : config
   const props = (config.props || []).map(by).filter(Boolean) as AvatarAsset[]
+  const fc = by(config.featured_collectible)
   return (
     <div className={`relative overflow-hidden ${className || ''}`} style={scene?.gradient ? { background: scene.gradient } : undefined}>
       <DiceBearAvatar config={faceConfig} className="h-full w-full" />
       {props.map((p, i) => (
         <span key={i} className="pointer-events-none absolute select-none" style={anchorStyle(p.anchor)}>{p.emoji}</span>
       ))}
+      {fc?.emoji && (
+        <span className="pointer-events-none absolute bottom-[4%] right-[4%] select-none text-4xl leading-none">{fc.emoji}</span>
+      )}
     </div>
   )
 }

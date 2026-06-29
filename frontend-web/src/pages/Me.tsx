@@ -208,14 +208,8 @@ function AvatarTile() {
     >
       <div className="mt-1 flex h-44 items-center justify-center overflow-hidden rounded-xl bg-violet-50 dark:bg-violet-500/10">
         {catalog ? (
-          <div className="relative h-40 w-40">
+          <div className="h-40 w-40">
             <AvatarScene config={catalog.my} assets={catalog.assets} className="h-full w-full" />
-            {catalog.my.featured_collectible && (() => {
-              const fc = catalog.assets.find((a) => a.asset_name === catalog.my.featured_collectible)
-              return fc?.emoji ? (
-                <span className="pointer-events-none absolute bottom-0 right-0 select-none text-xl leading-none">{fc.emoji}</span>
-              ) : null
-            })()}
           </div>
         ) : (
           <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} size={72} />
