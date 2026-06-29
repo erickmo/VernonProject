@@ -3978,7 +3978,8 @@ def get_gamification():
 					if _record_claim(user, "level", lr.level):
 						_grant_points(user, lr.reward_points, "Reward")
 						_grant_asset(user, lr.reward_asset)
-						newly.append({"kind": "level", "level": lr.level, "asset": lr.reward_asset, "points": lr.reward_points})
+						if (lr.reward_points and float(lr.reward_points) > 0) or lr.reward_asset:
+							newly.append({"kind": "level", "level": lr.level, "asset": lr.reward_asset, "points": lr.reward_points})
 		streak = int(frappe.db.get_value("Avatar Daily", {"user": user}, "streak") or 0)
 		todos = _todos_completed(user)
 		badge_pts = _badge_points(user)
@@ -3992,10 +3993,12 @@ def get_gamification():
 				if got_lock and _record_claim(user, "achievement", ac.code):
 					_grant_points(user, ac.reward_points, "Achievement")
 					_grant_asset(user, ac.reward_asset)
-					newly.append({"kind": "achievement", "code": ac.code, "asset": ac.reward_asset, "points": ac.reward_points})
+					if (ac.reward_points and float(ac.reward_points) > 0) or ac.reward_asset:
+						newly.append({"kind": "achievement", "code": ac.code, "asset": ac.reward_asset, "points": ac.reward_points})
 				claimed = True  # already claimed either way (won or lost the race)
 			achievements.append({"code": ac.code, "title": ac.title, "icon": ac.icon, "condition": ac.condition,
 				"threshold": float(ac.threshold or 0), "progress": progress, "met": met, "claimed": claimed,
+				"is_tier": bool(ac.is_tier), "color": ac.color,
 				"reward_points": ac.reward_points, "reward_asset": ac.reward_asset})
 	finally:
 		if got_lock:
