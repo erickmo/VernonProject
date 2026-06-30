@@ -47,7 +47,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
 
   const setAlloc = useSetTodoAllocations(todo.name)
   const planned = todo.today_allocation > 0
-  const onToggleToday = (e: React.MouseEvent) => {
+  const onToggleToday = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     if (setAlloc.isPending) return
     const minutes = planned ? 0 : todo.estimated > 0 ? todo.estimated : 30
@@ -122,11 +122,13 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
                 {formatEstimate(todo.today_allocation)} today
               </span>
             )}
+            {/* ponytail: span role=button inside the card <button> mirrors the existing Focus/advance controls; known HTML5 nesting ceiling — fix when the card is refactored to div+role. */}
             {!showAssignee && (
               <span
                 role="button"
                 tabIndex={0}
                 onClick={onToggleToday}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleToday(e) } }}
                 aria-disabled={setAlloc.isPending}
                 title={planned ? 'Remove from today' : 'Add to today'}
                 className={clsx(
