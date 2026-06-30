@@ -2069,6 +2069,7 @@ def get_app_settings():
 
 	return {
 		"max_estimated_minutes": int(g("max_estimated_minutes") or 0),
+		"under_occupied_tolerance_minutes": int(g("under_occupied_tolerance_minutes") or 0),
 		"attendance_enabled": int(g("attendance_enabled") or 0),
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
@@ -2081,6 +2082,7 @@ def get_app_settings():
 @frappe.whitelist()
 def save_app_settings(
 	max_estimated_minutes=None,
+	under_occupied_tolerance_minutes=None,
 	attendance_enabled=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
@@ -2096,6 +2098,7 @@ def save_app_settings(
 	# Each field is optional; only the ones provided in the request are updated.
 	int_fields = {
 		"max_estimated_minutes": max_estimated_minutes,
+		"under_occupied_tolerance_minutes": under_occupied_tolerance_minutes,
 		"attendance_enabled": attendance_enabled,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
