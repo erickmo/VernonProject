@@ -60,6 +60,10 @@
       "assigned_allocation",
       "progress_section",
       "status",
+      "is_waiting",
+      "waiting_reason",
+      "waiting_since",
+      "waiting_by",
       "cancellation_reason",
       "action",
       "column_break_hypm",
@@ -434,6 +438,32 @@
          "options": "\u26aa\ufe0f Planned\n\ud83d\udfe0 Done\n\ud83d\udd37 Checked By PL\n\u2705 Completed\n\ud83d\udeab Cancelled",
          "read_only": 1,
          "reqd": 1
+      },
+      {
+         "default": "0",
+         "fieldname": "is_waiting",
+         "fieldtype": "Check",
+         "label": "Waiting"
+      },
+      {
+         "depends_on": "is_waiting",
+         "fieldname": "waiting_reason",
+         "fieldtype": "Small Text",
+         "label": "Waiting Reason",
+         "description": "Why this todo is parked (required while waiting)"
+      },
+      {
+         "fieldname": "waiting_since",
+         "fieldtype": "Datetime",
+         "label": "Waiting Since",
+         "read_only": 1
+      },
+      {
+         "fieldname": "waiting_by",
+         "fieldtype": "Link",
+         "label": "Waiting Set By",
+         "options": "User",
+         "read_only": 1
       },
       {
          "fieldname": "cancellation_reason",

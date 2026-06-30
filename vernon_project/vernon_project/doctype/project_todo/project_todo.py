@@ -21,6 +21,7 @@ class ProjectTodo(Document):
 		self.validate_project_admin_status_update()
 		self.calculate_total_estimated_hours()
 		self.track_phase_changes()
+		self.track_waiting()
 		self.validate_block_links()
 		# Arm next_occurrence only while the todo is still active. Re-arming a
 		# Completed/Cancelled head (e.g. on a later notes edit) would let the
@@ -569,6 +570,25 @@ class ProjectTodo(Document):
 
 		# Calculate total actual hours
 		self.calculate_total_actual_hours()
+
+	def track_waiting(self):
+		"""Manual 'parked / waiting on external' flag. Only valid while the todo is
+		still Planned (a todo, not done). Advancing the status force-clears it. A
+		reason is required while waiting; clearing wipes the reason + audit so
+		nothing stale lingers."""
+		if self.status != "⚪️ Planned":
+			self.is_waiting = 0
+
+		if self.is_waiting:
+			if not (self.waiting_reason and self.waiting_reason.strip()):
+				frappe.throw(_("Please add a reason before marking this todo as waiting."))
+			if not self.waiting_since:
+				self.waiting_since = now_datetime()
+				self.waiting_by = frappe.session.user
+		else:
+			self.waiting_since = None
+			self.waiting_by = None
+			self.waiting_reason = None
 
 	def calculate_hours_diff(self, start_time, end_time):
 		"""Calculate difference between two timestamps in hours"""

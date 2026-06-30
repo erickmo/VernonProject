@@ -3,6 +3,7 @@
 
 import frappe
 import unittest
+from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days, now_datetime, add_to_date
 from time import sleep
 
@@ -735,6 +736,96 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 		self.assertEqual(extra_todo.total_estimated_hours, 0.0,
 			"Total should be 0 when no estimates are provided")
+
+
+class TestProjectTodoWaiting(FrappeTestCase):
+	def setUp(self):
+		# Minimal project + detail so validate_create_permission passes (Admin = owner+leader).
+		if not frappe.db.exists("Brand", "Test Customer Waiting"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Waiting"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Project Group", "Test Project Group"):
+			frappe.get_doc({"doctype": "Project Group", "project_name": "Test Project Group"}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": "Waiting Flag Test Project",
+			"brand": "Test Customer Waiting",
+			"project_owner": "Administrator",
+			"project_leader": "Administrator",
+			"project_group": "Test Project Group",
+			"status": "Ongoing",
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}],
+		}).insert(ignore_permissions=True)
+		grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Waiting Test Grouping", "project": self.project.name}).insert(ignore_permissions=True)
+		self.grouping_name = grouping.name
+		self.project_detail = frappe.get_doc({
+			"doctype": "Project Detail",
+			"project": self.project.name,
+			"title": "Waiting Test Detail",
+			"grouping": grouping.name,
+			"project_deadline": add_days(nowdate(), 30),
+			"estimated": 60,
+		}).insert(ignore_permissions=True)
+		self.detail = self.project_detail.name
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for name in frappe.get_all("Project Todo", filters={"project_detail": self.detail}, pluck="name"):
+			frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
+			frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project Detail", self.detail, force=True, ignore_permissions=True)
+		frappe.delete_doc("Glossary", self.grouping_name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def _make_planned_todo(self):
+		"""Smallest Planned Project Todo. Reuse an existing Project Detail fixture
+		if the suite already has one; otherwise create the chain in setUp."""
+		todo = frappe.new_doc("Project Todo")
+		todo.to_do = "waiting-test"
+		todo.project_detail = self.detail  # set up in setUp (see existing tests)
+		todo.assigned_to = "Administrator"
+		todo.deadline = add_days(nowdate(), 5)
+		todo.status = "⚪️ Planned"
+		return todo
+
+	def test_waiting_requires_reason(self):
+		todo = self._make_planned_todo()
+		todo.is_waiting = 1
+		todo.waiting_reason = None
+		self.assertRaises(frappe.ValidationError, todo.insert)
+
+	def test_marking_waiting_stamps_audit(self):
+		todo = self._make_planned_todo()
+		todo.is_waiting = 1
+		todo.waiting_reason = "waiting on client"
+		todo.insert()
+		self.assertTrue(todo.waiting_since)
+		self.assertEqual(todo.waiting_by, frappe.session.user)
+		self.assertEqual(todo.status, "⚪️ Planned")  # still a todo, not done
+
+	def test_clearing_waiting_wipes_audit_and_reason(self):
+		todo = self._make_planned_todo()
+		todo.is_waiting = 1
+		todo.waiting_reason = "x"
+		todo.insert()
+		todo.is_waiting = 0
+		todo.save()
+		self.assertFalse(todo.waiting_since)
+		self.assertFalse(todo.waiting_by)
+		self.assertFalse(todo.waiting_reason)
+
+	def test_advancing_status_force_clears_waiting(self):
+		todo = self._make_planned_todo()
+		todo.is_waiting = 1
+		todo.waiting_reason = "x"
+		todo.insert()
+		todo.status = "🟠 Done"
+		todo.save()
+		self.assertFalse(todo.is_waiting)
+		self.assertFalse(todo.waiting_since)
 
 
 def run_tests():
