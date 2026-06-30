@@ -4,7 +4,6 @@ import clsx from 'clsx'
 import {
   AlertCircle,
   PartyPopper,
-  Pause,
   SearchX,
   User,
   KeyRound,
@@ -39,7 +38,7 @@ import { Fab } from '@/components/Fab'
 import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, byEstimatedAsc, formatEstimate, formatEstimateRatio } from '@/lib/format'
+import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
@@ -80,14 +79,56 @@ const LENS_META: Record<Lens, { label: string; icon: React.ComponentType<{ class
   in: { label: "I'm in", icon: Users },
 }
 
-type GroupKey = 'today' | 'overdue' | 'upcoming'
+// Home work view: which axis, and the sub-tab within Plan / Deadline.
+type Axis = 'plan' | 'deadline' | 'waiting'
+type PlanSub = 'today' | 'past' | 'upcoming'
+type DeadlineSub = 'today' | 'overdue' | 'upcoming'
 
-// Active-tab styling per deadline bucket — warm fills; overdue is a gentle
-// amber (not an alarm-red) so a late task nudges rather than scolds.
-const GROUP_TONE: Record<GroupKey, { active: string; badge: string }> = {
-  today: { active: 'bg-brand-600 text-white shadow-sm', badge: 'bg-white/25 text-white' },
-  overdue: { active: 'bg-amber-500 text-white shadow-sm', badge: 'bg-white/25 text-white' },
-  upcoming: { active: 'bg-stone-600 text-white shadow-sm dark:bg-slate-600', badge: 'bg-white/25 text-white' },
+// Segmented pill tabs — used for the axis row (Plan/Deadline/Waiting) and the
+// sub-tab rows. Active tab fills brand; each tab can show a count badge.
+function PillTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { key: T; label: string; count?: number }[]
+  value: T
+  onChange: (k: T) => void
+}) {
+  return (
+    <div
+      className="grid gap-1 rounded-2xl bg-paper-line p-1 dark:bg-slate-800/70"
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      {tabs.map((t) => {
+        const on = t.key === value
+        return (
+          <button
+            key={t.key}
+            onClick={() => onChange(t.key)}
+            className={clsx(
+              'flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition active:scale-95',
+              on
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
+            )}
+          >
+            {t.label}
+            {typeof t.count === 'number' && (
+              <span
+                className={clsx(
+                  'rounded-full px-1.5 text-[11px] font-bold tabular-nums',
+                  on ? 'bg-white/25 text-white' : 'bg-white text-slate-500 dark:bg-slate-700 dark:text-slate-400',
+                )}
+              >
+                {t.count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 function ActionBanner({
@@ -124,8 +165,12 @@ export default function Today() {
   const [sheet, setSheet] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
   const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null)
-  // Which deadline bucket to show: today / overdue / upcoming.
-  const [group, setGroup] = useState<'today' | 'overdue' | 'upcoming'>('today')
+  // Home work view: axis (Plan/Deadline/Waiting) + sub-tab within Plan/Deadline,
+  // plus an optional specific day for the Plan date-picker (ISO yyyy-mm-dd).
+  const [axis, setAxis] = useState<Axis>('plan')
+  const [planSub, setPlanSub] = useState<PlanSub>('today')
+  const [deadlineSub, setDeadlineSub] = useState<DeadlineSub>('today')
+  const [pickedDate, setPickedDate] = useState<string>('')
 
   const firstName = boot?.full_name?.split(' ')[0] ?? ''
 
@@ -134,7 +179,9 @@ export default function Today() {
   const goOverdue = () => {
     setLens('me')
     setFilters({})
-    setGroup('overdue')
+    setAxis('deadline')
+    setDeadlineSub('overdue')
+    setPickedDate('')
     setTimeout(
       () => document.getElementById('today-groups')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
       60,
@@ -145,10 +192,10 @@ export default function Today() {
     () => (data ? [...data.overdue, ...data.due_today, ...data.upcoming] : []),
     [data],
   )
-  // Waiting todos are parked — pulled off the active radar into their own
-  // section. `active` is everything that isn't waiting; it drives the plan,
-  // group tabs, counts and filters. `waitingTodos` is the parked list, shown
-  // in full regardless of deadline / today-allocation.
+  // Waiting todos are parked — pulled off the active radar into the Waiting
+  // axis. `activeTodos` is everything that isn't waiting; it drives the Plan +
+  // Deadline views, counts and filters. `waitingTodos` is the parked list,
+  // shown in full regardless of deadline / today-allocation.
   const activeTodos = useMemo(() => all.filter((t) => !t.is_waiting), [all])
   const waitingTodos = useMemo(
     () => all.filter((t) => t.is_waiting).slice().sort(byDeadlineAsc),
@@ -200,24 +247,30 @@ export default function Today() {
       }
     : null
 
-  // "Today" = due today, plus anything I've allocated time to today even if its
-  // deadline is past/future — so the "Planned today" total always maps to rows
-  // the user can actually see in the Today tab.
-  const todayTodos = (() => {
-    if (!filtered) return []
-    const byId = new Map<string, ProjectItem>()
-    for (const t of filtered.due_today) byId.set(t.name, t)
-    for (const t of [...filtered.overdue, ...filtered.upcoming]) {
-      if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
-    }
-    // Today tab sorts quickest-first so short wins surface at the top.
-    return [...byId.values()].sort(byEstimatedAsc)
-  })()
-  const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
+  // Status/advanced-filtered active set — feeds the Plan view's allocation groups.
+  const filteredActive = useMemo(() => applyProjectItemFilters(activeTodos, filters), [activeTodos, filters])
 
-  // "Today's plan": only todos I've allocated minutes to today, fewest-first.
-  // Waiting (parked) todos are excluded — a parked task isn't part of the plan.
-  const plannedTodos = activeTodos.filter((t) => (t.today_allocation || 0) > 0).slice().sort(byAllocationAsc)
+  // Plan view groups by allocation date: today / past (slipped, still planned) /
+  // upcoming. A todo allocated across several days appears under each it touches.
+  const todayStr = todayISO()
+  const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
+    (t.allocations ?? []).some((a) => a.date != null && pred(a.date))
+  const planGroups = useMemo(
+    () => ({
+      today: filteredActive.filter((t) => allocOn(t, (d) => d === todayStr)).slice().sort(byAllocationAsc),
+      past: filteredActive.filter((t) => allocOn(t, (d) => d < todayStr)).slice().sort(byDeadlineAsc),
+      upcoming: filteredActive.filter((t) => allocOn(t, (d) => d > todayStr)).slice().sort(byDeadlineAsc),
+    }),
+    [filteredActive, todayStr],
+  )
+  const planPicked = useMemo(
+    () => (pickedDate ? filteredActive.filter((t) => allocOn(t, (d) => d === pickedDate)).slice().sort(byAllocationAsc) : []),
+    [filteredActive, pickedDate],
+  )
+
+  // "Today's plan" = todos allocated minutes today; drives the CTA + ring total.
+  const plannedTodos = planGroups.today
+  const plannedTodayMin = plannedTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   // Plan-my-day candidates: everything due today + overdue, plus anything already
   // allocated to today (even if its deadline is future) so re-planning is complete.
@@ -229,6 +282,20 @@ export default function Today() {
     for (const t of data.upcoming) if ((t.today_allocation || 0) > 0 && !t.is_waiting) byId.set(t.name, t)
     return [...byId.values()]
   }, [data])
+
+  // Shared list renderer: cards, or a contextual empty state.
+  const renderList = (list: ProjectItem[], emptyTitle: string) =>
+    list.length ? (
+      <div className="mt-3 flex flex-col gap-3">
+        {list.map((t) => (
+          <TodoCard key={t.name} todo={t} />
+        ))}
+      </div>
+    ) : activeTodos.length || waitingTodos.length ? (
+      <EmptyState icon={SearchX} title={emptyTitle} subtitle="Peek at another tab, or clear the filters." />
+    ) : (
+      <EmptyState icon={PartyPopper} title="All caught up!" subtitle="Nothing on your plate right now. Go you." />
+    )
 
   const right = boot ? (
     <div className="flex items-center gap-1">
@@ -468,90 +535,103 @@ export default function Today() {
                     </span>
                     <ChevronRight className="h-5 w-5 text-brand-400" />
                   </button>
-                  {plannedTodos.length > 0 && (
-                    <div className="mt-4">
-                      <div className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
-                        <Sparkles className="h-3.5 w-3.5 text-brand-500" />
-                        Today's plan · {plannedTodos.length} · {formatEstimate(plannedTodayMin)}
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        {plannedTodos.map((t) => (
-                          <TodoCard key={t.name} todo={t} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {waitingTodos.length > 0 && (
-                    <div className="mt-4">
-                      <div className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
-                        <Pause className="h-3.5 w-3.5 text-yellow-500" />
-                        Waiting · {waitingTodos.length}
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        {waitingTodos.map((t) => (
-                          <TodoCard key={t.name} todo={t} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {(() => {
-                    const groups: { key: GroupKey; label: string; todos: ProjectItem[] }[] = [
-                      { key: 'today', label: 'Today', todos: todayTodos },
-                      { key: 'overdue', label: 'Overdue', todos: filtered.overdue },
-                      { key: 'upcoming', label: 'Upcoming', todos: filtered.upcoming },
-                    ]
-                    const active = groups.find((g) => g.key === group) ?? groups[0]
-                    return (
-                      <div id="today-groups" className="scroll-mt-4">
-                        <div className="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-paper-line p-1 dark:bg-slate-800/70">
-                          {groups.map((g) => {
-                            const on = g.key === group
-                            return (
-                              <button
-                                key={g.key}
-                                onClick={() => setGroup(g.key)}
-                                className={clsx(
-                                  'flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition active:scale-95',
-                                  on
-                                    ? GROUP_TONE[g.key].active
-                                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
-                                )}
-                              >
-                                {g.label}
-                                <span
-                                  className={clsx(
-                                    'rounded-full px-1.5 text-[11px] font-bold tabular-nums',
-                                    on ? GROUP_TONE[g.key].badge : 'bg-white text-slate-500 dark:bg-slate-700 dark:text-slate-400',
-                                  )}
-                                >
-                                  {g.todos.length}
-                                </span>
-                              </button>
-                            )
-                          })}
+                  <div id="today-groups" className="mt-5 scroll-mt-4">
+                    {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) */}
+                    <PillTabs<Axis>
+                      tabs={[
+                        { key: 'plan', label: 'Plan' },
+                        { key: 'deadline', label: 'Deadline' },
+                        { key: 'waiting', label: 'Waiting', count: waitingTodos.length },
+                      ]}
+                      value={axis}
+                      onChange={(k) => {
+                        setAxis(k)
+                        if (k !== 'plan') setPickedDate('')
+                      }}
+                    />
+
+                    {axis === 'plan' && (
+                      <>
+                        <div className="mt-3 flex items-stretch gap-2">
+                          <div className="min-w-0 flex-1">
+                            <PillTabs<PlanSub>
+                              tabs={[
+                                { key: 'today', label: 'Today', count: planGroups.today.length },
+                                { key: 'past', label: 'Past', count: planGroups.past.length },
+                                { key: 'upcoming', label: 'Upcoming', count: planGroups.upcoming.length },
+                              ]}
+                              value={pickedDate ? ('' as PlanSub) : planSub}
+                              onChange={(k) => {
+                                setPlanSub(k)
+                                setPickedDate('')
+                              }}
+                            />
+                          </div>
+                          <label
+                            className={clsx(
+                              'relative flex shrink-0 items-center gap-1.5 rounded-2xl border px-3.5 text-sm font-semibold transition active:scale-95',
+                              pickedDate
+                                ? 'border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/15 dark:text-brand-300'
+                                : 'border-paper-edge bg-paper-card text-stone-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',
+                            )}
+                            title="Pick a specific day"
+                          >
+                            <CalendarDays className="h-4 w-4" />
+                            <span>{pickedDate ? 'Day' : 'Pick'}</span>
+                            <input
+                              type="date"
+                              value={pickedDate}
+                              onChange={(e) => setPickedDate(e.target.value)}
+                              aria-label="Pick a plan day"
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            />
+                          </label>
                         </div>
 
-                        {group === 'today' && plannedTodayMin > 0 && (
+                        {pickedDate ? (
+                          <p className="mt-4 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <CalendarDays className="h-3.5 w-3.5 text-brand-500" />
+                            Plan for {pickedDate} · <span className="font-bold text-brand-600 dark:text-brand-400">{planPicked.length}</span>
+                            <button onClick={() => setPickedDate('')} className="ml-1 font-semibold text-brand-600 underline dark:text-brand-400">
+                              clear
+                            </button>
+                          </p>
+                        ) : planSub === 'today' && plannedTodayMin > 0 ? (
                           <p className="mt-4 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                             <Clock className="h-3.5 w-3.5 text-brand-500" />
                             Planning for today: <span className="font-bold text-brand-600 dark:text-brand-400">{formatEstimate(plannedTodayMin)}</span>
                           </p>
-                        )}
+                        ) : null}
 
-                        {active.todos.length ? (
-                          <div className="mt-3 flex flex-col gap-3">
-                            {active.todos.map((t) => (
-                              <TodoCard key={t.name} todo={t} />
-                            ))}
-                          </div>
-                        ) : activeTodos.length ? (
-                          <EmptyState icon={SearchX} title={`Nothing ${active.label.toLowerCase()}`} subtitle="Peek at another tab, or clear the filters." />
-                        ) : (
-                          <EmptyState icon={PartyPopper} title="All caught up!" subtitle="Nothing on your plate right now. Go you." />
+                        {renderList(
+                          pickedDate ? planPicked : planGroups[planSub],
+                          pickedDate ? `Nothing planned for ${pickedDate}` : `Nothing planned ${planSub}`,
                         )}
-                      </div>
-                    )
-                  })()}
+                      </>
+                    )}
+
+                    {axis === 'deadline' && (
+                      <>
+                        <div className="mt-3">
+                          <PillTabs<DeadlineSub>
+                            tabs={[
+                              { key: 'today', label: 'Today', count: filtered.due_today.length },
+                              { key: 'overdue', label: 'Overdue', count: filtered.overdue.length },
+                              { key: 'upcoming', label: 'Upcoming', count: filtered.upcoming.length },
+                            ]}
+                            value={deadlineSub}
+                            onChange={setDeadlineSub}
+                          />
+                        </div>
+                        {renderList(
+                          deadlineSub === 'today' ? filtered.due_today : deadlineSub === 'overdue' ? filtered.overdue : filtered.upcoming,
+                          deadlineSub === 'overdue' ? 'Nothing overdue' : deadlineSub === 'today' ? 'Nothing due today' : 'Nothing upcoming',
+                        )}
+                      </>
+                    )}
+
+                    {axis === 'waiting' && renderList(waitingTodos, 'Nothing waiting')}
+                  </div>
                 </>
               )}
 
