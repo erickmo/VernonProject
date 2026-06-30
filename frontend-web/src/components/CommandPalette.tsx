@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, FolderKanban, CornerDownLeft } from 'lucide-react'
+import { Search, FolderKanban, CheckSquare, User, CornerDownLeft } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useModalA11y } from '@web/lib/useModalA11y'
-import { useProjects } from '@/hooks/useData'
+import { useProjects, useCalendar, useFormOptions } from '@/hooks/useData'
 
 export type Command = {
   id: string
@@ -28,6 +28,8 @@ export function CommandPalette({
 }) {
   const navigate = useNavigate()
   const projects = useProjects()
+  const calendar = useCalendar()
+  const formOpts = useFormOptions()
   const ref = useModalA11y(true, onClose)
   const listRef = useRef<HTMLDivElement>(null)
   const [q, setQ] = useState('')
@@ -41,8 +43,15 @@ export function CommandPalette({
       icon: FolderKanban,
       to: `/project/${p.name}`,
     }))
-    return [...navCommands, ...proj]
-  }, [navCommands, projects.data])
+    const todos: Command[] = (calendar.data?.todos ?? []).map((t) => ({
+      id: `todo:${t.name}`, label: t.to_do, group: 'Todos', icon: CheckSquare,
+      to: `/project-item/${t.name}`,
+    }))
+    const people: Command[] = (formOpts.data?.users ?? []).map((u) => ({
+      id: `user:${u.value}`, label: u.label, group: 'People', icon: User, to: `/users/${u.value}`,
+    }))
+    return [...navCommands, ...proj, ...todos, ...people]
+  }, [navCommands, projects.data, calendar.data, formOpts.data])
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -96,7 +105,7 @@ export function CommandPalette({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search pages and projects…"
+            placeholder="Search pages, projects, todos, people…"
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-slate-400"
           />
           <kbd className="hidden sm:block rounded border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
