@@ -53,7 +53,7 @@ export default function HolidayLists() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Holiday Lists</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Holiday Lists</h1>
       <BentoGrid>
         <BentoTile span="lg" tone="plain" title="Create list">
           <div className="flex flex-col gap-2">

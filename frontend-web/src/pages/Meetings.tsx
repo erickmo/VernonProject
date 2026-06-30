@@ -34,7 +34,7 @@ export function Meetings() {
   return (
     <Page>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-ink">Meetings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Meetings</h1>
         <button
           disabled={!project}
           onClick={() => setDialog(true)}

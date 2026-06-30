@@ -15,7 +15,7 @@ export default function WalletLog() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ink">Points log</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Points log</h1>
 
       <BentoGrid>
         {/* Balance hero */}

@@ -96,7 +96,7 @@ export default function GrantPoints() {
       }}
       className="space-y-6"
     >
-      <h1 className="text-2xl font-bold">Grant Points</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Grant Points</h1>
 
       <BentoGrid>
         {/* Recipient summary tile */}

@@ -44,7 +44,7 @@ export default function Feedback() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ink">Send feedback</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Send feedback</h1>
 
       <BentoGrid>
         <BentoTile span="lg" tone="plain">

@@ -150,7 +150,7 @@ export default function BrandForm() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Brands
         </button>
-        <h1 className="text-2xl font-bold">{isEdit ? 'Edit brand' : 'New brand'}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">{isEdit ? 'Edit brand' : 'New brand'}</h1>
       </div>
 
       <form

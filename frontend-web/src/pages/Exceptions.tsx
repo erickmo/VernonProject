@@ -39,7 +39,7 @@ export default function Exceptions() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Leave / WFH requests</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Leave / WFH requests</h1>
       <BentoGrid>
         <BentoTile span="full" tone="plain">
           {list === null ? (

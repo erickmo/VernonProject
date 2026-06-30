@@ -84,7 +84,7 @@ export default function DataHealth() {
   if (error) {
     return (
       <div className="space-y-5">
-        <h1 className="text-2xl font-bold">Data Health</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Data Health</h1>
         <EmptyState
           icon={AlertCircle}
           title="Access denied"
@@ -101,7 +101,7 @@ export default function DataHealth() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2">
         <ShieldAlert className="w-6 h-6 text-muted" />
         Data Health
       </h1>

@@ -199,7 +199,7 @@ export default function RewardForm() {
         >
           <ArrowLeft className="h-4 w-4" /> Marketplace Admin
         </Link>
-        <h1 className="text-2xl font-bold">{isEdit ? 'Edit reward' : 'New reward'}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">{isEdit ? 'Edit reward' : 'New reward'}</h1>
       </div>
 
       <BentoGrid>

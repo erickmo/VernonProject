@@ -7,7 +7,7 @@ export default function Reports() {
   const navigate = useNavigate()
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Reports</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Reports</h1>
 
       <BentoGrid>
         <BentoTile span="sm" tone="tint" accent="slate" icon={BarChart3}>

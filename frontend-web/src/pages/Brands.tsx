@@ -35,7 +35,7 @@ export default function Brands() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Brands</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Brands</h1>
 
       <BentoGrid>
         <BentoTile

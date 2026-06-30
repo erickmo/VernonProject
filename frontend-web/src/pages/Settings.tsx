@@ -39,7 +39,7 @@ export default function Settings() {
   if (isManager === false) {
     return (
       <div className="space-y-5">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2">
           <SettingsIcon className="w-6 h-6 text-muted" />
           Settings
         </h1>
@@ -87,7 +87,7 @@ export default function Settings() {
       }}
       className="space-y-6"
     >
-      <h1 className="text-2xl font-bold flex items-center gap-2">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink flex items-center gap-2">
         <SettingsIcon className="w-6 h-6 text-muted" />
         Settings
       </h1>

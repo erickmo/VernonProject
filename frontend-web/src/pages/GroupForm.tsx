@@ -317,7 +317,7 @@ export default function GroupForm() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Groups
         </button>
-        <h1 className="text-2xl font-bold">{isEdit ? 'Edit group' : 'New group'}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">{isEdit ? 'Edit group' : 'New group'}</h1>
       </div>
 
       <BentoGrid>

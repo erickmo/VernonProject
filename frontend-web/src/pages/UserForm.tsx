@@ -168,7 +168,7 @@ export default function UserForm() {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Users
           </button>
-          <h1 className="text-2xl font-bold">{isEdit ? 'Edit user' : 'New user'}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{isEdit ? 'Edit user' : 'New user'}</h1>
         </div>
         <button
           type="submit"

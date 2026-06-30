@@ -136,7 +136,7 @@ export default function Marketplace() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Marketplace</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Marketplace</h1>
 
       <BentoGrid>
         <BentoTile span="sm" tone="solid" accent="amber" icon={Coins} title="Spendable balance">

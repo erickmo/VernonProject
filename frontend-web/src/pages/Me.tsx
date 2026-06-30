@@ -24,7 +24,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Me</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Me</h1>
 
       <BentoGrid>
         {/* Profile hero */}

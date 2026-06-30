@@ -110,7 +110,7 @@ export default function GamificationSettings() {
   return (
     <form onSubmit={(e) => { e.preventDefault(); doSave() }} className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Gamification Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Gamification Settings</h1>
         <p className="mt-1 text-sm text-muted">Pengaturan Gamifikasi — atur ekonomi &amp; progres avatar: harga item, level/XP, hadiah harian, dan pencapaian. Semua tersimpan langsung saat disimpan.</p>
       </div>
 

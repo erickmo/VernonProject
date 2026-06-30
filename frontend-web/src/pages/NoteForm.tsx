@@ -245,7 +245,7 @@ export default function NoteForm() {
         <ArrowLeft className="h-3.5 w-3.5" /> Notes
       </button>
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold">{startedNew ? 'New note' : 'Edit note'}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">{startedNew ? 'New note' : 'Edit note'}</h1>
         {canEdit && status !== 'idle' && (
           <span className="flex items-center gap-1.5 text-xs font-medium text-muted">
             {status === 'saving' && <Spinner className="h-3.5 w-3.5" />}

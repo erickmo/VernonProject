@@ -60,7 +60,7 @@ export default function Schedules() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Schedules</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Schedules</h1>
       <BentoGrid>
         {/* Shift templates */}
         <BentoTile span="lg" tone="plain" title="Shift templates">
