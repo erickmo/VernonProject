@@ -27,14 +27,22 @@ export function Avatar({
   config,
   size = 36,
   square = false,
+  rounded = false,
 }: {
   name: string
   image?: string | null
   config?: AvatarConfig | null
   size?: number
   square?: boolean
+  // rounded = soft-cornered square: shows half-body portraits fully (no circle crop)
+  // while keeping a tile look. square = sharp edge-to-edge (mosaic). default = circle.
+  rounded?: boolean
 }) {
-  const shape = square ? 'rounded-none' : 'rounded-full ring-2 ring-white dark:ring-slate-800'
+  const shape = rounded
+    ? 'rounded-2xl ring-2 ring-white dark:ring-slate-800'
+    : square
+    ? 'rounded-none'
+    : 'rounded-full ring-2 ring-white dark:ring-slate-800'
   // Prefer the live DiceBear config (always correctly framed) over the stored PNG
   // snapshot, which is off-center for avatars saved before the capture fix (c860970).
   if (config) {

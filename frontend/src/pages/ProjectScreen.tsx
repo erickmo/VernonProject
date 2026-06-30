@@ -10,6 +10,7 @@ import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
+import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
@@ -188,6 +189,16 @@ export default function ProjectScreen() {
               )
             })}
           </div>
+        </section>
+      )}
+
+      {/* Group photo */}
+      {data.team.length > 0 && (
+        <section className="mt-5">
+          <h3 className="mb-2 flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+            <Users className="h-4 w-4" /> Group Photo
+          </h3>
+          <ProjectGroupPhoto team={data.team} />
         </section>
       )}
 

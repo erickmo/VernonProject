@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Avatar } from '@/components/ui'
-import type { TeamWallUser } from '@/lib/types'
+import { Avatar, Segmented } from '@/components/ui'
+import type { TeamWallUser, TeamMember } from '@/lib/types'
 
 export type WallMode = 'photo' | 'grid' | 'mosaic'
 
@@ -58,7 +58,7 @@ export function TeamWallCanvas({ users, mode }: { users: TeamWallUser[]; mode: W
               className="-mb-1 -ml-3 transition first:ml-0 hover:z-10 active:scale-95"
               style={{ marginTop: i % 2 ? 14 : 0 }}
             >
-              <Avatar name={label(u)} image={u.user_image} config={u.avatar_config} size={56} />
+              <Avatar name={label(u)} image={u.user_image} config={u.avatar_config} size={56} rounded />
             </button>
           ))}
         </div>
@@ -71,6 +71,26 @@ export function TeamWallCanvas({ users, mode }: { users: TeamWallUser[]; mode: W
           </span>
         </div>
       )}
+    </div>
+  )
+}
+
+// Per-project group photo: same wall canvas, scoped to one project's members.
+// Project members carry {user,name,image,avatar_config}; the canvas wants
+// {name,full_name,user_image,avatar_config} — remap so it keys/labels correctly.
+export function ProjectGroupPhoto({ team }: { team: TeamMember[] }) {
+  const [mode, setMode] = useState<WallMode>('photo')
+  if (!team.length) return null
+  const users: TeamWallUser[] = team.map((m) => ({
+    name: m.user,
+    full_name: m.name,
+    user_image: m.image,
+    avatar_config: m.avatar_config,
+  }))
+  return (
+    <div className="space-y-3">
+      <Segmented options={WALL_MODES} value={mode} onChange={setMode} />
+      <TeamWallCanvas users={users} mode={mode} />
     </div>
   )
 }

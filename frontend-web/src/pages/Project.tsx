@@ -22,6 +22,7 @@ import { Page, PageHeader, Section } from '@web/components/Page'
 import { PropertyRow, Property } from '@web/components/Property'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { EntityChip } from '@web/components/EntityChip'
+import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
 import type { TeamMember, ProjectDetailSummary } from '@/lib/types'
 
 type View = 'list' | 'gantt'
@@ -279,6 +280,13 @@ export default function Project() {
               )
             })}
           </div>
+        </Section>
+      )}
+
+      {/* Group photo */}
+      {p.team.length > 0 && (
+        <Section title={<span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Group Photo</span>}>
+          <ProjectGroupPhoto team={p.team} />
         </Section>
       )}
 
