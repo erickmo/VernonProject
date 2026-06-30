@@ -159,7 +159,7 @@ export default function Today() {
               <div className="space-y-4">
                 {dimensions.map((d) => (
                   <div key={d.key} className="space-y-1">
-                    <div className="text-xs font-semibold text-slate-500">{d.label}</div>
+                    <div className="text-xs font-semibold text-muted">{d.label}</div>
                     <SearchableSelect
                       value={filters[d.key] ?? ''}
                       onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}

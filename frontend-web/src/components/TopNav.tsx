@@ -29,7 +29,7 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
   const b = boot.data
   const groups = buildNavGroups(b)
   const pickTheme = (t: Theme) => { setTheme(t); setThemeState(t) }
-  const doLogout = async () => { await logout(); window.location.href = '/w' }
+  const doLogout = async () => { try { await logout() } finally { window.location.href = '/w' } }
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
@@ -80,20 +80,22 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
               <span className="flex items-center gap-2 font-semibold text-ink"><FolderKanban className="h-5 w-5 text-brand-600" /> Vernon</span>
               <button onClick={() => setSheet(false)} className="p-1.5 text-muted"><X className="h-5 w-5" /></button>
             </div>
-            {groups.map((g) => (
-              <div key={g.id} className="mb-3">
-                <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{g.label}</div>
-                {(g.to ? [{ to: g.to, label: g.label, sub: '', icon: FolderKanban }] : g.leaves).map((l) => {
-                  const Icon = l.icon
-                  return (
-                    <NavLink key={l.to} to={l.to} end={(l as { end?: boolean }).end} onClick={() => setSheet(false)}
-                      className={({ isActive }) => `flex items-center gap-3 rounded-md px-2 py-2 text-sm ${isActive ? 'bg-brand-50 dark:bg-brand-500/10 text-ink' : 'text-muted hover:bg-hover/[0.04]'}`}>
-                      <Icon className="h-4 w-4" /> {l.label}
-                    </NavLink>
-                  )
-                })}
-              </div>
-            ))}
+            <nav aria-label="Main navigation">
+              {groups.map((g) => (
+                <div key={g.id} className="mb-3">
+                  <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{g.label}</div>
+                  {(g.to ? [{ to: g.to, label: g.label, sub: '', icon: FolderKanban }] : g.leaves).map((l) => {
+                    const Icon = l.icon
+                    return (
+                      <NavLink key={l.to} to={l.to} end={(l as { end?: boolean }).end} onClick={() => setSheet(false)}
+                        className={({ isActive }) => `flex items-center gap-3 rounded-md px-2 py-2 text-sm ${isActive ? 'bg-brand-50 dark:bg-brand-500/10 text-ink' : 'text-muted hover:bg-hover/[0.04]'}`}>
+                        <Icon className="h-4 w-4" /> {l.label}
+                      </NavLink>
+                    )
+                  })}
+                </div>
+              ))}
+            </nav>
             <div className="mt-4 flex items-center gap-1 border-t border-line pt-3">
               {THEMES.map(({ value, icon: Icon, label }) => (
                 <button key={value} onClick={() => pickTheme(value)} title={label} aria-pressed={theme === value}

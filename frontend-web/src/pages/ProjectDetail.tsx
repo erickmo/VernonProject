@@ -7,7 +7,6 @@ import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
 import { sanitizeHtml, stripHtml, formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
-import { useAdvance } from '@/components/AdvanceProvider'
 import { useSetCrumbs } from '@web/lib/crumbs'
 import { useConfirm } from '@/components/Confirm'
 import CommentThread from '@/components/CommentThread'
@@ -69,7 +68,6 @@ export default function ProjectDetail() {
   const { name = '', itemName } = useParams()
   const id = decodeURIComponent(name)
   const nav = useNavigate()
-  const advance = useAdvance()
   const confirm = useConfirm()
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -305,7 +303,7 @@ export default function ProjectDetail() {
           </div>
 
           {/* Right: selected item pane */}
-          <div className="min-w-0 rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-card min-h-[320px]">
+          <div className="min-w-0 rounded-lg bg-surface border border-line p-5 min-h-[320px]">
             {itemSelected ? (
               <Outlet />
             ) : (

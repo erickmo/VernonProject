@@ -194,7 +194,7 @@ export default function GiftPoints() {
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"
                 aria-invalid={!!amountError}
-                className={`w-full rounded-lg border bg-transparent px-3 py-2.5 text-lg font-semibold text-slate-900 dark:text-slate-50 outline-none ${
+                className={`w-full rounded-lg border bg-transparent px-3 py-2.5 text-lg font-semibold text-ink outline-none ${
                   amountError
                     ? 'border-red-400 focus:border-red-500'
                     : 'border-line focus:border-brand-500'

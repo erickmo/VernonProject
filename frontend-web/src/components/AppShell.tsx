@@ -56,7 +56,7 @@ export function AppShell() {
   const boot = useBoot()
   const { pathname } = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [quickOpen, setQuickOpen] = useState(false) // ponytail: set-only until Task 13 mounts QuickCreate
+  const [quickOpen, setQuickOpen] = useState(false)
   const { crumbs: pageCrumbs } = useCrumbs()
   const crumbs = pageCrumbs ?? buildCrumbs(pathname)
 
