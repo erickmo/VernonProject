@@ -25,7 +25,6 @@ export default {
       },
       boxShadow: {
         pop: '0 4px 24px -6px rgb(15 15 15 / 0.12), 0 1px 3px 0 rgb(15 15 15 / 0.06)',
-        card: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)',
         nav: '0 -1px 12px 0 rgb(0 0 0 / 0.06)',
       },
       keyframes: {

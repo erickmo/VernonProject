@@ -336,7 +336,7 @@ export default function Project() {
           <section className="space-y-3">
             {view === 'gantt' ? (
               gantt.isLoading ? (
-                <div className="rounded-2xl bg-white dark:bg-slate-900 p-8 text-center text-sm text-slate-400 shadow-card">
+                <div className="rounded-lg bg-surface border border-line p-8 text-center text-sm text-muted">
                   Loading timeline…
                 </div>
               ) : (
@@ -382,7 +382,7 @@ export default function Project() {
           </section>
 
           {/* Right pane: nested item outlet OR project comments */}
-          <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-card p-5 min-h-[300px]">
+          <div className="rounded-lg bg-surface border border-line p-5 min-h-[300px]">
             {itemSelected ? (
               <Outlet />
             ) : (
