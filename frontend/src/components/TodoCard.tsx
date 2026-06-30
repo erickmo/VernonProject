@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check } from 'lucide-react'
 import { STATUS } from '@/lib/status'
-import { formatEstimate } from '@/lib/format'
+import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
+import { useSetTodoAllocations } from '@/hooks/useData'
+import { buildNext } from '@/lib/planDay'
 import type { ProjectItem } from '@/lib/types'
 
 interface Props {
@@ -41,6 +43,15 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const onAdvance = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (todo.next_status_label) advanceConfirm(todo.name, todo.next_status_label, todo.to_do)
+  }
+
+  const setAlloc = useSetTodoAllocations(todo.name)
+  const planned = todo.today_allocation > 0
+  const onToggleToday = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (setAlloc.isPending) return
+    const minutes = planned ? 0 : todo.estimated > 0 ? todo.estimated : 30
+    setAlloc.mutate(buildNext(todo.allocations ?? [], todayISO(), minutes))
   }
 
   return (
@@ -102,13 +113,32 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
                 {formatEstimate(todo.estimated)}
               </span>
             )}
-            {todo.today_allocation > 0 && (
+            {todo.today_allocation > 0 && showAssignee && (
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/15 px-2 py-0.5 font-semibold text-brand-700 dark:text-brand-300"
                 title="Allocated for today"
               >
                 <Clock className="h-3.5 w-3.5" />
                 {formatEstimate(todo.today_allocation)} today
+              </span>
+            )}
+            {!showAssignee && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={onToggleToday}
+                aria-disabled={setAlloc.isPending}
+                title={planned ? 'Remove from today' : 'Add to today'}
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95',
+                  setAlloc.isPending && 'opacity-50',
+                  planned
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                    : 'bg-stone-100 text-stone-600 dark:bg-slate-700 dark:text-slate-300',
+                )}
+              >
+                {planned ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                {planned ? `${formatEstimate(todo.today_allocation)} today` : 'Today'}
               </span>
             )}
           </div>
