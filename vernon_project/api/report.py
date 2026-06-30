@@ -99,6 +99,7 @@ def _assigned_minutes(names, from_date, to_date):
 	Returns [{user, day, minutes}]. Empty list when names is empty."""
 	if not names:
 		return []
+	from_date, to_date = str(getdate(from_date)), str(getdate(to_date))
 	# Explicit assigned allocation rows in range.
 	explicit = frappe.db.sql(
 		"""
@@ -203,7 +204,7 @@ def _build_under_occupied(active_users, assigned_rows, from_date, to_date, thres
 	for u in active_users:
 		a = by_user.get(u["name"], {})
 		assigned_total = sum(a.get(d, 0) for d in dates)
-		avg_daily = assigned_total / day_count if day_count else 0
+		avg_daily = round(assigned_total / day_count) if day_count else 0
 		if avg_daily >= effective:
 			continue  # ponytail: strict < ; at exactly effective the user is not under-occupied
 		under_days = sum(1 for d in dates if a.get(d, 0) < effective)
@@ -244,10 +245,7 @@ def under_occupied(from_date, to_date):
 		frappe.throw(f"Date range too large (max {MAX_SPAN_DAYS} days).", frappe.ValidationError)
 
 	threshold = frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0
-	try:
-		tolerance = frappe.db.get_single_value("Vernon Settings", "under_occupied_tolerance_minutes") or 0
-	except Exception:
-		tolerance = 0  # ponytail: field not yet migrated to DB; safe fallback until bench migrate runs
+	tolerance = frappe.db.get_single_value("Vernon Settings", "under_occupied_tolerance_minutes") or 0
 
 	users = _active_users()
 	names = [u["name"] for u in users]

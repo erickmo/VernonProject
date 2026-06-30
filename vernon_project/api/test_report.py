@@ -118,32 +118,65 @@ class TestDailyEstimatedTimeAccess(unittest.TestCase):
 class TestBuildUnderOccupied(unittest.TestCase):
 	"""Pure _build_under_occupied tests — no DB, no migration dependency."""
 
-	def test_mixed_busy_idle(self):
-		"""One busy day (600 min) + two idle days (60 min each) with threshold=480, tolerance=60."""
-		users = [{"name": "mix@x.id", "full_name": "Mix"}]
+	def test_includes_under_and_excludes_occupied(self):
+		"""User with avg < effective is included; user with avg >= effective is excluded."""
+		users = [
+			{"name": "under@x.id", "full_name": "Under"},
+			{"name": "over@x.id", "full_name": "Over"},
+		]
+		# threshold=480, tolerance=60 → effective=420
+		# under@x.id: avg = round((400+400)/2) = 400 < 420 → included
+		# over@x.id: avg = round((420+420)/2) = 420 == effective → excluded (strict <)
 		assigned = [
-			{"user": "mix@x.id", "day": "2026-06-22", "minutes": 600},
-			{"user": "mix@x.id", "day": "2026-06-23", "minutes": 60},
+			{"user": "under@x.id", "day": "2026-06-22", "minutes": 400},
+			{"user": "under@x.id", "day": "2026-06-23", "minutes": 400},
+			{"user": "over@x.id", "day": "2026-06-22", "minutes": 420},
+			{"user": "over@x.id", "day": "2026-06-23", "minutes": 420},
+		]
+		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-23", 480, 60)
+		names = [r["user"] for r in out["rows"]]
+		self.assertIn("under@x.id", names)
+		self.assertNotIn("over@x.id", names)
+
+	def test_tolerance_boundary_is_strict(self):
+		"""avg_daily == effective (420) is excluded; avg_daily == 419 is included."""
+		users = [
+			{"name": "exact@x.id", "full_name": "Exact"},
+			{"name": "low@x.id", "full_name": "Low"},
+		]
+		# threshold=480, tolerance=60 → effective=420
+		# exact@x.id: 420 each day → avg=420 == effective → excluded
+		# low@x.id: 419 each day → avg=419 < effective → included
+		assigned = [
+			{"user": "exact@x.id", "day": "2026-06-22", "minutes": 420},
+			{"user": "exact@x.id", "day": "2026-06-23", "minutes": 420},
+			{"user": "exact@x.id", "day": "2026-06-24", "minutes": 420},
+			{"user": "low@x.id", "day": "2026-06-22", "minutes": 419},
+			{"user": "low@x.id", "day": "2026-06-23", "minutes": 419},
+			{"user": "low@x.id", "day": "2026-06-24", "minutes": 419},
+		]
+		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
+		names = [r["user"] for r in out["rows"]]
+		self.assertNotIn("exact@x.id", names)  # 420 → excluded
+		self.assertIn("low@x.id", names)       # 419 → included
+
+	def test_deficit_and_under_days_busy_days_do_not_cancel(self):
+		"""Busy days contribute 0 to deficit (via max(0,...)); under_days counts days < effective."""
+		users = [{"name": "mix@x.id", "full_name": "Mix"}]
+		# threshold=480, tolerance=60 → effective=420
+		# day 22: 960 (over threshold) → not under, deficit contribution = max(0,480-960)=0
+		# day 23: 0 (under effective) → under, deficit contribution = max(0,480-0)=480
+		# day 24: 60 (under effective) → under, deficit contribution = max(0,480-60)=420
+		# avg = round((960+0+60)/3) = round(340) = 340 < 420 → included
+		assigned = [
+			{"user": "mix@x.id", "day": "2026-06-22", "minutes": 960},
+			{"user": "mix@x.id", "day": "2026-06-23", "minutes": 0},
 			{"user": "mix@x.id", "day": "2026-06-24", "minutes": 60},
 		]
 		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
 		row = out["rows"][0]
-		self.assertEqual(row["assigned_total"], 720)
-		self.assertEqual(row["avg_daily"], 240)   # 720 / 3
-		self.assertEqual(row["under_days"], 2)    # days 23, 24 < effective(420)
-		self.assertEqual(row["deficit"], 840)     # max(0,480-600)+max(0,480-60)*2 = 0+420+420
-
-	def test_tolerance_boundary_strict(self):
-		"""avg_daily == effective must NOT be included (strict <)."""
-		users = [{"name": "a@x.id", "full_name": "Alice"}]
-		# threshold=480, tolerance=60 → effective=420; avg=420 → excluded
-		assigned = [
-			{"user": "a@x.id", "day": "2026-06-22", "minutes": 420},
-			{"user": "a@x.id", "day": "2026-06-23", "minutes": 420},
-			{"user": "a@x.id", "day": "2026-06-24", "minutes": 420},
-		]
-		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
-		self.assertEqual(out["rows"], [])
+		self.assertEqual(row["under_days"], 2)   # days 23, 24 < effective(420)
+		self.assertEqual(row["deficit"], 900)    # 0 + 480 + 420; busy day doesn't cancel
 
 	def test_empty_roster(self):
 		out = _build_under_occupied([], [], "2026-06-22", "2026-06-24", 480, 60)
@@ -153,25 +186,25 @@ class TestBuildUnderOccupied(unittest.TestCase):
 		self.assertEqual(out["effective"], 420)
 		self.assertEqual(out["day_count"], 3)
 
-	def test_sort_by_deficit(self):
-		"""Rows sorted by (-deficit, full_name); highest deficit first."""
+	def test_envelope_and_sort_by_deficit_desc(self):
+		"""Envelope fields correct; rows sorted by (-deficit, full_name) descending."""
 		users = [
 			{"name": "a@x.id", "full_name": "Alice"},
 			{"name": "b@x.id", "full_name": "Bob"},
 		]
 		# threshold=480, tolerance=0 → effective=480
-		# Bob has one day at 480 (not under effective), Alice has all zeros → larger deficit
+		# Alice: all zeros → avg=0 < 480, deficit=480*2=960
+		# Bob: day 22 has 480, day 23 has 0 → avg=round(480/2)=240 < 480, deficit=0+480=480
 		assigned = [{"user": "b@x.id", "day": "2026-06-22", "minutes": 480}]
 		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-23", 480, 0)
-		# Alice: avg=0 < 480 (included), deficit=960; Bob: avg=240 < 480 (included), deficit=480
-		self.assertEqual(out["rows"][0]["user"], "a@x.id")  # higher deficit first
-		self.assertEqual(out["rows"][1]["user"], "b@x.id")
-
-	def test_envelope_fields(self):
-		out = _build_under_occupied([], [], "2026-06-22", "2026-06-24", 480, 60)
+		self.assertEqual(out["threshold"], 480)
+		self.assertEqual(out["tolerance"], 0)
+		self.assertEqual(out["effective"], 480)
+		self.assertEqual(out["day_count"], 2)
 		self.assertEqual(out["from_date"], "2026-06-22")
-		self.assertEqual(out["to_date"], "2026-06-24")
-		self.assertEqual(out["effective"], 420)
+		self.assertEqual(out["to_date"], "2026-06-23")
+		self.assertEqual(out["rows"][0]["user"], "a@x.id")  # deficit=960 first
+		self.assertEqual(out["rows"][1]["user"], "b@x.id")  # deficit=480 second
 
 
 class TestUnderOccupiedEndpoint(unittest.TestCase):
