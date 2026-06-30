@@ -21,12 +21,16 @@ export function paletteForColorSlot(slot: string): string[] {
   return BG_PALETTE
 }
 
-export function renderAvatarSvg(style: StyleKey, options: Record<string, string[]>): string {
+export function renderAvatarSvg(style: StyleKey, options: Record<string, string[]>, seed?: string): string {
   const col = STYLES[style] || STYLES.lorelei
+  // `seed` (a core DiceBear option) deterministically randomizes every unset
+  // feature — used to give no-avatar users a unique auto avatar instead of a
+  // bare initial. Saved configs pass no seed and keep their exact options.
+  const opts = seed ? { ...options, seed } : options
   // DiceBear SVGs ship with only a viewBox (no width/height). The live DOM sizes
   // them fine, but html-to-image (snapshot capture) mis-frames a dimensionless
   // SVG. Inject explicit 100% size so the figure fills+centers in capture too.
-  return createAvatar(col as any, options as any).toString()
+  return createAvatar(col as any, opts as any).toString()
     .replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" ')
 }
 

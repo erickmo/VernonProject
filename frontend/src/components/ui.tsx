@@ -4,6 +4,10 @@ import { initials, colorFor } from '@/lib/format'
 import { DiceBearAvatar } from '@/avatar/DiceBearAvatar'
 import type { AvatarConfig } from '@/lib/types'
 
+// No-avatar users get a deterministic auto avatar seeded by their name,
+// instead of a bare initial. Mirrors backend DEFAULT_AVATAR (mobile.py).
+const DEFAULT_AVATAR_CONFIG: AvatarConfig = { style: 'lorelei', options: {} }
+
 export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={clsx('animate-spin', className)} />
 }
@@ -51,6 +55,17 @@ export function Avatar({
         style={{ width: size, height: size }}
         className={clsx('shrink-0 object-cover', shape)}
       />
+    )
+  }
+  if (name && name.trim()) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={clsx('shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-700', shape)}
+      >
+        {/* ponytail: seed = name; switch to an email seed if name collisions matter */}
+        <DiceBearAvatar config={DEFAULT_AVATAR_CONFIG} seed={name} className="h-full w-full" />
+      </div>
     )
   }
   return (
