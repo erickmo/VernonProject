@@ -12,11 +12,11 @@ const chip = (active: boolean) =>
   `rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
     active
       ? 'bg-brand-600 text-white'
-      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+      : 'bg-slate-100 text-muted hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'
   }`
 
 const fieldCls =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function Feedback() {
   const toast = useToast()
@@ -44,12 +44,12 @@ export default function Feedback() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Send feedback</h1>
+      <h1 className="text-2xl font-bold text-ink">Send feedback</h1>
 
       <BentoGrid>
         <BentoTile span="lg" tone="plain">
           <div className="flex flex-col gap-5">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-muted">
               Share criticism, a suggestion, praise, or a bug. Send anonymously if you’d rather
               not be named.
             </p>

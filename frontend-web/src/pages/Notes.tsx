@@ -15,20 +15,20 @@ function NoteCard({ note }: { note: PersonalNote }) {
     <button
       type="button"
       onClick={() => navigate(`/notes/${encodeURIComponent(note.name)}`)}
-      className="flex flex-col gap-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+      className="flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
     >
-      <p className="truncate font-semibold text-slate-900 dark:text-slate-50">
+      <p className="truncate font-semibold text-ink">
         {note.title?.trim() || 'Untitled'}
       </p>
-      {preview && <p className="line-clamp-3 text-sm text-slate-500 dark:text-slate-400">{preview}</p>}
+      {preview && <p className="line-clamp-3 text-sm text-muted">{preview}</p>}
       <div className="mt-0.5 flex items-center gap-3">
         {total > 0 && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
             <CheckSquare className="h-3.5 w-3.5" /> {done}/{total}
           </span>
         )}
         {!note.is_owner && (
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted">
             <Avatar name={note.owner_name} size={18} /> {note.owner_name}
           </span>
         )}
@@ -97,7 +97,7 @@ export default function Notes() {
             <div className="space-y-6">
               {owned.length > 0 && (
                 <section>
-                  <h2 className="mb-2.5 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <h2 className="mb-2.5 text-sm font-semibold uppercase tracking-wide text-muted">
                     My notes
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
@@ -109,7 +109,7 @@ export default function Notes() {
               )}
               {shared.length > 0 && (
                 <section>
-                  <h2 className="mb-2.5 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <h2 className="mb-2.5 text-sm font-semibold uppercase tracking-wide text-muted">
                     Shared with me
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">

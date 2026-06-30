@@ -33,7 +33,7 @@ export function Meetings() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Meetings</h1>
+        <h1 className="text-2xl font-bold text-ink">Meetings</h1>
         <button
           disabled={!project}
           onClick={() => setDialog(true)}
@@ -49,10 +49,10 @@ export function Meetings() {
 
       <div className="flex flex-col gap-3">
         {(meetings.data?.meetings ?? []).map((m) => (
-          <div key={m.name} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+          <div key={m.name} className="flex items-center justify-between rounded-xl border border-line p-4">
             <div>
-              <div className="font-semibold text-slate-900 dark:text-slate-50">{m.title}</div>
-              <div className="text-xs text-slate-500">
+              <div className="font-semibold text-ink">{m.title}</div>
+              <div className="text-xs text-muted">
                 {m.scheduled_at && (
                   <>{formatDate(m.scheduled_at)}{m.scheduled_at.length > 10 ? ` ${m.scheduled_at.slice(11, 16)}` : ''} · </>
                 )}
@@ -61,7 +61,7 @@ export function Meetings() {
             </div>
             {m.can_mark_done &&
               (m.status === '✅ Done' ? (
-                <button onClick={() => onReopen(m.name)} className="text-sm font-semibold text-slate-500">
+                <button onClick={() => onReopen(m.name)} className="text-sm font-semibold text-muted">
                   Reopen
                 </button>
               ) : (

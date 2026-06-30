@@ -74,7 +74,7 @@ export default function GiftPoints() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Gift Points</h1>
+      <h1 className="text-2xl font-bold text-ink">Gift Points</h1>
 
       <BentoGrid>
         {/* Balance summary tile */}
@@ -87,7 +87,7 @@ export default function GiftPoints() {
 
         {/* Hint tile */}
         <BentoTile span="sm" tone="tint" accent="amber">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-muted">
             Pick someone to send points. Gifts come out of your balance and can't be undone.
           </p>
         </BentoTile>
@@ -125,14 +125,14 @@ export default function GiftPoints() {
                       setNote('')
                     }}
                     aria-label={`Gift points to ${u.full_name}`}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+                    className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
                   >
                     <Avatar name={u.full_name} image={u.user_image} config={u.avatar_config} size={40} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      <p className="truncate text-sm font-semibold text-ink">
                         {u.full_name}
                       </p>
-                      <p className="truncate text-xs text-slate-400">{u.name}</p>
+                      <p className="truncate text-xs text-muted">{u.name}</p>
                     </div>
                     <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600">
                       <Send className="h-3 w-3" />
@@ -174,16 +174,16 @@ export default function GiftPoints() {
       >
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
+            <div className="flex items-center gap-3 rounded-lg bg-hover/[0.04] p-4">
               <Avatar name={selected.full_name} image={selected.user_image} config={selected.avatar_config} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{selected.full_name}</p>
-                <p className="truncate text-sm text-slate-400">{selected.name}</p>
+                <p className="truncate font-semibold text-ink">{selected.full_name}</p>
+                <p className="truncate text-sm text-muted">{selected.name}</p>
               </div>
             </div>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Points</span>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted">Points</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -197,14 +197,14 @@ export default function GiftPoints() {
                 className={`w-full rounded-lg border bg-transparent px-3 py-2.5 text-lg font-semibold text-slate-900 dark:text-slate-50 outline-none ${
                   amountError
                     ? 'border-red-400 focus:border-red-500'
-                    : 'border-slate-200 dark:border-slate-700 focus:border-brand-500'
+                    : 'border-line focus:border-brand-500'
                 }`}
               />
               {amountError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{amountError}</p>}
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted">
                 Note (optional)
               </span>
               <textarea
@@ -212,13 +212,13 @@ export default function GiftPoints() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="Say something nice"
-                className="w-full resize-none rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
+                className="w-full resize-none rounded-lg border border-line bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
               />
             </label>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted">
               Your balance:{' '}
-              <span className="font-semibold text-slate-600 dark:text-slate-300">{formatNumber(balance)}</span>
+              <span className="font-semibold text-muted">{formatNumber(balance)}</span>
             </p>
           </div>
         )}

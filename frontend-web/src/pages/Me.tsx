@@ -33,10 +33,10 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
             <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config} size={72} />
             <div className="min-w-0">
               <div className="text-xl font-semibold">{b?.full_name}</div>
-              <div className="text-sm text-slate-500 dark:text-slate-400">{b?.user}</div>
+              <div className="text-sm text-muted">{b?.user}</div>
               {b?.badge && (
                 <span
-                  className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
+                  className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-slate-100 dark:bg-slate-800 text-muted'}`}
                   style={b.badge.color ? { backgroundColor: `${b.badge.color}22`, color: b.badge.color } : undefined}
                 >
                   {b.badge.icon && <span>{b.badge.icon}</span>}
@@ -47,7 +47,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
                 {(b?.roles ?? []).map((r) => (
                   <span
                     key={r}
-                    className="text-xs px-2 py-0.5 rounded-full bg-white/60 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                    className="text-xs px-2 py-0.5 rounded-full bg-white/60 dark:bg-slate-800 text-muted"
                   >
                     {r}
                   </span>
@@ -130,10 +130,10 @@ function GamificationTile() {
         <div className="mt-1 space-y-3">
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-bold tabular-nums">{gami.level}</span>
-            <span className="text-sm text-slate-500 dark:text-slate-400">/ Lifetime {gami.lifetime.toLocaleString()} pts</span>
+            <span className="text-sm text-muted">/ Lifetime {gami.lifetime.toLocaleString()} pts</span>
           </div>
           <div>
-            <div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+            <div className="mb-1 flex justify-between text-xs text-muted">
               <span>XP progress</span>
               <span>{gami.xp_into}/{gami.points_per_level}</span>
             </div>
@@ -146,7 +146,7 @@ function GamificationTile() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading…</div>
+        <div className="flex-1 flex items-center justify-center text-muted text-sm">Loading…</div>
       )}
     </BentoTile>
   )
@@ -165,7 +165,7 @@ function DailyTile() {
             <span className="text-3xl leading-none">🔥</span>
             <div>
               <p className="text-lg font-bold">Streak {gami.daily.streak}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">+{gami.daily.claimable} pts today</p>
+              <p className="text-xs text-muted">+{gami.daily.claimable} pts today</p>
             </div>
           </div>
           <button
@@ -182,7 +182,7 @@ function DailyTile() {
           </button>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading…</div>
+        <div className="flex-1 flex items-center justify-center text-muted text-sm">Loading…</div>
       )}
     </BentoTile>
   )
@@ -268,14 +268,14 @@ function PasskeyTile() {
             <Fingerprint className="w-4 h-4 shrink-0 text-brand-600" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{pk.label || 'This device'}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
+              <div className="text-xs text-muted">
                 {pk.last_used ? `Last used ${fmtDate(pk.last_used)}` : `Added ${fmtDate(pk.creation)}`}
               </div>
             </div>
             <button
               onClick={() => remove(pk.name, pk.label)}
               disabled={revoke.isPending}
-              className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/10"
+              className="rounded-md p-1.5 text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/10"
               aria-label="Remove passkey"
             >
               <Trash2 className="w-4 h-4" />
@@ -283,7 +283,7 @@ function PasskeyTile() {
           </div>
         ))}
         {!isLoading && list.length === 0 && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-muted">
             Use Touch ID / fingerprint to sign in on this device — no password needed.
           </p>
         )}

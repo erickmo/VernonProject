@@ -22,7 +22,7 @@ export default function Reports() {
                 <button
                   key={r.name}
                   onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-4 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="flex w-full items-center gap-3 rounded-lg bg-canvas p-4 text-left transition hover:bg-hover/[0.04]"
                 >
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${r.accent} text-white`}
@@ -30,8 +30,8 @@ export default function Reports() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">{r.title}</p>
-                    <p className="truncate text-xs text-slate-400 dark:text-slate-500">{r.desc}</p>
+                    <p className="font-semibold text-ink">{r.title}</p>
+                    <p className="truncate text-xs text-muted">{r.desc}</p>
                   </div>
                   <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
                 </button>

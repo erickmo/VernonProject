@@ -76,9 +76,9 @@ export default function Brands() {
                   key={b.name}
                   type="button"
                   onClick={() => navigate(`/brands/${encodeURIComponent(b.name)}`)}
-                  className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-left font-medium text-slate-800 dark:text-slate-100 hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+                  className="flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-left font-medium text-ink hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
                 >
-                  <Store className="h-4 w-4 shrink-0 text-slate-400" />
+                  <Store className="h-4 w-4 shrink-0 text-muted" />
                   <span className="truncate">{b.brand_name}</span>
                 </button>
               ))}
