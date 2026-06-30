@@ -1021,7 +1021,7 @@ export default function ProjectItemScreen() {
                 </span>
               )}
               {data.is_waiting && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-stone-200 dark:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-stone-700 dark:text-slate-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-500/15 px-2.5 py-1 text-xs font-semibold text-yellow-800 dark:text-yellow-300">
                   <Pause className="h-3.5 w-3.5" /> Waiting{data.waiting_reason ? ` · ${data.waiting_reason}` : ''}
                 </span>
               )}

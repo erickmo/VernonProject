@@ -92,7 +92,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
               {meta.label}
             </Pill>
             {todo.is_waiting && (
-              <Pill className="bg-stone-200 text-stone-700 dark:bg-slate-700 dark:text-slate-200">
+              <Pill className="bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300">
                 <Pause className="h-3.5 w-3.5" />
                 Waiting
               </Pill>
