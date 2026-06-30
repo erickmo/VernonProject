@@ -1,7 +1,10 @@
 import unittest
 
 import frappe
-from vernon_project.api.report import _date_list, _build_daily_matrix, daily_estimated_time, daily_estimated_time_access
+from vernon_project.api.report import (
+	_date_list, _build_daily_matrix, _assigned_minutes,
+	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
+)
 
 
 class TestBuildDailyMatrix(unittest.TestCase):
@@ -110,3 +113,97 @@ class TestDailyEstimatedTimeAccess(unittest.TestCase):
 			}).insert(ignore_permissions=True)
 		frappe.set_user("report_access_guest@example.com")
 		self.assertEqual(daily_estimated_time_access(), {"can_view": False})
+
+
+class TestBuildUnderOccupied(unittest.TestCase):
+	"""Pure _build_under_occupied tests — no DB, no migration dependency."""
+
+	def test_mixed_busy_idle(self):
+		"""One busy day (600 min) + two idle days (60 min each) with threshold=480, tolerance=60."""
+		users = [{"name": "mix@x.id", "full_name": "Mix"}]
+		assigned = [
+			{"user": "mix@x.id", "day": "2026-06-22", "minutes": 600},
+			{"user": "mix@x.id", "day": "2026-06-23", "minutes": 60},
+			{"user": "mix@x.id", "day": "2026-06-24", "minutes": 60},
+		]
+		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
+		row = out["rows"][0]
+		self.assertEqual(row["assigned_total"], 720)
+		self.assertEqual(row["avg_daily"], 240)   # 720 / 3
+		self.assertEqual(row["under_days"], 2)    # days 23, 24 < effective(420)
+		self.assertEqual(row["deficit"], 840)     # max(0,480-600)+max(0,480-60)*2 = 0+420+420
+
+	def test_tolerance_boundary_strict(self):
+		"""avg_daily == effective must NOT be included (strict <)."""
+		users = [{"name": "a@x.id", "full_name": "Alice"}]
+		# threshold=480, tolerance=60 → effective=420; avg=420 → excluded
+		assigned = [
+			{"user": "a@x.id", "day": "2026-06-22", "minutes": 420},
+			{"user": "a@x.id", "day": "2026-06-23", "minutes": 420},
+			{"user": "a@x.id", "day": "2026-06-24", "minutes": 420},
+		]
+		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
+		self.assertEqual(out["rows"], [])
+
+	def test_empty_roster(self):
+		out = _build_under_occupied([], [], "2026-06-22", "2026-06-24", 480, 60)
+		self.assertEqual(out["rows"], [])
+		self.assertEqual(out["threshold"], 480)
+		self.assertEqual(out["tolerance"], 60)
+		self.assertEqual(out["effective"], 420)
+		self.assertEqual(out["day_count"], 3)
+
+	def test_sort_by_deficit(self):
+		"""Rows sorted by (-deficit, full_name); highest deficit first."""
+		users = [
+			{"name": "a@x.id", "full_name": "Alice"},
+			{"name": "b@x.id", "full_name": "Bob"},
+		]
+		# threshold=480, tolerance=0 → effective=480
+		# Bob has one day at 480 (not under effective), Alice has all zeros → larger deficit
+		assigned = [{"user": "b@x.id", "day": "2026-06-22", "minutes": 480}]
+		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-23", 480, 0)
+		# Alice: avg=0 < 480 (included), deficit=960; Bob: avg=240 < 480 (included), deficit=480
+		self.assertEqual(out["rows"][0]["user"], "a@x.id")  # higher deficit first
+		self.assertEqual(out["rows"][1]["user"], "b@x.id")
+
+	def test_envelope_fields(self):
+		out = _build_under_occupied([], [], "2026-06-22", "2026-06-24", 480, 60)
+		self.assertEqual(out["from_date"], "2026-06-22")
+		self.assertEqual(out["to_date"], "2026-06-24")
+		self.assertEqual(out["effective"], 420)
+
+
+class TestUnderOccupiedEndpoint(unittest.TestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for email in ("uo_guest@example.com",):
+			if frappe.db.exists("User", email):
+				frappe.delete_doc("User", email, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_requires_system_manager(self):
+		if not frappe.db.exists("User", "uo_guest@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "uo_guest@example.com",
+				"first_name": "UO", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		frappe.set_user("uo_guest@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			under_occupied("2026-06-22", "2026-06-28")
+
+	def test_rejects_oversize_span(self):
+		frappe.set_user("Administrator")
+		with self.assertRaises(frappe.ValidationError):
+			under_occupied("2026-01-01", "2026-12-31")
+
+	def test_contract_shape(self):
+		frappe.set_user("Administrator")
+		out = under_occupied("2026-06-22", "2026-06-26")
+		for key in ("threshold", "tolerance", "effective", "day_count", "rows"):
+			self.assertIn(key, out)
+		self.assertIsInstance(out["rows"], list)
+		self.assertEqual(out["day_count"], 5)
