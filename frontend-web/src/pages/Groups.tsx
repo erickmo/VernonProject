@@ -2,9 +2,11 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trophy } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState, rowButtonProps } from '@web/components/ui'
+import { ErrorState } from '@web/components/ui'
 import { useScoringGroups, useBoot, canManageGroups } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
+import { DataTable } from '@web/components/DataTable'
 
 export default function Groups() {
   const navigate = useNavigate()
@@ -34,23 +36,22 @@ export default function Groups() {
   const list = groups ?? []
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Groups</h1>
+    <Page>
+      <PageHeader
+        icon={Trophy}
+        title="Groups"
+        actions={
+          <button
+            onClick={() => navigate('/groups/new')}
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> New group
+          </button>
+        }
+      />
 
       <BentoGrid>
-        <BentoTile
-          span="sm"
-          tone="tint"
-          accent="slate"
-          actions={
-            <button
-              onClick={() => navigate('/groups/new')}
-              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" /> New group
-            </button>
-          }
-        >
+        <BentoTile span="sm" tone="tint" accent="slate">
           <BentoStat value={list.length} label="groups" />
         </BentoTile>
 
@@ -70,35 +71,29 @@ export default function Groups() {
               </button>
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  <tr>
-                    <th className="px-4 py-2.5">Group</th>
-                    <th className="px-4 py-2.5">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {list.map((g) => (
-                    <tr
-                      key={g.name}
-                      {...rowButtonProps(() => navigate(`/groups/${encodeURIComponent(g.name)}`))}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
-                    >
-                      <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
-                        {g.group_name}
-                      </td>
-                      <td className="max-w-md truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">
-                        {g.description || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              rows={list}
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Group',
+                  sortValue: (g) => g.group_name,
+                  render: (g) => <span className="font-medium text-ink">{g.group_name}</span>,
+                },
+                {
+                  key: 'description',
+                  header: 'Description',
+                  render: (g) => (
+                    <span className="max-w-md truncate text-muted">{g.description || '—'}</span>
+                  ),
+                },
+              ]}
+              getKey={(g) => g.name}
+              onRowClick={(g) => navigate(`/groups/${encodeURIComponent(g.name)}`)}
+            />
           )}
         </BentoTile>
       </BentoGrid>
-    </div>
+    </Page>
   )
 }

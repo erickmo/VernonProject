@@ -10,6 +10,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { Popover } from '@web/components/overlays/Popover'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 
 const REL_TABS: { value: 'all' | 'owned' | 'led'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -86,8 +87,8 @@ export default function Review() {
   }
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Review</h1>
+    <Page>
+      <PageHeader title="Review" />
 
       <BentoGrid>
         <BentoTile
@@ -106,7 +107,7 @@ export default function Review() {
                 <div className="space-y-4">
                   {dims.map((d) => (
                     <div key={d.key} className="space-y-1">
-                      <div className="text-xs font-semibold text-slate-500">{d.label}</div>
+                      <div className="text-xs font-semibold text-muted">{d.label}</div>
                       <SearchableSelect
                         value={filters[d.key] ?? ''}
                         onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
@@ -146,21 +147,22 @@ export default function Review() {
               subtitle="The queue is empty."
             />
           ) : (
+            // ponytail: flat-restyle (not DataTable) — grouped by project; DataTable has no group support
             <div className="space-y-5">
               {byProject.map(([projId, { displayName, items }]) => (
                 <section key={projId} className="space-y-2">
-                  <h2 className="text-sm font-semibold text-slate-500">{displayName}</h2>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <h2 className="text-sm font-semibold text-muted">{displayName}</h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-sm">
+                      <tbody>
                         {items.map((t) => (
                           <tr
                             key={t.name}
-                            className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                            className="border-b border-line/70 last:border-0 hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] cursor-pointer"
                             onClick={() => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
                           >
-                            <td className="px-4 py-2.5 font-medium">{t.to_do}</td>
-                            <td className="px-4 py-2.5">
+                            <td className="px-3 py-2 font-medium text-ink">{t.to_do}</td>
+                            <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
                                 <Avatar
                                   name={t.assigned_to_name}
@@ -168,14 +170,14 @@ export default function Review() {
                                   config={t.assigned_to_avatar_config}
                                   size={24}
                                 />
-                                <span className="text-slate-500 whitespace-nowrap">{t.assigned_to_name}</span>
+                                <span className="whitespace-nowrap text-muted">{t.assigned_to_name}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
+                            <td className="px-3 py-2 whitespace-nowrap text-muted">
                               {formatDate(t.deadline ?? null)}
                             </td>
                             <td
-                              className="px-4 py-2.5 text-right"
+                              className="px-3 py-2 text-right"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {t.can_advance && (
@@ -199,6 +201,6 @@ export default function Review() {
           )}
         </BentoTile>
       </BentoGrid>
-    </div>
+    </Page>
   )
 }

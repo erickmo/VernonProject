@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Users as UsersIcon, Search } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
-import { ErrorState, rowButtonProps } from '@web/components/ui'
+import { ErrorState } from '@web/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
+import { DataTable } from '@web/components/DataTable'
+import type { Column } from '@web/components/DataTable'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
   VERNON_ROLE_OPTIONS.map((o) => [o.value, o.label]),
@@ -23,11 +26,12 @@ const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'disabled', label: 'Disabled' },
 ]
 
+// ponytail: semantic tokens for inactive chip — no hardcoded dark:bg-slate-*
 const chip = (active: boolean) =>
   `rounded-full px-3 py-1 text-xs font-medium transition-colors ${
     active
       ? 'bg-brand-600 text-white'
-      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+      : 'bg-surface text-muted hover:bg-surface/80'
   }`
 
 export default function Users() {
@@ -75,37 +79,95 @@ export default function Users() {
 
   const total = (users ?? []).length
 
+  type UserRow = NonNullable<typeof users>[number]
+
+  const cols: Column<UserRow>[] = [
+    {
+      key: 'user',
+      header: 'User',
+      sortValue: (u) => u.full_name || u.name,
+      render: (u) => (
+        <div className="flex items-center gap-3">
+          <Avatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={32} />
+          <div className="min-w-0">
+            <p className="truncate font-medium text-ink">{u.full_name || u.name}</p>
+            <p className="truncate text-xs text-muted">{u.name}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'roles',
+      header: 'Roles',
+      render: (u) => (
+        <div className="flex flex-wrap gap-1">
+          {u.roles.map((r) => (
+            <span key={r} className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              {ROLE_LABEL[r] ?? r}
+            </span>
+          ))}
+          {u.roles.length === 0 && <span className="text-xs text-muted">—</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (u) =>
+        u.member_type ? (
+          <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${MEMBER_BADGE[u.member_type] ?? 'bg-surface text-muted'}`}>
+            {u.member_type}
+          </span>
+        ) : (
+          <span className="text-xs text-muted">—</span>
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) =>
+        u.enabled ? (
+          <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+            Active
+          </span>
+        ) : (
+          <span className="inline-block rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-muted">
+            Disabled
+          </span>
+        ),
+    },
+  ]
+
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Users</h1>
+    <Page>
+      <PageHeader
+        icon={UsersIcon}
+        title="Users"
+        actions={
+          <button
+            onClick={() => navigate('/users/new')}
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> New user
+          </button>
+        }
+      />
 
       <BentoGrid>
-        <BentoTile
-          span="sm"
-          tone="tint"
-          accent="rose"
-          actions={
-            <button
-              onClick={() => navigate('/users/new')}
-              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" /> New user
-            </button>
-          }
-        >
+        <BentoTile span="sm" tone="tint" accent="rose">
           <BentoStat value={total} label="users" />
         </BentoTile>
 
         <BentoTile span="sm" tone="tint" accent="slate">
           <div className="space-y-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or email…"
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                className="w-full rounded-xl border border-line bg-canvas py-2 pl-9 pr-3 text-sm text-ink placeholder:text-muted"
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -161,88 +223,23 @@ export default function Users() {
                 <Plus className="h-4 w-4" /> New user
               </button>
             </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              icon={UsersIcon}
-              title="No matching users"
-              subtitle="Try a different search or clear the filters."
-            />
           ) : (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  <tr>
-                    <th className="px-4 py-2.5">User</th>
-                    <th className="px-4 py-2.5">Roles</th>
-                    <th className="px-4 py-2.5">Type</th>
-                    <th className="px-4 py-2.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filtered.map((u) => (
-                    <tr
-                      key={u.name}
-                      {...rowButtonProps(() => navigate(`/users/${encodeURIComponent(u.name)}`))}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
-                    >
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-3">
-                          <Avatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={32} />
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-slate-800 dark:text-slate-100">
-                              {u.full_name || u.name}
-                            </p>
-                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.name}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex flex-wrap gap-1">
-                          {u.roles.map((r) => (
-                            <span
-                              key={r}
-                              className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
-                            >
-                              {ROLE_LABEL[r] ?? r}
-                            </span>
-                          ))}
-                          {u.roles.length === 0 && (
-                            <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {u.member_type ? (
-                          <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                              MEMBER_BADGE[u.member_type] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                            }`}
-                          >
-                            {u.member_type}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {u.enabled ? (
-                          <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                            Disabled
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              rows={filtered}
+              columns={cols}
+              getKey={(u) => u.name}
+              onRowClick={(u) => navigate(`/users/${encodeURIComponent(u.name)}`)}
+              empty={
+                <EmptyState
+                  icon={UsersIcon}
+                  title="No matching users"
+                  subtitle="Try a different search or clear the filters."
+                />
+              }
+            />
           )}
         </BentoTile>
       </BentoGrid>
-    </div>
+    </Page>
   )
 }
