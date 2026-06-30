@@ -6,6 +6,7 @@ import { CommandPalette, type Command } from '@web/components/CommandPalette'
 import { useCrumbs } from '@web/lib/crumbs'
 import { TopNav } from '@web/components/TopNav'
 import { buildNavGroups } from '@web/lib/nav'
+import { QuickCreate } from '@web/components/QuickCreate'
 
 const SECTION: Record<string, { label: string; to: string }> = {
   '': { label: 'Today', to: '/' },
@@ -59,12 +60,22 @@ export function AppShell() {
   const { crumbs: pageCrumbs } = useCrumbs()
   const crumbs = pageCrumbs ?? buildCrumbs(pathname)
 
-  // ⌘K / Ctrl+K toggles the command palette from anywhere.
+  // ⌘K / Ctrl+K toggles the command palette; bare `c` opens quick-create.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen((o) => !o)
+      }
+      if (
+        e.key === 'c' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !/^(INPUT|TEXTAREA)$/.test((e.target as HTMLElement)?.tagName) &&
+        !(e.target as HTMLElement)?.isContentEditable
+      ) {
+        e.preventDefault()
+        setQuickOpen(true)
       }
     }
     document.addEventListener('keydown', onKey)
@@ -98,7 +109,7 @@ export function AppShell() {
         <Outlet />
       </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}
-      {/* QuickCreate mounted here in Task 13 */}
+      <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
     </div>
   )
 }

@@ -2,6 +2,11 @@ import { useMemo, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { ChevronDown, ChevronUp, Inbox } from 'lucide-react'
 import { EmptyState } from '@/components/ui'
+import { useAdvance } from '@/components/AdvanceProvider'
+import { useUpdateTodo, useFormOptions } from '@/hooks/useData'
+import { STATUS } from '@/lib/status'
+import { SearchableSelect } from '@/components/SearchableSelect'
+import type { ProjectItem } from '@/lib/types'
 
 export type Column<T> = {
   key: string
@@ -99,5 +104,53 @@ export function DataTable<T>({
         </tbody>
       </table>
     </div>
+  )
+}
+
+// ── Inline cell renderers ─────────────────────────────────────────────────────
+
+export function StatusCell({ todo }: { todo: ProjectItem }) {
+  const advance = useAdvance()
+  const meta = STATUS[todo.status_key]
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`rounded px-1.5 py-0.5 text-xs ${meta.pill}`}>{meta.emoji} {meta.label}</span>
+      {todo.can_advance && todo.next_status_label && (
+        <button
+          onClick={(e) => { e.stopPropagation(); advance(todo.name, todo.next_status_label!, todo.to_do) }}
+          className="rounded border border-line px-1.5 py-0.5 text-xs text-muted hover:bg-hover/[0.04]"
+        >
+          {todo.next_status_label}
+        </button>
+      )}
+    </span>
+  )
+}
+
+export function EditableAssigneeCell({ todo }: { todo: ProjectItem }) {
+  const update = useUpdateTodo(todo.name)
+  const { data: opts } = useFormOptions()
+  return (
+    <span onClick={(e) => e.stopPropagation()}>
+      <SearchableSelect
+        value={todo.assigned_to ?? ''}
+        options={opts?.users ?? []}
+        onChange={(v) => update.mutate({ assigned_to: v })}
+        placeholder={todo.assigned_to_name || 'Unassigned'}
+      />
+    </span>
+  )
+}
+
+export function EditableDateCell({ todo, field = 'deadline' }: { todo: ProjectItem; field?: 'deadline' | 'start_date' }) {
+  const update = useUpdateTodo(todo.name)
+  return (
+    <input
+      type="date"
+      defaultValue={(todo[field] as string | null) ?? ''}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => update.mutate({ [field]: e.target.value })}
+      className="rounded border border-line bg-transparent px-1.5 py-0.5 text-sm"
+    />
   )
 }
