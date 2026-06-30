@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 
 export function HoverCard({
@@ -9,6 +9,8 @@ export function HoverCard({
   const ref = useRef<HTMLSpanElement>(null)
   const enterT = useRef<number>()
   const leaveT = useRef<number>()
+
+  useEffect(() => () => { window.clearTimeout(enterT.current); window.clearTimeout(leaveT.current) }, [])
 
   const show = () => {
     window.clearTimeout(leaveT.current)
