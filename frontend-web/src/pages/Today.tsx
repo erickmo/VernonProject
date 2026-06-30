@@ -271,7 +271,9 @@ export default function Today() {
         </>
       )}
 
-      <PlanDayDrawer open={planOpen} onClose={() => setPlanOpen(false)} candidates={planCandidates} />
+      {planOpen && (
+        <PlanDayDrawer open onClose={() => setPlanOpen(false)} candidates={planCandidates} />
+      )}
     </Page>
   )
 }

@@ -101,6 +101,9 @@ export function PlanDaySheet({ todos, onClose }: { todos: ProjectItem[]; onClose
               />
             </div>
           </div>
+        </div>
+
+        <div className="shrink-0 px-5 pb-2">
           {/* Search */}
           <div className="mb-2 flex items-center gap-2 rounded-xl bg-paper-line px-3 py-2 dark:bg-slate-700/60">
             <Search className="h-4 w-4 shrink-0 text-stone-400 dark:text-slate-500" />

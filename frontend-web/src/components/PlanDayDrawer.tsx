@@ -1,10 +1,9 @@
-import { Search, Save } from 'lucide-react'
+import { Search, Save, CalendarRange } from 'lucide-react'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { EmptyState, Spinner } from '@/components/ui'
 import { PlanRow } from '@/components/PlanRow'
 import { usePlanDay } from '@/hooks/usePlanDay'
 import { formatEstimate } from '@/lib/format'
-import { CalendarRange } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
 
 const DAILY_TARGET_MIN = 360
