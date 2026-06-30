@@ -23,3 +23,4 @@ vernon_project.patches.v1_0.seed_avatar_assets
 vernon_project.patches.v1_0.seed_gamification_settings
 vernon_project.patches.v1_0.merge_badges_to_achievements
 vernon_project.patches.v1_0.add_member_type_field
+vernon_project.patches.v1_0.seed_under_occupied_tolerance

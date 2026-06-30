@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "recognition_weekly_cap"],
+ "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "recognition_weekly_cap"],
  "fields": [
   {
    "fieldname": "max_estimated_minutes",
@@ -20,6 +20,14 @@
    "non_negative": 1,
    "default": "480",
    "description": "Days where a user's total allocated estimated minutes fall below this are flagged in the Daily Estimated Time report. 0 = never flag."
+  },
+  {
+   "fieldname": "under_occupied_tolerance_minutes",
+   "fieldtype": "Int",
+   "label": "Under-Occupied Tolerance (minutes)",
+   "non_negative": 1,
+   "default": "60",
+   "description": "A day counts as under-occupied when assigned minutes fall below (Min Daily Estimated Minutes − this tolerance). Used by the Under-Occupied report."
   },
   {
    "fieldname": "attendance_section",
