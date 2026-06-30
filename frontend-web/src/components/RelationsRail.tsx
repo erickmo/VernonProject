@@ -1,20 +1,7 @@
 import type { ReactNode } from 'react'
 import { FolderKanban, Tag } from 'lucide-react'
-import { Section } from '@web/components/Page'
 import { EntityChip } from '@web/components/EntityChip'
 import type { ProjectItem } from '@/lib/types'
-
-export function RelationsRail({ groups }: { groups: { title: string; chips: ReactNode[] }[] }) {
-  return (
-    <aside className="space-y-0">
-      {groups.filter((g) => g.chips.length).map((g) => (
-        <Section key={g.title} title={g.title}>
-          <div className="flex flex-wrap gap-1.5">{g.chips}</div>
-        </Section>
-      ))}
-    </aside>
-  )
-}
 
 export function todoRelationChips(t: ProjectItem): ReactNode[] {
   const chips: ReactNode[] = []

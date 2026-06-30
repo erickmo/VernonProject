@@ -15,7 +15,7 @@ const SPAN: Record<Span, string> = {
   full: 'col-span-2 md:col-span-6 xl:col-span-12',
 }
 
-// Flat mode: accent only faintly tints a `tint` tile; gradient/solid degrade to subtle.
+// Flat mode: accent only faintly tints a `tint` tile; gradient degrades to subtle, solid to plain/surface.
 const ACCENT_TINT: Record<Accent, string> = {
   brand:   'bg-brand-50 dark:bg-brand-500/10',
   amber:   'bg-amber-50 dark:bg-amber-500/10',
@@ -52,11 +52,12 @@ export function BentoTile({
   span = 'md', tall = false, tone = 'plain', accent = 'brand',
   title, subtitle, icon: Icon, actions, to, className, children,
 }: BentoTileProps) {
+  // ponytail: in flat mode 'plain' and 'solid' render identically; accent only tints 'tint' tiles.
   const toneClass =
     tone === 'plain' ? 'bg-surface border border-line'
     : tone === 'tint' ? `${ACCENT_TINT[accent]} border border-line`
     : tone === 'gradient' ? 'bg-black/[0.02] dark:bg-white/[0.03] border border-line'
-    : 'bg-surface border border-line'   // 'solid' degrades to plain in flat mode
+    : 'bg-surface border border-line'   // solid falls through to plain
   const clickable = !!to
   const cls = clsx(
     SPAN[span], tall && 'row-span-2',

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Page } from '@web/components/Page'
 import { useProjects, useMeetings, useMarkMeetingDone, useReopenMeeting } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { formatDate } from '@/lib/format'
@@ -31,7 +32,7 @@ export function Meetings() {
     })
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <Page>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-ink">Meetings</h1>
         <button
@@ -74,6 +75,6 @@ export function Meetings() {
       </div>
 
       {project && <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} project={project} />}
-    </div>
+    </Page>
   )
 }

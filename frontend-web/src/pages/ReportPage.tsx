@@ -361,7 +361,7 @@ export default function ReportPage() {
         {/* Report messages */}
         {data?.messages?.length ? (
           <BentoTile span="full" tone="plain">
-            <div className="flex items-start gap-2 rounded-2xl bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="space-y-1">
                 {data.messages.map((m, i) => (

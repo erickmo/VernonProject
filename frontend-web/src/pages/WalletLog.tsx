@@ -38,11 +38,11 @@ export default function WalletLog() {
         <BentoTile span="sm" tone="tint" accent="amber" title="Summary">
           <dl className="space-y-2 text-sm pt-1">
             <div className="flex justify-between gap-3">
-              <dt className="opacity-70">Total earned</dt>
+              <dt className="text-muted">Total earned</dt>
               <dd className="font-semibold">{formatNumber(wallet?.earned ?? 0)}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="opacity-70">Total redeemed</dt>
+              <dt className="text-muted">Total redeemed</dt>
               <dd className="font-semibold">{formatNumber(wallet?.redeemed ?? 0)}</dd>
             </div>
           </dl>
@@ -60,6 +60,7 @@ export default function WalletLog() {
             <EmptyState icon={Wallet} title="No activity yet" subtitle="Earned and spent points will show up here." />
           ) : (
             <div className="overflow-x-auto -mx-5 -mb-5">
+              {/* ponytail: simple static 3-col table, kept hand-written (not DataTable). */}
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line">

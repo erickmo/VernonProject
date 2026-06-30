@@ -14,7 +14,7 @@ export default function TeamWall() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Team Wall</h1>
+        <h1 className="text-2xl font-bold text-ink">Team Wall</h1>
         <Segmented options={WALL_MODES} value={mode} onChange={setMode} />
       </div>
 
