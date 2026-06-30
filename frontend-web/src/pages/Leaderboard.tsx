@@ -6,6 +6,8 @@ import type { LeaderboardEntry, LeaderboardPeriod, LeaderboardDimension } from '
 import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { DataTable } from '@web/components/DataTable'
+import type { Column } from '@web/components/DataTable'
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: 'weekly', label: 'Week' },
@@ -20,43 +22,6 @@ const DIMENSIONS: { value: LeaderboardDimension; label: string }[] = [
 
 const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
 
-function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
-  return (
-    <tr className={isMe ? 'bg-brand-50 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}>
-      <td className="px-4 py-3 w-12 text-center text-sm font-bold text-slate-500 dark:text-slate-400">
-        {medal(e.rank) ?? e.rank}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Avatar name={e.full_name} image={e.image} config={e.avatar_config} size={36} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-              {e.full_name}{' '}
-              {isMe && <span className="text-brand-600 dark:text-brand-300">· you</span>}
-            </p>
-            {e.badge && (
-              <span
-                className="mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                style={
-                  e.badge.color
-                    ? { backgroundColor: `${e.badge.color}22`, color: e.badge.color }
-                    : undefined
-                }
-              >
-                {e.badge.icon && <span>{e.badge.icon}</span>}
-                {e.badge.tier_name}
-              </span>
-            )}
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-right text-sm font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">
-        {e.points.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-      </td>
-    </tr>
-  )
-}
-
 export default function Leaderboard() {
   const { data: boot } = useBoot()
   const [period, setPeriod] = useState<LeaderboardPeriod>('monthly')
@@ -68,10 +33,60 @@ export default function Leaderboard() {
   // Top-3 entries for podium tile
   const top3 = data ? data.entries.slice(0, 3) : []
 
+  const meUser = boot?.user
+  const leaderCols: Column<LeaderboardEntry>[] = [
+    {
+      key: 'rank',
+      header: 'Rank',
+      width: 'w-12',
+      render: (e) => (
+        <span className="text-sm font-bold text-muted">{medal(e.rank) ?? e.rank}</span>
+      ),
+    },
+    {
+      key: 'player',
+      header: 'Player',
+      render: (e) => {
+        const isMe = e.user === meUser
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar name={e.full_name} image={e.image} config={e.avatar_config} size={36} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-ink">
+                {e.full_name}
+                {isMe && <span className="text-brand-600 dark:text-brand-300"> · you</span>}
+              </p>
+              {e.badge && (
+                <span
+                  className="mt-0.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={e.badge.color ? { backgroundColor: `${e.badge.color}22`, color: e.badge.color } : undefined}
+                >
+                  {e.badge.icon && <span>{e.badge.icon}</span>}
+                  {e.badge.tier_name}
+                </span>
+              )}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'points',
+      header: 'Points',
+      align: 'right',
+      sortValue: (e) => e.points,
+      render: (e) => (
+        <span className="text-sm font-bold text-ink whitespace-nowrap">
+          {e.points.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+        </span>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Leaderboard</h1>
+        <h1 className="text-2xl font-bold text-ink">Leaderboard</h1>
         <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
       </div>
 
@@ -134,30 +149,22 @@ export default function Leaderboard() {
                   />
                 </div>
               )}
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Showing <b className="text-slate-700 dark:text-slate-200">{PERIODS.find((p) => p.value === period)?.label}</b>{' '}
-                standings{brand ? <> for <b className="text-slate-700 dark:text-slate-200">{brand}</b></> : ''}.
+              <p className="text-xs text-muted">
+                Showing <b className="text-ink">{PERIODS.find((p) => p.value === period)?.label}</b>{' '}
+                standings{brand ? <> for <b className="text-ink">{brand}</b></> : ''}.
               </p>
             </div>
           </BentoTile>
 
           {/* Full ranking */}
           <BentoTile span="full" tone="plain">
-            <div className="overflow-x-auto -mx-5 -mb-5">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">Rank</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Player</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Points</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {data.entries.map((e) => (
-                    <Row key={e.user} e={e} isMe={e.user === boot?.user} />
-                  ))}
-                </tbody>
-              </table>
+            <div className="-mx-5 -mb-5">
+              <DataTable
+                rows={data.entries}
+                columns={leaderCols}
+                getKey={(e) => e.user}
+                activeKey={boot?.user}
+              />
             </div>
           </BentoTile>
         </BentoGrid>

@@ -15,7 +15,7 @@ export default function WalletLog() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Points log</h1>
+      <h1 className="text-2xl font-bold text-ink">Points log</h1>
 
       <BentoGrid>
         {/* Balance hero */}
@@ -62,17 +62,17 @@ export default function WalletLog() {
             <div className="overflow-x-auto -mx-5 -mb-5">
               <table className="w-full text-sm">
                 <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Type</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Detail</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Amount</th>
+                  <tr className="border-b border-line">
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted">Type</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted">Detail</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-line">
                   {log.map((e, i) => {
                     const credit = e.kind === 'credit'
                     return (
-                      <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <tr key={i} className="hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]">
                         <td className="px-4 py-3 w-12">
                           <div
                             aria-label={credit ? 'Credit' : 'Debit'}
@@ -88,8 +88,8 @@ export default function WalletLog() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{e.title}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">
+                          <p className="text-sm font-medium text-ink">{e.title}</p>
+                          <p className="text-xs text-muted">
                             {[e.subtitle, e.status, e.date_human].filter(Boolean).join(' · ')}
                           </p>
                         </td>
@@ -101,7 +101,7 @@ export default function WalletLog() {
                           >
                             {fmt(e.amount)}
                           </p>
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <p className="text-[11px] text-muted">
                             bal {formatNumber(e.balance)}
                           </p>
                         </td>

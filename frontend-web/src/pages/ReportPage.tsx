@@ -202,7 +202,7 @@ export default function ReportPage() {
             <div className="flex items-center gap-3">
               <Link
                 to="/reports"
-                className="flex h-9 w-9 items-center justify-center rounded-lg opacity-70 hover:opacity-100 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                className="flex h-9 w-9 items-center justify-center rounded-lg opacity-70 hover:opacity-100 hover:bg-hover/[0.04]"
                 aria-label="Back to reports"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -214,7 +214,7 @@ export default function ReportPage() {
               <span ref={filterRef}>
                 <button
                   onClick={() => setFilterOpen((o) => !o)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white/60 dark:bg-slate-800/60 px-3 py-2 text-sm font-medium hover:bg-white dark:hover:bg-slate-800"
+                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-sm font-medium hover:bg-canvas"
                 >
                   <Filter className="h-4 w-4" />
                   Filters
@@ -282,7 +282,7 @@ export default function ReportPage() {
                                       'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
                                       on
                                         ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-                                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50',
+                                        : 'border-line bg-canvas text-muted hover:bg-hover/[0.03]',
                                     )}
                                   >
                                     {o.label}
@@ -329,7 +329,7 @@ export default function ReportPage() {
                                   'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
                                   active
                                     ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50',
+                                    : 'border-line bg-canvas text-ink hover:bg-hover/[0.03]',
                                 )}
                               >
                                 {p.label}
@@ -395,20 +395,20 @@ export default function ReportPage() {
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
-                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                <p className="text-sm font-semibold text-ink">
                   Showing {visibleRows.length} of {data.rows.length}
                   {data.total > data.rows.length ? ` (of ${data.total} total)` : ''}
                 </p>
                 {data.rows.some((r) => r.todo_id) ? (
-                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                  <span className="text-xs text-muted">
                     Click a row to open the task
                   </span>
                 ) : null}
               </div>
-              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="overflow-x-auto rounded-xl border border-line">
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+                    <tr className="border-b border-line bg-canvas">
                       {data.columns.map((col, i) => {
                         const active = sort?.field === col.fieldname
                         return (
@@ -418,8 +418,8 @@ export default function ReportPage() {
                               active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'
                             }
                             className={clsx(
-                              'whitespace-nowrap px-0 py-0 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400',
-                              i === 0 && 'sticky left-0 z-10 bg-slate-50 dark:bg-slate-800/60',
+                              'whitespace-nowrap px-0 py-0 text-left text-xs font-semibold uppercase tracking-wide text-muted',
+                              i === 0 && 'sticky left-0 z-10 bg-canvas',
                             )}
                           >
                             <button
@@ -427,9 +427,9 @@ export default function ReportPage() {
                               onClick={() => toggleSort(col.fieldname)}
                               className={clsx(
                                 'flex w-full items-center gap-1 px-4 py-2.5 text-left uppercase tracking-wide outline-none transition-colors',
-                                'hover:text-slate-700 dark:hover:text-slate-200',
+                                'hover:text-ink',
                                 'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset',
-                                active && 'text-slate-700 dark:text-slate-200',
+                                active && 'text-ink',
                               )}
                             >
                               <span className="truncate">{col.label}</span>
@@ -445,7 +445,7 @@ export default function ReportPage() {
                       })}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-line">
                     {visibleRows.map((row, ri) => {
                       const todoId = row.todo_id as string | undefined
                       return (
@@ -457,16 +457,16 @@ export default function ReportPage() {
                               : undefined
                           }
                           className={clsx(
-                            todoId && 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                            todoId && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]',
                           )}
                         >
                           {data.columns.map((col, ci) => (
                             <td
                               key={col.fieldname + ci}
                               className={clsx(
-                                'whitespace-nowrap px-4 py-2.5 text-slate-700 dark:text-slate-200',
+                                'whitespace-nowrap px-4 py-2.5 text-ink',
                                 ci === 0 &&
-                                  'sticky left-0 z-10 max-w-[260px] truncate bg-white dark:bg-slate-900 font-medium',
+                                  'sticky left-0 z-10 max-w-[260px] truncate bg-canvas font-medium',
                                 ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
                               )}
                             >
@@ -484,17 +484,17 @@ export default function ReportPage() {
                   <button
                     type="button"
                     onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-hover/[0.03] outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                   >
                     Load more
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                    <span className="text-xs text-muted">
                       ({Math.min(PAGE_SIZE, data.rows.length - visibleRows.length)} more)
                     </span>
                   </button>
                 </div>
               )}
               {data.total > data.rows.length && visibleRows.length >= data.rows.length && (
-                <p className="px-1 text-center text-xs text-slate-400 dark:text-slate-500">
+                <p className="px-1 text-center text-xs text-muted">
                   Showing all {data.rows.length} loaded of {data.total} total. Refine filters to narrow
                   results.
                 </p>
