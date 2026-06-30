@@ -174,10 +174,11 @@ export default function Today() {
       { key: 'owner', label: 'Project Owner', options: buildOptions(all, (t) => t.project_owner, (t) => t.project_owner_name) },
       { key: 'leader', label: 'Project Leader', options: buildOptions(all, (t) => t.project_leader, (t) => t.project_leader_name) },
       { key: 'estimate', label: 'Estimated time', options: ESTIMATE_OPTIONS },
+      { key: 'waiting', label: 'Waiting', options: [{ value: 'only', label: 'Only waiting' }, { value: 'hide', label: 'Hide waiting' }] },
     ],
     [all],
   )
-  const advCount = ['project', 'brand', 'owner', 'leader', 'estimate'].filter((k) => filters[k]).length
+  const advCount = ['project', 'brand', 'owner', 'leader', 'estimate', 'waiting'].filter((k) => filters[k]).length
   const filtered = data
     ? {
         overdue: applyProjectItemFilters(data.overdue, filters).slice().sort(byDeadlineDesc),
