@@ -1389,6 +1389,8 @@ def update_todo(
 	blocked_by=None,
 	blocking=None,
 	mentor=None,
+	is_waiting=None,
+	waiting_reason=None,
 ):
 	"""Edit a task's fields. Returns a clean status/message so the mobile UI can
 	show friendly feedback instead of a raw traceback."""
@@ -1486,6 +1488,13 @@ def update_todo(
 		# Re-arm the next occurrence when (re)enabling recurrence.
 		if row.is_recurring and row.recurring_frequency and not row.next_occurrence:
 			row.next_occurrence = row.calculate_next_occurrence(row.deadline)
+
+		# Waiting flag (parked / on-hold). The controller's track_waiting enforces
+		# the required-reason rule and the Planned-only constraint on save.
+		if is_waiting is not None:
+			row.is_waiting = 1 if str(is_waiting) in ("1", "true", "True") else 0
+		if waiting_reason is not None:
+			row.waiting_reason = waiting_reason or None
 
 		row.save(ignore_permissions=True)
 
