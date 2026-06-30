@@ -255,14 +255,21 @@ export default function Today() {
   const todayStr = todayISO()
   const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
     (t.allocations ?? []).some((a) => a.date != null && pred(a.date))
-  const planGroups = useMemo(
-    () => ({
-      today: filteredActive.filter((t) => allocOn(t, (d) => d === todayStr)).slice().sort(byAllocationAsc),
-      past: filteredActive.filter((t) => allocOn(t, (d) => d < todayStr)).slice().sort(byDeadlineAsc),
-      upcoming: filteredActive.filter((t) => allocOn(t, (d) => d > todayStr)).slice().sort(byDeadlineAsc),
-    }),
-    [filteredActive, todayStr],
-  )
+  // Mutually exclusive buckets, precedence Today > Past > Upcoming — a todo
+  // allocated across days shows once, in its most urgent bucket (so a task
+  // planned for today AND an earlier day lands in Today, not Past).
+  const planGroups = useMemo(() => {
+    const isToday = (t: ProjectItem) => allocOn(t, (d) => d === todayStr)
+    const isPast = (t: ProjectItem) => allocOn(t, (d) => d < todayStr)
+    return {
+      today: filteredActive.filter(isToday).slice().sort(byAllocationAsc),
+      past: filteredActive.filter((t) => !isToday(t) && isPast(t)).slice().sort(byDeadlineAsc),
+      upcoming: filteredActive
+        .filter((t) => !isToday(t) && !isPast(t) && allocOn(t, (d) => d > todayStr))
+        .slice()
+        .sort(byDeadlineAsc),
+    }
+  }, [filteredActive, todayStr])
   const planPicked = useMemo(
     () => (pickedDate ? filteredActive.filter((t) => allocOn(t, (d) => d === pickedDate)).slice().sort(byAllocationAsc) : []),
     [filteredActive, pickedDate],
