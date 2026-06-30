@@ -107,15 +107,15 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
       <div className="flex flex-col gap-4">
         {/* Roles */}
         <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Owner<span className="text-red-500"> *</span>
             <SearchableSelect value={owner} onChange={setOwnerRole} options={users} disabled={!canReassign} placeholder="Select…" />
           </label>
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Leader<span className="text-red-500"> *</span>
             <SearchableSelect value={leader} onChange={setLeaderRole} options={users} disabled={!canReassign} placeholder="Select…" />
           </label>
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Admin
             <SearchableSelect value={admin} onChange={setAdminRole} options={users} allowClear placeholder="None" />
           </label>
@@ -123,7 +123,7 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
 
         {/* Add member */}
         <div>
-          <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted">
             <UserPlus className="h-4 w-4" /> Member
           </p>
           <SearchableSelect value="" onChange={addMember} options={addable} placeholder="Select user…" />
@@ -155,7 +155,7 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
               </div>
             )
           })}
-          {!members.length && <p className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">No members</p>}
+          {!members.length && <p className="py-4 text-center text-sm text-muted">No members</p>}
         </div>
       </div>
     </Drawer>

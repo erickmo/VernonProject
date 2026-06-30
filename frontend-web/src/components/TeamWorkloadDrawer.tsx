@@ -48,8 +48,8 @@ export function TeamWorkloadDrawer({ open, member, project, onClose }: Props) {
           <div className="flex items-center gap-3">
             <Avatar name={member.name} image={member.image} config={member.avatar_config} size={40} />
             <div className="min-w-0">
-              <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{member.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="truncate font-semibold text-ink">{member.name}</p>
+              <p className="text-xs text-muted">
                 {role ? `${role} · ` : ''}{member.open_todos} allocated
               </p>
             </div>
@@ -59,13 +59,13 @@ export function TeamWorkloadDrawer({ open, member, project, onClose }: Props) {
           <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-sm font-semibold">
             <button
               onClick={() => setShowAll(false)}
-              className={`rounded-lg px-4 py-1.5 ${!showAll ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+              className={`rounded-lg px-4 py-1.5 ${!showAll ? 'bg-white dark:bg-slate-700 text-ink shadow-sm' : 'text-muted'}`}
             >
               Open
             </button>
             <button
               onClick={() => setShowAll(true)}
-              className={`rounded-lg px-4 py-1.5 ${showAll ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+              className={`rounded-lg px-4 py-1.5 ${showAll ? 'bg-white dark:bg-slate-700 text-ink shadow-sm' : 'text-muted'}`}
             >
               All
             </button>
@@ -80,13 +80,13 @@ export function TeamWorkloadDrawer({ open, member, project, onClose }: Props) {
                 <button
                   key={t.name}
                   onClick={() => goto(t.project_detail)}
-                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-surface p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 flex-1 truncate font-medium text-slate-800 dark:text-slate-100">{t.to_do}</p>
+                    <p className="min-w-0 flex-1 truncate font-medium text-ink">{t.to_do}</p>
                     <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                     <span className="inline-flex items-center gap-1">
                       <Layers className="h-3.5 w-3.5" /> {t.project_detail_title}
                     </span>

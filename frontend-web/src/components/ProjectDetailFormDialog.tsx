@@ -110,15 +110,15 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
         </div>
       ) : (
       <div className="flex flex-col gap-4">
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Title<span className="text-red-500"> *</span>
           <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
 
-        <label className="flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="flex items-center justify-between text-sm font-medium text-muted">
           <span>
             Mark as pending
-            <span className="mt-0.5 block text-xs font-normal text-slate-400 dark:text-slate-500">
+            <span className="mt-0.5 block text-xs font-normal text-muted">
               The deadline follows the project's; status is set automatically from the tasks.
             </span>
           </span>
@@ -130,22 +130,22 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
           />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Current condition
           <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Expected outcome
           <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Keterangan di SOW
           <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
         </label>
 
-        <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <div className="text-sm font-medium text-muted">
           Glossaries
           <MultiSelectChips
             options={glossaryOpts}
@@ -156,7 +156,7 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
         </div>
 
         <div className="flex gap-3">
-          <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="flex-1 text-sm font-medium text-muted">
             Discount (Rp)
             <input
               type="number"
@@ -167,7 +167,7 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
               onChange={(e) => setDiscount(e.target.value)}
             />
           </label>
-          <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="flex-1 text-sm font-medium text-muted">
             Price (Rp)
             <input
               type="number"

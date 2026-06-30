@@ -24,7 +24,7 @@ export function Drawer({
     <>
       <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
       {footer && (
-        <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+        <div className="px-5 py-3 border-t border-line flex items-center justify-end gap-2">
           {footer}
         </div>
       )}
@@ -40,9 +40,9 @@ export function Drawer({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`absolute right-0 top-0 h-full w-full ${widthClass} flex flex-col bg-white dark:bg-slate-900 shadow-xl`}
+        className={`absolute right-0 top-0 h-full w-full ${widthClass} flex flex-col bg-surface shadow-xl`}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button aria-label="Close" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
         </div>

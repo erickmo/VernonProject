@@ -122,7 +122,7 @@ export function ProjectFormDialog({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Project name — full width */}
         <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Project name<span className="text-red-500"> *</span>
           </span>
           <input
@@ -134,7 +134,7 @@ export function ProjectFormDialog({
 
         {/* Brand */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Brand<span className="text-red-500"> *</span>
           </span>
           <SearchableSelect
@@ -147,7 +147,7 @@ export function ProjectFormDialog({
 
         {/* Status */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Status</span>
+          <span className="text-sm font-medium text-muted">Status</span>
           <SearchableSelect
             value={f.status}
             onChange={(v) => set('status', v)}
@@ -157,7 +157,7 @@ export function ProjectFormDialog({
 
         {/* Owner */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Owner<span className="text-red-500"> *</span>
           </span>
           <SearchableSelect
@@ -170,7 +170,7 @@ export function ProjectFormDialog({
 
         {/* Leader */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Leader<span className="text-red-500"> *</span>
           </span>
           <SearchableSelect
@@ -183,7 +183,7 @@ export function ProjectFormDialog({
 
         {/* Admin */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Admin</span>
+          <span className="text-sm font-medium text-muted">Admin</span>
           <SearchableSelect
             value={f.project_admin ?? ''}
             onChange={(v) => set('project_admin', v)}
@@ -195,7 +195,7 @@ export function ProjectFormDialog({
 
         {/* Blocked by — PROJECT link, not user */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Blocking project
           </span>
           <SearchableSelect
@@ -205,14 +205,14 @@ export function ProjectFormDialog({
             allowClear
             placeholder="None — not blocked"
           />
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-muted">
             The project this one depends on / is blocked by.
           </p>
         </div>
 
         {/* Start date */}
         <label className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Start<span className="text-red-500"> *</span>
           </span>
           <input
@@ -225,7 +225,7 @@ export function ProjectFormDialog({
 
         {/* Deadline */}
         <label className="space-y-1">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <span className="text-sm font-medium text-muted">
             Deadline<span className="text-red-500"> *</span>
           </span>
           <input
@@ -238,7 +238,7 @@ export function ProjectFormDialog({
 
         {/* Goal — full width */}
         <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Goal</span>
+          <span className="text-sm font-medium text-muted">Goal</span>
           <textarea
             value={f.goal ?? ''}
             onChange={(e) => set('goal', e.target.value)}
@@ -249,7 +249,7 @@ export function ProjectFormDialog({
 
         {/* Team members — full width */}
         <div className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Team</span>
+          <span className="text-sm font-medium text-muted">Team</span>
           <MultiSelectChips
             options={users}
             value={(f.team_members ?? []).map((t) => t.user)}

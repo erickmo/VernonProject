@@ -133,7 +133,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       }
     >
       <div className="flex flex-col gap-4">
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Todo<span className="text-red-500"> *</span>
           <input
             ref={firstFieldRef}
@@ -144,7 +144,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Assigned to<span className="text-red-500"> *</span>
           <SearchableSelect
             value={assignedTo}
@@ -154,45 +154,45 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Start date<span className="text-red-500"> *</span>
           <input type="date" className={field + ' mt-1'} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </label>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Deadline<span className="text-red-500"> *</span>
             <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </label>
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Estimated (minutes)
             <input type="number" min={0} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
           </label>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Leader approval by
             <input type="date" className={field + ' mt-1'} value={leaderDeadline} onChange={(e) => setLeaderDeadline(e.target.value)} />
           </label>
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Est. for approval (min)
             <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
           </label>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Owner approval by
             <input type="date" className={field + ' mt-1'} value={ownerDeadline} onChange={(e) => setOwnerDeadline(e.target.value)} />
           </label>
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="text-sm font-medium text-muted">
             Est. for owner approval (min)
             <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
           </label>
         </div>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Group<span className="text-red-500"> *</span>
           <SearchableSelect
             value={group}
@@ -202,7 +202,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Type<span className="text-red-500"> *</span>
           <SearchableSelect
             value={typeName}
@@ -213,7 +213,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           />
         </label>
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Level<span className="text-red-500"> *</span>
           <SearchableSelect
             value={levelId}
@@ -227,7 +227,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           const lvl = (groupDoc?.levels ?? []).find((l) => l.level_id === levelId)
           const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
           return (
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="text-sm text-muted">
               Estimated points: <span className="font-medium">{pts}</span>
               {!estimated && ' (set estimated minutes)'}
             </div>
@@ -236,7 +236,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
 
         {siblings.length > 0 && (
           <div className="flex flex-col gap-3">
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <div className="text-sm font-medium text-muted">
               <span className="flex items-center gap-1">
                 <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
               </span>
@@ -246,7 +246,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
                 options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
               />
             </div>
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <div className="text-sm font-medium text-muted">
               <span className="flex items-center gap-1">
                 <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
               </span>
@@ -259,19 +259,19 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
           </div>
         )}
 
-        <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="text-sm font-medium text-muted">
           Notes
           <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+        <label className="flex items-center gap-2 text-sm font-medium text-muted">
           <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
           Recurring
         </label>
 
         {isRecurring && (
           <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <label className="text-sm font-medium text-muted">
               Frequency
               <SearchableSelect
                 value={frequency}
@@ -279,7 +279,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
                 options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))}
               />
             </label>
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <label className="text-sm font-medium text-muted">
               Until
               <input type="date" className={field + ' mt-1'} value={until} onChange={(e) => setUntil(e.target.value)} />
             </label>

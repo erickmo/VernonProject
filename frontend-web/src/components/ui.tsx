@@ -18,7 +18,7 @@ export function CardGridSkeleton({ cards = 8 }: { cards?: number }) {
       <Skeleton className="h-8 w-44" />
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {Array.from({ length: cards }).map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-32 w-full rounded-lg" />
         ))}
       </div>
     </div>
@@ -40,11 +40,11 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-8 py-16 text-center">
-      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 shadow-card">
+      <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-lg bg-surface">
         <AlertTriangle className="h-7 w-7 text-amber-500" />
       </div>
       <p className="font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-      <p className="max-w-xs text-sm text-slate-400 dark:text-slate-500">{subtitle}</p>
+      <p className="max-w-xs text-sm text-muted">{subtitle}</p>
       {onRetry && (
         <button
           onClick={onRetry}
@@ -85,7 +85,7 @@ export function Field({
         {required && <span className="text-red-500"> *</span>}
       </label>
       {children(id)}
-      {hint && !error && <p className="text-xs text-slate-400 dark:text-slate-500">{hint}</p>}
+      {hint && !error && <p className="text-xs text-muted">{hint}</p>}
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
@@ -124,10 +124,10 @@ const BTN_BASE =
   'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none'
 
 const BTN_VARIANT: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-card',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700',
   secondary:
-    'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700',
-  ghost: 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+    'bg-surface text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700',
+  ghost: 'text-muted hover:bg-slate-100 dark:hover:bg-slate-800',
   danger: 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40',
 }
 

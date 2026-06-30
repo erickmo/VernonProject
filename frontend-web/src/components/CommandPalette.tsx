@@ -97,16 +97,16 @@ export function CommandPalette({
         aria-modal="true"
         aria-label="Command palette"
         onKeyDown={onKeyDown}
-        className="absolute left-1/2 top-20 sm:top-24 -translate-x-1/2 w-[min(92vw,640px)] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl"
+        className="absolute left-1/2 top-20 sm:top-24 -translate-x-1/2 w-[min(92vw,640px)] overflow-hidden rounded-lg border border-line bg-surface shadow-2xl"
       >
-        <div className="flex items-center gap-2 px-4 border-b border-slate-200 dark:border-slate-800">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2 px-4 border-b border-line">
+          <Search className="w-4 h-4 text-muted shrink-0" />
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search pages, projects, todos, people…"
-            className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-slate-400"
+            className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted"
           />
           <kbd className="hidden sm:block rounded border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
             esc
@@ -114,7 +114,7 @@ export function CommandPalette({
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-2">
           {filtered.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-400">No matches</div>
+            <div className="px-4 py-10 text-center text-sm text-muted">No matches</div>
           ) : (
             filtered.map((c, i) => {
               const Icon = c.icon
@@ -130,12 +130,12 @@ export function CommandPalette({
                       : 'text-slate-700 dark:text-slate-200'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0 text-slate-400" />
+                  <Icon className="w-4 h-4 shrink-0 text-muted" />
                   <span className="flex-1 truncate">{c.label}</span>
                   {i === active ? (
-                    <CornerDownLeft className="w-3.5 h-3.5 text-slate-400" />
+                    <CornerDownLeft className="w-3.5 h-3.5 text-muted" />
                   ) : (
-                    <span className="text-[11px] text-slate-400">{c.group}</span>
+                    <span className="text-[11px] text-muted">{c.group}</span>
                   )}
                 </button>
               )

@@ -27,7 +27,7 @@ export function Popover({
   return (
     <div
       ref={panelRef}
-      className={`absolute top-full mt-2 ${align === 'right' ? 'right-0' : 'left-0'} z-40 w-72 max-h-[70vh] overflow-y-auto rounded-xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800 p-4`}
+      className={`absolute top-full mt-2 ${align === 'right' ? 'right-0' : 'left-0'} z-40 w-72 max-h-[70vh] overflow-y-auto rounded-xl bg-surface shadow-xl border border-line p-4`}
     >
       {children}
     </div>
