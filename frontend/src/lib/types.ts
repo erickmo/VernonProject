@@ -95,6 +95,10 @@ export interface ProjectItem {
   deadline: string | null
   deadline_human: string | null
   is_overdue: boolean
+  is_waiting: boolean
+  waiting_reason: string | null
+  waiting_since: string | null
+  waiting_by_name: string | null
   leader_deadline: string | null
   leader_deadline_human: string | null
   owner_deadline: string | null

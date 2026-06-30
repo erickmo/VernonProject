@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
@@ -91,6 +91,12 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
               <span>{meta.emoji}</span>
               {meta.label}
             </Pill>
+            {todo.is_waiting && (
+              <Pill className="bg-stone-200 text-stone-700 dark:bg-slate-700 dark:text-slate-200">
+                <Pause className="h-3.5 w-3.5" />
+                Waiting
+              </Pill>
+            )}
             {todo.is_recurring && (
               <span className="inline-flex items-center gap-0.5 text-violet-500" title="Recurring">
                 <Repeat className="h-3.5 w-3.5" />
