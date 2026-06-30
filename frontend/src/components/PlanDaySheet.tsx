@@ -1,30 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { Minus, Plus, CalendarRange, Sparkles, Save } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
-import { mobileApi } from '@/lib/api'
-import { keys } from '@/hooks/useData'
-import { useToast } from '@/components/Toast'
+import { CalendarRange, Sparkles, Save, Search } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { formatEstimate, todayISO } from '@/lib/format'
+import { PlanRow } from '@/components/PlanRow'
+import { usePlanDay } from '@/hooks/usePlanDay'
+import { formatEstimate } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
 
 const ANIM_MS = 260
 const DAILY_TARGET_MIN = 360 // soft 6h/day target — a guide, not a cap
-const CHIPS = [15, 30, 60]
 
 // Plan today's minutes across candidate todos. Writes only today's allocation row
-// per touched todo, preserving each todo's other-day rows. Planning only — never
-// touches status/scoring (reuses the validated set_todo_allocations endpoint).
+// per touched todo, preserving each todo's other-day rows (see usePlanDay).
 export function PlanDaySheet({ todos, onClose }: { todos: ProjectItem[]; onClose: () => void }) {
-  const qc = useQueryClient()
-  const toast = useToast()
-  const today = todayISO()
-
-  // Minutes planned for *today* per todo, seeded from today_allocation.
-  const [mins, setMins] = useState<Record<string, number>>(() =>
-    Object.fromEntries(todos.map((t) => [t.name, t.today_allocation || 0])),
-  )
-  const [saving, setSaving] = useState(false)
+  const plan = usePlanDay(todos)
+  const pct = Math.min(1, plan.total / DAILY_TARGET_MIN)
 
   const [shown, setShown] = useState(false) // drives the enter/exit slide
   const [drag, setDrag] = useState(0) // px the sheet is pulled down (>= 0)
@@ -60,39 +49,12 @@ export function PlanDaySheet({ todos, onClose }: { todos: ProjectItem[]; onClose
     else setDrag(0)
   }
 
-  const setMin = (id: string, v: number) => setMins((m) => ({ ...m, [id]: Math.max(0, v) }))
-
-  const total = Object.values(mins).reduce((s, v) => s + v, 0)
-  const pct = Math.min(1, total / DAILY_TARGET_MIN)
-
   const onSave = async () => {
-    // Only write todos whose today-minutes actually changed.
-    const touched = todos.filter((t) => (mins[t.name] || 0) !== (t.today_allocation || 0))
-    if (!touched.length) {
-      close()
-      return
-    }
-    setSaving(true)
     try {
-      await Promise.all(
-        touched.map((t) => {
-          const m = mins[t.name] || 0
-          // Preserve every other-day row; replace only today's.
-          const next = [
-            ...(t.allocations ?? []).filter((a) => a.date !== today),
-            ...(m > 0 ? [{ date: today, minutes: m }] : []),
-          ]
-          return mobileApi.setTodoAllocations(t.name, next)
-        }),
-      )
-      qc.invalidateQueries({ queryKey: keys.dashboard })
-      for (const t of touched) qc.invalidateQueries({ queryKey: keys.projectItem(t.name) })
-      toast('success', 'Day planned')
+      await plan.save()
       close()
-    } catch (e) {
-      toast('error', (e as Error).message || 'Could not save plan')
-    } finally {
-      setSaving(false)
+    } catch {
+      /* save() already toasted — keep the sheet open so edits aren't lost */
     }
   }
 
@@ -128,7 +90,7 @@ export function PlanDaySheet({ todos, onClose }: { todos: ProjectItem[]; onClose
             <div className="flex items-center justify-between text-xs font-medium text-stone-500 dark:text-slate-400">
               <span>Planned today</span>
               <span>
-                <span className="font-bold text-brand-600 dark:text-brand-400">{formatEstimate(total)}</span> /{' '}
+                <span className="font-bold text-brand-600 dark:text-brand-400">{formatEstimate(plan.total)}</span> /{' '}
                 {formatEstimate(DAILY_TARGET_MIN)}
               </span>
             </div>
@@ -139,62 +101,30 @@ export function PlanDaySheet({ todos, onClose }: { todos: ProjectItem[]; onClose
               />
             </div>
           </div>
+          {/* Search */}
+          <div className="mb-2 flex items-center gap-2 rounded-xl bg-paper-line px-3 py-2 dark:bg-slate-700/60">
+            <Search className="h-4 w-4 shrink-0 text-stone-400 dark:text-slate-500" />
+            <input
+              value={plan.query}
+              onChange={(e) => plan.setQuery(e.target.value)}
+              placeholder="Search tasks…"
+              className="w-full bg-transparent text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none dark:text-slate-100"
+            />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-3">
-          {todos.length === 0 ? (
+          {plan.visible.length === 0 ? (
             <EmptyState
               icon={CalendarRange}
-              title="Nothing to plan"
-              subtitle="No tasks due today or overdue. Enjoy the breathing room."
+              title={plan.query ? 'No matches' : 'Nothing to plan'}
+              subtitle={plan.query ? 'Try a different search.' : 'No tasks due today or overdue. Enjoy the breathing room.'}
             />
           ) : (
             <ul className="flex flex-col gap-2.5">
-              {todos.map((t) => {
-                const v = mins[t.name] || 0
-                return (
-                  <li
-                    key={t.name}
-                    className="rounded-2xl border border-paper-edge bg-paper p-3 dark:border-slate-700 dark:bg-slate-800/60"
-                  >
-                    <p className="line-clamp-2 text-sm font-semibold text-stone-800 dark:text-slate-100">{t.to_do}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-stone-400 dark:text-slate-500">
-                      {t.project_name}
-                      {t.estimated > 0 ? ` · est ${formatEstimate(t.estimated)}` : ''}
-                    </p>
-                    <div className="mt-2.5 flex items-center gap-2">
-                      <button
-                        onClick={() => setMin(t.name, v - 15)}
-                        aria-label="15 minutes less"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-line text-stone-600 transition active:scale-90 dark:bg-slate-700 dark:text-slate-300"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="w-16 shrink-0 text-center text-sm font-bold tabular-nums text-stone-800 dark:text-slate-100">
-                        {v > 0 ? formatEstimate(v) : '—'}
-                      </span>
-                      <button
-                        onClick={() => setMin(t.name, v + 15)}
-                        aria-label="15 minutes more"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-line text-stone-600 transition active:scale-90 dark:bg-slate-700 dark:text-slate-300"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                      <div className="ml-auto flex items-center gap-1">
-                        {CHIPS.map((c) => (
-                          <button
-                            key={c}
-                            onClick={() => setMin(t.name, c)}
-                            className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 transition active:scale-95 dark:bg-brand-500/15 dark:text-brand-300"
-                          >
-                            {c}m
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
+              {plan.visible.map((t) => (
+                <PlanRow key={t.name} todo={t} minutes={plan.mins[t.name] || 0} onSet={plan.setMin} onUseEstimate={plan.useEstimate} />
+              ))}
             </ul>
           )}
         </div>
@@ -202,10 +132,10 @@ export function PlanDaySheet({ todos, onClose }: { todos: ProjectItem[]; onClose
         <div className="shrink-0 border-t border-paper-edge px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 dark:border-slate-700">
           <button
             onClick={onSave}
-            disabled={saving}
+            disabled={plan.saving}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3 text-sm font-semibold text-white transition active:bg-brand-700 disabled:opacity-60"
           >
-            {saving ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save plan
+            {plan.saving ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save plan
           </button>
         </div>
       </div>
