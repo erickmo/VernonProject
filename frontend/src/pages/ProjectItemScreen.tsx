@@ -17,7 +17,9 @@ import {
   History,
   Link2,
   Lock,
+  Pause,
   Pencil,
+  Play,
   Plus,
   Repeat,
   RotateCcw,
@@ -827,12 +829,15 @@ export default function ProjectItemScreen() {
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
   const setDeadlineToday = useUpdateTodo(id)
+  const setWaiting = useUpdateTodo(id)
   const splitToday = useSetTodoAllocations(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [showWaiting, setShowWaiting] = useState(false)
+  const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer()
 
   if (isLoading && !data) {
@@ -923,6 +928,29 @@ export default function ProjectItemScreen() {
   const canSplitToday =
     data.is_mine && data.status_key === 'planned' && (data.allocations ?? []).length === 0
 
+  const onMarkWaiting = () => {
+    if (setWaiting.isPending || !waitingReason.trim()) return
+    setWaiting.mutate(
+      { is_waiting: 1, waiting_reason: waitingReason.trim() },
+      {
+        onSuccess: () => { setShowWaiting(false); setWaitingReason(''); toast('success', 'Marked as waiting') },
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+  const onResume = () => {
+    if (setWaiting.isPending) return
+    setWaiting.mutate(
+      { is_waiting: 0 },
+      {
+        onSuccess: () => toast('success', 'Resumed'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+  // Parking is only meaningful while the todo is still Planned and editable.
+  const canWait = data.can_edit && data.status_key === 'planned'
+
   const editBtn =
     data.can_edit && !editing ? (
       <button
@@ -975,7 +1003,7 @@ export default function ProjectItemScreen() {
           </Link>
           <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900 dark:text-slate-50">{data.to_do}</h2>
 
-          {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0) && (
+          {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0 || data.is_waiting) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {data.is_missed && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 dark:bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
@@ -992,7 +1020,18 @@ export default function ProjectItemScreen() {
                   <Clock className="h-3.5 w-3.5" /> {formatEstimate(data.phase_estimates.total)} total
                 </span>
               )}
+              {data.is_waiting && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-stone-200 dark:bg-slate-700 px-2.5 py-1 text-xs font-semibold text-stone-700 dark:text-slate-200">
+                  <Pause className="h-3.5 w-3.5" /> Waiting{data.waiting_reason ? ` · ${data.waiting_reason}` : ''}
+                </span>
+              )}
             </div>
+          )}
+          {data.is_waiting && data.waiting_since && (
+            <p className="mt-2 text-xs text-stone-500 dark:text-slate-400">
+              Waiting since {data.waiting_since.slice(0, 10)}
+              {data.waiting_by_name ? ` · set by ${data.waiting_by_name}` : ''}
+            </p>
           )}
 
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -1100,6 +1139,23 @@ export default function ProjectItemScreen() {
               Split to today
             </button>
           )}
+
+          {canWait && (data.is_waiting ? (
+            <button
+              onClick={onResume}
+              disabled={setWaiting.isPending}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 py-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-500/30 active:bg-emerald-100 disabled:opacity-60"
+            >
+              <Play className="h-4 w-4" /> Resume
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowWaiting(true)}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-stone-700 dark:text-slate-200 ring-1 ring-stone-200 dark:ring-slate-600 active:bg-stone-50"
+            >
+              <Pause className="h-4 w-4" /> Mark waiting
+            </button>
+          ))}
 
           <button
             onClick={openFocus}
@@ -1343,6 +1399,33 @@ export default function ProjectItemScreen() {
       )}
 
       <CommentThread referenceDoctype="Project Todo" referenceName={id} />
+
+      {showWaiting && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center">
+          <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">Mark as waiting</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">What is this todo waiting on?</p>
+            <textarea
+              autoFocus
+              value={waitingReason}
+              onChange={(e) => setWaitingReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. waiting on client reply"
+              className="mt-3 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm text-slate-800 dark:text-slate-100"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => { setShowWaiting(false); setWaitingReason('') }} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
+              <button
+                onClick={onMarkWaiting}
+                disabled={!waitingReason.trim() || setWaiting.isPending}
+                className="rounded-full bg-stone-800 dark:bg-slate-200 px-4 py-2 text-sm font-semibold text-white dark:text-slate-900 disabled:opacity-50"
+              >
+                Mark waiting
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DetailScreen>
   )
 }
