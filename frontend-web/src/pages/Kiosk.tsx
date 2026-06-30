@@ -43,11 +43,11 @@ export default function Kiosk() {
       {error ? (
         <p className="text-rose-400">{error}</p>
       ) : (
-        <div className="rounded-2xl bg-white p-4">
+        <div className="rounded-lg bg-white p-4">
           <canvas ref={canvasRef} />
         </div>
       )}
-      <p className="text-sm text-slate-400">Scan with the Vernon app to check in / out</p>
+      <p className="text-sm text-muted">Scan with the Vernon app to check in / out</p>
     </div>
   )
 }

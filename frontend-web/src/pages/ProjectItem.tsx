@@ -72,7 +72,7 @@ function Stepper({ current }: { current: StatusKey }) {
                   'flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm transition',
                   active && 'border-brand-500 bg-brand-500 text-white',
                   done && 'border-emerald-500 bg-emerald-500 text-white',
-                  !active && !done && 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600',
+                  !active && !done && 'border-slate-200 dark:border-slate-700 bg-surface text-slate-300 dark:text-slate-600',
                 )}
               >
                 {done ? <Check className="h-4 w-4" /> : <span>{meta.emoji}</span>}
@@ -80,7 +80,7 @@ function Stepper({ current }: { current: StatusKey }) {
               <span
                 className={clsx(
                   'w-16 text-center text-[10px] font-medium leading-tight',
-                  active ? 'text-brand-700 dark:text-brand-300' : 'text-slate-400 dark:text-slate-500',
+                  active ? 'text-brand-700 dark:text-brand-300' : 'text-muted',
                 )}
               >
                 {meta.label}
@@ -122,16 +122,16 @@ function StatTile({
       ? 'text-rose-700 dark:text-rose-300'
       : tone === 'brand'
         ? 'text-brand-700 dark:text-brand-300'
-        : 'text-slate-800 dark:text-slate-100'
+        : 'text-ink'
   const iconColor =
-    tone === 'danger' ? 'text-rose-500' : tone === 'brand' ? 'text-brand-500' : 'text-slate-400 dark:text-slate-500'
+    tone === 'danger' ? 'text-rose-500' : tone === 'brand' ? 'text-brand-500' : 'text-muted'
   return (
-    <div className={clsx('rounded-2xl border p-3', accent)}>
-      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+    <div className={clsx('rounded-lg border p-3', accent)}>
+      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
         <Icon className={clsx('h-3 w-3', iconColor)} /> {label}
       </p>
       <div className={clsx('truncate text-sm font-bold leading-tight', valueColor)}>{value}</div>
-      {sub && <p className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">{sub}</p>}
+      {sub && <p className="mt-0.5 truncate text-[11px] text-muted">{sub}</p>}
     </div>
   )
 }
@@ -206,9 +206,9 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   if (!canEdit) {
     const clean = stripHtml(initial)
     return clean ? (
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">{clean}</p>
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">{clean}</p>
     ) : (
-      <p className="text-sm italic text-slate-400 dark:text-slate-500">No notes yet.</p>
+      <p className="text-sm italic text-muted">No notes yet.</p>
     )
   }
 
@@ -220,9 +220,9 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
         onBlur={commit}
         rows={4}
         placeholder="Add a quick note about your progress…"
-        className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
+        className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-hover/[0.04] p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
       />
-      <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-slate-400 dark:text-slate-500">
+      <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-muted">
         {save.isPending ? (
           <span className="inline-flex items-center gap-1">
             <Spinner className="h-3 w-3" /> Saving…
@@ -254,7 +254,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
 
   const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
   const field =
-    'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none dark:placeholder-slate-500'
+    'rounded-xl border border-slate-200 dark:border-slate-700 bg-surface text-ink px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none dark:placeholder-slate-500'
 
   const addRow = () => setRows((r) => [...r, { date: '', minutes: 0, note: '' }])
   const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
@@ -287,9 +287,9 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+    <div className="mt-4 rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
           <CalendarRange className="h-4 w-4" /> Split across days
         </p>
         <span
@@ -344,7 +344,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
           </div>
         ))}
         {!rows.length && (
-          <p className="py-1 text-center text-xs text-slate-400 dark:text-slate-500">
+          <p className="py-1 text-center text-xs text-muted">
             No day split yet — add a day to plan your time.
           </p>
         )}
@@ -460,13 +460,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   }
 
   const fieldCls =
-    'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-[15px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
+    'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+    <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
+      <label className="mb-1 block text-xs font-medium text-muted">Title</label>
       <textarea
         value={toDo}
         onChange={(e) => setToDo(e.target.value)}
@@ -474,7 +474,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         className={clsx(fieldCls, 'mb-3 resize-none')}
       />
 
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Assigned to</label>
+      <label className="mb-1 block text-xs font-medium text-muted">Assigned to</label>
       <div className="mb-3">
         <SearchableSelect
           value={assignee}
@@ -486,7 +486,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       <div className="mb-3">
-        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Start date</label>
+        <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
         <input
           type="date"
           value={startDate}
@@ -498,7 +498,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
       <div className="mb-3 flex gap-3">
         <div className="flex-1">
-          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Deadline</label>
+          <label className="mb-1 block text-xs font-medium text-muted">Deadline</label>
           <input
             type="date"
             value={deadline}
@@ -508,7 +508,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           />
         </div>
         <div className="w-28">
-          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Est. (min)</label>
+          <label className="mb-1 block text-xs font-medium text-muted">Est. (min)</label>
           <input
             type="number"
             inputMode="numeric"
@@ -524,7 +524,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       {/* Approval phases */}
       <div className="mb-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Approval phases (optional)</span>
+          <span className="text-xs font-semibold text-muted">Approval phases (optional)</span>
           <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-[11px] font-bold text-brand-700 dark:text-brand-300">
             Est total {phaseTotal || 0}m
           </span>
@@ -534,10 +534,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           { label: 'Owner approval', date: ownerDeadline, setDate: setOwnerDeadline, est: pCC, setEst: setPCC },
         ].map((p) => (
           <div key={p.label} className="mb-3 last:mb-0">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">{p.label}</label>
+            <label className="mb-1.5 block text-xs font-semibold text-muted">{p.label}</label>
             <div className="flex gap-2">
               <div className="min-w-0 flex-1">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted">
                   Deadline
                 </span>
                 <input
@@ -548,7 +548,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
                 />
               </div>
               <div className="w-24 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted">
                   Est.
                 </span>
                 <div className="relative">
@@ -562,7 +562,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
                     onChange={(e) => p.setEst(e.target.value)}
                     className={clsx(fieldCls, 'pr-7 text-right')}
                   />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500">
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">
                     m
                   </span>
                 </div>
@@ -575,8 +575,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       {/* Recurring */}
       <div className="mb-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60 p-3">
         <label className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
-            <Repeat className="h-4 w-4 text-slate-400 dark:text-slate-500" /> Repeat this todo
+          <span className="flex items-center gap-1.5 text-sm font-medium text-muted">
+            <Repeat className="h-4 w-4 text-muted" /> Repeat this todo
           </span>
           <input
             type="checkbox"
@@ -588,7 +588,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         {recurring && (
           <div className="mt-3 flex gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Frequency</label>
+              <label className="mb-1 block text-xs font-medium text-muted">Frequency</label>
               <select value={freq} onChange={(e) => setFreq(e.target.value)} className={fieldCls}>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
@@ -596,7 +596,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
               </select>
             </div>
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              <label className="mb-1 block text-xs font-medium text-muted">
                 Until (optional)
               </label>
               <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className={fieldCls} />
@@ -605,7 +605,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         )}
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+      <label className="mb-1 block text-xs font-medium text-muted">
         Group <span className="text-red-500">*</span>
       </label>
       <div className="mb-3">
@@ -617,7 +617,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         />
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+      <label className="mb-1 block text-xs font-medium text-muted">
         Type <span className="text-red-500">*</span>
       </label>
       <div className="mb-3">
@@ -630,7 +630,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         />
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+      <label className="mb-1 block text-xs font-medium text-muted">
         Level <span className="text-red-500">*</span>
       </label>
       <div className="mb-3">
@@ -648,7 +648,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           const lvl = (groupDoc?.levels ?? []).find((l) => (l.level_id ?? '') === level)
           const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
           return (
-            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <div className="mt-1 text-sm text-muted">
               Estimated points: <span className="font-medium">{pts}</span>
               {!estimated && ' (set estimated minutes)'}
             </div>
@@ -658,7 +658,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
       {data.detail_todos.length > 0 && (
         <div className="mb-3">
-          <label className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <label className="mb-1 flex items-center gap-1 text-xs font-medium text-muted">
             <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
           </label>
           <MultiSelectSearch
@@ -666,7 +666,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             onChange={setBlockedBy}
             options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
           />
-          <label className="mb-1 mt-3 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <label className="mb-1 mt-3 flex items-center gap-1 text-xs font-medium text-muted">
             <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
           </label>
           <MultiSelectSearch
@@ -726,7 +726,7 @@ export default function ProjectItem() {
   }
   if (!data) {
     return (
-      <div className="flex flex-col items-center gap-3 py-16 text-slate-400 dark:text-slate-500">
+      <div className="flex flex-col items-center gap-3 py-16 text-muted">
         <AlertCircle className="h-8 w-8" />
         <p className="text-sm">Could not load todo</p>
       </div>
@@ -832,7 +832,7 @@ export default function ProjectItem() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
             {data.project_name}
           </p>
           <Link
@@ -841,7 +841,7 @@ export default function ProjectItem() {
           >
             in {data.project_detail_title}
           </Link>
-          <h2 className="mt-1 text-xl font-bold leading-snug text-slate-900 dark:text-slate-50">{data.to_do}</h2>
+          <h2 className="mt-1 text-xl font-bold leading-snug text-ink">{data.to_do}</h2>
         </div>
 
         {!editing && (
@@ -922,13 +922,13 @@ export default function ProjectItem() {
 
             {/* Stat grid */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3">
-                <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  <Target className="h-3 w-3 text-slate-400 dark:text-slate-500" /> Assignee
+              <div className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3">
+                <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                  <Target className="h-3 w-3 text-muted" /> Assignee
                 </p>
                 <div className="flex items-center gap-1.5">
                   <Avatar name={data.assigned_to_name} image={data.assigned_to_image} config={data.assigned_to_avatar_config} size={20} />
-                  <span className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">
+                  <span className="truncate text-sm font-bold text-ink">
                     {data.assigned_to_name}
                   </span>
                 </div>
@@ -1006,18 +1006,18 @@ export default function ProjectItem() {
               <AllocationCard data={data} />
             ) : (
               (data.allocations ?? []).length > 0 && (
-                <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                     <CalendarRange className="h-4 w-4" /> Day split
                   </p>
-                  <div className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <div className="flex flex-col gap-2 text-sm text-muted">
                     {(data.allocations ?? []).map((a, i) => (
                       <div key={i}>
                         <div className="flex justify-between">
                           <span>{a.date}</span>
                           <span className="font-medium">{a.minutes}m</span>
                         </div>
-                        {a.note && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{a.note}</p>}
+                        {a.note && <p className="mt-0.5 text-xs text-muted">{a.note}</p>}
                       </div>
                     ))}
                   </div>
@@ -1026,8 +1026,8 @@ export default function ProjectItem() {
             )}
 
             {/* Workflow */}
-            <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">
                 Workflow
               </p>
               <Stepper current={data.status_key} />
@@ -1047,7 +1047,7 @@ export default function ProjectItem() {
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     ) : (
-                      <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-slate-400 dark:text-slate-500">
+                      <div className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 py-3 text-sm text-muted">
                         <Lock className="h-4 w-4" />
                         Waiting on someone else to advance this
                       </div>
@@ -1090,8 +1090,8 @@ export default function ProjectItem() {
 
             {/* Recurrence history */}
             {data.occurrences.length > 1 && (
-              <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                   <Repeat className="h-3.5 w-3.5" /> Recurrence history ({data.occurrences.length})
                 </p>
                 <ol className="space-y-1.5">
@@ -1110,7 +1110,7 @@ export default function ProjectItem() {
                           )}
                         >
                           <span>{meta.emoji}</span>
-                          <span className="flex-1 text-slate-600 dark:text-slate-300">
+                          <span className="flex-1 text-muted">
                             {o.deadline_human || '—'}
                           </span>
                           {o.is_current ? (
@@ -1134,8 +1134,8 @@ export default function ProjectItem() {
           {/* ── RIGHT COLUMN ── */}
           <BentoTile span="md" tone="plain" className="space-y-5">
             {/* Notes */}
-            <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                 <FileText className="h-3.5 w-3.5" /> Notes
               </p>
               <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
@@ -1143,8 +1143,8 @@ export default function ProjectItem() {
 
             {/* Dependencies */}
             {(data.blocked_by.length > 0 || data.blocking.length > 0) && (
-              <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                   <Link2 className="h-3.5 w-3.5" /> Dependencies
                 </p>
                 <DepGroup
@@ -1166,8 +1166,8 @@ export default function ProjectItem() {
 
             {/* Timeline */}
             {data.timeline.length > 0 && (
-              <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                   <History className="h-3.5 w-3.5" /> Activity
                 </p>
                 <ol className="space-y-3">
@@ -1179,9 +1179,9 @@ export default function ProjectItem() {
                       <div className="text-sm">
                         <p className="font-medium text-slate-700 dark:text-slate-200">
                           {e.label}{' '}
-                          <span className="font-normal text-slate-400 dark:text-slate-500">by {e.by_name}</span>
+                          <span className="font-normal text-muted">by {e.by_name}</span>
                         </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">{e.at_human}</p>
+                        <p className="text-xs text-muted">{e.at_human}</p>
                       </div>
                     </li>
                   ))}

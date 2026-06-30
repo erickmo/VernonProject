@@ -43,7 +43,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-800 p-4">
-      <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-xl p-8 space-y-5">
+      <form onSubmit={submit} className="w-full max-w-md rounded-lg bg-surface shadow-xl p-8 space-y-5">
         <div className="flex items-center gap-2 text-brand-600 font-bold text-xl">
           <FolderKanban className="w-7 h-7" /> Vernon
         </div>
@@ -62,7 +62,7 @@ export default function Login() {
               type={show ? 'text' : 'password'} value={pwd} onChange={(e) => setPwd(e.target.value)} required
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 pr-10"
             />
-            <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
+            <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted">
               {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
@@ -72,7 +72,7 @@ export default function Login() {
         </button>
         {pkAvailable && (
           <>
-            <div className="flex items-center gap-3 text-xs font-medium text-slate-400">
+            <div className="flex items-center gap-3 text-xs font-medium text-muted">
               <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
               or
               <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />

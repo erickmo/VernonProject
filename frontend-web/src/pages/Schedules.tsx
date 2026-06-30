@@ -10,7 +10,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 type Tpl = { name: string; shift_name: string; start_time: string; end_time: string }
 type Asg = { name: string; employee: string; shift_template: string; effective_from: string; effective_to?: string }
 
-const inputCls = 'rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm'
+const inputCls = 'rounded-lg border border-slate-300 dark:border-slate-600 bg-surface px-3 py-2 text-sm'
 
 export default function Schedules() {
   const navigate = useNavigate()
@@ -94,7 +94,7 @@ export default function Schedules() {
                 <button
                   key={d}
                   onClick={() => setAsgForm({ ...asgForm, days: { ...asgForm.days, [d]: !asgForm.days[d] } })}
-                  className={`rounded-md border px-2 py-1 text-xs capitalize ${asgForm.days[d] ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
+                  className={`rounded-md border px-2 py-1 text-xs capitalize ${asgForm.days[d] ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 dark:border-slate-700 text-muted'}`}
                 >
                   {d.slice(0, 3)}
                 </button>
@@ -109,7 +109,7 @@ export default function Schedules() {
           )}
         </BentoTile>
       </BentoGrid>
-      <p className="text-xs text-slate-400">Editing an assignment automatically recalculates affected past days.</p>
+      <p className="text-xs text-muted">Editing an assignment automatically recalculates affected past days.</p>
     </div>
   )
 }

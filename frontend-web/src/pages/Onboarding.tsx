@@ -40,10 +40,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         aria-modal="true"
         aria-label="Welcome to Vernon"
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-xl flex flex-col"
+        className="relative w-full max-w-md rounded-lg bg-surface shadow-xl flex flex-col"
       >
         <div className="flex justify-end px-5 pt-4">
-          <button onClick={onDone} className="text-sm font-medium text-slate-400 dark:text-slate-500 hover:text-slate-600 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+          <button onClick={onDone} className="text-sm font-medium text-muted hover:text-slate-600 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
             Skip
           </button>
         </div>
@@ -51,14 +51,14 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         <div className="flex flex-col items-center justify-center px-8 pt-2 pb-6 text-center">
           <div
             className={clsx(
-              'mb-8 flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-br text-white shadow-lg',
+              'mb-8 flex h-28 w-28 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-lg',
               slide.accent,
             )}
           >
             <Icon className="h-12 w-12" strokeWidth={1.8} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{slide.title}</h2>
-          <p className="mt-3 max-w-xs leading-relaxed text-slate-500 dark:text-slate-400">{slide.body}</p>
+          <h2 className="text-2xl font-bold text-ink">{slide.title}</h2>
+          <p className="mt-3 max-w-xs leading-relaxed text-muted">{slide.body}</p>
         </div>
 
         <div className="px-8 pb-8">
@@ -77,14 +77,14 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             {i > 0 && (
               <button
                 onClick={() => setI(i - 1)}
-                className="flex items-center justify-center gap-1 rounded-2xl border border-slate-300 dark:border-slate-700 px-5 py-3.5 text-base font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                className="flex items-center justify-center gap-1 rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-3.5 text-base font-semibold text-muted hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <ArrowLeft className="h-5 w-5" /> Back
               </button>
             )}
             <button
               onClick={() => (last ? onDone() : setI(i + 1))}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-600 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               {last ? 'Get started' : 'Next'}
               <ArrowRight className="h-5 w-5" />

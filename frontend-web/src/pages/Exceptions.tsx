@@ -49,10 +49,10 @@ export default function Exceptions() {
           ) : (
             <div className="flex flex-col gap-2">
               {list.map((e) => (
-                <div key={e.name} className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+                <div key={e.name} className="flex items-center gap-3 rounded-lg border border-line p-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-slate-800 dark:text-slate-100">{e.employee} · {e.exception_type}</p>
-                    <p className="text-xs text-slate-500">{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''}</p>
+                    <p className="font-medium text-ink">{e.employee} · {e.exception_type}</p>
+                    <p className="text-xs text-muted">{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''}</p>
                   </div>
                   <button onClick={() => decide(e.name, 'Approved')} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"><Check className="h-4 w-4" /> Approve</button>
                   <button onClick={() => decide(e.name, 'Rejected')} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"><X className="h-4 w-4" /> Reject</button>

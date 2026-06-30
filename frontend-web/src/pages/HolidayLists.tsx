@@ -8,7 +8,7 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 
 type HList = { name: string; list_name: string }
 type Brand = { name: string; holiday_list?: string }
-const inputCls = 'rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm'
+const inputCls = 'rounded-lg border border-slate-300 dark:border-slate-600 bg-surface px-3 py-2 text-sm'
 
 export default function HolidayLists() {
   const navigate = useNavigate()
@@ -73,7 +73,7 @@ export default function HolidayLists() {
             <ul className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {brands.map((b) => (
                 <li key={b.name} className="flex items-center justify-between gap-3 py-2">
-                  <span className="font-medium text-slate-800 dark:text-slate-100">{b.name}</span>
+                  <span className="font-medium text-ink">{b.name}</span>
                   <select className={inputCls} value={b.holiday_list || ''} onChange={(e) => assign(b.name, e.target.value)}>
                     <option value="">No holidays</option>
                     {(lists ?? []).map((l) => <option key={l.name} value={l.name}>{l.list_name}</option>)}
