@@ -1,46 +1,33 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useDashboard, useWallet, useProjects } from '@/hooks/useData'
 import { TodoCard } from '@/components/TodoCard'
 import { ProjectCard } from '@/components/ProjectCard'
 import { Segmented, EmptyState } from '@/components/ui'
 import { ErrorState, Skeleton, CardGridSkeleton } from '@web/components/ui'
-import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { FilterButton, activeFilterCount, type FilterDimension, type FilterValue } from '@/components/FilterSheet'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { formatNumber, formatEstimateRatio, formatEstimate, byAllocationAsc } from '@/lib/format'
+import { formatEstimate, byAllocationAsc } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { CheckCircle2, ShieldCheck, CheckCheck, FolderKanban, Sparkles } from 'lucide-react'
 import { PlanDayDrawer } from '@web/components/PlanDayDrawer'
+import { Page, PageHeader, Section } from '@web/components/Page'
+import { todoRelationChips } from '@web/components/RelationsRail'
 import type { ProjectItem } from '@/lib/types'
-
-// Rebuilt locally — mobile's Ring is inline in its Today.tsx and not importable
-function Ring({ pct }: { pct: number }) {
-  const r = 52
-  const c = 2 * Math.PI * r
-  const off = c * (1 - Math.min(1, Math.max(0, pct / 100)))
-  return (
-    <svg viewBox="0 0 120 120" className="w-32 h-32 -rotate-90">
-      <circle cx="60" cy="60" r={r} fill="none" strokeWidth="12" className="stroke-slate-200 dark:stroke-slate-800" />
-      <circle
-        cx="60" cy="60" r={r} fill="none" strokeWidth="12" strokeLinecap="round"
-        className="stroke-brand-600" strokeDasharray={c} strokeDashoffset={off}
-      />
-    </svg>
-  )
-}
 
 function TodaySkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-8 w-32" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Skeleton className="md:col-span-2 h-44 rounded-2xl" />
-        <Skeleton className="h-44 rounded-2xl" />
+      <Skeleton className="h-8 w-48" />
+      <div className="flex flex-wrap gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-16 rounded-lg" />
+        ))}
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 rounded-xl" />
         ))}
       </div>
     </div>
@@ -57,7 +44,7 @@ const LENSES: { value: Lens; label: string }[] = [
 
 export default function Today() {
   const dash = useDashboard()
-  const wallet = useWallet()
+  useWallet() // ponytail: kept for data prefetch parity; not rendered in new layout
   const projects = useProjects()
   const [lens, setLens] = useState<Lens>('mine')
   const [filters, setFilters] = useState<FilterValue>({})
@@ -111,11 +98,6 @@ export default function Today() {
   }
 
   const counts = dash.data.counts
-  const completedMin = counts.completed_minutes_today
-  const dueMin = dash.data.due_today.reduce((s, t) => s + (t.estimated || 0), 0)
-  const todayTotalMin = completedMin + dueMin
-  const donePct = todayTotalMin > 0 ? Math.round((completedMin / todayTotalMin) * 100) : 0
-  const w = wallet.data
 
   // Owner/leader review banners (same status_key split as mobile).
   const review = dash.data.review ?? []
@@ -142,152 +124,154 @@ export default function Today() {
     { title: 'Upcoming', items: visible.filter((t) => !t.is_overdue && !dueTodayIds.has(t.name) && !t.today_allocation) },
   ]
 
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Today</h1>
-      <BentoGrid>
-        <BentoTile span="lg" tall tone="gradient" accent="brand" title="Progress">
-          <div className="flex flex-1 items-center gap-6">
-            <div className="relative">
-              <Ring pct={donePct} />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold">{counts.completed_today}</span>
-                <span className="text-xs text-slate-500">done</span>
-              </div>
-            </div>
-            <div className="space-y-1 text-sm">
-              <div><span className="font-semibold">{counts.due_today}</span> due today</div>
-              <div><span className="font-semibold">{counts.overdue}</span> overdue</div>
-              <div><span className="font-semibold">{counts.upcoming}</span> upcoming</div>
-              <div><span className="font-semibold">{formatEstimateRatio(completedMin, todayTotalMin)}</span> done today</div>
-            </div>
+    <Page>
+      <PageHeader title={greeting} subtitle={dateStr} />
+
+      {/* Compact stat strip */}
+      <div className="flex flex-wrap gap-6 mb-6">
+        {[
+          { label: 'Due today', value: counts.due_today },
+          { label: 'Overdue', value: counts.overdue },
+          { label: 'Upcoming', value: counts.upcoming },
+          { label: 'To review', value: counts.review },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex flex-col gap-0.5">
+            <span className="text-2xl font-semibold tabular-nums text-ink">{value}</span>
+            <span className="text-xs text-muted">{label}</span>
           </div>
-        </BentoTile>
+        ))}
+      </div>
 
-        <BentoTile span="sm" tone="solid" accent="amber" title="Points">
-          <BentoStat
-            value={w ? formatNumber(w.balance) : '—'}
-            label="balance"
-            delta={`+${w ? formatNumber(w.today_earned) : 0} today · +${w ? formatNumber(w.yesterday_earned) : 0} yest`}
-          />
-        </BentoTile>
-
-        <BentoTile span="sm" tone="tint" accent="brand">
-          <BentoStat value={counts.due_today} label="Due today" />
-        </BentoTile>
-        <BentoTile span="sm" tone="tint" accent="rose">
-          <BentoStat value={counts.overdue} label="Overdue" />
-        </BentoTile>
-        <BentoTile span="sm" tone="tint" accent="brand">
-          <BentoStat value={counts.upcoming} label="Upcoming" />
-        </BentoTile>
-        <BentoTile span="sm" tone="tint" accent="emerald" icon={CheckCircle2}>
-          <BentoStat value={counts.review} label="To review" />
-        </BentoTile>
-
-        <BentoTile span="full" tone="plain">
-          <div className="flex items-center justify-between gap-3">
-            <Segmented options={LENSES} value={lens} onChange={setLens} />
-            {lens === 'mine' && (
-              <div className="relative">
-                <span ref={filterRef}>
-                  <FilterButton count={activeFilterCount(filters)} onClick={() => setFilterOpen((o) => !o)} />
-                </span>
-                <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
-                  <div className="space-y-4">
-                    {dimensions.map((d) => (
-                      <div key={d.key} className="space-y-1">
-                        <div className="text-xs font-semibold text-slate-500">{d.label}</div>
-                        <SearchableSelect
-                          value={filters[d.key] ?? ''}
-                          onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
-                          options={d.options.map((o) => ({
-                            value: o.value,
-                            label: `${o.label}${o.count != null ? ` (${o.count})` : ''}`,
-                          }))}
-                          allowClear
-                          placeholder="Any"
-                        />
-                      </div>
-                    ))}
-                    <button onClick={() => setFilters({})} className="text-sm text-brand-600">
-                      Clear all
-                    </button>
+      {/* Lens + filter controls — verbatim from old layout */}
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <Segmented options={LENSES} value={lens} onChange={setLens} />
+        {lens === 'mine' && (
+          <div className="relative">
+            <span ref={filterRef}>
+              <FilterButton count={activeFilterCount(filters)} onClick={() => setFilterOpen((o) => !o)} />
+            </span>
+            <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
+              <div className="space-y-4">
+                {dimensions.map((d) => (
+                  <div key={d.key} className="space-y-1">
+                    <div className="text-xs font-semibold text-slate-500">{d.label}</div>
+                    <SearchableSelect
+                      value={filters[d.key] ?? ''}
+                      onChange={(v) => setFilters((f) => ({ ...f, [d.key]: v }))}
+                      options={d.options.map((o) => ({
+                        value: o.value,
+                        label: `${o.label}${o.count != null ? ` (${o.count})` : ''}`,
+                      }))}
+                      allowClear
+                      placeholder="Any"
+                    />
                   </div>
-                </Popover>
-              </div>
-            )}
-          </div>
-        </BentoTile>
-
-        {lens === 'mine' ? (
-          <>
-            <BentoTile
-              span="full"
-              tone="plain"
-              title={`Today's plan · ${plannedTodos.length} · ${formatEstimate(plannedTodayMin)}`}
-              actions={
-                <button
-                  onClick={() => setPlanOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-                >
-                  <Sparkles className="h-4 w-4" /> Plan my day
+                ))}
+                <button onClick={() => setFilters({})} className="text-sm text-brand-600">
+                  Clear all
                 </button>
-              }
-            >
+              </div>
+            </Popover>
+          </div>
+        )}
+      </div>
+
+      {lens === 'mine' ? (
+        <>
+          <Section
+            title={`Today's plan · ${plannedTodos.length} · ${formatEstimate(plannedTodayMin)}`}
+            actions={
+              <button
+                onClick={() => setPlanOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                <Sparkles className="h-4 w-4" /> Plan my day
+              </button>
+            }
+          >
+            <div className="space-y-2">
+              {plannedTodos.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-muted">
+                  Nothing planned for today yet — hit "Plan my day".
+                </div>
+              ) : (
+                plannedTodos.map((t) => <TodoCard key={t.name} todo={t} showProject />)
+              )}
+            </div>
+          </Section>
+
+          {groups.map((g) => (
+            <Section key={g.title} title={`${g.title} · ${g.items.length}`}>
               <div className="space-y-2">
-                {plannedTodos.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">
-                    Nothing planned for today yet — hit "Plan my day".
+                {g.items.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-muted">
+                    Nothing here
                   </div>
                 ) : (
-                  plannedTodos.map((t) => <TodoCard key={t.name} todo={t} showProject />)
+                  g.items.map((t) => {
+                    const chips = todoRelationChips(t)
+                    return (
+                      <div key={t.name}>
+                        <TodoCard todo={t} />
+                        {chips.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-1 pl-1">{chips}</div>
+                        )}
+                      </div>
+                    )
+                  })
                 )}
               </div>
-            </BentoTile>
-            {groups.map((g) => (
-              <BentoTile key={g.title} span="md" tone="plain" title={`${g.title} · ${g.items.length}`}>
-                <div className="space-y-2">
-                  {g.items.length === 0
-                    ? <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">Nothing here</div>
-                    : g.items.map((t) => <TodoCard key={t.name} todo={t} showProject />)}
-                </div>
-              </BentoTile>
-            ))}
-          </>
-        ) : (
-          <>
-            {lens === 'owned' && ownerApprovals > 0 && (
-              <BentoTile
-                span="full" tone="tint" accent="emerald" to="/review" icon={ShieldCheck}
-                title={`${ownerApprovals} todo${ownerApprovals === 1 ? '' : 's'} awaiting your final approval`}
-              />
-            )}
-            {lens === 'led' && leadChecks > 0 && (
-              <BentoTile
-                span="full" tone="tint" accent="amber" to="/review" icon={CheckCheck}
-                title={`${leadChecks} todo${leadChecks === 1 ? '' : 's'} to check & approve`}
-              />
-            )}
-            <BentoTile span="full" tone="plain">
-              {!projects.data ? (
-                <CardGridSkeleton />
-              ) : lensProjects.length === 0 ? (
-                <EmptyState icon={FolderKanban} title="Nothing here" subtitle={lensEmpty} />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                  {lensProjects.map((p) => <ProjectCard key={p.name} p={p} />)}
-                </div>
-              )}
-            </BentoTile>
-          </>
-        )}
-      </BentoGrid>
+            </Section>
+          ))}
 
-      {lens === 'mine' && visible.length === 0 && (
-        <EmptyState icon={CheckCircle2} title="All clear" subtitle="No tasks match." />
+          {visible.length === 0 && (
+            <EmptyState icon={CheckCircle2} title="All clear" subtitle="No tasks match." />
+          )}
+        </>
+      ) : (
+        <>
+          {lens === 'owned' && ownerApprovals > 0 && (
+            <Section divider={false}>
+              <Link
+                to="/review"
+                className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink transition hover:opacity-80"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span>{ownerApprovals} todo{ownerApprovals === 1 ? '' : 's'} awaiting your final approval</span>
+              </Link>
+            </Section>
+          )}
+          {lens === 'led' && leadChecks > 0 && (
+            <Section divider={false}>
+              <Link
+                to="/review"
+                className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink transition hover:opacity-80"
+              >
+                <CheckCheck className="h-4 w-4 shrink-0 text-amber-500" />
+                <span>{leadChecks} todo{leadChecks === 1 ? '' : 's'} to check & approve</span>
+              </Link>
+            </Section>
+          )}
+          <Section>
+            {!projects.data ? (
+              <CardGridSkeleton />
+            ) : lensProjects.length === 0 ? (
+              <EmptyState icon={FolderKanban} title="Nothing here" subtitle={lensEmpty} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                {lensProjects.map((p) => <ProjectCard key={p.name} p={p} />)}
+              </div>
+            )}
+          </Section>
+        </>
       )}
+
       <PlanDayDrawer open={planOpen} onClose={() => setPlanOpen(false)} candidates={planCandidates} />
-    </div>
+    </Page>
   )
 }
