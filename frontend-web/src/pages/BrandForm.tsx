@@ -20,7 +20,7 @@ import {
 } from '@/hooks/useData'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function BrandForm() {
   const navigate = useNavigate()
@@ -172,7 +172,7 @@ export default function BrandForm() {
                 {(id) => (
                   <input
                     id={id}
-                    className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
+                    className={field + (isEdit ? ' bg-slate-100 text-muted dark:bg-slate-700' : '')}
                     value={form.brand_name}
                     readOnly={isEdit}
                     autoFocus={!isEdit}
@@ -200,10 +200,10 @@ export default function BrandForm() {
           {/* Preview / summary tile */}
           <BentoTile span="sm" tone="tint" accent="slate" title="Preview">
             <div className="mt-1 space-y-2">
-              <p className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">
+              <p className="text-lg font-bold text-ink truncate">
                 {form.brand_name || <span className="opacity-40">Untitled</span>}
               </p>
-              <p className="text-xs text-slate-400">Brand</p>
+              <p className="text-xs text-muted">Brand</p>
             </div>
           </BentoTile>
 
@@ -215,7 +215,7 @@ export default function BrandForm() {
                   type="button"
                   onClick={remove}
                   disabled={del.isPending}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:bg-slate-900 dark:border-rose-500/30 dark:hover:bg-rose-500/10 transition-colors"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-surface py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/30 dark:hover:bg-rose-500/10 transition-colors"
                 >
                   {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete brand
                 </button>

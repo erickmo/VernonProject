@@ -18,7 +18,7 @@ import {
 } from '@/hooks/useData'
 
 const field =
-  'mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:disabled:bg-slate-900'
+  'mt-1 w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none disabled:bg-canvas disabled:text-muted dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function UserForm() {
   const { name } = useParams<{ name: string }>()
@@ -232,32 +232,32 @@ export default function UserForm() {
         <BentoTile span="sm" tone="tint" accent="rose" title="Summary">
           <div className="mt-1 space-y-2 text-sm">
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Email</span>
-              <p className="font-medium truncate text-slate-800 dark:text-slate-100">
+              <span className="text-xs text-muted">Email</span>
+              <p className="font-medium truncate text-ink">
                 {isEdit ? name : email || '—'}
               </p>
             </div>
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Name</span>
-              <p className="font-medium truncate text-slate-800 dark:text-slate-100">
+              <span className="text-xs text-muted">Name</span>
+              <p className="font-medium truncate text-ink">
                 {fullName || '—'}
               </p>
             </div>
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Roles</span>
-              <p className="font-medium text-slate-800 dark:text-slate-100">
+              <span className="text-xs text-muted">Roles</span>
+              <p className="font-medium text-ink">
                 {roles.length > 0 ? roles.join(', ') : 'None'}
               </p>
             </div>
             <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Member type</span>
-              <p className="font-medium text-slate-800 dark:text-slate-100">
+              <span className="text-xs text-muted">Member type</span>
+              <p className="font-medium text-ink">
                 {memberType || 'External / none'}
               </p>
             </div>
             {isEdit && (
               <div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">Status</span>
+                <span className="text-xs text-muted">Status</span>
                 <p className={`font-medium ${enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                   {enabled ? 'Enabled' : 'Disabled'}
                 </p>
@@ -270,7 +270,7 @@ export default function UserForm() {
         <BentoTile span="md" tone="plain" title="Role & access">
           <div className="mt-1 space-y-4">
             <div>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roles</span>
+              <span className="text-xs font-semibold text-muted">Roles</span>
               <MultiSelectChips
                 options={VERNON_ROLE_OPTIONS}
                 value={roles}
@@ -304,7 +304,7 @@ export default function UserForm() {
             </Field>
 
             {!isEdit && (
-              <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+              <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
                 <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
                 <input
                   type="checkbox"
@@ -319,7 +319,7 @@ export default function UserForm() {
             )}
 
             {isEdit && (
-              <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+              <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
                 <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
                 <input
                   type="checkbox"
@@ -343,7 +343,7 @@ export default function UserForm() {
                 type="button"
                 onClick={onResetPassword}
                 disabled={resetPw.isPending}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
               >
                 {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
               </button>
@@ -357,13 +357,13 @@ export default function UserForm() {
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="New password"
                       autoComplete="new-password"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                      className="w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
                     />
                     <button
                       type="button"
                       onClick={onSetPassword}
                       disabled={!newPassword || setPw.isPending}
-                      className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                      className="shrink-0 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
                     >
                       {setPw.isPending ? 'Setting…' : 'Set password'}
                     </button>

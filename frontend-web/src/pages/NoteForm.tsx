@@ -21,7 +21,7 @@ import { keys, useBoot, useFormOptions } from '@/hooks/useData'
 import type { PersonalNote, PersonalNoteItem, PersonalNoteShare } from '@/lib/types'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 // Canonical snapshot used to detect "nothing changed since last save".
 const serialize = (t: string, b: string, its: PersonalNoteItem[]) =>
@@ -247,7 +247,7 @@ export default function NoteForm() {
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold">{startedNew ? 'New note' : 'Edit note'}</h1>
         {canEdit && status !== 'idle' && (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-muted">
             {status === 'saving' && <Spinner className="h-3.5 w-3.5" />}
             {status === 'saved' && <Check className="h-3.5 w-3.5 text-emerald-500" />}
             {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save failed'}
@@ -277,12 +277,12 @@ export default function NoteForm() {
           <BentoTile span="lg" tone="plain">
             <div className="flex flex-col gap-4">
               {note && (
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-muted">
                   <Avatar name={note.owner_name} size={20} /> Shared by {note.owner_name}
                 </div>
               )}
               {title.trim() && (
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{title}</h2>
+                <h2 className="text-lg font-semibold text-ink">{title}</h2>
               )}
               {body.trim() && (
                 <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">{body}</p>
@@ -292,15 +292,15 @@ export default function NoteForm() {
                   {items.map((it, i) => (
                     <li
                       key={i}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5"
+                      className="flex items-center gap-3 rounded-xl border border-line dark:border-slate-700 bg-surface px-3 py-2.5"
                     >
                       <input type="checkbox" checked={!!it.checked} disabled className="h-5 w-5 accent-brand-600" />
                       <span
                         className={
                           'flex-1 text-sm ' +
                           (it.checked
-                            ? 'text-slate-400 line-through dark:text-slate-500'
-                            : 'text-slate-800 dark:text-slate-100')
+                            ? 'text-muted line-through'
+                            : 'text-ink')
                         }
                       >
                         {it.label}
@@ -325,7 +325,7 @@ export default function NoteForm() {
         <BentoTile span="lg" tone="plain">
           <div className="flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Title</label>
+              <label className="mb-1 block text-xs font-semibold text-muted">Title</label>
               <input
                 className={field}
                 value={title}
@@ -335,7 +335,7 @@ export default function NoteForm() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Body</label>
+              <label className="mb-1 block text-xs font-semibold text-muted">Body</label>
               <textarea
                 className={field + ' min-h-[160px] resize-y'}
                 value={body}
@@ -347,13 +347,13 @@ export default function NoteForm() {
 
             {/* Checklist editor */}
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Checklist</label>
+              <label className="mb-1 block text-xs font-semibold text-muted">Checklist</label>
               {items.length > 0 && (
                 <ul className="mb-2 flex flex-col gap-2">
                   {items.map((it, i) => (
                     <li
                       key={i}
-                      className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2"
+                      className="flex items-center gap-2 rounded-xl border border-line dark:border-slate-700 bg-surface px-3 py-2"
                     >
                       <input
                         type="checkbox"
@@ -365,8 +365,8 @@ export default function NoteForm() {
                         className={
                           'flex-1 text-sm ' +
                           (it.checked
-                            ? 'text-slate-400 line-through dark:text-slate-500'
-                            : 'text-slate-800 dark:text-slate-100')
+                            ? 'text-muted line-through'
+                            : 'text-ink')
                         }
                       >
                         {it.label}
@@ -375,7 +375,7 @@ export default function NoteForm() {
                         onClick={() => moveItem(i, -1)}
                         disabled={i === 0}
                         aria-label="Move up"
-                        className="text-slate-400 disabled:opacity-30 hover:text-slate-600"
+                        className="text-muted disabled:opacity-30 hover:text-slate-600"
                       >
                         <ArrowUp className="h-4 w-4" />
                       </button>
@@ -383,7 +383,7 @@ export default function NoteForm() {
                         onClick={() => moveItem(i, 1)}
                         disabled={i === items.length - 1}
                         aria-label="Move down"
-                        className="text-slate-400 disabled:opacity-30 hover:text-slate-600"
+                        className="text-muted disabled:opacity-30 hover:text-slate-600"
                       >
                         <ArrowDown className="h-4 w-4" />
                       </button>
@@ -433,12 +433,12 @@ export default function NoteForm() {
                   {shares.map((s) => (
                     <li
                       key={s.user}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2"
+                      className="flex items-center gap-3 rounded-xl border border-line dark:border-slate-700 bg-surface px-3 py-2"
                     >
                       <Avatar name={s.full_name} image={s.image} config={s.avatar_config} size={32} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{s.full_name}</p>
-                        <p className="truncate text-xs text-slate-400">{s.user}</p>
+                        <p className="truncate text-sm font-medium text-ink">{s.full_name}</p>
+                        <p className="truncate text-xs text-muted">{s.user}</p>
                       </div>
                       <button
                         onClick={() => removeShare(s.user)}
@@ -465,7 +465,7 @@ export default function NoteForm() {
               ) : (
                 <button
                   onClick={() => setPicking(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
                 >
                   <UserPlus className="h-4 w-4" /> Share with someone
                 </button>
@@ -480,7 +480,7 @@ export default function NoteForm() {
             <div className="mt-1">
               <button
                 onClick={remove}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:bg-slate-900 dark:border-rose-500/30 dark:hover:bg-rose-500/10 transition-colors"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-surface py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 transition-colors"
               >
                 <Trash2 className="h-4 w-4" /> Delete note
               </button>
@@ -514,7 +514,7 @@ function SharePicker({
     : users
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-sm">
+    <div className="rounded-xl border border-line dark:border-slate-700 bg-surface p-2 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -522,17 +522,17 @@ function SharePicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search users"
-            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 dark:text-slate-100"
+            className="w-full rounded-lg border border-line dark:border-slate-700 bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 dark:text-slate-100"
           />
         </div>
-        <button onClick={onCancel} className="px-2 text-sm font-medium text-slate-500" aria-label="Cancel">
+        <button onClick={onCancel} className="px-2 text-sm font-medium text-muted" aria-label="Cancel">
           <X className="h-4 w-4" />
         </button>
       </div>
       {isLoading ? (
-        <Spinner className="mx-auto my-3 h-4 w-4 text-slate-400" />
+        <Spinner className="mx-auto my-3 h-4 w-4 text-muted" />
       ) : filtered.length === 0 ? (
-        <p className="px-3 py-4 text-center text-sm text-slate-400">No users</p>
+        <p className="px-3 py-4 text-center text-sm text-muted">No users</p>
       ) : (
         <div className="max-h-64 divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto">
           {filtered.map((u) => (
@@ -543,8 +543,8 @@ function SharePicker({
             >
               <Avatar name={u.label} size={32} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{u.label}</p>
-                <p className="truncate text-xs text-slate-400">{u.value}</p>
+                <p className="truncate text-sm font-medium text-ink">{u.label}</p>
+                <p className="truncate text-xs text-muted">{u.value}</p>
               </div>
             </button>
           ))}

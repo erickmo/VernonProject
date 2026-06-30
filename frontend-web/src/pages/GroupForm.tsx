@@ -22,7 +22,7 @@ import {
 import type { GroupLevel, ScoringGroupPayload } from '@/lib/types'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee' | 'Leader' }[] = [
   { key: 'late_penalty', label: 'Late penalty % / day', group: 'Assignee' },
@@ -340,7 +340,7 @@ export default function GroupForm() {
                 {(id) => (
                   <input
                     id={id}
-                    className={field + (isEdit ? ' bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : '')}
+                    className={field + (isEdit ? ' bg-slate-100 text-muted dark:bg-slate-700' : '')}
                     value={form.group_name}
                     readOnly={isEdit}
                     autoFocus={!isEdit}
@@ -373,8 +373,8 @@ export default function GroupForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(['Assignee', 'Leader'] as const).map((grp) => (
-                <div key={grp} className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{grp}</p>
+                <div key={grp} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">{grp}</p>
                   <div className="flex flex-col gap-2">
                     {WEIGHTS.filter((w) => w.group === grp).map((w) => (
                       <div key={w.key} className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export default function GroupForm() {
                         <input
                           type="number"
                           inputMode="decimal"
-                          className="w-16 shrink-0 rounded-xl border border-slate-200 px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                          className="w-16 shrink-0 rounded-xl border border-line px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                           value={String(form[w.key] as number)}
                           onChange={(e) => setNum(w.key, e.target.value)}
                         />
@@ -398,24 +398,24 @@ export default function GroupForm() {
               <input
                 type="number"
                 inputMode="decimal"
-                className="w-20 shrink-0 rounded-xl border border-slate-200 px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                className="w-20 shrink-0 rounded-xl border border-line px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                 value={String(form.base_rate_per_minute)}
                 onChange={(e) => setNum('base_rate_per_minute', e.target.value)}
               />
             </div>
 
             {/* Types & Levels */}
-            <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60">
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
                 <Layers className="h-3.5 w-3.5" /> Types &amp; Levels
               </p>
-              <p className="mb-3 text-[11px] text-slate-400 dark:text-slate-500">
+              <p className="mb-3 text-[11px] text-muted">
                 Organise difficulty levels into named types. Each type can have multiple levels with their own difficulty %.
               </p>
 
               <div className="flex flex-col gap-3">
                 {types.map(({ type_name, rows, _groupKey }) => (
-                  <div key={_groupKey} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                  <div key={_groupKey} className="rounded-xl border border-line bg-surface p-3 dark:border-slate-700">
                     {/* Type header: editable name + remove-type */}
                     <div className="mb-2 flex items-center gap-2">
                       <input
@@ -428,7 +428,7 @@ export default function GroupForm() {
                         type="button"
                         aria-label="Remove type"
                         onClick={() => removeType(type_name)}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 hover:bg-red-50 dark:border-slate-700 dark:hover:bg-red-500/10"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-red-500 hover:bg-red-50 dark:border-slate-700 dark:hover:bg-red-500/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -448,14 +448,14 @@ export default function GroupForm() {
                             type="button"
                             aria-label="Decrease difficulty"
                             onClick={() => bumpLevelDifficulty(l._key, -LEVEL_STEP)}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
                           >
                             <Minus className="h-4 w-4" />
                           </button>
                           <input
                             type="number"
                             inputMode="decimal"
-                            className="w-16 shrink-0 rounded-xl border border-slate-200 px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                            className="w-16 shrink-0 rounded-xl border border-line px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                             value={String(l.difficulty_percent)}
                             onChange={(e) => setLevelDifficulty(l._key, e.target.value === '' ? 0 : Number(e.target.value))}
                             placeholder="Difficulty %"
@@ -464,7 +464,7 @@ export default function GroupForm() {
                             type="button"
                             aria-label="Increase difficulty"
                             onClick={() => bumpLevelDifficulty(l._key, LEVEL_STEP)}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -472,7 +472,7 @@ export default function GroupForm() {
                             type="button"
                             aria-label="Remove level"
                             onClick={() => removeLevelByKey(l._key)}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-red-500 hover:bg-red-50 dark:border-slate-700 dark:hover:bg-red-500/10"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-red-500 hover:bg-red-50 dark:border-slate-700 dark:hover:bg-red-500/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -484,7 +484,7 @@ export default function GroupForm() {
                     <button
                       type="button"
                       onClick={() => addLevelToType(type_name)}
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-xs font-medium text-muted hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800/60"
                     >
                       <Plus className="h-3.5 w-3.5" /> Add level
                     </button>
@@ -496,7 +496,7 @@ export default function GroupForm() {
               <button
                 type="button"
                 onClick={addType}
-                className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-muted hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800/60"
               >
                 <Plus className="h-4 w-4" /> Add type
               </button>
@@ -538,29 +538,29 @@ export default function GroupForm() {
         {/* Linked tasks tile */}
         {isEdit && (
           <BentoTile span="md" tone="plain">
-            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
               <ListChecks className="h-3.5 w-3.5" /> Linked tasks
               {linkedTodos && (
-                <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-muted dark:bg-slate-700">
                   {linkedTodos.length}
                 </span>
               )}
             </p>
             {todosLoading ? (
-              <Spinner className="mx-auto my-2 h-4 w-4 text-slate-400" />
+              <Spinner className="mx-auto my-2 h-4 w-4 text-muted" />
             ) : !linkedTodos || linkedTodos.length === 0 ? (
-              <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">No tasks use this group.</p>
+              <p className="py-2 text-center text-xs text-muted">No tasks use this group.</p>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {linkedTodos.map((t) => (
                   <Link
                     key={t.name}
                     to={`/project-item/${encodeURIComponent(t.name)}`}
-                    className="flex items-center gap-2 rounded-xl border border-slate-100 px-3 py-2 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 transition-colors"
+                    className="flex items-center gap-2 rounded-xl border border-slate-100 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{t.to_do || t.name}</p>
-                      <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
+                      <p className="truncate text-sm font-medium text-ink">{t.to_do || t.name}</p>
+                      <p className="truncate text-[11px] text-muted">
                         {t.status}
                         {t.deadline ? ` · ${formatDate(t.deadline)}` : ''}
                       </p>

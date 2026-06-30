@@ -19,7 +19,7 @@ import {
 import type { RewardFormPayload } from '@/lib/types'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 const empty: RewardFormPayload = {
   reward_name: '',
@@ -256,7 +256,7 @@ export default function RewardForm() {
               </Field>
             </div>
 
-            <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+            <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Active</span>
               <input
                 type="checkbox"
@@ -313,14 +313,14 @@ export default function RewardForm() {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/50 text-slate-400 hover:border-emerald-400 dark:border-emerald-600/40 dark:bg-emerald-500/5"
+              className="flex h-32 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-emerald-300 bg-emerald-50/50 text-muted hover:border-emerald-400 dark:border-emerald-600/40 dark:bg-emerald-500/5"
             >
               {uploading ? (
                 <span className="flex flex-col items-center gap-1 text-xs">
                   <Spinner className="h-5 w-5" /> Uploading…
                 </span>
               ) : form.image ? (
-                <img src={form.image} alt="" className="h-full w-full object-cover rounded-2xl" />
+                <img src={form.image} alt="" className="h-full w-full object-cover rounded-lg" />
               ) : (
                 <span className="flex flex-col items-center gap-1 text-xs">
                   <ImagePlus className="h-6 w-6" /> Click to upload
@@ -339,8 +339,8 @@ export default function RewardForm() {
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
 
             {/* Card preview */}
-            <div className="rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm">
-              <p className="truncate font-semibold text-slate-800 dark:text-slate-100">
+            <div className="rounded-xl bg-surface p-3 shadow-sm">
+              <p className="truncate font-semibold text-ink">
                 {form.reward_name || 'Untitled reward'}
               </p>
               <p className="mt-0.5 text-sm font-semibold text-brand-600">{formatNumber(form.point_cost)} pts</p>
