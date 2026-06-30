@@ -4,6 +4,7 @@ import { Search, FolderKanban, CheckSquare, User, CornerDownLeft } from 'lucide-
 import type { LucideIcon } from 'lucide-react'
 import { useModalA11y } from '@web/lib/useModalA11y'
 import { useProjects, useCalendar, useFormOptions } from '@/hooks/useData'
+import { matchCommand } from '@web/lib/match'
 
 export type Command = {
   id: string
@@ -53,13 +54,10 @@ export function CommandPalette({
     return [...navCommands, ...proj, ...todos, ...people]
   }, [navCommands, projects.data, calendar.data, formOpts.data])
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return commands
-    return commands.filter(
-      (c) => c.label.toLowerCase().includes(s) || c.group.toLowerCase().includes(s),
-    )
-  }, [q, commands])
+  const filtered = useMemo(
+    () => commands.filter((c) => matchCommand(c.label, c.group, q)),
+    [q, commands],
+  )
 
   // Keep the highlight in range as the filter narrows, and scroll it into view.
   useEffect(() => setActive(0), [q])
