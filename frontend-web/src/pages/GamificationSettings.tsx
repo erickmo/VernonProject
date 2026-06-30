@@ -9,7 +9,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings, useAvatarCatalog } from '@/hooks/useData'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 type LevelRow = { level: string; reward_points: string; reward_asset: string }
 type AchievRow = { code: string; title: string; icon: string; condition: string; threshold: string; reward_points: string; reward_asset: string; is_tier: number; color: string }
@@ -20,7 +20,7 @@ const emptyAchiev = (): AchievRow => ({ code: '', title: '', icon: '', condition
 
 const CONDITIONS = ['todos_completed', 'badge_points', 'streak_days']
 
-const hint = 'mt-1 text-xs text-slate-400 dark:text-slate-500'
+const hint = 'mt-1 text-xs text-muted'
 
 export default function GamificationSettings() {
   const navigate = useNavigate()
@@ -111,7 +111,7 @@ export default function GamificationSettings() {
     <form onSubmit={(e) => { e.preventDefault(); doSave() }} className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Gamification Settings</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pengaturan Gamifikasi — atur ekonomi &amp; progres avatar: harga item, level/XP, hadiah harian, dan pencapaian. Semua tersimpan langsung saat disimpan.</p>
+        <p className="mt-1 text-sm text-muted">Pengaturan Gamifikasi — atur ekonomi &amp; progres avatar: harga item, level/XP, hadiah harian, dan pencapaian. Semua tersimpan langsung saat disimpan.</p>
       </div>
 
       <BentoGrid>
@@ -166,11 +166,11 @@ export default function GamificationSettings() {
         </BentoTile>
 
         <BentoTile span="full" tone="plain" title="Level Rewards">
-          <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Hadiah Level — saat user mencapai level tertentu, beri poin + item kosmetik (sekali).</p>
+          <p className="mb-2 text-xs text-muted">Hadiah Level — saat user mencapai level tertentu, beri poin + item kosmetik (sekali).</p>
           <div className="mt-1 space-y-3">
             {levels.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400">No level rewards yet.</p>
+              <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
+                <p className="text-sm text-muted">No level rewards yet.</p>
                 <button type="button" onClick={() => setLevels((ls) => [...ls, emptyLevel()])}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
                   <Plus className="h-4 w-4" /> Add first level reward
@@ -180,11 +180,11 @@ export default function GamificationSettings() {
               <>
                 <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
                   {levels.map((l, i) => (
-                    <div key={i} className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
+                    <div key={i} className="rounded-lg bg-hover/[0.04] p-4">
                       <div className="mb-3 flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Level reward {i + 1}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-muted">Level reward {i + 1}</span>
                         <button type="button" aria-label="Remove level reward" onClick={() => removeLevel(i)}
-                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-500/10">
+                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-line text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-500/10">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -214,7 +214,7 @@ export default function GamificationSettings() {
                   ))}
                 </div>
                 <button type="button" onClick={() => setLevels((ls) => [...ls, emptyLevel()])}
-                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 px-4 text-sm font-semibold text-slate-500 hover:border-slate-400 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500">
+                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 px-4 text-sm font-semibold text-muted hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500">
                   <Plus className="h-4 w-4" /> Add level reward
                 </button>
               </>
@@ -223,11 +223,11 @@ export default function GamificationSettings() {
         </BentoTile>
 
         <BentoTile span="full" tone="plain" title="Achievements">
-          <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Pencapaian — saat kondisi tercapai, beri hadiah (sekali). Centang 'Tier' untuk menjadikannya tingkat peringkat (badge).</p>
+          <p className="mb-2 text-xs text-muted">Pencapaian — saat kondisi tercapai, beri hadiah (sekali). Centang 'Tier' untuk menjadikannya tingkat peringkat (badge).</p>
           <div className="mt-1 space-y-3">
             {achievements.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400">No achievements yet.</p>
+              <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
+                <p className="text-sm text-muted">No achievements yet.</p>
                 <button type="button" onClick={() => setAchievements((as) => [...as, emptyAchiev()])}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
                   <Plus className="h-4 w-4" /> Add first achievement
@@ -237,11 +237,11 @@ export default function GamificationSettings() {
               <>
                 <div className="grid grid-cols-1 gap-3">
                   {achievements.map((a, i) => (
-                    <div key={i} className="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
+                    <div key={i} className="rounded-lg bg-hover/[0.04] p-4">
                       <div className="mb-3 flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Achievement {i + 1}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-muted">Achievement {i + 1}</span>
                         <button type="button" aria-label="Remove achievement" onClick={() => removeAchiev(i)}
-                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-500/10">
+                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-line text-rose-500 hover:bg-rose-50 dark:border-slate-700 dark:hover:bg-rose-500/10">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -301,7 +301,7 @@ export default function GamificationSettings() {
                           {(id) => (
                             <label className="flex items-center gap-2 pt-2 cursor-pointer">
                               <input id={id} type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={!!a.is_tier} onChange={(e) => setAchiev(i, { is_tier: e.target.checked ? 1 : 0 })} />
-                              <span className="text-sm text-slate-600 dark:text-slate-300">Rank tier</span>
+                              <span className="text-sm text-muted">Rank tier</span>
                               <span className={hint}>Jadikan baris ini tingkat peringkat.</span>
                             </label>
                           )}
@@ -311,7 +311,7 @@ export default function GamificationSettings() {
                   ))}
                 </div>
                 <button type="button" onClick={() => setAchievements((as) => [...as, emptyAchiev()])}
-                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 px-4 text-sm font-semibold text-slate-500 hover:border-slate-400 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500">
+                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 px-4 text-sm font-semibold text-muted hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500">
                   <Plus className="h-4 w-4" /> Add achievement
                 </button>
               </>
@@ -320,9 +320,9 @@ export default function GamificationSettings() {
         </BentoTile>
 
         <BentoTile span="full" tone="plain" title="Item Prices">
-          <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">Harga Item — atur harga (poin) tiap item (scene/prop/koleksi). Centang 'Gratis' agar item bebas dipakai semua user.</p>
+          <p className="mb-3 text-xs text-muted">Harga Item — atur harga (poin) tiap item (scene/prop/koleksi). Centang 'Gratis' agar item bebas dipakai semua user.</p>
           {assets.length === 0 ? (
-            <p className="text-sm text-slate-400 dark:text-slate-500">No assets loaded.</p>
+            <p className="text-sm text-muted">No assets loaded.</p>
           ) : (
             <div className="space-y-4">
               {(['Scene', 'Prop', 'Collectible'] as const).map((type) => {
@@ -330,22 +330,22 @@ export default function GamificationSettings() {
                 if (group.length === 0) return null
                 return (
                   <div key={type}>
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{type}</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">{type}</p>
                     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                       {group.map((a) => {
                         const idx = assets.indexOf(a)
                         return (
-                          <div key={a.asset_name} className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2">
+                          <div key={a.asset_name} className="flex items-center gap-2 rounded-xl bg-hover/[0.04] px-3 py-2">
                             <span className="flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-200" title={a.asset_name}>{a.asset_name}</span>
                             <input
                               type="number"
                               inputMode="decimal"
                               min={0}
-                              className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-brand-600 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
+                              className="w-20 rounded-lg border border-line px-2 py-1 text-xs focus:border-brand-600 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
                               value={a.price}
                               onChange={(e) => setAsset(idx, { price: Number(e.target.value) })}
                             />
-                            <label className="flex cursor-pointer items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                            <label className="flex cursor-pointer items-center gap-1 text-xs text-muted">
                               <input
                                 type="checkbox"
                                 className="h-3.5 w-3.5 rounded accent-brand-600"

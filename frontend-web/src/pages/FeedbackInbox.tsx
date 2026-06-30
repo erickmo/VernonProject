@@ -57,7 +57,7 @@ export default function FeedbackInbox() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Feedback</h1>
+      <h1 className="text-2xl font-bold text-ink">Feedback</h1>
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -80,7 +80,7 @@ export default function FeedbackInbox() {
           {items.map((item) => (
             <div
               key={item.name}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
+              className="rounded-lg border border-line bg-surface p-4"
             >
               <div className="flex items-start gap-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -91,10 +91,10 @@ export default function FeedbackInbox() {
                     <span className={pill(STATUS_TONE[item.status] ?? STATUS_TONE.Resolved)}>
                       {item.status}
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{item.submitter}</span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">· {item.at_human}</span>
+                    <span className="text-xs text-muted">{item.submitter}</span>
+                    <span className="text-xs text-muted">· {item.at_human}</span>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-100">
+                  <p className="whitespace-pre-wrap text-sm text-ink">
                     {item.message}
                   </p>
                 </div>

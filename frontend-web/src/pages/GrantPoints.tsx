@@ -129,7 +129,7 @@ export default function GrantPoints() {
             <Field label="Recipient" required>
               {(id) =>
                 isLoading ? (
-                  <Spinner className="h-5 w-5 text-slate-400" />
+                  <Spinner className="h-5 w-5 text-muted" />
                 ) : q.isError ? (
                   <ErrorState onRetry={() => q.refetch()} />
                 ) : (
@@ -160,7 +160,7 @@ export default function GrantPoints() {
                       if (amountError) setAmountError(undefined)
                     }}
                     placeholder="0"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-lg font-semibold text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
+                    className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2.5 text-lg font-semibold text-ink outline-none focus:border-brand-500"
                   />
                 )}
               </Field>
@@ -173,7 +173,7 @@ export default function GrantPoints() {
                     onChange={(e) => setNote(e.target.value)}
                     rows={2}
                     placeholder="Reason for the grant"
-                    className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
+                    className="w-full resize-none rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500"
                   />
                 )}
               </Field>

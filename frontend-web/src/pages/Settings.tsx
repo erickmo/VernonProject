@@ -7,7 +7,7 @@ import { useToast } from '@/components/Toast'
 import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings } from '@/hooks/useData'
 
 const field =
-  'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function Settings() {
   const toast = useToast()
@@ -40,7 +40,7 @@ export default function Settings() {
     return (
       <div className="space-y-5">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <SettingsIcon className="w-6 h-6 text-slate-500" />
+          <SettingsIcon className="w-6 h-6 text-muted" />
           Settings
         </h1>
         <EmptyState
@@ -88,7 +88,7 @@ export default function Settings() {
       className="space-y-6"
     >
       <h1 className="text-2xl font-bold flex items-center gap-2">
-        <SettingsIcon className="w-6 h-6 text-slate-500" />
+        <SettingsIcon className="w-6 h-6 text-muted" />
         Settings
       </h1>
 
@@ -114,7 +114,7 @@ export default function Settings() {
 
         <BentoTile span="md" tone="tint" accent="brand" title="Attendance">
           <div className="mt-3 space-y-4">
-            <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-700">
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Enable attendance</span>
               <input
                 type="checkbox"
@@ -151,7 +151,7 @@ export default function Settings() {
                 )}
               </Field>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-muted">
               Points deducted per minute late / early-leave; flat for absence. 0 = no penalty.
             </p>
           </div>

@@ -20,8 +20,8 @@ function ItemRow({ item, onClick }: { item: DataHealthItem; onClick: () => void 
       onClick={onClick}
       className="w-full text-left flex flex-col gap-0.5 rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
     >
-      <span className="font-medium text-sm text-slate-800 dark:text-slate-100 truncate">{item.to_do}</span>
-      <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+      <span className="font-medium text-sm text-ink truncate">{item.to_do}</span>
+      <span className="text-xs text-muted truncate">
         {[item.group, item.status, item.detail].filter(Boolean).join(' · ')}
       </span>
     </button>
@@ -42,7 +42,7 @@ function Section({
   return (
     <BentoTile span="full" tone="plain">
       <div className="flex items-center gap-3 mb-3">
-        <span className="font-semibold text-slate-800 dark:text-slate-100">{title}</span>
+        <span className="font-semibold text-ink">{title}</span>
         {count > 0 && (
           <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-700 dark:text-red-300">
             {count}
@@ -50,14 +50,14 @@ function Section({
         )}
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">No issues</p>
+        <p className="text-sm text-muted">No issues</p>
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => (
             <ItemRow key={item.name} item={item} onClick={() => onItemClick(item.name)} />
           ))}
           {items.length < count && (
-            <p className="pt-1 text-xs text-slate-400 dark:text-slate-500">
+            <p className="pt-1 text-xs text-muted">
               showing {items.length} of {count}
             </p>
           )}
@@ -102,7 +102,7 @@ export default function DataHealth() {
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-bold flex items-center gap-2">
-        <ShieldAlert className="w-6 h-6 text-slate-500" />
+        <ShieldAlert className="w-6 h-6 text-muted" />
         Data Health
       </h1>
 

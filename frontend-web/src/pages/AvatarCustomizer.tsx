@@ -41,14 +41,14 @@ export default function AvatarCustomizer() {
 
   if (error) return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Customize Avatar</h1>
-      <p className="py-16 text-center text-sm text-slate-400">Could not load avatar data.</p>
+      <h1 className="text-2xl font-bold text-ink">Customize Avatar</h1>
+      <p className="py-16 text-center text-sm text-muted">Could not load avatar data.</p>
     </div>
   )
 
   if (isLoading || !catalog || !draft) return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Customize Avatar</h1>
+      <h1 className="text-2xl font-bold text-ink">Customize Avatar</h1>
       <div className="flex justify-center py-16"><Spinner className="h-8 w-8 text-brand-500" /></div>
     </div>
   )
@@ -149,18 +149,18 @@ export default function AvatarCustomizer() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Customize Avatar</h1>
+        <h1 className="text-2xl font-bold text-ink">Customize Avatar</h1>
         <div className="flex items-center gap-1.5 text-sm">
           <Coins className="h-4 w-4 text-amber-500" />
           <span className="font-semibold text-slate-700 dark:text-slate-200">{catalog.balance.toLocaleString()}</span>
-          <span className="text-slate-400 dark:text-slate-500">pts</span>
+          <span className="text-muted">pts</span>
         </div>
       </div>
 
       <BentoGrid>
         {/* AvatarScene preview — sticky so it stays visible while controls scroll */}
         <BentoTile span="lg" tone="plain" className="min-h-[18rem] sticky top-14 lg:top-4 self-start">
-          <div ref={previewRef} className="relative mx-auto flex aspect-square w-72 max-w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-50 dark:bg-slate-800">
+          <div ref={previewRef} className="relative mx-auto flex aspect-square w-72 max-w-full items-center justify-center overflow-hidden rounded-lg bg-hover/[0.04]">
             <AvatarScene config={draft} assets={catalog.assets} className="h-full w-full" />
           </div>
         </BentoTile>
@@ -178,7 +178,7 @@ export default function AvatarCustomizer() {
                   'rounded-lg px-4 py-2 text-sm font-semibold transition',
                   draft.style === value
                     ? 'bg-brand-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
+                    : 'bg-slate-100 dark:bg-slate-800 text-muted hover:bg-slate-200 dark:hover:bg-slate-700',
                 ].join(' ')}
               >
                 {label}
@@ -193,7 +193,7 @@ export default function AvatarCustomizer() {
             const isNone = isProb && draft.options[slot + 'Probability']?.[0] === '0'
             return (
               <div key={slot} className="mb-5">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                   {slot.replace(/([A-Z])/g, ' $1').trim()}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -239,18 +239,18 @@ export default function AvatarCustomizer() {
 
           {/* Color swatches */}
           {colorSlots.length > 0 && (
-            <div className="mb-5 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+            <div className="mb-5 space-y-4 rounded-xl border border-line dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
               {colorSlots.map((cSlot) => {
                 const isBg = cSlot === 'backgroundColor'
                 const cur = isBg ? bgColor1 : (draft.options[cSlot]?.[0] ?? '')
                 return (
                   <div key={cSlot}>
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                         {cSlot.replace(/([A-Z])/g, ' $1').trim()}
                       </p>
                       {isBg && (
-                        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted">
                           <input
                             type="checkbox"
                             checked={isGradient}
@@ -275,7 +275,7 @@ export default function AvatarCustomizer() {
                             }
                             className={[
                               'h-9 w-9 rounded-full border-2 transition active:scale-95',
-                              active ? 'border-brand-500 scale-110' : 'border-slate-200 dark:border-slate-600',
+                              active ? 'border-brand-500 scale-110' : 'border-line dark:border-slate-600',
                             ].join(' ')}
                             style={{
                               background: isTransparent
@@ -290,7 +290,7 @@ export default function AvatarCustomizer() {
                     </div>
                     {isBg && isGradient && (
                       <div className="mt-3">
-                        <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Gradient end</p>
+                        <p className="mb-2 text-xs text-muted">Gradient end</p>
                         <div className="flex flex-wrap gap-2">
                           {BG_PALETTE.filter(c => c !== 'transparent').map((c) => {
                             const active = bgColor2 === c
@@ -301,7 +301,7 @@ export default function AvatarCustomizer() {
                                 onClick={() => setBgColor2(c)}
                                 className={[
                                   'h-9 w-9 rounded-full border-2 transition active:scale-95',
-                                  active ? 'border-brand-500 scale-110' : 'border-slate-200 dark:border-slate-600',
+                                  active ? 'border-brand-500 scale-110' : 'border-line dark:border-slate-600',
                                 ].join(' ')}
                                 style={{ background: `#${c}` }}
                                 aria-label={c}
@@ -320,7 +320,7 @@ export default function AvatarCustomizer() {
           {/* Scene */}
           {scenes.length > 0 && (
             <div className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Scene</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Scene</p>
               <div className="flex flex-wrap gap-2">
                 <NoneChip active={!draft.scene} onClick={() => setDraft(d => d ? { ...d, scene: null } : d)} />
                 {scenes.map(a => {
@@ -332,7 +332,7 @@ export default function AvatarCustomizer() {
                         onClick={() => setDraft(d => d ? { ...d, scene: d.scene === a.asset_name ? null : a.asset_name } : d)}
                         className={[
                           'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition hover:-translate-y-0.5 active:scale-95',
-                          active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+                          active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-line dark:border-slate-700 bg-surface',
                         ].join(' ')}
                       >
                         <div className="relative h-10 w-10">
@@ -344,7 +344,7 @@ export default function AvatarCustomizer() {
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                        <span className="text-[10px] font-medium text-muted whitespace-nowrap">{a.asset_name}</span>
                       </button>
                       {!a.owned && (
                         <button
@@ -364,7 +364,7 @@ export default function AvatarCustomizer() {
           {/* Props */}
           {assetProps.length > 0 && (
             <div className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Props</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Props</p>
               <div className="flex flex-wrap gap-2">
                 {assetProps.map(a => {
                   const active = (draft.props || []).includes(a.asset_name)
@@ -385,13 +385,13 @@ export default function AvatarCustomizer() {
                         }}
                         className={[
                           'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition hover:-translate-y-0.5 active:scale-95',
-                          active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+                          active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-line dark:border-slate-700 bg-surface',
                         ].join(' ')}
                       >
                         {a.icon
                           ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
                           : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
-                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                        <span className="text-[10px] font-medium text-muted whitespace-nowrap">{a.asset_name}</span>
                         {!a.owned && (
                           <span className="text-[8px] leading-none text-amber-500 flex items-center gap-0.5">
                             <Lock className="h-2.5 w-2.5" />{a.price?.toLocaleString()}
@@ -416,7 +416,7 @@ export default function AvatarCustomizer() {
           {/* Collectibles */}
           {collectibles.length > 0 && (
             <div className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Collectibles</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Collectibles</p>
               <div className="flex flex-wrap gap-2">
                 {collectibles.map(a => {
                   const featured = draft.featured_collectible === a.asset_name
@@ -427,16 +427,16 @@ export default function AvatarCustomizer() {
                         onClick={() => setDraft(d => d ? { ...d, featured_collectible: d.featured_collectible === a.asset_name ? null : a.asset_name } : d)}
                         className={[
                           'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition hover:-translate-y-0.5 active:scale-95',
-                          featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+                          featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-line dark:border-slate-700 bg-surface',
                         ].join(' ')}
                       >
                         {a.icon
                           ? <CollectibleIcon name={a.icon} className="h-8 w-8 text-slate-700 dark:text-slate-200" />
                           : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
                         }
-                        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
+                        <span className="text-[10px] font-medium text-muted whitespace-nowrap">{a.asset_name}</span>
                         {a.owned ? (
-                          <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'].join(' ')}>
+                          <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-muted'].join(' ')}>
                             {featured ? 'Featured' : 'Feature'}
                           </span>
                         ) : (
@@ -501,7 +501,7 @@ function VariantTile({
           'flex flex-col items-center gap-1 rounded-xl border p-1.5 transition hover:-translate-y-0.5 active:scale-95',
           active
             ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15'
-            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+            : 'border-line dark:border-slate-700 bg-surface',
         ].join(' ')}
       >
         <div className="relative">
@@ -513,7 +513,7 @@ function VariantTile({
             </span>
           )}
         </div>
-        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+        <span className="text-[10px] font-medium text-muted whitespace-nowrap">
           {variantLabel(index)}
         </span>
       </button>
@@ -540,7 +540,7 @@ function NoneChip({ active, onClick }: { active: boolean; onClick: () => void })
         'flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-3 py-2 text-xs font-medium transition hover:-translate-y-0.5',
         active
           ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300',
+          : 'border-line dark:border-slate-700 bg-surface text-muted',
       ].join(' ')}
     >
       <span className="whitespace-nowrap">None</span>
