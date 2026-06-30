@@ -43,19 +43,19 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
         </NavLink>
 
         {/* desktop mega menus */}
-        <nav className="ml-2 hidden items-center gap-0.5 lg:flex">
+        <nav className="ml-2 hidden items-center gap-0.5 lg:flex" aria-label="Main">
           {groups.map((g) => <MegaMenu key={g.id} group={g} reviewCount={reviewCount} />)}
         </nav>
 
         <div className="flex-1" />
 
-        <button onClick={onOpenPalette}
-          className="hidden items-center gap-2 rounded-md border border-line px-3 py-1.5 text-sm text-muted hover:bg-hover/[0.04] sm:flex">
+        <button onClick={onOpenPalette} aria-label="Search"
+          className="flex items-center gap-2 rounded-md border border-line px-3 py-1.5 text-sm text-muted hover:bg-hover/[0.04]">
           <Search className="h-4 w-4" />
           <span className="hidden xl:inline">Search…</span>
           <kbd className="hidden xl:inline-flex rounded border border-line px-1.5 text-[10px]">⌘K</kbd>
         </button>
-        <button onClick={onQuickCreate}
+        <button onClick={onQuickCreate} aria-label="New"
           className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-2.5 py-1.5 text-sm font-medium text-white hover:bg-brand-700">
           <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New</span>
         </button>
@@ -78,7 +78,7 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
             className="absolute inset-y-0 left-0 w-[min(86vw,20rem)] overflow-y-auto bg-canvas p-4">
             <div className="mb-4 flex items-center justify-between">
               <span className="flex items-center gap-2 font-semibold text-ink"><FolderKanban className="h-5 w-5 text-brand-600" /> Vernon</span>
-              <button onClick={() => setSheet(false)} className="p-1.5 text-muted"><X className="h-5 w-5" /></button>
+              <button onClick={() => setSheet(false)} aria-label="Close" className="p-1.5 text-muted"><X className="h-5 w-5" /></button>
             </div>
             <nav aria-label="Main navigation">
               {groups.map((g) => (
@@ -121,7 +121,7 @@ function AvatarMenu({
   const ref = useModalA11y(open, () => setOpen(false))
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} aria-label="Account" className="rounded-full">
+      <button onClick={() => setOpen((o) => !o)} aria-label="Account" aria-haspopup="menu" aria-expanded={open} className="rounded-full">
         <Avatar name={name} image={image} config={config} size={30} />
       </button>
       {open && (

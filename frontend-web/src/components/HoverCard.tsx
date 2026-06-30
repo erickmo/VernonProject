@@ -26,7 +26,7 @@ export function HoverCard({
   }
 
   return (
-    <span ref={ref} className={clsx('inline-flex', className)} onMouseEnter={show} onMouseLeave={hide}>
+    <span ref={ref} className={clsx('inline-flex', className)} onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}>
       {children}
       {open && (
         <div

@@ -104,13 +104,18 @@ export function CommandPalette({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search pages, projects, todos, people…"
+            aria-label="Search pages, projects, todos, people"
+            role="combobox"
+            aria-expanded={filtered.length > 0}
+            aria-controls="command-palette-list"
+            aria-activedescendant={filtered[active] ? `cmd-opt-${active}` : undefined}
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted"
           />
-          <kbd className="hidden sm:block rounded border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+          <kbd className="hidden sm:block rounded border border-line px-1.5 py-0.5 text-[10px] font-medium text-muted">
             esc
           </kbd>
         </div>
-        <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-2">
+        <div ref={listRef} id="command-palette-list" role="listbox" className="max-h-[50vh] overflow-y-auto py-2">
           {filtered.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-muted">No matches</div>
           ) : (
@@ -119,13 +124,16 @@ export function CommandPalette({
               return (
                 <button
                   key={c.id}
+                  id={`cmd-opt-${i}`}
+                  role="option"
+                  aria-selected={i === active}
                   data-active={i === active}
                   onClick={() => go(c)}
                   onMouseEnter={() => setActive(i)}
                   className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${
                     i === active
                       ? 'bg-brand-50 dark:bg-brand-600/15 text-brand-700 dark:text-brand-200'
-                      : 'text-slate-700 dark:text-slate-200'
+                      : 'text-ink'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0 text-muted" />
