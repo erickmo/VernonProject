@@ -38,7 +38,7 @@ import { Fab } from '@/components/Fab'
 import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { byDeadlineAsc, byDeadlineDesc, byEstimatedAsc, formatEstimate, formatEstimateRatio } from '@/lib/format'
+import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, byEstimatedAsc, formatEstimate, formatEstimateRatio } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
 function greeting() {
@@ -200,6 +200,9 @@ export default function Today() {
     return [...byId.values()].sort(byEstimatedAsc)
   })()
   const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
+
+  // "Today's plan": only todos I've allocated minutes to today, fewest-first.
+  const plannedTodos = all.filter((t) => (t.today_allocation || 0) > 0).slice().sort(byAllocationAsc)
 
   // Plan-my-day candidates: everything due today + overdue, plus anything already
   // allocated to today (even if its deadline is future) so re-planning is complete.
@@ -449,6 +452,19 @@ export default function Today() {
                     </span>
                     <ChevronRight className="h-5 w-5 text-brand-400" />
                   </button>
+                  {plannedTodos.length > 0 && (
+                    <div className="mt-4">
+                      <div className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
+                        <Sparkles className="h-3.5 w-3.5 text-brand-500" />
+                        Today's plan · {plannedTodos.length} · {formatEstimate(plannedTodayMin)}
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        {plannedTodos.map((t) => (
+                          <TodoCard key={t.name} todo={t} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {(() => {
                     const groups: { key: GroupKey; label: string; todos: ProjectItem[] }[] = [
                       { key: 'today', label: 'Today', todos: todayTodos },
