@@ -208,3 +208,12 @@ export function byDeadlineDesc(
   if (!b.deadline) return -1
   return b.deadline.localeCompare(a.deadline)
 }
+
+/** Sort by today's allocated minutes ascending (fewest first); estimate as tiebreak. */
+export function byAllocationAsc(
+  a: { today_allocation: number; estimated: number; deadline: string | null },
+  b: { today_allocation: number; estimated: number; deadline: string | null },
+): number {
+  const d = (a.today_allocation || 0) - (b.today_allocation || 0)
+  return d !== 0 ? d : byEstimatedAsc(a, b)
+}
