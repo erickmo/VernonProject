@@ -6,6 +6,7 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, canManageAttendance, useAttendanceReport } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 
 const STATUSES = ['', 'Present', 'Late', 'EarlyLeave', 'Late+EarlyLeave', 'Absent', 'Excused-WFH', 'Excused-Leave', 'Holiday', 'OffDay']
 
@@ -14,6 +15,9 @@ function isoDaysAgo(n: number): string {
   d.setDate(d.getDate() - n)
   return d.toISOString().slice(0, 10)
 }
+
+// ponytail: FALLBACK — columns come from the API at runtime, so DataTable (static Column<T>) can't be used here
+const inputCls = 'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink'
 
 export default function AttendanceReport() {
   const navigate = useNavigate()
@@ -53,31 +57,30 @@ export default function AttendanceReport() {
   }
 
   if (blocked) return null
-  const inputCls = 'rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm'
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Attendance Report</h1>
+    <Page>
+      <PageHeader title="Attendance Report" />
 
       <BentoGrid>
         <BentoTile span="full" tone="plain">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">From
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted">From
               <input type="date" className={inputCls} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">To
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted">To
               <input type="date" className={inputCls} value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">Employee
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Employee
               <input className={inputCls} placeholder="user id (optional)" value={employee} onChange={(e) => setEmployee(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">Brand
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Brand
               <select className={inputCls} value={brand} onChange={(e) => setBrand(e.target.value)}>
                 <option value="">All brands</option>
                 {brands.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-slate-500">Status
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Status
               <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
                 {STATUSES.map((s) => <option key={s} value={s}>{s || 'All statuses'}</option>)}
               </select>
@@ -108,16 +111,20 @@ export default function AttendanceReport() {
           ) : data.rows.length === 0 ? (
             <EmptyState icon={Download} title="No rows" subtitle="No attendance for these filters." />
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <tr>{data.columns.map((c) => <th key={c.fieldname} className="px-4 py-2.5">{c.label}</th>)}</tr>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead className="sticky top-0 z-10 bg-canvas">
+                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                    {data.columns.map((c) => (
+                      <th key={c.fieldname} className="px-3 py-2 font-medium">{c.label}</th>
+                    ))}
+                  </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody>
                   {data.rows.map((r, i) => (
-                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <tr key={i} className="border-b border-line/70 last:border-0 hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]">
                       {data.columns.map((c) => (
-                        <td key={c.fieldname} className="whitespace-nowrap px-4 py-2.5 text-slate-700 dark:text-slate-200">
+                        <td key={c.fieldname} className="whitespace-nowrap px-3 py-2 align-middle text-ink">
                           {String(r[c.fieldname] ?? '—')}
                         </td>
                       ))}
@@ -129,6 +136,6 @@ export default function AttendanceReport() {
           )}
         </BentoTile>
       </BentoGrid>
-    </div>
+    </Page>
   )
 }
