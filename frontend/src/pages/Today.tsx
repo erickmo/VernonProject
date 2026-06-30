@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import {
   AlertCircle,
   PartyPopper,
+  Pause,
   SearchX,
   User,
   KeyRound,
@@ -144,6 +145,15 @@ export default function Today() {
     () => (data ? [...data.overdue, ...data.due_today, ...data.upcoming] : []),
     [data],
   )
+  // Waiting todos are parked — pulled off the active radar into their own
+  // section. `active` is everything that isn't waiting; it drives the plan,
+  // group tabs, counts and filters. `waitingTodos` is the parked list, shown
+  // in full regardless of deadline / today-allocation.
+  const activeTodos = useMemo(() => all.filter((t) => !t.is_waiting), [all])
+  const waitingTodos = useMemo(
+    () => all.filter((t) => t.is_waiting).slice().sort(byDeadlineAsc),
+    [all],
+  )
 
   // Lens project sets
   const owned = (projects ?? []).filter((p) => p.is_owner)
@@ -153,7 +163,7 @@ export default function Today() {
   const leadChecks = (data?.review ?? []).filter((t) => t.status_key === 'done').length
 
   const lensCount: Record<Lens, number> = {
-    me: all.length,
+    me: activeTodos.length,
     owned: owned.length,
     led: led.length,
     in: memberIn.length,
@@ -161,29 +171,32 @@ export default function Today() {
 
   // Today progress ring — minutes done vs planned today (completed + due-today estimates; overdue excluded).
   const completedMin = data?.counts.completed_minutes_today ?? 0
-  const dueMin = data ? data.due_today.reduce((s, t) => s + (t.estimated || 0), 0) : 0
+  // Due-today metrics exclude waiting (parked) — a parked task isn't "to go".
+  const dueTodayActive = useMemo(() => (data ? data.due_today.filter((t) => !t.is_waiting) : []), [data])
+  const dueTodayCount = dueTodayActive.length
+  const dueMin = dueTodayActive.reduce((s, t) => s + (t.estimated || 0), 0)
   const todayTotalMin = completedMin + dueMin
   const pct = todayTotalMin ? completedMin / todayTotalMin : 1
 
   // "For me" filtering
-  const statusCount = (k: StatusKey) => all.filter((t) => t.status_key === k).length
+  const statusCount = (k: StatusKey) => activeTodos.filter((t) => t.status_key === k).length
   const dimensions = useMemo(
     () => [
-      { key: 'project', label: 'Project', options: buildOptions(all, (t) => t.project, (t) => t.project_name) },
-      { key: 'brand', label: 'Brand', options: buildOptions(all, (t) => t.brand, (t) => t.brand) },
-      { key: 'owner', label: 'Project Owner', options: buildOptions(all, (t) => t.project_owner, (t) => t.project_owner_name) },
-      { key: 'leader', label: 'Project Leader', options: buildOptions(all, (t) => t.project_leader, (t) => t.project_leader_name) },
+      { key: 'project', label: 'Project', options: buildOptions(activeTodos, (t) => t.project, (t) => t.project_name) },
+      { key: 'brand', label: 'Brand', options: buildOptions(activeTodos, (t) => t.brand, (t) => t.brand) },
+      { key: 'owner', label: 'Project Owner', options: buildOptions(activeTodos, (t) => t.project_owner, (t) => t.project_owner_name) },
+      { key: 'leader', label: 'Project Leader', options: buildOptions(activeTodos, (t) => t.project_leader, (t) => t.project_leader_name) },
       { key: 'estimate', label: 'Estimated time', options: ESTIMATE_OPTIONS },
-      { key: 'waiting', label: 'Waiting', options: [{ value: 'only', label: 'Only waiting' }, { value: 'hide', label: 'Hide waiting' }] },
     ],
-    [all],
+    [activeTodos],
   )
-  const advCount = ['project', 'brand', 'owner', 'leader', 'estimate', 'waiting'].filter((k) => filters[k]).length
+  const advCount = ['project', 'brand', 'owner', 'leader', 'estimate'].filter((k) => filters[k]).length
+  // Buckets exclude waiting — parked todos live only in the Waiting section.
   const filtered = data
     ? {
-        overdue: applyProjectItemFilters(data.overdue, filters).slice().sort(byDeadlineDesc),
-        due_today: applyProjectItemFilters(data.due_today, filters).slice().sort(byDeadlineAsc),
-        upcoming: applyProjectItemFilters(data.upcoming, filters).slice().sort(byDeadlineAsc),
+        overdue: applyProjectItemFilters(data.overdue.filter((t) => !t.is_waiting), filters).slice().sort(byDeadlineDesc),
+        due_today: applyProjectItemFilters(dueTodayActive, filters).slice().sort(byDeadlineAsc),
+        upcoming: applyProjectItemFilters(data.upcoming.filter((t) => !t.is_waiting), filters).slice().sort(byDeadlineAsc),
       }
     : null
 
@@ -203,15 +216,17 @@ export default function Today() {
   const plannedTodayMin = todayTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   // "Today's plan": only todos I've allocated minutes to today, fewest-first.
-  const plannedTodos = all.filter((t) => (t.today_allocation || 0) > 0).slice().sort(byAllocationAsc)
+  // Waiting (parked) todos are excluded — a parked task isn't part of the plan.
+  const plannedTodos = activeTodos.filter((t) => (t.today_allocation || 0) > 0).slice().sort(byAllocationAsc)
 
   // Plan-my-day candidates: everything due today + overdue, plus anything already
   // allocated to today (even if its deadline is future) so re-planning is complete.
+  // Waiting todos are excluded — you don't plan a parked task.
   const planCandidates = useMemo(() => {
     if (!data) return []
     const byId = new Map<string, ProjectItem>()
-    for (const t of [...data.due_today, ...data.overdue]) byId.set(t.name, t)
-    for (const t of data.upcoming) if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
+    for (const t of [...data.due_today, ...data.overdue]) if (!t.is_waiting) byId.set(t.name, t)
+    for (const t of data.upcoming) if ((t.today_allocation || 0) > 0 && !t.is_waiting) byId.set(t.name, t)
     return [...byId.values()]
   }, [data])
 
@@ -290,7 +305,7 @@ export default function Today() {
                     {data.counts.completed_today} done
                     {data.counts.completed_today > 0 && (
                       <PartyPopper aria-hidden className="mx-1 inline-block h-5 w-5 animate-wiggle align-[-0.2em] text-amber-200" />
-                    )}{' '}· {data.counts.due_today} to go
+                    )}{' '}· {dueTodayCount} to go
                   </p>
                   {todayTotalMin > 0 ? (
                     <p className="text-xs font-semibold text-white/85">
@@ -308,7 +323,7 @@ export default function Today() {
                         onClick={goOverdue}
                         className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold active:scale-95"
                       >
-                        <AlertCircle className="h-3 w-3" /> {data.counts.overdue} waiting
+                        <AlertCircle className="h-3 w-3" /> {data.counts.overdue} overdue
                       </button>
                     )}
                     {data.counts.review > 0 && (
@@ -466,6 +481,19 @@ export default function Today() {
                       </div>
                     </div>
                   )}
+                  {waitingTodos.length > 0 && (
+                    <div className="mt-4">
+                      <div className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
+                        <Pause className="h-3.5 w-3.5 text-yellow-500" />
+                        Waiting · {waitingTodos.length}
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        {waitingTodos.map((t) => (
+                          <TodoCard key={t.name} todo={t} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {(() => {
                     const groups: { key: GroupKey; label: string; todos: ProjectItem[] }[] = [
                       { key: 'today', label: 'Today', todos: todayTodos },
@@ -516,7 +544,7 @@ export default function Today() {
                               <TodoCard key={t.name} todo={t} />
                             ))}
                           </div>
-                        ) : all.length ? (
+                        ) : activeTodos.length ? (
                           <EmptyState icon={SearchX} title={`Nothing ${active.label.toLowerCase()}`} subtitle="Peek at another tab, or clear the filters." />
                         ) : (
                           <EmptyState icon={PartyPopper} title="All caught up!" subtitle="Nothing on your plate right now. Go you." />

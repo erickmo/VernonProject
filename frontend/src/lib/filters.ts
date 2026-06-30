@@ -52,7 +52,6 @@ export function applyProjectItemFilters(list: ProjectItem[], f: Record<string, s
       (!f.brand || t.brand === f.brand) &&
       (!f.owner || t.project_owner === f.owner) &&
       (!f.leader || t.project_leader === f.leader) &&
-      (!f.waiting || (f.waiting === 'only' ? t.is_waiting : !t.is_waiting)) &&
       matchEstimate(f.estimate || '', t.estimated),
   )
 }
