@@ -7,10 +7,11 @@ import { ErrorState, Skeleton, CardGridSkeleton } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { FilterButton, activeFilterCount, type FilterDimension, type FilterValue } from '@/components/FilterSheet'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { formatNumber, formatEstimateRatio } from '@/lib/format'
+import { formatNumber, formatEstimateRatio, formatEstimate, byAllocationAsc } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { CheckCircle2, ShieldCheck, CheckCheck, FolderKanban } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, CheckCheck, FolderKanban, Sparkles } from 'lucide-react'
+import { PlanDayDrawer } from '@web/components/PlanDayDrawer'
 import type { ProjectItem } from '@/lib/types'
 
 // Rebuilt locally — mobile's Ring is inline in its Today.tsx and not importable
@@ -63,6 +64,7 @@ export default function Today() {
   // FilterButton does NOT forwardRef — anchor the Popover via a wrapping span
   const filterRef = useRef<HTMLSpanElement>(null)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [planOpen, setPlanOpen] = useState(false)
 
   const allTasks: ProjectItem[] = useMemo(() => {
     const d = dash.data
@@ -83,6 +85,22 @@ export default function Today() {
   ], [allTasks])
 
   const visible = useMemo(() => applyProjectItemFilters(allTasks, filters), [allTasks, filters])
+
+  // Plan-my-day candidates (mobile parity): due-today + overdue + anything
+  // already allocated today. plannedTodos = today's plan, fewest-minutes-first.
+  const planCandidates = useMemo(() => {
+    const d = dash.data
+    if (!d) return []
+    const byId = new Map<string, ProjectItem>()
+    for (const t of [...d.due_today, ...d.overdue]) byId.set(t.name, t)
+    for (const t of d.upcoming) if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
+    return [...byId.values()]
+  }, [dash.data])
+  const plannedTodos = useMemo(
+    () => allTasks.filter((t) => (t.today_allocation || 0) > 0).slice().sort(byAllocationAsc),
+    [allTasks],
+  )
+  const plannedTodayMin = plannedTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
   if (!dash.data) {
     return dash.isError ? (
@@ -203,15 +221,40 @@ export default function Today() {
         </BentoTile>
 
         {lens === 'mine' ? (
-          groups.map((g) => (
-            <BentoTile key={g.title} span="md" tone="plain" title={`${g.title} · ${g.items.length}`}>
+          <>
+            <BentoTile
+              span="full"
+              tone="plain"
+              title={`Today's plan · ${plannedTodos.length} · ${formatEstimate(plannedTodayMin)}`}
+              actions={
+                <button
+                  onClick={() => setPlanOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+                >
+                  <Sparkles className="h-4 w-4" /> Plan my day
+                </button>
+              }
+            >
               <div className="space-y-2">
-                {g.items.length === 0
-                  ? <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">Nothing here</div>
-                  : g.items.map((t) => <TodoCard key={t.name} todo={t} showProject />)}
+                {plannedTodos.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">
+                    Nothing planned for today yet — hit "Plan my day".
+                  </div>
+                ) : (
+                  plannedTodos.map((t) => <TodoCard key={t.name} todo={t} showProject />)
+                )}
               </div>
             </BentoTile>
-          ))
+            {groups.map((g) => (
+              <BentoTile key={g.title} span="md" tone="plain" title={`${g.title} · ${g.items.length}`}>
+                <div className="space-y-2">
+                  {g.items.length === 0
+                    ? <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">Nothing here</div>
+                    : g.items.map((t) => <TodoCard key={t.name} todo={t} showProject />)}
+                </div>
+              </BentoTile>
+            ))}
+          </>
         ) : (
           <>
             {lens === 'owned' && ownerApprovals > 0 && (
@@ -244,6 +287,7 @@ export default function Today() {
       {lens === 'mine' && visible.length === 0 && (
         <EmptyState icon={CheckCircle2} title="All clear" subtitle="No tasks match." />
       )}
+      <PlanDayDrawer open={planOpen} onClose={() => setPlanOpen(false)} candidates={planCandidates} />
     </div>
   )
 }
