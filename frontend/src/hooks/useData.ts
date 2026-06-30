@@ -802,7 +802,10 @@ export const useLeaderboard = (period: string, brand: string | null, dimension =
   })
 
 export const useTeamWall = () =>
-  useQuery({ queryKey: keys.teamWall, queryFn: () => mobileApi.getTeamWall() as Promise<TeamWallResponse> })
+  // refetchOnMount 'always': the wall is visited rarely but must reflect the
+  // latest avatars/config each time; a stale cache here showed old user_image
+  // snapshots after avatar fixes. Pair with pull-to-refresh on the screen.
+  useQuery({ queryKey: keys.teamWall, queryFn: () => mobileApi.getTeamWall() as Promise<TeamWallResponse>, refetchOnMount: 'always' })
 
 export const useMarketplace = () =>
   useQuery({ queryKey: keys.marketplace, queryFn: () => mobileApi.getMarketplace() as Promise<MarketplaceData> })
