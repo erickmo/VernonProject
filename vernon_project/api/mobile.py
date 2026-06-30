@@ -386,6 +386,7 @@ def _fetch_todos(project_names, include_cancelled=False):
 		SELECT
 			t.name, t.to_do, t.status, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
+			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
 			t.ongoing, t.notes, t.is_recurring,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
@@ -438,7 +439,7 @@ def get_project_gantt(project):
 			"start": start,
 			"end": end,
 			"statusKey": skey,
-			"overdue": bool(dl and skey != "completed" and getdate(dl) < getdate(nowdate())),
+			"overdue": bool(dl and skey != "completed" and not r.get("is_waiting") and getdate(dl) < getdate(nowdate())),
 			"sub": (name_map.get(r["assigned_to"]) or {}).get("full_name") or r.get("assigned_to"),
 		})
 	out = []
@@ -482,6 +483,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 	overdue = bool(
 		row["deadline"]
 		and skey != "completed"
+		and not row.get("is_waiting")
 		and getdate(row["deadline"]) < getdate(nowdate())
 	)
 	# Phase approval deadlines fire as overdue only while the task is actually
@@ -509,6 +511,10 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
 		"deadline_human": _humanize_date(row["deadline"]),
 		"is_overdue": overdue,
+		"is_waiting": bool(row.get("is_waiting")),
+		"waiting_reason": row.get("waiting_reason") or None,
+		"waiting_since": str(row["waiting_since"]) if row.get("waiting_since") else None,
+		"waiting_by_name": (name_map.get(row.get("waiting_by"), {}) or {}).get("full_name") or row.get("waiting_by"),
 		"leader_deadline": str(row["leader_deadline"]) if row.get("leader_deadline") else None,
 		"leader_deadline_human": _humanize_date(row.get("leader_deadline")),
 		"owner_deadline": str(row["owner_deadline"]) if row.get("owner_deadline") else None,
@@ -589,8 +595,10 @@ def _shape_item_row(row, user, name_map):
 		"deadline_human": _humanize_date(row["deadline"]),
 		"is_overdue": bool(
 			row["deadline"] and skey != "completed"
+			and not row.get("is_waiting")
 			and getdate(row["deadline"]) < getdate(nowdate())
 		),
+		"is_waiting": bool(row.get("is_waiting")),
 		"assigned_to": row["assigned_to"],
 		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
 	}
@@ -777,7 +785,7 @@ def get_projects():
 			s["done"] += 1
 			s["minutes_done"] += est
 		else:
-			if r["deadline"] and getdate(r["deadline"]) < today:
+			if r["deadline"] and not r.get("is_waiting") and getdate(r["deadline"]) < today:
 				s["overdue"] += 1
 		if skey in ("done", "checked"):
 			s["review"] += 1
@@ -1246,7 +1254,7 @@ def get_project_item(project_item):
 		"Project Team", filters={"parent": r["project"]}, fields=["user"], limit_page_length=0
 	)
 	team_emails = {tr["user"] for tr in team_rows}
-	emails = {r["assigned_to"], r["developed_by"], r["tested_by"], r["completed_by"]} | team_emails
+	emails = {r["assigned_to"], r["developed_by"], r["tested_by"], r["completed_by"], r.get("waiting_by")} | team_emails
 	name_map = _user_name_map(emails)
 	shaped = _shape_todo(r, user, name_map, include_notes=True)
 	shaped["can_edit_notes"] = user in (

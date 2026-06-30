@@ -127,6 +127,7 @@ def notify_due_todos():
         SELECT name, to_do, assigned_to, deadline
         FROM `tabProject Todo`
         WHERE status LIKE %(planned)s
+          AND is_waiting = 0
           AND assigned_to IS NOT NULL AND assigned_to != ''
           AND deadline IS NOT NULL
           AND deadline <= %(today)s
@@ -190,6 +191,7 @@ def notify_comeback_nudge():
         SELECT assigned_to, name, to_do, estimated
         FROM `tabProject Todo`
         WHERE status LIKE %(planned)s
+          AND is_waiting = 0
           AND assigned_to IS NOT NULL AND assigned_to != ''
         ORDER BY assigned_to, (estimated IS NULL OR estimated = 0), estimated ASC, deadline ASC
         """,
