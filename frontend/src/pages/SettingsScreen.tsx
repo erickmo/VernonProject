@@ -17,6 +17,7 @@ export default function SettingsScreen() {
   const save = useSaveAppSettings()
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<number>(0)
+  const [toleranceMinutes, setToleranceMinutes] = useState<number>(0)
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
   const [graceMinutes, setGraceMinutes] = useState<number>(0)
@@ -27,6 +28,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (!loaded) return
     setMaxEstimatedMinutes(loaded.max_estimated_minutes)
+    setToleranceMinutes(loaded.under_occupied_tolerance_minutes)
     setAttendanceEnabled(!!loaded.attendance_enabled)
     setQrValiditySeconds(loaded.qr_validity_seconds)
     setGraceMinutes(loaded.attendance_grace_minutes)
@@ -55,6 +57,7 @@ export default function SettingsScreen() {
     save.mutate(
       {
         max_estimated_minutes: maxEstimatedMinutes,
+        under_occupied_tolerance_minutes: toleranceMinutes,
         attendance_enabled: attendanceEnabled ? 1 : 0,
         qr_validity_seconds: qrValiditySeconds,
         attendance_grace_minutes: graceMinutes,
@@ -94,6 +97,16 @@ export default function SettingsScreen() {
           </label>
           {num(maxEstimatedMinutes, setMaxEstimatedMinutes)}
           <p className="text-xs text-slate-500 dark:text-slate-400">0 = no limit</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Under-occupied tolerance (min)
+          </label>
+          {num(toleranceMinutes, setToleranceMinutes, '60')}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Flag a day under (min daily − this) in the Under-Occupied report.
+          </p>
         </div>
 
         <div className="mt-2 border-t border-paper-edge pt-4 dark:border-slate-700">

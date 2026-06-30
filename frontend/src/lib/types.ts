@@ -575,6 +575,7 @@ export interface DataHealth {
 
 export interface AppSettings {
   max_estimated_minutes: number
+  under_occupied_tolerance_minutes: number
   attendance_enabled: number
   qr_validity_seconds: number
   attendance_grace_minutes: number

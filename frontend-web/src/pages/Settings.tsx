@@ -16,6 +16,7 @@ export default function Settings() {
   const save = useSaveAppSettings()
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<string>('0')
+  const [toleranceMinutes, setToleranceMinutes] = useState<string>('0')
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
@@ -26,6 +27,7 @@ export default function Settings() {
   useEffect(() => {
     if (!loaded) return
     setMaxEstimatedMinutes(String(loaded.max_estimated_minutes))
+    setToleranceMinutes(String(loaded.under_occupied_tolerance_minutes))
     setAttendanceEnabled(!!loaded.attendance_enabled)
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
@@ -65,6 +67,7 @@ export default function Settings() {
     save.mutate(
       {
         max_estimated_minutes: n(maxEstimatedMinutes),
+        under_occupied_tolerance_minutes: n(toleranceMinutes),
         attendance_enabled: attendanceEnabled ? 1 : 0,
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
@@ -93,7 +96,7 @@ export default function Settings() {
       </h1>
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="slate" title="Max Estimated Minutes">
+        <BentoTile span="sm" tone="tint" accent="slate" title="Estimate Limits">
           <div className="mt-3 space-y-4">
             <Field label="Max estimated minutes (0 = no limit)">
               {(id) => (
@@ -106,6 +109,20 @@ export default function Settings() {
                   value={maxEstimatedMinutes}
                   onChange={(e) => setMaxEstimatedMinutes(e.target.value)}
                   placeholder="0"
+                />
+              )}
+            </Field>
+            <Field label="Under-occupied tolerance (min)">
+              {(id) => (
+                <input
+                  id={id}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className={field}
+                  value={toleranceMinutes}
+                  onChange={(e) => setToleranceMinutes(e.target.value)}
+                  placeholder="60"
                 />
               )}
             </Field>
