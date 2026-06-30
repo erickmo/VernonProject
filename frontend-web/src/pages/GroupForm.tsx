@@ -22,7 +22,7 @@ import {
 import type { GroupLevel, ScoringGroupPayload } from '@/lib/types'
 
 const field =
-  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee' | 'Leader' }[] = [
   { key: 'late_penalty', label: 'Late penalty % / day', group: 'Assignee' },
@@ -382,7 +382,7 @@ export default function GroupForm() {
                         <input
                           type="number"
                           inputMode="decimal"
-                          className="w-16 shrink-0 rounded-xl border border-line px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                          className="w-16 shrink-0 rounded-xl border border-line px-1.5 py-2 text-center text-sm text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
                           value={String(form[w.key] as number)}
                           onChange={(e) => setNum(w.key, e.target.value)}
                         />
@@ -398,7 +398,7 @@ export default function GroupForm() {
               <input
                 type="number"
                 inputMode="decimal"
-                className="w-20 shrink-0 rounded-xl border border-line px-1.5 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                className="w-20 shrink-0 rounded-xl border border-line px-1.5 py-2 text-center text-sm text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
                 value={String(form.base_rate_per_minute)}
                 onChange={(e) => setNum('base_rate_per_minute', e.target.value)}
               />
@@ -419,7 +419,7 @@ export default function GroupForm() {
                     {/* Type header: editable name + remove-type */}
                     <div className="mb-2 flex items-center gap-2">
                       <input
-                        className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 focus:border-brand-600 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+                        className="min-w-0 flex-1 rounded-xl border border-line px-3 py-2 text-sm font-semibold text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
                         value={type_name}
                         onChange={(e) => renameType(type_name, e.target.value)}
                         placeholder="Type name"
@@ -455,7 +455,7 @@ export default function GroupForm() {
                           <input
                             type="number"
                             inputMode="decimal"
-                            className="w-16 shrink-0 rounded-xl border border-line px-2 py-2 text-center text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                            className="w-16 shrink-0 rounded-xl border border-line px-2 py-2 text-center text-sm text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
                             value={String(l.difficulty_percent)}
                             onChange={(e) => setLevelDifficulty(l._key, e.target.value === '' ? 0 : Number(e.target.value))}
                             placeholder="Difficulty %"

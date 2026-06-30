@@ -7,7 +7,7 @@ import { useToast } from '@/components/Toast'
 import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings } from '@/hooks/useData'
 
 const field =
-  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 export default function Settings() {
   const toast = useToast()

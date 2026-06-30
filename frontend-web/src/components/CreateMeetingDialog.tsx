@@ -54,7 +54,7 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
 
   if (!open) return null
   const field =
-    'w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100'
+    'w-full rounded-lg border border-line px-3 py-2 text-sm text-ink bg-hover/[0.04]'
   const options = (invitable.data?.users ?? []).map((u) => ({
     value: u.user,
     label: u.full_name || u.user,

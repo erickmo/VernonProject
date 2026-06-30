@@ -101,7 +101,7 @@ export default function GiftPoints() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search users"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-line bg-hover/[0.04] text-sm text-ink focus:border-brand-600 focus:outline-none"
               />
             </div>
 
@@ -212,7 +212,7 @@ export default function GiftPoints() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="Say something nice"
-                className="w-full resize-none rounded-lg border border-line bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-brand-500"
+                className="w-full resize-none rounded-lg border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500"
               />
             </label>
 

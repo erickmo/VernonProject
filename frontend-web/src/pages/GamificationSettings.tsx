@@ -9,7 +9,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings, useAvatarCatalog } from '@/hooks/useData'
 
 const field =
-  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 type LevelRow = { level: string; reward_points: string; reward_asset: string }
 type AchievRow = { code: string; title: string; icon: string; condition: string; threshold: string; reward_points: string; reward_asset: string; is_tier: number; color: string }
@@ -341,7 +341,7 @@ export default function GamificationSettings() {
                               type="number"
                               inputMode="decimal"
                               min={0}
-                              className="w-20 rounded-lg border border-line px-2 py-1 text-xs focus:border-brand-600 focus:outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
+                              className="w-20 rounded-lg border border-line px-2 py-1 text-xs text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
                               value={a.price}
                               onChange={(e) => setAsset(idx, { price: Number(e.target.value) })}
                             />

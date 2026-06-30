@@ -220,7 +220,7 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
         onBlur={commit}
         rows={4}
         placeholder="Add a quick note about your progress…"
-        className="w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-hover/[0.04] p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
+        className="w-full resize-none rounded-xl border border-line bg-hover/[0.04] p-3 text-sm leading-relaxed text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100"
       />
       <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-muted">
         {save.isPending ? (
@@ -254,7 +254,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
 
   const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
   const field =
-    'rounded-xl border border-slate-200 dark:border-slate-700 bg-surface text-ink px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none dark:placeholder-slate-500'
+    'rounded-xl border border-line bg-hover/[0.04] text-ink px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none placeholder:text-muted'
 
   const addRow = () => setRows((r) => [...r, { date: '', minutes: 0, note: '' }])
   const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
@@ -460,7 +460,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   }
 
   const fieldCls =
-    'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
+    'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
 
   return (
     <div className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">

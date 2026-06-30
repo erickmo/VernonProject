@@ -21,7 +21,7 @@ import { keys, useBoot, useFormOptions } from '@/hooks/useData'
 import type { PersonalNote, PersonalNoteItem, PersonalNoteShare } from '@/lib/types'
 
 const field =
-  'w-full rounded-xl border border-line px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
+  'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 // Canonical snapshot used to detect "nothing changed since last save".
 const serialize = (t: string, b: string, its: PersonalNoteItem[]) =>
@@ -522,7 +522,7 @@ function SharePicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search users"
-            className="w-full rounded-lg border border-line dark:border-slate-700 bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 dark:text-slate-100"
+            className="w-full rounded-lg border border-line bg-hover/[0.04] py-2 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500"
           />
         </div>
         <button onClick={onCancel} className="px-2 text-sm font-medium text-muted" aria-label="Cancel">
