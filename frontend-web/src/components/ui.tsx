@@ -8,7 +8,7 @@ import { Popover } from '@web/components/overlays/Popover'
 
 /** Animated placeholder block for loading states. */
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/70 ${className}`} />
+  return <div className={`animate-pulse rounded-md bg-line ${className}`} />
 }
 
 /** Loading placeholder for card-grid pages (Projects, Marketplace, …). */
@@ -43,12 +43,12 @@ export function ErrorState({
       <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-lg bg-surface">
         <AlertTriangle className="h-7 w-7 text-amber-500" />
       </div>
-      <p className="font-semibold text-slate-700 dark:text-slate-200">{title}</p>
+      <p className="font-semibold text-ink">{title}</p>
       <p className="max-w-xs text-sm text-muted">{subtitle}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
+          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:bg-hover/[0.04]"
         >
           <RotateCw className="w-4 h-4" /> Retry
         </button>
@@ -125,9 +125,8 @@ const BTN_BASE =
 
 const BTN_VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700',
-  secondary:
-    'bg-surface text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700',
-  ghost: 'text-muted hover:bg-slate-100 dark:hover:bg-slate-800',
+  secondary: 'bg-surface text-ink border border-line hover:bg-hover/[0.04]',
+  ghost: 'text-muted hover:bg-hover/[0.04]',
   danger: 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40',
 }
 
@@ -208,7 +207,7 @@ export function OverflowMenu({
         <div role="menu" className="-m-2 py-1">
           {real.map((it, i) =>
             it.divider ? (
-              <div key={i} className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+              <div key={i} className="my-1 h-px bg-line" />
             ) : (
               <button
                 key={i}
@@ -222,7 +221,7 @@ export function OverflowMenu({
                   'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none',
                   it.danger
                     ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800',
+                    : 'text-ink hover:bg-hover/[0.04]',
                 )}
               >
                 {it.icon && <it.icon className="h-4 w-4 shrink-0" />}

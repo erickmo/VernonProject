@@ -106,7 +106,7 @@ export function AppShell() {
         </nav>
       </div>
       <main className="px-4 py-6 lg:px-6">
-        <Outlet />
+        <div className="mx-auto w-full max-w-5xl"><Outlet /></div>
       </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />

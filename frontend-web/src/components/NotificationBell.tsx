@@ -13,7 +13,7 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen(true)}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-        className="relative rounded-lg p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        className="relative rounded-lg p-2 text-muted hover:bg-hover/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
       >
         <Bell className="w-5 h-5" />
         {unread > 0 && (

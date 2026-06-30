@@ -57,22 +57,19 @@ export function DataTable<T>({
             {columns.map((c) => (
               <th
                 key={c.key}
-                className={clsx(
-                  'px-3 py-2 font-medium',
-                  c.width,
-                  c.align === 'right' && 'text-right',
-                  c.sortValue && 'cursor-pointer select-none',
-                )}
-                onClick={() => toggleSort(c)}
+                scope="col"
+                aria-sort={c.sortValue ? (sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none') : undefined}
+                className={clsx('px-3 py-2 font-medium', c.width, c.align === 'right' && 'text-right')}
               >
-                <span className="inline-flex items-center gap-1">
-                  {c.header}
-                  {sort?.key === c.key && (
-                    sort.dir === 1
-                      ? <ChevronUp className="h-3 w-3" />
-                      : <ChevronDown className="h-3 w-3" />
-                  )}
-                </span>
+                {c.sortValue ? (
+                  <button type="button" onClick={() => toggleSort(c)}
+                    className={clsx('inline-flex items-center gap-1 select-none outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset', c.align === 'right' && 'flex-row-reverse')}>
+                    {c.header}
+                    {sort?.key === c.key && (sort.dir === 1 ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />)}
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1">{c.header}</span>
+                )}
               </th>
             ))}
           </tr>

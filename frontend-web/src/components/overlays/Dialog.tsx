@@ -37,7 +37,7 @@ export function Dialog({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button aria-label="Close" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <button aria-label="Close" onClick={onClose} className="text-muted hover:text-ink"><X className="w-5 h-5" /></button>
         </div>
         {onSubmit ? (
           <form
