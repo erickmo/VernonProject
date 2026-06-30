@@ -863,7 +863,7 @@ def get_project(project):
 		if skey == "completed":
 			wi["done"] += 1
 			wi["minutes_done"] += est
-		elif r["deadline"] and getdate(r["deadline"]) < today:
+		elif r["deadline"] and not r.get("is_waiting") and getdate(r["deadline"]) < today:
 			wi["overdue"] += 1
 		if r["assigned_to"] and skey == "planned":
 			workload[r["assigned_to"]] = workload.get(r["assigned_to"], 0) + 1
