@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, X, CheckSquare, StickyNote, Compass } from 'lucide-react'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 
 // One-time hint persists across sessions once dismissed (or after first use).
@@ -8,10 +9,13 @@ const TIP_KEY = 'vernon.fabTipDismissed'
 const LONG_MS = 450
 
 export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: () => void }) {
+  const navigate = useNavigate()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longFired = useRef(false)
   const armed = useRef(false) // true only between pointerdown and its resolution
   const [showTip, setShowTip] = useState(false)
+  // Tap opens a small action menu; long-press stays a shortcut straight to a note.
+  const [menuOpen, setMenuOpen] = useState(false)
   // Lift above the focus mini-bar (z-40, ~+4.25rem) when a timer is running so
   // the two don't overlap in the bottom-right corner.
   const focusing = useFocusTimer().timer != null
@@ -57,8 +61,14 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
     if (armed.current && !longFired.current) {
       armed.current = false
       if (showTip) dismissTip()
-      onTap()
+      setMenuOpen((v) => !v)
     }
+  }
+
+  // Run a menu action and close the menu.
+  const pick = (fn: () => void) => {
+    setMenuOpen(false)
+    fn()
   }
 
   // Finger dragged off the button, or the gesture was cancelled by the OS:
@@ -82,17 +92,45 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
           </button>
         </div>
       )}
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
+          <div
+            role="menu"
+            aria-label="Quick actions"
+            className={`fixed ${focusing ? 'bottom-[calc(env(safe-area-inset-bottom)+12.5rem)]' : 'bottom-[calc(env(safe-area-inset-bottom)+9rem)]'} right-4 z-40 w-56 rounded-2xl border border-paper-edge bg-paper-card p-1.5 shadow-card animate-pop dark:border-slate-700 dark:bg-slate-800`}
+          >
+            {[
+              { icon: CheckSquare, label: 'New task', run: onTap },
+              { icon: StickyNote, label: 'New note', run: onLongPress },
+              { icon: Compass, label: 'What can I do', run: () => navigate('/help') },
+            ].map((m) => (
+              <button
+                key={m.label}
+                role="menuitem"
+                onClick={() => pick(m.run)}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-stone-700 active:bg-paper-line dark:text-slate-100 dark:active:bg-slate-700"
+              >
+                <m.icon className="h-5 w-5 shrink-0 text-brand-500" />
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <button
         aria-label="Quick add"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerLeave={onCancel}
         onPointerCancel={onCancel}
         onContextMenu={(e) => e.preventDefault()}
         style={{ touchAction: 'manipulation' }}
-        className={`fixed ${focusing ? 'bottom-[calc(env(safe-area-inset-bottom)+8.5rem)]' : 'bottom-[calc(env(safe-area-inset-bottom)+5rem)]'} right-4 z-30 flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card animate-float transition-all active:scale-90`}
+        className={`fixed ${focusing ? 'bottom-[calc(env(safe-area-inset-bottom)+8.5rem)]' : 'bottom-[calc(env(safe-area-inset-bottom)+5rem)]'} right-4 z-30 flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition-all active:scale-90 ${menuOpen ? '' : 'animate-float'}`}
       >
-        <Plus className="h-7 w-7" strokeWidth={2.4} />
+        <Plus className={`h-7 w-7 transition-transform ${menuOpen ? 'rotate-45' : ''}`} strokeWidth={2.4} />
       </button>
     </>
   )

@@ -606,7 +606,7 @@ export interface MeetingInvitableUser {
   full_name: string
 }
 
-export type StyleKey = 'lorelei' | 'adventurer' | 'notionists'
+export type StyleKey = 'lorelei' | 'notionists' | 'notionistsNeutral' | 'croodles' | 'croodlesNeutral' | 'bigEars' | 'openPeeps'
 export interface AvatarConfig {
   style: StyleKey
   options: Record<string, string[]>

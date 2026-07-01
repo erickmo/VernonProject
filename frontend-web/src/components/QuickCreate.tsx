@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CheckSquare, StickyNote, FolderKanban } from 'lucide-react'
+import { CheckSquare, StickyNote, FolderKanban, Compass } from 'lucide-react'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
 import { useModalA11y } from '@web/lib/useModalA11y'
@@ -46,6 +46,14 @@ export function QuickCreate({ open, onClose }: { open: boolean; onClose: () => v
               className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-hover/[0.04]"
             >
               <FolderKanban className="h-4 w-4 text-brand-600" /> New project
+            </button>
+            <div className="my-1 h-px bg-line" />
+            <button
+              role="menuitem"
+              onClick={() => { onClose(); nav('/help') }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-hover/[0.04]"
+            >
+              <Compass className="h-4 w-4 text-brand-600" /> What can I do?
             </button>
           </div>
         </div>

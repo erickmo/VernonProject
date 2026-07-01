@@ -40,6 +40,7 @@ import BrandForm from '@web/pages/BrandForm'
 import Notes from '@web/pages/Notes'
 import NoteForm from '@web/pages/NoteForm'
 import Feedback from '@web/pages/Feedback'
+import Help from '@web/pages/Help'
 import FeedbackInbox from '@web/pages/FeedbackInbox'
 import GamificationSettings from '@web/pages/GamificationSettings'
 import Settings from '@web/pages/Settings'
@@ -153,6 +154,7 @@ export default function App() {
           <Route path="/notes/new" element={<NoteForm />} />
           <Route path="/notes/:name" element={<NoteForm />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/help" element={<Help />} />
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />

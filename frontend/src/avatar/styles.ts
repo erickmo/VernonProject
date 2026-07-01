@@ -1,9 +1,9 @@
 import { createAvatar } from '@dicebear/core'
-import { lorelei, adventurer, notionists } from '@dicebear/collection'
+import { lorelei, notionists, notionistsNeutral, croodles, croodlesNeutral, bigEars, openPeeps } from '@dicebear/collection'
 
-export const STYLES = { lorelei, adventurer, notionists } as const
+export const STYLES = { lorelei, notionists, notionistsNeutral, croodles, croodlesNeutral, bigEars, openPeeps } as const
 export type StyleKey = keyof typeof STYLES
-export const STYLE_LIST: StyleKey[] = ['lorelei', 'adventurer', 'notionists']
+export const STYLE_LIST: StyleKey[] = ['lorelei', 'notionists', 'notionistsNeutral', 'croodles', 'croodlesNeutral', 'bigEars', 'openPeeps']
 
 // Curated, user-meaningful slots; only those a style actually has are shown.
 export const CURATED_SLOTS = ['hair','eyes','eyebrows','brows','mouth','lips','glasses','earrings','nose','features','hairAccessories','gesture','beard','head','freckles','body','bodyIcon']

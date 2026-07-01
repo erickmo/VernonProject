@@ -18,7 +18,8 @@ import type { AvatarConfig } from '@/lib/types'
 
 const STYLE_TABS = STYLE_LIST.map((s) => ({
   value: s,
-  label: s[0].toUpperCase() + s.slice(1),
+  // split camelCase keys (notionistsNeutral, pixelArt) → "Notionists Neutral", "Pixel Art"
+  label: s.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()),
 }))
 
 export default function AvatarCustomizerScreen() {
@@ -173,6 +174,7 @@ export default function AvatarCustomizerScreen() {
       {/* Style tabs */}
       <div className="mb-4">
         <Segmented
+          scroll
           options={STYLE_TABS}
           value={draft.style}
           onChange={(s) => setDraft((d) => ({ style: s as StyleKey, options: {}, scene: d?.scene ?? null, props: d?.props ?? [], featured_collectible: d?.featured_collectible ?? null }))}

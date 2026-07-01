@@ -38,6 +38,7 @@ import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
+import HelpScreen from './pages/HelpScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
 import NotificationsScreen from './pages/NotificationsScreen'
@@ -180,6 +181,7 @@ export default function App() {
         <Route path="/notes/new" element={<NoteFormScreen />} />
         <Route path="/notes/:name" element={<NoteFormScreen />} />
         <Route path="/feedback" element={<FeedbackScreen />} />
+        <Route path="/help" element={<HelpScreen />} />
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
         <Route path="/notifications" element={<NotificationsScreen />} />
