@@ -2,14 +2,16 @@ import type { ReactNode, ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { Avatar } from '@/components/ui'
+import type { AvatarConfig } from '@/lib/types'
 import { HoverCard } from '@web/components/HoverCard'
 
 export function EntityChip({
-  to, icon: Icon, image, avatarName, label, preview, className,
+  to, icon: Icon, image, config, avatarName, label, preview, className,
 }: {
   to?: string
   icon?: ComponentType<{ className?: string }>
-  image?: string            // person avatar image url
+  image?: string            // person avatar image url (PNG snapshot fallback)
+  config?: AvatarConfig | null  // live DiceBear config; Avatar prefers it over image
   avatarName?: string       // person name → triggers Avatar render
   label: ReactNode
   preview?: ReactNode       // HoverCard content
@@ -22,7 +24,7 @@ export function EntityChip({
       className,
     )}>
       {avatarName != null
-        ? <Avatar name={avatarName} image={image} size={18} />
+        ? <Avatar name={avatarName} image={image} config={config} size={18} />
         : Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-muted" />}
       <span className="truncate">{label}</span>
     </span>

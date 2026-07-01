@@ -11,7 +11,7 @@ export function todoRelationChips(t: ProjectItem): ReactNode[] {
         {t.project_owner_name && <div className="text-xs text-muted">Owner: {t.project_owner_name}</div>}
         {t.project_leader_name && <div className="text-xs text-muted">Leader: {t.project_leader_name}</div>}</div>} />)
   if (t.assigned_to) chips.push(
-    <EntityChip key="a" avatarName={t.assigned_to_name ?? '—'} image={t.assigned_to_image ?? undefined} label={t.assigned_to_name ?? 'Unassigned'} />)
+    <EntityChip key="a" avatarName={t.assigned_to_name ?? '—'} image={t.assigned_to_image ?? undefined} config={t.assigned_to_avatar_config} label={t.assigned_to_name ?? 'Unassigned'} />)
   if (t.brand) chips.push(<EntityChip key="b" icon={Tag} label={t.brand} />)
   return chips
 }
