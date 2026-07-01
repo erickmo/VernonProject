@@ -54,8 +54,11 @@ export function CommandPalette({
     return [...navCommands, ...proj, ...todos, ...people]
   }, [navCommands, projects.data, calendar.data, formOpts.data])
 
+  // Cap the rendered set: on open (empty query) `commands` is the full
+  // projects+todos+users union, which can be thousands of DOM nodes. 50 is more
+  // than fits the viewport; type to narrow past it.
   const filtered = useMemo(
-    () => commands.filter((c) => matchCommand(c.label, c.group, q)),
+    () => commands.filter((c) => matchCommand(c.label, c.group, q)).slice(0, 50),
     [q, commands],
   )
 

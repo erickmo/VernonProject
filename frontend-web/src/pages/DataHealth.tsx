@@ -4,6 +4,8 @@ import { useDataHealth } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { EmptyState, Spinner } from '@/components/ui'
 import type { DataHealthItem } from '@/lib/types'
+import { ApiError } from '@/lib/api'
+import { ErrorState } from '@web/components/ui'
 
 type SectionKey = 'unmapped' | 'outliers' | 'missing' | 'orphaned'
 
@@ -68,7 +70,7 @@ function Section({
 }
 
 export default function DataHealth() {
-  const { data, isLoading, error } = useDataHealth()
+  const { data, isLoading, error, refetch } = useDataHealth()
   const navigate = useNavigate()
 
   const goToTodo = (name: string) => navigate(`/project-item/${encodeURIComponent(name)}`)
@@ -82,14 +84,19 @@ export default function DataHealth() {
   }
 
   if (error) {
+    const denied = error instanceof ApiError && error.status === 403
     return (
       <div className="space-y-5">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Data Health</h1>
-        <EmptyState
-          icon={AlertCircle}
-          title="Access denied"
-          subtitle="You don't have permission to view the data health report."
-        />
+        {denied ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Access denied"
+            subtitle="You don't have permission to view the data health report."
+          />
+        ) : (
+          <ErrorState onRetry={() => refetch()} />
+        )}
       </div>
     )
   }

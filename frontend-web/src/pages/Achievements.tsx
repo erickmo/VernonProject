@@ -1,6 +1,7 @@
 import { useGamification } from '@/hooks/useData'
 import { Trophy } from 'lucide-react'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { ErrorState } from '@web/components/ui'
 import type { Achievement } from '@/lib/types'
 
 function AchievementTile({ a }: { a: Achievement }) {
@@ -53,14 +54,16 @@ function AchievementTile({ a }: { a: Achievement }) {
 }
 
 export default function Achievements() {
-  const { data: gami, isLoading } = useGamification()
+  const { data: gami, isLoading, isError, refetch } = useGamification()
   const list = (gami?.achievements ?? []).filter((a) => !a.is_tier)
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Achievements</h1>
 
-      {isLoading && !gami ? (
+      {isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : isLoading && !gami ? (
         <p className="text-sm text-slate-400">Loading…</p>
       ) : list.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-slate-400">

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams, useNavigate, Outlet } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import {
   ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2,
 } from 'lucide-react'
@@ -20,7 +21,7 @@ import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
 
 export default function ProjectDetail() {
   const { name = '', itemName } = useParams()
-  const id = decodeURIComponent(name)
+  const id = safeDecode(name)
   const nav = useNavigate()
   const confirm = useConfirm()
 

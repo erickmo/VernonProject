@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import * as XLSX from 'xlsx'
 import { Download } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, canManageAttendance, useAttendanceReport } from '@/hooks/useData'
@@ -46,14 +45,24 @@ export default function AttendanceReport() {
 
   const downloadCsv = () => {
     if (!data) return
-    const aoa = [
+    // ponytail: hand-rolled CSV — was pulling ~430KB of xlsx into the main bundle
+    // (and duplicating it, since GanttChart already dynamic-imports xlsx) just to
+    // write a plain CSV. RFC-4180 escaping + BOM so Excel reads UTF-8 correctly.
+    const esc = (v: unknown) => {
+      const s = String(v ?? '')
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const rows = [
       data.columns.map((c) => c.label),
       ...data.rows.map((r) => data.columns.map((c) => r[c.fieldname] ?? '')),
     ]
-    const ws = XLSX.utils.aoa_to_sheet(aoa)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Attendance')
-    XLSX.writeFile(wb, `attendance_${fromDate}_${toDate}.csv`, { bookType: 'csv' })
+    const csv = '﻿' + rows.map((row) => row.map(esc).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `attendance_${fromDate}_${toDate}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   if (blocked) return null

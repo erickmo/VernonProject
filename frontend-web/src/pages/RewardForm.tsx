@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import { Trash2, Check, ImagePlus, ArrowLeft, X } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
@@ -37,7 +38,7 @@ export default function RewardForm() {
   const toast = useToast()
   const confirm = useConfirm()
   const { name: rawName } = useParams()
-  const name = rawName ? decodeURIComponent(rawName) : ''
+  const name = rawName ? safeDecode(rawName) : ''
   const isEdit = !!name
   const { data: boot } = useBoot()
 

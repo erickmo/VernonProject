@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import { ListChecks, Plus, CalendarClock } from 'lucide-react'
 import { useProjectDetail } from '@/hooks/useData'
 import { formatEstimateRatio } from '@/lib/format'
@@ -16,8 +17,8 @@ import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
 // Todo detail opens in a slide-over so the columns stay two-pane.
 export default function ProjectDetailPane() {
   const { name = '', detailName = '', itemName } = useParams()
-  const projectId = decodeURIComponent(name)
-  const id = decodeURIComponent(detailName)
+  const projectId = safeDecode(name)
+  const id = safeDecode(detailName)
   const nav = useNavigate()
 
   const [createOpen, setCreateOpen] = useState(false)

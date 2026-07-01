@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -703,7 +704,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
 export default function ProjectItem() {
   const params = useParams()
-  const todoName = decodeURIComponent(params.itemName ?? params.name ?? '')
+  const todoName = safeDecode(params.itemName ?? params.name ?? '')
   // Rendered inside the projects workspace slide-over when both params exist;
   // build same-detail links workspace-relative so they don't drop the rail.
   const inWs = !!(params.name && params.detailName)

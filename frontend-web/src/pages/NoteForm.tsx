@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import {
   ArrowDown,
   ArrowLeft,
@@ -34,7 +35,7 @@ export default function NoteForm() {
   const qc = useQueryClient()
   const { data: boot } = useBoot()
   const { name: rawName } = useParams()
-  const initialId = rawName ? decodeURIComponent(rawName) : ''
+  const initialId = rawName ? safeDecode(rawName) : ''
   // Captured once: must not flip when autosave creates the note and swaps the URL.
   const startedNew = useRef(!rawName).current
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import { ArrowLeft, Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus, Layers } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
@@ -60,7 +61,7 @@ export default function GroupForm() {
   const toast = useToast()
   const confirm = useConfirm()
   const { name: rawName } = useParams()
-  const name = rawName ? decodeURIComponent(rawName) : ''
+  const name = rawName ? safeDecode(rawName) : ''
   const isEdit = !!name
   const { data: boot } = useBoot()
 

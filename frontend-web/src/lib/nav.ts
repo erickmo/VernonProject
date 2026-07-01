@@ -1,6 +1,6 @@
 import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Video, StickyNote, MessageSquarePlus,
-  Trophy, UsersRound, ShoppingBag, Wallet, Gift, BarChart3,
+  Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, Store, Coins, QrCode, Monitor, UserCheck,
 } from 'lucide-react'
@@ -31,9 +31,6 @@ const REWARDS: NavLeaf[] = [
   { to: '/gift-points', label: 'Gift Points', sub: 'Send points to peers', icon: Gift },
 ]
 
-// ponytail: BarChart3 imported for potential future Reports leaf; unused for now (Reports is a plain link group)
-void BarChart3
-
 export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGroup[] {
   const groups: NavGroup[] = [
     { id: 'work', label: 'Work', leaves: WORK },
@@ -41,7 +38,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     { id: 'reports', label: 'Reports', to: '/reports', leaves: [] },
   ]
 
-  // mirrors AppShell.tsx admin[] array (lines 155-171) exactly
+  // Admin group — nav.ts is the single source of truth; gated per capability
   const admin: NavLeaf[] = [
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', sub: 'People & roles', icon: UsersIcon } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/feedback-inbox', label: 'Feedback', sub: 'Inbound feedback', icon: Inbox } as NavLeaf] : []),
@@ -55,8 +52,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   ]
   if (admin.length) groups.push({ id: 'admin', label: 'Admin', leaves: admin })
 
-  // attendance split into its own group (all 6 routes under single canManageAttendance gate,
-  // matching AppShell.tsx lines 165-170)
+  // attendance — all routes under one canManageAttendance gate
   const att: NavLeaf[] = canManageAttendance(b) ? [
     { to: '/attendance-report', label: 'Attendance', sub: 'Daily report', icon: QrCode },
     { to: '/attendance/schedules', label: 'Schedules', sub: 'Shift schedules', icon: CalendarDays },

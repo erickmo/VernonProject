@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, defaultShouldDehydrateQuery } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import App from './App'
@@ -27,11 +27,24 @@ const persister = createSyncStoragePersister({
   key: 'vernon-web-cache',
 })
 
+// Don't persist the big analytics payloads — report/data-health/attendance rows
+// can be MBs and silently blow the ~5MB localStorage quota, after which the
+// persister drops ALL writes. They refetch fine on demand; everything else
+// (boot, dashboards, projects) still persists for instant reloads.
+const HEAVY_KEYS = new Set(['report', 'data-health', 'attendance-report'])
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, buster: CACHE_BUSTER }}
+      persistOptions={{
+        persister,
+        buster: CACHE_BUSTER,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            defaultShouldDehydrateQuery(query) && !HEAVY_KEYS.has(query.queryKey[0] as string),
+        },
+      }}
     >
       <BrowserRouter basename="/w">
         <ToastProvider>

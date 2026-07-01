@@ -31,6 +31,7 @@ export function ProjectRail() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            aria-label="Search projects or people"
             placeholder="Search projects or people"
             className="w-full rounded-lg border border-line bg-transparent py-1.5 pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
           />

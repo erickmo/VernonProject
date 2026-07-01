@@ -194,7 +194,7 @@ export default function Marketplace() {
                   >
                     <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800">
                       {r.image ? (
-                        <img src={r.image} alt={r.reward_name} className="h-full w-full object-cover" />
+                        <img src={r.image} alt={r.reward_name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
                           <Store className="h-8 w-8" />

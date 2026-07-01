@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, AlertCircle, ChevronRight,
   Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick,
@@ -7,7 +8,7 @@ import {
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
-import { Button, OverflowMenu } from '@web/components/ui'
+import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
 import { useSetCrumbs } from '@web/lib/crumbs'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
@@ -35,7 +36,7 @@ function isDetailCompleted(w: ProjectDetailSummary) {
 // Shown in the right pane when no work-package is selected: project comments.
 export function ProjectIndexPane() {
   const { name = '' } = useParams()
-  const id = decodeURIComponent(name)
+  const id = safeDecode(name)
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm text-muted">
@@ -49,7 +50,7 @@ export function ProjectIndexPane() {
 
 export default function Project() {
   const { name = '', detailName } = useParams()
-  const id = decodeURIComponent(name)
+  const id = safeDecode(name)
   const nav = useNavigate()
   const project = useProject(id)
   const boot = useBoot()
@@ -229,12 +230,14 @@ export default function Project() {
               <div className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5">
                 <button
                   onClick={() => setView('list')}
+                  aria-pressed={view === 'list'}
                   className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
                 >
                   <List className="h-3.5 w-3.5" /> List
                 </button>
                 <button
                   onClick={() => setView('gantt')}
+                  aria-pressed={view === 'gantt'}
                   className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
                 >
                   <BarChart3 className="h-3.5 w-3.5" /> Gantt
@@ -252,7 +255,9 @@ export default function Project() {
           </div>
 
           {view === 'gantt' ? (
-            gantt.isLoading ? (
+            gantt.isError ? (
+              <ErrorState onRetry={() => gantt.refetch()} />
+            ) : gantt.isLoading ? (
               <div className="rounded-lg bg-surface border border-line p-8 text-center text-sm text-muted">
                 Loading timeline…
               </div>

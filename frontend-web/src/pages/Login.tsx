@@ -49,20 +49,22 @@ export default function Login() {
         </div>
         {err && <div className="rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 text-sm px-3 py-2">{err}</div>}
         <div className="space-y-1">
-          <label className="text-sm font-medium">Email</label>
+          <label htmlFor="login-email" className="text-sm font-medium">Email</label>
           <input
+            id="login-email"
             type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required
             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2"
           />
         </div>
         <div className="space-y-1">
-          <label className="text-sm font-medium">Password</label>
+          <label htmlFor="login-pwd" className="text-sm font-medium">Password</label>
           <div className="relative">
             <input
+              id="login-pwd"
               type={show ? 'text' : 'password'} value={pwd} onChange={(e) => setPwd(e.target.value)} required
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 pr-10"
             />
-            <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted">
+            <button type="button" aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted">
               {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>

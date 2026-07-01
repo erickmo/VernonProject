@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import { ArrowLeft, Trash2, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
@@ -27,7 +28,7 @@ export default function BrandForm() {
   const toast = useToast()
   const confirm = useConfirm()
   const { name: rawName } = useParams()
-  const name = rawName ? decodeURIComponent(rawName) : ''
+  const name = rawName ? safeDecode(rawName) : ''
   const isEdit = !!name
   const { data: boot } = useBoot()
 

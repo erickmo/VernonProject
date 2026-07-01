@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { safeDecode } from '@web/lib/route'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -44,7 +45,7 @@ function isEmpty(v: unknown): boolean {
 
 export default function ReportPage() {
   const { name = '' } = useParams()
-  const reportName = decodeURIComponent(name)
+  const reportName = safeDecode(name)
   const def = reportByName(reportName)
   const navigate = useNavigate()
   const { data: boot } = useBoot()

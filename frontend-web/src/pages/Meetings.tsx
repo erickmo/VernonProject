@@ -5,6 +5,9 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { formatDate } from '@/lib/format'
 import { useToast } from '@/components/Toast'
 import { CreateMeetingDialog } from '../components/CreateMeetingDialog'
+import { Spinner, EmptyState } from '@/components/ui'
+import { ErrorState } from '@web/components/ui'
+import { Video } from 'lucide-react'
 
 export function Meetings() {
   const toast = useToast()
@@ -48,6 +51,13 @@ export function Meetings() {
         <SearchableSelect value={project} onChange={setProject} options={projectOptions} placeholder="Pick a project…" />
       </div>
 
+      {meetings.isError ? (
+        <ErrorState onRetry={() => meetings.refetch()} />
+      ) : meetings.isLoading ? (
+        <div className="flex justify-center py-16"><Spinner /></div>
+      ) : (meetings.data?.meetings ?? []).length === 0 ? (
+        <EmptyState icon={Video} title="No meetings" subtitle={project ? 'No meetings for this project yet.' : 'Pick a project to see its meetings.'} />
+      ) : (
       <div className="flex flex-col gap-3">
         {(meetings.data?.meetings ?? []).map((m) => (
           <div key={m.name} className="flex items-center justify-between rounded-xl border border-line p-4">
@@ -73,6 +83,7 @@ export function Meetings() {
           </div>
         ))}
       </div>
+      )}
 
       {project && <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} project={project} />}
     </Page>
