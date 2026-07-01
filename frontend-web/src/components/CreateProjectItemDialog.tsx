@@ -8,6 +8,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { computeTodoPoints } from '@/lib/points'
+import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 
 interface Props {
   open: boolean
@@ -17,38 +18,55 @@ interface Props {
   defaultGroup?: string | null
   /** Sibling tasks in this detail, for the blocking pickers. */
   siblings?: { name: string; to_do: string }[]
+  /** Prefill the form (e.g. duplicating a todo). Remount to re-seed — useState
+   *  initializers only run once, so mount this dialog fresh per open. */
+  initial?: CreateTodoInitial
 }
 
-export function CreateProjectItemDialog({ open, onClose, projectDetail, team, defaultGroup, siblings = [] }: Props) {
+export function CreateProjectItemDialog({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial }: Props) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
 
-  const [toDo, setToDo] = useState('')
-  const [assignedTo, setAssignedTo] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [leaderDeadline, setLeaderDeadline] = useState('')
-  const [ownerDeadline, setOwnerDeadline] = useState('')
-  const [estimated, setEstimated] = useState('')
-  const [leaderEstimated, setLeaderEstimated] = useState('')
-  const [ownerEstimated, setOwnerEstimated] = useState('')
-  const [notes, setNotes] = useState('')
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [frequency, setFrequency] = useState('Daily')
-  const [until, setUntil] = useState('')
-  const [group, setGroup] = useState(defaultGroup ?? '')
-  const [typeName, setTypeName] = useState('')
-  const [levelId, setLevelId] = useState('')
-  const [blockedBy, setBlockedBy] = useState<string[]>([])
-  const [blocking, setBlocking] = useState<string[]>([])
+  const [toDo, setToDo] = useState(initial?.toDo ?? '')
+  const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? '')
+  const [startDate, setStartDate] = useState(initial?.startDate ?? '')
+  const [deadline, setDeadline] = useState(initial?.deadline ?? '')
+  const [leaderDeadline, setLeaderDeadline] = useState(initial?.leaderDeadline ?? '')
+  const [ownerDeadline, setOwnerDeadline] = useState(initial?.ownerDeadline ?? '')
+  const [estimated, setEstimated] = useState(initial?.estimated ?? '')
+  const [leaderEstimated, setLeaderEstimated] = useState(initial?.leaderEstimated ?? '')
+  const [ownerEstimated, setOwnerEstimated] = useState(initial?.ownerEstimated ?? '')
+  const [notes, setNotes] = useState(initial?.notes ?? '')
+  const [isRecurring, setIsRecurring] = useState(initial?.isRecurring ?? false)
+  const [frequency, setFrequency] = useState(initial?.frequency ?? 'Daily')
+  const [until, setUntil] = useState(initial?.until ?? '')
+  const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
+  const [typeName, setTypeName] = useState(initial?.typeName ?? '')
+  const [levelId, setLevelId] = useState(initial?.levelId ?? '')
+  const [blockedBy, setBlockedBy] = useState<string[]>(initial?.blockedBy ?? [])
+  const [blocking, setBlocking] = useState<string[]>(initial?.blocking ?? [])
 
   const { data: groups } = useScoringGroups()
   const { data: groupDoc } = useScoringGroup(group, !!group)
 
+  // Reset type/level when the user actually changes group — but not on the
+  // initial (possibly prefilled) group, or a duplicate's seeded level is wiped.
+  const seededGroup = initial?.group ?? defaultGroup ?? ''
   useEffect(() => {
-    setTypeName('')
-    setLevelId('')
-  }, [group])
+    if (group !== seededGroup) {
+      setTypeName('')
+      setLevelId('')
+    }
+  }, [group]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If prefilled with a level but no type name, recover the type once the
+  // group's levels load (level_type may be missing on older todos).
+  useEffect(() => {
+    if (!typeName && levelId && groupDoc) {
+      const row = groupDoc.levels.find((l) => l.level_id === levelId)
+      if (row) setTypeName(row.type_name)
+    }
+  }, [groupDoc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const firstFieldRef = useRef<HTMLInputElement>(null)
 

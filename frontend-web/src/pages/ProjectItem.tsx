@@ -12,6 +12,7 @@ import {
   CalendarRange,
   Check,
   Clock,
+  Copy,
   FileText,
   History,
   Layers,
@@ -52,6 +53,8 @@ import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { FocusOverlay } from '@web/components/FocusOverlay'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { todoDuplicateInitial } from '@/lib/duplicateTodo'
 import type { ProjectItemDetail, StatusKey } from '@/lib/types'
 
 // ─────────────────────────── Stepper ───────────────────────────
@@ -716,6 +719,7 @@ export default function ProjectItem() {
   const [cancelReason, setCancelReason] = useState('')
   const focus = useFocusTimer()
   const [focusOpen, setFocusOpen] = useState(false)
+  const [dupOpen, setDupOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
@@ -873,6 +877,9 @@ export default function ProjectItem() {
             <OverflowMenu
               size="sm"
               items={[
+                ...(data.can_edit
+                  ? [{ label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) }]
+                  : []),
                 ...(canSetDeadlineToday
                   ? [{ label: 'Set deadline to today', icon: CalendarCheck, onClick: onDeadlineToday, disabled: setDeadlineToday.isPending }]
                   : []),
@@ -890,6 +897,21 @@ export default function ProjectItem() {
           </div>
         )}
       </div>
+
+      {dupOpen && (
+        <CreateProjectItemDialog
+          open
+          onClose={() => setDupOpen(false)}
+          projectDetail={data.project_detail}
+          team={
+            data.team.some((m) => m.user === data.assigned_to)
+              ? data.team
+              : [{ user: data.assigned_to, name: data.assigned_to_name }, ...data.team]
+          }
+          siblings={data.detail_todos}
+          initial={todoDuplicateInitial(data)}
+        />
+      )}
 
       {editing ? (
         <div className="max-w-3xl">

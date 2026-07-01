@@ -12,6 +12,7 @@ import {
   CalendarPlus,
   Check,
   Clock,
+  Copy,
   FileText,
   FolderKanban,
   History,
@@ -45,6 +46,8 @@ import { useConfirm } from '@/components/Confirm'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
+import { todoDuplicateInitial } from '@/lib/duplicateTodo'
 import type { ProjectItemDetail } from '@/lib/types'
 
 function Stepper({ current }: { current: string }) {
@@ -837,6 +840,7 @@ export default function ProjectItemScreen() {
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [showWaiting, setShowWaiting] = useState(false)
+  const [dupOpen, setDupOpen] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer()
 
@@ -1296,6 +1300,15 @@ export default function ProjectItemScreen() {
           </>
         )}
 
+        {data.can_edit && (
+          <button
+            onClick={() => setDupOpen(true)}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 ring-1 ring-slate-200 dark:ring-slate-700 active:scale-[0.99]"
+          >
+            <Copy className="h-4 w-4" /> Duplicate task
+          </button>
+        )}
+
         {data.can_delete && (
           <button
             onClick={onDelete}
@@ -1425,6 +1438,21 @@ export default function ProjectItemScreen() {
             </div>
           </div>
         </div>
+      )}
+
+      {dupOpen && (
+        <CreateProjectItemSheet
+          open
+          onClose={() => setDupOpen(false)}
+          projectDetail={data.project_detail}
+          team={
+            data.team.some((m) => m.user === data.assigned_to)
+              ? data.team
+              : [{ user: data.assigned_to, name: data.assigned_to_name }, ...data.team]
+          }
+          siblings={data.detail_todos}
+          initial={todoDuplicateInitial(data)}
+        />
       )}
     </DetailScreen>
   )
