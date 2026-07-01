@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Award, Bell, BellOff, ShieldAlert, CalendarClock, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -198,6 +198,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           : []),
         ...(canManageGroups(boot)
           ? [{ icon: Settings, label: 'Settings', hue: 'slate' as const, onClick: () => navigate('/settings') }]
+          : []),
+        ...(boot?.roles.includes('System Manager')
+          ? [{ icon: UserMinus, label: 'Under-Occupied', hue: 'amber' as const, onClick: () => navigate('/reports/under-occupied') }]
           : []),
       ],
     },

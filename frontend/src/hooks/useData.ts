@@ -1220,3 +1220,12 @@ export function useAttendanceReport(
   })
 }
 
+export function useUnderOccupied(fromDate: string, toDate: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['under-occupied', fromDate, toDate],
+    queryFn: () => mobileApi.underOccupied(fromDate, toDate),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+}
+

@@ -52,6 +52,7 @@ import AttendanceStationsScreen from './pages/AttendanceStationsScreen'
 import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
+import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import AchievementsScreen from './pages/AchievementsScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance } from './hooks/useData'
 
@@ -142,6 +143,7 @@ export default function App() {
             <Route path="/groups/:name" element={<GroupFormScreen />} />
             <Route path="/data-health" element={<DataHealthScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/reports/under-occupied" element={<UnderOccupiedScreen />} />
           </>
         )}
         {canManageBrands(boot) && (

@@ -421,6 +421,12 @@ export const mobileApi = {
       rows: Record<string, unknown>[]
       stats: { present: number; late: number; absent: number; excused: number; penalty: number }
     }>(A + 'attendance_report', filters),
+  underOccupied: (from_date: string, to_date: string) =>
+    api.get<{
+      threshold: number; tolerance: number; effective: number
+      from_date: string; to_date: string; day_count: number
+      rows: { user: string; full_name: string; assigned_total: number; avg_daily: number; under_days: number; deficit: number }[]
+    }>('vernon_project.api.report.under_occupied', { from_date, to_date }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.
