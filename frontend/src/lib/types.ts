@@ -215,6 +215,10 @@ export interface ProjectCard {
   project_leader: string
   owner_name: string
   leader_name: string
+  owner_image: string | null
+  owner_avatar_config: AvatarConfig | null
+  leader_image: string | null
+  leader_avatar_config: AvatarConfig | null
   is_owner: boolean
   is_leader: boolean
   is_admin: boolean

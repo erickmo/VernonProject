@@ -802,8 +802,16 @@ def get_projects():
 		p["progress"] = _pct_minutes(s["minutes_done"], s["minutes_total"], s["done"], s["total"])
 		p["start_date"] = str(p["start_date"]) if p["start_date"] else None
 		p["deadline"] = str(p["deadline"]) if p["deadline"] else None
-		p["owner_name"] = (name_map.get(p["project_owner"]) or {}).get("full_name") or p["project_owner"]
-		p["leader_name"] = (name_map.get(p["project_leader"]) or {}).get("full_name") or p["project_leader"]
+		owner_nm = name_map.get(p["project_owner"]) or {}
+		leader_nm = name_map.get(p["project_leader"]) or {}
+		p["owner_name"] = owner_nm.get("full_name") or p["project_owner"]
+		p["leader_name"] = leader_nm.get("full_name") or p["project_leader"]
+		# Owner/leader real avatar so the card renders their actual avatar, not a
+		# name-seeded placeholder.
+		p["owner_image"] = owner_nm.get("user_image")
+		p["owner_avatar_config"] = owner_nm.get("avatar_config")
+		p["leader_image"] = leader_nm.get("user_image")
+		p["leader_avatar_config"] = leader_nm.get("avatar_config")
 		# Relationship of the current user to this project (drives dashboard lenses)
 		p["is_owner"] = p["project_owner"] == user
 		p["is_leader"] = p["project_leader"] == user

@@ -59,12 +59,12 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
 
       <div className="mt-3 flex items-center gap-4 border-t border-paper-edge dark:border-slate-800 pt-3 text-xs">
         <span className="flex items-center gap-1.5 text-stone-500 dark:text-slate-400">
-          <Avatar name={p.owner_name} size={20} />
+          <Avatar name={p.owner_name} image={p.owner_image} config={p.owner_avatar_config} size={20} />
           <span className="text-stone-400 dark:text-slate-500">Owner</span>
           <span className="font-medium text-stone-600 dark:text-slate-300">{p.owner_name}</span>
         </span>
         <span className="flex items-center gap-1.5 text-stone-500">
-          <Avatar name={p.leader_name} size={20} />
+          <Avatar name={p.leader_name} image={p.leader_image} config={p.leader_avatar_config} size={20} />
           <span className="text-stone-400 dark:text-slate-500">Lead</span>
           <span className="font-medium text-stone-600 dark:text-slate-300">{p.leader_name}</span>
         </span>
