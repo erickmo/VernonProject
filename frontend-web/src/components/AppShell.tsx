@@ -63,10 +63,6 @@ export function AppShell() {
   const [quickOpen, setQuickOpen] = useState(false)
   const { crumbs: pageCrumbs } = useCrumbs()
   const crumbs = pageCrumbs ?? buildCrumbs(pathname)
-  // Only the projects split-screen workspace spans full width; every other
-  // route keeps the centered reading column. (/project-detail, /project-item
-  // deep-link pages are standalone → stay centered.)
-  const wide = pathname === '/projects' || pathname.startsWith('/project/')
 
   // ⌘K / Ctrl+K toggles the command palette; bare `c` opens quick-create.
   useEffect(() => {
@@ -100,9 +96,9 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-canvas text-ink font-sans">
       <TopNav onOpenPalette={() => setPaletteOpen(true)} onQuickCreate={() => setQuickOpen(true)} />
-      {/* breadcrumb context bar */}
+      {/* secondary nav (breadcrumb bar) — LOCKED full width on every route */}
       <div className="sticky top-14 z-20 border-b border-line bg-canvas/85 px-4 lg:px-6 backdrop-blur">
-        <nav aria-label="Breadcrumb" className={`flex h-9 items-center gap-1.5 text-sm ${wide ? 'w-full' : 'mx-auto w-full max-w-5xl'}`}>
+        <nav aria-label="Breadcrumb" className="flex h-9 w-full items-center gap-1.5 text-sm">
           {crumbs.map((c, i) => (
             <span key={i} className="flex min-w-0 items-center gap-1.5">
               {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-line" />}
@@ -114,7 +110,8 @@ export function AppShell() {
         </nav>
       </div>
       <main className="px-4 py-6 lg:px-6">
-        <div className={wide ? 'w-full' : 'mx-auto w-full max-w-5xl'}><Outlet /></div>
+        {/* LOCKED: main area is full width on every route (product decision — do not re-add max-w). */}
+        <div className="w-full"><Outlet /></div>
       </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />

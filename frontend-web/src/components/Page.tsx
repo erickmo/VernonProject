@@ -2,7 +2,9 @@ import type { ReactNode, ComponentType } from 'react'
 import clsx from 'clsx'
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={clsx('mx-auto w-full max-w-5xl', className)}>{children}</div>
+  // LOCKED: full width on every route (matches AppShell — do not re-add max-w-5xl).
+  // A page that needs a narrow column passes its own max-w via `className`.
+  return <div className={clsx('w-full', className)}>{children}</div>
 }
 
 export function PageHeader({
