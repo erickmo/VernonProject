@@ -4,7 +4,7 @@ import { useModalA11y } from '@web/lib/useModalA11y'
 
 export function Drawer({
   open, onClose, title, children, footer, widthClass = 'max-w-md', onSubmit,
-  scrim = 'bg-black/50',
+  scrim = 'bg-black/50', closeOnEscape = true,
 }: {
   open: boolean
   onClose: () => void
@@ -16,8 +16,11 @@ export function Drawer({
   onSubmit?: () => void
   /** Backdrop tint. Lighter (e.g. 'bg-black/20') keeps the list behind readable. */
   scrim?: string
+  /** Set false when the drawer hosts its own nested dialogs/confirms whose Escape
+   *  must not also close this drawer (close via the X or scrim instead). */
+  closeOnEscape?: boolean
 }) {
-  const ref = useModalA11y(open, onClose)
+  const ref = useModalA11y(open, onClose, { closeOnEscape })
   if (!open) return null
 
   const body = (

@@ -4,7 +4,7 @@ import {
   ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2,
 } from 'lucide-react'
 import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
-import { sanitizeHtml, stripHtml, formatEstimateRatio } from '@/lib/format'
+import { formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
 import { useSetCrumbs } from '@web/lib/crumbs'
@@ -14,55 +14,9 @@ import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { PropertyRow, Property } from '@web/components/Property'
-import {
-  DataTable,
-  StatusCell,
-  EditableAssigneeCell,
-  EditableDateCell,
-  type Column,
-} from '@web/components/DataTable'
-import type { ProjectItem } from '@/lib/types'
-
-// ponytail: column def stable outside render — avoids re-creating on every render
-const TODO_COLUMNS: Column<ProjectItem>[] = [
-  {
-    key: 'task',
-    header: 'Task',
-    sortValue: (r) => r.to_do,
-    render: (r) => (
-      <span
-        className={
-          r.status_key === 'cancelled'
-            ? 'text-muted line-through'
-            : r.is_overdue
-            ? 'font-medium text-rose-700 dark:text-rose-400'
-            : 'font-medium text-ink'
-        }
-      >
-        {r.to_do}
-      </span>
-    ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    width: 'w-44',
-    render: (r) => <StatusCell todo={r} />,
-  },
-  {
-    key: 'assignee',
-    header: 'Assignee',
-    width: 'w-36',
-    render: (r) => <EditableAssigneeCell todo={r} />,
-  },
-  {
-    key: 'deadline',
-    header: 'Deadline',
-    width: 'w-36',
-    sortValue: (r) => r.deadline ?? '',
-    render: (r) => <EditableDateCell todo={r} field="deadline" />,
-  },
-]
+import { DataTable } from '@web/components/DataTable'
+import { DetailMeta } from '@web/components/DetailMeta'
+import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
 
 export default function ProjectDetail() {
   const { name = '', itemName } = useParams()
@@ -102,14 +56,6 @@ export default function ProjectDetail() {
 
   const d = detail.data
 
-  const conditionHtml = d.current_condition || ''
-  const outcomeHtml = d.expected_outcome || ''
-  const sowHtml = d.keterangan_di_sow || ''
-  const hasCondition = !!stripHtml(conditionHtml).trim()
-  const hasOutcome = !!stripHtml(outcomeHtml).trim()
-  const hasSow = !!stripHtml(sowHtml).trim()
-  const hasPricing = (d.price != null && d.price > 0) || (d.discount != null && d.discount > 0)
-
   const items = d.project_items
   const completedCount = items.filter((t) => t.status_key === 'completed').length
   const openCount = items.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
@@ -118,18 +64,7 @@ export default function ProjectDetail() {
   const minutesDone = notCancelled
     .filter((t) => t.status_key === 'completed')
     .reduce((s, t) => s + (t.estimated || 0), 0)
-  const visibleItems = showCancelled ? items : items.filter((t) => t.status_key !== 'cancelled')
-
-  const todoGroups = [
-    {
-      label: 'Open',
-      rows: visibleItems.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled'),
-    },
-    { label: 'Completed', rows: visibleItems.filter((t) => t.status_key === 'completed') },
-    ...(showCancelled
-      ? [{ label: 'Cancelled', rows: visibleItems.filter((t) => t.status_key === 'cancelled') }]
-      : []),
-  ].filter((g) => g.rows.length > 0)
+  const { visibleItems, todoGroups } = todoGroupsOf(items, showCancelled)
 
   const handleDelete = async () => {
     const ok = await confirm({
@@ -208,48 +143,7 @@ export default function ProjectDetail() {
       </Section>
 
       {/* Rich HTML meta sections */}
-      {hasCondition && (
-        <Section title="Current condition">
-          <div
-            className="text-sm prose-notes text-slate-700 dark:text-slate-300"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(conditionHtml) }}
-          />
-        </Section>
-      )}
-      {hasOutcome && (
-        <Section title="Expected outcome">
-          <div
-            className="text-sm prose-notes text-slate-700 dark:text-slate-300"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(outcomeHtml) }}
-          />
-        </Section>
-      )}
-      {hasSow && (
-        <Section title="Keterangan di SOW">
-          <div
-            className="text-sm prose-notes text-slate-700 dark:text-slate-300"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(sowHtml) }}
-          />
-        </Section>
-      )}
-      {hasPricing && (
-        <Section title="Pricing">
-          <div className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-300">
-            {d.price != null && d.price > 0 && (
-              <div className="flex justify-between">
-                <span>Price</span>
-                <span className="font-medium">Rp {d.price.toLocaleString('id-ID')}</span>
-              </div>
-            )}
-            {d.discount != null && d.discount > 0 && (
-              <div className="flex justify-between text-rose-600 dark:text-rose-400">
-                <span>Discount</span>
-                <span className="font-medium">− Rp {d.discount.toLocaleString('id-ID')}</span>
-              </div>
-            )}
-          </div>
-        </Section>
-      )}
+      <DetailMeta d={d} />
 
       {/* Todos — master/detail: table (left) + selected item pane (right) */}
       <Section

@@ -1,0 +1,130 @@
+import { useState } from 'react'
+import { useParams, useNavigate, Outlet } from 'react-router-dom'
+import { ListChecks, Plus, CalendarClock } from 'lucide-react'
+import { useProjectDetail } from '@/hooks/useData'
+import { formatEstimateRatio } from '@/lib/format'
+import { Spinner, EmptyState } from '@/components/ui'
+import { Button } from '@web/components/ui'
+import CommentThread from '@/components/CommentThread'
+import { Drawer } from '@web/components/overlays/Drawer'
+import { DataTable } from '@web/components/DataTable'
+import { DetailMeta } from '@web/components/DetailMeta'
+import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
+
+// Right pane of a project's detail split: the selected work-package's todos.
+// Todo detail opens in a slide-over so the columns stay two-pane.
+export default function ProjectDetailPane() {
+  const { name = '', detailName = '', itemName } = useParams()
+  const projectId = decodeURIComponent(name)
+  const id = decodeURIComponent(detailName)
+  const nav = useNavigate()
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [showCancelled, setShowCancelled] = useState(false)
+
+  const detail = useProjectDetail(id, showCancelled)
+  const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
+
+  if (detail.isLoading && !detail.data) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner />
+      </div>
+    )
+  }
+  if (!detail.data) {
+    return <EmptyState icon={ListChecks} title="Couldn't load detail" />
+  }
+
+  const d = detail.data
+  const items = d.project_items
+  const completedCount = items.filter((t) => t.status_key === 'completed').length
+  const openCount = items.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
+  const notCancelled = items.filter((t) => t.status_key !== 'cancelled')
+  const minutesTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
+  const minutesDone = notCancelled
+    .filter((t) => t.status_key === 'completed')
+    .reduce((s, t) => s + (t.estimated || 0), 0)
+  const { visibleItems, todoGroups } = todoGroupsOf(items, showCancelled)
+
+  return (
+    <div className="min-w-0">
+      {/* Detail header */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-semibold text-ink">{d.title}</h3>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+            <span>{openCount} open · {completedCount} done · {formatEstimateRatio(minutesDone, minutesTotal)} est.</span>
+            {d.deadline_human && (
+              <span className="inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-400">
+                <CalendarClock className="h-3.5 w-3.5" /> {d.deadline_human}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input
+              type="checkbox"
+              checked={showCancelled}
+              onChange={(e) => setShowCancelled(e.target.checked)}
+              className="h-3.5 w-3.5 accent-brand-600"
+            />
+            Show cancelled
+          </label>
+          {d.can_create && (
+            <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Todo
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Grouped todo tables */}
+      {items.length === 0 ? (
+        <EmptyState icon={ListChecks} title="No todos in this detail" />
+      ) : visibleItems.length === 0 ? (
+        <EmptyState icon={ListChecks} title="No visible todos" />
+      ) : (
+        <div className="space-y-5">
+          {todoGroups.map((g) => (
+            <div key={g.label}>
+              <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                {g.label} ({g.rows.length})
+              </p>
+              <DataTable
+                rows={g.rows}
+                columns={TODO_COLUMNS}
+                getKey={(r) => r.name}
+                activeKey={itemName}
+                onRowClick={(r) => nav(`${base}/item/${encodeURIComponent(r.name)}`)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Rich work-package meta + detail-level comments */}
+      <DetailMeta d={d} />
+      <div className="mt-6 border-t border-line pt-5">
+        <CommentThread referenceDoctype="Project Detail" referenceName={id} />
+      </div>
+
+      {/* Selected todo — slide-over. closeOnEscape=false: ProjectItem hosts its
+          own nested dialogs/confirms; Escape there must not tear down this drawer. */}
+      <Drawer open={!!itemName} onClose={() => nav(base)} title="Todo" widthClass="max-w-3xl" scrim="bg-black/30" closeOnEscape={false}>
+        <Outlet />
+      </Drawer>
+
+      <CreateProjectItemDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        projectDetail={d.name}
+        team={d.team.map((t) => ({ user: t.user, name: t.name }))}
+        defaultGroup={d.default_group ?? null}
+        siblings={d.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
+      />
+    </div>
+  )
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { FolderKanban, Search, Plus, Coins, Menu, X, Sun, Moon, Monitor, LogOut, User } from 'lucide-react'
 import { useBoot, useDashboard, useWallet } from '@/hooks/useData'
 import { Avatar } from '@/components/ui'
@@ -26,6 +26,7 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
   const [theme, setThemeState] = useState<Theme>(getStoredTheme())
   const [sheet, setSheet] = useState(false)
   const sheetRef = useModalA11y(sheet, () => setSheet(false))
+  const { pathname } = useLocation()
   const b = boot.data
   const groups = buildNavGroups(b)
   const pickTheme = (t: Theme) => { setTheme(t); setThemeState(t) }
@@ -88,7 +89,11 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
                     const Icon = l.icon
                     return (
                       <NavLink key={l.to} to={l.to} end={(l as { end?: boolean }).end} onClick={() => setSheet(false)}
-                        className={({ isActive }) => `flex items-center gap-3 rounded-md px-2 py-2 text-sm ${isActive ? 'bg-brand-50 dark:bg-brand-500/10 text-ink' : 'text-muted hover:bg-hover/[0.04]'}`}>
+                        className={({ isActive }) => {
+                          const m = (l as { match?: string }).match
+                          const active = m ? pathname.startsWith(m) : isActive
+                          return `flex items-center gap-3 rounded-md px-2 py-2 text-sm ${active ? 'bg-brand-50 dark:bg-brand-500/10 text-ink' : 'text-muted hover:bg-hover/[0.04]'}`
+                        }}>
                         <Icon className="h-4 w-4" /> {l.label}
                       </NavLink>
                     )

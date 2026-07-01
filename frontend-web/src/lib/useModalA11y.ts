@@ -9,7 +9,17 @@ import { useEffect, useRef } from 'react'
  *
  * Returns a ref to attach to the panel element.
  */
-export function useModalA11y(open: boolean, onClose: () => void) {
+// Module-level stack of open modals so only the TOP-most one reacts to
+// Escape/Tab. Without it, a Drawer nested inside another Drawer (e.g. the todo
+// slide-over hosting ProjectItem, which itself opens dialogs) would have both
+// panels' Escape fire on one press and both Tab-traps fight over focus.
+const modalStack: symbol[] = []
+
+export function useModalA11y(
+  open: boolean,
+  onClose: () => void,
+  opts?: { closeOnEscape?: boolean },
+) {
   const ref = useRef<HTMLDivElement>(null)
   // Keep the latest onClose without making it an effect dependency. Callers pass
   // an inline handler (new identity every render); if the effect depended on it,
@@ -17,9 +27,14 @@ export function useModalA11y(open: boolean, onClose: () => void) {
   // querySelectorAll + listener churn + focus() steal per character.
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  const closeOnEscapeRef = useRef(true)
+  closeOnEscapeRef.current = opts?.closeOnEscape ?? true
 
   useEffect(() => {
     if (!open) return
+    const token = Symbol()
+    modalStack.push(token)
+    const isTop = () => modalStack[modalStack.length - 1] === token
     const panel = ref.current
     const restoreTo = document.activeElement as HTMLElement | null
 
@@ -38,8 +53,9 @@ export function useModalA11y(open: boolean, onClose: () => void) {
     else panel?.focus()
 
     const onKey = (e: KeyboardEvent) => {
+      if (!isTop()) return
       if (e.key === 'Escape') {
-        onCloseRef.current()
+        if (closeOnEscapeRef.current) onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') return
@@ -65,6 +81,8 @@ export function useModalA11y(open: boolean, onClose: () => void) {
     document.body.style.overflow = 'hidden'
 
     return () => {
+      const i = modalStack.indexOf(token)
+      if (i >= 0) modalStack.splice(i, 1)
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
       restoreTo?.focus?.()

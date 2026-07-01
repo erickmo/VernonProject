@@ -183,51 +183,57 @@ export default function Today() {
 
       {lens === 'mine' ? (
         <>
-          <Section
-            title={`Today's plan · ${plannedTodos.length} · ${formatEstimate(plannedTodayMin)}`}
-            actions={
-              <button
-                onClick={() => setPlanOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-              >
-                <Sparkles className="h-4 w-4" /> Plan my day
-              </button>
-            }
-          >
-            <div className="space-y-2">
-              {plannedTodos.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-muted">
-                  Nothing planned for today yet — hit "Plan my day".
-                </div>
-              ) : (
-                plannedTodos.map((t) => <TodoCard key={t.name} todo={t} showProject />)
-              )}
-            </div>
-          </Section>
-
-          {groups.map((g) => (
-            <Section key={g.title} title={`${g.title} · ${g.items.length}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 items-start">
+            {/* Plan column */}
+            <Section
+              title={`Today's plan · ${plannedTodos.length} · ${formatEstimate(plannedTodayMin)}`}
+              actions={
+                <button
+                  onClick={() => setPlanOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+                >
+                  <Sparkles className="h-4 w-4" /> Plan my day
+                </button>
+              }
+            >
               <div className="space-y-2">
-                {g.items.length === 0 ? (
+                {plannedTodos.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-muted">
-                    Nothing here
+                    Nothing planned for today yet — hit "Plan my day".
                   </div>
                 ) : (
-                  g.items.map((t) => {
-                    const chips = todoRelationChips(t)
-                    return (
-                      <div key={t.name}>
-                        <TodoCard todo={t} />
-                        {chips.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-1 pl-1">{chips}</div>
-                        )}
-                      </div>
-                    )
-                  })
+                  plannedTodos.map((t) => <TodoCard key={t.name} todo={t} showProject />)
                 )}
               </div>
             </Section>
-          ))}
+
+            {/* Deadline column */}
+            <div>
+              {groups.map((g) => (
+                <Section key={g.title} title={`${g.title} · ${g.items.length}`}>
+                  <div className="space-y-2">
+                    {g.items.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-muted">
+                        Nothing here
+                      </div>
+                    ) : (
+                      g.items.map((t) => {
+                        const chips = todoRelationChips(t)
+                        return (
+                          <div key={t.name}>
+                            <TodoCard todo={t} />
+                            {chips.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-1 pl-1">{chips}</div>
+                            )}
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </Section>
+              ))}
+            </div>
+          </div>
 
           {visible.length === 0 && (
             <EmptyState icon={CheckCircle2} title="All clear" subtitle="No tasks match." />

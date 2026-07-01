@@ -10,13 +10,13 @@ import {
   canManageMarketplace, canGrantPoints, canManageAttendance,
 } from '@/hooks/useData'
 
-export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review' }
+export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string }
 export type NavGroup = { id: string; label: string; to?: string; leaves: NavLeaf[] }
 
 const WORK: NavLeaf[] = [
   { to: '/', label: 'Today', sub: "Today's work & progress", icon: Home, end: true },
   { to: '/calendar', label: 'Calendar', sub: 'Month & deadlines', icon: CalendarDays },
-  { to: '/projects', label: 'Projects', sub: 'All projects & details', icon: FolderKanban },
+  { to: '/projects', label: 'Projects', sub: 'All projects & details', icon: FolderKanban, match: '/project' },
   { to: '/review', label: 'Review', sub: 'Approve completed work', icon: CheckCircle2, badge: 'review' },
   { to: '/meetings', label: 'Meetings', sub: 'Schedule & notes', icon: Video },
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },

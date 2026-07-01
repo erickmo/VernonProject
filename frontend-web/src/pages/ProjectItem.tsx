@@ -704,6 +704,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 export default function ProjectItem() {
   const params = useParams()
   const todoName = decodeURIComponent(params.itemName ?? params.name ?? '')
+  // Rendered inside the projects workspace slide-over when both params exist;
+  // build same-detail links workspace-relative so they don't drop the rail.
+  const inWs = !!(params.name && params.detailName)
+  const wsProject = params.name ?? ''
 
   const { data, isLoading } = useProjectItem(todoName)
   const advanceConfirm = useAdvance()
@@ -840,7 +844,9 @@ export default function ProjectItem() {
             {data.project_name}
           </p>
           <Link
-            to={`/project-detail/${encodeURIComponent(data.project_detail)}`}
+            to={inWs
+              ? `/project/${encodeURIComponent(wsProject)}/detail/${encodeURIComponent(data.project_detail)}`
+              : `/project-detail/${encodeURIComponent(data.project_detail)}`}
             className="text-sm text-brand-600 hover:underline dark:text-brand-400"
           >
             in {data.project_detail_title}
@@ -1122,7 +1128,11 @@ export default function ProjectItem() {
                     return (
                       <li key={o.name}>
                         <Link
-                          to={o.is_current ? '#' : `/project-item/${encodeURIComponent(o.name)}`}
+                          to={o.is_current
+                            ? '#'
+                            : inWs
+                            ? `/project/${encodeURIComponent(wsProject)}/detail/${encodeURIComponent(data.project_detail)}/item/${encodeURIComponent(o.name)}`
+                            : `/project-item/${encodeURIComponent(o.name)}`}
                           onClick={(e) => o.is_current && e.preventDefault()}
                           className={clsx(
                             'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition',

@@ -16,8 +16,9 @@ import Login from '@web/pages/Login'
 import { AppShell } from '@web/components/AppShell'
 import Today from '@web/pages/Today'
 import Calendar from '@web/pages/Calendar'
-import Projects from '@web/pages/Projects'
-import Project from '@web/pages/Project'
+import ProjectsWorkspace, { ProjectsIndexPrompt } from '@web/pages/ProjectsWorkspace'
+import Project, { ProjectIndexPane } from '@web/pages/Project'
+import ProjectDetailPane from '@web/pages/ProjectDetailPane'
 import ProjectItem from '@web/pages/ProjectItem'
 import ProjectDetail from '@web/pages/ProjectDetail'
 import Review from '@web/pages/Review'
@@ -131,10 +132,17 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Today />} />
           <Route path="/calendar" element={<Calendar />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/project/:name" element={<Project />}>
-            <Route path="item/:itemName" element={<ProjectItem />} />
+          {/* Projects workspace: persistent rail (left) + selected project (right) */}
+          <Route element={<ProjectsWorkspace />}>
+            <Route path="/projects" element={<ProjectsIndexPrompt />} />
+            <Route path="/project/:name" element={<Project />}>
+              <Route index element={<ProjectIndexPane />} />
+              <Route path="detail/:detailName" element={<ProjectDetailPane />}>
+                <Route path="item/:itemName" element={<ProjectItem />} />
+              </Route>
+            </Route>
           </Route>
+          {/* Standalone deep-link targets (notifications, reports, command palette) */}
           <Route path="/project-item/:name" element={<ProjectItem />} />
           <Route path="/project-detail/:name" element={<ProjectDetail />}>
             <Route path="item/:itemName" element={<ProjectItem />} />

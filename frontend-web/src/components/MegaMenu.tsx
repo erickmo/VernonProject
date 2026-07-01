@@ -38,7 +38,9 @@ export function MegaMenu({
     )
   }
 
-  const groupActive = group.leaves.some((l) => l.end ? pathname === l.to : pathname.startsWith(l.to))
+  const leafActive = (l: (typeof group.leaves)[number]) =>
+    l.end ? pathname === l.to : pathname.startsWith(l.match ?? l.to)
+  const groupActive = group.leaves.some(leafActive)
   // ponytail: hover-intent open/close via 150ms debounce; closeT cleared on unmount via useEffect below
   const open$ = () => { window.clearTimeout(closeT.current); setOpen(true) }
   const close$ = () => { closeT.current = window.setTimeout(() => setOpen(false), 150) }
@@ -71,7 +73,7 @@ export function MegaMenu({
                   onClick={() => { setOpen(false); onNavigate?.() }}
                   className={({ isActive }) => clsx(
                     'flex items-start gap-2.5 rounded-md p-2.5',
-                    isActive ? 'bg-brand-50 dark:bg-brand-500/10' : 'hover:bg-hover/[0.04]',
+                    (l.match ? leafActive(l) : isActive) ? 'bg-brand-50 dark:bg-brand-500/10' : 'hover:bg-hover/[0.04]',
                   )}
                 >
                   <Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
