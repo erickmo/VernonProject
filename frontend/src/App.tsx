@@ -143,8 +143,10 @@ export default function App() {
             <Route path="/groups/:name" element={<GroupFormScreen />} />
             <Route path="/data-health" element={<DataHealthScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
-            <Route path="/reports/under-occupied" element={<UnderOccupiedScreen />} />
           </>
+        )}
+        {boot?.roles.includes('System Manager') && (
+          <Route path="/reports/under-occupied" element={<UnderOccupiedScreen />} />
         )}
         {canManageBrands(boot) && (
           <>

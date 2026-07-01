@@ -75,7 +75,7 @@ export default function UnderOccupiedScreen() {
         {isFetching && !data ? (
           <div className="flex justify-center py-16"><Spinner /></div>
         ) : !data ? null : data.rows.length === 0 ? (
-          <EmptyState icon={UserMinus} title="Everyone is occupied enough." subtitle="" />
+          <EmptyState icon={UserMinus} title="Everyone is occupied enough." />
         ) : (
           <div className="flex flex-col gap-3">
             {data.rows.map((row) => (
