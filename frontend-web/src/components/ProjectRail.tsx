@@ -16,7 +16,8 @@ export function ProjectRail() {
     const ql = q.trim().toLowerCase()
     return (projects.data ?? []).filter((p) => {
       if (!showClosed && p.status !== 'Ongoing') return false
-      if (ql && !p.project_name.toLowerCase().includes(ql) && !(p.brand || '').toLowerCase().includes(ql))
+      // match name / brand / owner / leader so you can find "projects led by X"
+      if (ql && ![p.project_name, p.brand, p.owner_name, p.leader_name].some((s) => (s || '').toLowerCase().includes(ql)))
         return false
       return true
     })
@@ -30,7 +31,7 @@ export function ProjectRail() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search projects"
+            placeholder="Search projects or people"
             className="w-full rounded-lg border border-line bg-transparent py-1.5 pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
           />
         </div>
