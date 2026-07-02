@@ -23,6 +23,8 @@ import DataHealthScreen from './pages/DataHealthScreen'
 import GroupFormScreen from './pages/GroupFormScreen'
 import BrandsScreen from './pages/BrandsScreen'
 import BrandFormScreen from './pages/BrandFormScreen'
+import CompaniesScreen from './pages/CompaniesScreen'
+import CompanyFormScreen from './pages/CompanyFormScreen'
 import UsersScreen from './pages/UsersScreen'
 import UserFormScreen from './pages/UserFormScreen'
 import WalletLogScreen from './pages/WalletLogScreen'
@@ -154,6 +156,9 @@ export default function App() {
             <Route path="/brands" element={<BrandsScreen />} />
             <Route path="/brands/new" element={<BrandFormScreen />} />
             <Route path="/brands/:name" element={<BrandFormScreen />} />
+            <Route path="/companies" element={<CompaniesScreen />} />
+            <Route path="/companies/new" element={<CompanyFormScreen />} />
+            <Route path="/companies/:name" element={<CompanyFormScreen />} />
           </>
         )}
         {canManageUsers(boot) && (

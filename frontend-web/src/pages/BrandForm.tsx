@@ -12,6 +12,7 @@ import { deleteErrorMessage } from '@/lib/format'
 import {
   useBrand,
   useBrands,
+  useCompanies,
   useCreateBrand,
   useUpdateBrand,
   useDeleteBrand,
@@ -38,14 +39,15 @@ export default function BrandForm() {
   const del = useDeleteBrand()
   const merge = useMergeBrand()
   const { data: allBrands } = useBrands()
+  const { data: companies } = useCompanies()
 
-  const [form, setForm] = useState<{ brand_name: string }>({ brand_name: '' })
+  const [form, setForm] = useState<{ brand_name: string; company: string }>({ brand_name: '', company: '' })
   const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (isEdit && existing) {
-      setForm({ brand_name: existing.brand_name })
+      setForm({ brand_name: existing.brand_name, company: existing.company })
     }
   }, [isEdit, existing])
 
@@ -89,6 +91,7 @@ export default function BrandForm() {
 
   const validate = (): string | null => {
     if (!form.brand_name.trim()) return 'Brand name is required'
+    if (!form.company) return 'Company is required'
     return null
   }
 
@@ -100,7 +103,6 @@ export default function BrandForm() {
       return
     }
     setError('')
-    const payload = { brand_name: form.brand_name.trim() }
     const opts = {
       onSuccess: () => {
         toast('success', isEdit ? 'Brand updated' : 'Brand created')
@@ -108,8 +110,8 @@ export default function BrandForm() {
       },
       onError: (e: unknown) => toast('error', (e as Error).message),
     }
-    if (isEdit) update.mutate({ name, payload }, opts)
-    else create.mutate(payload, opts)
+    if (isEdit) update.mutate({ name, payload: { company: form.company } }, opts)
+    else create.mutate({ brand_name: form.brand_name.trim(), company: form.company }, opts)
   }
 
   const remove = async () => {
@@ -184,6 +186,28 @@ export default function BrandForm() {
                     }}
                     placeholder="e.g. Acme"
                   />
+                )}
+              </Field>
+
+              <Field label="Company" required>
+                {(id) => (
+                  <select
+                    id={id}
+                    className={field}
+                    value={form.company}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, company: e.target.value }))
+                      setDirty(true)
+                      if (error) setError('')
+                    }}
+                  >
+                    <option value="">Select a company…</option>
+                    {(companies ?? []).map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.company_name}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </Field>
 

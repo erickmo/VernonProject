@@ -418,6 +418,12 @@ export interface ScoringGroupPayload {
 export interface Brand {
   name: string
   brand_name: string
+  company: string
+}
+
+export interface Company {
+  name: string
+  company_name: string
 }
 
 export interface ManagedUser {

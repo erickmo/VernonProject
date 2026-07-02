@@ -10,6 +10,7 @@ import { deleteErrorMessage } from '@/lib/format'
 import {
   useBrand,
   useBrands,
+  useCompanies,
   useCreateBrand,
   useUpdateBrand,
   useDeleteBrand,
@@ -36,12 +37,13 @@ export default function BrandFormScreen() {
   const del = useDeleteBrand()
   const merge = useMergeBrand()
   const { data: allBrands } = useBrands()
+  const { data: companies } = useCompanies()
 
-  const [form, setForm] = useState<{ brand_name: string }>({ brand_name: '' })
+  const [form, setForm] = useState<{ brand_name: string; company: string }>({ brand_name: '', company: '' })
 
   useEffect(() => {
     if (isEdit && existing) {
-      setForm({ brand_name: existing.brand_name })
+      setForm({ brand_name: existing.brand_name, company: existing.company })
     }
   }, [isEdit, existing])
 
@@ -63,6 +65,7 @@ export default function BrandFormScreen() {
 
   const validate = (): string | null => {
     if (!form.brand_name.trim()) return 'Brand name is required'
+    if (!form.company) return 'Company is required'
     return null
   }
 
@@ -72,7 +75,6 @@ export default function BrandFormScreen() {
       toast('error', err)
       return
     }
-    const payload = { brand_name: form.brand_name.trim() }
     const opts = {
       onSuccess: () => {
         toast('success', isEdit ? 'Brand updated' : 'Brand created')
@@ -80,8 +82,8 @@ export default function BrandFormScreen() {
       },
       onError: (e: unknown) => toast('error', (e as Error).message),
     }
-    if (isEdit) update.mutate({ name, payload }, opts)
-    else create.mutate(payload, opts)
+    if (isEdit) update.mutate({ name, payload: { company: form.company } }, opts)
+    else create.mutate({ brand_name: form.brand_name.trim(), company: form.company }, opts)
   }
 
   const remove = async () => {
@@ -129,6 +131,21 @@ export default function BrandFormScreen() {
             onChange={(e) => setForm((f) => ({ ...f, brand_name: e.target.value }))}
             placeholder="e.g. Acme"
           />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Company</label>
+          <select
+            className={field}
+            value={form.company}
+            onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+          >
+            <option value="">Select a company…</option>
+            {(companies ?? []).map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.company_name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <button

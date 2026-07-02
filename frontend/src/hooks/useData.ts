@@ -10,6 +10,7 @@ import type {
   AvatarCatalog,
   Boot,
   Brand,
+  Company,
   Comment,
   Dashboard,
   DataHealth,
@@ -60,6 +61,8 @@ export const keys = {
   groupTodos: (n: string) => ['group-todos', n] as const,
   brands: ['brands'] as const,
   brand: (n: string) => ['brand', n] as const,
+  companies: ['companies'] as const,
+  company: (n: string) => ['company', n] as const,
   users: ['users'] as const,
   wallet: ['wallet'] as const,
   walletLog: ['wallet-log'] as const,
@@ -580,6 +583,9 @@ export function canManageBrands(boot: Boot | undefined): boolean {
   )
 }
 
+// Companies share Brand's management roles — a brand belongs to a company.
+export const canManageCompanies = canManageBrands
+
 export function canManageUsers(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
@@ -611,7 +617,7 @@ export const MEMBER_TYPE_OPTIONS = [
 export function useBrands() {
   return useQuery({
     queryKey: keys.brands,
-    queryFn: () => resource.list<Brand[]>('Brand', { fields: ['name', 'brand_name'], limit: 0 }),
+    queryFn: () => resource.list<Brand[]>('Brand', { fields: ['name', 'brand_name', 'company'], limit: 0 }),
   })
 }
 
@@ -626,7 +632,7 @@ export function useBrand(name: string, enabled = true) {
 export function useCreateBrand() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { brand_name: string }) =>
+    mutationFn: (payload: { brand_name: string; company: string }) =>
       resource.create<{ name: string }>('Brand', payload as unknown as Record<string, unknown>),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.brands }),
   })
@@ -635,7 +641,7 @@ export function useCreateBrand() {
 export function useUpdateBrand() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, payload }: { name: string; payload: { brand_name: string } }) =>
+    mutationFn: ({ name, payload }: { name: string; payload: { company: string } }) =>
       resource.update<{ name: string }>('Brand', name, payload as unknown as Record<string, unknown>),
     onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: keys.brands })
@@ -660,6 +666,50 @@ export function useMergeBrand() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.brands })
       qc.invalidateQueries({ queryKey: keys.projects })
+    },
+  })
+}
+
+export function useCompanies() {
+  return useQuery({
+    queryKey: keys.companies,
+    queryFn: () => resource.list<Company[]>('Company', { fields: ['name', 'company_name'], limit: 0 }),
+  })
+}
+
+export function useCompany(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.company(name),
+    queryFn: () => resource.get<Company>('Company', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateCompany() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { company_name: string }) =>
+      resource.create<{ name: string }>('Company', payload as unknown as Record<string, unknown>),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.companies }),
+  })
+}
+
+export function useDeleteCompany() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Company', name),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.companies }),
+  })
+}
+
+export function useMergeCompany() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ source, target }: { source: string; target: string }) =>
+      renameDoc('Company', source, target, true),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.companies })
+      qc.invalidateQueries({ queryKey: keys.brands })
     },
   })
 }
