@@ -22,6 +22,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['Bricolage Grotesque', 'Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         pop: '0 4px 24px -6px rgb(15 15 15 / 0.12), 0 1px 3px 0 rgb(15 15 15 / 0.06)',
@@ -31,11 +32,13 @@ export default {
         'slide-up': { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
         'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
         pop: { '0%': { transform: 'scale(.96)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+        rise: { '0%': { opacity: '0', transform: 'translateY(6px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
       },
       animation: {
         'slide-up': 'slide-up 0.25s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
         pop: 'pop 0.15s ease-out',
+        rise: 'rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both',
       },
     },
   },

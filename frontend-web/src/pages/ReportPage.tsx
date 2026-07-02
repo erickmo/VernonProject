@@ -409,7 +409,7 @@ export default function ReportPage() {
               <div className="overflow-x-auto rounded-xl border border-line">
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-canvas">
+                    <tr className="border-b border-line bg-surface">
                       {data.columns.map((col, i) => {
                         const active = sort?.field === col.fieldname
                         return (
@@ -420,7 +420,7 @@ export default function ReportPage() {
                             }
                             className={clsx(
                               'whitespace-nowrap px-0 py-0 text-left text-xs font-semibold uppercase tracking-wide text-muted',
-                              i === 0 && 'sticky left-0 z-10 bg-canvas',
+                              i === 0 && 'sticky left-0 z-10 bg-surface',
                             )}
                           >
                             <button
@@ -467,7 +467,7 @@ export default function ReportPage() {
                               className={clsx(
                                 'whitespace-nowrap px-4 py-2.5 text-ink',
                                 ci === 0 &&
-                                  'sticky left-0 z-10 max-w-[260px] truncate bg-canvas font-medium',
+                                  'sticky left-0 z-10 max-w-[260px] truncate bg-surface font-medium',
                                 ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
                               )}
                             >
@@ -485,7 +485,7 @@ export default function ReportPage() {
                   <button
                     type="button"
                     onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-hover/[0.03] outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-hover/[0.03] outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                   >
                     Load more
                     <span className="text-xs text-muted">

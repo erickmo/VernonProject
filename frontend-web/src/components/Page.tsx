@@ -4,7 +4,7 @@ import clsx from 'clsx'
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
   // LOCKED: full width on every route (matches AppShell — do not re-add max-w-5xl).
   // A page that needs a narrow column passes its own max-w via `className`.
-  return <div className={clsx('w-full', className)}>{children}</div>
+  return <div className={clsx('w-full animate-rise', className)}>{children}</div>
 }
 
 export function PageHeader({
@@ -19,7 +19,7 @@ export function PageHeader({
         <div className="flex min-w-0 items-center gap-2.5">
           {emoji && <span className="text-2xl leading-none">{emoji}</span>}
           {Icon && <Icon className="h-6 w-6 shrink-0 text-muted" />}
-          <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+          <h1 className="truncate text-[1.7rem] font-bold leading-tight tracking-tight text-ink">{title}</h1>
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>

@@ -122,7 +122,7 @@ export default function AttendanceReport() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
-                <thead className="sticky top-0 z-10 bg-canvas">
+                <thead className="sticky top-0 z-10 bg-surface">
                   <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                     {data.columns.map((c) => (
                       <th key={c.fieldname} className="px-3 py-2 font-medium">{c.label}</th>

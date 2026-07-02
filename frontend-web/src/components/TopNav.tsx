@@ -39,8 +39,11 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
         <button className="lg:hidden -ml-1 p-1.5 text-muted" aria-label="Menu" aria-expanded={sheet}
           onClick={() => setSheet(true)}><Menu className="h-5 w-5" /></button>
 
-        <NavLink to="/" className="flex items-center gap-2 font-semibold text-ink">
-          <FolderKanban className="h-5 w-5 text-brand-600" /> <span className="hidden sm:inline">Vernon</span>
+        <NavLink to="/" className="flex items-center gap-2 font-display text-[15px] font-bold tracking-tight text-ink">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
+            <FolderKanban className="h-4 w-4" />
+          </span>
+          <span className="hidden sm:inline">Vernon</span>
         </NavLink>
 
         {/* desktop mega menus */}
@@ -57,7 +60,7 @@ export function TopNav({ onOpenPalette, onQuickCreate }: { onOpenPalette: () => 
           <kbd className="hidden xl:inline-flex rounded border border-line px-1.5 text-[10px]">⌘K</kbd>
         </button>
         <button onClick={onQuickCreate} aria-label="New"
-          className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-2.5 py-1.5 text-sm font-medium text-white hover:bg-brand-700">
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 hover:shadow active:scale-[0.97]">
           <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New</span>
         </button>
         <NotificationBell />

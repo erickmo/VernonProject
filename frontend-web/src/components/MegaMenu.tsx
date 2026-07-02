@@ -53,8 +53,10 @@ export function MegaMenu({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         className={clsx(
-          'inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium',
-          groupActive ? 'text-ink' : 'text-muted hover:text-ink hover:bg-hover/[0.04]',
+          'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium',
+          groupActive
+            ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+            : 'text-muted hover:text-ink hover:bg-hover/[0.05]',
         )}
       >
         {group.label}
