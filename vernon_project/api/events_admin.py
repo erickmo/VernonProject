@@ -73,3 +73,47 @@ def delete_event(name):
 	# to the client, which shows "cancel registrations / set status Cancelled first".
 	frappe.delete_doc("Vernon Event", name, ignore_permissions=True)
 	return {"ok": True}
+
+
+ROSTER_FIELDS = ["name", "user", "status", "method", "amount", "attended", "registered_on"]
+
+
+@frappe.whitelist()
+def event_roster(event):
+	_require_user()
+	_can_manage(event)
+	rows = frappe.get_all(
+		"Vernon Event Registration", filters={"event": event},
+		fields=ROSTER_FIELDS, order_by="registered_on desc",
+	)
+	for r in rows:
+		r["full_name"] = frappe.db.get_value("User", r["user"], "full_name") or r["user"]
+	return rows
+
+
+def _reg_event(name):
+	event = frappe.db.get_value("Vernon Event Registration", name, "event")
+	if not event:
+		frappe.throw("Registration not found", frappe.DoesNotExistError)
+	return event
+
+
+@frappe.whitelist()
+def cancel_registration(name):
+	_require_user()
+	_can_manage(_reg_event(name))
+	# Sets Cancelled. Points auto-refund (_user_balance sums only non-Cancelled
+	# Points regs) and the seat auto-frees (_active_count ignores Cancelled).
+	# Rupiah money refunds are out of scope (manual). Idempotent.
+	frappe.db.set_value("Vernon Event Registration", name, "status", "Cancelled")
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def mark_attended(name, attended):
+	_require_user()
+	_can_manage(_reg_event(name))
+	frappe.db.set_value(
+		"Vernon Event Registration", name, "attended", 1 if int(attended) else 0
+	)
+	return {"ok": True}
