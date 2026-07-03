@@ -47,6 +47,7 @@ import Settings from '@web/pages/Settings'
 import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
 import RewardForm from '@web/pages/RewardForm'
 import GrantPoints from '@web/pages/GrantPoints'
+import TransferTasks from '@web/pages/TransferTasks'
 import Onboarding from '@web/pages/Onboarding'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
@@ -60,6 +61,7 @@ import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
 import Events from '@web/pages/Events'
 import EventDetail from '@web/pages/EventDetail'
+import EventManage from '@web/pages/EventManage'
 import MyRegistrations from '@web/pages/MyRegistrations'
 import { CrumbProvider } from '@web/lib/crumbs'
 
@@ -176,6 +178,7 @@ export default function App() {
               <Route path="/users/new" element={<UserForm />} />
               <Route path="/users/:name" element={<UserForm />} />
               <Route path="/feedback-inbox" element={<FeedbackInbox />} />
+              <Route path="/transfer-tasks" element={<TransferTasks />} />
             </>
           )}
           {canManageGroups(b) && (
@@ -220,6 +223,7 @@ export default function App() {
           )}
           <Route path="/events" element={<Events />} />
           <Route path="/events/:name" element={<EventDetail />} />
+          <Route path="/events/manage" element={<EventManage />} />
           <Route path="/my-registrations" element={<MyRegistrations />} />
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/achievements" element={<Achievements />} />

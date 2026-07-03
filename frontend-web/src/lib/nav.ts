@@ -2,7 +2,7 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Video, StickyNote, MessageSquarePlus,
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
-  Zap, Store, Coins, QrCode, Monitor, UserCheck, Ticket,
+  Zap, Store, Coins, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight, CalendarCog,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -25,6 +25,7 @@ const WORK: NavLeaf[] = [
 
 const REWARDS: NavLeaf[] = [
   { to: '/events', label: 'Events', sub: 'Browse & register', icon: CalendarDays },
+  { to: '/events/manage', label: 'Manage Events', sub: 'Create & roster', icon: CalendarCog, match: '/events/manage' },
   { to: '/my-registrations', label: 'My Registrations', sub: 'Your events', icon: Ticket },
   { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/team-wall', label: 'Team Wall', sub: 'Recognition feed', icon: UsersRound },
@@ -44,6 +45,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   const admin: NavLeaf[] = [
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', sub: 'People & roles', icon: UsersIcon } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/feedback-inbox', label: 'Feedback', sub: 'Inbound feedback', icon: Inbox } as NavLeaf] : []),
+    ...(canManageUsers(b) ? [{ to: '/transfer-tasks', label: 'Transfer Tasks', sub: 'Reassign a user’s tasks', icon: ArrowLeftRight } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/groups', label: 'Groups', sub: 'Work-type taxonomy', icon: Layers } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', sub: 'Integrity checks', icon: ShieldAlert } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon } as NavLeaf] : []),
