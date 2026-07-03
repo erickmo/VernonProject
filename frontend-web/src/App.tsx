@@ -59,6 +59,7 @@ import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
 import Events from '@web/pages/Events'
+import EventDetail from '@web/pages/EventDetail'
 import { CrumbProvider } from '@web/lib/crumbs'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -217,6 +218,7 @@ export default function App() {
             </>
           )}
           <Route path="/events" element={<Events />} />
+          <Route path="/events/:name" element={<EventDetail />} />
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />
