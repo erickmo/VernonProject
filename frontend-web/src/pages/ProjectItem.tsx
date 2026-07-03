@@ -51,7 +51,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
-import { FocusOverlay } from '@web/components/FocusOverlay'
+import { openFocusOverlay } from '@/lib/focusUI'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
@@ -722,8 +722,7 @@ export default function ProjectItem() {
   const [editing, setEditing] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
-  const focus = useFocusTimer()
-  const [focusOpen, setFocusOpen] = useState(false)
+  const focus = useFocusTimer(todoName)
   const [dupOpen, setDupOpen] = useState(false)
 
   if (isLoading && !data) {
@@ -802,42 +801,30 @@ export default function ProjectItem() {
   const canSetDeadlineToday =
     data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
 
-  const focusActive = focus.timer?.taskId === data.name
+  const focusActive = focus.timer != null
   const openFocus = () => {
-    if (!focusActive) focus.start(data.name, data.to_do, data.estimated)
-    setFocusOpen(true)
+    if (!focusActive)
+      focus.start(data.name, data.to_do, data.estimated, {
+        project: data.project_name,
+        deadlineHuman: data.deadline_human || undefined,
+        overdue: data.is_overdue,
+        estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
+        group: data.group
+          ? [
+              data.group,
+              data.level_type && data.level ? `${data.level_type} · ${data.level}` : data.level_type || data.level,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : undefined,
+      })
+    openFocusOverlay(data.name)
   }
   const focusOver = focusActive && focus.hasEstimate && focus.remainingMs < 0
   const focusValueMs = focusActive ? (focus.hasEstimate ? focus.remainingMs : focus.elapsedMs) : 0
 
   return (
     <div className="space-y-6">
-      {/* Focus overlay — full-screen, rendered above everything */}
-      {focusOpen && focusActive && focus.timer && (
-        <FocusOverlay
-          title={focus.timer.taskTitle}
-          meta={{
-            project: data.project_name,
-            deadlineHuman: data.deadline_human || undefined,
-            overdue: data.is_overdue,
-            estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
-            group: data.group ? [data.group, data.level_type && data.level ? `${data.level_type} · ${data.level}` : (data.level_type || data.level)].filter(Boolean).join(' · ') : undefined,
-          }}
-          displayMs={focus.hasEstimate ? focus.remainingMs : focus.elapsedMs}
-          fraction={focus.fraction}
-          stopwatch={!focus.hasEstimate}
-          paused={focus.timer.status === 'paused'}
-          onPause={focus.pause}
-          onResume={focus.resume}
-          onReset={focus.reset}
-          onStop={() => {
-            focus.stop()
-            setFocusOpen(false)
-          }}
-          onClose={() => setFocusOpen(false)}
-        />
-      )}
-
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

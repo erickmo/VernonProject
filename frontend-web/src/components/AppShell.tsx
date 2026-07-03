@@ -7,6 +7,8 @@ import { useCrumbs } from '@web/lib/crumbs'
 import { TopNav } from '@web/components/TopNav'
 import { buildNavGroups } from '@web/lib/nav'
 import { QuickCreate } from '@web/components/QuickCreate'
+import { FocusDock } from '@web/components/FocusDock'
+import { FocusHost } from '@web/components/FocusHost'
 
 const SECTION: Record<string, { label: string; to: string }> = {
   '': { label: 'Today', to: '/' },
@@ -115,6 +117,8 @@ export function AppShell() {
       </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
+      <FocusDock />
+      <FocusHost />
     </div>
   )
 }

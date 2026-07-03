@@ -16,14 +16,7 @@ import {
 } from 'lucide-react'
 import { formatClock } from '@/lib/format'
 import { ambient, loadSoundPrefs, saveSoundPrefs } from '@/lib/ambientSound'
-
-export type FocusMeta = {
-  project?: string
-  deadlineHuman?: string
-  overdue?: boolean
-  estimateLabel?: string
-  group?: string
-}
+import type { FocusMeta } from '@/lib/focusUI'
 
 // Distraction-free full-screen countdown. Presentational only — all timer state
 // lives in useFocusTimer (caller). X closes overlay but leaves timer running;
