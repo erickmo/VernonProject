@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
@@ -42,6 +42,7 @@ import type {
   ActivityItem,
   ReactionKey,
   TeamWallResponse,
+  EventFormPayload,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -88,6 +89,9 @@ export const keys = {
   events: ['events'] as const,
   event: (n: string) => ['event', n] as const,
   myRegistrations: ['myRegistrations'] as const,
+  managedEvents: ['managedEvents'] as const,
+  managedEvent: (n: string) => ['managedEvent', n] as const,
+  eventRoster: (e: string) => ['eventRoster', e] as const,
 }
 
 export const useBoot = () =>
@@ -1319,6 +1323,68 @@ export function useRegisterEvent() {
       qc.invalidateQueries({ queryKey: keys.event(event) })
       qc.invalidateQueries({ queryKey: keys.myRegistrations })
     },
+  })
+}
+
+// any authenticated user may manage (create makes them organizer);
+// per-event edit/roster/cancel is enforced server-side.
+export function canManageEvents(boot: Boot | undefined): boolean {
+  return !!boot
+}
+
+export const useManagedEvents = () =>
+  useQuery({ queryKey: keys.managedEvents, queryFn: () => eventsAdminApi.list() })
+
+export const useManagedEvent = (name: string, enabled = true) =>
+  useQuery({ queryKey: keys.managedEvent(name), queryFn: () => eventsAdminApi.get(name), enabled: !!name && enabled })
+
+export function useSaveEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ payload, name }: { payload: EventFormPayload; name?: string }) =>
+      eventsAdminApi.save(payload, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.managedEvents })
+      qc.invalidateQueries({ queryKey: keys.events })
+    },
+  })
+}
+
+export function useDeleteEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => eventsAdminApi.remove(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.managedEvents })
+      qc.invalidateQueries({ queryKey: keys.events })
+    },
+  })
+}
+
+export const useEventRoster = (event: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.eventRoster(event),
+    queryFn: () => eventsAdminApi.roster(event),
+    enabled: !!event && enabled,
+  })
+
+export function useCancelRegistration() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => eventsAdminApi.cancelReg(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eventRoster'] })
+      qc.invalidateQueries({ queryKey: keys.managedEvents })
+    },
+  })
+}
+
+export function useMarkAttended() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, attended }: { name: string; attended: number }) =>
+      eventsAdminApi.markAttended(name, attended),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['eventRoster'] }),
   })
 }
 

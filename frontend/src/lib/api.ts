@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload } from './types'
 
 const METHOD = '/api/method/'
 
@@ -217,6 +217,18 @@ export const mobileApi = {
       ...(note ? { note } : {}),
     }),
   listGrantUsers: () => api.get<{ users: import('./types').GrantUser[] }>(M + 'list_grant_users'),
+  listTransferUsers: () =>
+    api.get<{ users: import('./types').TransferUser[] }>(M + 'list_transfer_users'),
+  transferTasks: (fromUser: string, toUser: string, project?: string, dryRun?: boolean) =>
+    api.post<{ count?: number; blocked_projects?: string[]; moved?: number }>(
+      M + 'transfer_tasks',
+      {
+        from_user: fromUser,
+        to_user: toUser,
+        ...(project ? { project } : {}),
+        ...(dryRun ? { dry_run: 1 } : {}),
+      },
+    ),
   getTeamWall: () => api.get<import('./types').TeamWallResponse>(M + 'get_team_wall'),
   giftPoints: (toUser: string, amount: number, note?: string) =>
     api.post<{ balance: number; gifted: number; to: string }>(M + 'gift_points', {
@@ -444,6 +456,23 @@ export const eventsApi = {
   register: (event: string) => api.post<RegisterResult>(EV + 'register', { event }),
   mine: () => api.get<EventRegistration[]>(EV + 'my_registrations'),
   payConfig: () => api.get<PayConfig>(MT + 'pay_config'),
+}
+
+const EA = 'vernon_project.api.events_admin.'
+
+export const eventsAdminApi = {
+  list: () => api.get<ManagedEvent[]>(EA + 'manage_list_events'),
+  get: (name: string) => api.get<Record<string, unknown>>(EA + 'get_managed_event', { name }),
+  save: (payload: EventFormPayload, name?: string) =>
+    api.post<{ name: string }>(EA + 'save_event', {
+      payload: JSON.stringify(payload),
+      ...(name ? { name } : {}),
+    }),
+  remove: (name: string) => api.post<{ ok: boolean }>(EA + 'delete_event', { name }),
+  roster: (event: string) => api.get<RosterEntry[]>(EA + 'event_roster', { event }),
+  cancelReg: (name: string) => api.post<{ ok: boolean }>(EA + 'cancel_registration', { name }),
+  markAttended: (name: string, attended: number) =>
+    api.post<{ ok: boolean }>(EA + 'mark_attended', { name, attended }),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.

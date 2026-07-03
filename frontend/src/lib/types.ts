@@ -446,6 +446,8 @@ export type GrantUser = { name: string; full_name: string; user_image?: string |
 
 export type GiftUser = GrantUser
 
+export type TransferUser = GrantUser & { enabled: 0 | 1 }
+
 export interface Wallet {
   earned: number
   redeemed: number
@@ -743,4 +745,39 @@ export interface RegisterResult {
   balance?: number | null
   snap_token?: string
   order_id?: string
+}
+
+export interface ManagedEvent {
+  name: string
+  title: string
+  start_datetime: string
+  status: string
+  pricing: 'Free' | 'Points' | 'Rupiah'
+  capacity?: number
+  registered_count: number
+}
+
+export interface RosterEntry {
+  name: string
+  user: string
+  full_name: string
+  status: 'Pending' | 'Confirmed' | 'Cancelled'
+  method: 'Free' | 'Points' | 'Rupiah'
+  amount?: number
+  attended: number
+  registered_on?: string
+}
+
+export interface EventFormPayload {
+  title: string
+  description?: string
+  cover_image?: string | null
+  start_datetime: string
+  end_datetime?: string | null
+  location?: string
+  capacity: number
+  pricing: 'Free' | 'Points' | 'Rupiah'
+  points_cost?: number
+  price?: number
+  status: string
 }
