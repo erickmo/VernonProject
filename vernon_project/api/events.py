@@ -1,6 +1,8 @@
 # Copyright (c) 2026, Vernon and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 
 PUBLIC_EVENT_FIELDS = [
@@ -78,3 +80,49 @@ def my_registrations():
 		r["event_title"] = frappe.db.get_value("Vernon Event", r["event"], "title")
 		r["start_datetime"] = frappe.db.get_value("Vernon Event", r["event"], "start_datetime")
 	return rows
+
+
+def _apply_notification(payload):
+	from vernon_project.api.midtrans import _server_key, verify_signature
+	if not verify_signature(payload, _server_key()):
+		frappe.log_error(f"order_id={payload.get('order_id')}", "Events Midtrans bad signature")
+		raise frappe.PermissionError("Invalid signature.")
+
+	order_id = payload.get("order_id")
+	name = frappe.db.get_value("Vernon Event Registration", {"midtrans_order_id": order_id}, "name")
+	if not name:
+		frappe.log_error(f"order_id={order_id}", "Events Midtrans unknown order")
+		return "ignored"
+
+	# Row-lock to serialise duplicate/concurrent notifications.
+	frappe.db.get_value("Vernon Event Registration", name, "name", for_update=True)
+	reg = frappe.get_doc("Vernon Event Registration", name)
+	reg.db_set("transaction_status", payload.get("transaction_status"), update_modified=False)
+
+	if reg.status == "Confirmed":
+		return "Confirmed"  # idempotent — already finalized
+
+	txn = payload.get("transaction_status")
+	fraud = payload.get("fraud_status")
+	if txn == "settlement" or (txn == "capture" and fraud == "accept"):
+		# Amount tamper check.
+		if float(payload.get("gross_amount") or 0) != float(reg.amount or 0):
+			frappe.log_error(f"order_id={order_id} amount mismatch", "Events Midtrans tamper")
+			raise frappe.PermissionError("Amount mismatch.")
+		reg.db_set({"status": "Confirmed", "paid_on": frappe.utils.now()})
+		return "Confirmed"
+	if txn in ("deny", "cancel", "expire"):
+		reg.db_set("status", "Cancelled")
+		return "Cancelled"
+	return reg.status  # pending etc. — leave as is
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def midtrans_notify():
+	try:
+		payload = json.loads(frappe.request.get_data() or b"{}")
+	except ValueError:
+		frappe.throw("Invalid payload", frappe.ValidationError)
+	result = _apply_notification(payload)
+	frappe.db.commit()
+	return {"status": result}
