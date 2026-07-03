@@ -89,8 +89,9 @@ def get_permission_query_conditions(user):
 
 
 def has_permission(doc, ptype, user):
-	if ptype == "read":
-		return True
-	if "System Manager" in frappe.get_roles(user):
-		return True
-	return doc.booked_by == user
+	if ptype in ("write", "delete"):
+		if "System Manager" in frappe.get_roles(user):
+			return True
+		return doc.booked_by == user
+	# read / create / report / export / print → governed by role-level perms
+	return None
