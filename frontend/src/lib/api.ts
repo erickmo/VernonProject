@@ -1,6 +1,8 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
+import type { EventItem, EventRegistration, PayConfig, RegisterResult } from './types'
+
 const METHOD = '/api/method/'
 
 export class ApiError extends Error {
@@ -317,7 +319,11 @@ export const mobileApi = {
   buyAvatarOption: (style: string, slot: string, value: string) =>
     api.post<{ balance: number }>(M + 'buy_avatar_option', { style, slot, value }),
   buyAvatarAsset: (asset_name: string) =>
-    api.post<{ balance: number }>(M + 'buy_avatar_asset', { asset_name }),
+    api.post<{ balance: number; completed?: import('./types').SetCompletion | null }>(M + 'buy_avatar_asset', { asset_name }),
+  getCrateStatus: () =>
+    api.get<import('./types').CrateStatus>(M + 'get_crate_status'),
+  openTaskCrate: () =>
+    api.post<import('./types').CrateOpenResult>(M + 'open_task_crate', {}),
   getMyAvatar: () =>
     api.get<import('./types').AvatarConfig>(M + 'get_my_avatar'),
   saveMyAvatar: (config: import('./types').AvatarConfig, snapshot_dataurl?: string) =>
@@ -427,6 +433,17 @@ export const mobileApi = {
       from_date: string; to_date: string; day_count: number
       rows: { user: string; full_name: string; assigned_total: number; avg_daily: number; under_days: number; deficit: number }[]
     }>('vernon_project.api.report.under_occupied', { from_date, to_date }),
+}
+
+const EV = 'vernon_project.api.events.'
+const MT = 'vernon_project.api.midtrans.'
+
+export const eventsApi = {
+  list: () => api.get<EventItem[]>(EV + 'list_events'),
+  get: (event: string) => api.get<EventItem>(EV + 'get_event', { event }),
+  register: (event: string) => api.post<RegisterResult>(EV + 'register', { event }),
+  mine: () => api.get<EventRegistration[]>(EV + 'my_registrations'),
+  payConfig: () => api.get<PayConfig>(MT + 'pay_config'),
 }
 
 // Multipart upload to a whitelisted method. Returns the saved file URL.

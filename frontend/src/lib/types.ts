@@ -389,8 +389,7 @@ export interface ScoringGroup {
   late_penalty: number
   early_bonus: number
   leader_weight: number
-  leader_late_penalty: number
-  leader_early_bonus: number
+  leader_late_weight: number
   base_rate_per_minute: number
   levels: GroupLevel[]
 }
@@ -409,8 +408,7 @@ export interface ScoringGroupPayload {
   late_penalty: number
   early_bonus: number
   leader_weight: number
-  leader_late_penalty: number
-  leader_early_bonus: number
+  leader_late_weight: number
   base_rate_per_minute: number
   levels: { name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number }[]
 }
@@ -626,8 +624,11 @@ export interface AvatarAsset {
   asset_type: 'Scene' | 'Prop' | 'Collectible'
   emoji: string | null
   icon?: string | null
+  image?: string | null
   gradient: string | null
   anchor: string | null
+  set_name?: string | null
+  earn_only?: number
   is_default: number
   price: number | null
   owned: boolean
@@ -639,6 +640,24 @@ export interface AvatarCatalog {
   unlocked: AvatarUnlock[]
   my: AvatarConfig
   assets: AvatarAsset[]
+  sets?: { name: string; owned: number; total: number }[]
+}
+
+export interface CrateStatus {
+  keys: number
+  key_cost: number
+  progress: number
+  progress_pct: number
+  daily_cap: number
+  opened_today: number
+  remaining: number
+}
+export interface SetCompletion { set: string; capstone: string; rebate: number }
+export interface CrateOpenResult {
+  asset: Pick<AvatarAsset, 'asset_name' | 'asset_type' | 'emoji' | 'icon' | 'image' | 'gradient'>
+  keys_left: number
+  remaining: number
+  completed?: SetCompletion | null
 }
 
 export type FeedbackItem = {
@@ -687,3 +706,41 @@ export type TeamWallUser = {
 }
 
 export type TeamWallResponse = { users: TeamWallUser[] }
+
+export interface EventItem {
+  name: string
+  title: string
+  description?: string
+  cover_image?: string
+  organizer?: string
+  start_datetime: string
+  end_datetime?: string
+  location?: string
+  pricing: 'Free' | 'Points' | 'Rupiah'
+  points_cost?: number
+  price?: number
+  capacity?: number
+  registered_count: number
+  is_full: boolean
+  my_status: 'Pending' | 'Confirmed' | 'Cancelled' | null
+}
+
+export interface EventRegistration {
+  name: string
+  event: string
+  event_title?: string
+  start_datetime?: string
+  status: 'Pending' | 'Confirmed' | 'Cancelled'
+  method: 'Free' | 'Points' | 'Rupiah'
+  amount?: number
+}
+
+export interface PayConfig { client_key: string; snap_js: string }
+
+export interface RegisterResult {
+  registration: string
+  status: 'Confirmed' | 'Pending'
+  balance?: number | null
+  snap_token?: string
+  order_id?: string
+}
