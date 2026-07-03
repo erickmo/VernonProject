@@ -23,7 +23,7 @@ export function FocusDock() {
 
   return (
     <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-      {openList && (
+      {openList && timers.length > 1 && (
         <div className="w-72 overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
           {timers.map((t) => {
             const q = parts(t)
