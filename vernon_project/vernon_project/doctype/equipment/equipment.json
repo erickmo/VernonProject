@@ -1,0 +1,31 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2026-07-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["equipment_name", "category", "is_active"],
+ "fields": [
+  {"fieldname": "equipment_name", "fieldtype": "Data", "label": "Equipment Name", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "category", "fieldtype": "Data", "label": "Category", "in_list_view": 1},
+  {"fieldname": "is_active", "fieldtype": "Check", "label": "Active", "default": "1", "in_list_view": 1}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Equipment",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "read": 1, "report": 1, "write": 1, "export": 1, "print": 1, "share": 1, "email": 1},
+  {"role": "All", "read": 1, "report": 1, "export": 1, "print": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
