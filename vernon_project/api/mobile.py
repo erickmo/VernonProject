@@ -2154,7 +2154,12 @@ def _user_balance(user):
 	unlocked = frappe.db.sql(
 		"select coalesce(sum(cost),0) from `tabAvatar Unlock` where user=%s", user
 	)[0][0] or 0
-	balance = earned - redeemed - float(unlocked)
+	events_spent = frappe.db.sql(
+		"select coalesce(sum(amount),0) from `tabVernon Event Registration` "
+		"where user=%s and method='Points' and status != 'Cancelled'",
+		user,
+	)[0][0] or 0
+	balance = earned - redeemed - float(unlocked) - float(events_spent)
 	return earned, redeemed, balance
 
 
@@ -3706,7 +3711,13 @@ DEFAULT_ACCENT = "#6366F1"
 import json as _json
 
 DEFAULT_AVATAR = {"style": "lorelei", "options": {}}
-ALLOWED_STYLES = ("lorelei", "adventurer", "notionists")
+# Keep in sync with frontend src/avatar/styles.ts STYLE_LIST.
+ALLOWED_STYLES = ("lorelei", "notionists", "notionistsNeutral", "croodles", "croodlesNeutral", "bigEars", "openPeeps", "doodle")
+# Character faces (Dragon Ball × Naruto) — the art IS the avatar. Style id is
+# `char:<character>:<form>` (see frontend src/avatar/characters.ts). Prefix-gated
+# so new characters/forms need no backend change; a bogus id just renders blank.
+def _style_allowed(style):
+	return style in ALLOWED_STYLES or (isinstance(style, str) and style.startswith("char:"))
 
 # First-3 free variants per (style, slot); 4th+ are premium. Generated from the
 # installed DiceBear v9 enums (same order the frontend introspects).
@@ -3819,11 +3830,13 @@ def _asset_owned(user):
 @frappe.whitelist()
 def buy_avatar_asset(asset_name):
 	user = frappe.session.user
-	a = frappe.db.get_value("Avatar Asset", asset_name, ["asset_type", "is_default", "price", "active"], as_dict=True)
+	a = frappe.db.get_value("Avatar Asset", asset_name, ["asset_type", "is_default", "price", "active", "earn_only"], as_dict=True)
 	if not a or not a["active"]:
 		frappe.throw("Unavailable", frappe.ValidationError)
 	if a["is_default"]:
 		frappe.throw("That item is free", frappe.ValidationError)
+	if a["earn_only"]:
+		frappe.throw("Earned only — complete its set to unlock.", frappe.ValidationError)
 	if frappe.db.exists("Avatar Unlock", {"user": user, "style": "_asset", "option_value": asset_name}):
 		_, _, bal = _user_balance(user); return {"balance": bal}
 	lock_key = f"vernon_spend:{user}"
@@ -3839,7 +3852,88 @@ def buy_avatar_asset(asset_name):
 		frappe.get_doc({"doctype": "Avatar Unlock", "user": user, "style": "_asset",
 			"slot": (a["asset_type"] or "").lower(), "option_value": asset_name,
 			"cost": cost, "unlocked_on": now_datetime()}).insert(ignore_permissions=True)
-		_, _, nb = _user_balance(user); return {"balance": nb}
+		completed = _maybe_complete_set(user, asset_name)
+		_, _, nb = _user_balance(user); return {"balance": nb, "completed": completed}
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
+
+
+# ── Task Crate (work-earned gacha) ───────────────────────────────────────────
+# Keys are minted by REAL work (credited Todo points), tracked in parallel to the
+# spendable balance — opening a crate NEVER spends points/pay and always yields a
+# guaranteed NEW cosmetic (no wager, no dupes). Daily cap paces it.
+CRATE_KEY_COST = 3000   # credited Todo points earned per crate key (tunable)
+CRATE_DAILY_CAP = 5     # max crate opens per user per day
+
+
+def _lifetime_todo_points(user):
+	return float(frappe.db.sql(
+		"select coalesce(sum(points_earned),0) from `tabPoint Ledger` "
+		"where user=%s and coalesce(source,'Todo')='Todo'", user)[0][0])
+
+
+def _crate_opened_total(user):
+	return frappe.db.count("Avatar Reward Claim", {"user": user, "claim_type": "task_crate"})
+
+
+def _crate_opened_today(user):
+	return int(frappe.db.sql(
+		"select count(*) from `tabAvatar Reward Claim` "
+		"where user=%s and claim_type='task_crate' and date(creation)=%s",
+		(user, nowdate()))[0][0])
+
+
+def _crate_pool(user):
+	"""Active, non-default, non-earn-only assets the user does not yet own."""
+	owned = _asset_owned(user)
+	return [a for a in frappe.get_all("Avatar Asset", filters={"active": 1, "is_default": 0, "earn_only": 0},
+		fields=["asset_name", "asset_type", "emoji", "icon", "image", "gradient"])
+		if a["asset_name"] not in owned]
+
+
+@frappe.whitelist()
+def get_crate_status():
+	user = frappe.session.user
+	pts = _lifetime_todo_points(user)
+	earned = int(pts // CRATE_KEY_COST)
+	opened = _crate_opened_total(user)
+	available = max(0, earned - opened)
+	into = pts - earned * CRATE_KEY_COST
+	return {
+		"keys": available,
+		"key_cost": CRATE_KEY_COST,
+		"progress": into,
+		"progress_pct": int(round(into / CRATE_KEY_COST * 100)),
+		"daily_cap": CRATE_DAILY_CAP,
+		"opened_today": _crate_opened_today(user),
+		"remaining": len(_crate_pool(user)),
+	}
+
+
+@frappe.whitelist()
+def open_task_crate():
+	"""Spend one work-earned key → grant a random NEW cosmetic. Row-locked so
+	concurrent opens can't double-spend a key."""
+	import random
+	user = frappe.session.user
+	lock_key = f"vernon_spend:{user}"
+	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+		frappe.throw("Busy, please retry", frappe.ValidationError)
+	try:
+		earned = int(_lifetime_todo_points(user) // CRATE_KEY_COST)
+		opened = _crate_opened_total(user)
+		if earned - opened <= 0:
+			frappe.throw(f"No keys yet — earn {CRATE_KEY_COST} task points per key.", frappe.ValidationError)
+		if _crate_opened_today(user) >= CRATE_DAILY_CAP:
+			frappe.throw(f"Daily crate limit reached ({CRATE_DAILY_CAP}). Come back tomorrow.", frappe.ValidationError)
+		pool = _crate_pool(user)
+		if not pool:
+			frappe.throw("You've collected every cosmetic! 🎉", frappe.ValidationError)
+		pick = random.choice(pool)
+		_grant_asset(user, pick["asset_name"])
+		_record_claim(user, "task_crate", opened)  # claim_ref = key index (unique under lock)
+		completed = _maybe_complete_set(user, pick["asset_name"])
+		return {"asset": pick, "keys_left": earned - opened - 1, "remaining": len(pool) - 1, "completed": completed}
 	finally:
 		frappe.db.sql("select release_lock(%s)", lock_key)
 
@@ -3884,7 +3978,7 @@ def _my_avatar_config(user):
 		cfg = _json.loads(raw)
 	except Exception:
 		return {"style": DEFAULT_AVATAR["style"], "options": {}}
-	if cfg.get("style") not in ALLOWED_STYLES:
+	if not _style_allowed(cfg.get("style")):
 		cfg["style"] = DEFAULT_AVATAR["style"]
 	if not isinstance(cfg.get("options"), dict):
 		cfg["options"] = {}
@@ -3902,15 +3996,24 @@ def get_avatar_catalog():
 	]
 	owned_assets = _asset_owned(user)
 	assets = frappe.get_all("Avatar Asset", filters={"active": 1},
-		fields=["asset_name", "asset_type", "emoji", "icon", "gradient", "anchor", "is_default", "price"],
+		fields=["asset_name", "asset_type", "emoji", "icon", "image", "gradient", "anchor", "set_name", "earn_only", "is_default", "price"],
 		order_by="asset_type asc, asset_name asc")
 	for a in assets:
 		a["owned"] = (a["asset_name"] in owned_assets) or bool(a["is_default"])
 		a["price"] = None if a["owned"] else float(a["price"] or 0)
+	# Collection sets: owned N / total M per named set (informational).
+	tot, own = {}, {}
+	for a in assets:
+		s = a.get("set_name")
+		if not s:
+			continue
+		tot[s] = tot.get(s, 0) + 1
+		own[s] = own.get(s, 0) + (1 if a["owned"] else 0)
+	sets = [{"name": s, "owned": own[s], "total": tot[s]} for s in sorted(tot)]
 	return {
 		"free_count": 3, "price": _premium_price(), "unlocked": unlocked,
 		"my": _my_avatar_config(user), "balance": balance,
-		"assets": assets,
+		"assets": assets, "sets": sets,
 	}
 
 
@@ -3931,7 +4034,7 @@ def save_my_avatar(config_json, snapshot_dataurl=None):
 	if not isinstance(cfg, dict):
 		frappe.throw("Invalid avatar config", frappe.ValidationError)
 	style = cfg.get("style")
-	if style not in ALLOWED_STYLES:
+	if not _style_allowed(style):
 		frappe.throw("Unknown avatar style", frappe.ValidationError)
 	options = cfg.get("options") or {}
 	if not isinstance(options, dict):
@@ -4107,6 +4210,11 @@ def _scene_bg(svg, sky):
 	return f'url("{data}") bottom/100% 55% no-repeat, {sky}'
 
 
+def _svg_uri(svg):
+	# Self-contained image src for the Avatar Asset `image` field (no hosting needed).
+	return "data:image/svg+xml," + quote(svg, safe="")
+
+
 AVATAR_ASSETS = [
 	{"asset_name": "Sky", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#b6e3f4,#eef7ff)", "is_default": 1},
 	{"asset_name": "Sunset", "asset_type": "Scene", "gradient": "linear-gradient(180deg,#ffafbd,#ffc3a0)", "is_default": 1},
@@ -4278,14 +4386,167 @@ AVATAR_ASSETS = [
 	{"asset_name": "Cyberpunk", "asset_type": "Scene", "gradient": _scene_bg(
 		"<svg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'><g fill='#111'><rect x='5' y='20' width='10' height='30'/><rect x='18' y='10' width='8' height='40'/><rect x='29' y='25' width='12' height='25'/><rect x='44' y='8' width='7' height='42'/><rect x='54' y='18' width='10' height='32'/><rect x='67' y='14' width='8' height='36'/><rect x='78' y='22' width='11' height='28'/><rect x='92' y='12' width='9' height='38'/><rect x='104' y='20' width='12' height='30'/></g><rect x='18' y='10' width='8' height='2' fill='#ff00ff'/><rect x='44' y='8' width='7' height='2' fill='#00ffff'/><rect x='92' y='12' width='9' height='2' fill='#ff00ff'/></svg>",
 		"linear-gradient(180deg,#0d0015,#1a0030)")},
+	# ── Dragon Ball × Naruto overlays (characters are frontend styles; see characters.ts) ──
+	{"asset_name": "Dragon Ball", "asset_type": "Collectible", "price": 8000, "image": _svg_uri(
+		"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>"
+		"<circle cx='50' cy='50' r='42' fill='#f5a623' stroke='#d97b0a' stroke-width='3'/>"
+		"<ellipse cx='36' cy='32' rx='13' ry='8' fill='#fff' opacity='0.45'/>"
+		"<g fill='#e23b2e' font-size='20' text-anchor='middle' font-family='sans-serif'>"
+		"<text x='38' y='47'>★</text><text x='62' y='47'>★</text><text x='38' y='69'>★</text><text x='62' y='69'>★</text></g>"
+		"</svg>")},
+	{"asset_name": "Sharingan", "asset_type": "Collectible", "price": 8000, "image": _svg_uri(
+		"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>"
+		"<circle cx='50' cy='50' r='42' fill='#c0271c' stroke='#7a140d' stroke-width='3'/>"
+		"<circle cx='50' cy='50' r='12' fill='#111'/>"
+		"<g fill='#111'><circle cx='50' cy='26' r='6'/><circle cx='71' cy='62' r='6'/><circle cx='29' cy='62' r='6'/></g>"
+		"</svg>")},
+	# Themed emoji collectibles.
+	{"asset_name": "Shenron", "asset_type": "Collectible", "emoji": "\U0001F409"},
+	{"asset_name": "Rasengan", "asset_type": "Collectible", "emoji": "\U0001F300"},
+	{"asset_name": "Narutomaki", "asset_type": "Collectible", "emoji": "\U0001F365"},
+	{"asset_name": "Nine-Tails", "asset_type": "Collectible", "emoji": "\U0001F98A"},
+	{"asset_name": "Ninja", "asset_type": "Collectible", "emoji": "\U0001F977"},
+	{"asset_name": "Ramen", "asset_type": "Collectible", "emoji": "\U0001F35C"},
+	{"asset_name": "Senzu Bean", "asset_type": "Collectible", "emoji": "\U0001FAD8"},
+	{"asset_name": "Kunai", "asset_type": "Collectible", "emoji": "\U0001F52A"},
+	# Themed props (SVG art).
+	{"asset_name": "Leaf Headband", "asset_type": "Prop", "anchor": "top", "image": _svg_uri(
+		"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'>"
+		"<rect x='2' y='12' width='96' height='16' rx='3' fill='#2b7fd4'/>"
+		"<rect x='38' y='7' width='24' height='24' rx='3' fill='#c7ccd1' stroke='#8a9099' stroke-width='1.5'/>"
+		"<path d='M50 13 q8 3 5 11 q-5 4 -8 -2' fill='none' stroke='#3a3f45' stroke-width='2'/>"
+		"</svg>")},
+	{"asset_name": "Saiyan Scouter", "asset_type": "Prop", "anchor": "corner", "image": _svg_uri(
+		"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'>"
+		"<rect x='8' y='23' width='22' height='12' rx='3' fill='#2f3640'/>"
+		"<rect x='24' y='27' width='32' height='6' fill='#2f3640'/>"
+		"<ellipse cx='60' cy='30' rx='30' ry='16' fill='#7CFC00' opacity='0.85' stroke='#2f7d0e' stroke-width='3'/>"
+		"</svg>")},
+	# Themed scenes.
+	{"asset_name": "Super Saiyan Aura", "asset_type": "Scene", "gradient": "radial-gradient(circle at 50% 62%, #fff6b0, #ffcf1a 42%, #e08a00)"},
+	{"asset_name": "Sharingan Sky", "asset_type": "Scene", "gradient": "radial-gradient(circle at 50% 45%, #ff6a5d, #c0271c 46%, #4a0d08)"},
+	{"asset_name": "Namek", "asset_type": "Scene", "gradient": _scene_bg(
+		"<svg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'><circle cx='100' cy='12' r='7' fill='#d7ffe0' opacity='0.8'/><g fill='#1f7d4c'><rect x='8' y='20' width='9' height='30' rx='4'/><rect x='24' y='14' width='8' height='36' rx='4'/><rect x='40' y='24' width='10' height='26' rx='5'/><rect x='58' y='10' width='8' height='40' rx='4'/><rect x='74' y='22' width='9' height='28' rx='4'/><rect x='92' y='16' width='8' height='34' rx='4'/><rect x='106' y='26' width='10' height='24' rx='5'/></g></svg>",
+		"linear-gradient(180deg,#9ff0b8,#2fae6a)")},
+	{"asset_name": "Hidden Leaf", "asset_type": "Scene", "gradient": _scene_bg(
+		"<svg xmlns='http://www.w3.org/2000/svg' width='120' height='50' preserveAspectRatio='none'><rect x='0' y='24' width='120' height='26' fill='#a08a6f'/><g fill='#a08a6f'><circle cx='20' cy='24' r='8'/><circle cx='45' cy='24' r='8'/><circle cx='70' cy='24' r='8'/><circle cx='95' cy='24' r='8'/></g><g fill='#c1543f'><polygon points='6,50 16,40 26,50'/><polygon points='30,50 42,42 54,50'/><polygon points='66,50 78,41 90,50'/><polygon points='96,50 108,43 120,50'/></g></svg>",
+		"linear-gradient(180deg,#bfe6ff,#eef9ff)")},
+	# ── Premium cosmetics batch ──────────────────────────────────────────────
+	{"asset_name": "Sakura", "asset_type": "Scene", "price": 6000, "gradient": "linear-gradient(180deg,#ffd9ec,#ffb0d6)"},
+	{"asset_name": "Neon Night", "asset_type": "Scene", "price": 6000, "gradient": "linear-gradient(180deg,#0f0c29,#302b63,#24243e)"},
+	{"asset_name": "Vaporwave", "asset_type": "Scene", "price": 6000, "gradient": "linear-gradient(160deg,#f797ff,#8a6cff,#3ad0ff)"},
+	{"asset_name": "Lava", "asset_type": "Scene", "price": 6000, "gradient": "radial-gradient(circle at 50% 80%,#ffde59,#ff5e3a 42%,#7a0d0d)"},
+	{"asset_name": "Deep Sea", "asset_type": "Scene", "price": 6000, "gradient": "radial-gradient(circle at 50% 18%,#2b8fc0,#0a3355 65%,#04121f)"},
+	{"asset_name": "Golden Hour", "asset_type": "Scene", "price": 6000, "gradient": "linear-gradient(180deg,#f6d365,#fda085)"},
+	{"asset_name": "Emerald", "asset_type": "Scene", "price": 6000, "gradient": "linear-gradient(180deg,#43e97b,#38f9d7)"},
+	{"asset_name": "Royal Purple", "asset_type": "Scene", "price": 6000, "gradient": "linear-gradient(180deg,#7028e4,#e5b2ca)"},
+	{"asset_name": "Gold Crown", "asset_type": "Prop", "anchor": "top", "price": 15000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='gc1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fff2b0'/><stop offset='0.5' stop-color='#f6c94a'/><stop offset='1' stop-color='#c9880f'/></linearGradient><linearGradient id='gc2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#ffe27a'/><stop offset='1' stop-color='#d99a17'/></linearGradient><radialGradient id='gcr' cx='0.5' cy='0.35' r='0.7'><stop offset='0' stop-color='#ff9ecb'/><stop offset='1' stop-color='#c8347c'/></radialGradient><radialGradient id='gcg' cx='0.5' cy='0.35' r='0.7'><stop offset='0' stop-color='#8ff0c8'/><stop offset='1' stop-color='#1e9d6e'/></radialGradient><radialGradient id='gcb' cx='0.5' cy='0.35' r='0.7'><stop offset='0' stop-color='#a9d4ff'/><stop offset='1' stop-color='#2f6fd6'/></radialGradient></defs><path d='M20 72 L18 40 L34 55 L50 30 L66 55 L82 40 L80 72 Z' fill='url(#gc1)' stroke='#9c6a0a' stroke-width='2.5' stroke-linejoin='round'/><path d='M20 72 L80 72 L79 82 L21 82 Z' fill='url(#gc2)' stroke='#9c6a0a' stroke-width='2.5' stroke-linejoin='round'/><path d='M24 74 L76 74' stroke='#fff4c4' stroke-width='1.5' opacity='0.7'/><circle cx='18' cy='38' r='5' fill='url(#gcg)' stroke='#0f6b48' stroke-width='1.5'/><circle cx='50' cy='27' r='5.5' fill='url(#gcr)' stroke='#8f1f57' stroke-width='1.5'/><circle cx='82' cy='38' r='5' fill='url(#gcb)' stroke='#204d9c' stroke-width='1.5'/><circle cx='34' cy='53' r='3.5' fill='url(#gcb)' stroke='#204d9c' stroke-width='1'/><circle cx='66' cy='53' r='3.5' fill='url(#gcg)' stroke='#0f6b48' stroke-width='1'/><circle cx='35' cy='78' r='4' fill='url(#gcr)' stroke='#8f1f57' stroke-width='1.2'/><circle cx='50' cy='78' r='4' fill='url(#gcb)' stroke='#204d9c' stroke-width='1.2'/><circle cx='65' cy='78' r='4' fill='url(#gcg)' stroke='#0f6b48' stroke-width='1.2'/><circle cx='16.5' cy='36' r='1.4' fill='#fff'/><circle cx='48' cy='25' r='1.6' fill='#fff'/><circle cx='80' cy='36' r='1.4' fill='#fff'/><circle cx='33' cy='76.5' r='1.2' fill='#fff'/><circle cx='63' cy='76.5' r='1.2' fill='#fff'/><path d='M28 58 L30 52' stroke='#fff4c4' stroke-width='1.5' opacity='0.6'/><path d='M50 40 L50 34' stroke='#fff4c4' stroke-width='1.5' opacity='0.6'/><circle cx='27' cy='83' r='1' fill='#fff4c4'/><circle cx='73' cy='83' r='1' fill='#fff4c4'/></svg>")},
+	{"asset_name": "Glowing Halo", "asset_type": "Prop", "anchor": "top", "price": 12000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='hglow' cx='0.5' cy='0.5' r='0.5'><stop offset='0' stop-color='#fff9d6' stop-opacity='0.9'/><stop offset='0.5' stop-color='#ffe680' stop-opacity='0.35'/><stop offset='1' stop-color='#ffe680' stop-opacity='0'/></radialGradient><linearGradient id='hring' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff7c0'/><stop offset='0.5' stop-color='#ffd23d'/><stop offset='1' stop-color='#e59a10'/></linearGradient></defs><ellipse cx='50' cy='50' rx='44' ry='30' fill='url(#hglow)'/><ellipse cx='50' cy='52' rx='34' ry='15' fill='none' stroke='url(#hring)' stroke-width='8'/><ellipse cx='50' cy='52' rx='34' ry='15' fill='none' stroke='#fff7d0' stroke-width='2.5' opacity='0.8'/><ellipse cx='50' cy='52' rx='34' ry='15' fill='none' stroke='#b9760a' stroke-width='1' opacity='0.5'/><path d='M22 48 A34 15 0 0 1 42 40' fill='none' stroke='#ffffff' stroke-width='3' stroke-linecap='round' opacity='0.85'/><circle cx='24' cy='55' r='2' fill='#fff8d0'/><circle cx='76' cy='55' r='2' fill='#fff8d0'/><circle cx='50' cy='38' r='1.8' fill='#fff'/><circle cx='38' cy='62' r='1.4' fill='#fffbe0'/><circle cx='62' cy='62' r='1.4' fill='#fffbe0'/><path d='M50 20 L51.5 26 L50 32 L48.5 26 Z' fill='#fff3a8' opacity='0.9'/><path d='M20 28 L21 32 L20 36 L19 32 Z' fill='#fff3a8' opacity='0.8'/><path d='M80 30 L81 34 L80 38 L79 34 Z' fill='#fff3a8' opacity='0.8'/><circle cx='15' cy='40' r='1.5' fill='#fff7c0'/><circle cx='85' cy='42' r='1.5' fill='#fff7c0'/></svg>")},
+	{"asset_name": "Party Hat", "asset_type": "Prop", "anchor": "top", "price": 8000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='ph1' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#7a4dff'/><stop offset='0.5' stop-color='#c04dff'/><stop offset='1' stop-color='#ff5db1'/></linearGradient><radialGradient id='phpom' cx='0.4' cy='0.35' r='0.7'><stop offset='0' stop-color='#fff0a0'/><stop offset='1' stop-color='#ffb327'/></radialGradient></defs><path d='M50 14 L74 82 L26 82 Z' fill='url(#ph1)' stroke='#5a2fb0' stroke-width='2.5' stroke-linejoin='round'/><path d='M50 14 L58 82 L52 82 Z' fill='#ffffff' opacity='0.18'/><path d='M40 34 L60 34' stroke='#ffe14d' stroke-width='3' stroke-linecap='round'/><path d='M36 50 L64 50' stroke='#3df0d0' stroke-width='3' stroke-linecap='round'/><path d='M32 66 L68 66' stroke='#ff5db1' stroke-width='3' stroke-linecap='round'/><circle cx='45' cy='27' r='2.5' fill='#3df0d0'/><circle cx='55' cy='42' r='2.5' fill='#ffe14d'/><circle cx='42' cy='58' r='2.5' fill='#fff'/><circle cx='60' cy='60' r='2.5' fill='#3df0d0'/><circle cx='48' cy='74' r='2.5' fill='#ffe14d'/><circle cx='38' cy='75' r='2' fill='#fff'/><circle cx='62' cy='76' r='2' fill='#ff5db1'/><circle cx='50' cy='10' r='7' fill='url(#phpom)' stroke='#e0961a' stroke-width='1.5'/><path d='M50 10 L44 4 M50 10 L56 4 M50 10 L42 12 M50 10 L58 12 M50 10 L48 2 M50 10 L52 2' stroke='#ffcf4d' stroke-width='2' stroke-linecap='round'/><circle cx='48' cy='8' r='1.8' fill='#fff8d8'/><path d='M46 20 Q48 18 50 20' stroke='#fff' stroke-width='1.5' fill='none' opacity='0.5'/></svg>")},
+	{"asset_name": "Flower Crown", "asset_type": "Prop", "anchor": "top", "price": 8000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='fcp' cx='0.5' cy='0.5' r='0.6'><stop offset='0' stop-color='#ffd6ec'/><stop offset='1' stop-color='#ff77b6'/></radialGradient><radialGradient id='fcy' cx='0.5' cy='0.5' r='0.6'><stop offset='0' stop-color='#fff3b0'/><stop offset='1' stop-color='#ffbf3d'/></radialGradient><radialGradient id='fcb' cx='0.5' cy='0.5' r='0.6'><stop offset='0' stop-color='#d3ccff'/><stop offset='1' stop-color='#8b6dff'/></radialGradient><radialGradient id='fcc' cx='0.5' cy='0.4' r='0.6'><stop offset='0' stop-color='#fff6c8'/><stop offset='1' stop-color='#f4a11f'/></radialGradient></defs><path d='M14 64 Q50 40 86 64' fill='none' stroke='#3f9d54' stroke-width='6' stroke-linecap='round'/><path d='M18 62 Q50 42 82 62' fill='none' stroke='#5cc873' stroke-width='2' stroke-linecap='round' opacity='0.7'/><path d='M30 58 Q26 50 20 50' stroke='#3f9d54' stroke-width='3' fill='none' stroke-linecap='round'/><path d='M70 58 Q74 50 80 50' stroke='#3f9d54' stroke-width='3' fill='none' stroke-linecap='round'/><path d='M50 46 L46 40' stroke='#3f9d54' stroke-width='3' stroke-linecap='round'/><g><circle cx='20' cy='60' r='5' fill='url(#fcy)'/><circle cx='16' cy='55' r='4.5' fill='url(#fcy)'/><circle cx='24' cy='55' r='4.5' fill='url(#fcy)'/><circle cx='16' cy='64' r='4.5' fill='url(#fcy)'/><circle cx='24' cy='64' r='4.5' fill='url(#fcy)'/><circle cx='20' cy='60' r='3' fill='url(#fcc)'/></g><g><circle cx='35' cy='52' r='5.5' fill='url(#fcb)'/><circle cx='30' cy='47' r='5' fill='url(#fcb)'/><circle cx='40' cy='47' r='5' fill='url(#fcb)'/><circle cx='30' cy='57' r='5' fill='url(#fcb)'/><circle cx='40' cy='57' r='5' fill='url(#fcb)'/><circle cx='35' cy='52' r='3.2' fill='url(#fcc)'/></g><g><circle cx='50' cy='47' r='6' fill='url(#fcp)'/><circle cx='44' cy='42' r='5' fill='url(#fcp)'/><circle cx='56' cy='42' r='5' fill='url(#fcp)'/><circle cx='44' cy='52' r='5' fill='url(#fcp)'/><circle cx='56' cy='52' r='5' fill='url(#fcp)'/><circle cx='50' cy='47' r='3.4' fill='url(#fcc)'/></g><g><circle cx='65' cy='52' r='5.5' fill='url(#fcy)'/><circle cx='60' cy='47' r='5' fill='url(#fcy)'/><circle cx='70' cy='47' r='5' fill='url(#fcy)'/><circle cx='60' cy='57' r='5' fill='url(#fcy)'/><circle cx='70' cy='57' r='5' fill='url(#fcy)'/><circle cx='65' cy='52' r='3.2' fill='url(#fcc)'/></g><g><circle cx='80' cy='60' r='5' fill='url(#fcp)'/><circle cx='76' cy='55' r='4.5' fill='url(#fcp)'/><circle cx='84' cy='55' r='4.5' fill='url(#fcp)'/><circle cx='76' cy='64' r='4.5' fill='url(#fcp)'/><circle cx='84' cy='64' r='4.5' fill='url(#fcp)'/><circle cx='80' cy='60' r='3' fill='url(#fcc)'/></g><circle cx='48' cy='44' r='1.4' fill='#fff' opacity='0.8'/><circle cx='33' cy='49' r='1.2' fill='#fff' opacity='0.7'/><circle cx='63' cy='49' r='1.2' fill='#fff' opacity='0.7'/></svg>")},
+	{"asset_name": "Cat Ears", "asset_type": "Prop", "anchor": "top", "price": 8000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='ce1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#5a4a5f'/><stop offset='1' stop-color='#2c2233'/></linearGradient><linearGradient id='ce2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#ffb4d0'/><stop offset='1' stop-color='#ff7aa8'/></linearGradient></defs><path d='M18 78 L22 34 Q40 46 46 62 Z' fill='url(#ce1)' stroke='#1c1524' stroke-width='2.5' stroke-linejoin='round'/><path d='M82 78 L78 34 Q60 46 54 62 Z' fill='url(#ce1)' stroke='#1c1524' stroke-width='2.5' stroke-linejoin='round'/><path d='M24 68 L26 44 Q37 52 41 62 Z' fill='url(#ce2)'/><path d='M76 68 L74 44 Q63 52 59 62 Z' fill='url(#ce2)'/><path d='M22 36 Q23 50 27 60' stroke='#8f7a97' stroke-width='1.5' fill='none' opacity='0.7'/><path d='M78 36 Q77 50 73 60' stroke='#8f7a97' stroke-width='1.5' fill='none' opacity='0.7'/><path d='M46 64 Q50 70 54 64' fill='none' stroke='#1c1524' stroke-width='2.5' stroke-linecap='round'/><circle cx='24' cy='40' r='1.5' fill='#fff' opacity='0.6'/><circle cx='76' cy='40' r='1.5' fill='#fff' opacity='0.6'/><path d='M28 60 l2 2 M30 58 l2 2' stroke='#fff' stroke-width='1' opacity='0.5'/><path d='M72 60 l-2 2 M70 58 l-2 2' stroke='#fff' stroke-width='1' opacity='0.5'/><circle cx='33' cy='54' r='1' fill='#fff' opacity='0.7'/><circle cx='67' cy='54' r='1' fill='#fff' opacity='0.7'/></svg>")},
+	{"asset_name": "Wizard Hat", "asset_type": "Prop", "anchor": "top", "price": 15000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='wh1' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#4a3aa8'/><stop offset='0.5' stop-color='#2e2170'/><stop offset='1' stop-color='#1a1240'/></linearGradient><linearGradient id='wh2' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#3a2d88'/><stop offset='1' stop-color='#221860'/></linearGradient><radialGradient id='whs' cx='0.5' cy='0.5' r='0.6'><stop offset='0' stop-color='#fff7c0'/><stop offset='1' stop-color='#ffcf3d'/></radialGradient></defs><path d='M50 8 Q56 40 72 78 L28 78 Q44 40 50 8 Z' fill='url(#wh1)' stroke='#140d33' stroke-width='2.5' stroke-linejoin='round'/><path d='M18 78 Q50 66 82 78 Q50 92 18 78 Z' fill='url(#wh2)' stroke='#140d33' stroke-width='2.5' stroke-linejoin='round'/><path d='M22 79 Q50 70 78 79' stroke='#6a5ac0' stroke-width='1.5' fill='none' opacity='0.6'/><path d='M50 12 Q54 40 66 74' stroke='#6a5ac0' stroke-width='1.5' fill='none' opacity='0.4'/><path d='M50 22 l1.6 4.4 l4.6 0.2 l-3.6 2.9 l1.3 4.5 l-3.9 -2.5 l-3.9 2.5 l1.3 -4.5 l-3.6 -2.9 l4.6 -0.2 Z' fill='url(#whs)' stroke='#e0a51f' stroke-width='0.6'/><path d='M42 48 l1.2 3.3 l3.5 0.1 l-2.7 2.2 l1 3.4 l-2.9 -1.9 l-3 1.9 l1 -3.4 l-2.7 -2.2 l3.5 -0.1 Z' fill='url(#whs)'/><path d='M60 56 l1 2.8 l3 0.1 l-2.3 1.8 l0.8 2.9 l-2.5 -1.6 l-2.5 1.6 l0.8 -2.9 l-2.3 -1.8 l3 -0.1 Z' fill='url(#whs)'/><circle cx='36' cy='68' r='1.5' fill='#fff8d0'/><circle cx='58' cy='40' r='1.5' fill='#fff8d0'/><circle cx='48' cy='62' r='1.2' fill='#fff8d0'/><path d='M14 74 l0.8 2 l2 0.8 l-2 0.8 l-0.8 2 l-0.8 -2 l-2 -0.8 l2 -0.8 Z' fill='#fff3a8'/><path d='M87 72 l0.7 1.8 l1.8 0.7 l-1.8 0.7 l-0.7 1.8 l-0.7 -1.8 l-1.8 -0.7 l1.8 -0.7 Z' fill='#fff3a8'/><circle cx='50' cy='6' r='2' fill='#fff7c0'/></svg>")},
+	{"asset_name": "Devil Horns", "asset_type": "Prop", "anchor": "top", "price": 10000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='dh1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#ff8a8a'/><stop offset='0.5' stop-color='#e63946'/><stop offset='1' stop-color='#8f1620'/></linearGradient><radialGradient id='dhg' cx='0.5' cy='0.5' r='0.6'><stop offset='0' stop-color='#ffd0d0' stop-opacity='0.9'/><stop offset='1' stop-color='#ff5a5a' stop-opacity='0'/></radialGradient></defs><ellipse cx='24' cy='46' rx='16' ry='18' fill='url(#dhg)'/><ellipse cx='76' cy='46' rx='16' ry='18' fill='url(#dhg)'/><path d='M20 76 Q14 54 20 40 Q24 30 34 26 Q26 34 25 46 Q24 60 30 74 Z' fill='url(#dh1)' stroke='#6e0f18' stroke-width='2.5' stroke-linejoin='round'/><path d='M80 76 Q86 54 80 40 Q76 30 66 26 Q74 34 75 46 Q76 60 70 74 Z' fill='url(#dh1)' stroke='#6e0f18' stroke-width='2.5' stroke-linejoin='round'/><path d='M22 70 Q19 54 23 42 Q26 34 32 30' stroke='#ffb0b0' stroke-width='2' fill='none' opacity='0.6' stroke-linecap='round'/><path d='M78 70 Q81 54 77 42 Q74 34 68 30' stroke='#ffb0b0' stroke-width='2' fill='none' opacity='0.6' stroke-linecap='round'/><path d='M27 60 Q26 50 29 42' stroke='#8f1620' stroke-width='1.5' fill='none' opacity='0.5'/><path d='M73 60 Q74 50 71 42' stroke='#8f1620' stroke-width='1.5' fill='none' opacity='0.5'/><circle cx='31' cy='30' r='2' fill='#fff' opacity='0.7'/><circle cx='69' cy='30' r='2' fill='#fff' opacity='0.7'/><circle cx='34' cy='24' r='1.4' fill='#ffd0d0'/><circle cx='66' cy='24' r='1.4' fill='#ffd0d0'/></svg>")},
+	{"asset_name": "Angel Wings", "asset_type": "Prop", "anchor": "corner", "price": 18000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='aw1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#ffffff'/><stop offset='1' stop-color='#d6e4ff'/></linearGradient><linearGradient id='aw2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#f4f8ff'/><stop offset='1' stop-color='#bcd0f5'/></linearGradient><radialGradient id='awg' cx='0.5' cy='0.5' r='0.5'><stop offset='0' stop-color='#fff8d0' stop-opacity='0.8'/><stop offset='1' stop-color='#fff8d0' stop-opacity='0'/></radialGradient></defs><ellipse cx='50' cy='52' rx='40' ry='26' fill='url(#awg)'/><path d='M50 40 Q30 22 12 30 Q22 34 16 42 Q28 42 22 50 Q34 48 30 56 Q40 52 40 62 Q46 54 50 58 Z' fill='url(#aw1)' stroke='#9fb6e0' stroke-width='2' stroke-linejoin='round'/><path d='M50 40 Q70 22 88 30 Q78 34 84 42 Q72 42 78 50 Q66 48 70 56 Q60 52 60 62 Q54 54 50 58 Z' fill='url(#aw2)' stroke='#9fb6e0' stroke-width='2' stroke-linejoin='round'/><path d='M42 44 Q30 34 18 34' stroke='#b8cdf0' stroke-width='1.3' fill='none' opacity='0.7'/><path d='M40 50 Q30 44 22 46' stroke='#b8cdf0' stroke-width='1.3' fill='none' opacity='0.7'/><path d='M42 56 Q36 52 32 54' stroke='#b8cdf0' stroke-width='1.3' fill='none' opacity='0.7'/><path d='M58 44 Q70 34 82 34' stroke='#a6bce8' stroke-width='1.3' fill='none' opacity='0.7'/><path d='M60 50 Q70 44 78 46' stroke='#a6bce8' stroke-width='1.3' fill='none' opacity='0.7'/><path d='M58 56 Q64 52 68 54' stroke='#a6bce8' stroke-width='1.3' fill='none' opacity='0.7'/><circle cx='50' cy='50' r='4' fill='#fff6c0' stroke='#f0d060' stroke-width='1'/><circle cx='48.5' cy='48.5' r='1.3' fill='#fff'/><circle cx='16' cy='28' r='1.5' fill='#fff'/><circle cx='84' cy='28' r='1.5' fill='#fff'/><circle cx='30' cy='63' r='1.2' fill='#fff'/><circle cx='70' cy='63' r='1.2' fill='#fff'/></svg>")},
+	{"asset_name": "Sleepy Cat", "asset_type": "Collectible", "price": 10000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='sc_body' cx='40%' cy='30%' r='80%'><stop offset='0%' stop-color='#ffd8a8'/><stop offset='55%' stop-color='#f0a860'/><stop offset='100%' stop-color='#d67f3c'/></radialGradient><radialGradient id='sc_belly' cx='50%' cy='40%' r='70%'><stop offset='0%' stop-color='#fff6e9'/><stop offset='100%' stop-color='#ffe3c0'/></radialGradient><linearGradient id='sc_ground' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#c9b6ff'/><stop offset='100%' stop-color='#9b7ff0'/></linearGradient></defs><ellipse cx='50' cy='84' rx='30' ry='7' fill='#000' opacity='0.12'/><ellipse cx='50' cy='80' rx='28' ry='6' fill='url(#sc_ground)'/><ellipse cx='50' cy='64' rx='30' ry='22' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.5'/><path d='M28 60 q-8 6 -3 14 q6 -4 8 -9z' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.2'/><path d='M72 60 q8 6 3 14 q-6 -4 -8 -9z' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.2'/><ellipse cx='50' cy='70' rx='16' ry='11' fill='url(#sc_belly)'/><path d='M74 66 q14 -4 16 6 q-2 10 -14 6' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.2'/><path d='M78 68 q8 -1 9 4' stroke='#b56a2e' stroke-width='1' fill='none' opacity='0.5'/><ellipse cx='50' cy='42' rx='22' ry='19' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.5'/><path d='M32 32 l-5 -13 l14 6z' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.3'/><path d='M68 32 l5 -13 l-14 6z' fill='url(#sc_body)' stroke='#b56a2e' stroke-width='1.3'/><path d='M33 30 l-2 -6 l6 3z' fill='#ff9ec4'/><path d='M67 30 l2 -6 l-6 3z' fill='#ff9ec4'/><ellipse cx='44' cy='36' rx='7' ry='5' fill='#fff' opacity='0.35'/><path d='M35 43 q4 3 9 0' stroke='#5c3a1e' stroke-width='2' fill='none' stroke-linecap='round'/><path d='M56 43 q4 3 9 0' stroke='#5c3a1e' stroke-width='2' fill='none' stroke-linecap='round'/><path d='M48 49 l2 2 l2 -2z' fill='#ff7fae'/><path d='M50 51 q-3 3 -6 2' stroke='#5c3a1e' stroke-width='1.3' fill='none' stroke-linecap='round'/><path d='M50 51 q3 3 6 2' stroke='#5c3a1e' stroke-width='1.3' fill='none' stroke-linecap='round'/><ellipse cx='38' cy='50' rx='4' ry='3' fill='#ff9ec4' opacity='0.55'/><ellipse cx='62' cy='50' rx='4' ry='3' fill='#ff9ec4' opacity='0.55'/><path d='M28 46 l-9 -2' stroke='#fff' stroke-width='1' opacity='0.6'/><path d='M28 49 l-9 1' stroke='#fff' stroke-width='1' opacity='0.6'/><path d='M72 46 l9 -2' stroke='#fff' stroke-width='1' opacity='0.6'/><path d='M72 49 l9 1' stroke='#fff' stroke-width='1' opacity='0.6'/><path d='M70 24 q4 -5 8 0 q-4 2 -8 6 q4 -1 8 0' fill='none' stroke='#fff' stroke-width='2' stroke-linecap='round' opacity='0.85'/><path d='M78 14 q3 -4 6 0 q-3 1 -6 4 q3 -1 6 0' fill='none' stroke='#fff' stroke-width='1.6' stroke-linecap='round' opacity='0.7'/></svg>")},
+	{"asset_name": "Treasure Chest", "asset_type": "Collectible", "price": 12000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='tc_wood' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#a8642f'/><stop offset='100%' stop-color='#6e3d18'/></linearGradient><linearGradient id='tc_gold' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#fff2a8'/><stop offset='45%' stop-color='#ffce3a'/><stop offset='100%' stop-color='#c68a15'/></linearGradient><radialGradient id='tc_glow' cx='50%' cy='40%' r='70%'><stop offset='0%' stop-color='#fff6c0' stop-opacity='0.9'/><stop offset='100%' stop-color='#fff6c0' stop-opacity='0'/></radialGradient></defs><ellipse cx='50' cy='86' rx='34' ry='7' fill='#000' opacity='0.15'/><ellipse cx='50' cy='48' rx='40' ry='30' fill='url(#tc_glow)'/><path d='M20 46 h60 v28 a4 4 0 0 1 -4 4 h-52 a4 4 0 0 1 -4 -4z' fill='url(#tc_wood)' stroke='#4a2810' stroke-width='2'/><rect x='20' y='52' width='60' height='4' fill='#4a2810' opacity='0.4'/><rect x='20' y='62' width='60' height='3' fill='#4a2810' opacity='0.3'/><path d='M18 46 q-1 -22 32 -22 q33 0 32 22z' fill='url(#tc_wood)' stroke='#4a2810' stroke-width='2'/><path d='M18 46 q-1 -22 32 -22 q33 0 32 22' fill='none' stroke='#ffcf6b' stroke-width='1.5' opacity='0.5'/><rect x='16' y='44' width='68' height='6' rx='2' fill='url(#tc_gold)' stroke='#a06e0e' stroke-width='1.2'/><rect x='24' y='34' width='7' height='40' fill='url(#tc_gold)' stroke='#a06e0e' stroke-width='1'/><rect x='69' y='34' width='7' height='40' fill='url(#tc_gold)' stroke='#a06e0e' stroke-width='1'/><circle cx='27' cy='38' r='2' fill='#fff8d0'/><circle cx='72' cy='38' r='2' fill='#fff8d0'/><rect x='44' y='42' width='12' height='16' rx='2' fill='url(#tc_gold)' stroke='#a06e0e' stroke-width='1.3'/><circle cx='50' cy='48' r='3' fill='#6e3d18'/><rect x='49' y='48' width='2' height='6' fill='#6e3d18'/><circle cx='34' cy='40' r='4' fill='url(#tc_gold)' stroke='#a06e0e' stroke-width='0.8'/><circle cx='34' cy='40' r='1.4' fill='#fff8d0'/><circle cx='66' cy='40' r='4' fill='url(#tc_gold)' stroke='#a06e0e' stroke-width='0.8'/><circle cx='66' cy='40' r='1.4' fill='#fff8d0'/><ellipse cx='42' cy='42' rx='5' ry='4' fill='url(#tc_gold)'/><ellipse cx='55' cy='40' rx='4' ry='3' fill='url(#tc_gold)'/><ellipse cx='38' cy='44' rx='4' ry='3' fill='url(#tc_gold)'/><circle cx='45' cy='38' r='2.6' fill='#7fe3ff'/><circle cx='58' cy='42' r='2.2' fill='#ff8fb0'/><circle cx='36' cy='40' r='2' fill='#a0ff9e'/><circle cx='50' cy='36' r='2' fill='#c9a0ff'/><circle cx='44' cy='36' r='1' fill='#fff'/><path d='M60 30 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1z' fill='#fff' opacity='0.9'/><path d='M32 28 l0.8 2 l2 0.8 l-2 0.8 l-0.8 2 l-0.8 -2 l-2 -0.8 l2 -0.8z' fill='#fff' opacity='0.8'/><rect x='24' y='45' width='8' height='2' fill='#fff' opacity='0.6'/></svg>")},
+	{"asset_name": "Magic Potion", "asset_type": "Collectible", "price": 10000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='mp_glass' cx='40%' cy='35%' r='75%'><stop offset='0%' stop-color='#eafcff'/><stop offset='100%' stop-color='#bfe6f0'/></radialGradient><linearGradient id='mp_liquid' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#b36bff'/><stop offset='50%' stop-color='#7b3bff'/><stop offset='100%' stop-color='#3a1e9e'/></linearGradient><radialGradient id='mp_shine' cx='50%' cy='40%' r='60%'><stop offset='0%' stop-color='#ff9ef0' stop-opacity='0.8'/><stop offset='100%' stop-color='#ff9ef0' stop-opacity='0'/></radialGradient><radialGradient id='mp_aura' cx='50%' cy='55%' r='60%'><stop offset='0%' stop-color='#c79bff' stop-opacity='0.7'/><stop offset='100%' stop-color='#c79bff' stop-opacity='0'/></radialGradient></defs><ellipse cx='50' cy='88' rx='24' ry='6' fill='#000' opacity='0.13'/><ellipse cx='50' cy='60' rx='34' ry='34' fill='url(#mp_aura)'/><path d='M42 34 h16 v10 q14 8 14 26 a22 22 0 0 1 -44 0 q0 -18 14 -26z' fill='url(#mp_glass)' stroke='#8fb8c4' stroke-width='2'/><path d='M40 56 q10 -6 20 0 q6 6 6 14 a16 16 0 0 1 -32 0 q0 -8 6 -14z' fill='url(#mp_liquid)'/><path d='M34 62 a16 16 0 0 0 32 0 q-4 4 -8 2 q-4 4 -8 0 q-4 4 -8 -2z' fill='#9d63ff' opacity='0.6'/><ellipse cx='43' cy='60' rx='5' ry='7' fill='url(#mp_shine)'/><circle cx='45' cy='72' r='2.5' fill='#e6c9ff' opacity='0.85'/><circle cx='55' cy='68' r='1.8' fill='#e6c9ff' opacity='0.8'/><circle cx='50' cy='76' r='1.4' fill='#f0e0ff' opacity='0.8'/><circle cx='58' cy='74' r='1.2' fill='#f0e0ff' opacity='0.7'/><path d='M40 40 q4 4 0 8' stroke='#fff' stroke-width='2' fill='none' opacity='0.7' stroke-linecap='round'/><rect x='40' y='28' width='20' height='8' rx='3' fill='#c88a4a' stroke='#8a5a2a' stroke-width='1.5'/><rect x='42' y='22' width='16' height='8' rx='2' fill='#a86a30' stroke='#7a4a1e' stroke-width='1.3'/><rect x='43' y='24' width='4' height='3' fill='#e0b078' opacity='0.7'/><path d='M50 22 q-6 -10 0 -16 q6 6 0 16z' fill='#ffd76b' opacity='0.9'/><path d='M50 6 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 l4 -1.4z' fill='#fff'/><path d='M66 44 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1z' fill='#ffd0f5' opacity='0.9'/><path d='M30 50 l0.8 2.4 l2.4 0.8 l-2.4 0.8 l-0.8 2.4 l-0.8 -2.4 l-2.4 -0.8 l2.4 -0.8z' fill='#d0e8ff' opacity='0.85'/><circle cx='72' cy='58' r='1.6' fill='#fff' opacity='0.8'/><circle cx='28' cy='68' r='1.4' fill='#fff' opacity='0.7'/></svg>")},
+	{"asset_name": "Rainbow Gem", "asset_type": "Collectible", "price": 12000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='rg_a' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#ff6b9d'/><stop offset='100%' stop-color='#ff2d78'/></linearGradient><linearGradient id='rg_b' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#ffd166'/><stop offset='100%' stop-color='#ff9838'/></linearGradient><linearGradient id='rg_c' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#7bffb0'/><stop offset='100%' stop-color='#22c98a'/></linearGradient><linearGradient id='rg_d' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#8fd0ff'/><stop offset='100%' stop-color='#4a8bff'/></linearGradient><linearGradient id='rg_e' x1='0' y1='1' x2='1' y2='0'><stop offset='0%' stop-color='#c79bff'/><stop offset='100%' stop-color='#8a3bff'/></linearGradient><radialGradient id='rg_glow' cx='50%' cy='50%' r='60%'><stop offset='0%' stop-color='#fff' stop-opacity='0.8'/><stop offset='100%' stop-color='#fff' stop-opacity='0'/></radialGradient></defs><ellipse cx='50' cy='88' rx='24' ry='6' fill='#000' opacity='0.13'/><ellipse cx='50' cy='52' rx='38' ry='38' fill='url(#rg_glow)'/><polygon points='50,20 74,40 50,86 26,40' fill='url(#rg_d)' stroke='#ffffff' stroke-width='1.5' stroke-opacity='0.6'/><polygon points='26,40 50,20 40,44 33,44' fill='url(#rg_a)'/><polygon points='50,20 74,40 67,44 60,44' fill='url(#rg_b)'/><polygon points='33,44 40,44 50,52 40,60' fill='url(#rg_c)'/><polygon points='60,44 67,44 60,60 50,52' fill='url(#rg_e)'/><polygon points='40,44 60,44 50,52' fill='#fff' opacity='0.55'/><polygon points='40,60 50,52 60,60 50,86' fill='url(#rg_d)'/><polygon points='40,60 50,52 50,86' fill='#5fa0ff' opacity='0.7'/><polygon points='60,60 50,52 50,86' fill='#3a6bd8' opacity='0.6'/><polygon points='33,44 40,44 40,60 26,40' fill='#ff8fb8' opacity='0.85'/><polygon points='67,44 60,44 60,60 74,40' fill='#a86bff' opacity='0.85'/><line x1='50' y1='52' x2='50' y2='86' stroke='#fff' stroke-width='0.8' opacity='0.5'/><polygon points='38,30 44,34 41,40 36,36' fill='#fff' opacity='0.6'/><circle cx='42' cy='33' r='1.6' fill='#fff'/><path d='M78 26 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 l4 -1.4z' fill='#fff' opacity='0.9'/><path d='M20 34 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1z' fill='#fff' opacity='0.8'/><path d='M70 62 l0.8 2.4 l2.4 0.8 l-2.4 0.8 l-0.8 2.4 l-0.8 -2.4 l-2.4 -0.8 l2.4 -0.8z' fill='#fff' opacity='0.85'/><circle cx='30' cy='58' r='1.4' fill='#fff' opacity='0.7'/></svg>")},
+	{"asset_name": "Shooting Star", "asset_type": "Collectible", "price": 10000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='ss_star' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#fff7c0'/><stop offset='45%' stop-color='#ffdb4d'/><stop offset='100%' stop-color='#ff9a2e'/></linearGradient><linearGradient id='ss_trail' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#8fd0ff' stop-opacity='0'/><stop offset='60%' stop-color='#7bb8ff' stop-opacity='0.55'/><stop offset='100%' stop-color='#ffd66b' stop-opacity='0.9'/></linearGradient><radialGradient id='ss_glow' cx='50%' cy='50%' r='55%'><stop offset='0%' stop-color='#fff3b0' stop-opacity='0.95'/><stop offset='100%' stop-color='#fff3b0' stop-opacity='0'/></radialGradient></defs><ellipse cx='58' cy='88' rx='22' ry='5' fill='#000' opacity='0.12'/><path d='M16 78 q26 -14 40 -34 q-4 24 -22 40 q-12 8 -18 -6z' fill='url(#ss_trail)'/><path d='M22 74 q20 -12 32 -28 q-4 18 -18 32z' fill='#bfe6ff' opacity='0.4'/><circle cx='30' cy='72' r='2' fill='#cfeaff' opacity='0.8'/><circle cx='40' cy='64' r='1.6' fill='#e6f4ff' opacity='0.8'/><circle cx='24' cy='76' r='1.4' fill='#ffe9a8' opacity='0.8'/><ellipse cx='62' cy='40' rx='30' ry='30' fill='url(#ss_glow)'/><polygon points='62,16 69,34 88,34 73,46 79,64 62,53 45,64 51,46 36,34 55,34' fill='url(#ss_star)' stroke='#e07a1e' stroke-width='2' stroke-linejoin='round'/><polygon points='62,16 69,34 62,40 55,34' fill='#fff' opacity='0.5'/><polygon points='62,22 66,34 62,38 58,34' fill='#fff' opacity='0.65'/><circle cx='56' cy='38' r='2' fill='#fff' opacity='0.85'/><path d='M50 40 q4 5 0 10' stroke='#e07a1e' stroke-width='1.4' fill='none' opacity='0.4' stroke-linecap='round'/><path d='M84 20 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 l4 -1.4z' fill='#fff' opacity='0.9'/><path d='M40 24 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1z' fill='#fff' opacity='0.8'/><path d='M86 54 l0.8 2.4 l2.4 0.8 l-2.4 0.8 l-0.8 2.4 l-0.8 -2.4 l-2.4 -0.8 l2.4 -0.8z' fill='#fff' opacity='0.85'/><circle cx='44' cy='18' r='1.4' fill='#fff' opacity='0.7'/><circle cx='80' cy='66' r='1.4' fill='#fff' opacity='0.7'/></svg>")},
+	{"asset_name": "Baby Dragon", "asset_type": "Collectible", "price": 20000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='bd_body' cx='40%' cy='30%' r='80%'><stop offset='0%' stop-color='#a8f5c0'/><stop offset='55%' stop-color='#4fd486'/><stop offset='100%' stop-color='#2a9a5e'/></radialGradient><linearGradient id='bd_belly' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#fff6d0'/><stop offset='100%' stop-color='#ffe08a'/></linearGradient><linearGradient id='bd_wing' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#ffb3d9'/><stop offset='100%' stop-color='#ff6bb0'/></linearGradient></defs><ellipse cx='50' cy='86' rx='26' ry='6' fill='#000' opacity='0.13'/><path d='M70 68 q22 -6 20 -22 q-8 4 -12 12 q-2 -10 -10 -12z' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.4'/><path d='M78 50 q6 -3 9 -8' stroke='#1f7a48' stroke-width='1' fill='none' opacity='0.5'/><path d='M24 46 q-16 -6 -18 4 q10 2 12 8 q2 -8 6 -12z' fill='url(#bd_wing)' stroke='#d43f88' stroke-width='1.3'/><path d='M14 46 q-4 3 -6 6' stroke='#d43f88' stroke-width='0.9' fill='none' opacity='0.5'/><ellipse cx='50' cy='60' rx='24' ry='20' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.6'/><path d='M60 44 q22 -8 30 6 q-10 -2 -18 4 q4 -10 -12 -10z' fill='url(#bd_wing)' stroke='#d43f88' stroke-width='1.4'/><path d='M72 42 q6 0 10 4' stroke='#d43f88' stroke-width='0.9' fill='none' opacity='0.5'/><path d='M80 48 q4 2 7 6' stroke='#d43f88' stroke-width='0.9' fill='none' opacity='0.5'/><ellipse cx='48' cy='64' rx='14' ry='11' fill='url(#bd_belly)'/><path d='M40 58 h16 M40 64 h16 M42 70 h12' stroke='#e8b84a' stroke-width='1' opacity='0.5'/><ellipse cx='34' cy='78' rx='7' ry='5' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.2'/><ellipse cx='62' cy='79' rx='7' ry='5' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.2'/><ellipse cx='50' cy='38' rx='19' ry='17' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.6'/><path d='M38 24 l-3 -9 l7 5z' fill='#ffe08a' stroke='#e0a838' stroke-width='1'/><path d='M62 24 l3 -9 l-7 5z' fill='#ffe08a' stroke='#e0a838' stroke-width='1'/><path d='M30 34 q-8 2 -9 8 q6 -2 10 -2z' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.2'/><path d='M70 34 q8 2 9 8 q-6 -2 -10 -2z' fill='url(#bd_body)' stroke='#1f7a48' stroke-width='1.2'/><ellipse cx='44' cy='34' rx='8' ry='6' fill='#fff' opacity='0.3'/><circle cx='43' cy='38' r='4.5' fill='#fff'/><circle cx='44' cy='39' r='2.6' fill='#2a2a3a'/><circle cx='45' cy='38' r='0.9' fill='#fff'/><circle cx='58' cy='38' r='4.5' fill='#fff'/><circle cx='59' cy='39' r='2.6' fill='#2a2a3a'/><circle cx='60' cy='38' r='0.9' fill='#fff'/><ellipse cx='50' cy='46' rx='7' ry='5' fill='#8fe8ac'/><circle cx='47' cy='46' r='1' fill='#2a7a52'/><circle cx='53' cy='46' r='1' fill='#2a7a52'/><path d='M46 49 q4 3 8 0' stroke='#1f7a48' stroke-width='1.3' fill='none' stroke-linecap='round'/><ellipse cx='37' cy='44' rx='3.5' ry='2.5' fill='#ff9ec4' opacity='0.6'/><ellipse cx='63' cy='44' rx='3.5' ry='2.5' fill='#ff9ec4' opacity='0.6'/><path d='M46 21 q4 -4 8 0 q-2 3 -4 3 q-2 0 -4 -3z' fill='#ffd76b'/><circle cx='80' cy='24' r='1.6' fill='#fff' opacity='0.8'/><path d='M22 62 l0.8 2.4 l2.4 0.8 l-2.4 0.8 l-0.8 2.4 l-0.8 -2.4 l-2.4 -0.8 l2.4 -0.8z' fill='#fff' opacity='0.7'/></svg>")},
+	{"asset_name": "Crystal Ball", "asset_type": "Collectible", "price": 18000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='cb_orb' cx='38%' cy='32%' r='75%'><stop offset='0%' stop-color='#f0e6ff'/><stop offset='40%' stop-color='#b89bff'/><stop offset='75%' stop-color='#7b52e0'/><stop offset='100%' stop-color='#4a2a9e'/></radialGradient><radialGradient id='cb_inner' cx='50%' cy='55%' r='55%'><stop offset='0%' stop-color='#ffd0f5' stop-opacity='0.9'/><stop offset='100%' stop-color='#ffd0f5' stop-opacity='0'/></radialGradient><linearGradient id='cb_base' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#ffe08a'/><stop offset='50%' stop-color='#e0a838'/><stop offset='100%' stop-color='#a06e1e'/></linearGradient><radialGradient id='cb_glow' cx='50%' cy='45%' r='60%'><stop offset='0%' stop-color='#d9c0ff' stop-opacity='0.7'/><stop offset='100%' stop-color='#d9c0ff' stop-opacity='0'/></radialGradient></defs><ellipse cx='50' cy='90' rx='28' ry='6' fill='#000' opacity='0.15'/><ellipse cx='50' cy='46' rx='42' ry='42' fill='url(#cb_glow)'/><path d='M34 74 q16 6 32 0 l4 8 q-20 8 -40 0z' fill='url(#cb_base)' stroke='#8a5a14' stroke-width='1.4'/><ellipse cx='50' cy='82' rx='22' ry='5' fill='url(#cb_base)' stroke='#8a5a14' stroke-width='1.2'/><path d='M32 76 q18 5 36 0' stroke='#fff2c0' stroke-width='1' fill='none' opacity='0.5'/><circle cx='50' cy='46' r='30' fill='url(#cb_orb)' stroke='#3a1e7a' stroke-width='1.5'/><ellipse cx='50' cy='52' rx='20' ry='16' fill='url(#cb_inner)'/><path d='M50 32 l2.6 7 l7.4 0.4 l-6 4.6 l2.2 7.2 l-6.2 -4.2 l-6.2 4.2 l2.2 -7.2 l-6 -4.6 l7.4 -0.4z' fill='#fff' opacity='0.55'/><ellipse cx='40' cy='36' rx='9' ry='6' fill='#fff' opacity='0.5' transform='rotate(-30 40 36)'/><circle cx='38' cy='34' r='3' fill='#fff' opacity='0.85'/><circle cx='60' cy='58' r='2' fill='#ffd0f5' opacity='0.8'/><circle cx='42' cy='60' r='1.6' fill='#e6d0ff' opacity='0.8'/><path d='M28 50 q4 8 12 12' stroke='#fff' stroke-width='1' fill='none' opacity='0.35'/><path d='M20 40 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 l4 -1.4z' fill='#fff' opacity='0.9'/><path d='M78 30 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1z' fill='#fff' opacity='0.85'/><path d='M76 58 l0.8 2.4 l2.4 0.8 l-2.4 0.8 l-0.8 2.4 l-0.8 -2.4 l-2.4 -0.8 l2.4 -0.8z' fill='#ffe9a8' opacity='0.85'/><circle cx='24' cy='62' r='1.4' fill='#fff' opacity='0.7'/><circle cx='68' cy='22' r='1.6' fill='#fff' opacity='0.75'/></svg>")},
+	{"asset_name": "Golden Trophy", "asset_type": "Collectible", "price": 15000, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='gt_cup' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#fff6b0'/><stop offset='40%' stop-color='#ffcf3a'/><stop offset='100%' stop-color='#c68a12'/></linearGradient><linearGradient id='gt_handle' x1='0' y1='0' x2='1' y2='0'><stop offset='0%' stop-color='#ffe066'/><stop offset='100%' stop-color='#c68a12'/></linearGradient><linearGradient id='gt_base' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#7a4a1e'/><stop offset='100%' stop-color='#4a2a10'/></linearGradient><radialGradient id='gt_glow' cx='50%' cy='40%' r='60%'><stop offset='0%' stop-color='#fff3b0' stop-opacity='0.85'/><stop offset='100%' stop-color='#fff3b0' stop-opacity='0'/></radialGradient></defs><ellipse cx='50' cy='90' rx='30' ry='6' fill='#000' opacity='0.15'/><ellipse cx='50' cy='42' rx='42' ry='40' fill='url(#gt_glow)'/><path d='M22 30 q-14 0 -14 12 q0 12 16 12 l0 -6 q-10 0 -10 -6 q0 -6 8 -6z' fill='url(#gt_handle)' stroke='#a06e0e' stroke-width='1.5'/><path d='M78 30 q14 0 14 12 q0 12 -16 12 l0 -6 q10 0 10 -6 q0 -6 -8 -6z' fill='url(#gt_handle)' stroke='#a06e0e' stroke-width='1.5'/><path d='M26 24 h48 v10 q0 26 -24 30 q-24 -4 -24 -30z' fill='url(#gt_cup)' stroke='#a06e0e' stroke-width='2'/><rect x='24' y='20' width='52' height='7' rx='3' fill='url(#gt_cup)' stroke='#a06e0e' stroke-width='1.5'/><path d='M34 30 q-2 20 16 28' stroke='#fff' stroke-width='2.5' fill='none' opacity='0.5' stroke-linecap='round'/><path d='M40 28 q-1 14 8 22' stroke='#fff' stroke-width='1.4' fill='none' opacity='0.4' stroke-linecap='round'/><path d='M42 40 l2.6 6 l6.6 0.4 l-5.2 4.2 l1.8 6.4 l-5.6 -3.6 l-5.6 3.6 l1.8 -6.4 l-5.2 -4.2 l6.6 -0.4z' fill='#fff' opacity='0.6' transform='translate(6 -2)'/><rect x='46' y='62' width='8' height='10' fill='url(#gt_cup)' stroke='#a06e0e' stroke-width='1.2'/><path d='M38 72 h24 l-2 8 h-20z' fill='url(#gt_base)' stroke='#3a2010' stroke-width='1.5'/><rect x='34' y='80' width='32' height='7' rx='2' fill='url(#gt_base)' stroke='#3a2010' stroke-width='1.5'/><rect x='40' y='81' width='20' height='2.5' rx='1' fill='#e0b078' opacity='0.6'/><path d='M60 16 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 l4 -1.4z' fill='#fff' opacity='0.9'/><path d='M28 14 l1 3 l3 1 l-3 1 l-1 3 l-1 -3 l-3 -1 l3 -1z' fill='#fff' opacity='0.8'/><path d='M84 50 l0.8 2.4 l2.4 0.8 l-2.4 0.8 l-0.8 2.4 l-0.8 -2.4 l-2.4 -0.8 l2.4 -0.8z' fill='#fff' opacity='0.8'/><circle cx='16' cy='52' r='1.4' fill='#fff' opacity='0.7'/><circle cx='50' cy='34' r='1.6' fill='#fff' opacity='0.8'/></svg>")},
+	# ── Set capstones (earned by completing a set; not for sale) ──────────────
+	{"asset_name": "Royalty Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g0' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#a78bfa'/><stop offset='1' stop-color='#6d28d9'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g0)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M32 62 L28 38 L40 50 L50 32 L60 50 L72 38 L68 62 Z' fill='#fff8d8' stroke='#f6c94a' stroke-width='1.5' stroke-linejoin='round'/><circle cx='50' cy='40' r='2.4' fill='#ff9ecb'/></svg>")},
+	{"asset_name": "Arcane Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#60a5fa'/><stop offset='1' stop-color='#3730a3'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g1)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 30 L56 44 L71 45 L59 55 L63 70 L50 61 L37 70 L41 55 L29 45 L44 44 Z' fill='#fff8d8' stroke='#f6c94a' stroke-width='1.5' stroke-linejoin='round'/></svg>")},
+	{"asset_name": "Party Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fb7185'/><stop offset='1' stop-color='#be185d'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g2)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><g><rect x='36' y='40' width='7' height='7' rx='1.5' fill='#ffe14d' transform='rotate(20 39 43)'/><rect x='56' y='38' width='7' height='7' rx='1.5' fill='#3df0d0' transform='rotate(-15 59 41)'/><circle cx='50' cy='55' r='4' fill='#ff5db1'/><circle cx='40' cy='60' r='3' fill='#fff'/><circle cx='62' cy='58' r='3' fill='#7a9cff'/><path d='M50 30 L52 38 L48 38 Z' fill='#fff8d8'/></g></svg>")},
+	{"asset_name": "Celestial Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g3' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#7dd3fc'/><stop offset='1' stop-color='#0369a1'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g3)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><ellipse cx='50' cy='50' rx='20' ry='9' fill='none' stroke='#fff8d8' stroke-width='5'/><ellipse cx='50' cy='50' rx='20' ry='9' fill='none' stroke='#f6c94a' stroke-width='1.5'/></svg>")},
+	{"asset_name": "Cutie Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g4' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fbcfe8'/><stop offset='1' stop-color='#db2777'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g4)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 68 Q30 54 30 42 Q30 32 40 32 Q47 32 50 40 Q53 32 60 32 Q70 32 70 42 Q70 54 50 68 Z' fill='#ffe1ec' stroke='#fff' stroke-width='1.4'/></svg>")},
+	{"asset_name": "Bloom Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g5' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#86efac'/><stop offset='1' stop-color='#15803d'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g5)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><g fill='#ffe1ec'><circle cx='50' cy='38' r='7'/><circle cx='61' cy='47' r='7'/><circle cx='57' cy='60' r='7'/><circle cx='43' cy='60' r='7'/><circle cx='39' cy='47' r='7'/></g><circle cx='50' cy='50' r='6' fill='#fff2a8'/></svg>")},
+	{"asset_name": "Mischief Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g6' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fca5a5'/><stop offset='1' stop-color='#b91c1c'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#g6)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 28 Q64 42 60 58 Q58 70 50 72 Q42 70 40 58 Q38 48 46 44 Q44 52 50 54 Q56 50 50 28 Z' fill='#ffd27a' stroke='#fff3d0' stroke-width='1.2'/></svg>")},
+	# ── More set capstones ───────────────────────────────────────────────────
+	{"asset_name": "Speed Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h0' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fbbf24'/><stop offset='1' stop-color='#ea580c'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h0)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M54 28 L40 54 L50 54 L44 72 L64 44 L53 44 Z' fill='#fff8d8' stroke='#f6c94a' stroke-width='1.5' stroke-linejoin='round'/></svg>")},
+	{"asset_name": "Armory Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#94a3b8'/><stop offset='1' stop-color='#334155'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h1)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 26 L54 31 L52 60 L50 64 L48 60 L46 31 Z' fill='#eaf0f8' stroke='#fff' stroke-width='1'/><rect x='41' y='57' width='18' height='4' rx='1.5' fill='#f6c94a'/><rect x='48' y='60' width='4' height='9' rx='1' fill='#c98a2a'/></svg>")},
+	{"asset_name": "Safari Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fcd34d'/><stop offset='1' stop-color='#b45309'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h2)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><g fill='#fff8d8'><ellipse cx='50' cy='57' rx='9' ry='7'/><circle cx='39' cy='47' r='3.6'/><circle cx='47' cy='42' r='3.6'/><circle cx='53' cy='42' r='3.6'/><circle cx='61' cy='47' r='3.6'/></g></svg>")},
+	{"asset_name": "Feast Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h3' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fdba74'/><stop offset='1' stop-color='#c2410c'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h3)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 30 L56 44 L71 45 L59 55 L63 70 L50 61 L37 70 L41 55 L29 45 L44 44 Z' fill='#fff8d8' stroke='#f6c94a' stroke-width='1.5' stroke-linejoin='round'/></svg>")},
+	{"asset_name": "Fortune Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h4' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fde68a'/><stop offset='1' stop-color='#d97706'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h4)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 29 L63 40 L50 69 L37 40 Z' fill='#bfe6ff' stroke='#fff' stroke-width='1.3'/><path d='M37 40 L63 40 M50 29 L44 40 L50 69 M50 29 L56 40' stroke='#7fbfff' stroke-width='1' fill='none'/></svg>")},
+	{"asset_name": "Voyage Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h5' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#67e8f9'/><stop offset='1' stop-color='#0e7490'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h5)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><g stroke='#fff8d8' stroke-width='3.4' fill='none' stroke-linecap='round'><circle cx='50' cy='33' r='4'/><path d='M50 37 L50 67'/><path d='M39 56 Q50 71 61 56'/><path d='M42 44 L58 44'/></g></svg>")},
+	{"asset_name": "Arcade Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='h6' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#c4b5fd'/><stop offset='1' stop-color='#6d28d9'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#h6)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><g><rect x='36' y='40' width='7' height='7' rx='1.5' fill='#ffe14d' transform='rotate(20 39 43)'/><rect x='56' y='38' width='7' height='7' rx='1.5' fill='#3df0d0' transform='rotate(-15 59 41)'/><circle cx='50' cy='55' r='4' fill='#ff5db1'/><circle cx='40' cy='60' r='3' fill='#fff'/><circle cx='62' cy='58' r='3' fill='#7a9cff'/><path d='M50 30 L52 38 L48 38 Z' fill='#fff8d8'/></g></svg>")},
+	# ── Set capstones (batch 3) ──────────────────────────────────────────────
+	{"asset_name": "Pets Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='k0' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fda4af'/><stop offset='1' stop-color='#be185d'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#k0)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><g fill='#fff8d8'><ellipse cx='50' cy='57' rx='9' ry='7'/><circle cx='39' cy='47' r='3.6'/><circle cx='47' cy='42' r='3.6'/><circle cx='53' cy='42' r='3.6'/><circle cx='61' cy='47' r='3.6'/></g></svg>")},
+	{"asset_name": "Wilderness Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='k1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#86efac'/><stop offset='1' stop-color='#166534'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#k1)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M50 28 Q68 40 58 64 Q50 72 42 64 Q32 40 50 28 Z' fill='#e6ffe9' stroke='#fff' stroke-width='1.2'/><path d='M50 33 L50 66 M50 45 L58 40 M50 54 L42 49' stroke='#7fca8a' stroke-width='1.5' fill='none'/></svg>")},
+	{"asset_name": "Vista Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='k2' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#7dd3fc'/><stop offset='1' stop-color='#0c4a6e'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#k2)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M26 68 L44 38 L54 53 L62 41 L74 68 Z' fill='#fff8f0' stroke='#f6c94a' stroke-width='1.4' stroke-linejoin='round'/><path d='M44 38 L50 47 L38 47 Z' fill='#cfe6ff'/><path d='M62 41 L67 49 L57 49 Z' fill='#cfe6ff'/></svg>")},
+	{"asset_name": "Regalia Crest", "asset_type": "Collectible", "earn_only": 1, "price": 0, "image": _svg_uri("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='k3' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#d8b4fe'/><stop offset='1' stop-color='#7c3aed'/></linearGradient></defs><path d='M50 8 L86 22 L86 52 Q86 83 50 95 Q14 83 14 52 L14 22 Z' fill='url(#k3)' stroke='#f6c94a' stroke-width='3.5' stroke-linejoin='round'/><path d='M50 13 L81 25 L81 51 Q81 78 50 89 Q19 78 19 51 L19 25 Z' fill='none' stroke='#ffffff' stroke-width='1.4' opacity='0.35'/><path d='M32 62 L28 38 L40 50 L50 32 L60 50 L72 38 L68 62 Z' fill='#fff8d8' stroke='#f6c94a' stroke-width='1.5' stroke-linejoin='round'/><circle cx='50' cy='40' r='2.4' fill='#ff9ecb'/><circle cx='36' cy='47' r='1.8' fill='#8ecbff'/><circle cx='64' cy='47' r='1.8' fill='#8ecbff'/></svg>")},
 ]
+
+
+# Themed collection sets (cross-type). asset_name -> set label. Drives the
+# marketplace collection counter (owned N / M). Informational only.
+AVATAR_SETS = {
+	"Royalty": ["Gold Crown", "Crystal Ball", "Royal Purple"],
+	"Arcane": ["Wizard Hat", "Magic Potion", "Baby Dragon", "Vaporwave"],
+	"Cutie": ["Cat Ears", "Sleepy Cat", "Sakura"],
+	"Party": ["Party Hat", "Treasure Chest", "Golden Trophy", "Golden Hour"],
+	"Celestial": ["Glowing Halo", "Angel Wings", "Shooting Star", "Deep Sea"],
+	"Bloom": ["Flower Crown", "Rainbow Gem", "Emerald"],
+	"Mischief": ["Devil Horns", "Lava", "Neon Night"],
+	"Speed": ["Red Car", "Race Car", "Motorcycle", "SUV"],
+	"Armory": ["Sword", "Shield", "Bow", "Axe", "Trident"],
+	"Safari": ["Wolf", "Lion", "Tiger", "Eagle"],
+	"Feast": ["Pizza", "Cake", "Coffee", "Ice Cream", "Cookie"],
+	"Fortune": ["Money Bag", "Diamond", "Banknote", "Piggy Bank", "Gold Medal"],
+	"Voyage": ["Ship", "Sailboat", "Rocket", "UFO"],
+	"Arcade": ["Gamepad", "Joystick", "Dice", "Puzzle Piece", "Robot"],
+	"Pets": ["Rabbit", "Turtle", "Squirrel", "Snail", "Bug"],
+	"Wilderness": ["Deciduous Tree", "Mountain", "Snowy Mountain", "Sunrise", "Waves"],
+	"Vista": ["Forest", "Ocean", "Mountains", "Beach", "Hills"],
+	"Regalia": ["Crown", "Cap", "Graduation Cap", "Halo"],
+}
+SET_MAP = {name: s for s, names in AVATAR_SETS.items() for name in names}
+# Completing a set grants a capstone crest + a flat point rebate (order-independent).
+SET_REWARD = {
+	"Royalty": ("Royalty Crest", 5000), "Arcane": ("Arcane Crest", 6000),
+	"Party": ("Party Crest", 6000), "Celestial": ("Celestial Crest", 6000),
+	"Cutie": ("Cutie Crest", 5000), "Bloom": ("Bloom Crest", 5000),
+	"Mischief": ("Mischief Crest", 5000),
+	"Speed": ("Speed Crest", 6000),
+	"Armory": ("Armory Crest", 7000),
+	"Safari": ("Safari Crest", 6000),
+	"Feast": ("Feast Crest", 7000),
+	"Fortune": ("Fortune Crest", 7000),
+	"Voyage": ("Voyage Crest", 6000),
+	"Arcade": ("Arcade Crest", 7000),
+	"Pets": ("Pets Crest", 7000),
+	"Wilderness": ("Wilderness Crest", 7000),
+	"Vista": ("Vista Crest", 7000),
+	"Regalia": ("Regalia Crest", 6000),
+}
+
+
+def _maybe_complete_set(user, asset_name):
+	"""If owning `asset_name` just completed its set (and not already claimed),
+	grant the capstone + rebate once. Order-independent, idempotent."""
+	s = SET_MAP.get(asset_name)
+	if not s:
+		return None
+	owned = _asset_owned(user)
+	if not all(m in owned for m in AVATAR_SETS[s]):
+		return None
+	if _has_claim(user, "set", s) or not _record_claim(user, "set", s):
+		return None
+	cap, rebate = SET_REWARD.get(s, (None, 0))
+	if cap:
+		_grant_asset(user, cap)
+	if rebate:
+		_grant_points(user, rebate, "Set")
+	return {"set": s, "capstone": cap, "rebate": rebate}
 
 
 def seed_avatar_assets():
 	created = 0
 	for a in AVATAR_ASSETS:
-		vals = {"asset_type": a["asset_type"], "emoji": a.get("emoji"), "icon": a.get("icon"), "gradient": a.get("gradient"),
-			"anchor": a.get("anchor"), "is_default": a.get("is_default", 0), "price": a.get("price", 5000), "active": 1}
+		vals = {"asset_type": a["asset_type"], "emoji": a.get("emoji"), "icon": a.get("icon"), "image": a.get("image"), "gradient": a.get("gradient"),
+			"anchor": a.get("anchor"), "set_name": SET_MAP.get(a["asset_name"]), "earn_only": a.get("earn_only", 0), "is_default": a.get("is_default", 0), "price": a.get("price", 5000), "active": 1}
 		if frappe.db.exists("Avatar Asset", a["asset_name"]):
 			frappe.db.set_value("Avatar Asset", a["asset_name"], vals)
 		else:

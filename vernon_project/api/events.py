@@ -4,6 +4,7 @@
 import json
 
 import frappe
+from frappe.utils import now_datetime
 
 PUBLIC_EVENT_FIELDS = [
 	"name", "title", "cover_image", "start_datetime", "end_datetime",
@@ -80,6 +81,68 @@ def my_registrations():
 		r["event_title"] = frappe.db.get_value("Vernon Event", r["event"], "title")
 		r["start_datetime"] = frappe.db.get_value("Vernon Event", r["event"], "start_datetime")
 	return rows
+
+
+def _existing_active(event, user):
+	rows = frappe.get_all(
+		"Vernon Event Registration",
+		filters={"event": event, "user": user, "status": ["!=", "Cancelled"]},
+		fields=["name"], limit_page_length=1,
+	)
+	return rows[0]["name"] if rows else None
+
+
+def _capacity_ok(ev):
+	cap = ev.capacity or 0
+	return not cap or _active_count(ev.name) < cap
+
+
+def _make_registration(event, user, method, amount, status):
+	reg = frappe.get_doc({
+		"doctype": "Vernon Event Registration",
+		"event": event, "user": user, "method": method,
+		"amount": amount, "status": status, "registered_on": now_datetime(),
+	})
+	reg.insert(ignore_permissions=True)
+	return reg
+
+
+@frappe.whitelist()
+def register(event):
+	from vernon_project.api.mobile import _user_balance
+	user = _require_user()
+	ev = frappe.get_doc("Vernon Event", event)
+	if ev.status != "Published":
+		frappe.throw("Event not available", frappe.ValidationError)
+
+	# Serialise per-user spend/seat races with the same advisory lock the wallet uses.
+	lock_key = f"vernon_spend:{user}"
+	got = frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]
+	if not got:
+		frappe.throw("Registration busy, please retry", frappe.ValidationError)
+	try:
+		if _existing_active(event, user):
+			frappe.throw("You are already registered.", frappe.ValidationError)
+		if not _capacity_ok(ev):
+			frappe.throw("This event is full.", frappe.ValidationError)
+
+		if ev.pricing == "Free":
+			reg = _make_registration(event, user, "Free", 0, "Confirmed")
+			return {"registration": reg.name, "status": "Confirmed", "balance": None}
+
+		if ev.pricing == "Points":
+			cost = float(ev.points_cost or 0)
+			_, _, balance = _user_balance(user)
+			if cost > balance:
+				frappe.throw("Insufficient balance", frappe.ValidationError)
+			reg = _make_registration(event, user, "Points", cost, "Confirmed")
+			_, _, new_balance = _user_balance(user)
+			return {"registration": reg.name, "status": "Confirmed", "balance": new_balance}
+
+		# Rupiah — implemented in Task C1
+		frappe.throw("Rupiah payment not yet available", frappe.ValidationError)
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
 
 
 def _apply_notification(payload):
