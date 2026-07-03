@@ -73,7 +73,7 @@ class TestEventsRegistration(FrappeTestCase):
             "doctype": "Point Ledger",
             "user": user,
             "points_earned": points,
-            "source": "Other",
+            "source": "Grant",
         })
         doc.insert(ignore_permissions=True, ignore_links=True)
         self._created.append(("Point Ledger", doc.name))
@@ -159,7 +159,7 @@ class TestEventsRegistration(FrappeTestCase):
             p["signature_key"] = sig or _sha512_sig(reg.name, status_code, gross_amount)
             return p
 
-        with patch("vernon_project.api.events._server_key", return_value=_TEST_KEY):
+        with patch("vernon_project.api.midtrans._server_key", return_value=_TEST_KEY):
             # Bad signature must raise PermissionError.
             bad = _make_payload(sig="badsig")
             with self.assertRaises(frappe.PermissionError):
