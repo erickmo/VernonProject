@@ -121,7 +121,13 @@ def register(event):
 	if not got:
 		frappe.throw("Registration busy, please retry", frappe.ValidationError)
 	try:
-		if _existing_active(event, user):
+		existing = _existing_active(event, user)
+		if existing:
+			reg = frappe.get_doc("Vernon Event Registration", existing)
+			if reg.status == "Pending" and reg.method == "Rupiah" and reg.snap_token:
+				# ponytail: resume the abandoned Snap payment instead of dead-ending; the same order_id/token is re-opened. Midtrans expiry eventually cancels a truly-abandoned Pending, freeing the seat.
+				return {"registration": reg.name, "status": "Pending",
+					"snap_token": reg.snap_token, "order_id": reg.name}
 			frappe.throw("You are already registered.", frappe.ValidationError)
 		if not _capacity_ok(ev):
 			frappe.throw("This event is full.", frappe.ValidationError)
