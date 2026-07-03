@@ -61,7 +61,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
       className={clsx(
         'group w-full rounded-2xl border-l-4 p-4 text-left shadow-card transition active:scale-[0.99]',
         focusActive
-          ? 'border-brand-600 bg-gradient-to-br from-brand-300 to-brand-200 ring-1 ring-brand-400 dark:from-brand-500/40 dark:to-brand-500/20 dark:ring-brand-500/60'
+          ? 'border-amber-500 bg-gradient-to-br from-amber-200 to-amber-100 ring-1 ring-amber-300 dark:border-amber-500/70 dark:from-amber-500/25 dark:to-amber-500/10 dark:ring-amber-500/40'
           : clsx('bg-paper-card dark:bg-slate-800', todo.is_overdue ? 'border-rose-400' : meta.ring),
       )}
     >
