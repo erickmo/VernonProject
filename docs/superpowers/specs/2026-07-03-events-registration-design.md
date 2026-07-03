@@ -78,10 +78,15 @@ Single whitelisted `register(event)` entry point; branches on the event's
 `pricing`:
 
 - **Free** → create Registration `Confirmed` immediately.
-- **Points** → read the user's balance from Point Ledger. If `balance >=
-  points_cost`, create Registration `Confirmed` **and** a negative Point Ledger
-  entry with `source="Event"` (same mechanic as Reward Redemption). Otherwise
-  reject with an insufficient-balance error.
+- **Points** → read the user's balance. If `balance >= points_cost`, create
+  Registration `Confirmed` with `method="Points"` and `amount=points_cost`.
+  The registration row **is** the debit: extend `_user_balance()` (in
+  `api/mobile.py`) to subtract `SUM(amount)` of non-`Cancelled`,
+  `method="Points"` registrations — the same debit model as Reward Redemption
+  (there is no negative Point Ledger row for spending in this codebase).
+  Otherwise reject with insufficient-balance. Guarded by the existing
+  `get_lock('vernon_spend:{user}')` advisory lock so concurrent signups can't
+  overspend.
 - **Rupiah** → create Registration `Pending`, request a Midtrans Snap token
   (server key), store `midtrans_order_id` + `snap_token`, return the token to
   the frontend to open the Snap popup.
@@ -98,10 +103,13 @@ registrations for the event `>= capacity` (when capacity > 0). Points debit and
 capacity check happen inside one DB transaction to avoid overselling/double
 charge on concurrent signups.
 
-**Config** (site_config on project.vernon.id, net-new to this site; mirrors the
-edubing Midtrans pattern): `midtrans_server_key`, `midtrans_client_key`,
-`midtrans_is_production`. Registration fails with a clear error if keys are
-absent and a Rupiah event is attempted.
+**Config**: three fields added to the existing **Vernon Settings** Single
+doctype (mirrors edubing's `Edubing Settings` pattern — not `site_config`):
+`midtrans_client_key` (Data), `midtrans_server_key` (Password, read via
+`get_password`), `midtrans_is_production` (Check). Registration fails with a
+clear error if keys are absent and a Rupiah event is attempted. Only
+`client_key` + the Snap.js CDN URL are exposed to the browser; `server_key`
+never leaves the backend.
 
 ## Frontend — both apps
 
