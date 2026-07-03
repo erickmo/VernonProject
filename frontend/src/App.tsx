@@ -58,6 +58,7 @@ import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import AchievementsScreen from './pages/AchievementsScreen'
 import EventsScreen from './pages/EventsScreen'
+import EventDetailScreen from './pages/EventDetailScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -208,6 +209,7 @@ export default function App() {
         )}
         <Route path="/achievements" element={<AchievementsScreen />} />
         <Route path="/events" element={<EventsScreen />} />
+        <Route path="/events/:name" element={<EventDetailScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/team-wall" element={<TeamWallScreen />} />
