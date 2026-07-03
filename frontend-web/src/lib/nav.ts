@@ -24,6 +24,7 @@ const WORK: NavLeaf[] = [
 ]
 
 const REWARDS: NavLeaf[] = [
+  { to: '/events', label: 'Events', sub: 'Browse & register', icon: CalendarDays },
   { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/team-wall', label: 'Team Wall', sub: 'Recognition feed', icon: UsersRound },
   { to: '/marketplace', label: 'Marketplace', sub: 'Redeem rewards', icon: ShoppingBag },

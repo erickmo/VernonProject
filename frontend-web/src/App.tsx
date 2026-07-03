@@ -14,7 +14,7 @@ import {
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
 import { AppShell } from '@web/components/AppShell'
-import Today from '@web/pages/Today'
+import Home from '@web/pages/Home'
 import Calendar from '@web/pages/Calendar'
 import ProjectsWorkspace, { ProjectsIndexPrompt } from '@web/pages/ProjectsWorkspace'
 import Project, { ProjectIndexPane } from '@web/pages/Project'
@@ -58,6 +58,7 @@ import HolidayLists from '@web/pages/HolidayLists'
 import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
+import Events from '@web/pages/Events'
 import { CrumbProvider } from '@web/lib/crumbs'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -131,7 +132,7 @@ export default function App() {
       <Routes>
         <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>
-          <Route path="/" element={<Today />} />
+          <Route path="/" element={<Home />} />
           <Route path="/calendar" element={<Calendar />} />
           {/* Projects workspace: persistent rail (left) + selected project (right) */}
           <Route element={<ProjectsWorkspace />}>
@@ -215,6 +216,7 @@ export default function App() {
               <Route path="/attendance/profiles" element={<AttendanceProfiles />} />
             </>
           )}
+          <Route path="/events" element={<Events />} />
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />
