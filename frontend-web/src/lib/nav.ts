@@ -2,7 +2,7 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Video, StickyNote, MessageSquarePlus,
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
-  Zap, Store, Coins, QrCode, Monitor, UserCheck,
+  Zap, Store, Coins, QrCode, Monitor, UserCheck, Ticket,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -25,6 +25,7 @@ const WORK: NavLeaf[] = [
 
 const REWARDS: NavLeaf[] = [
   { to: '/events', label: 'Events', sub: 'Browse & register', icon: CalendarDays },
+  { to: '/my-registrations', label: 'My Registrations', sub: 'Your events', icon: Ticket },
   { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/team-wall', label: 'Team Wall', sub: 'Recognition feed', icon: UsersRound },
   { to: '/marketplace', label: 'Marketplace', sub: 'Redeem rewards', icon: ShoppingBag },
