@@ -139,8 +139,21 @@ def register(event):
 			_, _, new_balance = _user_balance(user)
 			return {"registration": reg.name, "status": "Confirmed", "balance": new_balance}
 
-		# Rupiah — implemented in Task C1
-		frappe.throw("Rupiah payment not yet available", frappe.ValidationError)
+		if ev.pricing == "Rupiah":
+				from vernon_project.api.midtrans import snap_create
+				amount = float(ev.price or 0)
+				reg = _make_registration(event, user, "Rupiah", amount, "Pending")
+				# order_id = the registration docname; webhook looks it up by this.
+				data = snap_create(
+					order_id=reg.name,
+					gross_amount=amount,
+					customer={"first_name": (frappe.db.get_value("User", user, "full_name") or user)[:50],
+						"email": user if "@" in user else None},
+					items=[{"id": ev.name, "price": int(amount), "quantity": 1, "name": ev.title[:50]}],
+				)
+				reg.db_set({"midtrans_order_id": reg.name, "snap_token": data.get("token")})
+				return {"registration": reg.name, "status": "Pending",
+					"snap_token": data.get("token"), "order_id": reg.name}
 	finally:
 		frappe.db.sql("select release_lock(%s)", lock_key)
 
