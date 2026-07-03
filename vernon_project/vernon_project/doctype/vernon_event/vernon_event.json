@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-07-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title", "description", "cover_image", "organizer", "column_break_a",
+  "start_datetime", "end_datetime", "location", "section_break_b",
+  "capacity", "pricing", "points_cost", "price", "section_break_c", "status"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "description", "fieldtype": "Text Editor", "label": "Description"},
+  {"fieldname": "cover_image", "fieldtype": "Attach Image", "label": "Cover Image"},
+  {"fieldname": "organizer", "fieldtype": "Link", "label": "Organizer", "options": "User", "search_index": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "start_datetime", "fieldtype": "Datetime", "label": "Start", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "end_datetime", "fieldtype": "Datetime", "label": "End"},
+  {"fieldname": "location", "fieldtype": "Data", "label": "Location (address or URL)"},
+  {"fieldname": "section_break_b", "fieldtype": "Section Break", "label": "Capacity & Pricing"},
+  {"fieldname": "capacity", "fieldtype": "Int", "label": "Capacity (0 = unlimited)", "default": "0"},
+  {"fieldname": "pricing", "fieldtype": "Select", "label": "Pricing", "options": "Free\nPoints\nRupiah", "default": "Free", "in_list_view": 1},
+  {"fieldname": "points_cost", "fieldtype": "Float", "label": "Points Cost", "depends_on": "eval:doc.pricing=='Points'"},
+  {"fieldname": "price", "fieldtype": "Currency", "label": "Price (Rp)", "depends_on": "eval:doc.pricing=='Rupiah'"},
+  {"fieldname": "section_break_c", "fieldtype": "Section Break"},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nPublished\nCancelled\nCompleted", "default": "Draft", "in_list_view": 1}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Vernon Event",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
