@@ -37,6 +37,8 @@ import { PlanDaySheet } from '@/components/PlanDaySheet'
 import { Fab } from '@/components/Fab'
 import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
+import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
+import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
@@ -171,6 +173,7 @@ export default function Today() {
   const [planSub, setPlanSub] = useState<PlanSub>('today')
   const [deadlineSub, setDeadlineSub] = useState<DeadlineSub>('today')
   const [pickedDate, setPickedDate] = useState<string>('')
+  const focusedIds = useFocusedTaskIds()
 
   const firstName = boot?.full_name?.split(' ')[0] ?? ''
 
@@ -262,14 +265,14 @@ export default function Today() {
     const isToday = (t: ProjectItem) => allocOn(t, (d) => d === todayStr)
     const isPast = (t: ProjectItem) => allocOn(t, (d) => d < todayStr)
     return {
-      today: filteredActive.filter(isToday).slice().sort(byAllocationAsc),
+      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusedIds),
       past: filteredActive.filter((t) => !isToday(t) && isPast(t)).slice().sort(byDeadlineAsc),
       upcoming: filteredActive
         .filter((t) => !isToday(t) && !isPast(t) && allocOn(t, (d) => d > todayStr))
         .slice()
         .sort(byDeadlineAsc),
     }
-  }, [filteredActive, todayStr])
+  }, [filteredActive, todayStr, focusedIds])
   const planPicked = useMemo(
     () => (pickedDate ? filteredActive.filter((t) => allocOn(t, (d) => d === pickedDate)).slice().sort(byAllocationAsc) : []),
     [filteredActive, pickedDate],

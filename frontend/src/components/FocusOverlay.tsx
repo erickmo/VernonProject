@@ -24,9 +24,10 @@ import { useFocusOverlay, closeFocusOverlay } from '@/lib/focusUI'
 // state lives in the shared useFocusTimer store. The X closes the overlay but
 // leaves the timer running (the mini-bar stays); Stop ends the timer.
 export default function FocusOverlay() {
+  const { open, taskId } = useFocusOverlay()
   const { timer, elapsedMs, remainingMs, fraction, hasEstimate, pause, resume, reset, stop } =
-    useFocusTimer()
-  const { open, meta } = useFocusOverlay()
+    useFocusTimer(taskId ?? '')
+  const meta = timer?.meta
 
   // ---- ambient sound (coffeeshop) ---- hooks must run unconditionally, so
   // they sit before the early return. Sound plays only while the overlay is up.

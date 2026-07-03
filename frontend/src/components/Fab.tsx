@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, CheckSquare, StickyNote, Compass } from 'lucide-react'
-import { useFocusTimer } from '@/hooks/useFocusTimer'
+import { useFocusTimers } from '@/hooks/useFocusTimer'
 
 // One-time hint persists across sessions once dismissed (or after first use).
 const TIP_KEY = 'vernon.fabTipDismissed'
@@ -18,7 +18,7 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
   const [menuOpen, setMenuOpen] = useState(false)
   // Lift above the focus mini-bar (z-40, ~+4.25rem) when a timer is running so
   // the two don't overlap in the bottom-right corner.
-  const focusing = useFocusTimer().timer != null
+  const focusing = useFocusTimers().timers.length > 0
 
   useEffect(() => {
     try {

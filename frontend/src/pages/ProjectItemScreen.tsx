@@ -7,9 +7,9 @@ import {
   ArrowRight,
   ArrowUpRight,
   Ban,
+  MoreVertical,
   CalendarCheck,
   CalendarDays,
-  CalendarPlus,
   Check,
   Clock,
   Copy,
@@ -203,8 +203,17 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-[15px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
+      <div
+        className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Edit todo</h3>
+        <button onClick={onClose} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
       <textarea
@@ -436,7 +445,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </p>
       )}
 
-      <div className="flex gap-2">
+      {/* Assigned plan (leader/SM-editable) — moved here from the detail view */}
+      {data.can_edit_assigned && <AssignedAllocationCard data={data} />}
+
+      <div className="mt-4 flex gap-2">
         <button
           onClick={onClose}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-700"
@@ -450,6 +462,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         >
           {update.isPending ? <Spinner className="h-4 w-4" /> : <><Save className="h-4 w-4" /> Save changes</>}
         </button>
+      </div>
       </div>
     </div>
   )
@@ -608,19 +621,30 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   const setRow = (i: number, patch: Partial<AllocRow>) =>
     setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)))
 
-  const onSave = () => {
-    // allocation_date is required on each row — don't silently drop rows with
-    // minutes but no date.
-    if (rows.some((r) => !r.date && Number(r.minutes) > 0)) {
-      toast('error', 'Add a date to every allocation row')
+  const [saved, setSaved] = useState(false)
+
+  // Autosave: debounce row edits and persist. Rows with minutes but no date are
+  // invalid — skip the save (no toast spam) until the date is filled in. Empty
+  // rows are filtered out server-side; they stay in local state for editing.
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false
       return
     }
+    if (rows.some((r) => !r.date && Number(r.minutes) > 0)) return
     const clean = rows.filter((r) => r.date)
-    save.mutate(clean, {
-      onSuccess: () => toast('success', 'Allocations saved'),
-      onError: (e) => toast('error', (e as Error).message),
-    })
-  }
+    const t = setTimeout(() => {
+      save.mutate(clean, {
+        onSuccess: () => {
+          setSaved(true)
+          setTimeout(() => setSaved(false), 2000)
+        },
+        onError: (e) => toast('error', (e as Error).message),
+      })
+    }, 800)
+    return () => clearTimeout(t)
+  }, [rows]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
@@ -668,20 +692,20 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
           <p className="py-1 text-center text-xs text-slate-400 dark:text-slate-500">No day split yet — add a day to plan your time.</p>
         )}
       </div>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex items-center justify-between">
         <button
           onClick={addRow}
           className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-700"
         >
           <Plus className="h-4 w-4" /> Add day
         </button>
-        <button
-          onClick={onSave}
-          disabled={save.isPending}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white active:bg-brand-700 disabled:opacity-60"
-        >
-          {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save split
-        </button>
+        <span className="flex h-5 items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+          {save.isPending ? (
+            <><Spinner className="h-3 w-3" /> Saving…</>
+          ) : saved ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600"><Check className="h-3.5 w-3.5" /> Saved</span>
+          ) : null}
+        </span>
       </div>
     </div>
   )
@@ -822,6 +846,57 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
   )
 }
 
+type TopItem = {
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  onClick: () => void
+  danger?: boolean
+  disabled?: boolean
+}
+
+// Compact ⋮ overflow menu for the DetailScreen topbar (Duplicate/Cancel/Delete).
+function TopMenu({ items }: { items: TopItem[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+  if (!items.length) return null
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label="More actions"
+        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-100 dark:active:bg-slate-700"
+      >
+        <MoreVertical className="h-5 w-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 shadow-lg">
+          {items.map((it) => (
+            <button
+              key={it.label}
+              disabled={it.disabled}
+              onClick={() => { setOpen(false); it.onClick() }}
+              className={clsx(
+                'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm font-medium transition active:bg-slate-50 dark:active:bg-slate-700/60 disabled:opacity-50',
+                it.danger ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-200',
+              )}
+            >
+              <it.icon className="h-4 w-4 shrink-0" /> {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProjectItemScreen() {
   const { name = '' } = useParams()
   const navigate = useNavigate()
@@ -833,7 +908,6 @@ export default function ProjectItemScreen() {
   const deleteTodo = useDeleteTodo()
   const setDeadlineToday = useUpdateTodo(id)
   const setWaiting = useUpdateTodo(id)
-  const splitToday = useSetTodoAllocations(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -842,7 +916,7 @@ export default function ProjectItemScreen() {
   const [showWaiting, setShowWaiting] = useState(false)
   const [dupOpen, setDupOpen] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
-  const focus = useFocusTimer()
+  const focus = useFocusTimer(id)
 
   if (isLoading && !data) {
     return (
@@ -916,22 +990,6 @@ export default function ProjectItemScreen() {
   const canSetDeadlineToday =
     data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
 
-  // One-tap: drop the whole todo onto today's plan so it surfaces in the Today
-  // home (today_allocation > 0). Only offered to the assignee when no day-split
-  // exists yet — once it does, the AllocationCard below owns the multi-day plan.
-  const onSplitToday = () => {
-    if (splitToday.isPending) return
-    // ponytail: 30m default when there's no estimate. The assignee day-plan is
-    // free-form; a positive today minutes just surfaces the todo in the Today home.
-    const minutes = data.estimated > 0 ? data.estimated : 30
-    splitToday.mutate([{ date: todayISO(), minutes, note: '' }], {
-      onSuccess: () => toast('success', 'Split to today'),
-      onError: (err) => toast('error', (err as Error).message),
-    })
-  }
-  const canSplitToday =
-    data.is_mine && data.status_key === 'planned' && (data.allocations ?? []).length === 0
-
   const onMarkWaiting = () => {
     if (setWaiting.isPending || !waitingReason.trim()) return
     setWaiting.mutate(
@@ -965,25 +1023,46 @@ export default function ProjectItemScreen() {
       </button>
     ) : null
 
-  const focusActive = focus.timer?.taskId === data.name
+  const topActions = (
+    <div className="flex items-center gap-1.5">
+      {editBtn}
+      <TopMenu
+        items={[
+          ...(data.can_edit ? [{ label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) }] : []),
+          ...(canSetDeadlineToday
+            ? [{ label: 'Set deadline to today', icon: CalendarCheck, onClick: onDeadlineToday, disabled: setDeadlineToday.isPending }]
+            : []),
+          ...(data.can_edit && data.status_key !== 'completed' && data.status_key !== 'cancelled'
+            ? [{ label: 'Cancel task', icon: Ban, danger: true, onClick: () => setShowCancel(true) }]
+            : []),
+          ...(data.can_delete
+            ? [{ label: 'Delete task', icon: Trash2, danger: true, onClick: onDelete, disabled: deleteTodo.isPending }]
+            : []),
+        ]}
+      />
+    </div>
+  )
+
+  const focusActive = focus.timer != null
   const openFocus = () => {
-    if (!focusActive) focus.start(data.name, data.to_do, data.estimated)
-    openFocusOverlay({
-      project: data.project_name,
-      deadlineHuman: data.deadline_human || undefined,
-      overdue: data.is_overdue,
-      estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
-      group: data.group
-        ? [
-            data.group,
-            data.level_type && data.level
-              ? `${data.level_type} · ${data.level}`
-              : data.level_type || data.level,
-          ]
-            .filter(Boolean)
-            .join(' · ')
-        : undefined,
-    })
+    if (!focusActive)
+      focus.start(data.name, data.to_do, data.estimated, {
+        project: data.project_name,
+        deadlineHuman: data.deadline_human || undefined,
+        overdue: data.is_overdue,
+        estimateLabel: data.estimated > 0 ? formatEstimate(data.estimated) : undefined,
+        group: data.group
+          ? [
+              data.group,
+              data.level_type && data.level
+                ? `${data.level_type} · ${data.level}`
+                : data.level_type || data.level,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : undefined,
+      })
+    openFocusOverlay(data.name)
   }
   // Active overtime only matters with a real estimate; a no-estimate timer just
   // counts up and never goes "over".
@@ -991,11 +1070,9 @@ export default function ProjectItemScreen() {
   const focusValueMs = focusActive ? (focus.hasEstimate ? focus.remainingMs : focus.elapsedMs) : 0
 
   return (
-    <DetailScreen title="Todo" right={editBtn}>
-      {editing ? (
-        <EditForm data={data} onClose={() => setEditing(false)} />
-      ) : (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+    <DetailScreen title="Todo" right={topActions}>
+      {editing && <EditForm data={data} onClose={() => setEditing(false)} />}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {data.project_name}
           </p>
@@ -1122,28 +1199,6 @@ export default function ProjectItemScreen() {
             )}
           </div>
 
-          {canSetDeadlineToday && (
-            <button
-              onClick={onDeadlineToday}
-              disabled={setDeadlineToday.isPending}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30 active:bg-brand-50 disabled:opacity-60"
-            >
-              {setDeadlineToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
-              Set deadline to today
-            </button>
-          )}
-
-          {canSplitToday && (
-            <button
-              onClick={onSplitToday}
-              disabled={splitToday.isPending}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30 active:bg-brand-50 disabled:opacity-60"
-            >
-              {splitToday.isPending ? <Spinner className="h-4 w-4" /> : <CalendarPlus className="h-4 w-4" />}
-              Split to today
-            </button>
-          )}
-
           {canWait && (data.is_waiting ? (
             <button
               onClick={onResume}
@@ -1186,7 +1241,6 @@ export default function ProjectItemScreen() {
             )}
           </button>
         </div>
-      )}
 
       {/* My day plan: editable for assignee, read-only for others */}
       {data.is_mine ? (
@@ -1217,8 +1271,8 @@ export default function ProjectItemScreen() {
         )
       )}
 
-      {/* Assigned plan: editable for leaders, read-only for others */}
-      <AssignedAllocationCard data={data} />
+      {/* Assigned plan: read-only here for non-leaders; leaders edit it in the Edit sheet */}
+      {!data.can_edit_assigned && <AssignedAllocationCard data={data} />}
 
       {/* Workflow */}
       <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 pb-5 shadow-sm">
@@ -1261,8 +1315,7 @@ export default function ProjectItemScreen() {
                 </div>
               ))}
 
-            {data.can_edit && data.status_key !== 'completed' && (
-              showCancel ? (
+            {data.can_edit && data.status_key !== 'completed' && showCancel && (
                 <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
                   <textarea
                     value={cancelReason}
@@ -1288,37 +1341,10 @@ export default function ProjectItemScreen() {
                     </button>
                   </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setShowCancel(true)}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-600 ring-1 ring-rose-200 dark:ring-rose-500/30 active:bg-rose-50"
-                >
-                  <Ban className="h-4 w-4" /> Cancel task
-                </button>
-              )
             )}
           </>
         )}
 
-        {data.can_edit && (
-          <button
-            onClick={() => setDupOpen(true)}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 ring-1 ring-slate-200 dark:ring-slate-700 active:scale-[0.99]"
-          >
-            <Copy className="h-4 w-4" /> Duplicate task
-          </button>
-        )}
-
-        {data.can_delete && (
-          <button
-            onClick={onDelete}
-            disabled={deleteTodo.isPending}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-rose-700 ring-1 ring-rose-300 dark:ring-rose-500/40 active:bg-rose-50 disabled:opacity-60"
-          >
-            {deleteTodo.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-            Delete task
-          </button>
-        )}
       </div>
 
       {/* Recurrence history */}

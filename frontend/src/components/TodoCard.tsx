@@ -26,18 +26,19 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   // visible card re-renders ~1×/s while a timer runs. Fine for the Today list's
   // handful of cards; if a screen ever renders hundreds, swap this for an
   // imperative store start that doesn't subscribe.
-  const focus = useFocusTimer()
-  const focusActive = focus.timer?.taskId === todo.name
+  const focus = useFocusTimer(todo.name)
+  const focusActive = focus.timer != null
 
   const startFocus = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!focusActive) focus.start(todo.name, todo.to_do, todo.estimated)
-    openFocusOverlay({
-      project: todo.project_name,
-      deadlineHuman: todo.deadline_human || undefined,
-      overdue: todo.is_overdue,
-      estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
-    })
+    if (!focusActive)
+      focus.start(todo.name, todo.to_do, todo.estimated, {
+        project: todo.project_name,
+        deadlineHuman: todo.deadline_human || undefined,
+        overdue: todo.is_overdue,
+        estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
+      })
+    openFocusOverlay(todo.name)
   }
 
   const onAdvance = (e: React.MouseEvent) => {
