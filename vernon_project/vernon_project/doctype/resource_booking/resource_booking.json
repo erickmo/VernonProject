@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-07-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title", "booked_by", "status", "column_break_a",
+  "start", "end", "room", "section_break_b", "equipment", "notes"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "booked_by", "fieldtype": "Link", "label": "Booked By", "options": "User", "read_only": 1, "in_standard_filter": 1},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Confirmed\nCancelled", "default": "Confirmed", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "start", "fieldtype": "Datetime", "label": "Start", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "end", "fieldtype": "Datetime", "label": "End", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "room", "fieldtype": "Link", "label": "Meeting Room", "options": "Meeting Room", "in_standard_filter": 1, "search_index": 1, "in_list_view": 1},
+  {"fieldname": "section_break_b", "fieldtype": "Section Break", "label": "Equipment"},
+  {"fieldname": "equipment", "fieldtype": "Table", "label": "Equipment", "options": "Resource Booking Equipment"},
+  {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Resource Booking",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "read": 1, "report": 1, "write": 1, "export": 1, "print": 1, "share": 1, "email": 1},
+  {"role": "All", "create": 1, "read": 1, "report": 1, "write": 1, "export": 1, "print": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
