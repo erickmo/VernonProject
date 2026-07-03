@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
@@ -80,10 +80,14 @@ export const keys = {
   passkeys: ['passkeys'] as const,
   teamActivity: ['team-activity'] as const,
   avatarCatalog: ['avatar-catalog'] as const,
+  crateStatus: ['crate-status'] as const,
   feedbackInbox: (status?: string) => ['feedback-inbox', status ?? 'all'] as const,
   myAttendance: ['my-attendance'] as const,
   gamification: ['gamification'] as const,
   teamWall: ['team-wall'] as const,
+  events: ['events'] as const,
+  event: (n: string) => ['event', n] as const,
+  myRegistrations: ['myRegistrations'] as const,
 }
 
 export const useBoot = () =>
@@ -1163,6 +1167,24 @@ export function useBuyAvatarAsset() {
   })
 }
 
+export function useCrateStatus() {
+  return useQuery({
+    queryKey: keys.crateStatus,
+    queryFn: () => mobileApi.getCrateStatus() as Promise<import('../lib/types').CrateStatus>,
+  })
+}
+
+export function useOpenCrate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => mobileApi.openTaskCrate(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.crateStatus })
+      qc.invalidateQueries({ queryKey: keys.avatarCatalog })
+    },
+  })
+}
+
 export function useSaveAvatar() {
   const qc = useQueryClient()
   return useMutation({
@@ -1276,6 +1298,27 @@ export function useUnderOccupied(fromDate: string, toDate: string, enabled: bool
     queryFn: () => mobileApi.underOccupied(fromDate, toDate),
     enabled,
     staleTime: 1000 * 30,
+  })
+}
+
+export const useEvents = () =>
+  useQuery({ queryKey: keys.events, queryFn: () => eventsApi.list() })
+
+export const useEvent = (name: string, enabled = true) =>
+  useQuery({ queryKey: keys.event(name), queryFn: () => eventsApi.get(name), enabled: !!name && enabled })
+
+export const useMyRegistrations = () =>
+  useQuery({ queryKey: keys.myRegistrations, queryFn: () => eventsApi.mine() })
+
+export function useRegisterEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (event: string) => eventsApi.register(event),
+    onSettled: (_d, _e, event) => {
+      qc.invalidateQueries({ queryKey: keys.events })
+      qc.invalidateQueries({ queryKey: keys.event(event) })
+      qc.invalidateQueries({ queryKey: keys.myRegistrations })
+    },
   })
 }
 
