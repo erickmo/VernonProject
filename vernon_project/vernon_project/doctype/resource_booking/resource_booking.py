@@ -64,13 +64,16 @@ def find_conflicts(start, end, room=None, equipment=None, exclude=None):
 
 class ResourceBooking(Document):
 	def validate(self):
-		if self.is_new() and not self.booked_by:
+		if self.is_new():
 			self.booked_by = frappe.session.user
 		if get_datetime(self.end) <= get_datetime(self.start):
 			frappe.throw(_("End must be after Start."))
 		if self.status != CONFIRMED:
 			return
 		equipment = [row.equipment for row in self.equipment if row.equipment]
+		# ponytail: no row lock — two concurrent overlapping Confirmed inserts can
+		# both pass this check (TOCTOU). Fine for low-concurrency self-service; add
+		# SELECT ... FOR UPDATE / a lock if contention ever matters.
 		conflicts = find_conflicts(
 			self.start, self.end, room=self.room, equipment=equipment,
 			exclude=self.name if not self.is_new() else None,
