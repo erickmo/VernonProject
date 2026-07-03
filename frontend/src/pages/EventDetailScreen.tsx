@@ -7,6 +7,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { useEvent, useRegisterEvent } from '@/hooks/useData'
 import { snapPay } from '@/lib/snap'
+import { sanitizeHtml } from '@/lib/format'
 
 export default function EventDetailScreen() {
   const { name: raw } = useParams()
@@ -31,8 +32,8 @@ export default function EventDetailScreen() {
     try {
       const res = await register.mutateAsync(ev.name)
       if (res.status === 'Pending' && res.snap_token) {
-        const outcome = await snapPay(res.snap_token)
-        if (outcome === 'success' || outcome === 'pending') await refetch()
+        await snapPay(res.snap_token)
+        await refetch()
       } else {
         await refetch()
       }
@@ -91,7 +92,7 @@ export default function EventDetailScreen() {
       {ev.description && (
         <div
           className="prose prose-sm mt-4 dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: ev.description }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(ev.description) }}
         />
       )}
 
