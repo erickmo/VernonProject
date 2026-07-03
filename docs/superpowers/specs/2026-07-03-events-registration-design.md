@@ -22,10 +22,10 @@ check-in/attendance. Say so to pull any into scope.
 Two doctypes mirroring the existing `Marketplace Reward` → `Reward Redemption`
 split:
 
-- **Event** — the offering an organizer creates.
-- **Event Registration** — one row per user signup, holds payment state.
+- **Vernon Event** — the offering an organizer creates.
+- **Vernon Event Registration** — one row per user signup, holds payment state.
 
-Rejected: single Event with a child-table of participants (cannot hold
+Rejected: single Vernon Event with a child-table of participants (cannot hold
 per-user Midtrans order or per-user status transitions, cannot query "my
 events" cleanly); reusing `Meeting`/`Meeting Participant` (project-scoped,
 points-only, no payment — wrong shape).
@@ -36,7 +36,7 @@ Company/office entity in v1.
 
 ## Data model
 
-### Event (created in Desk by System Manager)
+### Vernon Event (created in Desk by System Manager)
 
 | field | type | notes |
 |-------|------|-------|
@@ -55,11 +55,11 @@ Company/office entity in v1.
 
 Only `Published` events are listed/registerable on the frontends.
 
-### Event Registration
+### Vernon Event Registration
 
 | field | type | notes |
 |-------|------|-------|
-| `event` | Link → Event | required |
+| `event` | Link → Vernon Event | required |
 | `user` | Link → User | required |
 | `registered_on` | Datetime | |
 | `status` | Select | `Pending` / `Confirmed` / `Cancelled` |
@@ -113,7 +113,7 @@ never leaves the backend.
 
 ## Frontend — both apps
 
-Shared layer (`frontend/src`): `lib/types.ts` (Event, EventRegistration),
+Shared layer (`frontend/src`): `lib/types.ts` (Vernon Event, EventRegistration),
 `lib/api.ts` (list events, get event, register, my registrations),
 `hooks/useData.ts` fetch hooks. Rupiah path loads the Midtrans Snap JS and
 opens the popup with the returned token; on popup success the UI polls the

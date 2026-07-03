@@ -4,7 +4,7 @@
 
 **Goal:** Staff-hosted events that internal users register for — Free, Points-priced, or Rupiah-priced (Midtrans), across the `/m` mobile and `/w` web frontends.
 
-**Architecture:** Two new DocTypes (`Event`, `Event Registration`) mirroring the existing `Marketplace Reward` → `Reward Redemption` split. Points spend reuses the wallet debit model (the registration row is the debit; `_user_balance()` subtracts it — there is NO negative Point Ledger row). Rupiah reuses the sibling-app Midtrans Snap pattern: server creates a Snap token, a guest-whitelisted webhook flips the registration to Confirmed on settlement. Both frontends reuse one shared data layer under `frontend/src` (`@` alias); web adds only its own presentation shell.
+**Architecture:** Two new DocTypes (`Vernon Event`, `Vernon Event Registration`) mirroring the existing `Marketplace Reward` → `Reward Redemption` split. Points spend reuses the wallet debit model (the registration row is the debit; `_user_balance()` subtracts it — there is NO negative Point Ledger row). Rupiah reuses the sibling-app Midtrans Snap pattern: server creates a Snap token, a guest-whitelisted webhook flips the registration to Confirmed on settlement. Both frontends reuse one shared data layer under `frontend/src` (`@` alias); web adds only its own presentation shell.
 
 **Tech Stack:** Frappe (Python) DocTypes + whitelisted RPC; React + Vite + react-router-dom v6 + TanStack Query (both apps); Midtrans Snap; Tailwind (Soft-Pop tokens on `/m`, flat-Notion semantic tokens on `/w`).
 
@@ -17,14 +17,15 @@
 - **Design systems are per-app:** `/m` uses `paper-*` / `brand-*` tokens + lucide icons (never emoji in chrome); `/w` uses semantic tokens (`canvas/surface/ink/muted/line/hover` + `brand-*`) — NEVER `paper-*` in web.
 - **Frappe API house style:** `@frappe.whitelist()`; read user via `frappe.session.user`; guard `if user == "Guest": frappe.throw("Not logged in", frappe.AuthenticationError)`; return bare dict/list (Frappe wraps as `{"message": …}`); errors via `frappe.throw(msg, frappe.ValidationError|PermissionError)`.
 - **Midtrans config** lives on the existing **Vernon Settings** Single doctype (NOT `site_config`). `server_key` is a Password field read via `doc.get_password("midtrans_server_key")` and never sent to the browser.
+- **DocType names are `Vernon Event` and `Vernon Event Registration`** — NOT `Event` (a plain `Event` DocType already exists in Frappe core; DocType names are global, so it would collide). Do NOT "simplify" these back to `Event`. This mirrors edubing's `Edubing Event`. Frontend identifiers stay un-prefixed (`EventItem`, `eventsApi`, `/events`, `api/events.py`) — only the DocType identity is prefixed.
 
 ---
 
 ## File map
 
 **Backend (create):**
-- `vernon_project/vernon_project/doctype/event/{__init__.py, event.json, event.py}`
-- `vernon_project/vernon_project/doctype/event_registration/{__init__.py, event_registration.json, event_registration.py}`
+- `vernon_project/vernon_project/doctype/vernon_event/{__init__.py, vernon_event.json, vernon_event.py}`
+- `vernon_project/vernon_project/doctype/vernon_event_registration/{__init__.py, vernon_event_registration.json, vernon_event_registration.py}`
 - `vernon_project/api/events.py` — list/get/register/my_registrations + `midtrans_notify` webhook
 - `vernon_project/api/midtrans.py` — `snap_base_url`, `verify_signature`, `snap_create`, `pay_config`
 
@@ -33,7 +34,7 @@
 - `vernon_project/api/mobile.py` — extend `_user_balance()` to subtract points-method registrations
 
 **Shared frontend (modify, under `frontend/src`, `@` alias — touches BOTH apps):**
-- `lib/types.ts` — `Event`, `EventRegistration`, `PayConfig`
+- `lib/types.ts` — `Vernon Event`, `EventRegistration`, `PayConfig`
 - `lib/api.ts` — `eventsApi.*`
 - `lib/snap.ts` — **create**: Snap.js loader + `snapPay()`
 - `hooks/useData.ts` — event query keys + hooks
@@ -50,23 +51,23 @@
 
 ## Phase A — Backend data model & config
 
-### Task A1: Event DocType
+### Task A1: Vernon Event DocType
 
 **Files:**
-- Create: `vernon_project/vernon_project/doctype/event/__init__.py` (empty)
-- Create: `vernon_project/vernon_project/doctype/event/event.json`
-- Create: `vernon_project/vernon_project/doctype/event/event.py`
+- Create: `vernon_project/vernon_project/doctype/vernon_event/__init__.py` (empty)
+- Create: `vernon_project/vernon_project/doctype/vernon_event/vernon_event.json`
+- Create: `vernon_project/vernon_project/doctype/vernon_event/vernon_event.py`
 
 **Interfaces:**
-- Produces: DocType `Event` with fields `title, description, cover_image, organizer, start_datetime, end_datetime, location, capacity, pricing (Free|Points|Rupiah), points_cost, price, status (Draft|Published|Cancelled|Completed)`. Controller auto-fills `organizer` = creator.
+- Produces: DocType `Vernon Event` with fields `title, description, cover_image, organizer, start_datetime, end_datetime, location, capacity, pricing (Free|Points|Rupiah), points_cost, price, status (Draft|Published|Cancelled|Completed)`. Controller auto-fills `organizer` = creator.
 
 - [ ] **Step 1: Create the empty package file**
 
 ```bash
-touch vernon_project/vernon_project/doctype/event/__init__.py
+touch vernon_project/vernon_project/doctype/vernon_event/__init__.py
 ```
 
-- [ ] **Step 2: Write `event.json`**
+- [ ] **Step 2: Write `vernon_event.json`**
 
 ```json
 {
@@ -103,7 +104,7 @@ touch vernon_project/vernon_project/doctype/event/__init__.py
  "modified": "2026-07-03 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Vernon Project",
- "name": "Event",
+ "name": "Vernon Event",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
@@ -116,7 +117,7 @@ touch vernon_project/vernon_project/doctype/event/__init__.py
 }
 ```
 
-- [ ] **Step 3: Write `event.py`**
+- [ ] **Step 3: Write `vernon_event.py`**
 
 ```python
 # Copyright (c) 2026, Vernon and contributors
@@ -126,7 +127,7 @@ import frappe
 from frappe.model.document import Document
 
 
-class Event(Document):
+class VernonEvent(Document):
 	def validate(self):
 		if self.is_new() and not self.organizer:
 			self.organizer = frappe.session.user
@@ -147,7 +148,7 @@ Then:
 ```bash
 bench --site project.vernon.id console <<'PY'
 import frappe
-e = frappe.get_doc({"doctype":"Event","title":"Smoke Test","start_datetime":"2026-08-01 10:00:00","pricing":"Free","status":"Draft"})
+e = frappe.get_doc({"doctype":"Vernon Event","title":"Smoke Test","start_datetime":"2026-08-01 10:00:00","pricing":"Free","status":"Draft"})
 e.insert(ignore_permissions=True)
 print("OK", e.name, e.organizer)
 frappe.db.rollback()
@@ -158,30 +159,30 @@ Expected: prints `OK <hash> Administrator` (organizer auto-filled), no exception
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vernon_project/vernon_project/doctype/event
-git commit -m "feat(events): Event doctype"
+git add vernon_project/vernon_project/doctype/vernon_event
+git commit -m "feat(events): Vernon Event doctype"
 ```
 
 ---
 
-### Task A2: Event Registration DocType
+### Task A2: Vernon Event Registration DocType
 
 **Files:**
-- Create: `vernon_project/vernon_project/doctype/event_registration/__init__.py` (empty)
-- Create: `vernon_project/vernon_project/doctype/event_registration/event_registration.json`
-- Create: `vernon_project/vernon_project/doctype/event_registration/event_registration.py`
+- Create: `vernon_project/vernon_project/doctype/vernon_event_registration/__init__.py` (empty)
+- Create: `vernon_project/vernon_project/doctype/vernon_event_registration/vernon_event_registration.json`
+- Create: `vernon_project/vernon_project/doctype/vernon_event_registration/vernon_event_registration.py`
 
 **Interfaces:**
-- Consumes: `Event` (A1).
-- Produces: DocType `Event Registration` (standalone, hash-named). Fields: `event, user, registered_on, status (Pending|Confirmed|Cancelled), method (Free|Points|Rupiah), amount, midtrans_order_id, snap_token, transaction_status, paid_on`. The docname doubles as the Midtrans `order_id`.
+- Consumes: `Vernon Event` (A1).
+- Produces: DocType `Vernon Event Registration` (standalone, hash-named). Fields: `event, user, registered_on, status (Pending|Confirmed|Cancelled), method (Free|Points|Rupiah), amount, midtrans_order_id, snap_token, transaction_status, paid_on`. The docname doubles as the Midtrans `order_id`.
 
 - [ ] **Step 1: Create the empty package file**
 
 ```bash
-touch vernon_project/vernon_project/doctype/event_registration/__init__.py
+touch vernon_project/vernon_project/doctype/vernon_event_registration/__init__.py
 ```
 
-- [ ] **Step 2: Write `event_registration.json`**
+- [ ] **Step 2: Write `vernon_event_registration.json`**
 
 ```json
 {
@@ -196,7 +197,7 @@ touch vernon_project/vernon_project/doctype/event_registration/__init__.py
   "section_break_b", "midtrans_order_id", "snap_token", "transaction_status", "paid_on"
  ],
  "fields": [
-  {"fieldname": "event", "fieldtype": "Link", "label": "Event", "options": "Event", "reqd": 1, "search_index": 1, "in_list_view": 1},
+  {"fieldname": "event", "fieldtype": "Link", "label": "Vernon Event", "options": "Vernon Event", "reqd": 1, "search_index": 1, "in_list_view": 1},
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "search_index": 1, "in_list_view": 1},
   {"fieldname": "column_break_a", "fieldtype": "Column Break"},
   {"fieldname": "registered_on", "fieldtype": "Datetime", "label": "Registered On"},
@@ -214,7 +215,7 @@ touch vernon_project/vernon_project/doctype/event_registration/__init__.py
  "modified": "2026-07-03 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Vernon Project",
- "name": "Event Registration",
+ "name": "Vernon Event Registration",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
@@ -229,7 +230,7 @@ touch vernon_project/vernon_project/doctype/event_registration/__init__.py
 
 Note: no user-role read permission — the frontend reads registrations only through whitelisted API methods (Task B2/B3), never `/api/resource`, so users never query this DocType directly.
 
-- [ ] **Step 3: Write `event_registration.py`**
+- [ ] **Step 3: Write `vernon_event_registration.py`**
 
 ```python
 # Copyright (c) 2026, Vernon and contributors
@@ -238,7 +239,7 @@ Note: no user-role read permission — the frontend reads registrations only thr
 from frappe.model.document import Document
 
 
-class EventRegistration(Document):
+class VernonEventRegistration(Document):
 	pass
 ```
 
@@ -248,7 +249,7 @@ class EventRegistration(Document):
 cd /home/frappe/frappe-bench && bench --site project.vernon.id migrate
 bench --site project.vernon.id console <<'PY'
 import frappe
-print(frappe.get_meta("Event Registration").get_field("status").options)
+print(frappe.get_meta("Vernon Event Registration").get_field("status").options)
 PY
 ```
 Expected: prints `Pending\nConfirmed\nCancelled`.
@@ -256,8 +257,8 @@ Expected: prints `Pending\nConfirmed\nCancelled`.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vernon_project/vernon_project/doctype/event_registration
-git commit -m "feat(events): Event Registration doctype"
+git add vernon_project/vernon_project/doctype/vernon_event_registration
+git commit -m "feat(events): Vernon Event Registration doctype"
 ```
 
 ---
@@ -413,7 +414,7 @@ git commit -m "feat(events): Midtrans Snap helper (config on Vernon Settings)"
 - Create: `vernon_project/api/events.py`
 
 **Interfaces:**
-- Consumes: `Event`, `Event Registration`.
+- Consumes: `Vernon Event`, `Vernon Event Registration`.
 - Produces:
   - `list_events() -> list[dict]` — published events, each `{name, title, cover_image, start_datetime, end_datetime, location, pricing, points_cost, price, capacity, registered_count, is_full, my_status}`.
   - `get_event(event) -> dict` — one event with the same shape + `description, organizer`.
@@ -443,12 +444,12 @@ def _require_user():
 
 def _active_count(event):
 	"""Non-cancelled registrations (Pending holds a seat too)."""
-	return frappe.db.count("Event Registration", {"event": event, "status": ["!=", "Cancelled"]})
+	return frappe.db.count("Vernon Event Registration", {"event": event, "status": ["!=", "Cancelled"]})
 
 
 def _my_status(event, user):
 	rows = frappe.get_all(
-		"Event Registration",
+		"Vernon Event Registration",
 		filters={"event": event, "user": user, "status": ["!=", "Cancelled"]},
 		fields=["status"],
 		limit_page_length=1,
@@ -469,7 +470,7 @@ def _decorate(row, user):
 def list_events():
 	user = _require_user()
 	rows = frappe.get_all(
-		"Event",
+		"Vernon Event",
 		filters={"status": "Published"},
 		fields=PUBLIC_EVENT_FIELDS,
 		order_by="start_datetime asc",
@@ -480,10 +481,10 @@ def list_events():
 @frappe.whitelist()
 def get_event(event):
 	user = _require_user()
-	if not frappe.db.exists("Event", event):
+	if not frappe.db.exists("Vernon Event", event):
 		frappe.throw("Event not found", frappe.DoesNotExistError)
 	row = frappe.db.get_value(
-		"Event", event, PUBLIC_EVENT_FIELDS + ["description", "organizer", "status"], as_dict=True
+		"Vernon Event", event, PUBLIC_EVENT_FIELDS + ["description", "organizer", "status"], as_dict=True
 	)
 	if row.status != "Published":
 		frappe.throw("Event not available", frappe.PermissionError)
@@ -494,14 +495,14 @@ def get_event(event):
 def my_registrations():
 	user = _require_user()
 	rows = frappe.get_all(
-		"Event Registration",
+		"Vernon Event Registration",
 		filters={"user": user, "status": ["!=", "Cancelled"]},
 		fields=["name", "event", "registered_on", "status", "method", "amount"],
 		order_by="registered_on desc",
 	)
 	for r in rows:
-		r["event_title"] = frappe.db.get_value("Event", r["event"], "title")
-		r["start_datetime"] = frappe.db.get_value("Event", r["event"], "start_datetime")
+		r["event_title"] = frappe.db.get_value("Vernon Event", r["event"], "title")
+		r["start_datetime"] = frappe.db.get_value("Vernon Event", r["event"], "start_datetime")
 	return rows
 ```
 
@@ -512,7 +513,7 @@ cd /home/frappe/frappe-bench && bench restart
 bench --site project.vernon.id console <<'PY'
 import frappe
 frappe.set_user("Administrator")
-e = frappe.get_doc({"doctype":"Event","title":"Verify List","start_datetime":"2026-08-01 10:00:00","pricing":"Free","status":"Published"}).insert(ignore_permissions=True)
+e = frappe.get_doc({"doctype":"Vernon Event","title":"Verify List","start_datetime":"2026-08-01 10:00:00","pricing":"Free","status":"Published"}).insert(ignore_permissions=True)
 from vernon_project.api import events
 print("list:", [x["title"] for x in events.list_events()])
 print("get:", events.get_event(e.name)["my_status"])
@@ -558,7 +559,7 @@ Find the existing `_user_balance` (around `mobile.py:2143`) — its current debi
 Add an events debit and include it in the balance:
 ```python
 	events_spent = frappe.db.sql(
-		"select coalesce(sum(amount),0) from `tabEvent Registration` "
+		"select coalesce(sum(amount),0) from `tabVernon Event Registration` "
 		"where user=%s and method='Points' and status != 'Cancelled'",
 		user,
 	)[0][0] or 0
@@ -575,7 +576,7 @@ from vernon_project.api.mobile import _user_balance
 
 def _existing_active(event, user):
 	rows = frappe.get_all(
-		"Event Registration",
+		"Vernon Event Registration",
 		filters={"event": event, "user": user, "status": ["!=", "Cancelled"]},
 		fields=["name"], limit_page_length=1,
 	)
@@ -589,7 +590,7 @@ def _capacity_ok(ev):
 
 def _make_registration(event, user, method, amount, status):
 	reg = frappe.get_doc({
-		"doctype": "Event Registration",
+		"doctype": "Vernon Event Registration",
 		"event": event, "user": user, "method": method,
 		"amount": amount, "status": status, "registered_on": now_datetime(),
 	})
@@ -600,7 +601,7 @@ def _make_registration(event, user, method, amount, status):
 @frappe.whitelist()
 def register(event):
 	user = _require_user()
-	ev = frappe.get_doc("Event", event)
+	ev = frappe.get_doc("Vernon Event", event)
 	if ev.status != "Published":
 		frappe.throw("Event not available", frappe.ValidationError)
 
@@ -644,14 +645,14 @@ from vernon_project.api import events
 from vernon_project.api.mobile import _user_balance
 u = frappe.db.get_value("User", {"user_type":"System User","enabled":1,"name":["!=","Administrator"]}, "name") or "Administrator"
 frappe.set_user(u)
-free = frappe.get_doc({"doctype":"Event","title":"Free Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Free","status":"Published"}).insert(ignore_permissions=True)
+free = frappe.get_doc({"doctype":"Vernon Event","title":"Free Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Free","status":"Published"}).insert(ignore_permissions=True)
 r1 = events.register(free.name); print("free:", r1["status"])
 try:
     events.register(free.name)
 except Exception as ex:
     print("dup blocked:", "already registered" in str(ex).lower())
 before = _user_balance(u)[2]
-pts = frappe.get_doc({"doctype":"Event","title":"Points Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Points","points_cost":5,"status":"Published"}).insert(ignore_permissions=True)
+pts = frappe.get_doc({"doctype":"Vernon Event","title":"Points Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Points","points_cost":5,"status":"Published"}).insert(ignore_permissions=True)
 r2 = events.register(pts.name); after = _user_balance(u)[2]
 print("points debit == 5:", round(before-after,2)==5.0, "balance", before, "->", after)
 frappe.db.rollback()
@@ -709,7 +710,7 @@ bench --site project.vernon.id console <<'PY'
 import frappe
 from vernon_project.api import events
 u = "Administrator"; frappe.set_user(u)
-ev = frappe.get_doc({"doctype":"Event","title":"Rp Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Rupiah","price":75000,"status":"Published"}).insert(ignore_permissions=True)
+ev = frappe.get_doc({"doctype":"Vernon Event","title":"Rp Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Rupiah","price":75000,"status":"Published"}).insert(ignore_permissions=True)
 try:
     print(events.register(ev.name))
 except Exception as ex:
@@ -734,7 +735,7 @@ git commit -m "feat(events): register() rupiah branch creates Midtrans Snap toke
 - Modify: `vernon_project/api/events.py`
 
 **Interfaces:**
-- Consumes: `verify_signature` (B1), Event Registration.
+- Consumes: `verify_signature` (B1), Vernon Event Registration.
 - Produces: `midtrans_notify()` (guest, POST) — public URL `/api/method/vernon_project.api.events.midtrans_notify`. Signature-verified, idempotent, `for_update` row-locked. `settlement`/`capture+accept` → Confirmed + `paid_on`; `deny`/`cancel`/`expire` → Cancelled; other → unchanged.
 
 - [ ] **Step 1: Add the webhook to `events.py`**
@@ -750,14 +751,14 @@ def _apply_notification(payload):
 		raise frappe.PermissionError("Invalid signature.")
 
 	order_id = payload.get("order_id")
-	name = frappe.db.get_value("Event Registration", {"midtrans_order_id": order_id}, "name")
+	name = frappe.db.get_value("Vernon Event Registration", {"midtrans_order_id": order_id}, "name")
 	if not name:
 		frappe.log_error(f"order_id={order_id}", "Events Midtrans unknown order")
 		return "ignored"
 
 	# Row-lock to serialise duplicate/concurrent notifications.
-	frappe.db.get_value("Event Registration", name, "name", for_update=True)
-	reg = frappe.get_doc("Event Registration", name)
+	frappe.db.get_value("Vernon Event Registration", name, "name", for_update=True)
+	reg = frappe.get_doc("Vernon Event Registration", name)
 	reg.db_set("transaction_status", payload.get("transaction_status"), update_modified=False)
 
 	if reg.status == "Confirmed":
@@ -801,8 +802,8 @@ s = frappe.get_single("Vernon Settings")
 if not s.get_password("midtrans_server_key", raise_exception=False):
     s.midtrans_server_key = "SB-TEST-KEY"; s.save(ignore_permissions=True)
 key = s.get_password("midtrans_server_key")
-ev = frappe.get_doc({"doctype":"Event","title":"WH Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Rupiah","price":75000,"status":"Published"}).insert(ignore_permissions=True)
-reg = frappe.get_doc({"doctype":"Event Registration","event":ev.name,"user":"Administrator","method":"Rupiah","amount":75000,"status":"Pending","midtrans_order_id":"ORDER-1"}).insert(ignore_permissions=True)
+ev = frappe.get_doc({"doctype":"Vernon Event","title":"WH Verify","start_datetime":"2026-08-01 10:00:00","pricing":"Rupiah","price":75000,"status":"Published"}).insert(ignore_permissions=True)
+reg = frappe.get_doc({"doctype":"Vernon Event Registration","event":ev.name,"user":"Administrator","method":"Rupiah","amount":75000,"status":"Pending","midtrans_order_id":"ORDER-1"}).insert(ignore_permissions=True)
 from vernon_project.api.events import _apply_notification
 def sig(o,sc,ga): return hashlib.sha512((o+sc+ga+key).encode()).hexdigest()
 bad = {"order_id":"ORDER-1","status_code":"200","gross_amount":"75000.00","transaction_status":"settlement","signature_key":"WRONG"}
@@ -811,7 +812,7 @@ try:
 except frappe.PermissionError: print("bad sig blocked: True")
 good = dict(bad, signature_key=sig("ORDER-1","200","75000.00"))
 print("apply1:", _apply_notification(good))
-print("status now:", frappe.db.get_value("Event Registration", reg.name, "status"))
+print("status now:", frappe.db.get_value("Vernon Event Registration", reg.name, "status"))
 print("apply2 (idempotent):", _apply_notification(good))
 frappe.db.rollback()
 PY
@@ -837,7 +838,7 @@ git commit -m "feat(events): Midtrans webhook confirms rupiah registrations (ide
 
 **Interfaces:**
 - Produces:
-  - Types `Event`, `EventRegistration`, `PayConfig`, `RegisterResult`.
+  - Types `Vernon Event`, `EventRegistration`, `PayConfig`, `RegisterResult`.
   - `eventsApi.list()`, `eventsApi.get(name)`, `eventsApi.register(name)`, `eventsApi.mine()`, `eventsApi.payConfig()`.
 
 - [ ] **Step 1: Add types to `types.ts`**
@@ -881,7 +882,7 @@ export interface RegisterResult {
   order_id?: string
 }
 ```
-(Type is named `EventItem` to avoid colliding with the DOM `Event` global.)
+(Type is named `EventItem` to avoid colliding with the DOM `Vernon Event` global.)
 
 - [ ] **Step 2: Add `eventsApi` to `api.ts`** (place near the existing `mobileApi`)
 
@@ -1191,7 +1192,7 @@ export default function EventDetailScreen() {
     }
   }
 
-  if (isLoading || !ev) return <DetailScreen title="Event"><FullScreenLoader label="Loading…" /></DetailScreen>
+  if (isLoading || !ev) return <DetailScreen title="Vernon Event"><FullScreenLoader label="Loading…" /></DetailScreen>
 
   const joined = ev.my_status === 'Confirmed'
   const cta = joined ? 'Joined' : ev.pricing === 'Free' ? 'Register' :
@@ -1508,7 +1509,7 @@ bench restart
 ## Self-Review
 
 **Spec coverage:**
-- Two doctypes (Event, Event Registration) → A1, A2. ✓
+- Two doctypes (Vernon Event, Vernon Event Registration) → A1, A2. ✓
 - Organizer = host user, defaults to creator → A1 controller. ✓
 - Free / Points / Rupiah pricing → A1 fields; B3 (free+points), C1 (rupiah). ✓
 - Points debit reuses wallet model (no negative Point Ledger) → B3 `_user_balance` extension + register Points branch. ✓
@@ -1524,8 +1525,8 @@ bench restart
 
 **Placeholder scan:** No TBD/TODO. E3/F2/F3 describe pages by "mirror the E1/F1 shape" rather than repeating full code — acceptable because the full pattern is given verbatim in the referenced sibling task within this same plan and the shells are near-identical; each still lists exact files, imports, hooks, and a verify+commit step.
 
-**Type consistency:** `EventItem` (not `Event`, to dodge the DOM global) used consistently across types.ts, api.ts, hooks, and both frontends. `eventsApi.{list,get,register,mine,payConfig}` names match between D1 and D2/D3 consumers. `register()` return shape (`RegisterResult`) matches the Python return in B3/C1. `midtrans_order_id` = registration docname is consistent between C1 (sets it) and C2 (looks up by it).
+**Type consistency:** `EventItem` (not `Vernon Event`, to dodge the DOM global) used consistently across types.ts, api.ts, hooks, and both frontends. `eventsApi.{list,get,register,mine,payConfig}` names match between D1 and D2/D3 consumers. `register()` return shape (`RegisterResult`) matches the Python return in B3/C1. `midtrans_order_id` = registration docname is consistent between C1 (sets it) and C2 (looks up by it).
 
 **Known ceilings (ponytail):**
-- Registrations are read only via whitelisted API, so `Event Registration` has System-Manager-only perms — if a future feature needs `/api/resource` access for users, add a row-level `has_permission`. 
+- Registrations are read only via whitelisted API, so `Vernon Event Registration` has System-Manager-only perms — if a future feature needs `/api/resource` access for users, add a row-level `has_permission`. 
 - Points refund on cancel is out of scope; cancelling a Points registration currently would strand the debit (no cancel flow is built in v1 — cancellation is manual in Desk, and manual un-cancel/refund is a Desk edit).
