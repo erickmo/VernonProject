@@ -60,6 +60,7 @@ import AchievementsScreen from './pages/AchievementsScreen'
 import EventsScreen from './pages/EventsScreen'
 import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
+import EventManageScreen from './pages/EventManageScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -212,6 +213,7 @@ export default function App() {
         <Route path="/events" element={<EventsScreen />} />
         <Route path="/events/:name" element={<EventDetailScreen />} />
         <Route path="/my-registrations" element={<MyRegistrationsScreen />} />
+        <Route path="/events/manage" element={<EventManageScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
         <Route path="/team-wall" element={<TeamWallScreen />} />
