@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
-// Lightweight UI state for the single, app-global focus overlay: whether it's
-// open and the task meta to render. Kept in a tiny external store (mirrors the
-// focus-timer store) so any screen can openFocusOverlay() and the one mounted
-// overlay reacts — no React context/provider boilerplate.
+// Shared open-state for the global focus overlay: whether it's open and which
+// task. Drives BOTH the mobile and web overlays (both frontends import this via
+// the shared `@` alias). Task detail (meta) now lives on the timer, so this
+// store only tracks which task's overlay is open.
 
 export type FocusMeta = {
   project?: string
@@ -13,22 +13,20 @@ export type FocusMeta = {
   group?: string
 }
 
-type FocusUI = { open: boolean; meta?: FocusMeta }
+type FocusUI = { open: boolean; taskId?: string }
 
-let state: FocusUI = { open: false, meta: undefined }
+let state: FocusUI = { open: false }
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 
-// Hoisted (stable) subscribe — an inline arrow would re-subscribe every render
-// of a consumer; the 1Hz mini-bar makes that churn real.
+// Hoisted (stable) subscribe — an inline arrow would re-subscribe every render.
 function subscribe(l: () => void) {
   listeners.add(l)
   return () => listeners.delete(l)
 }
 
-export function openFocusOverlay(meta?: FocusMeta) {
-  // Reopening from the mini-bar (no meta) keeps the last meta shown.
-  state = { open: true, meta: meta ?? state.meta }
+export function openFocusOverlay(taskId: string) {
+  state = { open: true, taskId }
   emit()
 }
 

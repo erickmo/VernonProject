@@ -38,3 +38,15 @@ export function buildNext(allocations: Alloc[], today: string, minutes: number):
     ...(minutes > 0 ? [{ date: today, minutes }] : []),
   ]
 }
+
+// ponytail: pure partition; runnable test deferred — no test infra in this repo
+// (project convention: defer tests to final phase). Add a vitest case when infra
+// lands. Behaviour: focused todos float to the very top, preserving input order
+// within the focused and non-focused groups.
+export function focusedFirst(list: ProjectItem[], focused: Set<string>): ProjectItem[] {
+  if (!focused.size) return list
+  const yes: ProjectItem[] = []
+  const no: ProjectItem[] = []
+  for (const t of list) (focused.has(t.name) ? yes : no).push(t)
+  return [...yes, ...no]
+}
