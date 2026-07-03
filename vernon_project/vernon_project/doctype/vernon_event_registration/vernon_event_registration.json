@@ -6,7 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "event", "user", "column_break_a", "registered_on", "status", "method", "amount",
+  "event", "user", "column_break_a", "registered_on", "status", "method", "amount", "attended",
   "section_break_b", "midtrans_order_id", "snap_token", "transaction_status", "paid_on"
  ],
  "fields": [
@@ -17,6 +17,7 @@
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Pending\nConfirmed\nCancelled", "default": "Pending", "in_list_view": 1},
   {"fieldname": "method", "fieldtype": "Select", "label": "Method", "options": "Free\nPoints\nRupiah", "default": "Free"},
   {"fieldname": "amount", "fieldtype": "Float", "label": "Amount (points or Rp)"},
+  {"fieldname": "attended", "fieldtype": "Check", "label": "Attended", "default": "0"},
   {"fieldname": "section_break_b", "fieldtype": "Section Break", "label": "Payment"},
   {"fieldname": "midtrans_order_id", "fieldtype": "Data", "label": "Midtrans Order ID", "search_index": 1, "read_only": 1},
   {"fieldname": "snap_token", "fieldtype": "Data", "label": "Snap Token", "read_only": 1},
