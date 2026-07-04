@@ -35,9 +35,9 @@ export default function BookingFormScreen() {
     setErr(''); setConflicts([])
     if (!title || !start || !end) { setErr('Title, Start and End are required.'); return }
     if (toFrappe(end) <= toFrappe(start)) { setErr('End must be after Start.'); return }
-    const res = await check.mutateAsync({ start: toFrappe(start), end: toFrappe(end), room: room || undefined, equipment })
-    if (res.conflicts.length) { setConflicts(res.conflicts); return }
     try {
+      const res = await check.mutateAsync({ start: toFrappe(start), end: toFrappe(end), room: room || undefined, equipment })
+      if (res.conflicts.length) { setConflicts(res.conflicts); return }
       await create.mutateAsync({
         title, start: toFrappe(start), end: toFrappe(end),
         room: room || null, status: 'Confirmed',
@@ -86,8 +86,8 @@ export default function BookingFormScreen() {
         {conflicts.length > 0 && (
           <div className="rounded-xl bg-rose-50 px-3 py-2 dark:bg-rose-900/30">
             <p className="mb-1 text-sm font-semibold text-rose-700 dark:text-rose-300">Conflicts:</p>
-            {conflicts.map((c, i) => (
-              <p key={i} className="text-xs text-rose-600 dark:text-rose-400">
+            {conflicts.map((c) => (
+              <p key={`${c.booking}:${c.resource}`} className="text-xs text-rose-600 dark:text-rose-400">
                 {c.resource_type} {c.resource} already booked {c.start}–{c.end} ({c.title})
               </p>
             ))}

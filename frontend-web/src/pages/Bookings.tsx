@@ -30,6 +30,11 @@ export default function Bookings() {
           </button>
         }
       />
+      {cancel.error && (
+        <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-400">
+          {(cancel.error as Error).message}
+        </p>
+      )}
       <DataTable
         rows={list}
         columns={[

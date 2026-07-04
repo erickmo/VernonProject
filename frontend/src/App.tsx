@@ -57,6 +57,8 @@ import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
+import MeetingRoomsScreen from './pages/MeetingRoomsScreen'
+import MeetingRoomFormScreen from './pages/MeetingRoomFormScreen'
 import AchievementsScreen from './pages/AchievementsScreen'
 import BookingsScreen from './pages/BookingsScreen'
 import BookingFormScreen from './pages/BookingFormScreen'
@@ -66,7 +68,7 @@ import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
 import EventManageScreen from './pages/EventManageScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance } from './hooks/useData'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -168,6 +170,13 @@ export default function App() {
             <Route path="/companies" element={<CompaniesScreen />} />
             <Route path="/companies/new" element={<CompanyFormScreen />} />
             <Route path="/companies/:name" element={<CompanyFormScreen />} />
+          </>
+        )}
+        {canManageResources(boot) && (
+          <>
+            <Route path="/meeting-rooms" element={<MeetingRoomsScreen />} />
+            <Route path="/meeting-rooms/new" element={<MeetingRoomFormScreen />} />
+            <Route path="/meeting-rooms/:name" element={<MeetingRoomFormScreen />} />
           </>
         )}
         {canManageUsers(boot) && (

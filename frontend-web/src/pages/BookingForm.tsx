@@ -10,11 +10,7 @@ const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 // Frappe stores 'YYYY-MM-DD HH:MM:SS'; <input type=datetime-local> wants 'YYYY-MM-DDTHH:MM'.
-const toInput = (v?: string | null) => (v ? v.slice(0, 16).replace(' ', 'T') : '')
 const toFrappe = (v: string) => (v ? v.replace('T', ' ') + (v.length === 16 ? ':00' : '') : '')
-
-// ponytail: toInput unused at render but kept for symmetry with EventForm convention
-void toInput
 
 export default function BookingForm() {
   const navigate = useNavigate()
@@ -38,9 +34,9 @@ export default function BookingForm() {
     setErr(''); setConflicts([])
     if (!title || !start || !end) { setErr('Title, Start and End are required.'); return }
     if (toFrappe(end) <= toFrappe(start)) { setErr('End must be after Start.'); return }
-    const res = await check.mutateAsync({ start: toFrappe(start), end: toFrappe(end), room: room || undefined, equipment })
-    if (res.conflicts.length) { setConflicts(res.conflicts); return }
     try {
+      const res = await check.mutateAsync({ start: toFrappe(start), end: toFrappe(end), room: room || undefined, equipment })
+      if (res.conflicts.length) { setConflicts(res.conflicts); return }
       await create.mutateAsync({
         title, start: toFrappe(start), end: toFrappe(end),
         room: room || null, status: 'Confirmed',
@@ -72,8 +68,8 @@ export default function BookingForm() {
       {conflicts.length > 0 && (
         <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 space-y-1">
           <p className="font-semibold">Conflicts:</p>
-          {conflicts.map((c, i) => (
-            <p key={i}>{c.resource_type} {c.resource} already booked {c.start}–{c.end} ({c.title})</p>
+          {conflicts.map((c) => (
+            <p key={`${c.booking}:${c.resource}`}>{c.resource_type} {c.resource} already booked {c.start}–{c.end} ({c.title})</p>
           ))}
         </div>
       )}
