@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict } from './types'
 
 const METHOD = '/api/method/'
 
@@ -78,6 +78,25 @@ export const api = {
 
 const M = 'vernon_project.api.mobile.'
 const A = 'vernon_project.api.attendance.'
+const BK = 'vernon_project.api.booking.'
+
+/** Live pre-submit conflict check. Reuses the deployed whitelisted method.
+ *  equipment is JSON-encoded (list param). Returns the conflicts array. */
+export function checkAvailability(args: {
+  start: string
+  end: string
+  room?: string
+  equipment?: string[]
+  exclude?: string
+}): Promise<{ conflicts: Conflict[] }> {
+  return api.post<{ conflicts: Conflict[] }>(BK + 'check_availability', {
+    start: args.start,
+    end: args.end,
+    room: args.room,
+    equipment: JSON.stringify(args.equipment ?? []),
+    exclude: args.exclude,
+  })
+}
 
 export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),

@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
@@ -43,6 +43,9 @@ import type {
   ReactionKey,
   TeamWallResponse,
   EventFormPayload,
+  Booking,
+  MeetingRoom,
+  Equipment,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -92,6 +95,12 @@ export const keys = {
   managedEvents: ['managedEvents'] as const,
   managedEvent: (n: string) => ['managedEvent', n] as const,
   eventRoster: (e: string) => ['eventRoster', e] as const,
+  bookings: ['bookings'] as const,
+  booking: (n: string) => ['booking', n] as const,
+  meetingRooms: ['meeting-rooms'] as const,
+  meetingRoom: (n: string) => ['meeting-room', n] as const,
+  equipmentList: ['equipment-list'] as const,
+  equipmentItem: (n: string) => ['equipment-item', n] as const,
 }
 
 export const useBoot = () =>
@@ -1393,5 +1402,147 @@ export function useMarkAttended() {
       eventsAdminApi.markAttended(name, attended),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['eventRoster'] }),
   })
+}
+
+// Rooms & Equipment are System-Manager-managed (matches the doctype write perm).
+export function canManageResources(boot: Boot | undefined): boolean {
+  return !!boot && boot.roles.includes('System Manager')
+}
+
+export function useBookings() {
+  return useQuery({
+    queryKey: keys.bookings,
+    queryFn: () =>
+      resource.list<Booking[]>('Resource Booking', {
+        fields: ['name', 'title', 'booked_by', 'start', 'end', 'room', 'status'],
+        limit: 0,
+      }),
+  })
+}
+
+export function useBooking(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.booking(name),
+    queryFn: () => resource.get<Booking>('Resource Booking', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateBooking() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      resource.create<{ name: string }>('Resource Booking', payload),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.bookings }),
+  })
+}
+
+export function useCancelBooking() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) =>
+      resource.update<{ name: string }>('Resource Booking', name, { status: 'Cancelled' }),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.bookings }),
+  })
+}
+
+export function useRooms() {
+  return useQuery({
+    queryKey: keys.meetingRooms,
+    queryFn: () =>
+      resource.list<MeetingRoom[]>('Meeting Room', {
+        fields: ['name', 'room_name', 'capacity', 'location', 'is_active'],
+        limit: 0,
+      }),
+  })
+}
+
+export function useRoom(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.meetingRoom(name),
+    queryFn: () => resource.get<MeetingRoom>('Meeting Room', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateRoom() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      resource.create<{ name: string }>('Meeting Room', payload),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.meetingRooms }),
+  })
+}
+
+export function useUpdateRoom() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, payload }: { name: string; payload: Record<string, unknown> }) =>
+      resource.update<{ name: string }>('Meeting Room', name, payload),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: keys.meetingRooms })
+      qc.invalidateQueries({ queryKey: keys.meetingRoom(vars.name) })
+    },
+  })
+}
+
+export function useDeleteRoom() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Meeting Room', name),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.meetingRooms }),
+  })
+}
+
+export function useEquipment() {
+  return useQuery({
+    queryKey: keys.equipmentList,
+    queryFn: () =>
+      resource.list<Equipment[]>('Equipment', {
+        fields: ['name', 'equipment_name', 'category', 'is_active'],
+        limit: 0,
+      }),
+  })
+}
+
+export function useEquipmentItem(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.equipmentItem(name),
+    queryFn: () => resource.get<Equipment>('Equipment', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateEquipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      resource.create<{ name: string }>('Equipment', payload),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.equipmentList }),
+  })
+}
+
+export function useUpdateEquipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, payload }: { name: string; payload: Record<string, unknown> }) =>
+      resource.update<{ name: string }>('Equipment', name, payload),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: keys.equipmentList })
+      qc.invalidateQueries({ queryKey: keys.equipmentItem(vars.name) })
+    },
+  })
+}
+
+export function useDeleteEquipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Equipment', name),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.equipmentList }),
+  })
+}
+
+export function useCheckAvailability() {
+  return useMutation({ mutationFn: checkAvailability })
 }
 

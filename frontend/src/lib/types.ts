@@ -794,3 +794,45 @@ export interface EventFormPayload {
   price?: number
   status: string
 }
+
+export interface MeetingRoom {
+  name: string
+  room_name: string
+  capacity?: number
+  location?: string
+  is_active?: 0 | 1
+}
+
+export interface Equipment {
+  name: string
+  equipment_name: string
+  category?: string
+  is_active?: 0 | 1
+}
+
+export interface BookingEquipmentRow {
+  equipment: string
+}
+
+export interface Booking {
+  name: string
+  title: string
+  booked_by: string
+  /** Frappe datetime 'YYYY-MM-DD HH:MM:SS' */
+  start: string
+  end: string
+  room?: string
+  status: 'Confirmed' | 'Cancelled'
+  notes?: string
+  /** present only on single-doc fetch */
+  equipment?: BookingEquipmentRow[]
+}
+
+export interface Conflict {
+  resource_type: 'Room' | 'Equipment'
+  resource: string
+  booking: string
+  title: string
+  start: string
+  end: string
+}
