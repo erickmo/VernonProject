@@ -83,7 +83,7 @@ export default function EquipmentFormScreen() {
     }
     const payload = {
       equipment_name: form.equipment_name.trim(),
-      category: form.category.trim() || undefined,
+      category: form.category.trim(),
       is_active: form.is_active ? 1 : 0,
     }
     if (isEdit) {

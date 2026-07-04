@@ -85,8 +85,8 @@ export default function MeetingRoomFormScreen() {
     }
     const payload = {
       room_name: form.room_name.trim(),
-      capacity: form.capacity ? Number(form.capacity) : undefined,
-      location: form.location.trim() || undefined,
+      capacity: form.capacity === '' ? null : Number(form.capacity),
+      location: form.location.trim(),
       is_active: form.is_active ? 1 : 0,
     }
     if (isEdit) {
