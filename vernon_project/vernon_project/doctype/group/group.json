@@ -14,8 +14,7 @@
   "early_bonus",
   "column_break_leader",
   "leader_weight",
-  "leader_late_penalty",
-  "leader_early_bonus",
+  "leader_late_weight",
   "mentor_weight",
   "levels_section",
   "levels"
@@ -28,9 +27,8 @@
   {"fieldname": "late_penalty", "fieldtype": "Percent", "label": "Late Penalty (per day)", "default": "0"},
   {"fieldname": "early_bonus", "fieldtype": "Percent", "label": "Early Bonus (per day)", "default": "0"},
   {"fieldname": "column_break_leader", "fieldtype": "Column Break"},
-  {"fieldname": "leader_weight", "fieldtype": "Percent", "label": "Leader Weight", "default": "0", "description": "Multiplier of assignee earned"},
-  {"fieldname": "leader_late_penalty", "fieldtype": "Percent", "label": "Leader Late Penalty (per day)", "default": "0"},
-  {"fieldname": "leader_early_bonus", "fieldtype": "Percent", "label": "Leader Early Bonus (per day)", "default": "0"},
+  {"fieldname": "leader_weight", "fieldtype": "Percent", "label": "Leader Weight", "default": "0", "description": "Multiplier of assignee earned — used when the todo is on-time or early"},
+  {"fieldname": "leader_late_weight", "fieldtype": "Percent", "label": "Leader Late Weight", "default": "0", "description": "Multiplier of assignee earned — used instead of Leader Weight when the todo is late"},
   {"fieldname": "mentor_weight", "fieldtype": "Percent", "label": "Mentor Weight", "default": "0", "description": "Multiplier of assignee earned, paid to the mentor on a todo"},
   {"fieldname": "levels_section", "fieldtype": "Section Break", "label": "Levels"},
   {"fieldname": "levels", "fieldtype": "Table", "label": "Levels", "options": "Group Level"}

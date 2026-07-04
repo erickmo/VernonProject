@@ -34,6 +34,7 @@ import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
+import TransferTasksScreen from './pages/TransferTasksScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
@@ -172,6 +173,7 @@ export default function App() {
             <Route path="/users" element={<UsersScreen />} />
             <Route path="/users/new" element={<UserFormScreen />} />
             <Route path="/users/:name" element={<UserFormScreen />} />
+            <Route path="/transfer-tasks" element={<TransferTasksScreen />} />
           </>
         )}
         {canManageBadges(boot) && (

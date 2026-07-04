@@ -2084,7 +2084,55 @@ def get_app_settings():
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
 		"early_leave_penalty_per_minute": float(g("early_leave_penalty_per_minute") or 0),
 		"absence_penalty": float(g("absence_penalty") or 0),
+		"home_banners": [
+			{"image": b.image, "link": b.link or "", "is_active": int(b.is_active or 0)}
+			for b in frappe.get_single("Vernon Settings").get("home_banners") or []
+		],
 	}
+
+
+def _require_settings_manager():
+	roles = set(frappe.get_roles(frappe.session.user))
+	if not ({"System Manager", "Group Manager"} & roles):
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+@frappe.whitelist()
+def get_home_banners():
+	"""Active home banners for the mobile home carousel, in display order.
+	Readable by any signed-in user (no admin gate)."""
+	return [
+		{"image": b.image, "link": b.link or ""}
+		for b in frappe.get_single("Vernon Settings").get("home_banners") or []
+		if b.is_active and b.image
+	]
+
+
+@frappe.whitelist()
+def upload_banner_image():
+	"""Save an uploaded home-banner image as a public File and return its URL.
+	Same raster-only safety checks as reward images; gated on settings admins."""
+	_require_settings_manager()
+	import os
+	from frappe.utils.file_manager import save_file
+
+	f = frappe.request.files.get("file")
+	if not f:
+		frappe.throw("No file uploaded")
+
+	ext = os.path.splitext(f.filename or "")[1].lower()
+	if ext not in ALLOWED_IMAGE_EXT:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+	mimetype = (getattr(f, "mimetype", "") or "").lower()
+	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+
+	content = f.stream.read()
+	if len(content) > MAX_IMAGE_BYTES:
+		frappe.throw("Image too large (max 5 MB).")
+
+	saved = save_file(f.filename, content, None, None, is_private=0)
+	return {"file_url": saved.file_url}
 
 
 @frappe.whitelist()
@@ -2097,10 +2145,9 @@ def save_app_settings(
 	late_penalty_per_minute=None,
 	early_leave_penalty_per_minute=None,
 	absence_penalty=None,
+	home_banners=None,
 ):
-	roles = set(frappe.get_roles(frappe.session.user))
-	if not ({"System Manager", "Group Manager"} & roles):
-		frappe.throw("Not permitted", frappe.PermissionError)
+	_require_settings_manager()
 
 	settings = frappe.get_single("Vernon Settings")
 	# Each field is optional; only the ones provided in the request are updated.
@@ -2128,6 +2175,19 @@ def save_app_settings(
 			if fval < 0:
 				frappe.throw(f"{field} cannot be negative.")
 			settings.set(field, fval)
+	# Home banners: full replace when provided (JSON list of {image, link, is_active}).
+	if home_banners is not None:
+		if isinstance(home_banners, str):
+			home_banners = frappe.parse_json(home_banners)
+		settings.set("home_banners", [])
+		for b in home_banners or []:
+			image = (b.get("image") or "").strip()
+			if not image:
+				continue
+			settings.append(
+				"home_banners",
+				{"image": image, "link": (b.get("link") or "").strip(), "is_active": 1 if b.get("is_active") else 0},
+			)
 	settings.save(ignore_permissions=True)
 	frappe.db.commit()
 	return get_app_settings()
@@ -2829,6 +2889,102 @@ def list_grant_users():
 	for u in users:
 		u["avatar_config"] = avatar_map.get(u["name"])
 	return {"users": users}
+
+
+def _project_team(project):
+	"""Users on a project's team. Owner/leader/admin are auto-appended here by
+	Project.validate, so this single table is the membership source of truth —
+	same one Project Todo.validate_assigned_to_team_member checks."""
+	return set(
+		frappe.get_all(
+			"Project Team",
+			filters={"parent": project, "parenttype": "Project"},
+			pluck="user",
+		)
+	)
+
+
+@frappe.whitelist()
+def list_transfer_users():
+	"""All non-protected users (including disabled) for the task-transfer pickers.
+
+	Disabled users are included on purpose: their orphaned open tasks — ones the
+	on-disable offboarding hook could not reassign — are the main reason to
+	transfer. The To picker filters to enabled users client-side.
+	"""
+	_require_system_manager()
+	users = frappe.get_all(
+		"User",
+		filters={"name": ["not in", PROTECTED_USERS]},
+		fields=["name", "full_name", "user_image", "enabled"],
+		limit_page_length=0,
+		order_by="full_name asc",
+	)
+	avatar_map = _avatar_config_map([u["name"] for u in users])
+	for u in users:
+		u["avatar_config"] = avatar_map.get(u["name"])
+	return {"users": users}
+
+
+@frappe.whitelist()
+def transfer_tasks(from_user, to_user, project=None, dry_run=0):
+	"""Reassign one user's open Project Todos to another (all projects, or one).
+
+	Open = status not in TERMINAL_STATUSES; completed/cancelled stay put as
+	historical record. Atomic team gate: if to_user is not on the Project Team
+	of any affected project, the whole transfer is refused and nothing moves.
+	dry_run=1 returns {count, blocked_projects} without writing.
+	"""
+	from vernon_project.user_offboarding import TERMINAL_STATUSES
+
+	_require_system_manager()
+	from_user = (from_user or "").strip()
+	to_user = (to_user or "").strip()
+	project = (project or "").strip() or None
+
+	if from_user in PROTECTED_USERS or not frappe.db.exists("User", from_user):
+		frappe.throw("Unknown source user")
+	if to_user in PROTECTED_USERS or not frappe.db.exists("User", to_user):
+		frappe.throw("Unknown target user")
+	if from_user == to_user:
+		frappe.throw("Source and target user must differ")
+	if not frappe.db.get_value("User", to_user, "enabled"):
+		frappe.throw("Target user is disabled")
+	if project and not frappe.db.exists("Project", project):
+		frappe.throw("Unknown project")
+
+	filters = {"assigned_to": from_user, "status": ["not in", TERMINAL_STATUSES]}
+	if project:
+		filters["project"] = project
+	todos = frappe.get_all("Project Todo", filters=filters, fields=["name", "project"])
+
+	# Team gate. ponytail: project-less todos have no team → always allowed.
+	team_cache = {}
+	blocked = set()
+	for t in todos:
+		if not t.project:
+			continue
+		if t.project not in team_cache:
+			team_cache[t.project] = _project_team(t.project)
+		if to_user not in team_cache[t.project]:
+			blocked.add(t.project)
+	blocked_projects = sorted(blocked)
+
+	if frappe.utils.cint(dry_run):
+		return {"count": len(todos), "blocked_projects": blocked_projects}
+
+	if blocked_projects:
+		frappe.throw(
+			f"{to_user} is not on the Project Team of: " + ", ".join(blocked_projects)
+		)
+
+	# Raw update mirrors user_offboarding: intended admin override, skips
+	# re-running point-ledger/recurrence hooks (open tasks have 0 earned).
+	# Recurrence still follows — next-occurrence reads assigned_to fresh from DB.
+	for t in todos:
+		frappe.db.set_value("Project Todo", t.name, "assigned_to", to_user)
+	frappe.db.commit()
+	return {"moved": len(todos)}
 
 
 @frappe.whitelist()

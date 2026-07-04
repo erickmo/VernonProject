@@ -11,16 +11,36 @@ import {
   PROB_SLOTS, isFreeVariant, variantLabel, BG_PALETTE,
 } from '@/avatar/styles'
 import type { StyleKey } from '@/avatar/styles'
-import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset } from '@/hooks/useData'
+import { FRANCHISES, formLabel, charStyleId, isCharacterStyle, parseCharStyle, franchiseOfCharacter } from '@/avatar/characters'
+import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset, useCrateStatus, useOpenCrate } from '@/hooks/useData'
+import type { CrateOpenResult } from '@/lib/types'
 import { useToast } from '@/components/Toast'
 import { CollectibleIcon } from '@/avatar/collectibleIcons'
 import type { AvatarConfig } from '@/lib/types'
 
-const STYLE_TABS = STYLE_LIST.map((s) => ({
-  value: s,
-  // split camelCase keys (notionistsNeutral, pixelArt) → "Notionists Neutral", "Pixel Art"
-  label: s.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()),
-}))
+const STYLE_TABS = [
+  ...STYLE_LIST.map((s) => ({
+    value: s as string,
+    // split camelCase keys (notionistsNeutral) → "Notionists Neutral"
+    label: s.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()),
+  })),
+  // One tab per franchise; picking it opens the character + form sub-pickers.
+  // Disabled for now.
+  ...Object.entries(FRANCHISES).map(([fid, fr]) => ({ value: `fr:${fid}`, label: fr.label, disabled: true })),
+]
+
+// The style-tab value for the current draft: a franchise tab when a character
+// is active, else the DiceBear style key.
+function activeStyleTab(style: string): string {
+  if (!isCharacterStyle(style)) return style
+  const fid = franchiseOfCharacter(parseCharStyle(style).characterId)
+  return fid ? `fr:${fid}` : style
+}
+// First character + base form of a franchise (default when its tab is picked).
+function franchiseDefaultStyle(fid: string): string {
+  const first = Object.keys(FRANCHISES[fid].characters)[0]
+  return charStyleId(first, 'base')
+}
 
 export default function AvatarCustomizerScreen() {
   const navigate = useNavigate()
@@ -152,6 +172,11 @@ export default function AvatarCustomizerScreen() {
   const assetProps = catalog.assets.filter(a => a.asset_type === 'Prop')
   const collectibles = catalog.assets.filter(a => a.asset_type === 'Collectible')
 
+  const onBuyAsset = (name: string) => buyAsset.mutate(name, {
+    onSuccess: (r) => { if (r?.completed) toast('success', `${r.completed.set} set complete! +${r.completed.rebate.toLocaleString()} pts + ${r.completed.capstone}`) },
+    onError: (e) => toast('error', e instanceof Error ? e.message : 'Purchase failed'),
+  })
+
   return (
     <DetailScreen title="Customize Avatar">
       {/* Balance chip */}
@@ -160,6 +185,8 @@ export default function AvatarCustomizerScreen() {
         <span className="font-semibold text-stone-700 dark:text-slate-200">{catalog.balance.toLocaleString()}</span>
         <span className="text-stone-400 dark:text-slate-500">pts</span>
       </div>
+
+      <CrateCard />
 
       {/* AvatarScene preview — sticky so it stays visible while slots scroll */}
       <div className="sticky top-16 z-10 -mx-4 px-4 bg-paper dark:bg-slate-950 pb-2">
@@ -176,10 +203,47 @@ export default function AvatarCustomizerScreen() {
         <Segmented
           scroll
           options={STYLE_TABS}
-          value={draft.style}
-          onChange={(s) => setDraft((d) => ({ style: s as StyleKey, options: {}, scene: d?.scene ?? null, props: d?.props ?? [], featured_collectible: d?.featured_collectible ?? null }))}
+          value={activeStyleTab(draft.style)}
+          onChange={(s) => {
+            // Franchise tab → default character+base form; else a DiceBear style.
+            const style = s.startsWith('fr:') ? franchiseDefaultStyle(s.slice(3)) : s
+            setDraft((d) => ({ style: style as StyleKey, options: {}, scene: d?.scene ?? null, props: d?.props ?? [], featured_collectible: d?.featured_collectible ?? null }))
+          }}
         />
       </div>
+
+      {/* Character + form pickers (shown when a franchise tab is active) */}
+      {isCharacterStyle(draft.style) && (() => {
+        const { characterId, formId } = parseCharStyle(draft.style)
+        const fid = franchiseOfCharacter(characterId)
+        if (!fid) return null
+        const chars = FRANCHISES[fid].characters
+        const forms = chars[characterId]?.forms ?? ['base']
+        return (
+          <div className="mb-4 space-y-3">
+            <div>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">Character</p>
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                {Object.entries(chars).map(([cid, c]) => (
+                  <Chip key={cid} label={c.label} active={cid === characterId}
+                    onClick={() => setDraft((d) => (d ? { ...d, style: charStyleId(cid, 'base') as StyleKey, options: {} } : d))} />
+                ))}
+              </div>
+            </div>
+            {forms.length > 1 && (
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">Form</p>
+                <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                  {forms.map((f) => (
+                    <Chip key={f} label={formLabel(f)} active={f === formId}
+                      onClick={() => setDraft((d) => (d ? { ...d, style: charStyleId(characterId, f) as StyleKey, options: {} } : d))} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Slot strips */}
       {slots.map(({ slot, values }) => {
@@ -344,7 +408,7 @@ export default function AvatarCustomizerScreen() {
                   {!a.owned && (
                     <button
                       type="button"
-                      onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                      onClick={() => onBuyAsset(a.asset_name)}
                       disabled={buyAsset.isPending}
                       className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white active:bg-amber-600 disabled:opacity-60"
                     >Buy</button>
@@ -384,9 +448,11 @@ export default function AvatarCustomizerScreen() {
                     ].join(' ')}
                   >
                     <div className="relative">
-                      {a.icon
-                        ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
-                        : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
+                      {a.image
+                        ? <img src={a.image} alt="" className="h-7 w-7 object-contain" />
+                        : a.icon
+                          ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
+                          : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
                       {!a.owned && (
                         <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 bg-black/0">
                           <Lock className="h-3 w-3 text-white drop-shadow" />
@@ -401,7 +467,7 @@ export default function AvatarCustomizerScreen() {
                   {!a.owned && (
                     <button
                       type="button"
-                      onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                      onClick={() => onBuyAsset(a.asset_name)}
                       disabled={buyAsset.isPending}
                       className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white active:bg-amber-600 disabled:opacity-60"
                     >Buy</button>
@@ -430,23 +496,27 @@ export default function AvatarCustomizerScreen() {
                       featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800',
                     ].join(' ')}
                   >
-                    {a.icon
-                      ? <CollectibleIcon name={a.icon} className="h-8 w-8 text-stone-700 dark:text-slate-200" />
-                      : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                    {a.image
+                      ? <img src={a.image} alt="" className="h-9 w-9 object-contain" />
+                      : a.icon
+                        ? <CollectibleIcon name={a.icon} className="h-8 w-8 text-stone-700 dark:text-slate-200" />
+                        : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
                     }
                     <span className="text-[10px] font-medium text-stone-500 dark:text-slate-400 whitespace-nowrap">{a.asset_name}</span>
                     {a.owned ? (
                       <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400 dark:text-slate-500'].join(' ')}>
                         {featured ? 'Featured' : 'Feature'}
                       </span>
+                    ) : a.earn_only ? (
+                      <span className="text-[8px] leading-none text-violet-500">🔒 Earn</span>
                     ) : (
                       <span className="text-[8px] leading-none text-amber-500">{a.price?.toLocaleString()}</span>
                     )}
                   </button>
-                  {!a.owned && (
+                  {!a.owned && !a.earn_only && (
                     <button
                       type="button"
-                      onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                      onClick={() => onBuyAsset(a.asset_name)}
                       disabled={buyAsset.isPending}
                       className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white active:bg-amber-600 disabled:opacity-60"
                     >Buy</button>
@@ -532,6 +602,73 @@ function VariantTile({
           Buy
         </button>
       )}
+    </div>
+  )
+}
+
+// Work-earned gacha: keys come from completing tasks (never bought with points),
+// each open grants a guaranteed NEW cosmetic. Daily-capped.
+function CrateCard() {
+  const { data: st } = useCrateStatus()
+  const openCrate = useOpenCrate()
+  const toast = useToast()
+  const [reveal, setReveal] = useState<CrateOpenResult['asset'] | null>(null)
+  if (!st) return null
+  const canOpen = st.keys > 0 && st.opened_today < st.daily_cap && st.remaining > 0
+  return (
+    <div className="mb-4 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-3 shadow-card">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-stone-800 dark:text-slate-100">🎁 Task Crate</p>
+          <p className="text-xs text-stone-500 dark:text-slate-400">
+            {st.keys > 0 ? `${st.keys} key${st.keys > 1 ? 's' : ''} ready` : 'No keys yet'} · {st.remaining} cosmetics left
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => openCrate.mutate(undefined, {
+            onSuccess: (r) => { setReveal(r.asset); if (r?.completed) toast('success', `${r.completed.set} set complete! +${r.completed.rebate.toLocaleString()} pts + ${r.completed.capstone}`) },
+            onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not open'),
+          })}
+          disabled={!canOpen || openCrate.isPending}
+          className="shrink-0 rounded-xl bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {openCrate.isPending ? 'Opening…' : st.keys > 0 ? 'Open' : 'Locked'}
+        </button>
+      </div>
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
+        <div className="h-full rounded-full bg-brand-400 transition-all" style={{ width: `${Math.min(100, st.progress_pct)}%` }} />
+      </div>
+      <p className="mt-1 text-[10px] text-stone-400 dark:text-slate-500">
+        {Math.round(st.progress).toLocaleString()}/{st.key_cost.toLocaleString()} task pts to next key · {st.opened_today}/{st.daily_cap} opened today
+      </p>
+      {reveal && <CrateReveal asset={reveal} onClose={() => setReveal(null)} />}
+    </div>
+  )
+}
+
+function CrateReveal({ asset, onClose }: { asset: CrateOpenResult['asset']; onClose: () => void }) {
+  const isScene = asset.asset_type === 'Scene'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
+      <div className="flex flex-col items-center gap-3 rounded-3xl bg-paper-card dark:bg-slate-800 px-8 py-7 shadow-card animate-pop" onClick={(e) => e.stopPropagation()}>
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">New cosmetic!</p>
+        <div
+          className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700"
+          style={isScene && asset.gradient ? { background: asset.gradient } : undefined}
+        >
+          {asset.image
+            ? <img src={asset.image} alt="" className="h-full w-full object-contain" />
+            : asset.icon
+              ? <CollectibleIcon name={asset.icon} className="h-14 w-14 text-stone-700 dark:text-slate-200" />
+              : isScene
+                ? null
+                : <span className="text-5xl leading-none">{asset.emoji ?? '🎁'}</span>}
+        </div>
+        <p className="text-sm font-semibold text-stone-800 dark:text-slate-100">{asset.asset_name}</p>
+        <p className="text-[11px] text-stone-400 dark:text-slate-500">{asset.asset_type} · added to your collection</p>
+        <button type="button" onClick={onClose} className="mt-1 rounded-xl bg-brand-500 px-5 py-2 text-sm font-semibold text-white active:scale-95">Nice!</button>
+      </div>
     </div>
   )
 }

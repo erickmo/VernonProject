@@ -1,9 +1,12 @@
 import { createAvatar } from '@dicebear/core'
 import { lorelei, notionists, notionistsNeutral, croodles, croodlesNeutral, bigEars, openPeeps } from '@dicebear/collection'
+import { isCharacterStyle, characterSvg } from './characters'
+import { renderDoodle, doodleSlots } from './doodle'
 
 export const STYLES = { lorelei, notionists, notionistsNeutral, croodles, croodlesNeutral, bigEars, openPeeps } as const
 export type StyleKey = keyof typeof STYLES
-export const STYLE_LIST: StyleKey[] = ['lorelei', 'notionists', 'notionistsNeutral', 'croodles', 'croodlesNeutral', 'bigEars', 'openPeeps']
+// 'doodle' is a custom (non-DiceBear) style — see doodle.ts.
+export const STYLE_LIST: string[] = ['lorelei', 'notionists', 'notionistsNeutral', 'croodles', 'croodlesNeutral', 'bigEars', 'openPeeps', 'doodle']
 
 // Curated, user-meaningful slots; only those a style actually has are shown.
 export const CURATED_SLOTS = ['hair','eyes','eyebrows','brows','mouth','lips','glasses','earrings','nose','features','hairAccessories','gesture','beard','head','freckles','body','bodyIcon']
@@ -21,8 +24,18 @@ export function paletteForColorSlot(slot: string): string[] {
   return BG_PALETTE
 }
 
-export function renderAvatarSvg(style: StyleKey, options: Record<string, string[]>, seed?: string): string {
-  const col = STYLES[style] || STYLES.lorelei
+export function renderAvatarSvg(style: string, options: Record<string, string[]>, seed?: string): string {
+  // Character styles render fixed art (not DiceBear). Same 100%-size injection
+  // so they fill the box + capture cleanly.
+  if (isCharacterStyle(style)) {
+    return characterSvg(style)
+      .replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" ')
+  }
+  if (style === 'doodle') {
+    return renderDoodle(options)
+      .replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" ')
+  }
+  const col = STYLES[style as StyleKey] || STYLES.lorelei
   // `seed` (a core DiceBear option) deterministically randomizes every unset
   // feature — used to give no-avatar users a unique auto avatar instead of a
   // bare initial. Saved configs pass no seed and keep their exact options.
@@ -34,8 +47,10 @@ export function renderAvatarSvg(style: StyleKey, options: Record<string, string[
     .replace('<svg ', '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" ')
 }
 
-export function slotsForStyle(style: StyleKey): { slot: string; values: string[] }[] {
-  const col: any = STYLES[style] || STYLES.lorelei
+export function slotsForStyle(style: string): { slot: string; values: string[] }[] {
+  if (isCharacterStyle(style)) return []  // character art has no editable slots
+  if (style === 'doodle') return doodleSlots()
+  const col: any = STYLES[style as StyleKey] || STYLES.lorelei
   const props = col.schema?.properties || {}
   const out: { slot: string; values: string[] }[] = []
   for (const slot of CURATED_SLOTS) {
@@ -51,15 +66,18 @@ export const PREMIUM_FREE_COUNT = 3
 const FREE_OVERRIDE: Record<string, Record<string, string[]>> = {
   notionists: { hair: ['variant59', 'variant57'] },
 }
-export function isFreeVariant(style: StyleKey, slot: string, value: string, index: number): boolean {
+export function isFreeVariant(style: string, slot: string, value: string, index: number): boolean {
+  if (style === 'doodle') return true  // custom style: all variants free
   return index < PREMIUM_FREE_COUNT || (FREE_OVERRIDE[style]?.[slot]?.includes(value) ?? false)
 }
 export function variantLabel(index: number): string {
   return `Style ${index + 1}`
 }
 
-export function colorSlotsForStyle(style: StyleKey): string[] {
-  const col: any = STYLES[style] || STYLES.lorelei
+export function colorSlotsForStyle(style: string): string[] {
+  if (isCharacterStyle(style)) return []  // character art has no color options
+  if (style === 'doodle') return ['backgroundColor']  // only bg is meaningful for line art
+  const col: any = STYLES[style as StyleKey] || STYLES.lorelei
   const props = col.schema?.properties || {}
   const out: string[] = []
   if (props['skinColor']) out.push('skinColor')

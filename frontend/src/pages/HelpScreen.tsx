@@ -1,58 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import {
-  Compass,
-  FolderKanban,
-  CalendarClock,
-  QrCode,
-  Ticket,
-  CalendarCog,
-  Trophy,
-  Medal,
-  Gift,
-  HandHeart,
-  StickyNote,
-  Smile,
-  MessageSquarePlus,
-  ChevronRight,
-  type LucideIcon,
-} from 'lucide-react'
+import { Compass, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-
-// Onboarding "what can I do" list, grouped into sections. Each card jumps to the real screen.
-const GROUPS: { title: string; items: { icon: LucideIcon; title: string; desc: string; to: string }[] }[] = [
-  {
-    title: 'Get work done',
-    items: [
-      { icon: FolderKanban, title: 'Projects & todos', desc: 'Open a project, add work items and todos.', to: '/projects' },
-      { icon: CalendarClock, title: 'Plan your day', desc: "Review today's todos and what's due.", to: '/' },
-      { icon: QrCode, title: 'Check in with QR', desc: 'Scan the station code to mark attendance.', to: '/scan' },
-    ],
-  },
-  {
-    title: 'Events & community',
-    items: [
-      { icon: Ticket, title: 'Join an event', desc: 'Browse office events and register — free or paid.', to: '/events' },
-      { icon: CalendarCog, title: 'Host an event', desc: 'Create events and manage who registered.', to: '/events/manage' },
-      { icon: HandHeart, title: 'Recognize teammates', desc: 'React on the team wall to send recognition points.', to: '/team-wall' },
-    ],
-  },
-  {
-    title: 'Rewards & progress',
-    items: [
-      { icon: Trophy, title: 'Climb the leaderboard', desc: 'See where you rank on productivity and character.', to: '/leaderboard' },
-      { icon: Medal, title: 'Earn achievements', desc: 'Unlock badges and warrior tiers as you contribute.', to: '/achievements' },
-      { icon: Gift, title: 'Spend your points', desc: 'Redeem points for rewards in the marketplace.', to: '/marketplace' },
-    ],
-  },
-  {
-    title: 'Personal',
-    items: [
-      { icon: StickyNote, title: 'Capture notes', desc: 'Jot quick notes — hold ➕ for an instant one.', to: '/notes' },
-      { icon: Smile, title: 'Make it yours', desc: 'Customize your avatar.', to: '/avatar' },
-      { icon: MessageSquarePlus, title: 'Send feedback', desc: "Tell the team what's working or missing.", to: '/feedback' },
-    ],
-  },
-]
+import { ACTION_GROUPS as GROUPS } from '@/lib/actions'
 
 export default function HelpScreen() {
   const navigate = useNavigate()

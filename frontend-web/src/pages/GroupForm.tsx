@@ -28,9 +28,8 @@ const field =
 const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee' | 'Leader' }[] = [
   { key: 'late_penalty', label: 'Late penalty % / day', group: 'Assignee' },
   { key: 'early_bonus', label: 'Early bonus % / day', group: 'Assignee' },
-  { key: 'leader_weight', label: 'Leader weight %', group: 'Leader' },
-  { key: 'leader_late_penalty', label: 'Leader late penalty % / day', group: 'Leader' },
-  { key: 'leader_early_bonus', label: 'Leader early bonus % / day', group: 'Leader' },
+  { key: 'leader_weight', label: 'Leader weight % (on-time / early)', group: 'Leader' },
+  { key: 'leader_late_weight', label: 'Leader late weight % (late)', group: 'Leader' },
 ]
 
 type LevelRow = { _key: string; name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number }
@@ -81,8 +80,7 @@ export default function GroupForm() {
     late_penalty: 0,
     early_bonus: 0,
     leader_weight: 0,
-    leader_late_penalty: 0,
-    leader_early_bonus: 0,
+    leader_late_weight: 0,
     levels: defaultLevels(),
   })
 
@@ -98,8 +96,7 @@ export default function GroupForm() {
         late_penalty: existing.late_penalty ?? 0,
         early_bonus: existing.early_bonus ?? 0,
         leader_weight: existing.leader_weight ?? 0,
-        leader_late_penalty: existing.leader_late_penalty ?? 0,
-        leader_early_bonus: existing.leader_early_bonus ?? 0,
+        leader_late_weight: existing.leader_late_weight ?? 0,
         levels: (existing.levels ?? [])
           .slice()
           .sort((a: GroupLevel, b: GroupLevel) => (a.idx ?? 0) - (b.idx ?? 0))
@@ -528,10 +525,11 @@ export default function GroupForm() {
               assignee = base_rate × minutes × difficulty% × (1 − late_days×late% + early_days×early%)
             </p>
             <p className="mb-1">
-              The <b>leader</b> earns a share of the assignee's points:
+              The <b>leader</b> earns a share of the assignee's points — using <b>leader weight</b>
+              when the todo is on-time or early, or <b>leader late weight</b> when it's late:
             </p>
             <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
-              leader = assignee × (leader% − late_days×lead_late% + early_days×lead_early%)
+              leader = assignee × (late ? leader_late_weight% : leader_weight%)
             </p>
           </div>
         </BentoTile>

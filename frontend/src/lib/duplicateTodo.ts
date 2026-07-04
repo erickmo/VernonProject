@@ -29,7 +29,7 @@ export interface CreateTodoInitial {
  *  fresh on insert. */
 export function todoDuplicateInitial(data: ProjectItemDetail): CreateTodoInitial {
   return {
-    toDo: `Copy of ${data.to_do}`,
+    toDo: `${data.to_do} 👏🏻`,
     assignedTo: data.assigned_to,
     startDate: data.start_date ?? '',
     deadline: data.deadline ?? '',

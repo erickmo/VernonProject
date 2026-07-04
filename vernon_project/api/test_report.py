@@ -1,9 +1,12 @@
+import datetime
 import unittest
 
 import frappe
 from vernon_project.api.report import (
 	_date_list, _build_daily_matrix, _assigned_minutes,
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
+	_build_over_occupied, over_occupied,
+	_template_minutes, _resolve_expected,
 )
 
 
@@ -19,42 +22,40 @@ class TestBuildDailyMatrix(unittest.TestCase):
 
 	def test_pivot_sums_and_zero_fills(self):
 		users = [{"name": "a@x.id", "full_name": "Alice"}]
-		rows = [
+		assigned = [
 			{"user": "a@x.id", "day": "2026-06-22", "minutes": 120},
-			{"user": "a@x.id", "day": "2026-06-22", "minutes": 60},  # same day -> already summed upstream; here distinct
+			{"user": "a@x.id", "day": "2026-06-22", "minutes": 60},
 			{"user": "a@x.id", "day": "2026-06-23", "minutes": 500},
 		]
-		out = _build_daily_matrix(users, rows, "2026-06-22", "2026-06-24", 480)
+		out = _build_daily_matrix(users, assigned, [], "2026-06-22", "2026-06-24", 480)
 		row = out["rows"][0]
-		# 2026-06-22 has two row entries -> they add; 24th missing -> 0
-		self.assertEqual(row["per_day"], {"2026-06-22": 180, "2026-06-23": 500, "2026-06-24": 0})
-		self.assertEqual(row["total"], 680)
+		self.assertEqual(row["per_day_assigned"], {"2026-06-22": 180, "2026-06-23": 500, "2026-06-24": 0})
+		self.assertEqual(row["assigned_total"], 680)
 
 	def test_flags_days_below_threshold(self):
 		users = [{"name": "a@x.id", "full_name": "Alice"}]
-		rows = [{"user": "a@x.id", "day": "2026-06-23", "minutes": 480}]  # exactly X -> NOT flagged
-		out = _build_daily_matrix(users, rows, "2026-06-22", "2026-06-23", 480)
-		# 22nd = 0 (< 480 -> flagged); 23rd = 480 (== X -> not flagged)
+		assigned = [{"user": "a@x.id", "day": "2026-06-23", "minutes": 480}]  # exactly X -> NOT flagged
+		out = _build_daily_matrix(users, assigned, [], "2026-06-22", "2026-06-23", 480)
 		self.assertEqual(out["rows"][0]["flagged_dates"], ["2026-06-22"])
 
 	def test_zero_allocation_user_present_and_fully_flagged(self):
 		users = [{"name": "b@x.id", "full_name": "Bob"}]
-		out = _build_daily_matrix(users, [], "2026-06-22", "2026-06-23", 480)
+		out = _build_daily_matrix(users, [], [], "2026-06-22", "2026-06-23", 480)
 		row = out["rows"][0]
-		self.assertEqual(row["per_day"], {"2026-06-22": 0, "2026-06-23": 0})
+		self.assertEqual(row["per_day_assigned"], {"2026-06-22": 0, "2026-06-23": 0})
 		self.assertEqual(row["flagged_dates"], ["2026-06-22", "2026-06-23"])
-		self.assertEqual(row["total"], 0)
+		self.assertEqual(row["assigned_total"], 0)
 
 	def test_full_name_falls_back_to_name(self):
-		out = _build_daily_matrix([{"name": "c@x.id", "full_name": None}], [], "2026-06-22", "2026-06-22", 480)
+		out = _build_daily_matrix([{"name": "c@x.id", "full_name": None}], [], [], "2026-06-22", "2026-06-22", 480)
 		self.assertEqual(out["rows"][0]["full_name"], "c@x.id")
 
 	def test_threshold_zero_flags_nothing(self):
-		out = _build_daily_matrix([{"name": "a@x.id", "full_name": "A"}], [], "2026-06-22", "2026-06-22", 0)
+		out = _build_daily_matrix([{"name": "a@x.id", "full_name": "A"}], [], [], "2026-06-22", "2026-06-22", 0)
 		self.assertEqual(out["rows"][0]["flagged_dates"], [])
 
 	def test_envelope_fields(self):
-		out = _build_daily_matrix([], [], "2026-06-22", "2026-06-23", 480)
+		out = _build_daily_matrix([], [], [], "2026-06-22", "2026-06-23", 480)
 		self.assertEqual(out["threshold"], 480)
 		self.assertEqual(out["from_date"], "2026-06-22")
 		self.assertEqual(out["to_date"], "2026-06-23")
@@ -70,7 +71,6 @@ class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_requires_system_manager(self):
-		# A user without System Manager must be rejected.
 		if not frappe.db.exists("User", "report_guest@example.com"):
 			frappe.get_doc({
 				"doctype": "User", "email": "report_guest@example.com",
@@ -88,7 +88,6 @@ class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
 	def test_admin_gets_contract_shape(self):
 		frappe.set_user("Administrator")
 		out = daily_estimated_time("2026-06-22", "2026-06-23")
-		# threshold echoes settings; dates inclusive; rows is a list
 		self.assertIn("threshold", out)
 		self.assertEqual(out["dates"], ["2026-06-22", "2026-06-23"])
 		self.assertIsInstance(out["rows"], list)
@@ -102,7 +101,7 @@ class TestDailyEstimatedTimeAccess(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_system_manager_can_view(self):
-		frappe.set_user("Administrator")  # Administrator has System Manager
+		frappe.set_user("Administrator")
 		self.assertEqual(daily_estimated_time_access(), {"can_view": True})
 
 	def test_non_system_manager_cannot_view(self):
@@ -115,96 +114,157 @@ class TestDailyEstimatedTimeAccess(unittest.TestCase):
 		self.assertEqual(daily_estimated_time_access(), {"can_view": False})
 
 
+class TestTemplateMinutes(unittest.TestCase):
+	def test_string_times(self):
+		self.assertEqual(_template_minutes("09:00:00", "17:00:00"), 480)
+
+	def test_half_hour(self):
+		self.assertEqual(_template_minutes("09:00:00", "17:30:00"), 510)
+
+	def test_timedelta_inputs(self):
+		self.assertEqual(
+			_template_minutes(datetime.timedelta(hours=9), datetime.timedelta(hours=17)), 480
+		)
+
+	def test_time_objects(self):
+		self.assertEqual(_template_minutes(datetime.time(9, 0), datetime.time(17, 30)), 510)
+
+	def test_none_returns_zero(self):
+		self.assertEqual(_template_minutes(None, "17:00:00"), 0)
+		self.assertEqual(_template_minutes("09:00:00", None), 0)
+
+	def test_non_positive_returns_zero(self):
+		self.assertEqual(_template_minutes("17:00:00", "09:00:00"), 0)
+
+
+class TestResolveExpected(unittest.TestCase):
+	"""Pure per-user-per-day shift target resolution. Days: 2026-06-29 Mon, 30 Tue, 07-01 Wed."""
+
+	def _assign(self, user, template, eff_from, eff_to=None, **days):
+		row = {"employee": user, "shift_template": template,
+			   "effective_from": eff_from, "effective_to": eff_to}
+		for d in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"):
+			row[d] = days.get(d, 0)
+		return row
+
+	def test_emits_only_scheduled_weekdays(self):
+		out = _resolve_expected(
+			["u@x.id"], ["2026-06-29", "2026-06-30", "2026-07-01"],
+			[self._assign("u@x.id", "T1", "2026-06-01", monday=1, tuesday=1)],  # wednesday=0
+			{"T1": 480}, {},
+		)
+		got = {(r["user"], r["day"]): r["minutes"] for r in out}
+		self.assertEqual(got, {("u@x.id", "2026-06-29"): 480, ("u@x.id", "2026-06-30"): 480})
+
+	def test_effective_from_excludes_before(self):
+		out = _resolve_expected(
+			["u@x.id"], ["2026-06-29", "2026-06-30"],
+			[self._assign("u@x.id", "T1", "2026-06-30", monday=1, tuesday=1)],
+			{"T1": 480}, {},
+		)
+		self.assertEqual([r["day"] for r in out], ["2026-06-30"])
+
+	def test_effective_to_excludes_after(self):
+		out = _resolve_expected(
+			["u@x.id"], ["2026-06-29", "2026-06-30"],
+			[self._assign("u@x.id", "T1", "2026-06-01", "2026-06-29", monday=1, tuesday=1)],
+			{"T1": 480}, {},
+		)
+		self.assertEqual([r["day"] for r in out], ["2026-06-29"])
+
+	def test_latest_effective_from_wins(self):
+		out = _resolve_expected(
+			["u@x.id"], ["2026-06-29"],
+			[self._assign("u@x.id", "T1", "2026-06-01", monday=1),
+			 self._assign("u@x.id", "T2", "2026-06-15", monday=1)],
+			{"T1": 480, "T2": 300}, {},
+		)
+		self.assertEqual(out[0]["minutes"], 300)
+
+	def test_holiday_excluded(self):
+		out = _resolve_expected(
+			["u@x.id"], ["2026-06-29", "2026-06-30"],
+			[self._assign("u@x.id", "T1", "2026-06-01", monday=1, tuesday=1)],
+			{"T1": 480}, {"u@x.id": {"2026-06-29"}},
+		)
+		self.assertEqual([r["day"] for r in out], ["2026-06-30"])
+
+	def test_no_assignment_no_emit(self):
+		self.assertEqual(_resolve_expected(["u@x.id"], ["2026-06-29"], [], {}, {}), [])
+
+	def test_zero_minute_template_no_emit(self):
+		out = _resolve_expected(
+			["u@x.id"], ["2026-06-29"],
+			[self._assign("u@x.id", "T0", "2026-06-01", monday=1)],
+			{"T0": 0}, {},
+		)
+		self.assertEqual(out, [])
+
+
 class TestBuildUnderOccupied(unittest.TestCase):
-	"""Pure _build_under_occupied tests — no DB, no migration dependency."""
+	"""Pure _build_under_occupied — per-user shift target; only shift days are evaluated."""
 
-	def test_includes_under_and_excludes_occupied(self):
-		"""User with avg < effective is included; user with avg >= effective is excluded."""
-		users = [
-			{"name": "under@x.id", "full_name": "Under"},
-			{"name": "over@x.id", "full_name": "Over"},
-		]
-		# threshold=480, tolerance=60 → effective=420
-		# under@x.id: avg = round((400+400)/2) = 400 < 420 → included
-		# over@x.id: avg = round((420+420)/2) = 420 == effective → excluded (strict <)
-		assigned = [
-			{"user": "under@x.id", "day": "2026-06-22", "minutes": 400},
-			{"user": "under@x.id", "day": "2026-06-23", "minutes": 400},
-			{"user": "over@x.id", "day": "2026-06-22", "minutes": 420},
-			{"user": "over@x.id", "day": "2026-06-23", "minutes": 420},
-		]
-		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-23", 480, 60)
-		names = [r["user"] for r in out["rows"]]
-		self.assertIn("under@x.id", names)
-		self.assertNotIn("over@x.id", names)
-
-	def test_tolerance_boundary_is_strict(self):
-		"""avg_daily == effective (420) is excluded; avg_daily == 419 is included."""
-		users = [
-			{"name": "exact@x.id", "full_name": "Exact"},
-			{"name": "low@x.id", "full_name": "Low"},
-		]
-		# threshold=480, tolerance=60 → effective=420
-		# exact@x.id: 420 each day → avg=420 == effective → excluded
-		# low@x.id: 419 each day → avg=419 < effective → included
-		assigned = [
-			{"user": "exact@x.id", "day": "2026-06-22", "minutes": 420},
-			{"user": "exact@x.id", "day": "2026-06-23", "minutes": 420},
-			{"user": "exact@x.id", "day": "2026-06-24", "minutes": 420},
-			{"user": "low@x.id", "day": "2026-06-22", "minutes": 419},
-			{"user": "low@x.id", "day": "2026-06-23", "minutes": 419},
-			{"user": "low@x.id", "day": "2026-06-24", "minutes": 419},
-		]
-		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
-		names = [r["user"] for r in out["rows"]]
-		self.assertNotIn("exact@x.id", names)  # 420 → excluded
-		self.assertIn("low@x.id", names)       # 419 → included
-
-	def test_deficit_and_under_days_busy_days_do_not_cancel(self):
-		"""Busy days contribute 0 to deficit (via max(0,...)); under_days counts days < effective."""
-		users = [{"name": "mix@x.id", "full_name": "Mix"}]
-		# threshold=480, tolerance=60 → effective=420
-		# day 22: 960 (over threshold) → not under, deficit contribution = max(0,480-960)=0
-		# day 23: 0 (under effective) → under, deficit contribution = max(0,480-0)=480
-		# day 24: 60 (under effective) → under, deficit contribution = max(0,480-60)=420
-		# avg = round((960+0+60)/3) = round(340) = 340 < 420 → included
-		assigned = [
-			{"user": "mix@x.id", "day": "2026-06-22", "minutes": 960},
-			{"user": "mix@x.id", "day": "2026-06-23", "minutes": 0},
-			{"user": "mix@x.id", "day": "2026-06-24", "minutes": 60},
-		]
-		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-24", 480, 60)
+	def test_includes_user_below_target(self):
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		expected = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 480},
+					{"user": "u@x.id", "day": "2026-06-30", "minutes": 480}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 300},
+					{"user": "u@x.id", "day": "2026-06-30", "minutes": 480}]
+		# tol=30 → d29: 300 < 450 under, deficit 180 ; d30: 480 not under, deficit 0
+		out = _build_under_occupied(users, assigned, expected, "2026-06-29", "2026-06-30", 30)
 		row = out["rows"][0]
-		self.assertEqual(row["under_days"], 2)   # days 23, 24 < effective(420)
-		self.assertEqual(row["deficit"], 900)    # 0 + 480 + 420; busy day doesn't cancel
+		self.assertEqual(row["under_days"], 1)
+		self.assertEqual(row["deficit"], 180)
+		self.assertEqual(row["assigned_total"], 780)
+		self.assertEqual(row["expected_total"], 960)
+
+	def test_no_shift_days_are_not_evaluated(self):
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 0}]
+		out = _build_under_occupied(users, assigned, [], "2026-06-29", "2026-06-30", 30)
+		self.assertEqual(out["rows"], [])
+
+	def test_tolerance_boundary_strict(self):
+		# a == t - tol → NOT under (strict <)
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		expected = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 480}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 450}]
+		out = _build_under_occupied(users, assigned, expected, "2026-06-29", "2026-06-29", 30)
+		self.assertEqual(out["rows"], [])
+
+	def test_only_shift_days_counted(self):
+		# assigned on a non-shift day (no expected row) is ignored
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		expected = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 480}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 100},
+					{"user": "u@x.id", "day": "2026-06-30", "minutes": 999}]
+		out = _build_under_occupied(users, assigned, expected, "2026-06-29", "2026-06-30", 0)
+		row = out["rows"][0]
+		self.assertEqual(row["assigned_total"], 100)
+		self.assertEqual(row["expected_total"], 480)
+		self.assertEqual(row["under_days"], 1)
+		self.assertEqual(row["deficit"], 380)
+
+	def test_sort_by_deficit_desc_and_envelope(self):
+		users = [{"name": "a@x.id", "full_name": "Alice"}, {"name": "b@x.id", "full_name": "Bob"}]
+		expected = [{"user": "a@x.id", "day": "2026-06-29", "minutes": 480},
+					{"user": "b@x.id", "day": "2026-06-29", "minutes": 480}]
+		assigned = [{"user": "a@x.id", "day": "2026-06-29", "minutes": 0},
+					{"user": "b@x.id", "day": "2026-06-29", "minutes": 200}]
+		out = _build_under_occupied(users, assigned, expected, "2026-06-29", "2026-06-29", 0)
+		self.assertEqual([r["user"] for r in out["rows"]], ["a@x.id", "b@x.id"])
+		self.assertEqual(out["tolerance"], 0)
+		self.assertEqual(out["day_count"], 1)
+		self.assertEqual(out["from_date"], "2026-06-29")
+		self.assertEqual(out["to_date"], "2026-06-29")
+		self.assertNotIn("threshold", out)
+		self.assertNotIn("effective", out)
 
 	def test_empty_roster(self):
-		out = _build_under_occupied([], [], "2026-06-22", "2026-06-24", 480, 60)
+		out = _build_under_occupied([], [], [], "2026-06-29", "2026-06-30", 30)
 		self.assertEqual(out["rows"], [])
-		self.assertEqual(out["threshold"], 480)
-		self.assertEqual(out["tolerance"], 60)
-		self.assertEqual(out["effective"], 420)
-		self.assertEqual(out["day_count"], 3)
-
-	def test_envelope_and_sort_by_deficit_desc(self):
-		"""Envelope fields correct; rows sorted by (-deficit, full_name) descending."""
-		users = [
-			{"name": "a@x.id", "full_name": "Alice"},
-			{"name": "b@x.id", "full_name": "Bob"},
-		]
-		# threshold=480, tolerance=0 → effective=480
-		# Alice: all zeros → avg=0 < 480, deficit=480*2=960
-		# Bob: day 22 has 480, day 23 has 0 → avg=round(480/2)=240 < 480, deficit=0+480=480
-		assigned = [{"user": "b@x.id", "day": "2026-06-22", "minutes": 480}]
-		out = _build_under_occupied(users, assigned, "2026-06-22", "2026-06-23", 480, 0)
-		self.assertEqual(out["threshold"], 480)
-		self.assertEqual(out["tolerance"], 0)
-		self.assertEqual(out["effective"], 480)
 		self.assertEqual(out["day_count"], 2)
-		self.assertEqual(out["from_date"], "2026-06-22")
-		self.assertEqual(out["to_date"], "2026-06-23")
-		self.assertEqual(out["rows"][0]["user"], "a@x.id")  # deficit=960 first
-		self.assertEqual(out["rows"][1]["user"], "b@x.id")  # deficit=480 second
+		self.assertEqual(out["tolerance"], 30)
 
 
 class TestUnderOccupiedEndpoint(unittest.TestCase):
@@ -236,7 +296,91 @@ class TestUnderOccupiedEndpoint(unittest.TestCase):
 	def test_contract_shape(self):
 		frappe.set_user("Administrator")
 		out = under_occupied("2026-06-22", "2026-06-26")
-		for key in ("threshold", "tolerance", "effective", "day_count", "rows"):
+		for key in ("tolerance", "day_count", "rows"):
+			self.assertIn(key, out)
+		self.assertIsInstance(out["rows"], list)
+		self.assertEqual(out["day_count"], 5)
+
+
+class TestBuildOverOccupied(unittest.TestCase):
+	"""Pure _build_over_occupied — per-user shift target; only shift days are evaluated."""
+
+	def test_includes_user_above_target(self):
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		expected = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 480},
+					{"user": "u@x.id", "day": "2026-06-30", "minutes": 480}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 600},
+					{"user": "u@x.id", "day": "2026-06-30", "minutes": 480}]
+		# tol=30 → d29: 600 > 510 over, surplus 120 ; d30: 480 not over, surplus 0
+		out = _build_over_occupied(users, assigned, expected, "2026-06-29", "2026-06-30", 30)
+		row = out["rows"][0]
+		self.assertEqual(row["over_days"], 1)
+		self.assertEqual(row["surplus"], 120)
+		self.assertEqual(row["assigned_total"], 1080)
+		self.assertEqual(row["expected_total"], 960)
+
+	def test_no_shift_days_are_not_evaluated(self):
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 9999}]
+		out = _build_over_occupied(users, assigned, [], "2026-06-29", "2026-06-30", 30)
+		self.assertEqual(out["rows"], [])
+
+	def test_tolerance_boundary_strict(self):
+		# a == t + tol → NOT over (strict >)
+		users = [{"name": "u@x.id", "full_name": "U"}]
+		expected = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 480}]
+		assigned = [{"user": "u@x.id", "day": "2026-06-29", "minutes": 510}]
+		out = _build_over_occupied(users, assigned, expected, "2026-06-29", "2026-06-29", 30)
+		self.assertEqual(out["rows"], [])
+
+	def test_sort_by_surplus_desc_and_full_name_fallback(self):
+		users = [{"name": "a@x.id", "full_name": "Alice"}, {"name": "b@x.id", "full_name": None}]
+		expected = [{"user": "a@x.id", "day": "2026-06-29", "minutes": 480},
+					{"user": "b@x.id", "day": "2026-06-29", "minutes": 480}]
+		assigned = [{"user": "a@x.id", "day": "2026-06-29", "minutes": 600},   # surplus 120
+					{"user": "b@x.id", "day": "2026-06-29", "minutes": 900}]   # surplus 420
+		out = _build_over_occupied(users, assigned, expected, "2026-06-29", "2026-06-29", 0)
+		self.assertEqual([r["user"] for r in out["rows"]], ["b@x.id", "a@x.id"])
+		self.assertEqual(out["rows"][0]["full_name"], "b@x.id")
+
+	def test_envelope_no_threshold(self):
+		out = _build_over_occupied([], [], [], "2026-06-29", "2026-06-30", 30)
+		self.assertEqual(out["rows"], [])
+		self.assertEqual(out["day_count"], 2)
+		self.assertEqual(out["tolerance"], 30)
+		self.assertNotIn("threshold", out)
+
+
+class TestOverOccupiedEndpoint(unittest.TestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for email in ("oo_guest@example.com",):
+			if frappe.db.exists("User", email):
+				frappe.delete_doc("User", email, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_requires_system_manager(self):
+		if not frappe.db.exists("User", "oo_guest@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "oo_guest@example.com",
+				"first_name": "OO", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		frappe.set_user("oo_guest@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			over_occupied("2026-06-22", "2026-06-28")
+
+	def test_rejects_oversize_span(self):
+		frappe.set_user("Administrator")
+		with self.assertRaises(frappe.ValidationError):
+			over_occupied("2026-01-01", "2026-12-31")
+
+	def test_contract_shape(self):
+		frappe.set_user("Administrator")
+		out = over_occupied("2026-06-22", "2026-06-26")
+		for key in ("tolerance", "day_count", "rows"):
 			self.assertIn(key, out)
 		self.assertIsInstance(out["rows"], list)
 		self.assertEqual(out["day_count"], 5)

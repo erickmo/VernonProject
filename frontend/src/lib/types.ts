@@ -583,6 +583,18 @@ export interface DataHealth {
   orphaned: DataHealthItem[]
 }
 
+export interface HomeBanner {
+  image: string
+  link: string
+  is_active: number
+}
+
+// Public shape returned to the home carousel (active only, no admin fields).
+export interface BannerSlide {
+  image: string
+  link: string
+}
+
 export interface AppSettings {
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
@@ -592,6 +604,7 @@ export interface AppSettings {
   late_penalty_per_minute: number
   early_leave_penalty_per_minute: number
   absence_penalty: number
+  home_banners: HomeBanner[]
 }
 
 export interface MeetingListItem {

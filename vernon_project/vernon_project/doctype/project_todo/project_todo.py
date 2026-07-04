@@ -271,14 +271,14 @@ class ProjectTodo(Document):
 		eb = float(grp.early_bonus or 0) / 100.0
 		assignee = point - late_days * lp * point + early_days * eb * point
 
+		# Leader earns a % of the assignee's ACTUAL earned points, sharing the
+		# assignee's fate (timing is already baked into `assignee`). The weight
+		# switches on lateness: leader_weight for on-time/early todos,
+		# leader_late_weight for late ones. So assignee 100 on-time -> leader 10
+		# at 10%; assignee -50 late -> leader -55 at a 110% late weight.
 		lw = float(grp.leader_weight or 0) / 100.0
-		llp = float(grp.leader_late_penalty or 0) / 100.0
-		leb = float(grp.leader_early_bonus or 0) / 100.0
-		leader = (
-			assignee * lw
-			- late_days * llp * assignee
-			+ early_days * leb * assignee
-		)
+		llw = float(grp.leader_late_weight or 0) / 100.0
+		leader = assignee * (llw if late_days > 0 else lw)
 		# Mentor earns a flat share of assignee_earned (timing already baked into
 		# assignee); no separate mentor late/early knobs.
 		mw = float(grp.mentor_weight or 0) / 100.0

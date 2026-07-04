@@ -1,0 +1,64 @@
+import {
+  FolderKanban,
+  CalendarClock,
+  QrCode,
+  Ticket,
+  CalendarCog,
+  Trophy,
+  Medal,
+  Gift,
+  HandHeart,
+  StickyNote,
+  Smile,
+  MessageSquarePlus,
+  type LucideIcon,
+} from 'lucide-react'
+
+export type ActionItem = {
+  icon: LucideIcon
+  title: string // full label — used by the /help "What can I do" list
+  short: string // compact label — used by the home quick-action grid tiles
+  desc: string
+  to: string
+}
+
+// Single source of truth for "what can I do" — the /help screen renders it
+// grouped with descriptions; the home grid flattens it into tiles. Add an
+// action here and it shows up in both.
+export const ACTION_GROUPS: { title: string; items: ActionItem[] }[] = [
+  {
+    title: 'Get work done',
+    items: [
+      { icon: FolderKanban, title: 'Projects & todos', short: 'Projects', desc: 'Open a project, add work items and todos.', to: '/projects' },
+      { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/' },
+      { icon: QrCode, title: 'Check in with QR', short: 'Check-in', desc: 'Scan the station code to mark attendance.', to: '/scan' },
+    ],
+  },
+  {
+    title: 'Events & community',
+    items: [
+      { icon: Ticket, title: 'Join an event', short: 'Events', desc: 'Browse office events and register — free or paid.', to: '/events' },
+      { icon: CalendarCog, title: 'Host an event', short: 'Host', desc: 'Create events and manage who registered.', to: '/events/manage' },
+      { icon: HandHeart, title: 'Recognize teammates', short: 'Recognize', desc: 'React on the team wall to send recognition points.', to: '/team-wall' },
+    ],
+  },
+  {
+    title: 'Rewards & progress',
+    items: [
+      { icon: Trophy, title: 'Climb the leaderboard', short: 'Leaderboard', desc: 'See where you rank on productivity and character.', to: '/leaderboard' },
+      { icon: Medal, title: 'Earn achievements', short: 'Achievements', desc: 'Unlock badges and warrior tiers as you contribute.', to: '/achievements' },
+      { icon: Gift, title: 'Spend your points', short: 'Rewards', desc: 'Redeem points for rewards in the marketplace.', to: '/marketplace' },
+    ],
+  },
+  {
+    title: 'Personal',
+    items: [
+      { icon: StickyNote, title: 'Capture notes', short: 'Notes', desc: 'Jot quick notes — hold ➕ for an instant one.', to: '/notes' },
+      { icon: Smile, title: 'Make it yours', short: 'Avatar', desc: 'Customize your avatar.', to: '/avatar' },
+      { icon: MessageSquarePlus, title: 'Send feedback', short: 'Feedback', desc: "Tell the team what's working or missing.", to: '/feedback' },
+    ],
+  },
+]
+
+// Flat list for the quick-action grid.
+export const ACTIONS: ActionItem[] = ACTION_GROUPS.flatMap((g) => g.items)

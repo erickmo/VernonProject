@@ -7,10 +7,15 @@
 # user's Project Todo day-allocations into a user x day matrix and flags any
 # day whose total falls below Vernon Settings.min_daily_estimated_minutes.
 
+import datetime
+
 import frappe
 from frappe.utils import getdate, add_days, date_diff
 
 MAX_SPAN_DAYS = 92
+
+# Weekday flags on Shift Assignment, indexed by date.weekday() (Mon=0 .. Sun=6).
+WEEKDAY_FIELDS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
 def _date_list(from_date, to_date):
@@ -179,50 +184,132 @@ def daily_estimated_time(from_date, to_date):
 	return _build_daily_matrix(users, assigned_rows, planned_rows, start, end, threshold)
 
 
-def _build_under_occupied(active_users, assigned_rows, from_date, to_date, threshold, tolerance):
-	"""Pure aggregator for the Under-Occupied report.
+def _time_to_minutes(t):
+	"""A Shift Template Time value → minutes past midnight. Accepts timedelta,
+	datetime.time, or 'HH:MM[:SS]' strings. None → None."""
+	if t is None:
+		return None
+	if isinstance(t, datetime.timedelta):
+		return int(t.total_seconds() // 60)
+	if isinstance(t, datetime.time):
+		return t.hour * 60 + t.minute
+	if isinstance(t, str):
+		parts = t.split(":")
+		return int(parts[0]) * 60 + int(parts[1])
+	return None
 
-	A user is included when avg_daily < effective (strict).
-	  effective = max(0, threshold - tolerance)
-	  under_days = days where assigned_for_day < effective
-	  deficit    = sum(max(0, threshold - day_assigned)) — busy days don't cancel
-	Rows sorted by (-deficit, full_name).
-	"""
-	dates = _date_list(from_date, to_date)
-	threshold = int(threshold or 0)
-	tolerance = int(tolerance or 0)
-	effective = max(0, threshold - tolerance)
-	day_count = len(dates)
 
-	by_user = {}
-	for r in assigned_rows:
-		by_user.setdefault(r["user"], {})
+def _template_minutes(start, end):
+	"""Length of a shift in minutes. Missing/non-positive → 0. Overnight shifts
+	aren't supported (Shift Template forbids end ≤ start), so plain subtraction is safe."""
+	s, e = _time_to_minutes(start), _time_to_minutes(end)
+	if s is None or e is None:
+		return 0
+	return max(0, e - s)
+
+
+def _resolve_expected(names, dates, assignments, template_minutes, holidays):
+	"""Pure: per user per day, the scheduled shift minutes. For each day, pick the
+	latest-effective Shift Assignment that covers it and has that weekday set; skip
+	off days, holidays, and 0-minute templates. Returns [{user, day, minutes}] — days
+	with no shift produce NO row (the occupancy builders leave those days unevaluated)."""
+	by_emp = {}
+	for a in assignments:
+		by_emp.setdefault(a["employee"], []).append(a)
+
+	out = []
+	for u in names:
+		u_assigns = by_emp.get(u, [])
+		u_holidays = holidays.get(u) or set()
+		for d in dates:
+			if d in u_holidays:
+				continue
+			weekday_field = WEEKDAY_FIELDS[getdate(d).weekday()]
+			chosen = None
+			for a in u_assigns:
+				covers = str(a["effective_from"]) <= d and (
+					not a.get("effective_to") or str(a["effective_to"]) >= d
+				)
+				if covers and a.get(weekday_field):
+					if chosen is None or str(a["effective_from"]) >= str(chosen["effective_from"]):
+						chosen = a
+			if not chosen:
+				continue
+			minutes = int(template_minutes.get(chosen["shift_template"], 0) or 0)
+			if minutes > 0:
+				out.append({"user": u, "day": d, "minutes": minutes})
+	return out
+
+
+def _holidays_by_user(names, from_date, to_date):
+	"""{user: set('YYYY-MM-DD')} of holidays in range via active Attendance Profile →
+	Brand.holiday_list → Attendance Holiday. Users without a profile/brand → no holidays."""
+	profiles = frappe.get_all(
+		"Attendance Profile",
+		filters={"user": ["in", names], "active": 1},
+		fields=["user", "brand"],
+	)
+	if not profiles:
+		return {}
+	list_by_brand = {
+		b: frappe.db.get_value("Brand", b, "holiday_list")
+		for b in {p["brand"] for p in profiles if p.get("brand")}
+	}
+	dates_by_list = {}
+	for hl in {v for v in list_by_brand.values() if v}:
+		days = frappe.get_all(
+			"Attendance Holiday",
+			filters={
+				"parent": hl, "parenttype": "Attendance Holiday List",
+				"holiday_date": ["between", [from_date, to_date]],
+			},
+			pluck="holiday_date",
+		)
+		dates_by_list[hl] = {str(d) for d in days}
+	out = {}
+	for p in profiles:
+		hl = list_by_brand.get(p.get("brand"))
+		if hl and dates_by_list.get(hl):
+			out.setdefault(p["user"], set()).update(dates_by_list[hl])
+	return out
+
+
+def _expected_minutes(names, from_date, to_date):
+	"""Expected working minutes per user per day from Shift Assignment → Shift Template,
+	for the inclusive [from_date, to_date] range. Works for any date (past or future),
+	unlike Daily Attendance. Returns [{user, day, minutes}]; off/holiday days omitted."""
+	if not names:
+		return []
+	from_date, to_date = str(getdate(from_date)), str(getdate(to_date))
+	assignments = frappe.get_all(
+		"Shift Assignment",
+		filters={"employee": ["in", names], "effective_from": ["<=", to_date]},
+		or_filters=[["effective_to", ">=", from_date], ["effective_to", "is", "not set"]],
+		fields=["employee", "shift_template", "effective_from", "effective_to", *WEEKDAY_FIELDS],
+	)
+	if not assignments:
+		return []
+	template_minutes = {
+		t["name"]: _template_minutes(t.get("start_time"), t.get("end_time"))
+		for t in frappe.get_all("Shift Template", fields=["name", "start_time", "end_time"])
+	}
+	holidays = _holidays_by_user(names, from_date, to_date)
+	return _resolve_expected(names, _date_list(from_date, to_date), assignments, template_minutes, holidays)
+
+
+def _pivot(rows):
+	"""[{user, day, minutes}] → {user: {day: minutes}}, summing duplicate day entries."""
+	out = {}
+	for r in rows:
+		out.setdefault(r["user"], {})
 		day = str(r["day"])
-		by_user[r["user"]][day] = by_user[r["user"]].get(day, 0) + int(r["minutes"] or 0)
+		out[r["user"]][day] = out[r["user"]].get(day, 0) + int(r["minutes"] or 0)
+	return out
 
-	rows = []
-	for u in active_users:
-		a = by_user.get(u["name"], {})
-		assigned_total = sum(a.get(d, 0) for d in dates)
-		avg_daily = round(assigned_total / day_count) if day_count else 0
-		if avg_daily >= effective:
-			continue  # ponytail: strict < ; at exactly effective the user is not under-occupied
-		under_days = sum(1 for d in dates if a.get(d, 0) < effective)
-		deficit = sum(max(0, threshold - a.get(d, 0)) for d in dates)
-		rows.append({
-			"user": u["name"],
-			"full_name": u.get("full_name") or u["name"],
-			"assigned_total": assigned_total,
-			"avg_daily": avg_daily,
-			"under_days": under_days,
-			"deficit": deficit,
-		})
 
-	rows.sort(key=lambda r: (-r["deficit"], r["full_name"]))
+def _occupancy_envelope(tolerance, day_count, from_date, to_date, rows):
 	return {
-		"threshold": threshold,
 		"tolerance": tolerance,
-		"effective": effective,
 		"day_count": day_count,
 		"from_date": str(getdate(from_date)),
 		"to_date": str(getdate(to_date)),
@@ -230,25 +317,118 @@ def _build_under_occupied(active_users, assigned_rows, from_date, to_date, thres
 	}
 
 
-@frappe.whitelist()
-def under_occupied(from_date, to_date):
-	"""Under-occupied users for the inclusive [from_date, to_date] range.
-	A user is under-occupied when their avg daily assigned minutes falls below
-	(min_daily_estimated_minutes − under_occupied_tolerance_minutes)."""
-	_require_system_manager()
-
-	start = getdate(from_date)
-	end = getdate(to_date)
+def _validated_range(from_date, to_date):
+	start, end = getdate(from_date), getdate(to_date)
 	if end < start:
 		frappe.throw("from_date must be on or before to_date.", frappe.ValidationError)
 	if date_diff(end, start) > MAX_SPAN_DAYS:
 		frappe.throw(f"Date range too large (max {MAX_SPAN_DAYS} days).", frappe.ValidationError)
+	return start, end
 
-	threshold = frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0
+
+def _build_under_occupied(active_users, assigned_rows, expected_rows, from_date, to_date, tolerance):
+	"""Pure aggregator for the Under-Occupied report — per-user shift target.
+
+	Only days with a resolved shift target (a row in `expected_rows`) are evaluated;
+	days with no shift carry no target and are ignored. For an evaluated day with
+	target t and assigned a:
+	  under day  ->  a < t - tolerance    (strict)
+	  deficit   +=  max(0, t - a)         (over-target days don't cancel)
+	A user is included when they have >= 1 under day. Sorted by (-deficit, full_name).
+	"""
+	tolerance = int(tolerance or 0)
+	day_count = len(_date_list(from_date, to_date))
+	assigned = _pivot(assigned_rows)
+	expected = _pivot(expected_rows)
+
+	rows = []
+	for u in active_users:
+		a = assigned.get(u["name"], {})
+		t = expected.get(u["name"], {})
+		if not t:
+			continue  # no shift days in range -> no verdict
+		under_days = sum(1 for d in t if a.get(d, 0) < t[d] - tolerance)
+		if not under_days:
+			continue
+		rows.append({
+			"user": u["name"],
+			"full_name": u.get("full_name") or u["name"],
+			"assigned_total": sum(a.get(d, 0) for d in t),
+			"expected_total": sum(t.values()),
+			"under_days": under_days,
+			"deficit": sum(max(0, t[d] - a.get(d, 0)) for d in t),
+		})
+
+	rows.sort(key=lambda r: (-r["deficit"], r["full_name"]))
+	return _occupancy_envelope(tolerance, day_count, from_date, to_date, rows)
+
+
+@frappe.whitelist()
+def under_occupied(from_date, to_date):
+	"""Under-occupied users for the inclusive [from_date, to_date] range. A user is
+	under-occupied when their assigned minutes fall below their scheduled shift minutes
+	(per day, from Shift Assignment -> Shift Template) by more than the tolerance.
+	Days with no shift carry no target and are ignored."""
+	_require_system_manager()
+	start, end = _validated_range(from_date, to_date)
 	tolerance = frappe.db.get_single_value("Vernon Settings", "under_occupied_tolerance_minutes") or 0
 
 	users = _active_users()
 	names = [u["name"] for u in users]
 	assigned_rows = _assigned_minutes(names, str(start), str(end))
+	expected_rows = _expected_minutes(names, str(start), str(end))
 
-	return _build_under_occupied(users, assigned_rows, start, end, threshold, tolerance)
+	return _build_under_occupied(users, assigned_rows, expected_rows, start, end, tolerance)
+
+
+def _build_over_occupied(active_users, assigned_rows, expected_rows, from_date, to_date, tolerance):
+	"""Pure aggregator for the Over-Occupied report — mirror of under, per-user shift target.
+
+	For an evaluated day (a shift day) with target t and assigned a:
+	  over day  ->  a > t + tolerance     (strict)
+	  surplus  +=  max(0, a - t)          (light days don't cancel)
+	A user is included when they have >= 1 over day. Sorted by (-surplus, full_name).
+	"""
+	tolerance = int(tolerance or 0)
+	day_count = len(_date_list(from_date, to_date))
+	assigned = _pivot(assigned_rows)
+	expected = _pivot(expected_rows)
+
+	rows = []
+	for u in active_users:
+		a = assigned.get(u["name"], {})
+		t = expected.get(u["name"], {})
+		if not t:
+			continue
+		over_days = sum(1 for d in t if a.get(d, 0) > t[d] + tolerance)
+		if not over_days:
+			continue
+		rows.append({
+			"user": u["name"],
+			"full_name": u.get("full_name") or u["name"],
+			"assigned_total": sum(a.get(d, 0) for d in t),
+			"expected_total": sum(t.values()),
+			"over_days": over_days,
+			"surplus": sum(max(0, a.get(d, 0) - t[d]) for d in t),
+		})
+
+	rows.sort(key=lambda r: (-r["surplus"], r["full_name"]))
+	return _occupancy_envelope(tolerance, day_count, from_date, to_date, rows)
+
+
+@frappe.whitelist()
+def over_occupied(from_date, to_date):
+	"""Over-occupied users for the inclusive [from_date, to_date] range. A user is
+	over-occupied when their assigned minutes rise above their scheduled shift minutes
+	(per day, from Shift Assignment -> Shift Template) by more than the tolerance —
+	the same per-user target and slack band the Under-Occupied report uses, mirrored up."""
+	_require_system_manager()
+	start, end = _validated_range(from_date, to_date)
+	tolerance = frappe.db.get_single_value("Vernon Settings", "under_occupied_tolerance_minutes") or 0
+
+	users = _active_users()
+	names = [u["name"] for u in users]
+	assigned_rows = _assigned_minutes(names, str(start), str(end))
+	expected_rows = _expected_minutes(names, str(start), str(end))
+
+	return _build_over_occupied(users, assigned_rows, expected_rows, start, end, tolerance)

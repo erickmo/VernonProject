@@ -244,6 +244,7 @@ export const mobileApi = {
       M + 'save_app_settings',
       settings as Record<string, unknown>,
     ),
+  getHomeBanners: () => api.get<import('./types').BannerSlide[]>(M + 'get_home_banners'),
   getNotifications: (limit = 30) =>
     api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit }),
   markNotificationRead: (name: string) =>
@@ -480,6 +481,31 @@ export async function uploadRewardImage(file: File): Promise<string> {
   const fd = new FormData()
   fd.append('file', file)
   const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_reward_image', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out.file_url as string
+}
+
+// Multipart upload of a home-banner image. Gated server-side on settings admins.
+export async function uploadBannerImage(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_banner_image', {
     method: 'POST',
     headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
     body: fd,

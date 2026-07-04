@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production"],
+ "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
   {
    "fieldname": "max_estimated_minutes",
@@ -101,7 +101,9 @@
   {"fieldname": "payments_section", "fieldtype": "Section Break", "label": "Payments (Midtrans)"},
   {"fieldname": "midtrans_client_key", "fieldtype": "Data", "label": "Midtrans Client Key"},
   {"fieldname": "midtrans_server_key", "fieldtype": "Password", "label": "Midtrans Server Key"},
-  {"fieldname": "midtrans_is_production", "fieldtype": "Check", "label": "Midtrans Production Mode", "default": "0"}
+  {"fieldname": "midtrans_is_production", "fieldtype": "Check", "label": "Midtrans Production Mode", "default": "0"},
+  {"fieldname": "home_banners_section", "fieldtype": "Section Break", "label": "Home Banners"},
+  {"fieldname": "home_banners", "fieldtype": "Table", "label": "Home Banners", "options": "Vernon Banner", "description": "Full-width promo banners shown at the top of the mobile home screen."}
  ],
  "issingle": 1,
  "index_web_pages_for_search": 1,

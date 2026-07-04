@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Settings as SettingsIcon, Check } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Settings as SettingsIcon, Check, ImagePlus, Trash2, Plus } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
 import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings } from '@/hooks/useData'
+import { uploadBannerImage } from '@/lib/api'
+import type { HomeBanner } from '@/lib/types'
 
 const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
@@ -23,6 +25,10 @@ export default function Settings() {
   const [lateRate, setLateRate] = useState<string>('0')
   const [earlyRate, setEarlyRate] = useState<string>('0')
   const [absencePenalty, setAbsencePenalty] = useState<string>('0')
+  const [banners, setBanners] = useState<HomeBanner[]>([])
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
+  const bannerFileRef = useRef<HTMLInputElement>(null)
+  const pickForIdx = useRef<number | null>(null)
 
   useEffect(() => {
     if (!loaded) return
@@ -34,6 +40,7 @@ export default function Settings() {
     setLateRate(String(loaded.late_penalty_per_minute))
     setEarlyRate(String(loaded.early_leave_penalty_per_minute))
     setAbsencePenalty(String(loaded.absence_penalty))
+    setBanners(loaded.home_banners ?? [])
   }, [loaded])
 
   const isManager = boot ? canManageGroups(boot) : null
@@ -74,6 +81,7 @@ export default function Settings() {
         late_penalty_per_minute: n(lateRate),
         early_leave_penalty_per_minute: n(earlyRate),
         absence_penalty: n(absencePenalty),
+        home_banners: banners.filter((b) => b.image),
       },
       {
         onSuccess: () => toast('success', 'Settings saved'),
@@ -81,6 +89,29 @@ export default function Settings() {
       },
     )
   }
+
+  // Banner helpers — image upload targets the row stored in pickForIdx.
+  const onPickBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    const i = pickForIdx.current
+    if (f && i != null) {
+      setUploadingIdx(i)
+      try {
+        const url = await uploadBannerImage(f)
+        setBanners((bs) => bs.map((b, k) => (k === i ? { ...b, image: url } : b)))
+      } catch (err) {
+        toast('error', err instanceof Error ? err.message : 'Upload failed')
+      } finally {
+        setUploadingIdx(null)
+      }
+    }
+    pickForIdx.current = null
+    if (bannerFileRef.current) bannerFileRef.current.value = ''
+  }
+  const addBanner = () => setBanners((bs) => [...bs, { image: '', link: '', is_active: 1 }])
+  const removeBanner = (i: number) => setBanners((bs) => bs.filter((_, k) => k !== i))
+  const patchBanner = (i: number, patch: Partial<HomeBanner>) =>
+    setBanners((bs) => bs.map((b, k) => (k === i ? { ...b, ...patch } : b)))
 
   return (
     <form
@@ -172,6 +203,72 @@ export default function Settings() {
               Points deducted per minute late / early-leave; flat for absence. 0 = no penalty.
             </p>
           </div>
+        </BentoTile>
+
+        <BentoTile span="full" tone="tint" accent="slate" title="Home Banners">
+          <p className="mt-1 text-xs text-muted">
+            Full-width promo banners at the top of the mobile home. Landscape images (~16:7) look best. Link is
+            optional — an in-app route (<code>/events</code>) or a full URL.
+          </p>
+
+          <input ref={bannerFileRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
+
+          <div className="mt-3 space-y-3">
+            {banners.map((b, i) => (
+              <div key={i} className="flex gap-3 rounded-xl border border-line p-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    pickForIdx.current = i
+                    bannerFileRef.current?.click()
+                  }}
+                  className="relative flex aspect-[16/7] w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-hover/[0.04] text-muted"
+                >
+                  {uploadingIdx === i ? (
+                    <Spinner className="h-5 w-5" />
+                  ) : b.image ? (
+                    <img src={b.image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <ImagePlus className="h-6 w-6" />
+                  )}
+                </button>
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <input
+                    className={field}
+                    value={b.link}
+                    onChange={(e) => patchBanner(i, { link: e.target.value })}
+                    placeholder="Link (optional) — /events or https://…"
+                  />
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-brand-600"
+                        checked={!!b.is_active}
+                        onChange={(e) => patchBanner(i, { is_active: e.target.checked ? 1 : 0 })}
+                      />
+                      Active
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeBanner(i)}
+                      className="flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={addBanner}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line py-2.5 text-sm font-semibold text-muted hover:text-ink sm:w-auto sm:px-8"
+          >
+            <Plus className="h-4 w-4" /> Add banner
+          </button>
         </BentoTile>
       </BentoGrid>
 

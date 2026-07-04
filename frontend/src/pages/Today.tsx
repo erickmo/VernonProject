@@ -22,6 +22,8 @@ import {
   Sparkles,
   Star,
   ArrowUpRight,
+  Trophy,
+  Ticket,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
@@ -36,7 +38,10 @@ import { RecapCard } from '@/components/RecapCard'
 import { PlanDaySheet } from '@/components/PlanDaySheet'
 import { Fab } from '@/components/Fab'
 import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
-import { useBoot, useDashboard, useProjects, useWallet } from '@/hooks/useData'
+import { Spotlight, type Slide } from '@/components/Spotlight'
+import { QuickActions } from '@/components/QuickActions'
+import { BannerCarousel } from '@/components/BannerCarousel'
+import { useBoot, useDashboard, useProjects, useWallet, useHomeBanners } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
@@ -162,6 +167,7 @@ export default function Today() {
   const { data, isLoading, refetch } = useDashboard()
   const { data: projects } = useProjects()
   const { data: wallet } = useWallet()
+  const { data: banners } = useHomeBanners()
   const [lens, setLens] = useState<Lens>('me')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
@@ -337,6 +343,61 @@ export default function Today() {
     </div>
   ) : null
 
+  // Rotating spotlight slides — built from data already loaded. Most urgent
+  // first (overdue → review → today's plan / caught-up), then the two evergreen
+  // shortcuts so the banner always has something to rotate.
+  const bal = wallet?.balance ?? 0
+  const todayEarned = wallet?.today_earned ?? 0
+  const spotlight: Slide[] = []
+  if (data) {
+    if (data.counts.overdue > 0)
+      spotlight.push({
+        id: 'overdue', eyebrow: 'Needs attention', title: `${data.counts.overdue} overdue`,
+        sub: 'Clear them before they pile up', cta: 'Review overdue', icon: AlertCircle,
+        gradient: 'from-rose-500 via-red-500 to-orange-500', onAct: goOverdue,
+      })
+    if (data.counts.review > 0)
+      spotlight.push({
+        id: 'review', eyebrow: 'Waiting on you', title: `${data.counts.review} to review`,
+        sub: "Check & approve teammates' work", cta: 'Open review', icon: CheckCheck,
+        gradient: 'from-sky-500 via-blue-500 to-indigo-500', onAct: () => navigate('/review'),
+      })
+    if (dueTodayCount > 0)
+      spotlight.push({
+        id: 'plan', eyebrow: 'Your day', title: `${dueTodayCount} due today`,
+        sub: 'Line them up so nothing slips', cta: 'Plan my day', icon: Sparkles,
+        gradient: 'from-brand-600 via-[#7A5AF8] to-[#E879C7]', onAct: () => setPlanOpen(true),
+      })
+    else if (data.counts.completed_today > 0)
+      spotlight.push({
+        id: 'caught', eyebrow: 'Nice work', title: 'All caught up',
+        sub: `${data.counts.completed_today} done today — enjoy it`, cta: 'See your projects', icon: PartyPopper,
+        gradient: 'from-emerald-500 via-teal-500 to-brand-500', onAct: () => navigate('/projects'),
+      })
+    if (todayEarned > 0)
+      spotlight.push({
+        id: 'streak', eyebrow: 'Points', title: `+${todayEarned.toLocaleString(undefined, { maximumFractionDigits: 1 })} today`,
+        sub: 'Spend them on rewards', cta: 'Open marketplace', icon: Flame,
+        gradient: 'from-amber-500 via-orange-500 to-pink-500', onAct: () => navigate('/marketplace'),
+      })
+  }
+  spotlight.push({
+    id: 'leaderboard', eyebrow: 'Standings', title: 'Where do you rank?',
+    sub: 'Productivity & character boards', cta: 'View leaderboard', icon: Trophy,
+    gradient: 'from-violet-600 via-purple-500 to-fuchsia-500', onAct: () => navigate('/leaderboard'),
+  })
+  spotlight.push({
+    id: 'events', eyebrow: 'Community', title: 'Join an event',
+    sub: "See what's happening at the office", cta: 'Browse events', icon: Ticket,
+    gradient: 'from-emerald-500 via-teal-500 to-cyan-500', onAct: () => navigate('/events'),
+  })
+
+  // Quick-action grid badges (keyed by route). Only the two we already have data for.
+  const balShort = bal >= 1000 ? `${(bal / 1000).toFixed(1)}k` : Math.round(bal).toString()
+  const actionBadges: Record<string, string | number> = {}
+  if (activeTodos.length) actionBadges['/projects'] = activeTodos.length
+  if (bal > 0) actionBadges['/marketplace'] = balShort
+
   return (
     <TabScreen title="Home" subtitle={`${greeting()}, ${firstName}`} right={right}>
       {isLoading && !data ? (
@@ -345,135 +406,16 @@ export default function Today() {
         <PullToRefresh onRefresh={refetch}>
           {data && (
             <>
-              {/* Hero — playful indigo "day card": soft-pop gradient, confetti
-                  specks, a floating sticker, copy that nudges not nags. */}
-              <div className="relative flex items-center gap-4 overflow-hidden rounded-[26px] bg-gradient-to-br from-brand-600 via-[#7A5AF8] to-[#E879C7] p-5 text-white shadow-card">
-                {/* washi-tape strip */}
-                <div aria-hidden className="pointer-events-none absolute -left-6 top-3 h-7 w-28 -rotate-[18deg] bg-white/25" />
-                {/* confetti specks */}
-                <div aria-hidden className="pointer-events-none absolute inset-0">
-                  <span className="absolute left-[20%] top-3 h-2 w-2 rotate-12 rounded-[2px] bg-amber-300" />
-                  <span className="absolute right-[14%] top-6 h-2.5 w-2.5 rounded-full bg-sky-300/90 animate-float" />
-                  <span className="absolute right-[30%] bottom-4 h-2 w-2 rotate-45 rounded-[2px] bg-emerald-300" />
-                  <span className="absolute left-[46%] bottom-3 h-1.5 w-1.5 rounded-full bg-white/80" />
-                </div>
-                {/* paper dot motif */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 opacity-60"
-                  style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.16) 1px, transparent 1.4px)', backgroundSize: '15px 15px' }}
-                />
-                {/* floating icon stickers */}
-                <Sparkles aria-hidden strokeWidth={2.25} className="pointer-events-none absolute -right-1 -top-1 h-7 w-7 animate-float text-amber-200" />
-                <Star aria-hidden fill="currentColor" className="pointer-events-none absolute right-10 bottom-3 h-3.5 w-3.5 animate-float text-white/80" style={{ animationDelay: '0.7s' }} />
-                <div className="relative z-10 flex h-[68px] w-[68px] items-center justify-center">
-                  <Ring pct={pct} />
-                  {/* key forces a remount so the pop replays when the ring hits 100% */}
-                  <span
-                    key={Math.round(pct * 100)}
-                    className={clsx('absolute font-display text-base font-semibold', pct >= 1 && 'animate-pop')}
-                  >
-                    {Math.round(pct * 100)}%
-                  </span>
-                </div>
-                <div className="relative z-10 min-w-0 flex-1">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">Your day</p>
-                  <p className="mt-0.5 font-display text-xl font-semibold leading-tight">
-                    {data.counts.completed_today} done
-                    {data.counts.completed_today > 0 && (
-                      <PartyPopper aria-hidden className="mx-1 inline-block h-5 w-5 animate-wiggle align-[-0.2em] text-amber-200" />
-                    )}{' '}· {dueTodayCount} to go
-                  </p>
-                  {todayTotalMin > 0 ? (
-                    <p className="text-xs font-semibold text-white/85">
-                      {formatEstimateRatio(completedMin, todayTotalMin)} done —{' '}
-                      {pct >= 1 ? 'all wrapped up!' : pct >= 0.5 ? 'over halfway, nice!' : "you've got this"}
-                    </p>
-                  ) : (
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-white/85">
-                      Nothing due — enjoy the breathing room <Coffee aria-hidden className="h-3.5 w-3.5" />
-                    </p>
-                  )}
-                  <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
-                    {data.counts.overdue > 0 && (
-                      <button
-                        onClick={goOverdue}
-                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold active:scale-95"
-                      >
-                        <AlertCircle className="h-3 w-3" /> {data.counts.overdue} overdue
-                      </button>
-                    )}
-                    {data.counts.review > 0 && (
-                      <button
-                        onClick={() => navigate('/review')}
-                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold active:scale-95"
-                      >
-                        <CheckCheck className="h-3 w-3" /> {data.counts.review} to review
-                      </button>
-                    )}
-                  </div>
-                </div>
+              {/* Managed promo banners — full-bleed strip, flush to the top. */}
+              <BannerCarousel slides={banners ?? []} />
+
+              {/* Rotating spotlight hero — auto-cycles the most relevant nudge. */}
+              <div className={clsx('mb-3', (banners?.length ?? 0) > 0 && 'mt-4')}>
+                <Spotlight slides={spotlight} />
               </div>
 
-              {/* Points card */}
-              {(() => {
-                const bal = wallet?.balance ?? 0
-                const tod = wallet?.today_earned ?? 0
-                const yest = wallet?.yesterday_earned ?? 0
-                const isBeating = tod > 0 && tod >= yest
-                const isZero = tod === 0
-                return (
-                  <button
-                    onClick={() => navigate('/marketplace')}
-                    className="mt-3 w-full rounded-3xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-4 shadow-card active:scale-[0.99] transition text-left"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                        <Coins className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Spendable points</p>
-                        <p className="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">
-                          {bal.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-slate-300 dark:text-slate-600 shrink-0" />
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          {tod > 0 && <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
-                          <span className={`text-sm font-bold ${tod > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                            +{tod.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                          </span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">today</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-slate-300 dark:text-slate-600">
-                            +{yest.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                          </span>
-                          <span className="text-xs text-slate-300 dark:text-slate-600">yest</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {isZero ? (
-                          <span className="text-xs font-semibold text-amber-500">Earn your first points today →</span>
-                        ) : isBeating ? (
-                          <>
-                            <Flame aria-hidden fill="currentColor" className="h-4 w-4 shrink-0 animate-wiggle text-orange-500" />
-                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Beating yesterday!</span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Keep it up →</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })()}
+              {/* Quick actions — every "what can I do" shortcut as a tile */}
+              <QuickActions badges={actionBadges} />
 
               {/* Weekly recap — auto-surfaces Mon–Wed, dismissible per week */}
               <RecapCard />

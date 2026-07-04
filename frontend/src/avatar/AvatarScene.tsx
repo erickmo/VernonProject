@@ -23,14 +23,18 @@ export function AvatarScene({ config, assets, className }: { config: AvatarConfi
       <DiceBearAvatar config={faceConfig} className="h-full w-full" />
       {props.map((p, i) => (
         <span key={i} className="pointer-events-none absolute select-none" style={anchorStyle(p.anchor)}>
-          {p.icon
-            ? <CollectibleIcon name={p.icon} className="h-7 w-7 text-stone-700 dark:text-white" />
-            : p.emoji}
+          {p.image
+            ? <img src={p.image} alt="" className="h-9 w-9 object-contain" />
+            : p.icon
+              ? <CollectibleIcon name={p.icon} className="h-7 w-7 text-stone-700 dark:text-white" />
+              : p.emoji}
         </span>
       ))}
-      {fc && (fc.icon
-        ? <CollectibleIcon name={fc.icon} className="pointer-events-none absolute bottom-[4%] right-[4%] h-10 w-10 select-none" />
-        : fc.emoji && <span className="pointer-events-none absolute bottom-[4%] right-[4%] select-none text-4xl leading-none">{fc.emoji}</span>
+      {fc && (fc.image
+        ? <img src={fc.image} alt="" className="pointer-events-none absolute bottom-[4%] right-[4%] h-14 w-14 select-none object-contain" />
+        : fc.icon
+          ? <CollectibleIcon name={fc.icon} className="pointer-events-none absolute bottom-[4%] right-[4%] h-10 w-10 select-none" />
+          : fc.emoji && <span className="pointer-events-none absolute bottom-[4%] right-[4%] select-none text-4xl leading-none">{fc.emoji}</span>
       )}
     </div>
   )

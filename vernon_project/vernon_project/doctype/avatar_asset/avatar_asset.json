@@ -1,14 +1,17 @@
 {
  "actions": [], "allow_rename": 1, "autoname": "field:asset_name",
  "creation": "2026-06-28 00:00:00.000000", "doctype": "DocType", "engine": "InnoDB",
- "field_order": ["asset_name","asset_type","emoji","icon","gradient","anchor","is_default","price","active"],
+ "field_order": ["asset_name","asset_type","emoji","icon","image","gradient","anchor","set_name","earn_only","is_default","price","active"],
  "fields": [
   {"fieldname":"asset_name","fieldtype":"Data","label":"Asset Name","reqd":1,"unique":1,"in_list_view":1},
   {"fieldname":"asset_type","fieldtype":"Select","label":"Type","options":"Scene\nProp\nCollectible","reqd":1,"in_list_view":1},
   {"fieldname":"emoji","fieldtype":"Data","label":"Emoji"},
   {"fieldname":"icon","fieldtype":"Data","label":"Icon (lucide name)"},
+  {"fieldname":"image","fieldtype":"Small Text","label":"Image (URL or data-URI) — beats icon/emoji when set"},
   {"fieldname":"gradient","fieldtype":"Small Text","label":"Gradient (CSS)"},
   {"fieldname":"anchor","fieldtype":"Select","label":"Anchor","options":"\ntop\ncorner\nframe\nnone"},
+  {"fieldname":"set_name","fieldtype":"Data","label":"Set / Collection"},
+  {"fieldname":"earn_only","fieldtype":"Check","label":"Earn only (not for sale)","default":"0"},
   {"fieldname":"is_default","fieldtype":"Check","label":"Default (free)","default":"0","in_list_view":1},
   {"fieldname":"price","fieldtype":"Float","label":"Price","default":"5000"},
   {"fieldname":"active","fieldtype":"Check","label":"Active","default":"1","in_list_view":1}

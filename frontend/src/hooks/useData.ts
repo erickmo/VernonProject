@@ -991,8 +991,15 @@ export function useSaveAppSettings() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (settings: Partial<AppSettings>) => mobileApi.saveAppSettings(settings),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['app-settings'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['app-settings'] })
+      qc.invalidateQueries({ queryKey: ['home-banners'] })
+    },
   })
+}
+
+export function useHomeBanners() {
+  return useQuery({ queryKey: ['home-banners'], queryFn: () => mobileApi.getHomeBanners() })
 }
 
 export function useNotifications() {
