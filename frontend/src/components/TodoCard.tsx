@@ -69,6 +69,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         <div className="min-w-0 flex-1">
           {showProject && (
             <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-slate-500">
+              {todo.brand ? `${todo.brand} · ` : ''}
               {todo.project_name} · {todo.project_detail_title}
             </p>
           )}
