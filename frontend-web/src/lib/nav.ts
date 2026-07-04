@@ -3,12 +3,12 @@ import {
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, Store, Coins, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight, CalendarCog,
-  CalendarClock,
+  CalendarClock, Building2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
-  canManageMarketplace, canGrantPoints, canManageAttendance,
+  canManageMarketplace, canGrantPoints, canManageAttendance, canManageResources,
 } from '@/hooks/useData'
 
 export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string }
@@ -52,6 +52,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', sub: 'Integrity checks', icon: ShieldAlert } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon } as NavLeaf] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', sub: 'Brand registry', icon: Tag } as NavLeaf] : []),
+    ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Meeting Rooms', sub: 'Bookable rooms', icon: Building2 } as NavLeaf] : []),
     ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
     ...(canManageMarketplace(b) ? [{ to: '/marketplace-admin', label: 'Marketplace Admin', sub: 'Manage rewards', icon: Store } as NavLeaf] : []),
     ...(canGrantPoints(b) ? [{ to: '/grant-points', label: 'Grant Points', sub: 'Award points', icon: Coins } as NavLeaf] : []),

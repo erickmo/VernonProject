@@ -10,6 +10,7 @@ import {
   canManageMarketplace,
   canGrantPoints,
   canManageAttendance,
+  canManageResources,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -37,6 +38,8 @@ import Groups from '@web/pages/Groups'
 import GroupForm from '@web/pages/GroupForm'
 import Brands from '@web/pages/Brands'
 import BrandForm from '@web/pages/BrandForm'
+import MeetingRooms from '@web/pages/MeetingRooms'
+import MeetingRoomForm from '@web/pages/MeetingRoomForm'
 import Notes from '@web/pages/Notes'
 import NoteForm from '@web/pages/NoteForm'
 import Feedback from '@web/pages/Feedback'
@@ -199,6 +202,13 @@ export default function App() {
               <Route path="/brands" element={<Brands />} />
               <Route path="/brands/new" element={<BrandForm />} />
               <Route path="/brands/:name" element={<BrandForm />} />
+            </>
+          )}
+          {canManageResources(b) && (
+            <>
+              <Route path="/meeting-rooms" element={<MeetingRooms />} />
+              <Route path="/meeting-rooms/new" element={<MeetingRoomForm />} />
+              <Route path="/meeting-rooms/:name" element={<MeetingRoomForm />} />
             </>
           )}
           {canManageBadges(b) && (
