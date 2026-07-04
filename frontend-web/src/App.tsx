@@ -40,6 +40,8 @@ import Brands from '@web/pages/Brands'
 import BrandForm from '@web/pages/BrandForm'
 import MeetingRooms from '@web/pages/MeetingRooms'
 import MeetingRoomForm from '@web/pages/MeetingRoomForm'
+import Equipment from '@web/pages/Equipment'
+import EquipmentForm from '@web/pages/EquipmentForm'
 import Notes from '@web/pages/Notes'
 import NoteForm from '@web/pages/NoteForm'
 import Feedback from '@web/pages/Feedback'
@@ -209,6 +211,13 @@ export default function App() {
               <Route path="/meeting-rooms" element={<MeetingRooms />} />
               <Route path="/meeting-rooms/new" element={<MeetingRoomForm />} />
               <Route path="/meeting-rooms/:name" element={<MeetingRoomForm />} />
+            </>
+          )}
+          {canManageResources(b) && (
+            <>
+              <Route path="/equipment" element={<Equipment />} />
+              <Route path="/equipment/new" element={<EquipmentForm />} />
+              <Route path="/equipment/:name" element={<EquipmentForm />} />
             </>
           )}
           {canManageBadges(b) && (
