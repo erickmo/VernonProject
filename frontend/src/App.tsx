@@ -59,6 +59,8 @@ import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import MeetingRoomsScreen from './pages/MeetingRoomsScreen'
 import MeetingRoomFormScreen from './pages/MeetingRoomFormScreen'
+import EquipmentScreen from './pages/EquipmentScreen'
+import EquipmentFormScreen from './pages/EquipmentFormScreen'
 import AchievementsScreen from './pages/AchievementsScreen'
 import BookingsScreen from './pages/BookingsScreen'
 import BookingFormScreen from './pages/BookingFormScreen'
@@ -177,6 +179,9 @@ export default function App() {
             <Route path="/meeting-rooms" element={<MeetingRoomsScreen />} />
             <Route path="/meeting-rooms/new" element={<MeetingRoomFormScreen />} />
             <Route path="/meeting-rooms/:name" element={<MeetingRoomFormScreen />} />
+            <Route path="/equipment" element={<EquipmentScreen />} />
+            <Route path="/equipment/new" element={<EquipmentFormScreen />} />
+            <Route path="/equipment/:name" element={<EquipmentFormScreen />} />
           </>
         )}
         {canManageUsers(boot) && (
