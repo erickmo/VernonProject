@@ -58,6 +58,8 @@ import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import AchievementsScreen from './pages/AchievementsScreen'
+import BookingsScreen from './pages/BookingsScreen'
+import BookingFormScreen from './pages/BookingFormScreen'
 import EventsScreen from './pages/EventsScreen'
 import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
@@ -214,6 +216,8 @@ export default function App() {
           </>
         )}
         <Route path="/achievements" element={<AchievementsScreen />} />
+        <Route path="/bookings" element={<BookingsScreen />} />
+        <Route path="/bookings/new" element={<BookingFormScreen />} />
         <Route path="/events" element={<EventsScreen />} />
         <Route path="/events/:name" element={<EventDetailScreen />} />
         <Route path="/my-registrations" element={<MyRegistrationsScreen />} />

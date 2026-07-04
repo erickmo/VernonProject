@@ -391,6 +391,11 @@ export default function Today() {
     sub: "See what's happening at the office", cta: 'Browse events', icon: Ticket,
     gradient: 'from-emerald-500 via-teal-500 to-cyan-500', onAct: () => navigate('/events'),
   })
+  spotlight.push({
+    id: 'bookings', eyebrow: 'Spaces', title: 'Book a room',
+    sub: 'Reserve a meeting room or equipment', cta: 'View bookings', icon: CalendarDays,
+    gradient: 'from-sky-500 via-blue-500 to-indigo-500', onAct: () => navigate('/bookings'),
+  })
 
   // Quick-action grid badges (keyed by route). Only the two we already have data for.
   const balShort = bal >= 1000 ? `${(bal / 1000).toFixed(1)}k` : Math.round(bal).toString()

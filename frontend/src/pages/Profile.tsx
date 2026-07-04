@@ -146,6 +146,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       title: 'Work',
       rows: [
         { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
+        { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
         { icon: CalendarCog, label: 'Manage Events', hue: 'emerald', onClick: () => navigate('/events/manage') },
         { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
         { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
