@@ -1,0 +1,161 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Check } from 'lucide-react'
+import { Spinner } from '@/components/ui'
+import { Field } from '@web/components/ui'
+import { useCreateBooking, useRooms, useEquipment, useCheckAvailability } from '@/hooks/useData'
+import type { Conflict } from '@/lib/types'
+
+const field =
+  'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
+
+// Frappe stores 'YYYY-MM-DD HH:MM:SS'; <input type=datetime-local> wants 'YYYY-MM-DDTHH:MM'.
+const toInput = (v?: string | null) => (v ? v.slice(0, 16).replace(' ', 'T') : '')
+const toFrappe = (v: string) => (v ? v.replace('T', ' ') + (v.length === 16 ? ':00' : '') : '')
+
+// ponytail: toInput unused at render but kept for symmetry with EventForm convention
+void toInput
+
+export default function BookingForm() {
+  const navigate = useNavigate()
+  const rooms = (useRooms().data ?? []).filter((r) => r.is_active)
+  const equip = (useEquipment().data ?? []).filter((e) => e.is_active)
+  const check = useCheckAvailability()
+  const create = useCreateBooking()
+
+  const [title, setTitle] = useState('')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const [room, setRoom] = useState('')
+  const [equipment, setEquipment] = useState<string[]>([])
+  const [conflicts, setConflicts] = useState<Conflict[]>([])
+  const [err, setErr] = useState('')
+
+  const toggleEquip = (name: string) =>
+    setEquipment((prev) => prev.includes(name) ? prev.filter((e) => e !== name) : [...prev, name])
+
+  async function submit() {
+    setErr(''); setConflicts([])
+    if (!title || !start || !end) { setErr('Title, Start and End are required.'); return }
+    if (toFrappe(end) <= toFrappe(start)) { setErr('End must be after Start.'); return }
+    const res = await check.mutateAsync({ start: toFrappe(start), end: toFrappe(end), room: room || undefined, equipment })
+    if (res.conflicts.length) { setConflicts(res.conflicts); return }
+    try {
+      await create.mutateAsync({
+        title, start: toFrappe(start), end: toFrappe(end),
+        room: room || null, status: 'Confirmed',
+        equipment: equipment.map((e) => ({ equipment: e })),
+      })
+      navigate('/bookings')
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Save failed.') }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <button
+          type="button"
+          onClick={() => navigate('/bookings')}
+          className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Bookings
+        </button>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">New Booking</h1>
+      </div>
+
+      {err && (
+        <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-400">
+          {err}
+        </div>
+      )}
+
+      {conflicts.length > 0 && (
+        <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 space-y-1">
+          <p className="font-semibold">Conflicts:</p>
+          {conflicts.map((c, i) => (
+            <p key={i}>{c.resource_type} {c.resource} already booked {c.start}–{c.end} ({c.title})</p>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4 max-w-lg">
+        <Field label="Title" required>
+          {(id) => (
+            <input
+              id={id}
+              className={field}
+              placeholder="Meeting title"
+              value={title}
+              autoFocus
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          )}
+        </Field>
+
+        <Field label="Start" required>
+          {(id) => (
+            <input
+              id={id}
+              type="datetime-local"
+              className={field}
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
+          )}
+        </Field>
+
+        <Field label="End" required>
+          {(id) => (
+            <input
+              id={id}
+              type="datetime-local"
+              className={field}
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
+          )}
+        </Field>
+
+        <Field label="Room">
+          {(id) => (
+            <select id={id} className={field} value={room} onChange={(e) => setRoom(e.target.value)}>
+              <option value="">— None —</option>
+              {rooms.map((r) => (
+                <option key={r.name} value={r.name}>{r.room_name}</option>
+              ))}
+            </select>
+          )}
+        </Field>
+
+        {equip.length > 0 && (
+          <Field label="Equipment">
+            {() => (
+              <div className="flex flex-wrap gap-3">
+                {equip.map((e) => (
+                  <label key={e.name} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={equipment.includes(e.name)}
+                      onChange={() => toggleEquip(e.name)}
+                      className="rounded"
+                    />
+                    {e.equipment_name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </Field>
+        )}
+
+        <button
+          type="submit"
+          disabled={check.isPending || create.isPending}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+        >
+          {(check.isPending || create.isPending) ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+          Book
+        </button>
+      </form>
+    </div>
+  )
+}

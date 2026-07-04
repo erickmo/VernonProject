@@ -59,6 +59,8 @@ import HolidayLists from '@web/pages/HolidayLists'
 import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
+import Bookings from '@web/pages/Bookings'
+import BookingForm from '@web/pages/BookingForm'
 import Events from '@web/pages/Events'
 import EventDetail from '@web/pages/EventDetail'
 import EventManage from '@web/pages/EventManage'
@@ -160,6 +162,8 @@ export default function App() {
           <Route path="/notes" element={<Notes />} />
           <Route path="/notes/new" element={<NoteForm />} />
           <Route path="/notes/:name" element={<NoteForm />} />
+          <Route path="/bookings" element={<Bookings />} />
+          <Route path="/bookings/new" element={<BookingForm />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/help" element={<Help />} />
           {/* Rewards / reports (all users) */}

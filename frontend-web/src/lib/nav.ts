@@ -3,6 +3,7 @@ import {
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, Store, Coins, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight, CalendarCog,
+  CalendarClock,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -21,6 +22,7 @@ const WORK: NavLeaf[] = [
   { to: '/meetings', label: 'Meetings', sub: 'Schedule & notes', icon: Video },
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },
   { to: '/feedback', label: 'Send feedback', sub: 'Tell us anything', icon: MessageSquarePlus },
+  { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
 ]
 
 const REWARDS: NavLeaf[] = [
