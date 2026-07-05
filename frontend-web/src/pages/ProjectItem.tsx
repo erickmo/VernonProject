@@ -54,6 +54,7 @@ import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { todoDuplicateInitial } from '@/lib/duplicateTodo'
 import type { ProjectItemDetail, StatusKey } from '@/lib/types'
@@ -712,6 +713,7 @@ export default function ProjectItem() {
 
   const { data, isLoading } = useProjectItem(todoName)
   const advanceConfirm = useAdvance()
+  const rejectConfirm = useReject()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
@@ -744,6 +746,8 @@ export default function ProjectItem() {
   const onAdvance = () => {
     if (data.next_status_label) advanceConfirm(data.name, data.next_status_label, data.to_do)
   }
+
+  const onReject = () => rejectConfirm(data.name, data.to_do)
 
   const onCancel = async () => {
     try {
@@ -1068,6 +1072,16 @@ export default function ProjectItem() {
                         Waiting on someone else to advance this
                       </div>
                     ))}
+
+                  {data.can_reject && (
+                    <button
+                      onClick={onReject}
+                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-rose-200 dark:border-rose-500/40 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                    >
+                      <X className="h-4 w-4" />
+                      Reject
+                    </button>
+                  )}
 
                   {/* Cancel reason form — opened from the ⋮ menu */}
                   {data.can_edit && data.status_key !== 'completed' && showCancel && (

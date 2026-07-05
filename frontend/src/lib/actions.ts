@@ -20,14 +20,17 @@ export type ActionItem = {
   short: string // compact label — used by the home quick-action grid tiles
   desc: string
   to: string
+  tile?: string // icon-tile color classes, injected per-group into ACTIONS below
 }
 
 // Single source of truth for "what can I do" — the /help screen renders it
 // grouped with descriptions; the home grid flattens it into tiles. Add an
-// action here and it shows up in both.
-export const ACTION_GROUPS: { title: string; items: ActionItem[] }[] = [
+// action here and it shows up in both. `tile` = Gojek-style per-category hue
+// for the home tiles; full literal class strings so Tailwind's purge keeps them.
+export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }[] = [
   {
     title: 'Get work done',
+    tile: 'bg-brand-500 text-white',
     items: [
       { icon: FolderKanban, title: 'Projects & todos', short: 'Projects', desc: 'Open a project, add work items and todos.', to: '/projects' },
       { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/' },
@@ -36,6 +39,7 @@ export const ACTION_GROUPS: { title: string; items: ActionItem[] }[] = [
   },
   {
     title: 'Events & community',
+    tile: 'bg-amber-500 text-white',
     items: [
       { icon: Ticket, title: 'Join an event', short: 'Events', desc: 'Browse office events and register — free or paid.', to: '/events' },
       { icon: CalendarCog, title: 'Host an event', short: 'Host', desc: 'Create events and manage who registered.', to: '/events/manage' },
@@ -44,6 +48,7 @@ export const ACTION_GROUPS: { title: string; items: ActionItem[] }[] = [
   },
   {
     title: 'Rewards & progress',
+    tile: 'bg-emerald-500 text-white',
     items: [
       { icon: Trophy, title: 'Climb the leaderboard', short: 'Leaderboard', desc: 'See where you rank on productivity and character.', to: '/leaderboard' },
       { icon: Medal, title: 'Earn achievements', short: 'Achievements', desc: 'Unlock badges and warrior tiers as you contribute.', to: '/achievements' },
@@ -52,6 +57,7 @@ export const ACTION_GROUPS: { title: string; items: ActionItem[] }[] = [
   },
   {
     title: 'Personal',
+    tile: 'bg-rose-500 text-white',
     items: [
       { icon: StickyNote, title: 'Capture notes', short: 'Notes', desc: 'Jot quick notes — hold ➕ for an instant one.', to: '/notes' },
       { icon: Smile, title: 'Make it yours', short: 'Avatar', desc: 'Customize your avatar.', to: '/avatar' },
@@ -60,5 +66,7 @@ export const ACTION_GROUPS: { title: string; items: ActionItem[] }[] = [
   },
 ]
 
-// Flat list for the quick-action grid.
-export const ACTIONS: ActionItem[] = ACTION_GROUPS.flatMap((g) => g.items)
+// Flat list for the quick-action grid — each item carries its group's tile hue.
+export const ACTIONS: ActionItem[] = ACTION_GROUPS.flatMap((g) =>
+  g.items.map((i) => ({ ...i, tile: g.tile })),
+)

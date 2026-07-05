@@ -94,6 +94,8 @@ export function ProjectFormDialog({
   }
 
   const users = opts?.users ?? []
+  const owners = opts?.owners ?? []
+  const leaders = opts?.leaders ?? []
   const brandOpts = opts?.brands ?? []
   const busy = create.isPending || update.isPending
 
@@ -163,7 +165,7 @@ export function ProjectFormDialog({
           <SearchableSelect
             value={f.project_owner}
             onChange={(v) => set('project_owner', v)}
-            options={users}
+            options={owners}
             placeholder="Select…"
           />
         </div>
@@ -176,7 +178,7 @@ export function ProjectFormDialog({
           <SearchableSelect
             value={f.project_leader}
             onChange={(v) => set('project_leader', v)}
-            options={users}
+            options={leaders}
             placeholder="Select…"
           />
         </div>

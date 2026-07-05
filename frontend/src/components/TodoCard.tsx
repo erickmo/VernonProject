@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { useReject } from '@/components/RejectProvider'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { useSetTodoAllocations } from '@/hooks/useData'
@@ -21,6 +22,7 @@ interface Props {
 export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const navigate = useNavigate()
   const advanceConfirm = useAdvance()
+  const rejectConfirm = useReject()
   const meta = STATUS[todo.status_key]
   // ponytail: this subscribes the card to the per-second timer tick, so every
   // visible card re-renders ~1×/s while a timer runs. Fine for the Today list's
@@ -44,6 +46,11 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const onAdvance = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (todo.next_status_label) advanceConfirm(todo.name, todo.next_status_label, todo.to_do)
+  }
+
+  const onReject = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    rejectConfirm(todo.name, todo.to_do)
   }
 
   const setAlloc = useSetTodoAllocations(todo.name)
@@ -163,16 +170,28 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         )}
       </div>
 
-      {todo.can_advance && todo.next_status_label && (
-        <div className="mt-3 border-t border-paper-edge dark:border-slate-800 pt-3">
-          <span
-            onClick={onAdvance}
-            role="button"
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:bg-brand-100 dark:active:bg-brand-500/20"
-          >
-            {todo.next_status_label}
-            <ArrowRight className="h-4 w-4" />
-          </span>
+      {((todo.can_advance && todo.next_status_label) || todo.can_reject) && (
+        <div className="mt-3 flex gap-2 border-t border-paper-edge dark:border-slate-800 pt-3">
+          {todo.can_reject && (
+            <span
+              onClick={onReject}
+              role="button"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-500/15 py-2.5 text-sm font-semibold text-rose-700 dark:text-rose-300 transition active:bg-rose-100 dark:active:bg-rose-500/20"
+            >
+              <X className="h-4 w-4" />
+              Reject
+            </span>
+          )}
+          {todo.can_advance && todo.next_status_label && (
+            <span
+              onClick={onAdvance}
+              role="button"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:bg-brand-100 dark:active:bg-brand-500/20"
+            >
+              {todo.next_status_label}
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          )}
         </div>
       )}
     </button>

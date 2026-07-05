@@ -16,7 +16,7 @@ export function QuickActions({ badges }: { badges?: Record<string, string | numb
               onClick={() => navigate(a.to)}
               className="flex w-[60px] flex-col items-center gap-1.5 transition active:scale-95"
             >
-              <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 shadow-card dark:bg-brand-500/15 dark:text-brand-300">
+              <span className={`relative flex h-14 w-14 items-center justify-center rounded-2xl shadow-card ${a.tile}`}>
                 <a.icon className="h-6 w-6" strokeWidth={2} />
                 {badge != null && (
                   <span className="absolute -right-1.5 -top-1.5 min-w-[20px] rounded-full bg-brand-600 px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white shadow-sm">

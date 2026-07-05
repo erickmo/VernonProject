@@ -38,6 +38,8 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
   }, [open, project])
 
   const users = opts?.users ?? []
+  const owners = opts?.owners ?? []
+  const leaders = opts?.leaders ?? []
 
   const nameFor = (email: string) =>
     project.team.find((t) => t.user === email)?.name ??
@@ -109,11 +111,11 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
         <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
           <label className="text-sm font-medium text-muted">
             Owner<span className="text-red-500"> *</span>
-            <SearchableSelect value={owner} onChange={setOwnerRole} options={users} disabled={!canReassign} placeholder="Select…" />
+            <SearchableSelect value={owner} onChange={setOwnerRole} options={owners} disabled={!canReassign} placeholder="Select…" />
           </label>
           <label className="text-sm font-medium text-muted">
             Leader<span className="text-red-500"> *</span>
-            <SearchableSelect value={leader} onChange={setLeaderRole} options={users} disabled={!canReassign} placeholder="Select…" />
+            <SearchableSelect value={leader} onChange={setLeaderRole} options={leaders} disabled={!canReassign} placeholder="Select…" />
           </label>
           <label className="text-sm font-medium text-muted">
             Admin

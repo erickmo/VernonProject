@@ -116,6 +116,21 @@ def _can_advance(status_key, project, user, assigned_to):
 	return False
 
 
+def _can_reject(status_key, project, user):
+	"""Mirror vernon_project.api.project_todo.reject_status. Reject is offered
+	only at the review stages (done -> awaiting leader, checked -> awaiting
+	owner); Owner or Leader may reject; Admin never."""
+	owner = project.get("project_owner")
+	leader = project.get("project_leader")
+	admin = project.get("project_admin")
+
+	if admin and user == admin:
+		return False
+	if status_key in ("done", "checked"):
+		return user in (owner, leader)
+	return False
+
+
 def _avatar_config_map(users):
 	"""Map user -> parsed DiceBear avatar config (or None). Batch-reads User Avatar.config_json."""
 	out = {}
@@ -480,6 +495,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"project_admin": row["project_admin"],
 	}
 	can_advance = skey != "completed" and _can_advance(skey, project, user, row["assigned_to"])
+	can_reject = _can_reject(skey, project, user)
 	overdue = bool(
 		row["deadline"]
 		and skey != "completed"
@@ -506,6 +522,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"status_key": skey,
 		"next_status_label": NEXT_LABEL.get(skey),
 		"can_advance": can_advance,
+		"can_reject": can_reject,
 		"start_date": str(row["start_date"]) if row.get("start_date") else None,
 		"start_date_human": _humanize_date(row.get("start_date")),
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
@@ -737,8 +754,19 @@ def get_calendar():
 		)
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])
+	assigned_map = _assigned_allocations_map([r["name"] for r in rows])
 
-	todos = [_shape_todo(r, user, name_map, alloc_map=alloc_map) for r in rows]
+	todos = []
+	for r in rows:
+		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map)
+		# Leader's authoritative per-day split (falls back to the whole estimate on
+		# the deadline). Drives the calendar's "Assigned" mode; mirrors get_project_item.
+		_asg = assigned_map.get(r["name"], [])
+		shaped["assigned_allocation"] = _assigned_allocation_for(
+			_asg, shaped.get("deadline"), shaped.get("estimated") or 0
+		)
+		shaped["assigned_total"] = sum((a["minutes"] or 0) for a in shaped["assigned_allocation"])
+		todos.append(shaped)
 	return {"todos": todos}
 
 
@@ -1793,15 +1821,29 @@ def get_form_options():
 		fields=["name", "full_name"],
 		limit_page_length=0,
 	)
+	user_opts = sorted(
+		[{"value": u["name"], "label": u.get("full_name") or u["name"]} for u in users],
+		key=lambda x: x["label"],
+	)
+
+	def _with_role(role):
+		# owner/leader pickers only offer users who actually hold the role
+		# (mirrors Project.validate_lead_roles). Admin/team keep the full list.
+		holders = set(
+			frappe.get_all(
+				"Has Role", filters={"parenttype": "User", "role": role}, pluck="parent"
+			)
+		)
+		return [o for o in user_opts if o["value"] in holders]
+
 	return {
 		"brands": sorted(
 			[{"value": b["name"], "label": b.get("brand_name") or b["name"]} for b in brands],
 			key=lambda x: x["label"],
 		),
-		"users": sorted(
-			[{"value": u["name"], "label": u.get("full_name") or u["name"]} for u in users],
-			key=lambda x: x["label"],
-		),
+		"users": user_opts,
+		"owners": _with_role("Project Owner"),
+		"leaders": _with_role("Project Leader"),
 	}
 
 
@@ -3736,19 +3778,26 @@ def _recognition_credit(todo, recipient, reactor, reaction):
 	try:
 		settings = frappe.get_cached_doc("Vernon Settings")
 		pts = float(settings.recognition_points or 0)
-		if pts <= 0:
+		# ponytail: giver's Feedback credit rides on the Recognition gate below (shared
+		# idempotency key + weekly cap). Disabling Recognition (points=0) also disables it;
+		# split them out only if the two ever need independent toggles.
+		fb_pts = float(settings.feedback_points or 0)
+		if pts <= 0 and fb_pts <= 0:
 			return
+		note = REACTION_LABELS.get(reaction, reaction)
 		existing = frappe.db.exists(
 			"Point Ledger",
-			{"todo": todo, "granted_by": reactor, "source": "Recognition"},
+			{"todo": todo, "granted_by": reactor, "source": ["in", ["Recognition", "Feedback"]]},
 		)
 		if existing:
 			# Already credited for this todo — just refresh the note (reaction changed).
 			frappe.db.set_value(
-				"Point Ledger", existing, "note", REACTION_LABELS.get(reaction, reaction)
+				"Point Ledger",
+				{"todo": todo, "granted_by": reactor, "source": ["in", ["Recognition", "Feedback"]]},
+				"note", note,
 			)
 			return
-		# Anti-farm: cap Recognition grants per giver per rolling 7 days.
+		# Anti-farm: cap grants per giver per rolling 7 days (shared by recognition + feedback).
 		cap = int(settings.recognition_weekly_cap or 0)
 		if cap > 0:
 			given = frappe.db.count(
@@ -3757,28 +3806,42 @@ def _recognition_credit(todo, recipient, reactor, reaction):
 			)
 			if given >= cap:
 				return
-		frappe.get_doc({
-			"doctype": "Point Ledger",
-			"user": recipient,
-			"source": "Recognition",
-			"todo": todo,
-			"granted_by": reactor,
-			"note": REACTION_LABELS.get(reaction, reaction),
-			"points_earned": pts,
-			"credited_on": now_datetime(),
-		}).insert(ignore_permissions=True)
+		if pts > 0:
+			frappe.get_doc({
+				"doctype": "Point Ledger",
+				"user": recipient,
+				"source": "Recognition",
+				"todo": todo,
+				"granted_by": reactor,
+				"note": note,
+				"points_earned": pts,
+				"credited_on": now_datetime(),
+			}).insert(ignore_permissions=True)
+		if fb_pts > 0:
+			# The giver earns points for noticing a teammate's work.
+			frappe.get_doc({
+				"doctype": "Point Ledger",
+				"user": reactor,
+				"source": "Feedback",
+				"todo": todo,
+				"granted_by": reactor,
+				"note": note,
+				"points_earned": fb_pts,
+				"credited_on": now_datetime(),
+			}).insert(ignore_permissions=True)
 	except Exception:
 		frappe.log_error(title="recognition credit failed")
 
 
 def _recognition_remove(todo, reactor):
-	"""Remove the Recognition row a reactor minted on this todo (reaction taken back)."""
-	existing = frappe.db.exists(
+	"""Claw back both rows a reactor minted on this todo (reaction taken back):
+	the recipient's Recognition point and the giver's Feedback point."""
+	for row in frappe.get_all(
 		"Point Ledger",
-		{"todo": todo, "granted_by": reactor, "source": "Recognition"},
-	)
-	if existing:
-		frappe.delete_doc("Point Ledger", existing, ignore_permissions=True, force=True)
+		filters={"todo": todo, "granted_by": reactor, "source": ["in", ["Recognition", "Feedback"]]},
+		pluck="name",
+	):
+		frappe.delete_doc("Point Ledger", row, ignore_permissions=True, force=True)
 
 
 @frappe.whitelist()

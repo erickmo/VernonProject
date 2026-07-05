@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
+ "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
   {
    "fieldname": "max_estimated_minutes",
@@ -89,6 +89,14 @@
    "non_negative": 1,
    "default": "2",
    "description": "Points the assignee earns when a teammate reacts to their work. 0 = recognition mints no points."
+  },
+  {
+   "fieldname": "feedback_points",
+   "fieldtype": "Float",
+   "label": "Feedback Points (per kudos given)",
+   "non_negative": 1,
+   "default": "1",
+   "description": "Points the giver earns for reacting to a teammate's work. Shares the Recognition weekly cap and is credited once per todo. 0 = giving feedback mints no points."
   },
   {
    "fieldname": "recognition_weekly_cap",

@@ -44,6 +44,7 @@ import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { useReject } from '@/components/RejectProvider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
@@ -903,6 +904,7 @@ export default function ProjectItemScreen() {
   const id = decodeURIComponent(name)
   const { data, isLoading } = useProjectItem(id)
   const advanceConfirm = useAdvance()
+  const rejectConfirm = useReject()
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
@@ -936,6 +938,8 @@ export default function ProjectItemScreen() {
   const onAdvance = () => {
     if (data.next_status_label) advanceConfirm(data.name, data.next_status_label, data.to_do)
   }
+
+  const onReject = () => rejectConfirm(data.name, data.to_do)
 
   const onCancel = async () => {
     try {
@@ -1314,6 +1318,16 @@ export default function ProjectItemScreen() {
                   Waiting on someone else to advance this
                 </div>
               ))}
+
+            {data.can_reject && (
+              <button
+                onClick={onReject}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 py-3 font-semibold text-rose-700 dark:text-rose-300 transition active:bg-rose-100 dark:active:bg-rose-500/20"
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </button>
+            )}
 
             {data.can_edit && data.status_key !== 'completed' && showCancel && (
                 <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">

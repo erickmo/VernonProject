@@ -37,6 +37,8 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
   if (!open) return null
 
   const users = opts?.users ?? []
+  const owners = opts?.owners ?? []
+  const leaders = opts?.leaders ?? []
 
   const nameFor = (email: string) =>
     project.team.find((t) => t.user === email)?.name ??
@@ -104,11 +106,11 @@ export function TeamManagerSheet({ open, onClose, project, canReassign }: Props)
         <div className="mb-4 flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Owner<span className="text-red-500"> *</span>
-            <SearchableSelect value={owner} onChange={setOwnerRole} options={users} disabled={!canReassign} placeholder="Select…" />
+            <SearchableSelect value={owner} onChange={setOwnerRole} options={owners} disabled={!canReassign} placeholder="Select…" />
           </label>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Leader<span className="text-red-500"> *</span>
-            <SearchableSelect value={leader} onChange={setLeaderRole} options={users} disabled={!canReassign} placeholder="Select…" />
+            <SearchableSelect value={leader} onChange={setLeaderRole} options={leaders} disabled={!canReassign} placeholder="Select…" />
           </label>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Admin

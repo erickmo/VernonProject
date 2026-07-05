@@ -80,6 +80,8 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
   }
 
   const users = opts?.users ?? []
+  const owners = opts?.owners ?? []
+  const leaders = opts?.leaders ?? []
   const lockLeads = isEdit && !canReassign
 
   return (
@@ -105,12 +107,12 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Owner<span className="text-red-500"> *</span>
-            <SearchableSelect value={f.project_owner} onChange={(v) => set('project_owner', v)} options={users} disabled={lockLeads} placeholder="Select…" />
+            <SearchableSelect value={f.project_owner} onChange={(v) => set('project_owner', v)} options={owners} disabled={lockLeads} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Leader<span className="text-red-500"> *</span>
-            <SearchableSelect value={f.project_leader} onChange={(v) => set('project_leader', v)} options={users} disabled={lockLeads} placeholder="Select…" />
+            <SearchableSelect value={f.project_leader} onChange={(v) => set('project_leader', v)} options={leaders} disabled={lockLeads} placeholder="Select…" />
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">

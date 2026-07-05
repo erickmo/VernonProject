@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { ChevronDown, ChevronUp, Inbox } from 'lucide-react'
 import { EmptyState } from '@/components/ui'
 import { useAdvance } from '@/components/AdvanceProvider'
+import { useReject } from '@/components/RejectProvider'
 import { useUpdateTodo, useFormOptions } from '@/hooks/useData'
 import { STATUS } from '@/lib/status'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -108,10 +109,19 @@ export function DataTable<T>({
 
 export function StatusCell({ todo }: { todo: ProjectItem }) {
   const advance = useAdvance()
+  const reject = useReject()
   const meta = STATUS[todo.status_key]
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`rounded px-1.5 py-0.5 text-xs ${meta.pill}`}>{meta.emoji} {meta.label}</span>
+      {todo.can_reject && (
+        <button
+          onClick={(e) => { e.stopPropagation(); reject(todo.name, todo.to_do) }}
+          className="rounded border border-rose-200 dark:border-rose-500/40 px-1.5 py-0.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+        >
+          Reject
+        </button>
+      )}
       {todo.can_advance && todo.next_status_label && (
         <button
           onClick={(e) => { e.stopPropagation(); advance(todo.name, todo.next_status_label!, todo.to_do) }}
