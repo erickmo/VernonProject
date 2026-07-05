@@ -51,6 +51,12 @@
       "recurring_section",
       "is_recurring",
       "recurring_frequency",
+      "recurring_interval",
+      "recurring_weekdays",
+      "recurring_monthly_mode",
+      "recurring_day_of_month",
+      "recurring_nth",
+      "recurring_paused",
       "recurring_until",
       "column_break_recurring",
       "next_occurrence",
@@ -74,7 +80,10 @@
       "tested_by",
       "column_break_cdce",
       "completed_at",
-      "completed_by"
+      "completed_by",
+      "rejection_reason",
+      "rejected_at",
+      "rejected_by"
    ],
    "fields": [
       {
@@ -386,6 +395,48 @@
       },
       {
          "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_interval",
+         "fieldtype": "Int",
+         "label": "Repeat Every (N)",
+         "default": "1"
+      },
+      {
+         "fieldname": "recurring_weekdays",
+         "fieldtype": "Data",
+         "label": "Weekdays (CSV MON,THU)",
+         "depends_on": "eval:doc.recurring_frequency=='Weekly' || (doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Nth Weekday')"
+      },
+      {
+         "fieldname": "recurring_monthly_mode",
+         "fieldtype": "Select",
+         "label": "Monthly Mode",
+         "options": "Day of Month\nNth Weekday",
+         "default": "Day of Month",
+         "depends_on": "eval:doc.recurring_frequency=='Monthly'"
+      },
+      {
+         "fieldname": "recurring_day_of_month",
+         "fieldtype": "Int",
+         "label": "Day of Month (1-31)",
+         "depends_on": "eval:doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Day of Month'"
+      },
+      {
+         "fieldname": "recurring_nth",
+         "fieldtype": "Select",
+         "label": "Nth Weekday",
+         "options": "First\nSecond\nThird\nFourth\nLast",
+         "default": "First",
+         "depends_on": "eval:doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Nth Weekday'"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_paused",
+         "fieldtype": "Check",
+         "label": "Paused",
+         "default": "0"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
          "fieldname": "recurring_until",
          "fieldtype": "Date",
          "label": "Recurring Until"
@@ -402,10 +453,10 @@
          "read_only": 1
       },
       {
-         "depends_on": "eval:doc.is_recurring==1",
          "fieldname": "original_todo",
-         "fieldtype": "Data",
+         "fieldtype": "Link",
          "label": "Original Todo",
+         "options": "Project Todo",
          "read_only": 1,
          "hidden": 1
       },
@@ -529,6 +580,25 @@
          "fieldtype": "Link",
          "label": "Completed By",
          "options": "User"
+      },
+      {
+         "fieldname": "rejection_reason",
+         "fieldtype": "Small Text",
+         "label": "Rejection Reason",
+         "read_only": 1
+      },
+      {
+         "fieldname": "rejected_at",
+         "fieldtype": "Datetime",
+         "label": "Rejected At",
+         "read_only": 1
+      },
+      {
+         "fieldname": "rejected_by",
+         "fieldtype": "Link",
+         "label": "Rejected By",
+         "options": "User",
+         "read_only": 1
       }
    ],
    "grid_page_length": 50,
