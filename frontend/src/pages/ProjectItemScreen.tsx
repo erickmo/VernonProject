@@ -1337,13 +1337,11 @@ export default function ProjectItemScreen() {
           <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Repeat className="h-3.5 w-3.5" /> Recurrence history ({data.occurrences.length})
           </p>
-          {data.recurring.is_recurring && (
-            <p className="mb-3 text-[11px] text-slate-400">
-              {data.recurring.state === 'paused' ? 'Paused'
-                : data.recurring.state === 'ended' ? 'Ended'
-                : data.recurring.next_fire ? `Next: ${data.recurring.next_fire}` : 'Active'}
-            </p>
-          )}
+          <p className="mb-3 text-[11px] text-slate-400">
+            {data.recurring.state === 'paused' ? 'Paused'
+              : data.recurring.state === 'ended' ? 'Ended'
+              : data.recurring.next_fire ? `Next: ${data.recurring.next_fire}` : 'Active'}
+          </p>
           <ol className="space-y-1.5">
             {data.occurrences.map((o) => {
               const meta = STATUS[o.status_key]

@@ -26,7 +26,7 @@ export function serializeRecurrence(r: Recurrence): Record<string, unknown> {
     is_recurring: 1,
     recurring_frequency: r.frequency,
     recurring_interval: r.interval || 1,
-    recurring_weekdays: r.frequency === 'Weekly' || (r.frequency === 'Monthly' && r.monthlyMode === 'Nth Weekday') ? r.weekdays : '',
+    recurring_weekdays: r.frequency === 'Monthly' && r.monthlyMode === 'Nth Weekday' ? (r.weekdays.split(',')[0] || '') : (r.frequency === 'Weekly' ? r.weekdays : ''),
     recurring_monthly_mode: r.frequency === 'Monthly' ? r.monthlyMode : 'Day of Month',
     recurring_day_of_month: r.frequency === 'Monthly' && r.monthlyMode === 'Day of Month' ? r.dayOfMonth : null,
     recurring_nth: r.frequency === 'Monthly' && r.monthlyMode === 'Nth Weekday' ? r.nth : 'First',
@@ -47,7 +47,7 @@ export function summarizeRecurrence(r: Recurrence): string {
   }
   if (r.monthlyMode === 'Nth Weekday') {
     const day = r.weekdays ? (WD_LABEL[r.weekdays.split(',')[0]] ?? '') : ''
-    return `${r.nth} ${day} ${every('month')}`
+    return day ? `${r.nth} ${day} ${every('month')}` : `${r.nth} ${every('month')}`
   }
   return `${every('month')}${r.dayOfMonth ? ` on day ${r.dayOfMonth}` : ''}`
 }

@@ -44,7 +44,7 @@ export function RecurrenceEditor({ value, onChange }: { value: Recurrence; onCha
           {value.frequency === 'Monthly' && (
             <div className="grid grid-cols-2 gap-2">
               <label className="text-sm text-slate-600 dark:text-slate-300">Monthly by
-                <SearchableSelect value={value.monthlyMode} onChange={(v) => set({ monthlyMode: v as Recurrence['monthlyMode'] })}
+                <SearchableSelect value={value.monthlyMode} onChange={(v) => set({ monthlyMode: v as Recurrence['monthlyMode'], ...(v === 'Nth Weekday' ? { weekdays: value.weekdays ? value.weekdays.split(',')[0] : '' } : {}) })}
                   options={['Day of Month', 'Nth Weekday'].map((s) => ({ value: s, label: s }))} />
               </label>
               {value.monthlyMode === 'Day of Month' ? (
