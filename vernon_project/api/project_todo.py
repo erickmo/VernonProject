@@ -6,6 +6,31 @@ def get_notes(todo_id):
 	notes = frappe.db.get_value('Project Todo', todo_id, 'notes')
 	return {'notes': notes or ''}
 
+def _auto_advance(todo, project_leader, project_owner):
+	"""Collapse redundant self-approval gates in place (mutates todo, no save).
+
+	Two review gates exist: 🟠 Done → 🔷 Checked By PL (Leader approves) and
+	🔷 Checked By PL → ✅ Completed (Owner approves). A gate is pointless when the
+	approver already effectively signed off:
+	  - assignee IS the leader -> the Leader gate is the assignee approving their
+	    own work; skip it.
+	  - leader IS the owner    -> the Owner gate is the same person who just
+	    cleared the Leader gate; skip it.
+
+	Sequential ifs (not elif) so assignee==leader==owner completes in one hop.
+	Audit stamps record the role that would have approved. Truthiness guards keep
+	empty leader/owner (None==None) from auto-completing.
+	"""
+	now = frappe.utils.now()
+	if todo.status == "🟠 Done" and todo.assigned_to and todo.assigned_to == project_leader:
+		todo.status = "🔷 Checked By PL"
+		todo.tested_at = now
+		todo.tested_by = project_leader
+	if todo.status == "🔷 Checked By PL" and project_leader and project_leader == project_owner:
+		todo.status = "✅ Completed"
+		todo.completed_at = now
+		todo.completed_by = project_owner
+
 @frappe.whitelist()
 def update_status(todo_id):
 	"""
@@ -62,6 +87,11 @@ def update_status(todo_id):
 				return {"status": "error", "message": f"You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}."}
 		elif todo.status == "✅ Completed":
 			return {"status": "info", "message": f"Todo {todo.to_do} is already completed."}
+
+		# Skip redundant self-review gates: assignee==leader auto-clears the Leader
+		# gate; leader==owner auto-clears the Owner gate. One atomic save, so points
+		# still mint once at ✅ Completed and only the final-status notification fires.
+		_auto_advance(todo, project_leader, project_owner)
 
 		# Save and ignore permission
 		todo.save(ignore_permissions=True)
