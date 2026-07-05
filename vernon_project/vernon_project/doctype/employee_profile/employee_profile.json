@@ -8,7 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "personal_section", "home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
+  "personal_section", "religion", "verse_enabled", "home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
   "background_section", "education", "skills", "trainings",
   "legal_section", "nik_ktp", "npwp", "bpjs_kesehatan", "bpjs_ketenagakerjaan", "bank_name", "bank_account_no", "bank_account_holder", "attach_ktp", "attach_npwp",
   "contract_section", "employment_status", "job_title", "date_joined", "contract_start", "contract_end", "attach_contract",
@@ -18,6 +18,8 @@
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "unique": 1, "in_list_view": 1, "search_index": 1, "permlevel": 1},
 
   {"fieldname": "personal_section", "fieldtype": "Section Break", "label": "Personal"},
+  {"fieldname": "religion", "fieldtype": "Select", "label": "Agama", "options": "\nIslam\nKristen\nKatolik\nHindu\nBuddha\nKonghucu"},
+  {"fieldname": "verse_enabled", "fieldtype": "Check", "label": "Tampilkan Ayat Harian", "default": "0"},
   {"fieldname": "home_address", "fieldtype": "Small Text", "label": "Home Address"},
   {"fieldname": "emergency_contact_name", "fieldtype": "Data", "label": "Emergency Contact Name"},
   {"fieldname": "emergency_contact_phone", "fieldtype": "Data", "label": "Emergency Contact Phone"},
