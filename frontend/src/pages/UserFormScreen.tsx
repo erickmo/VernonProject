@@ -15,6 +15,11 @@ import {
   VERNON_ROLE_OPTIONS,
   MEMBER_TYPE_OPTIONS,
 } from '@/hooks/useData'
+import { mobileApi } from '@/lib/api'
+import type { LeaveBalance } from '@/lib/types'
+
+const field =
+  'mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function UserFormScreen() {
   const { name } = useParams<{ name: string }>()
@@ -42,6 +47,23 @@ export default function UserFormScreen() {
   const [sendWelcome, setSendWelcome] = useState(true)
   const [newPassword, setNewPassword] = useState('')
 
+  // Employee profile — legal/contract/leave (edit mode only)
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null)
+  const [nikKtp, setNikKtp] = useState('')
+  const [npwp, setNpwp] = useState('')
+  const [bpjsKes, setBpjsKes] = useState('')
+  const [bpjsTk, setBpjsTk] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [bankAccountNo, setBankAccountNo] = useState('')
+  const [bankAccountHolder, setBankAccountHolder] = useState('')
+  const [employmentStatus, setEmploymentStatus] = useState('')
+  const [jobTitle, setJobTitle] = useState('')
+  const [dateJoined, setDateJoined] = useState('')
+  const [contractStart, setContractStart] = useState('')
+  const [contractEnd, setContractEnd] = useState('')
+  const [annualLeaveQuota, setAnnualLeaveQuota] = useState<number | ''>('')
+  const [priorLeaveTaken, setPriorLeaveTaken] = useState<number | ''>('')
+
   useEffect(() => {
     if (existing) {
       setFullName(existing.full_name || '')
@@ -51,6 +73,29 @@ export default function UserFormScreen() {
     }
   }, [existing])
 
+  useEffect(() => {
+    if (!name) return
+    mobileApi.getEmployeeProfile(name).then((ep) => {
+      setNikKtp(ep.nik_ktp ?? '')
+      setNpwp(ep.npwp ?? '')
+      setBpjsKes(ep.bpjs_kesehatan ?? '')
+      setBpjsTk(ep.bpjs_ketenagakerjaan ?? '')
+      setBankName(ep.bank_name ?? '')
+      setBankAccountNo(ep.bank_account_no ?? '')
+      setBankAccountHolder(ep.bank_account_holder ?? '')
+      setEmploymentStatus(ep.employment_status ?? '')
+      setJobTitle(ep.job_title ?? '')
+      setDateJoined(ep.date_joined ?? '')
+      setContractStart(ep.contract_start ?? '')
+      setContractEnd(ep.contract_end ?? '')
+      setAnnualLeaveQuota(ep.annual_leave_quota ?? '')
+      setPriorLeaveTaken(ep.prior_leave_taken ?? '')
+      setLeaveBalance(ep.leave ?? null)
+    }).catch(() => {
+      // non-fatal: admin fields stay blank if fetch fails
+    })
+  }, [name])
+
   const saving = create.isPending || update.isPending
 
   async function onSave() {
@@ -59,6 +104,14 @@ export default function UserFormScreen() {
         await update.mutateAsync({
           user: name as string,
           payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0, member_type: memberType },
+        })
+        await mobileApi.updateEmployeeProfile(name as string, {
+          nik_ktp: nikKtp, npwp, bpjs_kesehatan: bpjsKes, bpjs_ketenagakerjaan: bpjsTk,
+          bank_name: bankName, bank_account_no: bankAccountNo, bank_account_holder: bankAccountHolder,
+          employment_status: employmentStatus, job_title: jobTitle, date_joined: dateJoined,
+          contract_start: contractStart, contract_end: contractEnd,
+          annual_leave_quota: annualLeaveQuota === '' ? null : annualLeaveQuota,
+          prior_leave_taken: priorLeaveTaken === '' ? null : priorLeaveTaken,
         })
         toast('success', 'User updated')
       } else {
@@ -208,6 +261,75 @@ export default function UserFormScreen() {
                 className="h-5 w-5 accent-brand-600"
               />
             </label>
+
+            {/* Legal & ID */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3 dark:bg-slate-800 dark:border-slate-700">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Legal &amp; ID</p>
+              <div className="flex flex-col gap-3">
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">NIK KTP</span>
+                  <input type="text" value={nikKtp} onChange={(e) => setNikKtp(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">NPWP</span>
+                  <input type="text" value={npwp} onChange={(e) => setNpwp(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">BPJS Kesehatan</span>
+                  <input type="text" value={bpjsKes} onChange={(e) => setBpjsKes(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">BPJS Ketenagakerjaan</span>
+                  <input type="text" value={bpjsTk} onChange={(e) => setBpjsTk(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Bank name</span>
+                  <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Account number</span>
+                  <input type="text" value={bankAccountNo} onChange={(e) => setBankAccountNo(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Account holder name</span>
+                  <input type="text" value={bankAccountHolder} onChange={(e) => setBankAccountHolder(e.target.value)} className={field} /></label>
+              </div>
+              {/* ponytail: attach_ktp + attach_npwp omitted — no generic private uploader exists (parity with web) */}
+            </div>
+
+            {/* Contract */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3 dark:bg-slate-800 dark:border-slate-700">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Contract</p>
+              <div className="flex flex-col gap-3">
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Employment status</span>
+                  <select value={employmentStatus} onChange={(e) => setEmploymentStatus(e.target.value)} className={field}>
+                    <option value="">— select —</option>
+                    <option value="Permanent">Permanent</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Probation">Probation</option>
+                    <option value="Intern">Intern</option>
+                  </select></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Job title</span>
+                  <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Date joined</span>
+                  <input type="date" value={dateJoined} onChange={(e) => setDateJoined(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Contract start</span>
+                  <input type="date" value={contractStart} onChange={(e) => setContractStart(e.target.value)} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Contract end</span>
+                  <input type="date" value={contractEnd} onChange={(e) => setContractEnd(e.target.value)} className={field} /></label>
+              </div>
+            </div>
+
+            {/* Leave */}
+            <div className="rounded-xl border border-slate-200 bg-white p-3 dark:bg-slate-800 dark:border-slate-700">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Leave</p>
+              <div className="flex flex-col gap-3">
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Annual leave quota (days)</span>
+                  <input type="number" min={0} value={annualLeaveQuota}
+                    onChange={(e) => setAnnualLeaveQuota(e.target.value === '' ? '' : Number(e.target.value))} className={field} /></label>
+                <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Leave already taken this year (pre-system, days)</span>
+                  <input type="number" min={0} value={priorLeaveTaken}
+                    onChange={(e) => setPriorLeaveTaken(e.target.value === '' ? '' : Number(e.target.value))} className={field} /></label>
+                {leaveBalance && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:bg-slate-900 dark:border-slate-700">
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">This year</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{leaveBalance.remaining}</span>
+                    <span className="text-slate-500 dark:text-slate-400"> / {leaveBalance.quota} days remaining</span>
+                    {typeof leaveBalance.prior === 'number' && leaveBalance.prior > 0 && (
+                      <span className="text-slate-500 dark:text-slate-400"> · {leaveBalance.used} used (incl. {leaveBalance.prior} pre-system)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button
               onClick={onResetPassword}
               disabled={resetPw.isPending}
