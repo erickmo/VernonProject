@@ -369,7 +369,10 @@ class ProjectTodo(Document):
 			if self.status == "✅ Completed":
 				self.sync_point_ledger()
 				if self.is_recurring:
-					generate_next(self, force=True)
+					try:
+						generate_next(self, force=True)
+					except Exception:
+						frappe.log_error(title="recurring generate_next on complete failed")
 			elif prev_state == "✅ Completed":
 				self._remove_ledger()
 			self._notify_status_change(prev_state)
