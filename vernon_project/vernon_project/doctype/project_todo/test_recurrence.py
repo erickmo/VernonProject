@@ -84,6 +84,10 @@ def test_monthly_nth_weekday():
     # Last Friday.
     r2 = _r(frequency="Monthly", monthly_mode="Nth Weekday", weekdays=(FRI,), nth="Last")
     assert next_occurrence(date(2026, 1, 30), r2) == date(2026, 2, 27)
+    # First/Third/Fourth share the ordinal formula path — exercise each (Feb 1 2026 = Sun).
+    assert next_occurrence(date(2026, 1, 5), _r(frequency="Monthly", monthly_mode="Nth Weekday", weekdays=(MON,), nth="First")) == date(2026, 2, 2)
+    assert next_occurrence(date(2026, 1, 21), _r(frequency="Monthly", monthly_mode="Nth Weekday", weekdays=(WED,), nth="Third")) == date(2026, 2, 18)
+    assert next_occurrence(date(2026, 1, 23), _r(frequency="Monthly", monthly_mode="Nth Weekday", weekdays=(FRI,), nth="Fourth")) == date(2026, 2, 27)
 
 
 def test_first_on_or_after():
