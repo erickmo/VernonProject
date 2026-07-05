@@ -90,6 +90,7 @@ export interface ProjectItem {
   status_key: StatusKey
   next_status_label: string | null
   can_advance: boolean
+  can_reject: boolean
   start_date: string | null
   start_date_human: string | null
   deadline: string | null
@@ -327,6 +328,10 @@ export interface Opt2 {
 export interface FormOptions {
   brands: Opt2[]
   users: Opt2[]
+  /** Users holding the Project Owner role — owner picker only. */
+  owners: Opt2[]
+  /** Users holding the Project Leader role — leader picker only. */
+  leaders: Opt2[]
 }
 
 export interface ProjectInput {
@@ -837,4 +842,24 @@ export interface Conflict {
   title: string
   start: string
   end: string
+}
+
+export type ExceptionDecision = 'Pending' | 'Approved' | 'Rejected'
+
+export type ExceptionApprover = {
+  approver: string
+  decision: ExceptionDecision
+}
+
+export type AttendanceExceptionRow = {
+  name: string
+  employee: string
+  exception_type: 'WFH' | 'Leave'
+  from_date: string
+  to_date: string
+  status: ExceptionDecision
+  reason?: string
+  approvers: ExceptionApprover[]
+  approved_count: number
+  total: number
 }

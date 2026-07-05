@@ -101,6 +101,8 @@ export const keys = {
   meetingRoom: (n: string) => ['meeting-room', n] as const,
   equipmentList: ['equipment-list'] as const,
   equipmentItem: (n: string) => ['equipment-item', n] as const,
+  pendingExceptionApprovals: ['pendingExceptionApprovals'] as const,
+  myExceptions: ['myExceptions'] as const,
 }
 
 export const useBoot = () =>
@@ -166,6 +168,26 @@ export function useAdvanceStatus() {
   return useMutation({
     mutationFn: async (todoId: string) => {
       const res = await mobileApi.advanceStatus(todoId)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+// Reject a todo under review, bouncing it back to Planned with a required
+// reason. Invalidates the same queries as an advance so review queues refresh.
+export function useRejectStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ todoId, reason }: { todoId: string; reason: string }) => {
+      const res = await mobileApi.rejectStatus(todoId, reason)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
@@ -1280,6 +1302,50 @@ export function useRequestException() {
       return res
     },
     onSettled: () => qc.invalidateQueries({ queryKey: keys.myAttendance }),
+  })
+}
+
+export function usePendingExceptionApprovals() {
+  return useQuery({
+    queryKey: keys.pendingExceptionApprovals,
+    queryFn: async () => (await mobileApi.pendingExceptionApprovals()).rows,
+  })
+}
+
+export function useMyExceptions() {
+  return useQuery({
+    queryKey: keys.myExceptions,
+    queryFn: async () => (await mobileApi.myExceptions()).rows,
+  })
+}
+
+export function useApproveException() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await mobileApi.approveException(name)
+      if (res.status !== 'ok') throw new Error(res.message || 'Failed')
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.pendingExceptionApprovals })
+      qc.invalidateQueries({ queryKey: keys.myExceptions })
+    },
+  })
+}
+
+export function useRejectException() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: { name: string; reason: string }) => {
+      const res = await mobileApi.rejectException(vars.name, vars.reason)
+      if (res.status !== 'ok') throw new Error(res.message || 'Failed')
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.pendingExceptionApprovals })
+      qc.invalidateQueries({ queryKey: keys.myExceptions })
+    },
   })
 }
 

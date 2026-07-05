@@ -125,6 +125,11 @@ export const mobileApi = {
       can_advance?: boolean
       next_status_label?: string | null
     }>('vernon_project.api.project_todo.update_status', { todo_id: todoId }),
+  rejectStatus: (todoId: string, reason: string) =>
+    api.post<{ status: string; message: string; status_key?: string }>(
+      'vernon_project.api.project_todo.reject_status',
+      { todo_id: todoId, reason },
+    ),
   cancelTodo: (projectItem: string, reason?: string) =>
     api.post<{ status: string; message: string }>(M + 'cancel_todo', {
       project_item: projectItem,
@@ -447,6 +452,14 @@ export const mobileApi = {
       exception_type,
       reason,
     }),
+  approveException: (exception_id: string) =>
+    api.post<{ status: string; message?: string; approval_status?: string }>(A + 'approve_exception', { exception_id }),
+  rejectException: (exception_id: string, reason: string) =>
+    api.post<{ status: string; message?: string; approval_status?: string }>(A + 'reject_exception', { exception_id, reason }),
+  pendingExceptionApprovals: () =>
+    api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'pending_exception_approvals'),
+  myExceptions: (limit = 30) =>
+    api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'my_exceptions', { limit }),
   attendanceReport: (filters: {
     from_date: string
     to_date: string
