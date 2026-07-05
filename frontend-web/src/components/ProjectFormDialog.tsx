@@ -280,21 +280,6 @@ export function ProjectFormDialog({
           />
         </label>
 
-        {/* Discount — Rupiah only */}
-        {f.reward_type !== 'Point' && (
-          <label className="space-y-1">
-            <span className="text-sm font-medium text-muted">Discount (Rp)</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={f.discount || ''}
-              onChange={(e) => set('discount', Number(e.target.value) || 0)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-            />
-          </label>
-        )}
-
         {/* Team members — full width */}
         <div className="space-y-1 md:col-span-2">
           <span className="text-sm font-medium text-muted">Team</span>

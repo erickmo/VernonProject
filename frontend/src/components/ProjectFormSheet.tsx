@@ -163,18 +163,10 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             <SearchableSelect value={f.reward_type ?? 'Rupiah'} onChange={(v) => set('reward_type', v as 'Rupiah' | 'Point')} options={[{ value: 'Rupiah', label: 'Rupiah' }, { value: 'Point', label: 'Point' }]} />
           </label>
 
-          <div className="flex gap-3">
-            {f.reward_type !== 'Point' && (
-              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-                Discount (Rp)
-                <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={f.discount || ''} onChange={(e) => set('discount', Number(e.target.value) || 0)} />
-              </label>
-            )}
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              {f.reward_type === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
-              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={f.bonus_amount || ''} onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)} />
-            </label>
-          </div>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            {f.reward_type === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
+            <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={f.bonus_amount || ''} onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)} />
+          </label>
 
           <button onClick={submit} disabled={saving}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">
