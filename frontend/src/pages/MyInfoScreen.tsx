@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { User, Phone, MapPin, CalendarDays, Award, BookOpen, ClipboardList, Trash2, Plus } from 'lucide-react'
+import { Phone, MapPin, CalendarDays, Award, BookOpen, ClipboardList, Trash2, Plus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -66,7 +66,7 @@ export default function MyInfoScreen() {
       right={
         <button
           onClick={doSave}
-          disabled={save.isPending}
+          disabled={save.isPending || !hydrated}
           className="flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
         >
           {save.isPending && <Spinner className="h-3.5 w-3.5" />}
