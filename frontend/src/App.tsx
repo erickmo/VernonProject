@@ -55,6 +55,7 @@ import AttendanceSchedulesScreen from './pages/AttendanceSchedulesScreen'
 import AttendanceStationsScreen from './pages/AttendanceStationsScreen'
 import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
 import ExceptionApprovals from './pages/ExceptionApprovals'
+import MyExceptions from './pages/MyExceptions'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
@@ -220,6 +221,7 @@ export default function App() {
         <Route path="/attendance" element={<MyAttendance />} />
         <Route path="/attendance/request" element={<RequestException />} />
         <Route path="/attendance/approvals" element={<ExceptionApprovals />} />
+        <Route path="/attendance/my-requests" element={<MyExceptions />} />
         {canManageAttendance(boot) && (
           <>
             <Route path="/attendance/manage" element={<AttendanceAdminScreen />} />
