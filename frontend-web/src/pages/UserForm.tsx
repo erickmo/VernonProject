@@ -15,6 +15,7 @@ import {
   useCreateUser,
   useResetUserPassword,
   useSetUserPassword,
+  useImpersonate,
   VERNON_ROLE_OPTIONS,
   MEMBER_TYPE_OPTIONS,
   keys,
@@ -45,6 +46,7 @@ export default function UserForm() {
   })
   const resetPw = useResetUserPassword()
   const setPw = useSetUserPassword()
+  const impersonate = useImpersonate()
 
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -168,6 +170,27 @@ export default function UserForm() {
       setNewPassword('')
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Failed to set password')
+    }
+  }
+
+  // Gate on the SAVED roles (existing), not editable `roles` state — matches
+  // the server check. Self + Administrator carry System Manager, so this also
+  // hides the button on those records.
+  const canImpersonate = isEdit && !!existing && !existing.roles.includes('System Manager')
+
+  async function onImpersonate() {
+    const ok = await confirm({
+      title: `Impersonate ${name}?`,
+      message: `You'll be logged in as ${name} and the app will reload. Log out and back in to return to your own account.`,
+      confirmLabel: 'Impersonate',
+    })
+    if (!ok) return
+    try {
+      await impersonate.mutateAsync(name as string)
+      // Hard reload so the SPA boots with the impersonated session + fresh csrf.
+      window.location.href = '/w'
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Could not impersonate')
     }
   }
 
@@ -523,6 +546,16 @@ export default function UserForm() {
         {isEdit && (
           <BentoTile span="md" tone="plain" title="Password">
             <div className="mt-1 flex flex-col gap-4">
+              {canImpersonate && (
+                <button
+                  type="button"
+                  onClick={onImpersonate}
+                  disabled={impersonate.isPending}
+                  className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-500/30 dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25 transition-colors"
+                >
+                  {impersonate.isPending ? 'Switching…' : `Log in as ${name}`}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onResetPassword}

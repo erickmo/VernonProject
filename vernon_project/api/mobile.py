@@ -2065,6 +2065,40 @@ def reset_user_password(user):
 
 
 @frappe.whitelist()
+def impersonate(user):
+	"""Log the current System Manager in AS another (non-admin) user.
+
+	Swaps the session to `user` via login_as — the exact primitive passkey
+	login uses. The client must hard-reload afterwards so the SPA boots with the
+	impersonated session's fresh csrf_token.
+
+	Guards (a System Manager must NOT be able to become another System Manager
+	or a protected account through this door):
+	  - caller must be System Manager
+	  - target must not be Guest/Administrator
+	  - target must not itself be a System Manager
+	  - target must exist and be enabled
+	"""
+	_require_system_manager()
+	admin = frappe.session.user
+	if user == admin:
+		frappe.throw("You are already this user")
+	if user in PROTECTED_USERS:
+		frappe.throw("This account cannot be impersonated")
+	if "System Manager" in frappe.get_roles(user):
+		frappe.throw("Cannot impersonate a System Manager")
+	if not frappe.db.get_value("User", user, "enabled"):
+		frappe.throw("User not found or disabled")
+
+	# Security trail: who became whom (impersonation is a privileged action).
+	frappe.logger("impersonate").info(f"{admin} impersonated {user}")
+
+	frappe.local.login_manager.login_as(user)
+	frappe.local.response["user"] = user
+	return {"ok": True, "user": user}
+
+
+@frappe.whitelist()
 def set_user_password(user, new_password):
 	"""Directly set a user's password (System Manager only).
 

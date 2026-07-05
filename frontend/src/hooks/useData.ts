@@ -788,6 +788,12 @@ export function useResetUserPassword() {
   })
 }
 
+export function useImpersonate() {
+  return useMutation({
+    mutationFn: (user: string) => mobileApi.impersonate(user),
+  })
+}
+
 export function useSetUserPassword() {
   return useMutation({
     mutationFn: ({ user, newPassword }: { user: string; newPassword: string }) =>
