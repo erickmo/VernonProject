@@ -478,6 +478,17 @@ export const mobileApi = {
       from_date: string; to_date: string; day_count: number
       rows: { user: string; full_name: string; assigned_total: number; avg_daily: number; under_days: number; deficit: number }[]
     }>('vernon_project.api.report.under_occupied', { from_date, to_date }),
+  updateMyProfile: (payload: Partial<import('./types').EmployeeSoft>) =>
+    api.post<{ status: string; message?: string }>(M + 'update_my_profile', {
+      ...payload,
+      education: JSON.stringify(payload.education ?? []),
+      skills: JSON.stringify(payload.skills ?? []),
+      trainings: JSON.stringify(payload.trainings ?? []),
+    } as Record<string, unknown>),
+  getEmployeeProfile: (user: string) =>
+    api.get<import('./types').EmployeeProfileAdmin>(M + 'get_employee_profile', { user }),
+  updateEmployeeProfile: (user: string, payload: Record<string, unknown>) =>
+    api.post<{ status: string; message?: string }>(M + 'update_employee_profile', { user, ...payload }),
 }
 
 const EV = 'vernon_project.api.events.'

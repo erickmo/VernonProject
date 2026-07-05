@@ -15,6 +15,8 @@ export interface Boot {
   is_leader: boolean
   badge?: Badge | null
   vapid_public_key?: string | null
+  employee?: EmployeeSoft | null
+  leave?: LeaveBalance | null
 }
 
 export type NotificationType =
@@ -854,6 +856,29 @@ export interface Conflict {
   title: string
   start: string
   end: string
+}
+
+export type EmployeeChildEducation = { level?: string; institution?: string; major?: string; year?: number }
+export type EmployeeChildSkill = { skill: string; proficiency?: string }
+export type EmployeeChildTraining = { title: string; provider?: string; training_date?: string; certificate?: string; expiry_date?: string }
+
+export type EmployeeSoft = {
+  phone?: string; birthdate?: string; bio?: string;
+  home_address?: string;
+  emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
+  education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
+}
+
+export type LeaveBalance = { quota: number; used: number; remaining: number }
+
+// Admin view adds the sensitive fields:
+export type EmployeeProfileAdmin = EmployeeSoft & {
+  full_name?: string;
+  nik_ktp?: string; npwp?: string; bpjs_kesehatan?: string; bpjs_ketenagakerjaan?: string;
+  bank_name?: string; bank_account_no?: string; bank_account_holder?: string;
+  employment_status?: string; job_title?: string; date_joined?: string;
+  contract_start?: string; contract_end?: string; annual_leave_quota?: number;
+  leave?: LeaveBalance;
 }
 
 export type ExceptionDecision = 'Pending' | 'Approved' | 'Rejected'

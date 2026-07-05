@@ -103,6 +103,7 @@ export const keys = {
   equipmentItem: (n: string) => ['equipment-item', n] as const,
   pendingExceptionApprovals: ['pendingExceptionApprovals'] as const,
   myExceptions: ['myExceptions'] as const,
+  employeeProfile: (user: string) => ['employee-profile', user] as const,
 }
 
 export const useBoot = () =>
@@ -1611,5 +1612,22 @@ export function useDeleteEquipment() {
 
 export function useCheckAvailability() {
   return useMutation({ mutationFn: checkAvailability })
+}
+
+export function useEmployeeProfile(user: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.employeeProfile(user),
+    queryFn: () => mobileApi.getEmployeeProfile(user),
+    enabled: !!user && enabled,
+  })
+}
+
+export function useSaveMyProfile() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Partial<import('@/lib/types').EmployeeSoft>) =>
+      mobileApi.updateMyProfile(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.boot }),
+  })
 }
 
