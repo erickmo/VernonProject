@@ -1,0 +1,29 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-05 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["approver", "decision", "decided_at", "reason"],
+ "fields": [
+  {"fieldname": "approver", "fieldtype": "Link", "label": "Approver", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "decision", "fieldtype": "Select", "label": "Decision", "options": "Pending\nApproved\nRejected", "default": "Pending", "in_list_view": 1},
+  {"fieldname": "decided_at", "fieldtype": "Datetime", "label": "Decided At", "read_only": 1},
+  {"fieldname": "reason", "fieldtype": "Small Text", "label": "Reason"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-05 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Attendance Exception Approver",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
