@@ -7,6 +7,8 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
+import { mobileApi } from '@/lib/api'
+import type { LeaveBalance } from '@/lib/types'
 import {
   useUsers,
   useCreateUser,
@@ -48,6 +50,46 @@ export default function UserForm() {
   const [dirty, setDirty] = useState(false)
   const [emailError, setEmailError] = useState('')
 
+  // Employee profile — legal/contract/leave (edit mode only)
+  const [_epLoading, setEpLoading] = useState(false)
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null)
+  const [nikKtp, setNikKtp] = useState('')
+  const [npwp, setNpwp] = useState('')
+  const [bpjsKes, setBpjsKes] = useState('')
+  const [bpjsTk, setBpjsTk] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [bankAccountNo, setBankAccountNo] = useState('')
+  const [bankAccountHolder, setBankAccountHolder] = useState('')
+  const [employmentStatus, setEmploymentStatus] = useState('')
+  const [jobTitle, setJobTitle] = useState('')
+  const [dateJoined, setDateJoined] = useState('')
+  const [contractStart, setContractStart] = useState('')
+  const [contractEnd, setContractEnd] = useState('')
+  const [annualLeaveQuota, setAnnualLeaveQuota] = useState<number | ''>('')
+
+  useEffect(() => {
+    if (!name) return
+    setEpLoading(true)
+    mobileApi.getEmployeeProfile(name).then((ep) => {
+      setNikKtp(ep.nik_ktp ?? '')
+      setNpwp(ep.npwp ?? '')
+      setBpjsKes(ep.bpjs_kesehatan ?? '')
+      setBpjsTk(ep.bpjs_ketenagakerjaan ?? '')
+      setBankName(ep.bank_name ?? '')
+      setBankAccountNo(ep.bank_account_no ?? '')
+      setBankAccountHolder(ep.bank_account_holder ?? '')
+      setEmploymentStatus(ep.employment_status ?? '')
+      setJobTitle(ep.job_title ?? '')
+      setDateJoined(ep.date_joined ?? '')
+      setContractStart(ep.contract_start ?? '')
+      setContractEnd(ep.contract_end ?? '')
+      setAnnualLeaveQuota(ep.annual_leave_quota ?? '')
+      setLeaveBalance(ep.leave ?? null)
+    }).catch(() => {
+      // non-fatal: admin fields stay blank if fetch fails
+    }).finally(() => setEpLoading(false))
+  }, [name])
+
   useEffect(() => {
     if (existing) {
       setFullName(existing.full_name || '')
@@ -78,6 +120,13 @@ export default function UserForm() {
         await update.mutateAsync({
           user: name as string,
           payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0, member_type: memberType },
+        })
+        await mobileApi.updateEmployeeProfile(name as string, {
+          nik_ktp: nikKtp, npwp, bpjs_kesehatan: bpjsKes, bpjs_ketenagakerjaan: bpjsTk,
+          bank_name: bankName, bank_account_no: bankAccountNo, bank_account_holder: bankAccountHolder,
+          employment_status: employmentStatus, job_title: jobTitle, date_joined: dateJoined,
+          contract_start: contractStart, contract_end: contractEnd,
+          annual_leave_quota: annualLeaveQuota === '' ? null : annualLeaveQuota,
         })
         toast('success', 'User updated')
       } else {
@@ -334,6 +383,122 @@ export default function UserForm() {
             )}
           </div>
         </BentoTile>
+
+        {/* Legal / ID tile (edit mode only) */}
+        {isEdit && (
+          <BentoTile span="md" tone="plain" title="Legal & ID">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+              <Field label="NIK KTP">
+                {(id) => (
+                  <input id={id} type="text" value={nikKtp} onChange={(e) => { setNikKtp(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="NPWP">
+                {(id) => (
+                  <input id={id} type="text" value={npwp} onChange={(e) => { setNpwp(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="BPJS Kesehatan">
+                {(id) => (
+                  <input id={id} type="text" value={bpjsKes} onChange={(e) => { setBpjsKes(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="BPJS Ketenagakerjaan">
+                {(id) => (
+                  <input id={id} type="text" value={bpjsTk} onChange={(e) => { setBpjsTk(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="Bank name">
+                {(id) => (
+                  <input id={id} type="text" value={bankName} onChange={(e) => { setBankName(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="Account number">
+                {(id) => (
+                  <input id={id} type="text" value={bankAccountNo} onChange={(e) => { setBankAccountNo(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Account holder name">
+                  {(id) => (
+                    <input id={id} type="text" value={bankAccountHolder} onChange={(e) => { setBankAccountHolder(e.target.value); setDirty(true) }} className={field} />
+                  )}
+                </Field>
+              </div>
+              {/* ponytail: attach_ktp + attach_npwp omitted — no generic private uploader exists; add when uploadPrivateFile helper is built */}
+            </div>
+          </BentoTile>
+        )}
+
+        {/* Contract tile (edit mode only) */}
+        {isEdit && (
+          <BentoTile span="md" tone="plain" title="Contract">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+              <Field label="Employment status">
+                {(id) => (
+                  <select id={id} value={employmentStatus} onChange={(e) => { setEmploymentStatus(e.target.value); setDirty(true) }} className={field}>
+                    <option value="">— select —</option>
+                    <option value="Permanent">Permanent</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Probation">Probation</option>
+                    <option value="Intern">Intern</option>
+                  </select>
+                )}
+              </Field>
+              <Field label="Job title">
+                {(id) => (
+                  <input id={id} type="text" value={jobTitle} onChange={(e) => { setJobTitle(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="Date joined">
+                {(id) => (
+                  <input id={id} type="date" value={dateJoined} onChange={(e) => { setDateJoined(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <div />
+              <Field label="Contract start">
+                {(id) => (
+                  <input id={id} type="date" value={contractStart} onChange={(e) => { setContractStart(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              <Field label="Contract end">
+                {(id) => (
+                  <input id={id} type="date" value={contractEnd} onChange={(e) => { setContractEnd(e.target.value); setDirty(true) }} className={field} />
+                )}
+              </Field>
+              {/* ponytail: attach_contract omitted — no generic private uploader exists; add when uploadPrivateFile helper is built */}
+            </div>
+          </BentoTile>
+        )}
+
+        {/* Leave tile (edit mode only) */}
+        {isEdit && (
+          <BentoTile span="sm" tone="plain" title="Leave">
+            <div className="mt-1 space-y-4">
+              <Field label="Annual leave quota (days)">
+                {(id) => (
+                  <input
+                    id={id}
+                    type="number"
+                    min={0}
+                    value={annualLeaveQuota}
+                    onChange={(e) => { setAnnualLeaveQuota(e.target.value === '' ? '' : Number(e.target.value)); setDirty(true) }}
+                    className={field}
+                  />
+                )}
+              </Field>
+              {leaveBalance && (
+                <div className="rounded-xl border border-line bg-canvas px-3 py-3 text-sm">
+                  <span className="text-xs text-muted block mb-1">This year</span>
+                  <span className="font-semibold text-ink">
+                    {leaveBalance.remaining}
+                  </span>
+                  <span className="text-muted"> / {leaveBalance.quota} days remaining</span>
+                </div>
+              )}
+            </div>
+          </BentoTile>
+        )}
 
         {/* Password tile (edit mode only) */}
         {isEdit && (
