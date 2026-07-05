@@ -369,7 +369,7 @@ class ProjectTodo(Document):
 			if self.status == "✅ Completed":
 				self.sync_point_ledger()
 				if self.is_recurring:
-					self.create_next_occurrence()
+					generate_next(self, force=True)
 			elif prev_state == "✅ Completed":
 				self._remove_ledger()
 			self._notify_status_change(prev_state)
@@ -655,60 +655,101 @@ class ProjectTodo(Document):
 		if self.recurring_frequency == "Monthly" and self.recurring_monthly_mode == "Nth Weekday" and len(idxs) != 1:
 			frappe.throw(_("Nth-weekday recurrence needs exactly one weekday."))
 
-	def create_next_occurrence(self):
-		"""Create next recurring todo when current one is completed"""
-		if not self.is_recurring or not self.recurring_frequency:
-			return
 
-		# Calculate next occurrence date
-		next_date = self.calculate_next_occurrence(self.deadline)
+_ROLL = ("name, project_detail, to_do, assigned_to, start_date, deadline, leader_deadline, "
+         "owner_deadline, estimated, notes, `group`, level, level_id, status, is_recurring, "
+         "recurring_frequency, recurring_interval, recurring_weekdays, recurring_monthly_mode, "
+         "recurring_day_of_month, recurring_nth, recurring_until, original_todo")
 
-		if not next_date:
-			return
 
-		# Check if next occurrence is beyond recurring_until
-		if self.recurring_until and getdate(next_date) > getdate(self.recurring_until):
-			return
+def series_root(name, original_todo):
+    return original_todo or name
 
-		# Dedup against the scheduler path (create_recurring_todos): both paths target
-		# the same next_date, so if that occurrence already exists, don't create a
-		# second one — whichever path ran first wins, the other no-ops.
-		if frappe.db.exists("Project Todo", {
-			"project_detail": self.project_detail,
-			"to_do": self.to_do,
-			"deadline": next_date,
-			"assigned_to": self.assigned_to,
-		}):
-			frappe.db.set_value("Project Todo", self.name, "next_occurrence", None, update_modified=False)
-			return
 
-		frappe.get_doc({
-			"doctype": "Project Todo",
-			"project_detail": self.project_detail,
-			"to_do": self.to_do,
-			"assigned_to": self.assigned_to,
-			# Shift the start date forward by the same gap, keeping start→deadline span.
-			"start_date": (
-				add_days(getdate(self.start_date), (getdate(next_date) - getdate(self.deadline)).days)
-				if self.start_date and self.deadline
-				else next_date
-			),
-			"deadline": next_date,
-			"estimated": self.estimated,
-			"notes": self.notes,
-			"group": self.group,
-			"level": self.level,
-			"level_id": self.level_id,
-			"is_recurring": 1,
-			"recurring_frequency": self.recurring_frequency,
-			"recurring_until": self.recurring_until,
-			"next_occurrence": self.calculate_next_occurrence(next_date),
-			"original_todo": self.original_todo or self.name,
-			"status": "⚪️ Planned",
-		}).insert(ignore_permissions=True)
+def latest_occurrence(root):
+    rows = frappe.db.sql(
+        f"SELECT {_ROLL} FROM `tabProject Todo` WHERE name=%(r)s OR original_todo=%(r)s "
+        "ORDER BY deadline DESC, creation DESC LIMIT 1",
+        {"r": root}, as_dict=True,
+    )
+    return rows[0] if rows else None
 
-		frappe.db.set_value("Project Todo", self.name, "next_occurrence", None, update_modified=False)
-		frappe.msgprint(f"Next recurring todo created with deadline: {next_date}")
+
+def occurrence_exists(root, deadline):
+    return bool(frappe.db.sql(
+        "SELECT 1 FROM `tabProject Todo` WHERE (name=%(r)s OR original_todo=%(r)s) "
+        "AND deadline=%(d)s LIMIT 1",
+        {"r": root, "d": deadline},
+    ))
+
+
+def build_occurrence(anchor, next_date):
+    old_dl = getdate(anchor.deadline)
+    delta = (getdate(next_date) - old_dl).days
+
+    def shift(v):
+        return add_days(getdate(v), delta) if v else None
+
+    doc = frappe.get_doc({
+        "doctype": "Project Todo",
+        "project_detail": anchor.project_detail,
+        "to_do": anchor.to_do,
+        "assigned_to": anchor.assigned_to,
+        # start_date is effectively required; keep the span, fall back to next_date.
+        "start_date": shift(anchor.start_date) or next_date,
+        "deadline": next_date,
+        "leader_deadline": shift(anchor.leader_deadline),
+        "owner_deadline": shift(anchor.owner_deadline),
+        "estimated": anchor.estimated,
+        "notes": anchor.notes,
+        "group": anchor.get("group"),
+        "level": anchor.level,
+        "level_id": anchor.level_id,
+        "is_recurring": 1,
+        "recurring_frequency": anchor.recurring_frequency,
+        "recurring_interval": anchor.recurring_interval,
+        "recurring_weekdays": anchor.recurring_weekdays,
+        "recurring_monthly_mode": anchor.recurring_monthly_mode,
+        "recurring_day_of_month": anchor.recurring_day_of_month,
+        "recurring_nth": anchor.recurring_nth,
+        "recurring_until": anchor.recurring_until,
+        "original_todo": series_root(anchor.name, anchor.original_todo),
+        "status": "⚪️ Planned",
+    })
+    doc.insert(ignore_permissions=True)
+    return doc
+
+
+def generate_next(anchor, force=False):
+    """Idempotent single-step roll-forward for a series. Returns the new doc or None.
+
+    force=True (on-complete): queue the successor immediately.
+    force=False (scheduler): only when the computed date has arrived (<= today), so a
+    still-open future occurrence is never pre-generated.
+    """
+    if not anchor or not anchor.is_recurring or not anchor.recurring_frequency:
+        return None
+    root = series_root(anchor.name, anchor.original_todo)
+    if frappe.db.get_value("Project Todo", root, "recurring_paused"):
+        return None
+    head = frappe.get_doc("Project Todo", anchor.name)
+    next_date = head.calculate_next_occurrence(anchor.deadline)
+    if not next_date:
+        return None
+    next_date = getdate(next_date)
+    today = getdate(nowdate())
+    if next_date < today:  # long gap / resume: skip the missed window, don't backfill
+        from .recurrence import first_on_or_after
+        next_date = getdate(first_on_or_after(today, head._rule()))
+    if anchor.recurring_until and next_date > getdate(anchor.recurring_until):
+        return None
+    if not force and next_date > today:
+        return None
+    # Serialize the on-complete txn and the scheduler txn on the series root, then dedup.
+    frappe.db.sql("SELECT name FROM `tabProject Todo` WHERE name=%s FOR UPDATE", root)
+    if occurrence_exists(root, next_date):
+        return None
+    return build_occurrence(anchor, next_date)
 
 
 # --------------------------------------------------------------------------------

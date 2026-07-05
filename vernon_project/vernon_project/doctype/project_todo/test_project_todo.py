@@ -159,6 +159,16 @@ class TestProjectTodo(unittest.TestCase):
 		fields.setdefault("start_date", fields["deadline"])
 		return frappe.get_doc(fields).insert(ignore_permissions=True)
 
+	def _make_recurring_todo(self, frequency=None, weekdays=None, **over):
+		"""Valid Planned recurring todo; maps friendly kwargs to recurring_* fields."""
+		fields = {"is_recurring": 1}
+		if frequency is not None:
+			fields["recurring_frequency"] = frequency
+		if weekdays is not None:
+			fields["recurring_weekdays"] = weekdays
+		fields.update(over)
+		return self._make_todo(**fields)
+
 	# ------------------------------------------------------------------
 	# Tests from brief Step 1 (new standalone tests)
 	# ------------------------------------------------------------------
@@ -406,53 +416,102 @@ class TestProjectTodo(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_scheduler_spawns_standalone_occurrence(self):
+		"""Scheduler rolls a past-due recurring series forward by exactly one."""
 		from vernon_project.tasks import create_recurring_todos
 		head = self._make_todo(
 			is_recurring=1,
 			recurring_frequency="Daily",
 			deadline=add_days(nowdate(), -1),
 		)
-		frappe.db.set_value("Project Todo", head.name, "next_occurrence", nowdate())
-		before = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
 		create_recurring_todos()
-		after = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
-		self.assertEqual(after, before + 1)
-		self.assertIsNone(frappe.db.get_value("Project Todo", head.name, "next_occurrence"))
+		kids = frappe.get_all("Project Todo", filters={"original_todo": head.name},
+			fields=["name", "deadline"])
+		self.assertEqual(len(kids), 1)
+		self.assertEqual(str(kids[0].deadline), nowdate())
 
 	def test_complete_does_not_duplicate_scheduler_occurrence(self):
-		"""Both generators target the same next occurrence; completing a recurring
-		todo after the scheduler already rolled it forward must not duplicate it.
-
-		Invariant in real use: next_occurrence == calculate_next_occurrence(deadline).
-		Weekly + deadline 8 days ago => next_occurrence is yesterday (due now) and
-		equals calculate_next_occurrence(deadline), so both paths target the same date.
-		"""
+		"""Completing a recurring todo the scheduler already advanced must dedup, not
+		duplicate: both paths target the same next date, so one no-ops."""
 		from vernon_project.tasks import create_recurring_todos
 		head = self._make_todo(
 			is_recurring=1,
-			recurring_frequency="Weekly",
-			deadline=add_days(nowdate(), -8),
+			recurring_frequency="Daily",
+			deadline=add_days(nowdate(), -1),
 		)
-		# next_occurrence isn't auto-populated on a generic insert; seed it to the
-		# rule's next date (yesterday) so the scheduler is actually due, matching the
-		# scenario this test documents.
-		frappe.db.set_value("Project Todo", head.name, "next_occurrence",
-			head.calculate_next_occurrence(head.deadline), update_modified=False)
-		# Scheduler is due now -> creates the next occurrence and clears head.next_occurrence.
 		create_recurring_todos()
-		after_scheduler = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
-
-		# Completing the head fires create_next_occurrence, which must dedup, not duplicate.
+		after_scheduler = frappe.db.count("Project Todo", {"original_todo": head.name})
 		head.reload()
 		head.status = "✅ Completed"
 		head.save(ignore_permissions=True)
 		frappe.db.commit()
-
-		after_complete = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
+		after_complete = frappe.db.count("Project Todo", {"original_todo": head.name})
 		self.assertEqual(
 			after_complete, after_scheduler,
 			"Completing a recurring todo must not duplicate the scheduler's occurrence",
 		)
+
+	def test_oncomplete_generates_next_with_rule_and_shift(self):
+		t = self._make_recurring_todo(frequency="Weekly", weekdays="MON,THU",
+			start_date="2026-07-06", deadline="2026-07-06",
+			leader_deadline="2026-07-07")
+		# Reload so validate_done_todo_fields compares DB-normalized dates (a raw
+		# just-inserted doc has string dates and false-positives the protected diff).
+		t.reload(); t.status = "✅ Completed"; t.save(ignore_permissions=True)
+		nxt = frappe.get_all("Project Todo", filters={"original_todo": t.name},
+			fields=["deadline", "start_date", "leader_deadline"])
+		assert nxt and str(nxt[0].deadline) == "2026-07-09", nxt   # Thu same week
+		# span + leader delta preserved (all +3 days)
+		assert str(nxt[0].start_date) == "2026-07-09" and str(nxt[0].leader_deadline) == "2026-07-10", nxt
+
+	def test_paused_blocks_oncomplete(self):
+		t = self._make_recurring_todo(frequency="Daily", start_date="2026-07-06", deadline="2026-07-06")
+		frappe.db.set_value("Project Todo", t.name, "recurring_paused", 1)
+		t.reload(); t.status = "✅ Completed"; t.save(ignore_permissions=True)
+		assert not frappe.get_all("Project Todo", filters={"original_todo": t.name}), "paused series generated"
+
+	def test_scheduler_self_heals_after_intermediate_delete(self):
+		"""Deleting a middle occurrence must not strand the series: the scheduler keys
+		off the LATEST occurrence, so it still rolls forward."""
+		from vernon_project.tasks import create_recurring_todos
+		from vernon_project.vernon_project.doctype.project_todo.project_todo import build_occurrence
+		root = self._make_recurring_todo(frequency="Daily",
+			start_date=add_days(nowdate(), -3), deadline=add_days(nowdate(), -3))
+		occ2 = build_occurrence(root, add_days(nowdate(), -2))
+		occ3 = build_occurrence(occ2, add_days(nowdate(), -1))
+		frappe.delete_doc("Project Todo", occ2.name, ignore_permissions=True, force=True)
+		create_recurring_todos()
+		got = frappe.get_all("Project Todo",
+			filters={"original_todo": root.name, "deadline": nowdate()})
+		self.assertTrue(got, "scheduler did not self-heal off the latest occurrence")
+
+	def test_scheduler_does_not_backfill_after_pause(self):
+		"""Paused: no generation. On resume: exactly one occurrence, clamped to today
+		(the missed window is skipped, not backfilled)."""
+		from vernon_project.tasks import create_recurring_todos
+		root = self._make_recurring_todo(frequency="Daily",
+			start_date=add_days(nowdate(), -10), deadline=add_days(nowdate(), -10))
+		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 1)
+		create_recurring_todos()
+		self.assertFalse(
+			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
+			"paused series should not generate")
+		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 0)
+		create_recurring_todos()
+		kids = frappe.get_all("Project Todo", filters={"original_todo": root.name},
+			fields=["deadline"])
+		self.assertEqual(len(kids), 1, "resume must not backfill missed occurrences")
+		self.assertEqual(str(kids[0].deadline), nowdate())
+
+	def test_scheduler_skips_ended_series(self):
+		"""A series past its recurring_until generates nothing."""
+		from vernon_project.tasks import create_recurring_todos
+		root = self._make_recurring_todo(frequency="Daily",
+			start_date=add_days(nowdate(), -2), deadline=add_days(nowdate(), -2),
+			recurring_until=add_days(nowdate(), -1))
+		create_recurring_todos()
+		self.assertFalse(
+			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
+			"ended series (past recurring_until) should not generate")
 
 
 class TestProjectTodoPhaseTracking(unittest.TestCase):
