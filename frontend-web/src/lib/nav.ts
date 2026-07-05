@@ -23,6 +23,7 @@ const WORK: NavLeaf[] = [
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },
   { to: '/feedback', label: 'Send feedback', sub: 'Tell us anything', icon: MessageSquarePlus },
   { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
+  { to: '/attendance/my-approvals', label: 'Approvals', sub: 'Leave/WFH to approve', icon: Inbox },
 ]
 
 const REWARDS: NavLeaf[] = [

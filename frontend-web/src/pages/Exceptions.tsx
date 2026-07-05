@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { useBoot, canManageAttendance } from '@/hooks/useData'
+import { useBoot, canManageAttendance, useApproveException, useRejectException } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 
@@ -15,6 +15,9 @@ export default function Exceptions() {
   useEffect(() => {
     if (blocked) navigate('/', { replace: true })
   }, [blocked, navigate])
+
+  const approve = useApproveException()
+  const reject = useRejectException()
 
   const [list, setList] = useState<Exc[] | null>(null)
   const load = () =>
@@ -31,7 +34,8 @@ export default function Exceptions() {
   }, [])
 
   const decide = async (name: string, status: 'Approved' | 'Rejected') => {
-    await resource.update('Attendance Exception', name, { status, approver: boot?.user })
+    if (status === 'Approved') await approve.mutateAsync(name)
+    else await reject.mutateAsync({ name, reason: 'Rejected by admin' })
     load()
   }
 
