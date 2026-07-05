@@ -12,7 +12,7 @@
   "background_section", "education", "skills", "trainings",
   "legal_section", "nik_ktp", "npwp", "bpjs_kesehatan", "bpjs_ketenagakerjaan", "bank_name", "bank_account_no", "bank_account_holder", "attach_ktp", "attach_npwp",
   "contract_section", "employment_status", "job_title", "date_joined", "contract_start", "contract_end", "attach_contract",
-  "leave_section", "annual_leave_quota"
+  "leave_section", "annual_leave_quota", "prior_leave_taken"
  ],
  "fields": [
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "unique": 1, "in_list_view": 1, "search_index": 1, "permlevel": 1},
@@ -48,7 +48,8 @@
   {"fieldname": "attach_contract", "fieldtype": "Attach", "label": "Signed Contract", "permlevel": 1, "is_private": 1},
 
   {"fieldname": "leave_section", "fieldtype": "Section Break", "label": "Leave (admin only)"},
-  {"fieldname": "annual_leave_quota", "fieldtype": "Int", "label": "Annual Leave Quota (blank = global default)", "permlevel": 1}
+  {"fieldname": "annual_leave_quota", "fieldtype": "Int", "label": "Annual Leave Quota (blank = global default)", "permlevel": 1},
+  {"fieldname": "prior_leave_taken", "fieldtype": "Int", "label": "Leave Already Taken This Year (pre-system, days)", "permlevel": 1, "non_negative": 1}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,

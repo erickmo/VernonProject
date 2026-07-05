@@ -12,7 +12,7 @@ import json
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
-from vernon_project.attendance.leave_quota import effective_quota, used_days
+from vernon_project.attendance.leave_quota import effective_quota, prior_taken, used_including_prior
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -40,8 +40,8 @@ EMPLOYEE_USER_FIELDS = ("phone", "birth_date", "bio")
 def _leave_balance(user):
 	yr = getdate(nowdate()).year
 	quota = effective_quota(user)
-	used = used_days(user, yr)
-	return {"quota": quota, "used": used, "remaining": quota - used}
+	used = used_including_prior(user, yr)
+	return {"quota": quota, "used": used, "remaining": quota - used, "prior": prior_taken(user)}
 
 
 def _require_system_manager():
@@ -5140,7 +5140,7 @@ def update_employee_profile(
 	user, nik_ktp=None, npwp=None, bpjs_kesehatan=None, bpjs_ketenagakerjaan=None,
 	bank_name=None, bank_account_no=None, bank_account_holder=None,
 	employment_status=None, job_title=None, date_joined=None,
-	contract_start=None, contract_end=None, annual_leave_quota=None,
+	contract_start=None, contract_end=None, annual_leave_quota=None, prior_leave_taken=None,
 ):
 	"""Admin: edit legal/contract/quota fields for any user."""
 	_require_system_manager()
@@ -5156,5 +5156,7 @@ def update_employee_profile(
 			doc.set(f, val)
 	if annual_leave_quota is not None:
 		doc.annual_leave_quota = int(annual_leave_quota or 0)
+	if prior_leave_taken is not None:
+		doc.prior_leave_taken = int(prior_leave_taken or 0)
 	doc.save(ignore_permissions=True)
 	return {"status": "ok"}

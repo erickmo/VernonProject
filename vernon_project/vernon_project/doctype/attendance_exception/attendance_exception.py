@@ -7,7 +7,7 @@ from frappe.model.document import Document
 
 from vernon_project.attendance.leave_quota import (
 	effective_quota,
-	used_days,
+	used_including_prior,
 	working_days,
 	year_slices,
 )
@@ -30,7 +30,7 @@ class AttendanceException(Document):
 			req = working_days(self.employee, start, end)
 			if req <= 0:
 				continue
-			used = used_days(self.employee, year, exclude=self.name)
+			used = used_including_prior(self.employee, year, exclude=self.name)
 			if used + req > quota:
 				remaining = max(0, quota - used)
 				frappe.throw(

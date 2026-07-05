@@ -869,7 +869,7 @@ export type EmployeeSoft = {
   education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
 }
 
-export type LeaveBalance = { quota: number; used: number; remaining: number }
+export type LeaveBalance = { quota: number; used: number; remaining: number; prior?: number }
 
 // Admin view adds the sensitive fields:
 export type EmployeeProfileAdmin = EmployeeSoft & {
@@ -877,7 +877,7 @@ export type EmployeeProfileAdmin = EmployeeSoft & {
   nik_ktp?: string; npwp?: string; bpjs_kesehatan?: string; bpjs_ketenagakerjaan?: string;
   bank_name?: string; bank_account_no?: string; bank_account_holder?: string;
   employment_status?: string; job_title?: string; date_joined?: string;
-  contract_start?: string; contract_end?: string; annual_leave_quota?: number;
+  contract_start?: string; contract_end?: string; annual_leave_quota?: number; prior_leave_taken?: number;
   leave?: LeaveBalance | null;
 }
 

@@ -65,6 +65,7 @@ export default function UserForm() {
   const [contractStart, setContractStart] = useState('')
   const [contractEnd, setContractEnd] = useState('')
   const [annualLeaveQuota, setAnnualLeaveQuota] = useState<number | ''>('')
+  const [priorLeaveTaken, setPriorLeaveTaken] = useState<number | ''>('')
 
   useEffect(() => {
     if (!name) return
@@ -82,6 +83,7 @@ export default function UserForm() {
       setContractStart(ep.contract_start ?? '')
       setContractEnd(ep.contract_end ?? '')
       setAnnualLeaveQuota(ep.annual_leave_quota ?? '')
+      setPriorLeaveTaken(ep.prior_leave_taken ?? '')
       setLeaveBalance(ep.leave ?? null)
     }).catch(() => {
       // non-fatal: admin fields stay blank if fetch fails
@@ -125,6 +127,7 @@ export default function UserForm() {
           employment_status: employmentStatus, job_title: jobTitle, date_joined: dateJoined,
           contract_start: contractStart, contract_end: contractEnd,
           annual_leave_quota: annualLeaveQuota === '' ? null : annualLeaveQuota,
+          prior_leave_taken: priorLeaveTaken === '' ? null : priorLeaveTaken,
         })
         toast('success', 'User updated')
       } else {
@@ -485,6 +488,18 @@ export default function UserForm() {
                   />
                 )}
               </Field>
+              <Field label="Leave already taken this year (pre-system, days)">
+                {(id) => (
+                  <input
+                    id={id}
+                    type="number"
+                    min={0}
+                    value={priorLeaveTaken}
+                    onChange={(e) => { setPriorLeaveTaken(e.target.value === '' ? '' : Number(e.target.value)); setDirty(true) }}
+                    className={field}
+                  />
+                )}
+              </Field>
               {leaveBalance && (
                 <div className="rounded-xl border border-line bg-canvas px-3 py-3 text-sm">
                   <span className="text-xs text-muted block mb-1">This year</span>
@@ -492,6 +507,9 @@ export default function UserForm() {
                     {leaveBalance.remaining}
                   </span>
                   <span className="text-muted"> / {leaveBalance.quota} days remaining</span>
+                  {typeof leaveBalance.prior === 'number' && leaveBalance.prior > 0 && (
+                    <span className="text-muted"> · {leaveBalance.used} used (incl. {leaveBalance.prior} pre-system)</span>
+                  )}
                 </div>
               )}
             </div>

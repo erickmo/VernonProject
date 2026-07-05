@@ -86,6 +86,28 @@ def used_days(employee, year, exclude=None):
 	return total
 
 
+def prior_taken(employee):
+	"""Per-employee opening balance: leave already taken THIS year before the system existed.
+
+	# ponytail: single Int, applies only to the current calendar year; admin clears it
+	# at year start (by next year all leave is system-recorded). Not year-tagged.
+	"""
+	import frappe
+
+	return int(frappe.db.get_value("Employee Profile", {"user": employee}, "prior_leave_taken") or 0)
+
+
+def used_including_prior(employee, year, exclude=None):
+	"""System-recorded used days for `year`, plus the pre-system opening balance for the current year."""
+	import frappe
+	from frappe.utils import getdate, nowdate
+
+	total = used_days(employee, year, exclude=exclude)
+	if year == getdate(nowdate()).year:
+		total += prior_taken(employee)
+	return total
+
+
 if __name__ == "__main__":
 	# Pure self-check for the year-split (no DB). Run: python leave_quota.py
 	assert year_slices("2026-03-01", "2026-03-05") == [(2026, date(2026, 3, 1), date(2026, 3, 5))]
