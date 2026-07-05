@@ -497,6 +497,24 @@ function MyInfoCard({
   const [education, setEducation] = useState<EmployeeChildEducation[]>(employee?.education ?? [])
   const [trainings, setTrainings] = useState<EmployeeChildTraining[]>(employee?.trainings ?? [])
 
+  // ponytail: one-shot hydration — useState ignores prop changes after first render; fire once when employee arrives
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => {
+    if (employee && !hydrated) {
+      setPhone(employee.phone ?? '')
+      setBirthdate(employee.birthdate ?? '')
+      setBio(employee.bio ?? '')
+      setHomeAddress(employee.home_address ?? '')
+      setEcName(employee.emergency_contact_name ?? '')
+      setEcPhone(employee.emergency_contact_phone ?? '')
+      setEcRelation(employee.emergency_contact_relation ?? '')
+      setSkills(employee.skills ?? [])
+      setEducation(employee.education ?? [])
+      setTrainings(employee.trainings ?? [])
+      setHydrated(true)
+    }
+  }, [employee, hydrated])
+
   const doSave = () => {
     save.mutate(
       { phone, birthdate, bio, home_address: homeAddress,
