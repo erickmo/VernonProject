@@ -11,6 +11,8 @@ import json
 
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
+from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
+from vernon_project.attendance.leave_quota import effective_quota, used_days, working_days, year_slices
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -21,6 +23,26 @@ VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Tea
 PROTECTED_USERS = ("Guest", "Administrator")
 # Member-type marking on User (custom_member_type). "" = external/unset.
 MEMBER_TYPES = ("", "Internal Team", "Intern")
+
+# Employee Profile self-editable soft fields (mobile /m). Legal/contract/quota are NOT here.
+EMPLOYEE_SOFT_FIELDS = (
+	"home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
+)
+EMPLOYEE_SOFT_CHILDREN = {
+	"education": ("level", "institution", "major", "year"),
+	"skills": ("skill", "proficiency"),
+	"trainings": ("title", "provider", "training_date", "certificate", "expiry_date"),
+}
+# Native User fields reused instead of duplicating on Employee Profile.
+EMPLOYEE_USER_FIELDS = ("phone", "birth_date", "bio")
+
+
+def _leave_balance(user):
+	from frappe.utils import getdate, nowdate
+	yr = getdate(nowdate()).year
+	quota = effective_quota(user)
+	used = used_days(user, yr)
+	return {"quota": quota, "used": used, "remaining": quota - used}
 
 
 def _require_system_manager():
@@ -655,6 +677,15 @@ def bootstrap():
 		if r in roles
 	]
 	av_cfg = frappe.db.get_value("User Avatar", user, "config_json")
+	ep = _ensure_employee_profile(user)
+	uf = frappe.get_value("User", user, ["phone", "birth_date", "bio"], as_dict=True) or {}
+	employee = {f: ep.get(f) for f in EMPLOYEE_SOFT_FIELDS}
+	employee["phone"] = uf.get("phone")
+	employee["birthdate"] = uf.get("birth_date")
+	employee["bio"] = uf.get("bio")
+	employee["education"] = [r.as_dict() for r in ep.education]
+	employee["skills"] = [r.as_dict() for r in ep.skills]
+	employee["trainings"] = [r.as_dict() for r in ep.trainings]
 	return {
 		"user": user,
 		"full_name": u.get("full_name") or user,
@@ -664,6 +695,8 @@ def bootstrap():
 		"is_leader": any(r in roles for r in ("Project Owner", "Project Leader", "System Manager")),
 		"badge": _user_badge(user),
 		"vapid_public_key": frappe.conf.get("vapid_public_key") or None,
+		"employee": employee,
+		"leave": _leave_balance(user),
 	}
 
 
@@ -5033,3 +5066,96 @@ def save_gamification_settings(premium_price=None, points_per_level=None, daily_
 				})
 	frappe.clear_cache(doctype="Avatar Gamification Settings")
 	return {"ok": True}
+
+
+# --------------------------------------------------------------------------------
+# Employee Profile endpoints
+# --------------------------------------------------------------------------------
+
+@frappe.whitelist()
+def update_my_profile(
+	phone=None, birthdate=None, bio=None,
+	home_address=None, emergency_contact_name=None,
+	emergency_contact_phone=None, emergency_contact_relation=None,
+	education=None, skills=None, trainings=None,
+):
+	"""Self-service: caller edits ONLY their own soft fields. Legal/contract/quota unreachable here."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+
+	# Native User fields (reused, not duplicated).
+	user_updates = {}
+	if phone is not None:
+		user_updates["phone"] = phone
+	if birthdate is not None:
+		user_updates["birth_date"] = birthdate or None
+	if bio is not None:
+		user_updates["bio"] = bio
+	if user_updates:
+		frappe.db.set_value("User", user, user_updates)
+
+	doc = _ensure_employee_profile(user)
+	for f in ("home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation"):
+		val = locals().get(f)
+		if val is not None:
+			doc.set(f, val)
+
+	def _rows(raw):
+		return json.loads(raw) if isinstance(raw, str) else (raw or [])
+
+	if education is not None:
+		doc.set("education", [])
+		for r in _rows(education):
+			doc.append("education", {k: r.get(k) for k in EMPLOYEE_SOFT_CHILDREN["education"]})
+	if skills is not None:
+		doc.set("skills", [])
+		for r in _rows(skills):
+			doc.append("skills", {k: r.get(k) for k in EMPLOYEE_SOFT_CHILDREN["skills"]})
+	if trainings is not None:
+		doc.set("trainings", [])
+		for r in _rows(trainings):
+			doc.append("trainings", {k: r.get(k) for k in EMPLOYEE_SOFT_CHILDREN["trainings"]})
+
+	doc.save(ignore_permissions=True)
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def get_employee_profile(user):
+	"""Admin: full profile incl. legal/contract/quota for any user."""
+	_require_system_manager()
+	ep = _ensure_employee_profile(user)
+	uf = frappe.get_value("User", user, ["full_name", "phone", "birth_date", "bio"], as_dict=True) or {}
+	data = ep.as_dict()
+	data["full_name"] = uf.get("full_name")
+	data["phone"] = uf.get("phone")
+	data["birthdate"] = uf.get("birth_date")
+	data["bio"] = uf.get("bio")
+	data["leave"] = _leave_balance(user)
+	return data
+
+
+@frappe.whitelist()
+def update_employee_profile(
+	user, nik_ktp=None, npwp=None, bpjs_kesehatan=None, bpjs_ketenagakerjaan=None,
+	bank_name=None, bank_account_no=None, bank_account_holder=None,
+	employment_status=None, job_title=None, date_joined=None,
+	contract_start=None, contract_end=None, annual_leave_quota=None,
+):
+	"""Admin: edit legal/contract/quota fields for any user."""
+	_require_system_manager()
+	doc = _ensure_employee_profile(user)
+	fields = (
+		"nik_ktp", "npwp", "bpjs_kesehatan", "bpjs_ketenagakerjaan",
+		"bank_name", "bank_account_no", "bank_account_holder",
+		"employment_status", "job_title", "date_joined", "contract_start", "contract_end",
+	)
+	for f in fields:
+		val = locals().get(f)
+		if val is not None:
+			doc.set(f, val)
+	if annual_leave_quota is not None:
+		doc.annual_leave_quota = int(annual_leave_quota or 0)
+	doc.save(ignore_permissions=True)
+	return {"status": "ok"}
