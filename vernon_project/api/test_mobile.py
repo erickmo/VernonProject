@@ -462,3 +462,85 @@ class TestTeamWall(unittest.TestCase):
 		self.assertNotIn(self.disabled_user, names)
 		for protected in PROTECTED_USERS:
 			self.assertNotIn(protected, names)
+
+
+class TestMobileRecurring(unittest.TestCase):
+	def setUp(self):
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Test Group Recurring"):
+			frappe.get_doc({
+				"doctype": "Group",
+				"group_name": "Test Group Recurring",
+				"base_rate_per_minute": 1,
+				"levels": [{
+					"type_name": "General", "level_name": "L1",
+					"level_id": "TESTLVL1", "difficulty_percent": 100,
+				}],
+			}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Mobile Recurring Project",
+			"brand": "Test Customer",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 90),
+			"team_members": [{"user": "Administrator"}],
+		})
+		self.project.insert(ignore_permissions=True)
+		self.gl = frappe.get_doc({"doctype": "Glossary", "glossary": "MobRec Grouping",
+			"project": self.project.name})
+		self.gl.insert(ignore_permissions=True)
+		self.detail = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
+			"title": "MobRec Detail", "grouping": self.gl.name,
+			"project_deadline": add_days(nowdate(), 60)})
+		self.detail.insert(ignore_permissions=True)
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": self.detail.name,
+			"to_do": "rec task",
+			"assigned_to": "Administrator",
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 7),
+			"group": "Test Group Recurring",
+			"level_id": "TESTLVL1",
+			"status": "⚪️ Planned",
+			"is_recurring": 1,
+			"recurring_frequency": "Weekly",
+			"recurring_weekdays": "MON,THU",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for dt, name in (
+			("Project Todo", self.todo.name),
+			("Project Detail", self.detail.name),
+			("Glossary", self.gl.name),
+			("Project", self.project.name),
+		):
+			if frappe.db.exists(dt, name):
+				frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_recurring_detail_and_update(self):
+		from vernon_project.api.mobile import get_project_item, update_todo
+		rec = get_project_item(self.todo.name)["recurring"]
+		self.assertEqual(rec["interval"], 1)
+		self.assertEqual(rec["weekdays"], "MON,THU")
+		self.assertEqual(rec["state"], "active")
+		self.assertTrue(rec["next_fire"])
+
+		update_todo(
+			project_item=self.todo.name,
+			to_do="rec task",
+			start_date=nowdate(),
+			deadline=add_days(nowdate(), 7),
+			is_recurring=1,
+			recurring_frequency="Weekly",
+			recurring_weekdays="MON,FRI",
+			recurring_paused=1,
+		)
+		frappe.db.commit()
+		rec2 = get_project_item(self.todo.name)["recurring"]
+		self.assertEqual(rec2["weekdays"], "MON,FRI")
+		self.assertTrue(rec2["paused"])
+		self.assertEqual(rec2["state"], "paused")

@@ -10,7 +10,7 @@
 import json
 
 import frappe
-from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days
+from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -1335,6 +1335,12 @@ def get_project_item(project_item):
 			"recurring_until",
 			"original_todo",
 			"cancellation_reason",
+			"recurring_interval",
+			"recurring_weekdays",
+			"recurring_monthly_mode",
+			"recurring_day_of_month",
+			"recurring_nth",
+			"recurring_paused",
 		],
 		as_dict=True,
 	) or {}
@@ -1364,12 +1370,6 @@ def get_project_item(project_item):
 		"checked_to_completed": extra.get("estimated_checked_to_completed") or 0,
 		"total": extra.get("total_estimated_hours") or 0,
 	}
-	shaped["recurring"] = {
-		"is_recurring": bool(extra.get("is_recurring")),
-		"frequency": extra.get("recurring_frequency"),
-		"until": str(extra.get("recurring_until")) if extra.get("recurring_until") else None,
-	}
-
 	# Occurrence history: all project items in this recurring series (root + children).
 	root = extra.get("original_todo") or project_item
 	sib = frappe.db.sql(
@@ -1391,6 +1391,31 @@ def get_project_item(project_item):
 		}
 		for s in sib
 	]
+
+	is_rec = bool(extra.get("is_recurring"))
+	root_name = extra.get("original_todo") or project_item
+	paused = bool(frappe.db.get_value("Project Todo", root_name, "recurring_paused"))
+	next_fire = None
+	if is_rec and sib:
+		latest = sib[-1]  # max deadline
+		head = frappe.get_doc("Project Todo", latest["name"])
+		nf = head.calculate_next_occurrence(latest["deadline"])
+		next_fire = str(nf) if nf else None
+	until = extra.get("recurring_until")
+	ended = is_rec and (next_fire is None or (until and getdate(next_fire) > getdate(until)))
+	shaped["recurring"] = {
+		"is_recurring": is_rec,
+		"frequency": extra.get("recurring_frequency"),
+		"interval": extra.get("recurring_interval") or 1,
+		"weekdays": extra.get("recurring_weekdays") or "",
+		"monthly_mode": extra.get("recurring_monthly_mode") or "Day of Month",
+		"day_of_month": extra.get("recurring_day_of_month"),
+		"nth": extra.get("recurring_nth") or "First",
+		"until": str(until) if until else None,
+		"paused": paused,
+		"state": (None if not is_rec else ("paused" if paused else ("ended" if ended else "active"))),
+		"next_fire": next_fire,
+	}
 	# Missed = recurring, not completed, and a later occurrence already exists.
 	this_dl = r["deadline"]
 	has_newer = any(
@@ -1435,6 +1460,12 @@ def update_todo(
 	mentor=None,
 	is_waiting=None,
 	waiting_reason=None,
+	recurring_interval=None,
+	recurring_weekdays=None,
+	recurring_monthly_mode=None,
+	recurring_day_of_month=None,
+	recurring_nth=None,
+	recurring_paused=None,
 ):
 	"""Edit a task's fields. Returns a clean status/message so the mobile UI can
 	show friendly feedback instead of a raw traceback."""
@@ -1514,11 +1545,32 @@ def update_todo(
 			if not row.is_recurring:
 				row.recurring_frequency = None
 				row.recurring_until = None
-				row.next_occurrence = None
+				row.recurring_interval = None
+				row.recurring_weekdays = None
+				row.recurring_monthly_mode = None
+				row.recurring_day_of_month = None
+				row.recurring_nth = None
 		if recurring_frequency is not None:
 			row.recurring_frequency = recurring_frequency or None
 		if recurring_until is not None:
 			row.recurring_until = recurring_until or None
+		_pause_root = None
+		_pause_val = None
+		if row.is_recurring:
+			if recurring_interval is not None:
+				row.recurring_interval = cint(recurring_interval) or 1
+			if recurring_weekdays is not None:
+				row.recurring_weekdays = recurring_weekdays or ""
+			if recurring_monthly_mode is not None:
+				row.recurring_monthly_mode = recurring_monthly_mode or "Day of Month"
+			if recurring_day_of_month is not None:
+				row.recurring_day_of_month = cint(recurring_day_of_month) or None
+			if recurring_nth is not None:
+				row.recurring_nth = recurring_nth or "First"
+			if recurring_paused is not None:
+				from vernon_project.vernon_project.doctype.project_todo.project_todo import series_root
+				_pause_root = series_root(row.name, row.original_todo)
+				_pause_val = cint(recurring_paused)
 
 		# Per-phase estimates in MINUTES (controller sums into total_estimated_hours).
 		# planned_to_done is deprecated (covered by the main `estimated` field).
@@ -1529,10 +1581,6 @@ def update_todo(
 			if val is not None and val != "":
 				row.set(fld, int(val))
 
-		# Re-arm the next occurrence when (re)enabling recurrence.
-		if row.is_recurring and row.recurring_frequency and not row.next_occurrence:
-			row.next_occurrence = row.calculate_next_occurrence(row.deadline)
-
 		# Waiting flag (parked / on-hold). The controller's track_waiting enforces
 		# the required-reason rule and the Planned-only constraint on save.
 		if is_waiting is not None:
@@ -1541,6 +1589,12 @@ def update_todo(
 			row.waiting_reason = waiting_reason or None
 
 		row.save(ignore_permissions=True)
+
+		# pause is a series-level flag on the root; write after save so row.save()
+		# doesn't overwrite it when root == row.name.
+		if _pause_root is not None:
+			frappe.db.set_value("Project Todo", _pause_root,
+							"recurring_paused", _pause_val, update_modified=False)
 
 		# Mentor credit normally lands on the Completed transition. If a leader sets
 		# or clears the mentor on an already-completed todo, re-sync so it still takes
