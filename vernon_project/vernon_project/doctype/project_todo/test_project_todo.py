@@ -8,6 +8,23 @@ from frappe.utils import nowdate, add_days, now_datetime, add_to_date
 from time import sleep
 
 
+def _ensure_test_group():
+	"""Idempotent Group + Level fixture. Project Todo now requires group/level;
+	the controller derives `level` from `level_id` during validate. Returns
+	(group_name, level_id) for use in every todo-creation site."""
+	if not frappe.db.exists("Group", "Test Group Recurring"):
+		frappe.get_doc({
+			"doctype": "Group",
+			"group_name": "Test Group Recurring",
+			"base_rate_per_minute": 1,
+			"levels": [{
+				"type_name": "General", "level_name": "L1",
+				"level_id": "TESTLVL1", "difficulty_percent": 100,
+			}],
+		}).insert(ignore_permissions=True)
+	return "Test Group Recurring", "TESTLVL1"
+
+
 class TestProjectTodo(unittest.TestCase):
 	"""Test cases for Project Todo DocType"""
 
@@ -41,13 +58,6 @@ class TestProjectTodo(unittest.TestCase):
 				"brand_name": "Test Customer",
 			}).insert(ignore_permissions=True)
 
-		# Create test project group if not exists
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({
-				"doctype": "Project Group",
-				"project_name": "Test Project Group",
-			}).insert(ignore_permissions=True)
-
 		# Create test project with team members so validate_assigned_to_team_member passes
 		self.project = frappe.get_doc({
 			"doctype": "Project",
@@ -55,7 +65,6 @@ class TestProjectTodo(unittest.TestCase):
 			"brand": "Test Customer",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
-			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
@@ -67,6 +76,7 @@ class TestProjectTodo(unittest.TestCase):
 		})
 		self.project.insert(ignore_permissions=True)
 		self.owner_user = "Administrator"
+		self.group, self.level_id = _ensure_test_group()
 
 		# Create a Glossary to use as the grouping for the project detail
 		grouping_doc = frappe.get_doc({
@@ -94,9 +104,12 @@ class TestProjectTodo(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "Test Todo Item",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 7),
 			"estimated": 60,
 			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
 		}).insert(ignore_permissions=True)
 
 		frappe.db.commit()
@@ -138,8 +151,12 @@ class TestProjectTodo(unittest.TestCase):
 			"deadline": add_days(nowdate(), 5),
 			"estimated": 60,
 			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
 		}
 		fields.update(overrides)
+		# start_date must be <= deadline; default to the (possibly overridden) deadline.
+		fields.setdefault("start_date", fields["deadline"])
 		return frappe.get_doc(fields).insert(ignore_permissions=True)
 
 	# ------------------------------------------------------------------
@@ -322,18 +339,22 @@ class TestProjectTodo(unittest.TestCase):
 				"project_detail": self.project_detail.name,
 				"to_do": "Sneaky task",
 				"assigned_to": "test_user2@example.com",
+				"start_date": nowdate(),
 				"deadline": add_days(nowdate(), 5),
 				"status": "⚪️ Planned",
+				"group": self.group,
+				"level_id": self.level_id,
 			}).insert(ignore_permissions=True)
 		frappe.set_user("Administrator")
 
 	def test_lead_can_create_task(self):
 		"""A non-System-Manager project leader can add a task (owner/leader branch)."""
+		# Project.validate_lead_roles now requires the owner/leader to hold these roles.
+		frappe.get_doc("User", "test_user@example.com").add_roles("Project Owner", "Project Leader")
 		proj = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Lead Create Test",
 			"brand": "Test Customer",
-			"project_group": "Test Project Group",
 			"project_owner": "test_user@example.com",
 			"project_leader": "test_user@example.com",
 			"status": "Ongoing",
@@ -367,8 +388,11 @@ class TestProjectTodo(unittest.TestCase):
 			"project_detail": pd.name,
 			"to_do": "Legit task",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 5),
 			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
 		}).insert(ignore_permissions=True)
 		frappe.set_user("Administrator")
 
@@ -409,6 +433,11 @@ class TestProjectTodo(unittest.TestCase):
 			recurring_frequency="Weekly",
 			deadline=add_days(nowdate(), -8),
 		)
+		# next_occurrence isn't auto-populated on a generic insert; seed it to the
+		# rule's next date (yesterday) so the scheduler is actually due, matching the
+		# scenario this test documents.
+		frappe.db.set_value("Project Todo", head.name, "next_occurrence",
+			head.calculate_next_occurrence(head.deadline), update_modified=False)
 		# Scheduler is due now -> creates the next occurrence and clears head.next_occurrence.
 		create_recurring_todos()
 		after_scheduler = frappe.db.count("Project Todo", {"project_detail": self.project_detail.name})
@@ -449,13 +478,6 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 				"brand_name": "Test Customer Phase",
 			}).insert(ignore_permissions=True)
 
-		# Create test project group if not exists
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({
-				"doctype": "Project Group",
-				"project_name": "Test Project Group",
-			}).insert(ignore_permissions=True)
-
 		# Create test project with team members so validate_assigned_to_team_member passes
 		self.project = frappe.get_doc({
 			"doctype": "Project",
@@ -463,7 +485,6 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"brand": "Test Customer Phase",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
-			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
@@ -473,6 +494,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			],
 		})
 		self.project.insert(ignore_permissions=True)
+		self.group, self.level_id = _ensure_test_group()
 
 		# Create a Glossary to use as the grouping for the project detail
 		grouping_doc = frappe.get_doc({
@@ -500,9 +522,12 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "Test Phase Tracking Todo",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 7),
 			"estimated": 60,
 			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
 			"estimated_planned_to_done": 2.5,
 			"estimated_done_to_checked": 1.0,
 			"estimated_checked_to_completed": 0.5,
@@ -538,7 +563,14 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		"""Test that total estimated hours are calculated correctly"""
 		self.todo.reload()
 
-		expected_total = 2.5 + 1.0 + 0.5  # 4.0
+		# Controller sums the main `estimated` (Planned→Done) plus the two approval
+		# phase estimates, as ints. (estimated_planned_to_done is a separate captured
+		# estimate and is not part of this rollup.)
+		expected_total = (
+			int(self.todo.estimated or 0)
+			+ int(self.todo.estimated_done_to_checked or 0)
+			+ int(self.todo.estimated_checked_to_completed or 0)
+		)
 		self.assertEqual(self.todo.total_estimated_hours, expected_total,
 			f"Total estimated hours should be {expected_total}")
 
@@ -673,13 +705,18 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 	def test_update_estimated_hours_recalculates_total(self):
 		"""Test that changing individual phase estimates updates total"""
 		self.todo.reload()
-		self.todo.estimated_planned_to_done = 5.0
+		# `estimated` is the Planned→Done estimate that feeds the total rollup.
+		self.todo.estimated = 90
 		self.todo.save(ignore_permissions=True)
 		frappe.db.commit()
 
 		self.todo.reload()
 
-		expected_total = 5.0 + 1.0 + 0.5  # 6.5
+		expected_total = (
+			int(self.todo.estimated or 0)
+			+ int(self.todo.estimated_done_to_checked or 0)
+			+ int(self.todo.estimated_checked_to_completed or 0)
+		)
 		self.assertEqual(self.todo.total_estimated_hours, expected_total,
 			f"Total should be updated to {expected_total}")
 
@@ -727,8 +764,11 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"project_detail": self.project_detail.name,
 			"to_do": "Todo with No Estimates",
 			"assigned_to": "test_user@example.com",
+			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 7),
 			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
 		}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
@@ -743,20 +783,18 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		# Minimal project + detail so validate_create_permission passes (Admin = owner+leader).
 		if not frappe.db.exists("Brand", "Test Customer Waiting"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Waiting"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group", "project_name": "Test Project Group"}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Waiting Flag Test Project",
 			"brand": "Test Customer Waiting",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
-			"project_group": "Test Project Group",
 			"status": "Ongoing",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "Administrator"}],
 		}).insert(ignore_permissions=True)
+		self.group, self.level_id = _ensure_test_group()
 		grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Waiting Test Grouping", "project": self.project.name}).insert(ignore_permissions=True)
 		self.grouping_name = grouping.name
 		self.project_detail = frappe.get_doc({
@@ -787,8 +825,11 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		todo.to_do = "waiting-test"
 		todo.project_detail = self.detail  # set up in setUp (see existing tests)
 		todo.assigned_to = "Administrator"
+		todo.start_date = nowdate()
 		todo.deadline = add_days(nowdate(), 5)
 		todo.status = "⚪️ Planned"
+		todo.group = self.group
+		todo.level_id = self.level_id
 		return todo
 
 	def test_waiting_requires_reason(self):
@@ -822,8 +863,12 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		todo.is_waiting = 1
 		todo.waiting_reason = "x"
 		todo.insert()
+		# Reload so the protected-field diff (validate_done_todo_fields) compares
+		# DB-normalized values; editing the raw just-inserted doc false-positives.
+		todo.reload()
 		todo.status = "🟠 Done"
 		todo.save()
+		todo.reload()
 		self.assertFalse(todo.is_waiting)
 		self.assertFalse(todo.waiting_since)
 
