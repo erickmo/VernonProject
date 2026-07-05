@@ -898,12 +898,15 @@ def get_project(project):
 	for d in frappe.get_all(
 		"Project Detail",
 		filters={"project": project},
-		fields=["name", "title"],
+		fields=["name", "title", "reward_type", "bonus_amount", "discount"],
 		limit_page_length=0,
 	):
 		items[d["name"]] = {
 			"name": d["name"],
 			"title": d["title"],
+			"reward_type": d.get("reward_type"),
+			"bonus_amount": d.get("bonus_amount") or 0,
+			"discount": d.get("discount") or 0,
 			"total": 0,
 			"done": 0,
 			"overdue": 0,
@@ -922,7 +925,7 @@ def get_project(project):
 	for r in rows:
 		wi = items.setdefault(
 			r["project_detail"],
-			{"name": r["project_detail"], "title": r["project_detail_title"], "total": 0, "done": 0, "overdue": 0, "minutes_total": 0, "minutes_done": 0},
+			{"name": r["project_detail"], "title": r["project_detail_title"], "reward_type": None, "bonus_amount": 0, "discount": 0, "total": 0, "done": 0, "overdue": 0, "minutes_total": 0, "minutes_done": 0},
 		)
 		wi["total"] += 1
 		est = r["estimated"] or 0

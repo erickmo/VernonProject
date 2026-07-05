@@ -250,6 +250,9 @@ export interface ProjectCard {
 export interface ProjectDetailSummary {
   name: string
   title: string
+  reward_type: 'Rupiah' | 'Point' | null
+  bonus_amount: number
+  discount: number
   total: number
   done: number
   minutes_total: number

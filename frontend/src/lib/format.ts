@@ -10,6 +10,18 @@ export function formatNumber(num: number): string {
   return (num || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
+// Net reward for a project detail. Mirrors server calc (project_detail.py):
+// Point rewards carry no discount; Rupiah net = bonus - discount.
+export function rewardNet(rewardType: string | null, bonus: number | null, discount: number | null): number {
+  const b = bonus || 0
+  return rewardType === 'Point' ? b : b - (discount || 0)
+}
+
+// "500 pts" for Point rewards, "Rp 400,000" for Rupiah.
+export function formatReward(rewardType: string | null, amount: number): string {
+  return rewardType === 'Point' ? `${formatNumber(amount)} pts` : `Rp ${formatNumber(amount)}`
+}
+
 export function formatEstimate(minutes: number): string {
   if (!minutes) return '—'
   if (minutes < 60) return `${minutes}m`

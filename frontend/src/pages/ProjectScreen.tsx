@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
-import { formatDate, formatEstimateRatio, progressPct } from '@/lib/format'
+import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
 
 export default function ProjectScreen() {
@@ -323,6 +323,11 @@ export default function ProjectScreen() {
                     {formatEstimateRatio(w.minutes_done, w.minutes_total)} · {w.done}/{w.total}
                   </span>
                 </div>
+                {w.bonus_amount > 0 && (
+                  <span className="mt-2 inline-block rounded-full bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                    {formatReward(w.reward_type, rewardNet(w.reward_type, w.bonus_amount, w.discount))}
+                  </span>
+                )}
                 {w.overdue > 0 && (
                   <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600 dark:text-rose-400">
                     <AlertCircle className="h-3.5 w-3.5" /> {w.overdue} overdue
