@@ -30,7 +30,8 @@ export function serializeRecurrence(r: Recurrence): Record<string, unknown> {
     recurring_monthly_mode: r.frequency === 'Monthly' ? r.monthlyMode : 'Day of Month',
     recurring_day_of_month: r.frequency === 'Monthly' && r.monthlyMode === 'Day of Month' ? r.dayOfMonth : null,
     recurring_nth: r.frequency === 'Monthly' && r.monthlyMode === 'Nth Weekday' ? r.nth : 'First',
-    ...(r.until ? { recurring_until: r.until } : {}),
+    // Always send until (even empty) so clearing an end-date persists; backend maps '' -> None.
+    recurring_until: r.until || '',
   }
 }
 
