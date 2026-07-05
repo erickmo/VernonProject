@@ -148,6 +148,7 @@ permission_query_conditions = {
 	"Personal Note": "vernon_project.vernon_project.doctype.personal_note.personal_note.get_permission_query_conditions",
 	"Meeting": "vernon_project.vernon_project.doctype.meeting.meeting.get_permission_query_conditions",
 	"Resource Booking": "vernon_project.vernon_project.doctype.resource_booking.resource_booking.get_permission_query_conditions",
+	"Employee Profile": "vernon_project.vernon_project.doctype.employee_profile.employee_profile.get_permission_query_conditions",
 }
 
 has_permission = {
@@ -158,6 +159,7 @@ has_permission = {
 	"Personal Note": "vernon_project.vernon_project.doctype.personal_note.personal_note.has_permission",
 	"Meeting": "vernon_project.vernon_project.doctype.meeting.meeting.has_permission",
 	"Resource Booking": "vernon_project.vernon_project.doctype.resource_booking.resource_booking.has_permission",
+	"Employee Profile": "vernon_project.vernon_project.doctype.employee_profile.employee_profile.has_permission",
 }
 
 # DocType Class
