@@ -36,7 +36,8 @@
   "sow_tab",
   "keterangan_di_sow",
   "section_break_qhxe",
-  "price",
+  "reward_type",
+  "bonus_amount",
   "column_break_bbol",
   "discount",
   "column_break_xnzg",
@@ -165,9 +166,16 @@
    "read_only": 1
   },
   {
-   "fieldname": "price",
+   "default": "Rupiah",
+   "fieldname": "reward_type",
+   "fieldtype": "Select",
+   "label": "Reward Type",
+   "options": "Rupiah\nPoint"
+  },
+  {
+   "fieldname": "bonus_amount",
    "fieldtype": "Currency",
-   "label": "Price (Rp)",
+   "label": "Bonus Amount",
    "non_negative": 1
   },
   {

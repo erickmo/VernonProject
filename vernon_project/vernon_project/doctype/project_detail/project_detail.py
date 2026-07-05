@@ -9,10 +9,11 @@ from frappe.utils import getdate
 class ProjectDetail(Document):
 
 	def before_validate(self):
-		# Total = price - discount
-		price = self.price if self.price else 0
+		# Total = bonus amount - discount (Rupiah rewards); Point rewards carry no discount.
+		# ponytail: legacy rows have reward_type = None -> treated as Rupiah so their totals don't shift.
+		bonus = self.bonus_amount if self.bonus_amount else 0
 		discount = self.discount if self.discount else 0
-		self.total = price - discount
+		self.total = bonus if self.reward_type == "Point" else bonus - discount
 
 		# Rollups from the (now standalone) Project Todo rows.
 		self._apply_rollups()
@@ -36,10 +37,10 @@ class ProjectDetail(Document):
 						f"Glossary {glossary.glossary} must be part of the selected Project."
 					)
 
-		# price >= discount
-		if self.price and self.discount:
-			if self.price < self.discount:
-				frappe.throw("Total SOW RP cannot be less than Total Discount.")
+		# bonus amount >= discount (Rupiah rewards only)
+		if self.reward_type != "Point" and self.bonus_amount and self.discount:
+			if self.bonus_amount < self.discount:
+				frappe.throw("Bonus Amount cannot be less than Total Discount.")
 
 	def on_trash(self):
 		# Cannot delete a project detail that still has tasks.

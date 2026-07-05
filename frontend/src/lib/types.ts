@@ -297,7 +297,8 @@ export interface ProjectDetail {
   expected_outcome: string | null
   keterangan_di_sow: string | null
   discount: number | null
-  price: number | null
+  bonus_amount: number | null
+  reward_type: 'Rupiah' | 'Point' | null
   latest_deadline: string | null
   project_deadline: string | null
   deadline_human: string | null
@@ -350,7 +351,8 @@ export interface ProjectDetailInput {
   expected_outcome?: string
   keterangan_di_sow?: string
   discount?: number
-  price?: number
+  bonus_amount?: number
+  reward_type?: 'Rupiah' | 'Point'
   glossaries?: { glossary: string }[]
 }
 

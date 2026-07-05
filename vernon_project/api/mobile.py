@@ -1169,7 +1169,7 @@ def get_project_detail(project_detail, include_cancelled=0):
 	detail = frappe.get_value(
 		"Project Detail", project_detail,
 		["name", "title", "project", "status", "is_pending", "current_condition",
-		 "expected_outcome", "grouping", "keterangan_di_sow", "discount", "price",
+		 "expected_outcome", "grouping", "keterangan_di_sow", "reward_type", "discount", "bonus_amount",
 		 "latest_deadline", "project_deadline"],
 		as_dict=True,
 	)

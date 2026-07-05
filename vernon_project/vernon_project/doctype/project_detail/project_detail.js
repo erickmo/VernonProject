@@ -23,18 +23,22 @@ frappe.ui.form.on("Project Detail", {
 
 	},
 	
-	price(frm) {
+	bonus_amount(frm) {
 		frm.trigger("calculate_total");
 	},
-	
+
+	reward_type(frm) {
+		frm.trigger("calculate_total");
+	},
+
 	discount(frm) {
 		frm.trigger("calculate_total");
 	},
-	
+
 	calculate_total(frm) {
-		let price = frm.doc.price || 0;
+		let bonus = frm.doc.bonus_amount || 0;
 		let discount = frm.doc.discount || 0;
-		frm.set_value("total", price - discount);
+		frm.set_value("total", frm.doc.reward_type === "Point" ? bonus : bonus - discount);
 	},
 	
 	project(frm) {

@@ -24,7 +24,8 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
   const [outcome, setOutcome] = useState('')
   const [sow, setSow] = useState('')
   const [discount, setDiscount] = useState('')
-  const [price, setPrice] = useState('')
+  const [bonusAmount, setBonusAmount] = useState('')
+  const [rewardType, setRewardType] = useState<'Rupiah' | 'Point'>('Rupiah')
   const [glossaries, setGlossaries] = useState<string[]>([])
 
   useEffect(() => {
@@ -35,7 +36,8 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
       setOutcome(projectDetail.expected_outcome || '')
       setSow(projectDetail.keterangan_di_sow || '')
       setDiscount(projectDetail.discount != null ? String(projectDetail.discount) : '')
-      setPrice(projectDetail.price != null ? String(projectDetail.price) : '')
+      setBonusAmount(projectDetail.bonus_amount != null ? String(projectDetail.bonus_amount) : '')
+      setRewardType(projectDetail.reward_type === 'Point' ? 'Point' : 'Rupiah')
       setGlossaries(projectDetail.glossaries ?? [])
     }
   }, [open, projectDetail])
@@ -59,8 +61,9 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
         current_condition: condition,
         expected_outcome: outcome,
         keterangan_di_sow: sow,
+        reward_type: rewardType,
         discount: Number(discount) || 0,
-        price: Number(price) || 0,
+        bonus_amount: Number(bonusAmount) || 0,
         glossaries: glossaries.map((g) => ({ glossary: g })),
       },
       {
@@ -117,14 +120,24 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
             <MultiSelectChips options={glossaryOpts} value={glossaries} onChange={setGlossaries} emptyText="No glossaries for this project yet" />
           </div>
 
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Reward type
+            <select className={field + ' mt-1'} value={rewardType} onChange={(e) => setRewardType(e.target.value as 'Rupiah' | 'Point')}>
+              <option value="Rupiah">Rupiah</option>
+              <option value="Point">Point</option>
+            </select>
+          </label>
+
           <div className="flex gap-3">
+            {rewardType === 'Rupiah' && (
+              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Discount (Rp)
+                <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={discount} onChange={(e) => setDiscount(e.target.value)} />
+              </label>
+            )}
             <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Discount (Rp)
-              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={discount} onChange={(e) => setDiscount(e.target.value)} />
-            </label>
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Price (Rp)
-              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={price} onChange={(e) => setPrice(e.target.value)} />
+              {rewardType === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
+              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={bonusAmount} onChange={(e) => setBonusAmount(e.target.value)} />
             </label>
           </div>
 

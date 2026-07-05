@@ -423,7 +423,8 @@ export function useCreateProjectDetail(project: string) {
         ...(input.expected_outcome != null ? { expected_outcome: input.expected_outcome } : {}),
         ...(input.keterangan_di_sow != null ? { keterangan_di_sow: input.keterangan_di_sow } : {}),
         ...(input.discount != null ? { discount: input.discount } : {}),
-        ...(input.price != null ? { price: input.price } : {}),
+        ...(input.bonus_amount != null ? { bonus_amount: input.bonus_amount } : {}),
+        ...(input.reward_type != null ? { reward_type: input.reward_type } : {}),
         ...(input.glossaries ? { glossaries: input.glossaries } : {}),
       }),
     onSettled: () => {
