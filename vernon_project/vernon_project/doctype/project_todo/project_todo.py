@@ -23,16 +23,7 @@ class ProjectTodo(Document):
 		self.track_phase_changes()
 		self.track_waiting()
 		self.validate_block_links()
-		# Arm next_occurrence only while the todo is still active. Re-arming a
-		# Completed/Cancelled head (e.g. on a later notes edit) would let the
-		# scheduler spawn a duplicate of an occurrence already generated.
-		if (
-			self.is_recurring
-			and self.recurring_frequency
-			and not self.next_occurrence
-			and self.status not in ("✅ Completed", "🚫 Cancelled")
-		):
-			self.next_occurrence = self.calculate_next_occurrence(self.deadline)
+		self.validate_recurrence_rule()
 
 	def validate_block_links(self):
 		"""A task can't block or depend on itself; drop duplicate rows."""
@@ -397,11 +388,25 @@ class ProjectTodo(Document):
 			) or {}
 
 			# Done By PL? -> awaiting Leader. Checked By PL -> awaiting Owner.
+			PLANNED = "⚪️ Planned"
 			DONE = "\U0001f7e0 Done"
 			CHECKED = "\U0001f537 Checked By PL"
 			COMPLETED = "✅ Completed"
 
-			if self.status == DONE:
+			# Reject: a review-stage todo bounced back to Planned. Tell the
+			# assignee why so they can revise. (Normal Planned transitions —
+			# e.g. brand-new todos — come from prev_state None and are skipped.)
+			if self.status == PLANNED and prev_state in (DONE, CHECKED):
+				_notify(
+					recipient=self.assigned_to,
+					type="Approval",
+					title="Your task was rejected",
+					body=f"“{self.to_do}” was sent back: {self.rejection_reason or '—'}. Please revise and resubmit.",
+					reference_doctype="Project Todo",
+					reference_name=self.name,
+					actor=actor,
+				)
+			elif self.status == DONE:
 				_notify(
 					recipient=project.get("project_leader"),
 					type="Approval",
@@ -618,21 +623,37 @@ class ProjectTodo(Document):
 
 		self.total_actual_hours = total
 
+	def _rule(self):
+		from .recurrence import Rule, parse_weekdays
+		return Rule(
+			frequency=self.recurring_frequency,
+			interval=self.recurring_interval or 1,
+			weekdays=tuple(parse_weekdays(self.recurring_weekdays)),
+			monthly_mode=self.recurring_monthly_mode or "Day of Month",
+			day_of_month=int(self.recurring_day_of_month) if self.recurring_day_of_month else None,
+			nth=self.recurring_nth or "First",
+		)
+
 	def calculate_next_occurrence(self, from_date):
-		"""Calculate next occurrence date based on frequency"""
-		if not from_date:
-			from_date = nowdate()
+		"""Next occurrence date from `from_date` using this todo's rule. None if not recurring."""
+		from .recurrence import next_occurrence
+		if not from_date or not self.recurring_frequency:
+			return None
+		return next_occurrence(getdate(from_date), self._rule())
 
-		from_date = getdate(from_date)
-
-		if self.recurring_frequency == "Daily":
-			return add_days(from_date, 1)
-		elif self.recurring_frequency == "Weekly":
-			return add_days(from_date, 7)
-		elif self.recurring_frequency == "Monthly":
-			return add_months(from_date, 1)
-
-		return None
+	def validate_recurrence_rule(self):
+		if not self.is_recurring:
+			return
+		from .recurrence import parse_weekdays, format_weekdays
+		self.recurring_interval = max(1, int(self.recurring_interval or 1))
+		idxs = parse_weekdays(self.recurring_weekdays)  # raises on bad token
+		self.recurring_weekdays = format_weekdays(idxs)
+		if self.recurring_day_of_month:
+			d = int(self.recurring_day_of_month)
+			if d < 1 or d > 31:
+				frappe.throw(_("Day of month must be between 1 and 31."))
+		if self.recurring_frequency == "Monthly" and self.recurring_monthly_mode == "Nth Weekday" and len(idxs) != 1:
+			frappe.throw(_("Nth-weekday recurrence needs exactly one weekday."))
 
 	def create_next_occurrence(self):
 		"""Create next recurring todo when current one is completed"""
