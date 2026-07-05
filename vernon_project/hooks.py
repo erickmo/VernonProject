@@ -236,7 +236,9 @@ scheduler_events = {
 # Request Events
 # ----------------
 # before_request = ["vernon_project.utils.before_request"]
-# after_request = ["vernon_project.utils.after_request"]
+# Stop browsers heuristically caching the /m and /w SPA shells (they reference
+# content-hashed assets deleted on each build → blank page until manual refresh).
+after_request = ["vernon_project.website.no_store_spa_shell"]
 
 # Job Events
 # ----------
