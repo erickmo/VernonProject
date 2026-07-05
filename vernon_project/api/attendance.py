@@ -166,7 +166,7 @@ def _notify_leaders_new_request(doc, leaders):
 	for leader in leaders:
 		_notify(
 			leader,
-			"attendance_exception",
+			"Approval",
 			_("{0} request needs your approval").format(label),
 			_("{0} requested {1}: {2} → {3}").format(doc.employee, label, doc.from_date, doc.to_date),
 			"Attendance Exception",
@@ -186,7 +186,7 @@ def _notify_employee_decision(doc, status, reason=None, actor=None):
 		body = _("Your {0} request ({1} → {2}) was rejected.").format(label, doc.from_date, doc.to_date)
 		if reason:
 			body += " — " + reason
-	_notify(doc.employee, "attendance_exception", title, body, "Attendance Exception", doc.name, actor)
+	_notify(doc.employee, "Approval", title, body, "Attendance Exception", doc.name, actor)
 
 
 @frappe.whitelist()
