@@ -23,7 +23,13 @@
   "column_break_zwia",
   "team_members",
   "section_break_madv",
-  "goal"
+  "goal",
+  "section_break_reward",
+  "reward_type",
+  "bonus_amount",
+  "column_break_reward",
+  "discount",
+  "total"
  ],
  "fields": [
   {
@@ -142,6 +148,41 @@
    "options": "Project",
    "description": "This project is blocked by / depends on the selected project.",
    "search_index": 1
+  },
+  {
+   "fieldname": "section_break_reward",
+   "fieldtype": "Section Break",
+   "label": "Reward"
+  },
+  {
+   "default": "Rupiah",
+   "fieldname": "reward_type",
+   "fieldtype": "Select",
+   "label": "Reward Type",
+   "options": "Rupiah\nPoint"
+  },
+  {
+   "fieldname": "bonus_amount",
+   "fieldtype": "Currency",
+   "label": "Bonus Amount",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_reward",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "discount",
+   "fieldtype": "Currency",
+   "label": "Discount",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "label": "Total",
+   "non_negative": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

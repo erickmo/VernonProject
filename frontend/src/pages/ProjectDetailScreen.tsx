@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban, Gift } from 'lucide-react'
+import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { GanttChart } from '@/components/GanttChart'
@@ -8,7 +8,7 @@ import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useProjectDetail } from '@/hooks/useData'
-import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimateRatio, formatReward, rewardNet } from '@/lib/format'
+import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimateRatio } from '@/lib/format'
 import { STATUS } from '@/lib/status'
 
 export default function ProjectDetailScreen() {
@@ -74,19 +74,6 @@ export default function ProjectDetailScreen() {
             {formatEstimateRatio(minutesDone, minutesTotal)} done
           </span>
         </div>
-
-        {(data.bonus_amount ?? 0) > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-              <Gift className="h-3.5 w-3.5" /> {formatReward(data.reward_type, rewardNet(data.reward_type, data.bonus_amount, data.discount))}
-            </span>
-            {data.reward_type !== 'Point' && (data.discount ?? 0) > 0 && (
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Bonus {formatReward('Rupiah', data.bonus_amount ?? 0)} − discount {formatReward('Rupiah', data.discount ?? 0)}
-              </span>
-            )}
-          </div>
-        )}
 
         <div className="mt-3 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-sm">
           {hasCondition && (

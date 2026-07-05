@@ -10,11 +10,23 @@ class Project(Document):
 	# --------------------------------------------------------------------------------
 	# HOOKS
 	# --------------------------------------------------------------------------------
+	def before_validate(self):
+		# Reward total: Rupiah -> bonus - discount; Point rewards carry no discount.
+		# ponytail: reward_type None treated as Rupiah (legacy) so totals don't shift.
+		bonus = self.bonus_amount or 0
+		discount = self.discount or 0
+		self.total = bonus if self.reward_type == "Point" else bonus - discount
+
 	def validate(self):
 		# Start Date < Deadline
 		if self.start_date and self.deadline:
 			if getdate(self.start_date) > getdate(self.deadline):
 				frappe.throw("Start Date cannot be after Deadline.")
+
+		# Bonus must cover the discount (Rupiah rewards only).
+		if self.reward_type != "Point" and self.bonus_amount and self.discount:
+			if self.bonus_amount < self.discount:
+				frappe.throw("Bonus Amount cannot be less than Total Discount.")
 
 		# Owner must hold the Project Owner role; leader the Project Leader role.
 		self.validate_lead_roles()

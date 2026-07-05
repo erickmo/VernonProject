@@ -898,15 +898,12 @@ def get_project(project):
 	for d in frappe.get_all(
 		"Project Detail",
 		filters={"project": project},
-		fields=["name", "title", "reward_type", "bonus_amount", "discount"],
+		fields=["name", "title"],
 		limit_page_length=0,
 	):
 		items[d["name"]] = {
 			"name": d["name"],
 			"title": d["title"],
-			"reward_type": d.get("reward_type"),
-			"bonus_amount": d.get("bonus_amount") or 0,
-			"discount": d.get("discount") or 0,
 			"total": 0,
 			"done": 0,
 			"overdue": 0,
@@ -925,7 +922,7 @@ def get_project(project):
 	for r in rows:
 		wi = items.setdefault(
 			r["project_detail"],
-			{"name": r["project_detail"], "title": r["project_detail_title"], "reward_type": None, "bonus_amount": 0, "discount": 0, "total": 0, "done": 0, "overdue": 0, "minutes_total": 0, "minutes_done": 0},
+			{"name": r["project_detail"], "title": r["project_detail_title"], "total": 0, "done": 0, "overdue": 0, "minutes_total": 0, "minutes_done": 0},
 		)
 		wi["total"] += 1
 		est = r["estimated"] or 0
@@ -990,6 +987,10 @@ def get_project(project):
 		"status": doc.status,
 		"brand": doc.brand,
 		"goal": doc.goal,
+		"reward_type": doc.reward_type,
+		"bonus_amount": doc.bonus_amount or 0,
+		"discount": doc.discount or 0,
+		"total": doc.total or 0,
 		"start_date": str(doc.start_date) if doc.start_date else None,
 		"deadline": str(doc.deadline) if doc.deadline else None,
 		"owner_name": (name_map.get(doc.project_owner) or {}).get("full_name") or doc.project_owner,
@@ -1232,7 +1233,7 @@ def get_project_detail(project_detail, include_cancelled=0):
 	detail = frappe.get_value(
 		"Project Detail", project_detail,
 		["name", "title", "project", "status", "is_pending", "current_condition",
-		 "expected_outcome", "grouping", "keterangan_di_sow", "reward_type", "discount", "bonus_amount",
+		 "expected_outcome", "grouping", "keterangan_di_sow",
 		 "latest_deadline", "project_deadline"],
 		as_dict=True,
 	)

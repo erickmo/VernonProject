@@ -42,6 +42,9 @@ export function ProjectFormDialog({
     deadline: '',
     goal: '',
     status: 'Ongoing',
+    reward_type: 'Rupiah',
+    bonus_amount: 0,
+    discount: 0,
     team_members: [],
   })
 
@@ -58,6 +61,9 @@ export function ProjectFormDialog({
         deadline: project.deadline ?? '',
         goal: project.goal ?? '',
         status: project.status,
+        reward_type: project.reward_type ?? 'Rupiah',
+        bonus_amount: project.bonus_amount ?? 0,
+        discount: project.discount ?? 0,
         team_members: project.team.map((t) => ({ user: t.user })),
       })
     }
@@ -248,6 +254,46 @@ export function ProjectFormDialog({
             className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
+
+        {/* Reward type */}
+        <div className="space-y-1">
+          <span className="text-sm font-medium text-muted">Reward type</span>
+          <SearchableSelect
+            value={f.reward_type ?? 'Rupiah'}
+            onChange={(v) => set('reward_type', v as 'Rupiah' | 'Point')}
+            options={[{ value: 'Rupiah', label: 'Rupiah' }, { value: 'Point', label: 'Point' }]}
+          />
+        </div>
+
+        {/* Bonus */}
+        <label className="space-y-1">
+          <span className="text-sm font-medium text-muted">
+            {f.reward_type === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
+          </span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={f.bonus_amount || ''}
+            onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)}
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+          />
+        </label>
+
+        {/* Discount — Rupiah only */}
+        {f.reward_type !== 'Point' && (
+          <label className="space-y-1">
+            <span className="text-sm font-medium text-muted">Discount (Rp)</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={f.discount || ''}
+              onChange={(e) => set('discount', Number(e.target.value) || 0)}
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+            />
+          </label>
+        )}
 
         {/* Team members — full width */}
         <div className="space-y-1 md:col-span-2">

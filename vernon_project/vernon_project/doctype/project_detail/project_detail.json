@@ -34,14 +34,7 @@
   "column_break_zyhs",
   "latest_todo",
   "sow_tab",
-  "keterangan_di_sow",
-  "section_break_qhxe",
-  "reward_type",
-  "bonus_amount",
-  "column_break_bbol",
-  "discount",
-  "column_break_xnzg",
-  "total"
+  "keterangan_di_sow"
  ],
  "fields": [
   {
@@ -138,45 +131,6 @@
    "fieldname": "todo_section",
    "fieldtype": "Section Break",
    "label": "TODO"
-  },
-  {
-   "fieldname": "section_break_qhxe",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_bbol",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "discount",
-   "fieldtype": "Currency",
-   "label": "Discount",
-   "non_negative": 1
-  },
-  {
-   "fieldname": "column_break_xnzg",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "total",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Total",
-   "non_negative": 1,
-   "read_only": 1
-  },
-  {
-   "default": "Rupiah",
-   "fieldname": "reward_type",
-   "fieldtype": "Select",
-   "label": "Reward Type",
-   "options": "Rupiah\nPoint"
-  },
-  {
-   "fieldname": "bonus_amount",
-   "fieldtype": "Currency",
-   "label": "Bonus Amount",
-   "non_negative": 1
   },
   {
    "columns": 1,

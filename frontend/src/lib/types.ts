@@ -250,9 +250,6 @@ export interface ProjectCard {
 export interface ProjectDetailSummary {
   name: string
   title: string
-  reward_type: 'Rupiah' | 'Point' | null
-  bonus_amount: number
-  discount: number
   total: number
   done: number
   minutes_total: number
@@ -290,6 +287,10 @@ export interface ProjectFull {
   status: string
   brand: string
   goal: string | null
+  reward_type: 'Rupiah' | 'Point' | null
+  bonus_amount: number
+  discount: number
+  total: number
   start_date: string | null
   deadline: string | null
   owner_name: string
@@ -314,9 +315,6 @@ export interface ProjectDetail {
   current_condition: string | null
   expected_outcome: string | null
   keterangan_di_sow: string | null
-  discount: number | null
-  bonus_amount: number | null
-  reward_type: 'Rupiah' | 'Point' | null
   latest_deadline: string | null
   project_deadline: string | null
   deadline_human: string | null
@@ -362,6 +360,9 @@ export interface ProjectInput {
   deadline: string
   goal?: string
   status: string
+  reward_type?: 'Rupiah' | 'Point'
+  bonus_amount?: number
+  discount?: number
   team_members?: { user: string }[]
 }
 
@@ -372,9 +373,6 @@ export interface ProjectDetailInput {
   current_condition?: string
   expected_outcome?: string
   keterangan_di_sow?: string
-  discount?: number
-  bonus_amount?: number
-  reward_type?: 'Rupiah' | 'Point'
   glossaries?: { glossary: string }[]
 }
 

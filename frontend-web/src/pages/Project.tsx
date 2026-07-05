@@ -3,7 +3,7 @@ import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift,
 } from 'lucide-react'
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
@@ -165,17 +165,6 @@ export default function Project() {
         </div>
       ),
     },
-    {
-      key: 'reward',
-      header: 'Reward',
-      width: 'w-28',
-      sortValue: (r) => rewardNet(r.reward_type, r.bonus_amount, r.discount),
-      render: (r) => (r.bonus_amount > 0 ? (
-        <span className="whitespace-nowrap text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-          {formatReward(r.reward_type, rewardNet(r.reward_type, r.bonus_amount, r.discount))}
-        </span>
-      ) : <span className="text-xs text-muted">—</span>),
-    },
     ...(perms.can_edit ? [{
       key: 'actions',
       header: '',
@@ -207,6 +196,11 @@ export default function Project() {
               {progress}% · {doneTasks}/{totalTasks} todos
               {overdue > 0 && <span className="ml-1.5 text-rose-600 dark:text-rose-400">{overdue} overdue</span>}
             </span>
+            {p.bonus_amount > 0 && (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                <Gift className="h-3.5 w-3.5" /> {formatReward(p.reward_type, rewardNet(p.reward_type, p.bonus_amount, p.discount))}
+              </span>
+            )}
           </div>
         </div>
         {(perms.can_edit || perms.can_delete) && (

@@ -30,7 +30,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
   const [f, setF] = useState<ProjectInput>({
     project_name: '', brand: '', project_owner: '', project_leader: '',
     project_admin: '', blocked_by: '', start_date: '', deadline: '',
-    goal: '', status: 'Ongoing', team_members: [],
+    goal: '', status: 'Ongoing', reward_type: 'Rupiah', bonus_amount: 0, discount: 0, team_members: [],
   })
 
   useEffect(() => {
@@ -46,6 +46,9 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
         deadline: project.deadline ?? '',
         goal: project.goal ?? '',
         status: project.status,
+        reward_type: project.reward_type ?? 'Rupiah',
+        bonus_amount: project.bonus_amount ?? 0,
+        discount: project.discount ?? 0,
         team_members: project.team.map((t) => ({ user: t.user })),
       })
     }
@@ -154,6 +157,24 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             Goal
             <textarea className={field + ' mt-1'} rows={2} value={f.goal} onChange={(e) => set('goal', e.target.value)} />
           </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Reward type
+            <SearchableSelect value={f.reward_type ?? 'Rupiah'} onChange={(v) => set('reward_type', v as 'Rupiah' | 'Point')} options={[{ value: 'Rupiah', label: 'Rupiah' }, { value: 'Point', label: 'Point' }]} />
+          </label>
+
+          <div className="flex gap-3">
+            {f.reward_type !== 'Point' && (
+              <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Discount (Rp)
+                <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={f.discount || ''} onChange={(e) => set('discount', Number(e.target.value) || 0)} />
+              </label>
+            )}
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+              {f.reward_type === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
+              <input type="number" inputMode="numeric" min={0} className={field + ' mt-1'} value={f.bonus_amount || ''} onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)} />
+            </label>
+          </div>
 
           <button onClick={submit} disabled={saving}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">

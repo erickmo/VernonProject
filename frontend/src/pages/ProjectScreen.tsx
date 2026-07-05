@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, Gift } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -150,6 +150,22 @@ export default function ProjectScreen() {
             <Target className="h-3.5 w-3.5" /> Goal
           </p>
           <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{data.goal}</p>
+        </div>
+      )}
+
+      {data.bonus_amount > 0 && (
+        <div className="mt-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Gift className="h-3.5 w-3.5" /> Reward
+          </p>
+          <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+            {formatReward(data.reward_type, rewardNet(data.reward_type, data.bonus_amount, data.discount))}
+          </p>
+          {data.reward_type !== 'Point' && data.discount > 0 && (
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Bonus {formatReward('Rupiah', data.bonus_amount)} − discount {formatReward('Rupiah', data.discount)}
+            </p>
+          )}
         </div>
       )}
 
@@ -323,11 +339,6 @@ export default function ProjectScreen() {
                     {formatEstimateRatio(w.minutes_done, w.minutes_total)} · {w.done}/{w.total}
                   </span>
                 </div>
-                {w.bonus_amount > 0 && (
-                  <span className="mt-2 inline-block rounded-full bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                    {formatReward(w.reward_type, rewardNet(w.reward_type, w.bonus_amount, w.discount))}
-                  </span>
-                )}
                 {w.overdue > 0 && (
                   <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600 dark:text-rose-400">
                     <AlertCircle className="h-3.5 w-3.5" /> {w.overdue} overdue

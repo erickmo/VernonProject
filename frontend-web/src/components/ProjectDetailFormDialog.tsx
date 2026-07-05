@@ -30,9 +30,6 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
   const [condition, setCondition] = useState('')
   const [outcome, setOutcome] = useState('')
   const [sow, setSow] = useState('')
-  const [discount, setDiscount] = useState('')
-  const [bonusAmount, setBonusAmount] = useState('')
-  const [rewardType, setRewardType] = useState<'Rupiah' | 'Point'>('Rupiah')
   const [glossaries, setGlossaries] = useState<string[]>([])
 
   // Hydrate from the loaded detail when editing.
@@ -44,16 +41,13 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       setCondition(d.current_condition ?? '')
       setOutcome(d.expected_outcome ?? '')
       setSow(d.keterangan_di_sow ?? '')
-      setDiscount(d.discount != null ? String(d.discount) : '')
-      setBonusAmount(d.bonus_amount != null ? String(d.bonus_amount) : '')
-      setRewardType(d.reward_type === 'Point' ? 'Point' : 'Rupiah')
       setGlossaries(d.glossaries ?? [])
     }
   }, [open, detail, detailQuery.data])
 
   const reset = () => {
     setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
-    setSow(''); setDiscount(''); setBonusAmount(''); setRewardType('Rupiah'); setGlossaries([])
+    setSow(''); setGlossaries([])
   }
   const close = () => { reset(); onClose() }
 
@@ -73,9 +67,6 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       current_condition: condition,
       expected_outcome: outcome,
       keterangan_di_sow: sow,
-      reward_type: rewardType,
-      discount: Number(discount) || 0,
-      bonus_amount: Number(bonusAmount) || 0,
       glossaries: glossaries.map((g) => ({ glossary: g })),
     }
     const handlers = {
@@ -158,44 +149,6 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
           />
         </div>
 
-        <label className="text-sm font-medium text-muted">
-          Reward type
-          <select
-            className={field + ' mt-1'}
-            value={rewardType}
-            onChange={(e) => setRewardType(e.target.value as 'Rupiah' | 'Point')}
-          >
-            <option value="Rupiah">Rupiah</option>
-            <option value="Point">Point</option>
-          </select>
-        </label>
-
-        <div className="flex gap-3">
-          {rewardType === 'Rupiah' && (
-            <label className="flex-1 text-sm font-medium text-muted">
-              Discount (Rp)
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                className={field + ' mt-1'}
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-              />
-            </label>
-          )}
-          <label className="flex-1 text-sm font-medium text-muted">
-            {rewardType === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              className={field + ' mt-1'}
-              value={bonusAmount}
-              onChange={(e) => setBonusAmount(e.target.value)}
-            />
-          </label>
-        </div>
       </div>
       )}
     </Drawer>
