@@ -489,6 +489,13 @@ export const mobileApi = {
     api.get<import('./types').EmployeeProfileAdmin>(M + 'get_employee_profile', { user }),
   updateEmployeeProfile: (user: string, payload: Record<string, unknown>) =>
     api.post<{ status: string; message?: string }>(M + 'update_employee_profile', { user, ...payload }),
+  // Atomic User + Employee Profile save (edit mode) — one request/transaction, no partial save.
+  saveUserWithProfile: (user: string, payload: Record<string, unknown>) =>
+    api.post<{ name: string }>('vernon_project.api.employee_admin.save_user_with_profile', {
+      user,
+      ...payload,
+      roles: JSON.stringify((payload.roles as string[]) ?? []),
+    }),
 }
 
 const EV = 'vernon_project.api.events.'

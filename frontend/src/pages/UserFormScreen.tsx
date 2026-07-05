@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { User } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
@@ -9,11 +10,11 @@ import { useToast } from '@/components/Toast'
 import {
   useUsers,
   useCreateUser,
-  useUpdateUser,
   useResetUserPassword,
   useSetUserPassword,
   VERNON_ROLE_OPTIONS,
   MEMBER_TYPE_OPTIONS,
+  keys,
 } from '@/hooks/useData'
 import { mobileApi } from '@/lib/api'
 import type { LeaveBalance } from '@/lib/types'
@@ -35,7 +36,12 @@ export default function UserFormScreen() {
   )
 
   const create = useCreateUser()
-  const update = useUpdateUser()
+  const qc = useQueryClient()
+  const saveWithProfile = useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      mobileApi.saveUserWithProfile(name as string, payload),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
+  })
   const resetPw = useResetUserPassword()
   const setPw = useSetUserPassword()
 
@@ -96,16 +102,13 @@ export default function UserFormScreen() {
     })
   }, [name])
 
-  const saving = create.isPending || update.isPending
+  const saving = create.isPending || saveWithProfile.isPending
 
   async function onSave() {
     try {
       if (isEdit) {
-        await update.mutateAsync({
-          user: name as string,
-          payload: { full_name: fullName, roles, enabled: enabled ? 1 : 0, member_type: memberType },
-        })
-        await mobileApi.updateEmployeeProfile(name as string, {
+        await saveWithProfile.mutateAsync({
+          full_name: fullName, roles, enabled: enabled ? 1 : 0, member_type: memberType,
           nik_ktp: nikKtp, npwp, bpjs_kesehatan: bpjsKes, bpjs_ketenagakerjaan: bpjsTk,
           bank_name: bankName, bank_account_no: bankAccountNo, bank_account_holder: bankAccountHolder,
           employment_status: employmentStatus, job_title: jobTitle, date_joined: dateJoined,
