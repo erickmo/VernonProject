@@ -7,7 +7,7 @@
  "engine": "InnoDB",
  "field_order": ["level", "institution", "major", "year"],
  "fields": [
-  {"fieldname": "level", "fieldtype": "Select", "label": "Level", "options": "\nSD\nSMP\nSMA/SMK\nD3\nS1\nS2\nS3", "in_list_view": 1, "columns": 2},
+  {"fieldname": "level", "fieldtype": "Select", "label": "Level", "options": "\nSD\nSMP\nSMA/SMK\nD1\nD2\nD3\nD4\nS1\nS2\nS3", "in_list_view": 1, "columns": 2},
   {"fieldname": "institution", "fieldtype": "Data", "label": "Institution", "in_list_view": 1, "columns": 4},
   {"fieldname": "major", "fieldtype": "Data", "label": "Major", "in_list_view": 1, "columns": 3},
   {"fieldname": "year", "fieldtype": "Int", "label": "Year", "in_list_view": 1, "columns": 1}
