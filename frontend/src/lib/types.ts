@@ -878,7 +878,7 @@ export type EmployeeProfileAdmin = EmployeeSoft & {
   bank_name?: string; bank_account_no?: string; bank_account_holder?: string;
   employment_status?: string; job_title?: string; date_joined?: string;
   contract_start?: string; contract_end?: string; annual_leave_quota?: number;
-  leave?: LeaveBalance;
+  leave?: LeaveBalance | null;
 }
 
 export type ExceptionDecision = 'Pending' | 'Approved' | 'Rejected'

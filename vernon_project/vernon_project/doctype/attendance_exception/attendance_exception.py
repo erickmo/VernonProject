@@ -32,7 +32,7 @@ class AttendanceException(Document):
 				continue
 			used = used_days(self.employee, year, exclude=self.name)
 			if used + req > quota:
-				remaining = quota - used
+				remaining = max(0, quota - used)
 				frappe.throw(
 					_("Leave quota exceeded for {0}: {1} day(s) remaining, {2} requested.").format(
 						year, remaining, req

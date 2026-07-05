@@ -12,7 +12,7 @@ import json
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
-from vernon_project.attendance.leave_quota import effective_quota, used_days, working_days, year_slices
+from vernon_project.attendance.leave_quota import effective_quota, used_days
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -38,7 +38,6 @@ EMPLOYEE_USER_FIELDS = ("phone", "birth_date", "bio")
 
 
 def _leave_balance(user):
-	from frappe.utils import getdate, nowdate
 	yr = getdate(nowdate()).year
 	quota = effective_quota(user)
 	used = used_days(user, yr)

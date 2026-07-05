@@ -51,7 +51,6 @@ export default function UserForm() {
   const [emailError, setEmailError] = useState('')
 
   // Employee profile — legal/contract/leave (edit mode only)
-  const [_epLoading, setEpLoading] = useState(false)
   const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null)
   const [nikKtp, setNikKtp] = useState('')
   const [npwp, setNpwp] = useState('')
@@ -69,7 +68,6 @@ export default function UserForm() {
 
   useEffect(() => {
     if (!name) return
-    setEpLoading(true)
     mobileApi.getEmployeeProfile(name).then((ep) => {
       setNikKtp(ep.nik_ktp ?? '')
       setNpwp(ep.npwp ?? '')
@@ -87,7 +85,7 @@ export default function UserForm() {
       setLeaveBalance(ep.leave ?? null)
     }).catch(() => {
       // non-fatal: admin fields stay blank if fetch fails
-    }).finally(() => setEpLoading(false))
+    })
   }, [name])
 
   useEffect(() => {

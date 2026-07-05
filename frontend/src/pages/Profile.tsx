@@ -632,7 +632,7 @@ function MyInfoCard({
                 <input
                   type="text" value={sk.skill}
                   onChange={(e) => setSkills((s) => s.map((x, j) => j === i ? { ...x, skill: e.target.value } : x))}
-                  className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                  className={INPUT_CLS.replace('w-full', 'flex-1')}
                   placeholder="Skill name"
                 />
                 <select
@@ -678,7 +678,7 @@ function MyInfoCard({
                   <select
                     value={ed.level ?? ''}
                     onChange={(e) => setEducation((s) => s.map((x, j) => j === i ? { ...x, level: e.target.value } : x))}
-                    className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                    className={INPUT_CLS.replace('w-full', 'flex-1')}
                   >
                     <option value="">Level</option>
                     {EDU_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
@@ -694,20 +694,20 @@ function MyInfoCard({
                 <input
                   type="text" value={ed.institution ?? ''}
                   onChange={(e) => setEducation((s) => s.map((x, j) => j === i ? { ...x, institution: e.target.value } : x))}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                  className={INPUT_CLS}
                   placeholder="Institution"
                 />
                 <div className="flex gap-2">
                   <input
                     type="text" value={ed.major ?? ''}
                     onChange={(e) => setEducation((s) => s.map((x, j) => j === i ? { ...x, major: e.target.value } : x))}
-                    className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                    className={INPUT_CLS.replace('w-full', 'flex-1')}
                     placeholder="Major / Field"
                   />
                   <input
                     type="number" value={ed.year ?? ''}
                     onChange={(e) => setEducation((s) => s.map((x, j) => j === i ? { ...x, year: e.target.value ? Number(e.target.value) : undefined } : x))}
-                    className="w-20 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                    className={INPUT_CLS.replace('w-full', 'w-20')}
                     placeholder="Year"
                   />
                 </div>
@@ -741,7 +741,7 @@ function MyInfoCard({
                   <input
                     type="text" value={tr.title}
                     onChange={(e) => setTrainings((s) => s.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
-                    className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                    className={INPUT_CLS.replace('w-full', 'flex-1')}
                     placeholder="Training title"
                   />
                   <button
@@ -755,7 +755,7 @@ function MyInfoCard({
                 <input
                   type="text" value={tr.provider ?? ''}
                   onChange={(e) => setTrainings((s) => s.map((x, j) => j === i ? { ...x, provider: e.target.value } : x))}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                  className={INPUT_CLS}
                   placeholder="Provider / organizer"
                 />
                 <div className="flex gap-2">
@@ -764,7 +764,7 @@ function MyInfoCard({
                     <input
                       type="date" value={tr.training_date ?? ''}
                       onChange={(e) => setTrainings((s) => s.map((x, j) => j === i ? { ...x, training_date: e.target.value } : x))}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                      className={INPUT_CLS}
                     />
                   </label>
                   <label className="flex flex-1 flex-col gap-0.5">
@@ -772,7 +772,7 @@ function MyInfoCard({
                     <input
                       type="date" value={tr.expiry_date ?? ''}
                       onChange={(e) => setTrainings((s) => s.map((x, j) => j === i ? { ...x, expiry_date: e.target.value } : x))}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
+                      className={INPUT_CLS}
                     />
                   </label>
                 </div>
