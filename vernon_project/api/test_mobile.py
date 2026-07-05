@@ -544,3 +544,31 @@ class TestMobileRecurring(unittest.TestCase):
 		self.assertEqual(rec2["weekdays"], "MON,FRI")
 		self.assertTrue(rec2["paused"])
 		self.assertEqual(rec2["state"], "paused")
+
+		# Bug regression: disabling recurring must clear recurring_paused on the series root.
+		update_todo(
+			project_item=self.todo.name,
+			to_do="rec task",
+			start_date=nowdate(),
+			deadline=add_days(nowdate(), 7),
+			is_recurring=0,
+		)
+		frappe.db.commit()
+		rec3 = get_project_item(self.todo.name).get("recurring")
+		self.assertFalse(rec3.get("paused"), "disabling recurring must clear recurring_paused")
+		self.assertIsNone(rec3.get("state"), "state must be None when recurring is off")
+
+		# Re-enabling must also start in active (not paused) state.
+		update_todo(
+			project_item=self.todo.name,
+			to_do="rec task",
+			start_date=nowdate(),
+			deadline=add_days(nowdate(), 7),
+			is_recurring=1,
+			recurring_frequency="Weekly",
+			recurring_weekdays="MON",
+		)
+		frappe.db.commit()
+		rec4 = get_project_item(self.todo.name)["recurring"]
+		self.assertFalse(rec4["paused"], "re-enabled recurring must not be paused")
+		self.assertEqual(rec4["state"], "active", "re-enabled recurring must be active")

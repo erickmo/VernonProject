@@ -1540,6 +1540,8 @@ def update_todo(
 			row.set("blocking", [{"todo": i} for i in ids])
 
 		# Recurring settings
+		_pause_root = None
+		_pause_val = None
 		if is_recurring is not None:
 			row.is_recurring = 1 if str(is_recurring) in ("1", "true", "True") else 0
 			if not row.is_recurring:
@@ -1550,12 +1552,15 @@ def update_todo(
 				row.recurring_monthly_mode = None
 				row.recurring_day_of_month = None
 				row.recurring_nth = None
+				# ponytail: clear pause on series root so a previously-paused series
+				# doesn't silently come back paused if recurring is later re-enabled.
+				from vernon_project.vernon_project.doctype.project_todo.project_todo import series_root
+				_pause_root = series_root(row.name, row.original_todo)
+				_pause_val = 0
 		if recurring_frequency is not None:
 			row.recurring_frequency = recurring_frequency or None
 		if recurring_until is not None:
 			row.recurring_until = recurring_until or None
-		_pause_root = None
-		_pause_val = None
 		if row.is_recurring:
 			if recurring_interval is not None:
 				row.recurring_interval = cint(recurring_interval) or 1
