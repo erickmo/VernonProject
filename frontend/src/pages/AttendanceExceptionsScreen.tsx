@@ -4,7 +4,7 @@ import { Check, X } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useToast } from '@/components/Toast'
-import { useBoot, canManageAttendance } from '@/hooks/useData'
+import { useBoot, canManageAttendance, useApproveException, useRejectException } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 
 type Exc = { name: string; employee: string; exception_type: string; from_date: string; to_date: string; status: string; reason?: string }
@@ -18,6 +18,8 @@ export default function AttendanceExceptionsScreen() {
     if (blocked) navigate('/', { replace: true })
   }, [blocked, navigate])
 
+  const approve = useApproveException()
+  const reject = useRejectException()
   const [list, setList] = useState<Exc[] | null>(null)
   const load = () =>
     resource
@@ -34,7 +36,11 @@ export default function AttendanceExceptionsScreen() {
 
   const decide = async (name: string, status: 'Approved' | 'Rejected') => {
     try {
-      await resource.update('Attendance Exception', name, { status, approver: boot?.user })
+      if (status === 'Approved') {
+        await approve.mutateAsync(name)
+      } else {
+        await reject.mutateAsync({ name, reason: 'Rejected by admin' })
+      }
       toast('success', status)
       load()
     } catch (e) {

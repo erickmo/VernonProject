@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { QrCode, CalendarPlus } from 'lucide-react'
+import { QrCode, CalendarPlus, ClipboardCheck } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useMyAttendance } from '@/hooks/useData'
@@ -23,7 +23,7 @@ export default function MyAttendance() {
 
   return (
     <TabScreen title="My attendance" subtitle="Your recent days">
-      <div className="mb-4 grid grid-cols-2 gap-2.5">
+      <div className="mb-4 grid grid-cols-3 gap-2.5">
         <button
           onClick={() => navigate('/scan')}
           className="flex items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3 font-semibold text-white shadow-card active:scale-[0.99]"
@@ -35,6 +35,12 @@ export default function MyAttendance() {
           className="flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
         >
           <CalendarPlus className="h-5 w-5" /> Request leave
+        </button>
+        <button
+          onClick={() => navigate('/attendance/approvals')}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
+        >
+          <ClipboardCheck className="h-5 w-5" /> Approvals
         </button>
       </div>
 
