@@ -13,7 +13,7 @@ import { useSetCrumbs } from '@web/lib/crumbs'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
-import { formatDate, formatEstimateRatio, progressPct } from '@/lib/format'
+import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { TeamWorkloadDrawer } from '@web/components/TeamWorkloadDrawer'
@@ -164,6 +164,17 @@ export default function Project() {
           </span>
         </div>
       ),
+    },
+    {
+      key: 'reward',
+      header: 'Reward',
+      width: 'w-28',
+      sortValue: (r) => rewardNet(r.reward_type, r.bonus_amount, r.discount),
+      render: (r) => (r.bonus_amount > 0 ? (
+        <span className="whitespace-nowrap text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+          {formatReward(r.reward_type, rewardNet(r.reward_type, r.bonus_amount, r.discount))}
+        </span>
+      ) : <span className="text-xs text-muted">—</span>),
     },
     ...(perms.can_edit ? [{
       key: 'actions',

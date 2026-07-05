@@ -54,10 +54,16 @@ export function DetailMeta({ d }: { d: ProjectDetail }) {
               </div>
             )}
             {d.reward_type !== 'Point' && d.discount != null && d.discount > 0 && (
-              <div className="flex justify-between text-rose-600 dark:text-rose-400">
-                <span>Discount</span>
-                <span className="font-medium">− Rp {d.discount.toLocaleString('id-ID')}</span>
-              </div>
+              <>
+                <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                  <span>Discount</span>
+                  <span className="font-medium">− Rp {d.discount.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-100 dark:border-slate-800 pt-1 font-semibold">
+                  <span>Total</span>
+                  <span>Rp {((d.bonus_amount || 0) - d.discount).toLocaleString('id-ID')}</span>
+                </div>
+              </>
             )}
           </div>
         </Section>
