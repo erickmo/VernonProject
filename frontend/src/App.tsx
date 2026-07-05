@@ -17,6 +17,7 @@ import ProjectScreen from './pages/ProjectScreen'
 import ProjectDetailScreen from './pages/ProjectDetailScreen'
 import ProjectItemScreen from './pages/ProjectItemScreen'
 import Profile from './pages/Profile'
+import MyInfoScreen from '@/pages/MyInfoScreen'
 import Onboarding from './pages/Onboarding'
 import GroupsScreen from './pages/GroupsScreen'
 import DataHealthScreen from './pages/DataHealthScreen'
@@ -248,6 +249,7 @@ export default function App() {
         <Route path="/team-wall" element={<TeamWallScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
+        <Route path="/me/info" element={<MyInfoScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
