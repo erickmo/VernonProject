@@ -7,6 +7,8 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { computeTodoPoints } from '@/lib/points'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
+import { emptyRecurrence, recurrenceFromDetail, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
+import { RecurrenceEditor } from '@/components/RecurrenceEditor'
 
 interface CreateProjectItemSheetProps {
   open: boolean
@@ -35,9 +37,10 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
   const [leaderEstimated, setLeaderEstimated] = useState(initial?.leaderEstimated ?? '')
   const [ownerEstimated, setOwnerEstimated] = useState(initial?.ownerEstimated ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
-  const [isRecurring, setIsRecurring] = useState(initial?.isRecurring ?? false)
-  const [frequency, setFrequency] = useState(initial?.frequency ?? 'Daily')
-  const [until, setUntil] = useState(initial?.until ?? '')
+  const [recurrence, setRecurrence] = useState<Recurrence>(
+    initial ? recurrenceFromDetail({ is_recurring: initial.isRecurring ?? false, frequency: initial.frequency ?? null,
+      interval: initial.interval, weekdays: initial.weekdays, monthly_mode: initial.monthlyMode,
+      day_of_month: initial.dayOfMonth, nth: initial.nth, until: initial.until }) : emptyRecurrence)
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
   const [typeName, setTypeName] = useState(initial?.typeName ?? '')
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
@@ -69,7 +72,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
-    setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
+    setNotes(''); setRecurrence(emptyRecurrence)
     setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
@@ -100,11 +103,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
     if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
-    if (isRecurring) {
-      fields.is_recurring = 1
-      fields.recurring_frequency = frequency
-      if (until) fields.recurring_until = until
-    }
+    Object.assign(fields, serializeRecurrence(recurrence))
     create.mutate(fields, {
       onSuccess: () => { toast('success', 'Todo created'); close() },
       onError: (err) => toast('error', (err as Error).message),
@@ -249,23 +248,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
 
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
-            <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
-            Recurring
-          </label>
-
-          {isRecurring && (
-            <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Frequency
-                <SearchableSelect value={frequency} onChange={setFrequency} options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))} />
-              </label>
-              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                Until
-                <input type="date" className={field + ' mt-1'} value={until} onChange={(e) => setUntil(e.target.value)} />
-              </label>
-            </div>
-          )}
+          <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
 
           <button
             onClick={submit}

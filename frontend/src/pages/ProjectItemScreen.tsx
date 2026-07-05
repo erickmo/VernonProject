@@ -50,6 +50,8 @@ import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { todoDuplicateInitial } from '@/lib/duplicateTodo'
 import type { ProjectItemDetail } from '@/lib/types'
+import { recurrenceFromDetail, serializeRecurrence, summarizeRecurrence, type Recurrence } from '@/lib/recurrence'
+import { RecurrenceEditor } from '@/components/RecurrenceEditor'
 
 function Stepper({ current }: { current: string }) {
   const idx = STATUS_ORDER.indexOf(current as any)
@@ -105,9 +107,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [estimated, setEstimated] = useState(String(data.estimated || ''))
   const [pDC, setPDC] = useState(String(data.phase_estimates.done_to_checked || ''))
   const [pCC, setPCC] = useState(String(data.phase_estimates.checked_to_completed || ''))
-  const [recurring, setRecurring] = useState(data.recurring.is_recurring)
-  const [freq, setFreq] = useState(data.recurring.frequency || 'Weekly')
-  const [until, setUntil] = useState(data.recurring.until ?? '')
+  const [recurrence, setRecurrence] = useState<Recurrence>(() => recurrenceFromDetail(data.recurring))
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
@@ -179,11 +179,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.estimated_done_to_checked = Number(pDC) || 0
     fields.estimated_checked_to_completed = Number(pCC) || 0
     // Recurring settings
-    fields.is_recurring = recurring ? 1 : 0
-    if (recurring) {
-      fields.recurring_frequency = freq
-      fields.recurring_until = until || ''
-    }
+    Object.assign(fields, serializeRecurrence(recurrence))
     // Optional approval-phase deadlines (editable regardless of lock; empty clears).
     fields.leader_deadline = leaderDeadline || ''
     fields.owner_deadline = ownerDeadline || ''
@@ -343,34 +339,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       {/* Recurring */}
-      <div className="mb-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60 p-3">
-        <label className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
-            <Repeat className="h-4 w-4 text-slate-400 dark:text-slate-500" /> Repeat this todo
-          </span>
-          <input
-            type="checkbox"
-            checked={recurring}
-            onChange={(e) => setRecurring(e.target.checked)}
-            className="h-5 w-5 accent-brand-600"
-          />
-        </label>
-        {recurring && (
-          <div className="mt-3 flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Frequency</label>
-              <select value={freq} onChange={(e) => setFreq(e.target.value)} className={field}>
-                <option value="Daily">Daily</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Until (optional)</label>
-              <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className={field} />
-            </div>
-          </div>
-        )}
+      <div className="mb-3">
+        <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
       </div>
 
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Group <span className="text-red-500">*</span></label>
@@ -1097,7 +1067,7 @@ export default function ProjectItemScreen() {
               )}
               {data.recurring.is_recurring && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-500/15 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300">
-                  <Repeat className="h-3.5 w-3.5" /> Repeats {data.recurring.frequency?.toLowerCase()}
+                  <Repeat className="h-3.5 w-3.5" /> {summarizeRecurrence(recurrenceFromDetail(data.recurring))}
                 </span>
               )}
               {data.phase_estimates.total > 0 && (
@@ -1362,11 +1332,18 @@ export default function ProjectItemScreen() {
       </div>
 
       {/* Recurrence history */}
-      {data.occurrences.length > 1 && (
+      {data.recurring.is_recurring && (
         <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-          <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             <Repeat className="h-3.5 w-3.5" /> Recurrence history ({data.occurrences.length})
           </p>
+          {data.recurring.is_recurring && (
+            <p className="mb-3 text-[11px] text-slate-400">
+              {data.recurring.state === 'paused' ? 'Paused'
+                : data.recurring.state === 'ended' ? 'Ended'
+                : data.recurring.next_fire ? `Next: ${data.recurring.next_fire}` : 'Active'}
+            </p>
+          )}
           <ol className="space-y-1.5">
             {data.occurrences.map((o) => {
               const meta = STATUS[o.status_key]

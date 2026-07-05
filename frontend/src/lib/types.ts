@@ -151,7 +151,19 @@ export interface ProjectItemDetail extends ProjectItem {
     checked_to_completed: number
     total: number
   }
-  recurring: { is_recurring: boolean; frequency: string | null; until: string | null }
+  recurring: {
+    is_recurring: boolean
+    frequency: string | null
+    interval: number
+    weekdays: string
+    monthly_mode: string
+    day_of_month: number | null
+    nth: string
+    until: string | null
+    paused: boolean
+    state: 'active' | 'paused' | 'ended' | null
+    next_fire: string | null
+  }
   occurrences: {
     name: string
     status_key: StatusKey

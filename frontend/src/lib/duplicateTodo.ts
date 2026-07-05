@@ -15,6 +15,11 @@ export interface CreateTodoInitial {
   notes?: string
   isRecurring?: boolean
   frequency?: string
+  interval?: number
+  weekdays?: string
+  monthlyMode?: string
+  dayOfMonth?: number | null
+  nth?: string
   until?: string
   group?: string
   typeName?: string
@@ -41,6 +46,11 @@ export function todoDuplicateInitial(data: ProjectItemDetail): CreateTodoInitial
     notes: data.notes ?? '',
     isRecurring: data.recurring.is_recurring,
     frequency: data.recurring.frequency || 'Daily',
+    interval: data.recurring.interval,
+    weekdays: data.recurring.weekdays,
+    monthlyMode: data.recurring.monthly_mode,
+    dayOfMonth: data.recurring.day_of_month,
+    nth: data.recurring.nth,
     until: data.recurring.until ?? '',
     group: data.group ?? '',
     typeName: data.level_type ?? '',
