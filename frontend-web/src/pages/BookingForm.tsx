@@ -27,9 +27,6 @@ export default function BookingForm() {
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   const [err, setErr] = useState('')
 
-  const toggleEquip = (name: string) =>
-    setEquipment((prev) => prev.includes(name) ? prev.filter((e) => e !== name) : [...prev, name])
-
   async function submit() {
     setErr(''); setConflicts([])
     if (!title || !start || !end) { setErr('Title, Start and End are required.'); return }
@@ -114,31 +111,39 @@ export default function BookingForm() {
 
         <Field label="Room">
           {(id) => (
-            <select id={id} className={field} value={room} onChange={(e) => setRoom(e.target.value)}>
-              <option value="">— None —</option>
+            <div id={id} className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+                <input type="radio" name="room" checked={room === ''} onChange={() => setRoom('')} />
+                — None —
+              </label>
               {rooms.map((r) => (
-                <option key={r.name} value={r.name}>{r.room_name}</option>
+                <label key={r.name} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+                  <input type="radio" name="room" checked={room === r.name} onChange={() => setRoom(r.name)} />
+                  {r.room_name}
+                </label>
               ))}
-            </select>
+            </div>
           )}
         </Field>
 
         {equip.length > 0 && (
           <Field label="Equipment">
-            {() => (
-              <div className="flex flex-wrap gap-3">
-                {equip.map((e) => (
-                  <label key={e.name} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={equipment.includes(e.name)}
-                      onChange={() => toggleEquip(e.name)}
-                      className="rounded"
-                    />
-                    {e.equipment_name}
-                  </label>
-                ))}
-              </div>
+            {(id) => (
+              <>
+                <select
+                  id={id}
+                  multiple
+                  size={Math.min(Math.max(equip.length, 3), 6)}
+                  className={field}
+                  value={equipment}
+                  onChange={(e) => setEquipment(Array.from(e.target.selectedOptions, (o) => o.value))}
+                >
+                  {equip.map((e) => (
+                    <option key={e.name} value={e.name}>{e.equipment_name}</option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs opacity-70">Hold Ctrl/Cmd to pick several</span>
+              </>
             )}
           </Field>
         )}

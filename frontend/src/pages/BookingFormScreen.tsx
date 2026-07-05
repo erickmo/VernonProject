@@ -27,10 +27,6 @@ export default function BookingFormScreen() {
   const check = useCheckAvailability()
   const create = useCreateBooking()
 
-  function toggleEquip(name: string) {
-    setEquipment((prev) => (prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]))
-  }
-
   async function submit() {
     setErr(''); setConflicts([])
     if (!title || !start || !end) { setErr('Title, Start and End are required.'); return }
@@ -60,25 +56,31 @@ export default function BookingFormScreen() {
             <input type="datetime-local" className={field} value={end}
               onChange={(e) => setEnd(e.target.value)} /></label>
         </div>
-        <label className="text-xs font-semibold text-slate-500">Room
-          <select className={field} value={room} onChange={(e) => setRoom(e.target.value)}>
-            <option value="">— None —</option>
-            {rooms.map((r) => <option key={r.name} value={r.name}>{r.room_name}</option>)}
-          </select>
-        </label>
+        <fieldset>
+          <legend className="mb-2 text-xs font-semibold text-slate-500">Room</legend>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="radio" name="room" checked={room === ''} onChange={() => setRoom('')}
+                className="h-4 w-4 border-slate-300 accent-brand-600" />
+              — None —
+            </label>
+            {rooms.map((r) => (
+              <label key={r.name} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <input type="radio" name="room" checked={room === r.name} onChange={() => setRoom(r.name)}
+                  className="h-4 w-4 border-slate-300 accent-brand-600" />
+                {r.room_name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         {equip.length > 0 && (
-          <fieldset>
-            <legend className="mb-2 text-xs font-semibold text-slate-500">Equipment</legend>
-            <div className="flex flex-col gap-2">
-              {equip.map((e) => (
-                <label key={e.name} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={equipment.includes(e.name)} onChange={() => toggleEquip(e.name)}
-                    className="h-4 w-4 rounded border-slate-300 accent-brand-600" />
-                  {e.equipment_name}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <label className="text-xs font-semibold text-slate-500">Equipment
+            <span className="mb-1 block font-normal text-slate-400">Hold Ctrl/Cmd to pick several</span>
+            <select multiple size={Math.min(Math.max(equip.length, 3), 6)} className={field} value={equipment}
+              onChange={(e) => setEquipment(Array.from(e.target.selectedOptions, (o) => o.value))}>
+              {equip.map((e) => <option key={e.name} value={e.name}>{e.equipment_name}</option>)}
+            </select>
+          </label>
         )}
         {err && (
           <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{err}</p>
