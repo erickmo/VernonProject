@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy } from 'lucide-react'
-import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen } from 'lucide-react'
+import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -104,6 +104,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
         <DailyTile />
         <AvatarTile />
         <PasskeyTile />
+        <VerseSettingsTile />
       </BentoGrid>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
@@ -295,6 +296,68 @@ function PasskeyTile() {
           {enroll.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
           {list.length > 0 ? 'Add this device' : 'Set up fingerprint sign-in'}
         </button>
+      </div>
+    </BentoTile>
+  )
+}
+
+const RELIGIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
+const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
+
+function VerseSettingsTile() {
+  const { data: boot } = useBoot()
+  const emp = boot?.employee
+  const save = useSaveMyProfile()
+  const toast = useToast()
+  const [religion, setReligion] = useState('')
+  const [verseEnabled, setVerseEnabled] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    if (emp && !hydrated) {
+      setReligion(emp.religion ?? '')
+      setVerseEnabled(!!emp.verse_enabled)
+      setHydrated(true)
+    }
+  }, [emp, hydrated])
+
+  const persist = (nextReligion: string, nextOn: boolean) => {
+    save.mutate(
+      { religion: nextReligion, verse_enabled: nextOn ? 1 : 0 },
+      {
+        onSuccess: () => toast('success', 'Tersimpan'),
+        onError: (e) => toast('error', e instanceof Error ? e.message : 'Gagal menyimpan'),
+      },
+    )
+  }
+
+  return (
+    <BentoTile span="md" tone="tint" accent="violet" title="Ayat Harian" icon={BookOpen}>
+      <div className="mt-1 space-y-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted">Agama</span>
+          <select
+            value={religion}
+            onChange={(e) => { const v = e.target.value; setReligion(v); persist(v, verseEnabled) }}
+            className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink"
+          >
+            <option value="">— Pilih —</option>
+            {RELIGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+        {VERSE_SUPPORTED.has(religion) ? (
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm text-ink">Tampilkan ayat di beranda</span>
+            <input
+              type="checkbox"
+              checked={verseEnabled}
+              onChange={(e) => { const on = e.target.checked; setVerseEnabled(on); persist(religion, on) }}
+              className="h-5 w-5 accent-violet-600"
+            />
+          </label>
+        ) : religion ? (
+          <p className="text-xs text-muted">Belum tersedia untuk agama ini.</p>
+        ) : null}
       </div>
     </BentoTile>
   )
