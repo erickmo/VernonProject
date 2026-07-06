@@ -1,0 +1,19 @@
+{
+ "actions": [], "autoname": "hash", "creation": "2026-07-06 00:00:00.000000", "doctype": "DocType", "engine": "InnoDB",
+ "field_order": ["opportunity","claimed_by","details","status","review_note"],
+ "fields": [
+  {"fieldname":"opportunity","fieldtype":"Link","label":"Opportunity","options":"Income Opportunity","reqd":1,"in_list_view":1},
+  {"fieldname":"claimed_by","fieldtype":"Link","label":"Claimed By","options":"User","reqd":1,"read_only":1,"in_list_view":1},
+  {"fieldname":"details","fieldtype":"Text","label":"Details","reqd":1},
+  {"fieldname":"status","fieldtype":"Select","label":"Status","options":"Submitted\nApproved\nPaid\nRejected","default":"Submitted","in_list_view":1},
+  {"fieldname":"review_note","fieldtype":"Small Text","label":"Review Note"}
+ ],
+ "index_web_pages_for_search":1, "links":[], "modified":"2026-07-06 00:00:00.000000",
+ "modified_by":"Administrator", "module":"Vernon Project", "name":"Income Opportunity Claim",
+ "naming_rule":"Random", "owner":"Administrator", "sort_field":"modified", "sort_order":"DESC", "states":[],
+ "row_format":"Dynamic", "track_changes":1,
+ "permissions":[
+  {"role":"System Manager","create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"share":1,"write":1},
+  {"role":"All","create":1,"read":1}
+ ]
+}
