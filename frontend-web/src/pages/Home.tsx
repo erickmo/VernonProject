@@ -4,10 +4,12 @@ import clsx from 'clsx'
 import {
   Sparkles, Plus, Gift, CheckCircle2, ShieldCheck, CheckCheck, Video, Check,
   CalendarClock, FolderKanban, Trophy, Flame, QrCode, ArrowRight, BarChart3,
+  BookOpen,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useProjects, useWallet, useGamification, useMyAttendance,
   useMeetings, useWeeklyRecap, useClaimDaily, useMarkMeetingDone, useSetTodoAllocations,
+  useDailyVerse,
 } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc } from '@/lib/format'
@@ -185,6 +187,21 @@ function HomeSkeleton() {
   )
 }
 
+function VerseCard() {
+  const { data: verse } = useDailyVerse()
+  if (!verse) return null
+  return (
+    <div className="mt-6 rounded-lg border border-line bg-surface p-5">
+      <div className="mb-2 flex items-center gap-2 text-muted">
+        <BookOpen className="h-4 w-4" />
+        <span className="text-xs font-semibold uppercase tracking-wide">Ayat Hari Ini</span>
+      </div>
+      <p className="max-w-2xl text-[15px] leading-relaxed text-ink">"{verse.text}"</p>
+      <p className="mt-2 text-sm font-medium text-muted">— {verse.reference}</p>
+    </div>
+  )
+}
+
 // ── page ────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -307,6 +324,9 @@ export default function Home() {
         <StatTile label="Done today" value={counts.completed_today} accent="emerald" sub={counts.completed_minutes_today > 0 ? formatEstimate(counts.completed_minutes_today) : undefined} />
         <StatTile label="Points" value={w ? w.balance.toLocaleString() : '—'} accent="violet" sub={w && w.today_earned ? `+${w.today_earned} today` : undefined} to="/wallet" />
       </div>
+
+      {/* Daily verse — only when the user enabled Ayat Harian */}
+      <VerseCard />
 
       {/* main work grid */}
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
