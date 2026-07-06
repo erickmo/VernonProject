@@ -89,6 +89,28 @@ class TestIncomeOpportunityClaim(unittest.TestCase):
 			frappe.get_doc("Income Opportunity Claim", doc.name).has_permission("read")
 		)
 
+	def test_list_query_scopes_to_owner(self):
+		# get_permission_query_conditions (list scoping): a non-owner sees none of
+		# another user's claims via get_list; System Manager sees all. get_list
+		# applies the query condition, unlike get_all.
+		self._submit_as("claim_u1@example.com")
+		frappe.set_user("claim_u2@example.com")
+		self.assertEqual(
+			frappe.get_list(
+				"Income Opportunity Claim",
+				filters={"opportunity": self.opp.name}, pluck="name",
+			),
+			[],
+		)
+		frappe.set_user("Administrator")
+		self.assertEqual(
+			len(frappe.get_list(
+				"Income Opportunity Claim",
+				filters={"opportunity": self.opp.name},
+			)),
+			1,
+		)
+
 	def test_system_manager_can_advance_status(self):
 		doc = self._submit_as("claim_u1@example.com")
 		frappe.set_user("Administrator")
