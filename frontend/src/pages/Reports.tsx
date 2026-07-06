@@ -1,11 +1,33 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, Sparkles } from 'lucide-react'
+import { ChevronRight, BarChart3, Sparkles, AlarmClock } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
 
+// Bespoke reports with their own screens (not the generic /report/:name engine).
+const BESPOKE = [
+  {
+    key: 'todos-due',
+    title: 'Todos Due',
+    desc: 'Open todos to chase across projects you own, lead, or admin',
+    icon: AlarmClock,
+    accent: 'from-rose-500 to-pink-600',
+    to: '/reports/todos-due',
+  },
+]
+
 export default function Reports() {
   const navigate = useNavigate()
+  const tiles = [
+    ...BESPOKE.map((b) => ({
+      key: b.key, title: b.title, desc: b.desc, icon: b.icon, accent: b.accent,
+      go: () => navigate(b.to),
+    })),
+    ...REPORTS.map((r) => ({
+      key: r.name, title: r.title, desc: r.desc, icon: r.icon, accent: r.accent,
+      go: () => navigate(`/report/${encodeURIComponent(r.name)}`),
+    })),
+  ]
   return (
     <TabScreen title="Reports" subtitle="Live data, same as the desk" right={<NotificationBell />}>
       <div className="relative mb-4 flex items-center gap-3 overflow-hidden rounded-2xl bg-slate-900 border border-slate-700/50 p-4 text-white shadow-card">
@@ -17,22 +39,22 @@ export default function Reports() {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        {REPORTS.map((r) => {
-          const Icon = r.icon
+        {tiles.map((t) => {
+          const Icon = t.icon
           return (
             <button
-              key={r.name}
-              onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
+              key={t.key}
+              onClick={t.go}
               className="flex w-full items-center gap-3 rounded-2xl bg-paper-card dark:bg-slate-800 border border-paper-edge dark:border-slate-700 p-4 text-left shadow-card transition active:scale-[0.99]"
             >
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${r.accent} text-white`}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${t.accent} text-white`}
               >
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-stone-800 dark:text-slate-100">{r.title}</p>
-                <p className="truncate text-xs text-stone-400 dark:text-slate-500">{r.desc}</p>
+                <p className="font-semibold text-stone-800 dark:text-slate-100">{t.title}</p>
+                <p className="truncate text-xs text-stone-400 dark:text-slate-500">{t.desc}</p>
               </div>
               <ChevronRight className="h-5 w-5 shrink-0 text-stone-300 dark:text-slate-600" />
             </button>

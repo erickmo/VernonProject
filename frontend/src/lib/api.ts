@@ -481,6 +481,18 @@ export const mobileApi = {
       from_date: string; to_date: string; day_count: number
       rows: { user: string; full_name: string; assigned_total: number; avg_daily: number; under_days: number; deficit: number }[]
     }>('vernon_project.api.report.under_occupied', { from_date, to_date }),
+  todosDue: (due_by: string) =>
+    api.get<{
+      due_by: string
+      rows: {
+        todo: string; to_do: string; project: string; project_name: string
+        my_role: string; deadline: string | null; status: string
+        assigned_to: string; assignee_name: string; assignee_email: string
+        assignee_mobile: string | null; overdue: boolean
+      }[]
+    }>('vernon_project.api.report.todos_due', { due_by }),
+  buzzTodo: (todo: string) =>
+    api.post<{ ok: boolean; assignee: string }>('vernon_project.api.report.buzz_todo', { todo }),
   updateMyProfile: (payload: Partial<import('./types').EmployeeSoft>) =>
     api.post<{ status: string; message?: string }>(M + 'update_my_profile', {
       ...payload,

@@ -1416,6 +1416,21 @@ export function useUnderOccupied(fromDate: string, toDate: string, enabled: bool
   })
 }
 
+export function useTodosDue(dueBy: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['todos-due', dueBy],
+    queryFn: () => mobileApi.todosDue(dueBy),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useBuzzTodo() {
+  return useMutation({
+    mutationFn: (todo: string) => mobileApi.buzzTodo(todo),
+  })
+}
+
 export const useEvents = () =>
   useQuery({ queryKey: keys.events, queryFn: () => eventsApi.list() })
 

@@ -17,6 +17,10 @@ MAX_SPAN_DAYS = 92
 # Weekday flags on Shift Assignment, indexed by date.weekday() (Mon=0 .. Sun=6).
 WEEKDAY_FIELDS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
+# Project Todo statuses excluded from the "due" buzz list (finished / dead — nothing to chase).
+STATUS_COMPLETED = "✅ Completed"      # ✅ Completed
+STATUS_CANCELLED = "\U0001f6ab Cancelled"  # 🚫 Cancelled
+
 
 def _date_list(from_date, to_date):
 	"""Inclusive list of 'YYYY-MM-DD' strings from from_date to to_date."""
@@ -432,3 +436,151 @@ def over_occupied(from_date, to_date):
 	expected_rows = _expected_minutes(names, str(start), str(end))
 
 	return _build_over_occupied(users, assigned_rows, expected_rows, start, end, tolerance)
+
+
+def _build_todos_due(role_by_project, todos, users, due, today):
+	"""Pure: shape open Project Todos into a "who to chase" list, deadline ascending.
+
+	role_by_project: {project: {my_role, project_name}} for the caller's projects.
+	todos: [{name, to_do, project, assigned_to, deadline, status}] — already filtered
+	       to open, assigned, deadline <= due; order is re-established here.
+	users:  {user: {full_name, email, mobile_no, name}} assignee contact lookup.
+	`overdue` = deadline strictly before `today`. Rows sorted by (deadline asc,
+	project_name) so the soonest-due sit at the top of the buzz list.
+	"""
+	rows = []
+	for t in todos:
+		u = users.get(t["assigned_to"], {})
+		meta = role_by_project.get(t["project"], {})
+		deadline = t.get("deadline")
+		deadline_str = str(deadline) if deadline else None
+		rows.append({
+			"todo": t["name"],
+			"to_do": t.get("to_do"),
+			"project": t["project"],
+			"project_name": meta.get("project_name") or t["project"],
+			"my_role": meta.get("my_role", ""),
+			"deadline": deadline_str,
+			"status": t.get("status"),
+			"assigned_to": t["assigned_to"],
+			"assignee_name": u.get("full_name") or t["assigned_to"],
+			"assignee_email": u.get("email") or u.get("name") or t["assigned_to"],
+			"assignee_mobile": u.get("mobile_no"),
+			"overdue": bool(deadline and getdate(deadline) < today),
+		})
+	rows.sort(key=lambda r: (r["deadline"] is None, r["deadline"] or "", r["project_name"]))
+	return {"due_by": str(due), "rows": rows}
+
+
+@frappe.whitelist()
+def todos_due(due_by):
+	"""Open Project Todos across the projects the current user owns / leads / admins,
+	with a deadline on or before `due_by` (overdue included), soonest first. Each row
+	carries the assignee's name, email and mobile so the caller can chase them on- or
+	off-system. Personal report: inherently scoped to frappe.session.user's projects,
+	so no role gate — a user only ever sees todos in projects they run."""
+	me = frappe.session.user
+	due = getdate(due_by)
+
+	projects = frappe.get_all(
+		"Project",
+		or_filters={"project_owner": me, "project_leader": me, "project_admin": me},
+		fields=["name", "project_name", "project_owner", "project_leader", "project_admin"],
+		limit_page_length=0,
+	)
+	role_by_project = {}
+	for p in projects:
+		roles = []
+		if p["project_owner"] == me:
+			roles.append("Owner")
+		if p["project_leader"] == me:
+			roles.append("Leader")
+		if p["project_admin"] == me:
+			roles.append("Admin")
+		role_by_project[p["name"]] = {
+			"my_role": ", ".join(roles),
+			"project_name": p.get("project_name") or p["name"],
+		}
+	if not role_by_project:
+		return {"due_by": str(due), "rows": []}
+
+	todos = frappe.get_all(
+		"Project Todo",
+		filters={
+			"project": ["in", list(role_by_project)],
+			"deadline": ["<=", str(due)],
+			"assigned_to": ["is", "set"],
+			"status": ["not in", [STATUS_COMPLETED, STATUS_CANCELLED]],
+		},
+		fields=["name", "to_do", "project", "assigned_to", "deadline", "status"],
+		order_by="deadline asc",
+		limit_page_length=0,
+	)
+
+	uids = list({t["assigned_to"] for t in todos})
+	users = {
+		u["name"]: u
+		for u in frappe.get_all(
+			"User",
+			filters={"name": ["in", uids]},
+			fields=["name", "full_name", "email", "mobile_no"],
+			limit_page_length=0,
+		)
+	} if uids else {}
+
+	return _build_todos_due(role_by_project, todos, users, due, getdate())
+
+
+def _runs_project(user, project_row):
+	"""True iff `user` owns, leads, or admins the project. `project_row` is a dict with
+	project_owner / project_leader / project_admin (falsy/None -> not permitted)."""
+	if not project_row:
+		return False
+	return user in (
+		project_row.get("project_owner"),
+		project_row.get("project_leader"),
+		project_row.get("project_admin"),
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def buzz_todo(todo):
+	"""Nudge a Project Todo's assignee — in-app notification + Web Push (device vibrates
+	on Android). Caller must own/lead/admin the todo's project (same scope as the
+	todos_due report). Reuses the shared _notify() so the recipient gets it on the bell
+	and as a push even when the app is closed."""
+	me = frappe.session.user
+	# Whitelist trust boundary: a JSON POST body can smuggle a dict/list, which
+	# frappe.db.get_value would treat as FILTERS instead of a docname. Force a string.
+	todo = frappe.utils.cstr(todo)
+	row = frappe.db.get_value(
+		"Project Todo", todo,
+		["name", "to_do", "project", "assigned_to", "deadline"],
+		as_dict=True,
+	)
+	if not row:
+		frappe.throw("Todo not found.", frappe.DoesNotExistError)
+	if not row.assigned_to:
+		frappe.throw("This todo has no assignee to buzz.", frappe.ValidationError)
+
+	project = frappe.db.get_value(
+		"Project", row.project,
+		["project_owner", "project_leader", "project_admin"],
+		as_dict=True,
+	)
+	if not _runs_project(me, project):
+		frappe.throw("You don't run this project.", frappe.PermissionError)
+
+	deadline = frappe.utils.formatdate(row.deadline) if row.deadline else "soon"
+	from vernon_project.api.mobile import _notify
+
+	_notify(
+		recipient=row.assigned_to,
+		type="Deadline",
+		title=f"{frappe.utils.get_fullname(me)} nudged you",
+		body=f"“{row.to_do}” is due {deadline}",
+		reference_doctype="Project Todo",
+		reference_name=row.name,
+		actor=me,
+	)
+	return {"ok": True, "assignee": row.assigned_to}

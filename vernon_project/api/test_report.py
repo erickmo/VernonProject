@@ -7,6 +7,8 @@ from vernon_project.api.report import (
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
 	_build_over_occupied, over_occupied,
 	_template_minutes, _resolve_expected,
+	_build_todos_due, todos_due,
+	_runs_project, buzz_todo,
 )
 
 
@@ -384,3 +386,115 @@ class TestOverOccupiedEndpoint(unittest.TestCase):
 			self.assertIn(key, out)
 		self.assertIsInstance(out["rows"], list)
 		self.assertEqual(out["day_count"], 5)
+
+
+class TestBuildTodosDue(unittest.TestCase):
+	"""Pure _build_todos_due — buzz list shaping: deadline-asc order, overdue flag, contact."""
+
+	TODAY = datetime.date(2026, 7, 6)
+	ROLES = {
+		"PRJ-A": {"my_role": "Owner", "project_name": "Alpha"},
+		"PRJ-B": {"my_role": "Owner, Leader", "project_name": "Beta"},
+	}
+	USERS = {"u@x.id": {"name": "u@x.id", "full_name": "Ursula", "email": "u@x.id", "mobile_no": "+62811"}}
+
+	def _todo(self, name, project, deadline, assigned_to="u@x.id", to_do="T", status="⚪️ Planned"):
+		return {"name": name, "to_do": to_do, "project": project,
+				"assigned_to": assigned_to, "deadline": deadline, "status": status}
+
+	def test_sorted_by_deadline_ascending(self):
+		todos = [self._todo("T2", "PRJ-A", "2026-07-10"),
+				 self._todo("T1", "PRJ-A", "2026-07-05"),
+				 self._todo("T3", "PRJ-B", "2026-07-07")]
+		out = _build_todos_due(self.ROLES, todos, self.USERS, "2026-07-10", self.TODAY)
+		self.assertEqual([r["todo"] for r in out["rows"]], ["T1", "T3", "T2"])
+		self.assertEqual(out["due_by"], "2026-07-10")
+
+	def test_overdue_is_strictly_before_today(self):
+		todos = [self._todo("PAST", "PRJ-A", "2026-07-05"),
+				 self._todo("TODAY", "PRJ-A", "2026-07-06"),
+				 self._todo("FUT", "PRJ-A", "2026-07-08")]
+		flag = {r["todo"]: r["overdue"] for r in
+				_build_todos_due(self.ROLES, todos, self.USERS, "2026-07-08", self.TODAY)["rows"]}
+		self.assertEqual(flag, {"PAST": True, "TODAY": False, "FUT": False})
+
+	def test_carries_role_project_and_contact(self):
+		out = _build_todos_due(self.ROLES, [self._todo("T1", "PRJ-B", "2026-07-06")],
+							   self.USERS, "2026-07-06", self.TODAY)
+		row = out["rows"][0]
+		self.assertEqual(row["my_role"], "Owner, Leader")
+		self.assertEqual(row["project_name"], "Beta")
+		self.assertEqual(row["assignee_name"], "Ursula")
+		self.assertEqual(row["assignee_email"], "u@x.id")
+		self.assertEqual(row["assignee_mobile"], "+62811")
+
+	def test_unknown_assignee_falls_back_to_id(self):
+		out = _build_todos_due(self.ROLES, [self._todo("T1", "PRJ-A", "2026-07-06", assigned_to="ghost@x.id")],
+							   {}, "2026-07-06", self.TODAY)
+		row = out["rows"][0]
+		self.assertEqual(row["assignee_name"], "ghost@x.id")
+		self.assertEqual(row["assignee_email"], "ghost@x.id")
+		self.assertIsNone(row["assignee_mobile"])
+
+	def test_empty(self):
+		out = _build_todos_due(self.ROLES, [], self.USERS, "2026-07-06", self.TODAY)
+		self.assertEqual(out, {"due_by": "2026-07-06", "rows": []})
+
+
+class TestTodosDueEndpoint(unittest.TestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		if frappe.db.exists("User", "td_guest@example.com"):
+			frappe.delete_doc("User", "td_guest@example.com", force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_user_with_no_projects_gets_empty_list(self):
+		if not frappe.db.exists("User", "td_guest@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "td_guest@example.com",
+				"first_name": "TD", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		frappe.set_user("td_guest@example.com")
+		out = todos_due("2026-07-31")
+		self.assertEqual(out, {"due_by": "2026-07-31", "rows": []})
+
+	def test_contract_shape(self):
+		frappe.set_user("Administrator")
+		out = todos_due("2026-07-31")
+		self.assertIn("due_by", out)
+		self.assertIsInstance(out["rows"], list)
+		self.assertEqual(out["due_by"], "2026-07-31")
+
+
+class TestRunsProject(unittest.TestCase):
+	"""Pure permission predicate for buzz_todo — owns/leads/admins the project."""
+
+	def test_owner_leader_admin_pass(self):
+		for field in ("project_owner", "project_leader", "project_admin"):
+			self.assertTrue(_runs_project("me@x.id", {field: "me@x.id"}))
+
+	def test_non_member_denied(self):
+		row = {"project_owner": "a@x.id", "project_leader": "b@x.id", "project_admin": "c@x.id"}
+		self.assertFalse(_runs_project("me@x.id", row))
+
+	def test_missing_project_denied(self):
+		self.assertFalse(_runs_project("me@x.id", None))
+
+	def test_none_fields_denied(self):
+		# A project with no roles set must never match a real user.
+		self.assertFalse(_runs_project("me@x.id", {"project_owner": None, "project_leader": None, "project_admin": None}))
+
+
+class TestBuzzTodoEndpoint(unittest.TestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+
+	def test_unknown_todo_raises(self):
+		with self.assertRaises(frappe.DoesNotExistError):
+			buzz_todo("PT-does-not-exist-xyz")
+
+	def test_dict_todo_is_coerced_not_used_as_filter(self):
+		# A JSON body could pass `todo` as a dict; it must be coerced to a docname
+		# string (never resolved as a get_value filter), so this is a plain not-found.
+		with self.assertRaises(frappe.DoesNotExistError):
+			buzz_todo({"assigned_to": "someone@example.com"})
