@@ -129,12 +129,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       title: 'Me',
       rows: [
         { icon: User, label: 'My Info', hue: 'sky', onClick: () => navigate('/me/info') },
-      ],
-    },
-    {
-      title: 'Account',
-      rows: [
         { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
+        { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
+        { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
         ...(pushSupported()
           ? [
               {
@@ -145,48 +142,50 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               },
             ]
           : []),
-        { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
       ],
     },
     {
       title: 'Work',
       rows: [
-        { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
-        { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
-        { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
         { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
+        { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
         { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },
-        ...(canManageAttendance(boot)
-          ? [
-              {
-                icon: ClipboardList,
-                label: 'Manage attendance',
-                hue: 'emerald' as const,
-                onClick: () => navigate('/attendance/manage'),
-              },
-            ]
-          : []),
       ],
     },
     {
-      title: 'Points & Rewards',
+      title: 'Community',
       rows: [
+        { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
+        { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
         { icon: UsersRound, label: 'Team Wall', hue: 'violet', onClick: () => navigate('/team-wall') },
-        { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
         { icon: Send, label: 'Send Points', hue: 'amber', onClick: () => navigate('/gift-points') },
-        ...(canManageBadges(boot)
-          ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
-          : []),
       ],
     },
     {
-      title: 'Users & Access',
+      title: 'App',
       rows: [
+        { icon: MessageSquarePlus, label: 'Send feedback', hue: 'violet', onClick: () => navigate('/feedback') },
+        { icon: RefreshCw, label: 'Refresh data', hue: 'slate', onClick: refresh },
+        { icon: BookOpen, label: 'Replay quick tour', hue: 'slate', onClick: onReplayOnboarding },
+      ],
+    },
+    {
+      title: 'Admin',
+      rows: [
+        ...(canManageAttendance(boot)
+          ? [{ icon: ClipboardList, label: 'Manage attendance', hue: 'emerald' as const, onClick: () => navigate('/attendance/manage') }]
+          : []),
         ...(canManageUsers(boot)
           ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]
           : []),
         ...(canManageUsers(boot)
           ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky' as const, onClick: () => navigate('/transfer-tasks') }]
+          : []),
+        ...(canManageGroups(boot)
+          ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
+          : []),
+        ...(canManageCompanies(boot)
+          ? [{ icon: Building2, label: 'Manage Companies', hue: 'sky' as const, onClick: () => navigate('/companies') }]
           : []),
         ...(canManageBrands(boot)
           ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
@@ -194,17 +193,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
         ...(canManageResources(boot)
           ? [{ icon: DoorOpen, label: 'Resources', hue: 'indigo' as const, onClick: () => navigate('/meeting-rooms') }]
           : []),
-        ...(canManageCompanies(boot)
-          ? [{ icon: Building2, label: 'Manage Companies', hue: 'sky' as const, onClick: () => navigate('/companies') }]
+        ...(canManageBadges(boot)
+          ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
           : []),
-        ...(canManageGroups(boot)
-          ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
-          : []),
-      ],
-    },
-    {
-      title: 'System',
-      rows: [
         ...(canManageGroups(boot)
           ? [{ icon: ShieldAlert, label: 'Data Health', hue: 'rose' as const, onClick: () => navigate('/data-health') }]
           : []),
@@ -214,14 +205,6 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
         ...(boot?.roles.includes('System Manager')
           ? [{ icon: UserMinus, label: 'Under-Occupied', hue: 'amber' as const, onClick: () => navigate('/reports/under-occupied') }]
           : []),
-      ],
-    },
-    {
-      title: 'App',
-      rows: [
-        { icon: MessageSquarePlus, label: 'Send feedback', hue: 'violet', onClick: () => navigate('/feedback') },
-        { icon: RefreshCw, label: 'Refresh data', hue: 'slate', onClick: refresh },
-        { icon: BookOpen, label: 'Replay quick tour', hue: 'slate', onClick: onReplayOnboarding },
       ],
     },
   ]
