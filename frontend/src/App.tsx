@@ -44,6 +44,7 @@ import NoteFormScreen from './pages/NoteFormScreen'
 import PapanIklanScreen from './pages/PapanIklanScreen'
 import PapanIklanDetailScreen from './pages/PapanIklanDetailScreen'
 import PapanIklanFormScreen from './pages/PapanIklanFormScreen'
+import PapanIklanBansScreen from './pages/PapanIklanBansScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
 import HelpScreen from './pages/HelpScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
@@ -76,7 +77,7 @@ import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
 import EventManageScreen from './pages/EventManageScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources } from './hooks/useData'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -217,6 +218,9 @@ export default function App() {
         <Route path="/notes/:name" element={<NoteFormScreen />} />
         <Route path="/papan-iklan" element={<PapanIklanScreen />} />
         <Route path="/papan-iklan/new" element={<PapanIklanFormScreen />} />
+        {canModerateAds(boot) && (
+          <Route path="/papan-iklan/bans" element={<PapanIklanBansScreen />} />
+        )}
         <Route path="/papan-iklan/:name/edit" element={<PapanIklanFormScreen />} />
         <Route path="/papan-iklan/:name" element={<PapanIklanDetailScreen />} />
         <Route path="/feedback" element={<FeedbackScreen />} />
