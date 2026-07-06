@@ -41,6 +41,8 @@ import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
+import PapanIklanScreen from './pages/PapanIklanScreen'
+import PapanIklanDetailScreen from './pages/PapanIklanDetailScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
 import HelpScreen from './pages/HelpScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
@@ -212,6 +214,8 @@ export default function App() {
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/notes/new" element={<NoteFormScreen />} />
         <Route path="/notes/:name" element={<NoteFormScreen />} />
+        <Route path="/papan-iklan" element={<PapanIklanScreen />} />
+        <Route path="/papan-iklan/:name" element={<PapanIklanDetailScreen />} />
         <Route path="/feedback" element={<FeedbackScreen />} />
         <Route path="/help" element={<HelpScreen />} />
         <Route path="/meetings" element={<MeetingsScreen />} />

@@ -1043,7 +1043,7 @@ def get_member_workload(project, user, include_completed=0):
 	return out
 
 
-COMMENTABLE = {"Project", "Project Detail", "Project Todo"}
+COMMENTABLE = {"Project", "Project Detail", "Project Todo", "Papan Iklan"}
 
 
 def _comment_project(reference_doctype, reference_name):
@@ -1061,6 +1061,11 @@ def _comment_project(reference_doctype, reference_name):
 def _assert_comment_visible(reference_doctype, reference_name):
 	if reference_doctype not in COMMENTABLE:
 		frappe.throw("Comments are not available for this record.")
+	# ponytail: Papan Iklan is a public classifieds board; any authenticated user may comment.
+	if reference_doctype == "Papan Iklan":
+		if frappe.session.user == "Guest":
+			frappe.throw("Not permitted", frappe.PermissionError)
+		return
 	project = _comment_project(reference_doctype, reference_name)
 	if not project or project not in _visible_projects():
 		frappe.throw("Not permitted", frappe.PermissionError)
