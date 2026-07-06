@@ -1133,6 +1133,10 @@ def _comment_participants(reference_doctype, reference_name):
 		assignee = frappe.get_value("Project Todo", reference_name, "assigned_to")
 		if assignee:
 			people.add(assignee)
+	if reference_doctype == "Papan Iklan":
+		author = frappe.get_value("Papan Iklan", reference_name, "author")
+		if author:
+			people.add(author)
 	return {p for p in people if p}
 
 

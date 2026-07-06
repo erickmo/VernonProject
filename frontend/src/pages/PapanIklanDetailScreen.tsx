@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { MessageCircle, Trash2, CheckCircle2, RotateCcw, ShieldX, Ban, MapPin } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner } from '@/components/ui'
+import { Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -35,8 +35,15 @@ export default function PapanIklanDetailScreen() {
   const [banUntil, setBanUntil] = useState('')
   const [banReason, setBanReason] = useState('')
 
-  if (isLoading || !ad) {
+  if (isLoading) {
     return <DetailScreen title="Iklan"><Spinner className="mx-auto h-5 w-5 text-slate-400" /></DetailScreen>
+  }
+  if (!ad) {
+    return (
+      <DetailScreen title="Iklan">
+        <EmptyState icon={Ban} title="Iklan tidak ditemukan" subtitle="Iklan ini mungkin sudah dihapus." />
+      </DetailScreen>
+    )
   }
 
   const toggleFulfilled = () => {

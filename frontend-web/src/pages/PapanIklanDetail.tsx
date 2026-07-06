@@ -31,7 +31,8 @@ export default function PapanIklanDetail() {
   const [banReason, setBanReason] = useState('')
   const [banOpen, setBanOpen] = useState(false)
 
-  if (isLoading || !ad) return <Page><div className="flex justify-center py-20"><Spinner /></div></Page>
+  if (isLoading) return <Page><div className="flex justify-center py-20"><Spinner /></div></Page>
+  if (!ad) return <Page><PageHeader icon={Megaphone} title="Iklan tidak ditemukan" /><p className="text-muted">Iklan ini mungkin sudah dihapus. <button onClick={() => navigate('/papan-iklan')} className="text-brand-600 underline">Kembali ke Papan Iklan</button></p></Page>
 
   const toggleFulfilled = () => setStatus.mutate(
     { name, status: ad.status === 'Fulfilled' ? 'Active' : 'Fulfilled' },

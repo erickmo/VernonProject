@@ -246,8 +246,9 @@ def create_ad(payload):
 
 @frappe.whitelist()
 def update_ad(name, payload):
-	_require_user()
+	user = _require_user()
 	_can_manage(name)
+	_assert_not_banned(user)
 	data = json.loads(payload) if isinstance(payload, str) else payload
 	title, ad_type, contact = _clean(data)
 
