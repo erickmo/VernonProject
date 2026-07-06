@@ -11,6 +11,7 @@ import {
   StickyNote,
   Smile,
   MessageSquarePlus,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -44,6 +45,7 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
       { icon: Ticket, title: 'Join an event', short: 'Events', desc: 'Browse office events and register — free or paid.', to: '/events' },
       { icon: CalendarCog, title: 'Host an event', short: 'Host', desc: 'Create events and manage who registered.', to: '/events/manage' },
       { icon: HandHeart, title: 'Recognize teammates', short: 'Recognize', desc: 'React on the team wall to send recognition points.', to: '/team-wall' },
+      { icon: Megaphone, title: 'Papan Iklan', short: 'Iklan', desc: 'Pasang iklan — jual, beli, atau sewa barang.', to: '/papan-iklan' },
     ],
   },
   {

@@ -9,6 +9,7 @@ import {
   StickyNote,
   Smile,
   MessageSquarePlus,
+  Megaphone,
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
@@ -25,6 +26,7 @@ const ITEMS: { icon: LucideIcon; title: string; desc: string; to: string }[] = [
   { icon: StickyNote, title: 'Capture notes', desc: 'Jot quick notes and keep track of ideas.', to: '/notes' },
   { icon: Smile, title: 'Make it yours', desc: 'Customize your avatar.', to: '/avatar' },
   { icon: MessageSquarePlus, title: 'Send feedback', desc: "Tell the team what's working or missing.", to: '/feedback' },
+  { icon: Megaphone, title: 'Papan Iklan', desc: 'Pasang iklan — jual, beli, atau sewa barang.', to: '/papan-iklan' },
 ]
 
 export default function Help() {

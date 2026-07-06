@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X, CheckSquare, StickyNote, Compass } from 'lucide-react'
+import { Plus, X, CheckSquare, StickyNote, Compass, Megaphone } from 'lucide-react'
 import { useFocusTimers } from '@/hooks/useFocusTimer'
 
 // One-time hint persists across sessions once dismissed (or after first use).
@@ -103,6 +103,7 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
             {[
               { icon: CheckSquare, label: 'New task', run: onTap },
               { icon: StickyNote, label: 'New note', run: onLongPress },
+              { icon: Megaphone, label: 'New ad', run: () => navigate('/papan-iklan/new') },
               { icon: Compass, label: 'What can I do', run: () => navigate('/help') },
             ].map((m) => (
               <button
