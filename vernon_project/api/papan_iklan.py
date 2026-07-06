@@ -302,3 +302,96 @@ def upload_ad_image():
 		frappe.throw("Image too large (max 5 MB).")
 	saved = save_file(f.filename, content, None, None, is_private=0)
 	return {"file_url": saved.file_url}
+
+
+# ---------- admin / moderation ----------
+
+@frappe.whitelist()
+def remove_ad(name, reason=None):
+	"""Admin soft-removes any ad (status -> Removed) and notifies the author."""
+	_require_admin()
+	author = frappe.db.get_value("Papan Iklan", name, "author")
+	if author is None:
+		frappe.throw("Ad not found", frappe.DoesNotExistError)
+	frappe.db.set_value("Papan Iklan", name, "status", "Removed")
+	_notify(
+		author, "Billboard", "Your ad was removed",
+		(reason or "It broke the rules.")[:140],
+		"Papan Iklan", name, actor=frappe.session.user,
+	)
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def ban_user(user, banned_until, reason):
+	"""Admin time-bans a user from posting. Replaces any existing active ban."""
+	_require_admin()
+	if not frappe.db.exists("User", user):
+		frappe.throw("User not found.")
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw("A reason is required.")
+	if getdate(banned_until) < getdate(today()):
+		frappe.throw("Ban date must be today or later.")
+
+	existing = _active_ban(user)
+	if existing:
+		frappe.db.set_value("Papan Iklan Ban", existing["name"], {
+			"banned_until": banned_until,
+			"reason": reason,
+			"banned_by": frappe.session.user,
+		})
+		name = existing["name"]
+	else:
+		name = frappe.get_doc({
+			"doctype": "Papan Iklan Ban",
+			"user": user,
+			"banned_until": banned_until,
+			"reason": reason,
+			"banned_by": frappe.session.user,
+		}).insert(ignore_permissions=True).name
+
+	_notify(
+		user, "Billboard", "You are banned from Papan Iklan",
+		f"Until {banned_until}. Reason: {reason}"[:140],
+		"Papan Iklan Ban", name, actor=frappe.session.user,
+	)
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def unban_user(user):
+	"""Admin lifts a ban early by deleting the user's ban row(s)."""
+	_require_admin()
+	for b in frappe.get_all("Papan Iklan Ban", filters={"user": user}, pluck="name"):
+		frappe.delete_doc("Papan Iklan Ban", b, ignore_permissions=True)
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def list_bans():
+	"""Admin: currently-active bans, newest expiry first."""
+	_require_admin()
+	rows = frappe.get_all(
+		"Papan Iklan Ban",
+		filters={"banned_until": [">=", today()]},
+		fields=["name", "user", "banned_until", "reason", "banned_by", "creation"],
+		order_by="banned_until desc",
+		limit_page_length=0,
+	)
+	ids = {r["user"] for r in rows} | {r["banned_by"] for r in rows if r["banned_by"]}
+	name_map = {}
+	if ids:
+		for u in frappe.get_all("User", filters={"name": ["in", list(ids)]}, fields=["name", "full_name"]):
+			name_map[u["name"]] = u["full_name"] or u["name"]
+	return [
+		{
+			"name": r["name"],
+			"user": r["user"],
+			"user_name": name_map.get(r["user"]) or r["user"],
+			"banned_until": str(r["banned_until"]),
+			"reason": r["reason"],
+			"banned_by": name_map.get(r["banned_by"]) or r["banned_by"],
+		}
+		for r in rows
+	]
