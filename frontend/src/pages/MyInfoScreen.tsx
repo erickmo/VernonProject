@@ -11,6 +11,8 @@ const INPUT_CLS =
   'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 placeholder:text-slate-400 dark:placeholder:text-slate-500'
 const PROFICIENCIES = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
 const EDU_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3']
+const RELIGIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
+const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
 
 export default function MyInfoScreen() {
   const { data: boot } = useBoot()
@@ -29,6 +31,8 @@ export default function MyInfoScreen() {
   const [skills, setSkills] = useState<EmployeeChildSkill[]>(employee?.skills ?? [])
   const [education, setEducation] = useState<EmployeeChildEducation[]>(employee?.education ?? [])
   const [trainings, setTrainings] = useState<EmployeeChildTraining[]>(employee?.trainings ?? [])
+  const [religion, setReligion] = useState(employee?.religion ?? '')
+  const [verseEnabled, setVerseEnabled] = useState<boolean>(!!employee?.verse_enabled)
 
   // ponytail: one-shot hydration — useState ignores prop changes after first render; fire once when employee arrives
   const [hydrated, setHydrated] = useState(false)
@@ -44,6 +48,8 @@ export default function MyInfoScreen() {
       setSkills(employee.skills ?? [])
       setEducation(employee.education ?? [])
       setTrainings(employee.trainings ?? [])
+      setReligion(employee.religion ?? '')
+      setVerseEnabled(!!employee.verse_enabled)
       setHydrated(true)
     }
   }, [employee, hydrated])
@@ -52,7 +58,8 @@ export default function MyInfoScreen() {
     save.mutate(
       { phone, birthdate, bio, home_address: homeAddress,
         emergency_contact_name: ecName, emergency_contact_phone: ecPhone, emergency_contact_relation: ecRelation,
-        skills, education, trainings },
+        skills, education, trainings,
+        religion, verse_enabled: verseEnabled ? 1 : 0 },
       {
         onSuccess: () => toast('success', 'Profile saved'),
         onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not save profile'),
@@ -113,6 +120,24 @@ export default function MyInfoScreen() {
           <textarea value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} rows={2}
             className={INPUT_CLS + ' resize-none'} placeholder="Full address" />
         </label>
+
+        <label className="flex flex-col gap-1 text-sm font-medium text-stone-600 dark:text-slate-300">
+          <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> Agama</span>
+          <select value={religion} onChange={(e) => setReligion(e.target.value)} className={INPUT_CLS}>
+            <option value="">— Pilih —</option>
+            {RELIGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+
+        {VERSE_SUPPORTED.has(religion) ? (
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5">
+            <span className="text-sm font-medium text-stone-600 dark:text-slate-300">Ayat Harian</span>
+            <input type="checkbox" checked={verseEnabled} onChange={(e) => setVerseEnabled(e.target.checked)}
+              className="h-5 w-5 accent-brand-600" />
+          </label>
+        ) : religion ? (
+          <p className="text-xs text-stone-400 dark:text-slate-500">Ayat Harian belum tersedia untuk agama ini.</p>
+        ) : null}
       </div>
 
       {/* Emergency Contact */}
