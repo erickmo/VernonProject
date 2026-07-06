@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan } from './types'
 
 const METHOD = '/api/method/'
 
@@ -603,6 +603,52 @@ export async function uploadCommentImage(
   } catch {
     /* non-JSON */
   }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out.file_url as string
+}
+
+const PI = 'vernon_project.api.papan_iklan.'
+
+export const papanApi = {
+  list: (ad_type?: string, q?: string, mine?: boolean) =>
+    api.get<AdListItem[]>(PI + 'list_ads', {
+      ...(ad_type ? { ad_type } : {}),
+      ...(q ? { q } : {}),
+      ...(mine ? { mine: 1 } : {}),
+    }),
+  get: (name: string) => api.get<AdDetail>(PI + 'get_ad', { name }),
+  create: (payload: AdPayload) =>
+    api.post<{ name: string }>(PI + 'create_ad', { payload: JSON.stringify(payload) }),
+  update: (name: string, payload: AdPayload) =>
+    api.post<{ name: string }>(PI + 'update_ad', { name, payload: JSON.stringify(payload) }),
+  setStatus: (name: string, status: string) =>
+    api.post<{ status: string }>(PI + 'set_status', { name, status }),
+  remove: (name: string) => api.post<{ ok: boolean }>(PI + 'delete_ad', { name }),
+  adminRemove: (name: string, reason: string) =>
+    api.post<{ status: string }>(PI + 'remove_ad', { name, reason }),
+  ban: (user: string, banned_until: string, reason: string) =>
+    api.post<{ status: string }>(PI + 'ban_user', { user, banned_until, reason }),
+  unban: (user: string) => api.post<{ status: string }>(PI + 'unban_user', { user }),
+  bans: () => api.get<AdBan[]>(PI + 'list_bans'),
+}
+
+// Multipart upload for an ad photo. Returns the saved public URL.
+export async function uploadAdImage(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(METHOD + 'vernon_project.api.papan_iklan.upload_ad_image', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try { data = await res.json() } catch { /* non-JSON */ }
   if (!res.ok) {
     const msg =
       (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`

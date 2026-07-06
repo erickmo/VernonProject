@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
@@ -46,6 +46,7 @@ import type {
   Booking,
   MeetingRoom,
   Equipment,
+  AdPayload,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -105,6 +106,10 @@ export const keys = {
   myExceptions: ['myExceptions'] as const,
   employeeProfile: (user: string) => ['employee-profile', user] as const,
   dailyVerse: ['daily-verse'] as const,
+  ads: (adType?: string, q?: string, mine?: boolean) =>
+    ['ads', adType ?? 'all', q ?? '', mine ? 'mine' : 'all'] as const,
+  ad: (n: string) => ['ad', n] as const,
+  adBans: ['adBans'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
@@ -931,6 +936,10 @@ export function useRedeemReward() {
   })
 }
 
+export function canModerateAds(boot: Boot | undefined): boolean {
+  return !!boot && boot.roles.includes('System Manager')
+}
+
 export function canManageMarketplace(boot: Boot | undefined): boolean {
   return !!boot && (
     boot.roles.includes('System Manager') ||
@@ -1646,6 +1655,71 @@ export function useSaveMyProfile() {
     mutationFn: (payload: Partial<import('@/lib/types').EmployeeSoft>) =>
       mobileApi.updateMyProfile(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.boot }),
+  })
+}
+
+export const useAds = (adType?: string, q?: string, mine?: boolean) =>
+  useQuery({ queryKey: keys.ads(adType, q, mine), queryFn: () => papanApi.list(adType, q, mine) })
+
+export const useAd = (name: string) =>
+  useQuery({ queryKey: keys.ad(name), queryFn: () => papanApi.get(name), enabled: !!name })
+
+export function useSaveAd() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ payload, name }: { payload: AdPayload; name?: string }) =>
+      name ? papanApi.update(name, payload) : papanApi.create(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ads'] }),
+  })
+}
+
+export function useSetAdStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { name: string; status: string }) => papanApi.setStatus(v.name, v.status),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['ads'] })
+      qc.invalidateQueries({ queryKey: keys.ad(v.name) })
+    },
+  })
+}
+
+export function useDeleteAd() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => papanApi.remove(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ads'] }),
+  })
+}
+
+export function useAdminRemoveAd() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { name: string; reason: string }) => papanApi.adminRemove(v.name, v.reason),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['ads'] })
+      qc.invalidateQueries({ queryKey: keys.ad(v.name) })
+    },
+  })
+}
+
+export const useAdBans = () =>
+  useQuery({ queryKey: keys.adBans, queryFn: () => papanApi.bans() })
+
+export function useBanUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { user: string; banned_until: string; reason: string }) =>
+      papanApi.ban(v.user, v.banned_until, v.reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.adBans }),
+  })
+}
+
+export function useUnbanUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (user: string) => papanApi.unban(user),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.adBans }),
   })
 }
 

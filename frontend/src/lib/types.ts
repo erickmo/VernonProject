@@ -904,3 +904,59 @@ export type AttendanceExceptionRow = {
   approved_count: number
   total: number
 }
+
+// ---- Papan Iklan (classified ads) ----
+export type AdType = 'Sell' | 'Buy' | 'Rent'
+export type AdStatus = 'Active' | 'Fulfilled' | 'Removed'
+
+export interface AdListItem {
+  name: string
+  title: string
+  ad_type: AdType
+  price: number | null
+  rate_period: string | null
+  location: string | null
+  status: AdStatus
+  author: string
+  author_name: string
+  thumbnail: string | null
+  at: string
+}
+
+export interface AdDetail {
+  name: string
+  title: string
+  ad_type: AdType
+  description: string | null
+  price: number | null
+  rate_period: string | null
+  location: string | null
+  contact: string
+  status: AdStatus
+  author: string
+  author_name: string
+  author_image: string | null
+  photos: string[]
+  is_owner: boolean
+  is_admin: boolean
+}
+
+export interface AdPayload {
+  title: string
+  ad_type: AdType
+  description: string
+  price: number
+  rate_period: string
+  location: string
+  contact: string
+  photos: string[]
+}
+
+export interface AdBan {
+  name: string
+  user: string
+  user_name: string
+  banned_until: string
+  reason: string
+  banned_by: string
+}
