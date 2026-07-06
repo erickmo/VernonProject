@@ -868,7 +868,10 @@ export type EmployeeSoft = {
   home_address?: string;
   emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
   education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
+  religion?: string; verse_enabled?: 0 | 1;
 }
+
+export type DailyVerse = { reference: string; text: string } | null
 
 export type LeaveBalance = { quota: number; used: number; remaining: number; prior?: number }
 

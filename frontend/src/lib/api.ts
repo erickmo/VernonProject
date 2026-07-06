@@ -101,6 +101,7 @@ export function checkAvailability(args: {
 export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),
   dashboard: () => api.get(M + 'get_dashboard'),
+  dailyVerse: () => api.get<import('./types').DailyVerse>('vernon_project.api.verse.get_daily_verse'),
   calendar: () => api.get(M + 'get_calendar'),
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),

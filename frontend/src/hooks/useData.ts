@@ -104,6 +104,21 @@ export const keys = {
   pendingExceptionApprovals: ['pendingExceptionApprovals'] as const,
   myExceptions: ['myExceptions'] as const,
   employeeProfile: (user: string) => ['employee-profile', user] as const,
+  dailyVerse: ['daily-verse'] as const,
+}
+
+const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
+
+export function useDailyVerse() {
+  const { data: boot } = useBoot()
+  const emp = boot?.employee
+  const on = !!emp?.verse_enabled && !!emp?.religion && VERSE_SUPPORTED.has(emp.religion)
+  return useQuery({
+    queryKey: keys.dailyVerse,
+    queryFn: () => mobileApi.dailyVerse(),
+    enabled: on,
+    staleTime: 6 * 60 * 60 * 1000, // once every 6h is plenty for a daily verse
+  })
 }
 
 export const useBoot = () =>
