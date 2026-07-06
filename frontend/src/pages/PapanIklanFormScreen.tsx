@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Tag, ShoppingCart, KeyRound, ImagePlus, X, MapPin, Phone, ArrowRight, Check } from 'lucide-react'
+import { Tag, ShoppingCart, KeyRound, ImagePlus, X, Phone, ArrowRight, Check } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -35,7 +35,7 @@ const shell =
   'flex items-center gap-2.5 rounded-2xl border border-paper-edge bg-paper-card px-3.5 py-3 shadow-sm transition focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800'
 
 const empty: AdPayload = {
-  title: '', ad_type: 'Sell', description: '', price: 0, rate_period: '', location: '', contact: '', photos: [],
+  title: '', ad_type: 'Sell', description: '', price: 0, rate_period: '', contact: '', photos: [],
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -63,7 +63,6 @@ export default function PapanIklanFormScreen() {
       description: existing.description ?? '',
       price: existing.price ?? 0,
       rate_period: existing.rate_period ?? '',
-      location: existing.location ?? '',
       contact: existing.contact ?? '',
       photos: existing.photos ?? [],
     })
@@ -182,20 +181,6 @@ export default function PapanIklanFormScreen() {
           ) : (
             <p className="mt-1.5 text-xs text-stone-400">Kosongkan jika nego</p>
           )}
-        </div>
-
-        {/* Location */}
-        <div>
-          <Label>Lokasi <span className="font-normal text-stone-400">· opsional</span></Label>
-          <div className={shell}>
-            <MapPin className="h-4 w-4 shrink-0 text-brand-500" />
-            <input
-              className="w-full bg-transparent text-sm text-stone-800 outline-none placeholder:text-stone-400 dark:text-slate-100"
-              placeholder="cth. Jakarta Selatan"
-              value={form.location}
-              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-            />
-          </div>
         </div>
 
         {/* Contact */}

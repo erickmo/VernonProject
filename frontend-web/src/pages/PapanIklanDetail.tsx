@@ -66,7 +66,6 @@ export default function PapanIklanDetail() {
             </div>
           )}
           <p className="text-lg font-semibold text-brand-600">{price(ad)}</p>
-          {ad.location && <p className="text-sm text-muted">{ad.location}</p>}
           <p className="text-xs text-muted">oleh {ad.author_name}</p>
           {ad.description && <div className="prose prose-sm max-w-none text-ink" dangerouslySetInnerHTML={{ __html: ad.description }} />}
           <div className="border-t border-line pt-4"><CommentThread referenceDoctype="Papan Iklan" referenceName={name} /></div>

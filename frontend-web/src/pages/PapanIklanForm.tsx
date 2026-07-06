@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Megaphone, Tag, ShoppingCart, KeyRound, ImagePlus, X, MapPin, Phone } from 'lucide-react'
+import { Megaphone, Tag, ShoppingCart, KeyRound, ImagePlus, X, Phone } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Button, Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
@@ -21,7 +21,7 @@ const TYPES = [
   { value: 'Rent' as const, label: 'Sewa', hint: 'Disewakan', icon: KeyRound, ic: 'text-amber-600', sel: 'border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300' },
 ]
 const PERIODS = ['per Hari', 'per Bulan', 'per Tahun']
-const empty: AdPayload = { title: '', ad_type: 'Sell', description: '', price: 0, rate_period: '', location: '', contact: '', photos: [] }
+const empty: AdPayload = { title: '', ad_type: 'Sell', description: '', price: 0, rate_period: '', contact: '', photos: [] }
 
 export default function PapanIklanForm() {
   const navigate = useNavigate()
@@ -39,7 +39,7 @@ export default function PapanIklanForm() {
     if (!isEdit || !existing) return
     setForm({
       title: existing.title ?? '', ad_type: existing.ad_type ?? 'Sell', description: existing.description ?? '',
-      price: existing.price ?? 0, rate_period: existing.rate_period ?? '', location: existing.location ?? '',
+      price: existing.price ?? 0, rate_period: existing.rate_period ?? '',
       contact: existing.contact ?? '', photos: existing.photos ?? [],
     })
   }, [isEdit, existing])
@@ -118,20 +118,12 @@ export default function PapanIklanForm() {
           </>
         )}</Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Lokasi">{(id) => (
-            <div className={shell}>
-              <MapPin className="h-4 w-4 shrink-0 text-muted" />
-              <input id={id} className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-muted" placeholder="cth. Jakarta Selatan" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
-            </div>
-          )}</Field>
-          <Field label="Kontak (WhatsApp/telepon)" required>{(id) => (
-            <div className={shell}>
-              <Phone className="h-4 w-4 shrink-0 text-muted" />
-              <input id={id} className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-muted" placeholder="0811 2233 4455" value={form.contact} onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))} />
-            </div>
-          )}</Field>
-        </div>
+        <Field label="Kontak (WhatsApp/telepon)" required>{(id) => (
+          <div className={shell}>
+            <Phone className="h-4 w-4 shrink-0 text-muted" />
+            <input id={id} className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-muted" placeholder="0811 2233 4455" value={form.contact} onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))} />
+          </div>
+        )}</Field>
 
         <Field label="Deskripsi">{(id) => (
           <textarea id={id} className={`${cls} resize-none`} rows={5} placeholder="Kondisi, kelengkapan, alasan jual…" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />

@@ -13,7 +13,6 @@ from vernon_project.api.mobile import _notify
 AD_TYPES = {"Sell", "Buy", "Rent"}
 MAX_TITLE = 200
 MAX_CONTACT = 100
-MAX_LOCATION = 200
 MAX_PHOTOS = 5
 
 ALLOWED_IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
@@ -105,7 +104,6 @@ def _apply_fields(doc, data, title, ad_type, contact):
 	doc.description = data.get("description")
 	doc.price = data.get("price") or 0
 	doc.rate_period = data.get("rate_period") if ad_type == "Rent" else None
-	doc.location = ((data.get("location") or "").strip())[:MAX_LOCATION]
 	_apply_photos(doc, data.get("photos"))
 
 
@@ -132,7 +130,7 @@ def _author_card(user):
 # ---------- read ----------
 
 PUBLIC_FIELDS = [
-	"name", "title", "ad_type", "price", "rate_period", "location",
+	"name", "title", "ad_type", "price", "rate_period",
 	"status", "author", "creation",
 ]
 
@@ -188,7 +186,6 @@ def list_ads(ad_type=None, q=None, mine=0):
 			"ad_type": r["ad_type"],
 			"price": r["price"],
 			"rate_period": r["rate_period"],
-			"location": r["location"],
 			"status": r["status"],
 			"author": r["author"],
 			"author_name": name_map.get(r["author"]) or r["author"],
@@ -205,7 +202,7 @@ def get_ad(name):
 	doc = frappe.db.get_value(
 		"Papan Iklan", name,
 		["name", "title", "ad_type", "description", "price", "rate_period",
-		 "location", "contact", "status", "author"],
+		 "contact", "status", "author"],
 		as_dict=True,
 	)
 	if not doc:

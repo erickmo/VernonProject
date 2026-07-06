@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { MessageCircle, Trash2, CheckCircle2, RotateCcw, ShieldX, Ban, MapPin } from 'lucide-react'
+import { MessageCircle, Trash2, CheckCircle2, RotateCcw, ShieldX, Ban } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -90,7 +90,6 @@ export default function PapanIklanDetailScreen() {
         <div>
           <h2 className="text-lg font-bold text-stone-900 dark:text-slate-50">{ad.title}</h2>
           <p className="text-base font-semibold text-brand-600">{priceText(ad)}</p>
-          {ad.location && <p className="mt-1 flex items-center gap-1 text-sm text-stone-400"><MapPin className="h-4 w-4" />{ad.location}</p>}
           <p className="mt-1 text-xs text-stone-400">oleh {ad.author_name}</p>
         </div>
 

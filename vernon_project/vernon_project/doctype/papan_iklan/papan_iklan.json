@@ -7,7 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "title", "ad_type", "description", "section_break_price",
-  "price", "rate_period", "location", "contact",
+  "price", "rate_period", "contact",
   "section_break_photos", "photos",
   "section_break_meta", "author", "status"
  ],
@@ -18,7 +18,6 @@
   {"fieldname": "section_break_price", "fieldtype": "Section Break"},
   {"fieldname": "price", "fieldtype": "Currency", "label": "Price (Rp)"},
   {"fieldname": "rate_period", "fieldtype": "Select", "label": "Rate Period", "options": "\nper Hari\nper Bulan\nper Tahun", "depends_on": "eval:doc.ad_type=='Rent'"},
-  {"fieldname": "location", "fieldtype": "Data", "label": "Location"},
   {"fieldname": "contact", "fieldtype": "Data", "label": "Contact (WhatsApp/phone)", "reqd": 1},
   {"fieldname": "section_break_photos", "fieldtype": "Section Break", "label": "Photos"},
   {"fieldname": "photos", "fieldtype": "Table", "label": "Photos", "options": "Papan Iklan Photo"},

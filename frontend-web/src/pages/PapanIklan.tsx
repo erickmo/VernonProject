@@ -69,7 +69,6 @@ export default function PapanIklan() {
             { key: 'title', header: 'Iklan', sortValue: (a) => a.title, render: (a) => <span className="font-medium text-ink">{a.title}</span> },
             { key: 'type', header: 'Jenis', render: (a) => <span className="text-muted">{TYPE_LABEL[a.ad_type]}</span> },
             { key: 'price', header: 'Harga', render: (a) => <span className="text-muted">{price(a)}</span> },
-            { key: 'location', header: 'Lokasi', render: (a) => <span className="text-muted">{a.location ?? '—'}</span> },
             { key: 'author', header: 'Oleh', render: (a) => <span className="text-muted">{a.author_name}</span> },
           ]}
           getKey={(a) => a.name}

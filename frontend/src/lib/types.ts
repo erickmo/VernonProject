@@ -915,7 +915,6 @@ export interface AdListItem {
   ad_type: AdType
   price: number | null
   rate_period: string | null
-  location: string | null
   status: AdStatus
   author: string
   author_name: string
@@ -930,7 +929,6 @@ export interface AdDetail {
   description: string | null
   price: number | null
   rate_period: string | null
-  location: string | null
   contact: string
   status: AdStatus
   author: string
@@ -947,7 +945,6 @@ export interface AdPayload {
   description: string
   price: number
   rate_period: string
-  location: string
   contact: string
   photos: string[]
 }

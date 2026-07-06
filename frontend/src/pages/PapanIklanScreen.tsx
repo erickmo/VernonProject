@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, MapPin, ShoppingBag, Search } from 'lucide-react'
+import { Tag, ShoppingBag, Search } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Segmented, Spinner, EmptyState } from '@/components/ui'
 import { Fab } from '@/components/Fab'
@@ -76,9 +76,6 @@ export default function PapanIklanScreen() {
                   </div>
                   <p className="mt-1 truncate text-sm font-semibold text-stone-800 dark:text-slate-100">{a.title}</p>
                   <p className="text-sm font-medium text-brand-600">{priceText(a)}</p>
-                  {a.location && (
-                    <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-stone-400"><MapPin className="h-3 w-3" />{a.location}</p>
-                  )}
                 </div>
               </button>
             ))}
