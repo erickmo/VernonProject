@@ -63,6 +63,17 @@ class TestIncomeOpportunityClaim(unittest.TestCase):
 		with self.assertRaises(frappe.ValidationError):
 			self._submit_as("claim_u1@example.com")
 
+	def test_guest_cannot_submit(self):
+		# ignore_permissions skips the create-perm gate but STILL runs validate(),
+		# isolating the Guest guard so this deterministically raises ValidationError.
+		frappe.set_user("Guest")
+		with self.assertRaises(frappe.ValidationError):
+			frappe.get_doc({
+				"doctype": "Income Opportunity Claim",
+				"opportunity": self.opp.name,
+				"details": "sneaky",
+			}).insert(ignore_permissions=True)
+
 	def test_regular_user_cannot_change_status(self):
 		doc = self._submit_as("claim_u1@example.com")
 		frappe.set_user("claim_u1@example.com")
