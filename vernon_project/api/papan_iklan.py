@@ -46,7 +46,7 @@ def _admins():
 		filters={"role": "System Manager", "parenttype": "User"},
 		pluck="parent",
 	)
-	return sorted({r for r in rows})
+	return sorted(set(rows))
 
 
 def _can_manage(name):
@@ -295,7 +295,7 @@ def upload_ad_image():
 	if ext not in ALLOWED_IMAGE_EXT:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	mimetype = (getattr(f, "mimetype", "") or "").lower()
-	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+	if not mimetype or mimetype not in ALLOWED_IMAGE_MIME:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	content = f.stream.read()
 	if len(content) > MAX_IMAGE_BYTES:
