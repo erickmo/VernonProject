@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, Send, Users } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
-import { useGiftRecipients, useGiftPoints, useWallet } from '@/hooks/useData'
+import { useGiftRecipients, useGiftPoints, useWallet, useBoot, canGrantPoints } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import type { GiftUser } from '@/lib/types'
@@ -11,6 +12,8 @@ import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
 export default function GiftPoints() {
+  const navigate = useNavigate()
+  const { data: boot } = useBoot()
   const toast = useToast()
   const confirm = useConfirm()
   const { data: wallet } = useWallet()
@@ -74,7 +77,19 @@ export default function GiftPoints() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Gift Points</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Send Points</h1>
+
+      {canGrantPoints(boot) && (
+        <div className="flex items-center gap-2">
+          <button className="rounded-full px-3 py-1.5 text-sm font-medium bg-brand-600 text-white">Gift</button>
+          <button
+            onClick={() => navigate('/grant-points')}
+            className="rounded-full px-3 py-1.5 text-sm font-medium bg-hover/[0.05] text-muted hover:bg-hover/[0.1]"
+          >
+            Grant
+          </button>
+        </div>
+      )}
 
       <BentoGrid>
         {/* Balance summary tile */}

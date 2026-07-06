@@ -89,7 +89,7 @@ export default function EventFormScreen() {
     save.mutate(
       { payload, name: isEdit ? name : undefined },
       {
-        onSuccess: () => { toast('success', isEdit ? 'Event saved' : 'Event created'); navigate('/events/manage') },
+        onSuccess: () => { toast('success', isEdit ? 'Event saved' : 'Event created'); navigate('/events?tab=manage') },
         onError: (e) => toast('error', (e as Error).message),
       },
     )
@@ -98,7 +98,7 @@ export default function EventFormScreen() {
   const remove = async () => {
     if (!(await confirm({ title: 'Delete this event?', confirmLabel: 'Delete', destructive: true }))) return
     del.mutate(name, {
-      onSuccess: () => { toast('success', 'Event deleted'); navigate('/events/manage') },
+      onSuccess: () => { toast('success', 'Event deleted'); navigate('/events?tab=manage') },
       onError: (e) => toast('error', deleteErrorMessage(e, 'event')),
     })
   }

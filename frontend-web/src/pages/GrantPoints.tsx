@@ -96,7 +96,18 @@ export default function GrantPoints() {
       }}
       className="space-y-6"
     >
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Grant Points</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Send Points</h1>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/gift-points')}
+          className="rounded-full px-3 py-1.5 text-sm font-medium bg-hover/[0.05] text-muted hover:bg-hover/[0.1]"
+        >
+          Gift
+        </button>
+        <button type="button" className="rounded-full px-3 py-1.5 text-sm font-medium bg-brand-600 text-white">Grant</button>
+      </div>
 
       <BentoGrid>
         {/* Recipient summary tile */}

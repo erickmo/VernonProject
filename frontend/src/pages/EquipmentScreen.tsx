@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Projector, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState } from '@/components/ui'
+import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { useEquipment, useBoot, canManageResources } from '@/hooks/useData'
 
 export default function EquipmentScreen() {
@@ -12,7 +12,7 @@ export default function EquipmentScreen() {
 
   if (bootLoading) {
     return (
-      <DetailScreen title="Equipment" right={null}>
+      <DetailScreen title="Resources" right={null}>
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
       </DetailScreen>
     )
@@ -22,7 +22,7 @@ export default function EquipmentScreen() {
 
   return (
     <DetailScreen
-      title="Equipment"
+      title="Resources"
       right={
         <button
           onClick={() => navigate('/equipment/new')}
@@ -32,6 +32,13 @@ export default function EquipmentScreen() {
         </button>
       }
     >
+      <div className="mb-4">
+        <Segmented
+          options={[{ value: 'rooms', label: 'Rooms' }, { value: 'equipment', label: 'Equipment' }]}
+          value="equipment"
+          onChange={(v) => { if (v === 'rooms') navigate('/meeting-rooms') }}
+        />
+      </div>
       {isLoading ? (
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
       ) : !(equipment ?? []).length ? (

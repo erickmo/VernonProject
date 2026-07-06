@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Gift, Search, Send, Users } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState, Avatar } from '@/components/ui'
-import { useGiftRecipients, useGiftPoints, useWallet } from '@/hooks/useData'
+import { Spinner, EmptyState, Avatar, Segmented } from '@/components/ui'
+import { useGiftRecipients, useGiftPoints, useWallet, useBoot, canGrantPoints } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import type { GiftUser } from '@/lib/types'
 
 export default function GiftPointsScreen() {
+  const navigate = useNavigate()
+  const { data: boot } = useBoot()
   const toast = useToast()
   const confirm = useConfirm()
   const { data: wallet } = useWallet()
@@ -52,7 +55,16 @@ export default function GiftPointsScreen() {
   }
 
   return (
-    <DetailScreen title="Gift Points" right={null}>
+    <DetailScreen title="Send Points" right={null}>
+      {canGrantPoints(boot) && (
+        <div className="mb-4">
+          <Segmented
+            options={[{ value: 'gift', label: 'Gift' }, { value: 'grant', label: 'Grant' }]}
+            value="gift"
+            onChange={(v) => { if (v === 'grant') navigate('/grant-points') }}
+          />
+        </div>
+      )}
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
         <Gift className="h-6 w-6" />
       </div>

@@ -70,7 +70,6 @@ import Bookings from '@web/pages/Bookings'
 import BookingForm from '@web/pages/BookingForm'
 import Events from '@web/pages/Events'
 import EventDetail from '@web/pages/EventDetail'
-import EventManage from '@web/pages/EventManage'
 import EventForm from '@web/pages/EventForm'
 import EventRoster from '@web/pages/EventRoster'
 import MyRegistrations from '@web/pages/MyRegistrations'
@@ -254,7 +253,7 @@ export default function App() {
           )}
           <Route path="/events" element={<Events />} />
           <Route path="/events/:name" element={<EventDetail />} />
-          <Route path="/events/manage" element={<EventManage />} />
+          <Route path="/events/manage" element={<Navigate to="/events?tab=manage" replace />} />
           <Route path="/events/manage/new" element={<EventForm />} />
           <Route path="/events/manage/:name/roster" element={<EventRoster />} />
           <Route path="/events/manage/:name" element={<EventForm />} />

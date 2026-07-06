@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MessageSquarePlus } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Button, Field } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
-import { useSubmitFeedback } from '@/hooks/useData'
+import { useSubmitFeedback, useBoot, canManageUsers } from '@/hooks/useData'
 
 const TYPES = ['Criticism', 'Suggestion', 'Praise', 'Bug'] as const
 
@@ -19,6 +20,8 @@ const fieldCls =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 export default function Feedback() {
+  const navigate = useNavigate()
+  const { data: boot } = useBoot()
   const toast = useToast()
   const submit = useSubmitFeedback()
   const [type, setType] = useState<string>('Suggestion')
@@ -44,7 +47,19 @@ export default function Feedback() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Send feedback</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Feedback</h1>
+
+      {canManageUsers(boot) && (
+        <div className="flex items-center gap-2">
+          <button className="rounded-full px-3 py-1.5 text-sm font-medium bg-brand-600 text-white">Send</button>
+          <button
+            onClick={() => navigate('/feedback-inbox')}
+            className="rounded-full px-3 py-1.5 text-sm font-medium bg-hover/[0.05] text-muted hover:bg-hover/[0.1]"
+          >
+            Inbox
+          </button>
+        </div>
+      )}
 
       <BentoGrid>
         <BentoTile span="lg" tone="plain">

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, DoorOpen, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState } from '@/components/ui'
+import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { useRooms, useBoot, canManageResources } from '@/hooks/useData'
 
 export default function MeetingRoomsScreen() {
@@ -12,7 +12,7 @@ export default function MeetingRoomsScreen() {
 
   if (bootLoading) {
     return (
-      <DetailScreen title="Meeting Rooms" right={null}>
+      <DetailScreen title="Resources" right={null}>
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
       </DetailScreen>
     )
@@ -22,7 +22,7 @@ export default function MeetingRoomsScreen() {
 
   return (
     <DetailScreen
-      title="Meeting Rooms"
+      title="Resources"
       right={
         <button
           onClick={() => navigate('/meeting-rooms/new')}
@@ -32,6 +32,13 @@ export default function MeetingRoomsScreen() {
         </button>
       }
     >
+      <div className="mb-4">
+        <Segmented
+          options={[{ value: 'rooms', label: 'Rooms' }, { value: 'equipment', label: 'Equipment' }]}
+          value="rooms"
+          onChange={(v) => { if (v === 'equipment') navigate('/equipment') }}
+        />
+      </div>
       {isLoading ? (
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
       ) : !(rooms ?? []).length ? (

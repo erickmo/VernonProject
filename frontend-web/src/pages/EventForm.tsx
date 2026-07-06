@@ -88,7 +88,7 @@ export default function EventForm() {
     save.mutate(
       { payload, name: isEdit ? name : undefined },
       {
-        onSuccess: () => { toast('success', isEdit ? 'Event saved' : 'Event created'); navigate('/events/manage') },
+        onSuccess: () => { toast('success', isEdit ? 'Event saved' : 'Event created'); navigate('/events?tab=manage') },
         onError: (e) => toast('error', (e as Error).message),
       },
     )
@@ -97,7 +97,7 @@ export default function EventForm() {
   const remove = async () => {
     if (!(await confirm({ title: 'Delete this event?', confirmLabel: 'Delete', destructive: true }))) return
     del.mutate(name, {
-      onSuccess: () => { toast('success', 'Event deleted'); navigate('/events/manage') },
+      onSuccess: () => { toast('success', 'Event deleted'); navigate('/events?tab=manage') },
       onError: (e) => toast('error', deleteErrorMessage(e, 'event')),
     })
   }
@@ -111,7 +111,7 @@ export default function EventForm() {
       <ErrorState
         title="Not found"
         subtitle="This event could not be found. It may have been deleted."
-        onRetry={() => navigate('/events/manage')}
+        onRetry={() => navigate('/events?tab=manage')}
       />
     )
   }
@@ -121,7 +121,7 @@ export default function EventForm() {
       <div>
         <button
           type="button"
-          onClick={() => navigate('/events/manage')}
+          onClick={() => navigate('/events?tab=manage')}
           className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 mb-1"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Events

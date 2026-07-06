@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Gift, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarCog, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, Projector, User } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, User } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -153,7 +153,6 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       rows: [
         { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
         { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
-        { icon: CalendarCog, label: 'Manage Events', hue: 'emerald', onClick: () => navigate('/events/manage') },
         { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
         { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
         { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },
@@ -174,15 +173,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       rows: [
         { icon: UsersRound, label: 'Team Wall', hue: 'violet', onClick: () => navigate('/team-wall') },
         { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
-        { icon: Send, label: 'Gift Points', hue: 'amber', onClick: () => navigate('/gift-points') },
-        ...(canGrantPoints(boot)
-          ? [{ icon: Gift, label: 'Grant Points', hue: 'amber' as const, onClick: () => navigate('/grant-points') }]
-          : []),
+        { icon: Send, label: 'Send Points', hue: 'amber', onClick: () => navigate('/gift-points') },
         ...(canManageBadges(boot)
           ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
-          : []),
-        ...(canManageMarketplace(boot)
-          ? [{ icon: Store, label: 'Manage Marketplace', hue: 'amber' as const, onClick: () => navigate('/marketplace-admin') }]
           : []),
       ],
     },
@@ -199,10 +192,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
           : []),
         ...(canManageResources(boot)
-          ? [{ icon: DoorOpen, label: 'Manage Meeting Rooms', hue: 'indigo' as const, onClick: () => navigate('/meeting-rooms') }]
-          : []),
-        ...(canManageResources(boot)
-          ? [{ icon: Projector, label: 'Manage Equipment', hue: 'indigo' as const, onClick: () => navigate('/equipment') }]
+          ? [{ icon: DoorOpen, label: 'Resources', hue: 'indigo' as const, onClick: () => navigate('/meeting-rooms') }]
           : []),
         ...(canManageCompanies(boot)
           ? [{ icon: Building2, label: 'Manage Companies', hue: 'sky' as const, onClick: () => navigate('/companies') }]

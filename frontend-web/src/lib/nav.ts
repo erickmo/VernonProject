@@ -2,13 +2,13 @@ import {
   Home, CalendarDays, FolderKanban, CheckCircle2, Video, StickyNote, MessageSquarePlus,
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
-  Zap, Store, Coins, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight, CalendarCog,
-  CalendarClock, Building2, Package, Megaphone, Ban,
+  Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
+  CalendarClock, Building2, Megaphone, Ban,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
-  canManageMarketplace, canGrantPoints, canManageAttendance, canManageResources,
+  canManageAttendance, canManageResources,
   canModerateAds,
 } from '@/hooks/useData'
 
@@ -22,44 +22,45 @@ const WORK: NavLeaf[] = [
   { to: '/review', label: 'Review', sub: 'Approve completed work', icon: CheckCircle2, badge: 'review' },
   { to: '/meetings', label: 'Meetings', sub: 'Schedule & notes', icon: Video },
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },
-  { to: '/feedback', label: 'Send feedback', sub: 'Tell us anything', icon: MessageSquarePlus },
+  { to: '/feedback', label: 'Feedback', sub: 'Send · admins triage', icon: MessageSquarePlus, match: '/feedback' },
   { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
   { to: '/attendance/my-approvals', label: 'Approvals', sub: 'Leave/WFH to approve', icon: Inbox },
 ]
 
-const REWARDS: NavLeaf[] = [
-  { to: '/events', label: 'Events', sub: 'Browse & register', icon: CalendarDays },
-  { to: '/events/manage', label: 'Manage Events', sub: 'Create & roster', icon: CalendarCog, match: '/events/manage' },
+// Social / people-facing surfaces.
+const COMMUNITY: NavLeaf[] = [
+  { to: '/events', label: 'Events', sub: 'Browse, register & host', icon: CalendarDays, match: '/events' },
   { to: '/my-registrations', label: 'My Registrations', sub: 'Your events', icon: Ticket },
-  { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/team-wall', label: 'Team Wall', sub: 'Recognition feed', icon: UsersRound },
-  { to: '/marketplace', label: 'Marketplace', sub: 'Redeem rewards', icon: ShoppingBag },
-  { to: '/wallet', label: 'Wallet', sub: 'Points balance & log', icon: Wallet },
-  { to: '/gift-points', label: 'Gift Points', sub: 'Send points to peers', icon: Gift },
+  { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/papan-iklan', label: 'Papan Iklan', sub: 'Jual · beli · sewa', icon: Megaphone },
+]
+
+// Everything points-denominated.
+const POINTS: NavLeaf[] = [
+  { to: '/wallet', label: 'Wallet', sub: 'Points balance & log', icon: Wallet },
+  { to: '/gift-points', label: 'Send Points', sub: 'Gift to peers or grant', icon: Gift },
+  { to: '/marketplace', label: 'Marketplace', sub: 'Redeem rewards', icon: ShoppingBag },
 ]
 
 export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGroup[] {
   const groups: NavGroup[] = [
     { id: 'work', label: 'Work', leaves: WORK },
-    { id: 'rewards', label: 'Rewards', leaves: REWARDS },
+    { id: 'community', label: 'Community', leaves: COMMUNITY },
+    { id: 'points', label: 'Points', leaves: POINTS },
     { id: 'reports', label: 'Reports', to: '/reports', leaves: [] },
   ]
 
   // Admin group — nav.ts is the single source of truth; gated per capability
   const admin: NavLeaf[] = [
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', sub: 'People & roles', icon: UsersIcon } as NavLeaf] : []),
-    ...(canManageUsers(b) ? [{ to: '/feedback-inbox', label: 'Feedback', sub: 'Inbound feedback', icon: Inbox } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/transfer-tasks', label: 'Transfer Tasks', sub: 'Reassign a user’s tasks', icon: ArrowLeftRight } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/groups', label: 'Groups', sub: 'Work-type taxonomy', icon: Layers } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', sub: 'Integrity checks', icon: ShieldAlert } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon } as NavLeaf] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', sub: 'Brand registry', icon: Tag } as NavLeaf] : []),
-    ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Meeting Rooms', sub: 'Bookable rooms', icon: Building2 } as NavLeaf] : []),
-    ...(canManageResources(b) ? [{ to: '/equipment', label: 'Equipment', sub: 'Bookable equipment', icon: Package } as NavLeaf] : []),
+    ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Resources', sub: 'Rooms & equipment', icon: Building2 } as NavLeaf] : []),
     ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
-    ...(canManageMarketplace(b) ? [{ to: '/marketplace-admin', label: 'Marketplace Admin', sub: 'Manage rewards', icon: Store } as NavLeaf] : []),
-    ...(canGrantPoints(b) ? [{ to: '/grant-points', label: 'Grant Points', sub: 'Award points', icon: Coins } as NavLeaf] : []),
     ...(canModerateAds(b) ? [{ to: '/papan-iklan/bans', label: 'Iklan Bans', sub: 'Banned posters', icon: Ban } as NavLeaf] : []),
   ]
   if (admin.length) groups.push({ id: 'admin', label: 'Admin', leaves: admin })

@@ -59,6 +59,16 @@ export default function FeedbackInbox() {
     <div className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Feedback</h1>
 
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => navigate('/feedback')}
+          className="rounded-full px-3 py-1.5 text-sm font-medium bg-hover/[0.05] text-muted hover:bg-hover/[0.1]"
+        >
+          Send
+        </button>
+        <button className="rounded-full px-3 py-1.5 text-sm font-medium bg-brand-600 text-white">Inbox</button>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={chip(filter === f)}>

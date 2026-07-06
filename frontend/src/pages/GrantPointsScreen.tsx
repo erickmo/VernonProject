@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Gift, Users, Coins } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState, Avatar } from '@/components/ui'
+import { Spinner, EmptyState, Avatar, Segmented } from '@/components/ui'
 import { useBoot, canGrantPoints } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { mobileApi } from '@/lib/api'
@@ -43,7 +43,7 @@ export default function GrantPointsScreen() {
 
   if (bootLoading || blocked) {
     return (
-      <DetailScreen title="Grant Points" right={null}>
+      <DetailScreen title="Send Points" right={null}>
         <Spinner className="mx-auto h-5 w-5 text-slate-400" />
       </DetailScreen>
     )
@@ -70,7 +70,14 @@ export default function GrantPointsScreen() {
   }
 
   return (
-    <DetailScreen title="Grant Points" right={null}>
+    <DetailScreen title="Send Points" right={null}>
+      <div className="mb-4">
+        <Segmented
+          options={[{ value: 'gift', label: 'Gift' }, { value: 'grant', label: 'Grant' }]}
+          value="grant"
+          onChange={(v) => { if (v === 'gift') navigate('/gift-points') }}
+        />
+      </div>
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
         <Coins className="h-6 w-6" />
       </div>

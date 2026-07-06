@@ -74,7 +74,6 @@ import BookingFormScreen from './pages/BookingFormScreen'
 import EventsScreen from './pages/EventsScreen'
 import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
-import EventManageScreen from './pages/EventManageScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
 import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds } from './hooks/useData'
@@ -251,7 +250,7 @@ export default function App() {
         <Route path="/events" element={<EventsScreen />} />
         <Route path="/events/:name" element={<EventDetailScreen />} />
         <Route path="/my-registrations" element={<MyRegistrationsScreen />} />
-        <Route path="/events/manage" element={<EventManageScreen />} />
+        <Route path="/events/manage" element={<Navigate to="/events?tab=manage" replace />} />
         <Route path="/events/manage/new" element={<EventFormScreen />} />
         <Route path="/events/manage/:name" element={<EventFormScreen />} />
         <Route path="/events/manage/:name/roster" element={<EventRosterScreen />} />

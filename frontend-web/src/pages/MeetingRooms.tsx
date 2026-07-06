@@ -73,7 +73,17 @@ export default function MeetingRooms() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Meeting Rooms</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Resources</h1>
+
+      <div className="flex items-center gap-2">
+        <button className="rounded-full px-3 py-1.5 text-sm font-medium bg-brand-600 text-white">Rooms</button>
+        <button
+          onClick={() => navigate('/equipment')}
+          className="rounded-full px-3 py-1.5 text-sm font-medium bg-hover/[0.05] text-muted hover:bg-hover/[0.1]"
+        >
+          Equipment
+        </button>
+      </div>
 
       <BentoGrid>
         <BentoTile
