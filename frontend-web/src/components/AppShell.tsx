@@ -43,6 +43,7 @@ const SECTION: Record<string, { label: string; to: string }> = {
   help: { label: 'Help', to: '/help' },
   achievements: { label: 'Achievements', to: '/achievements' },
   avatar: { label: 'Avatar', to: '/avatar' },
+  'papan-iklan': { label: 'Papan Iklan', to: '/papan-iklan' },
 }
 
 function buildCrumbs(pathname: string): { label: string; to?: string }[] {

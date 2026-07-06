@@ -11,6 +11,7 @@ import {
   canGrantPoints,
   canManageAttendance,
   canManageResources,
+  canModerateAds,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -74,6 +75,10 @@ import EventForm from '@web/pages/EventForm'
 import EventRoster from '@web/pages/EventRoster'
 import MyRegistrations from '@web/pages/MyRegistrations'
 import { CrumbProvider } from '@web/lib/crumbs'
+import PapanIklan from '@web/pages/PapanIklan'
+import PapanIklanDetail from '@web/pages/PapanIklanDetail'
+import PapanIklanForm from '@web/pages/PapanIklanForm'
+import PapanIklanBans from '@web/pages/PapanIklanBans'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -258,6 +263,11 @@ export default function App() {
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />
+          <Route path="/papan-iklan" element={<PapanIklan />} />
+          <Route path="/papan-iklan/new" element={<PapanIklanForm />} />
+          {canModerateAds(b) && <Route path="/papan-iklan/bans" element={<PapanIklanBans />} />}
+          <Route path="/papan-iklan/:name/edit" element={<PapanIklanForm />} />
+          <Route path="/papan-iklan/:name" element={<PapanIklanDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
