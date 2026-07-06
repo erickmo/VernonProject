@@ -43,6 +43,7 @@ import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
 import PapanIklanScreen from './pages/PapanIklanScreen'
 import PapanIklanDetailScreen from './pages/PapanIklanDetailScreen'
+import PapanIklanFormScreen from './pages/PapanIklanFormScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
 import HelpScreen from './pages/HelpScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
@@ -215,6 +216,8 @@ export default function App() {
         <Route path="/notes/new" element={<NoteFormScreen />} />
         <Route path="/notes/:name" element={<NoteFormScreen />} />
         <Route path="/papan-iklan" element={<PapanIklanScreen />} />
+        <Route path="/papan-iklan/new" element={<PapanIklanFormScreen />} />
+        <Route path="/papan-iklan/:name/edit" element={<PapanIklanFormScreen />} />
         <Route path="/papan-iklan/:name" element={<PapanIklanDetailScreen />} />
         <Route path="/feedback" element={<FeedbackScreen />} />
         <Route path="/help" element={<HelpScreen />} />

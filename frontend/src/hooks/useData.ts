@@ -1669,7 +1669,10 @@ export function useSaveAd() {
   return useMutation({
     mutationFn: ({ payload, name }: { payload: AdPayload; name?: string }) =>
       name ? papanApi.update(name, payload) : papanApi.create(payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ads'] }),
+    onSuccess: (_d, { name }) => {
+      qc.invalidateQueries({ queryKey: ['ads'] })
+      if (name) qc.invalidateQueries({ queryKey: keys.ad(name) })
+    },
   })
 }
 
