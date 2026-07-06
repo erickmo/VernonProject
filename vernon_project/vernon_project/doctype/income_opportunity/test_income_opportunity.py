@@ -44,5 +44,10 @@ class TestIncomeOpportunity(unittest.TestCase):
 		doc = self._make(status="Open", period_end=add_days(nowdate(), 5))
 		self.assertFalse(is_effectively_closed(doc.name))
 
+	def test_period_end_today_is_open(self):
+		# Boundary: rule is `period_end < today` (strict), so ending today is open.
+		doc = self._make(status="Open", period_end=nowdate())
+		self.assertFalse(is_effectively_closed(doc.name))
+
 	def test_missing_is_closed(self):
 		self.assertTrue(is_effectively_closed("does-not-exist"))
