@@ -24,6 +24,7 @@ import {
   ArrowUpRight,
   Trophy,
   Ticket,
+  BookOpen,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
@@ -41,7 +42,7 @@ import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
-import { useBoot, useDashboard, useProjects, useWallet, useHomeBanners } from '@/hooks/useData'
+import { useBoot, useDashboard, useProjects, useWallet, useHomeBanners, useDailyVerse } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
@@ -158,6 +159,21 @@ function ActionBanner({
       <p className="flex-1 text-sm font-semibold text-brand-800 dark:text-brand-300">{text}</p>
       <ChevronRight className="h-5 w-5 text-brand-400" />
     </button>
+  )
+}
+
+function VerseCard() {
+  const { data: verse } = useDailyVerse()
+  if (!verse) return null
+  return (
+    <div className="mt-4 rounded-2xl border border-brand-100 dark:border-brand-500/30 bg-brand-50 dark:bg-brand-500/15 p-4">
+      <div className="mb-1.5 flex items-center gap-2 text-brand-700 dark:text-brand-300">
+        <BookOpen className="h-4 w-4" />
+        <span className="text-xs font-semibold uppercase tracking-wide">Ayat Hari Ini</span>
+      </div>
+      <p className="text-sm leading-relaxed text-stone-700 dark:text-slate-200">"{verse.text}"</p>
+      <p className="mt-2 text-xs font-semibold text-brand-600 dark:text-brand-400">— {verse.reference}</p>
+    </div>
   )
 }
 
@@ -424,6 +440,9 @@ export default function Today() {
 
               {/* Weekly recap — auto-surfaces Mon–Wed, dismissible per week */}
               <RecapCard />
+
+              {/* Daily verse — only when the user enabled Ayat Harian */}
+              <VerseCard />
 
               {/* Lens switcher */}
               <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4">
