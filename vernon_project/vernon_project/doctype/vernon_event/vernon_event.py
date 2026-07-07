@@ -15,3 +15,9 @@ class VernonEvent(Document):
 			frappe.throw("Rupiah-priced events need a positive Price.", frappe.ValidationError)
 		if (self.capacity or 0) < 0:
 			frappe.throw("Capacity cannot be negative.", frappe.ValidationError)
+		if self.parent_event:
+			if self.parent_event == self.name:
+				frappe.throw("An event cannot be its own parent.", frappe.ValidationError)
+			# one level deep only: the chosen parent must itself be a top-level event
+			if frappe.db.get_value("Vernon Event", self.parent_event, "parent_event"):
+				frappe.throw("Sub-events can only nest one level deep.", frappe.ValidationError)

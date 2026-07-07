@@ -8,7 +8,8 @@
  "field_order": [
   "title", "description", "cover_image", "organizer", "column_break_a",
   "start_datetime", "end_datetime", "location", "section_break_b",
-  "capacity", "pricing", "points_cost", "price", "section_break_c", "status"
+  "capacity", "pricing", "points_cost", "price", "section_break_c", "status",
+  "section_break_d", "category", "is_featured", "parent_event"
  ],
  "fields": [
   {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1},
@@ -25,7 +26,11 @@
   {"fieldname": "points_cost", "fieldtype": "Float", "label": "Points Cost", "depends_on": "eval:doc.pricing=='Points'"},
   {"fieldname": "price", "fieldtype": "Currency", "label": "Price (Rp)", "depends_on": "eval:doc.pricing=='Rupiah'"},
   {"fieldname": "section_break_c", "fieldtype": "Section Break"},
-  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nPublished\nCancelled\nCompleted", "default": "Draft", "in_list_view": 1}
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nPublished\nCancelled\nCompleted", "default": "Draft", "in_list_view": 1},
+  {"fieldname": "section_break_d", "fieldtype": "Section Break", "label": "Categorization"},
+  {"fieldname": "category", "fieldtype": "Select", "label": "Category", "options": "\nWorkshop\nSeminar\nExpo\nKelas\nSosial\nKompetisi\nLainnya"},
+  {"fieldname": "is_featured", "fieldtype": "Check", "label": "Featured (show in hero)", "default": "0"},
+  {"fieldname": "parent_event", "fieldtype": "Link", "label": "Parent Event (makes this a sub-event)", "options": "Vernon Event", "search_index": 1}
  ],
  "index_web_pages_for_search": 1,
  "links": [],
