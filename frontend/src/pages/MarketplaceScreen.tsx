@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, Coins, Wallet, Trophy, Settings } from 'lucide-react'
+import { Store, Coins, Wallet, Trophy, Settings, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { RedeemSheet } from '@/components/RedeemSheet'
 import { RewardDetailSheet } from '@/components/RewardDetailSheet'
-import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace } from '@/hooks/useData'
+import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace, useWallet } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
@@ -14,12 +14,21 @@ export default function MarketplaceScreen() {
   const navigate = useNavigate()
   const { data: boot } = useBoot()
   const { data, isLoading } = useMarketplace()
+  const { data: wallet } = useWallet()
   const redeem = useRedeemReward()
   const toast = useToast()
   const [detail, setDetail] = useState<MarketplaceReward | null>(null)
   const [selected, setSelected] = useState<MarketplaceReward | null>(null)
 
   const balance = data?.balance ?? 0
+  const today = wallet?.today_earned ?? 0
+  const yesterday = wallet?.yesterday_earned ?? 0
+  const delta = today - yesterday
+  const Trend = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus
+  const trendLabel =
+    delta > 0 ? `+${formatNumber(delta)} vs yesterday`
+    : delta < 0 ? `−${formatNumber(-delta)} vs yesterday`
+    : 'Same as yesterday'
 
   const confirm = () => {
     if (!selected) return
@@ -34,15 +43,25 @@ export default function MarketplaceScreen() {
 
   return (
     <DetailScreen title="Marketplace">
-      <div className="mb-3 flex items-center gap-3 rounded-3xl bg-amber-600 border border-amber-700/50 p-5 text-white shadow-sm">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-          <Coins className="h-5 w-5" />
+      <div className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 p-5 text-white shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20">
+            <Coins className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-white/80">Spendable balance</p>
+            <p className="text-2xl font-bold leading-tight">
+              {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-amber-200">Spendable balance</p>
-          <p className="text-2xl font-bold leading-tight">
-            {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-          </p>
+        <div className="text-right">
+          <p className="text-xs font-medium uppercase tracking-wide text-white/80">Today</p>
+          <p className="text-lg font-bold leading-tight">+{formatNumber(today)}</p>
+          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">
+            <Trend className="h-3 w-3" />
+            {trendLabel}
+          </span>
         </div>
       </div>
 
