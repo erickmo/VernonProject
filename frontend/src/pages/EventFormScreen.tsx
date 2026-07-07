@@ -7,8 +7,9 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
 import { deleteErrorMessage } from '@/lib/format'
-import { useSaveEvent, useDeleteEvent, useManagedEvent } from '@/hooks/useData'
+import { useSaveEvent, useDeleteEvent, useManagedEvent, useManagedEvents } from '@/hooks/useData'
 import type { EventFormPayload } from '@/lib/types'
+import { EVENT_CATEGORIES } from '@/lib/events'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100'
@@ -20,6 +21,7 @@ const toFrappe = (v: string) => (v ? v.replace('T', ' ') + (v.length === 16 ? ':
 const empty: EventFormPayload = {
   title: '', description: '', cover_image: null, start_datetime: '', end_datetime: '',
   location: '', capacity: 0, pricing: 'Free', points_cost: 0, price: 0, status: 'Draft',
+  category: '', is_featured: false, parent_event: '',
 }
 
 export default function EventFormScreen() {
@@ -32,6 +34,7 @@ export default function EventFormScreen() {
   const save = useSaveEvent()
   const del = useDeleteEvent()
   const { data: existing, isLoading: loading } = useManagedEvent(name, isEdit)
+  const managedEvents = useManagedEvents()
 
   const [form, setForm] = useState<EventFormPayload>(empty)
   const [uploading, setUploading] = useState(false)
@@ -55,6 +58,9 @@ export default function EventFormScreen() {
       points_cost: (d.points_cost as number) ?? 0,
       price: (d.price as number) ?? 0,
       status: (d.status as string) ?? 'Draft',
+      category: (d.category as string) ?? '',
+      is_featured: !!d.is_featured,
+      parent_event: (d.parent_event as string) ?? '',
     })
   }, [isEdit, existing])
 
@@ -158,6 +164,29 @@ export default function EventFormScreen() {
             onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
             <option>Draft</option><option>Published</option><option>Cancelled</option><option>Completed</option>
           </select></label>
+
+        <label className="text-xs font-semibold text-slate-500">Category
+          <select className={field} value={form.category ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+            <option value="">— Uncategorized —</option>
+            {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select></label>
+
+        <label className="text-xs font-semibold text-slate-500">Parent event (leave empty for a top-level event)
+          <select className={field} value={form.parent_event ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, parent_event: e.target.value }))}>
+            <option value="">— None (top-level) —</option>
+            {(managedEvents.data ?? []).filter((m) => m.name !== name).map((m) => (
+              <option key={m.name} value={m.name}>{m.title}</option>
+            ))}
+          </select></label>
+
+        <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <input type="checkbox" checked={!!form.is_featured}
+            onChange={(e) => setForm((f) => ({ ...f, is_featured: e.target.checked }))}
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+          Featured (show in hero)
+        </label>
 
         <button onClick={onSave} disabled={save.isPending || uploading}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">
