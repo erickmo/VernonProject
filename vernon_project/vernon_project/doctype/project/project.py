@@ -24,8 +24,10 @@ class Project(Document):
 				frappe.throw("Start Date cannot be after Deadline.")
 
 		# Bonus must cover the discount (Rupiah rewards only).
-		if self.reward_type != "Point" and self.bonus_amount and self.discount:
-			if self.bonus_amount < self.discount:
+		# Guard on discount alone: bonus=0 with a discount is still invalid, and
+		# `and self.bonus_amount` would short-circuit past it into a negative Total.
+		if self.reward_type != "Point" and self.discount:
+			if (self.bonus_amount or 0) < self.discount:
 				frappe.throw("Bonus Amount cannot be less than Total Discount.")
 
 		# Owner must hold the Project Owner role; leader the Project Leader role.

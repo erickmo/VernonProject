@@ -97,3 +97,18 @@ class TestProjectGuards(unittest.TestCase):
 		with self.assertRaises(frappe.PermissionError):
 			frappe.delete_doc("Project", self.project.name, ignore_permissions=True)
 		frappe.set_user("Administrator")
+
+
+class TestProjectRewardGuard(unittest.TestCase):
+	# Standalone (no fixtures): exercises validate() directly so it runs even
+	# while TestProjectGuards' fixtures are stale.
+	def test_discount_without_bonus_gives_clear_error(self):
+		# bonus=0 with a discount must raise the clear "bonus < discount" message,
+		# not the cryptic framework NonNegativeError on the computed Total.
+		doc = frappe.get_doc({
+			"doctype": "Project", "project_name": "Reward Guard Test",
+			"reward_type": "Rupiah", "bonus_amount": 0, "discount": 100,
+		})
+		with self.assertRaises(frappe.ValidationError) as cm:
+			doc.validate()
+		self.assertIn("Bonus Amount cannot be less than", str(cm.exception))
