@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { MapPin, Calendar } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { MapPin, Calendar, Ticket } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { FullScreenLoader } from '@/components/ui'
 import { useConfirm } from '@/components/Confirm'
@@ -12,6 +12,7 @@ import { sanitizeHtml } from '@/lib/format'
 export default function EventDetailScreen() {
   const { name: raw } = useParams()
   const name = raw ? decodeURIComponent(raw) : ''
+  const navigate = useNavigate()
   const { data: ev, isLoading, refetch } = useEvent(name)
   const register = useRegisterEvent()
   const confirm = useConfirm()
@@ -99,6 +100,39 @@ export default function EventDetailScreen() {
       <p className="mt-3 text-xs text-stone-500 dark:text-slate-500">
         {ev.registered_count} registered{ev.capacity ? ` · ${ev.capacity} cap` : ''}
       </p>
+
+      {ev.sub_events && ev.sub_events.length > 0 && (
+        <div className="mt-5">
+          <h2 className="mb-2 font-display text-sm font-semibold text-stone-700 dark:text-slate-200">Acara di dalam</h2>
+          <div className="flex flex-col gap-2">
+            {ev.sub_events.map((s) => (
+              <button
+                key={s.name}
+                onClick={() => navigate(`/events/${encodeURIComponent(s.name)}`)}
+                className="flex items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-3 text-left shadow-sm transition active:scale-[0.99]"
+              >
+                {s.cover_image ? (
+                  <img src={s.cover_image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 dark:bg-slate-700">
+                    <Ticket className="h-4 w-4 text-brand-500" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-stone-800 dark:text-slate-50">{s.title}</span>
+                  <span className="block truncate text-xs text-stone-500 dark:text-slate-400">
+                    {new Date(s.start_datetime).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {s.pricing === 'Free' ? ' · Free' : s.pricing === 'Points' ? ` · ${s.points_cost ?? 0} pts` : ` · Rp ${(s.price ?? 0).toLocaleString('id-ID')}`}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold text-brand-600">
+                  {s.my_status === 'Confirmed' ? 'Joined' : 'Lihat'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         disabled={joined || ev.is_full || busy}
