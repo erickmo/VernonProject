@@ -57,11 +57,23 @@ class TestAvatarPhotoOverride(FrappeTestCase):
 		doc.save(ignore_permissions=True)
 
 	def test_uploaded_photo_suppresses_config(self):
-		# user_image differs from the generated snapshot => real upload => config hidden
+		# a real /files upload (not our avatar-<user> image) => config hidden
 		frappe.db.set_value("User", self.user, "user_image", "/files/real-photo.png")
 		self.assertIsNone(_avatar_config_map([self.user])[self.user])
 
 	def test_generated_snapshot_keeps_config(self):
-		# identity image IS our own snapshot => keep the live DiceBear config
+		# identity image IS our generated avatar png => keep the live DiceBear config
 		frappe.db.set_value("User", self.user, "user_image", "/files/avatar-administrator.png")
+		self.assertIsInstance(_avatar_config_map([self.user])[self.user], dict)
+
+	def test_stale_avatar_png_keeps_config(self):
+		# an older avatar png whose name no longer equals User Avatar.snapshot is
+		# still our generated image (matched by the avatar-<user> prefix) => keep config
+		frappe.db.set_value("User", self.user, "user_image", "/files/avatar-administrator-2.png")
+		self.assertIsInstance(_avatar_config_map([self.user])[self.user], dict)
+
+	def test_gravatar_keeps_config(self):
+		# Frappe auto-populates a gravatar URL; it is not a real upload => keep config
+		frappe.db.set_value(
+			"User", self.user, "user_image", "https://secure.gravatar.com/avatar/abc?d=404&s=200")
 		self.assertIsInstance(_avatar_config_map([self.user])[self.user], dict)

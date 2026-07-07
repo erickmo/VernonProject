@@ -55,7 +55,9 @@ export function Avatar({
       </div>
     )
   }
-  if (image) {
+  // Skip Frappe's auto-populated gravatar URL (not a real upload) so those users
+  // fall through to the seeded default avatar instead of a broken/foreign image.
+  if (image && !image.includes('gravatar.com')) {
     return (
       <img
         src={image}
