@@ -35,6 +35,7 @@ import type {
   WalletLogEntry,
   Leaderboard,
   MarketplaceData,
+  IncomeData,
   AdminReward,
   AdminRedemption,
   RewardFormPayload,
@@ -74,6 +75,7 @@ export const keys = {
   leaderboard: (period: string, brand: string | null) =>
     ['leaderboard', period, brand ?? ''] as const,
   marketplace: ['marketplace'] as const,
+  income: ['income'] as const,
   rewardsAdmin: ['rewards-admin'] as const,
   rewardAdmin: (n: string) => ['reward-admin', n] as const,
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
@@ -931,6 +933,18 @@ export const useTeamWall = () =>
 
 export const useMarketplace = () =>
   useQuery({ queryKey: keys.marketplace, queryFn: () => mobileApi.getMarketplace() as Promise<MarketplaceData> })
+
+export const useIncome = () =>
+  useQuery({ queryKey: keys.income, queryFn: () => mobileApi.income() as Promise<IncomeData> })
+
+export function useSubmitIncomeClaim() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { opportunity: string; details: string }) =>
+      mobileApi.submitIncomeClaim(v.opportunity, v.details),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.income }),
+  })
+}
 
 export function useRedeemReward() {
   const qc = useQueryClient()

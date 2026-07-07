@@ -37,6 +37,7 @@ import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import TransferTasksScreen from './pages/TransferTasksScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
+import IncomeScreen from './pages/IncomeScreen'
 import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
@@ -214,6 +215,7 @@ export default function App() {
           <Route path="/grant-points" element={<GrantPointsScreen />} />
         )}
         <Route path="/gift-points" element={<GiftPointsScreen />} />
+        <Route path="/income" element={<IncomeScreen />} />
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/notes/new" element={<NoteFormScreen />} />
         <Route path="/notes/:name" element={<NoteFormScreen />} />

@@ -478,6 +478,31 @@ export interface Wallet {
   yesterday_earned: number
 }
 
+export interface IncomeOpportunity {
+  name: string
+  title: string
+  description: string | null
+  reward: string
+  period_start: string | null
+  period_end: string | null
+  my_claim_status: string | null
+}
+
+export interface IncomeClaim {
+  name: string
+  opportunity: string
+  opportunity_title: string
+  details: string
+  status: string
+  review_note: string | null
+  at: string
+}
+
+export interface IncomeData {
+  opportunities: IncomeOpportunity[]
+  claims: IncomeClaim[]
+}
+
 export interface WalletLogEntry {
   kind: 'credit' | 'debit'
   amount: number

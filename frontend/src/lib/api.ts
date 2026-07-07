@@ -79,6 +79,7 @@ export const api = {
 const M = 'vernon_project.api.mobile.'
 const A = 'vernon_project.api.attendance.'
 const BK = 'vernon_project.api.booking.'
+const IN = 'vernon_project.api.income.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -259,6 +260,9 @@ export const mobileApi = {
       },
     ),
   getTeamWall: () => api.get<import('./types').TeamWallResponse>(M + 'get_team_wall'),
+  income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
+  submitIncomeClaim: (opportunity: string, details: string) =>
+    api.post<{ ok: boolean; name: string }>(IN + 'submit_claim', { opportunity, details }),
   giftPoints: (toUser: string, amount: number, note?: string) =>
     api.post<{ balance: number; gifted: number; to: string }>(M + 'gift_points', {
       to_user: toUser,
