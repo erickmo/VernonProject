@@ -812,6 +812,10 @@ export interface EventItem {
   registered_count: number
   is_full: boolean
   my_status: 'Pending' | 'Confirmed' | 'Cancelled' | null
+  category?: string
+  is_featured?: boolean
+  parent_event?: string
+  sub_events?: EventItem[]
 }
 
 export interface EventRegistration {
@@ -867,6 +871,9 @@ export interface EventFormPayload {
   points_cost?: number
   price?: number
   status: string
+  category?: string
+  is_featured?: boolean
+  parent_event?: string | null
 }
 
 export interface MeetingRoom {
