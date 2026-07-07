@@ -55,18 +55,9 @@ export function Avatar({
       </div>
     )
   }
-  // Skip Frappe's auto-populated gravatar URL (not a real upload) so those users
-  // fall through to the seeded default avatar instead of a broken/foreign image.
-  if (image && !image.includes('gravatar.com')) {
-    return (
-      <img
-        src={image}
-        alt={name}
-        style={{ width: size, height: size }}
-        className={clsx('shrink-0 object-cover', shape)}
-      />
-    )
-  }
+  // `image` (uploaded profile photo) is intentionally never rendered — identity
+  // is always the gamified avatar. A user without a saved config gets a
+  // deterministic free avatar seeded by their name instead of their photo.
   if (name && name.trim()) {
     return (
       <div
