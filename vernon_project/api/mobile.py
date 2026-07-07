@@ -153,19 +153,17 @@ def _can_reject(status_key, project, user):
 	return False
 
 
-def _is_uploaded_photo(user_image, user):
+def _is_uploaded_photo(user_image):
 	"""True when user_image is a real uploaded profile picture, i.e. NOT one of:
-	  - our generated DiceBear snapshot, named `avatar-<scrubbed-user>*.png`
-	    (matched by prefix, since re-saves/prunes can change the exact filename and
-	    older rows may not equal the current User Avatar.snapshot);
+	  - our generated DiceBear snapshot, whose filename always carries the
+	    `avatar-` prefix (current `avatar-<email><hash>.png` and legacy
+	    `avatar-<name>-v2.png` both match; exact snapshot equality does not,
+	    which is why the prefix is the reliable signal);
 	  - a gravatar URL that Frappe auto-populates for new users.
 	Only a real upload should win over the avatar config."""
-	if not user_image:
+	if not user_image or "gravatar.com" in user_image:
 		return False
-	if "gravatar.com" in user_image:
-		return False
-	fname = user_image.rsplit("/", 1)[-1]
-	return not fname.startswith(f"avatar-{frappe.scrub(user)}")
+	return not user_image.rsplit("/", 1)[-1].startswith("avatar-")
 
 
 def _avatar_config_map(users):
@@ -181,7 +179,7 @@ def _avatar_config_map(users):
 		for r in frappe.get_all("User", filters={"name": ["in", users]}, fields=["name", "user_image"])
 	}
 	for row in frappe.get_all("User Avatar", filters={"user": ["in", users]}, fields=["user", "config_json"]):
-		if _is_uploaded_photo(images.get(row["user"]), row["user"]):
+		if _is_uploaded_photo(images.get(row["user"])):
 			out[row["user"]] = None
 			continue
 		try:
@@ -701,7 +699,7 @@ def bootstrap():
 		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager", "Points Granter")
 		if r in roles
 	]
-	av_cfg = None if _is_uploaded_photo(u.get("user_image"), user) else frappe.db.get_value("User Avatar", user, "config_json")
+	av_cfg = None if _is_uploaded_photo(u.get("user_image")) else frappe.db.get_value("User Avatar", user, "config_json")
 	ep = _ensure_employee_profile(user)
 	uf = frappe.get_value("User", user, ["phone", "birth_date", "bio"], as_dict=True) or {}
 	employee = {f: ep.get(f) for f in EMPLOYEE_SOFT_FIELDS}

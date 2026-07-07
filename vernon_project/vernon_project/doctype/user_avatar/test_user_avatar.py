@@ -66,10 +66,10 @@ class TestAvatarPhotoOverride(FrappeTestCase):
 		frappe.db.set_value("User", self.user, "user_image", "/files/avatar-administrator.png")
 		self.assertIsInstance(_avatar_config_map([self.user])[self.user], dict)
 
-	def test_stale_avatar_png_keeps_config(self):
-		# an older avatar png whose name no longer equals User Avatar.snapshot is
-		# still our generated image (matched by the avatar-<user> prefix) => keep config
-		frappe.db.set_value("User", self.user, "user_image", "/files/avatar-administrator-2.png")
+	def test_legacy_avatar_png_keeps_config(self):
+		# legacy generated names (avatar-<name>-v2.png) don't match the scrubbed email
+		# but still carry the avatar- prefix => our image => keep the live config
+		frappe.db.set_value("User", self.user, "user_image", "/files/avatar-legacy-v2.png")
 		self.assertIsInstance(_avatar_config_map([self.user])[self.user], dict)
 
 	def test_gravatar_keeps_config(self):
