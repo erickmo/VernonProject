@@ -11,7 +11,10 @@ MANAGE_FIELDS = ["name", "title", "start_datetime", "status", "pricing", "capaci
 EDITABLE = [
 	"title", "description", "cover_image", "start_datetime", "end_datetime",
 	"location", "capacity", "pricing", "points_cost", "price", "status",
+	"category", "is_featured", "parent_event",
 ]  # NOTE: 'organizer' deliberately excluded — never set from client payload.
+# ponytail: parent_event ownership isn't re-checked; all organizers are trusted staff.
+# Add a _can_manage(parent) check here if untrusted organizers are ever introduced.
 
 
 def _is_sm(user=None):
