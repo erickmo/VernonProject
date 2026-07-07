@@ -9,6 +9,7 @@ from frappe.utils import now_datetime
 PUBLIC_EVENT_FIELDS = [
 	"name", "title", "cover_image", "start_datetime", "end_datetime",
 	"location", "pricing", "points_cost", "price", "capacity",
+	"category", "is_featured", "parent_event",
 ]
 
 
@@ -52,7 +53,9 @@ def list_events():
 		fields=PUBLIC_EVENT_FIELDS,
 		order_by="start_datetime asc",
 	)
-	return [_decorate(r, user) for r in rows]
+	# ponytail: client-side filtering. If published-event count reaches thousands,
+	# add server params (period, category, pricing, q) here and paginate.
+	return [_decorate(r, user) for r in rows if not r.get("parent_event")]
 
 
 @frappe.whitelist()
@@ -65,7 +68,15 @@ def get_event(event):
 	)
 	if row.status != "Published":
 		frappe.throw("Event not available", frappe.PermissionError)
-	return _decorate(row, user)
+	_decorate(row, user)
+	children = frappe.get_all(
+		"Vernon Event",
+		filters={"parent_event": event, "status": "Published"},
+		fields=PUBLIC_EVENT_FIELDS,
+		order_by="start_datetime asc",
+	)
+	row["sub_events"] = [_decorate(c, user) for c in children]
+	return row
 
 
 @frappe.whitelist()
