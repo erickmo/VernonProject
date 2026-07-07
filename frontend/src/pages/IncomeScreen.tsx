@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Banknote, Gift, CalendarDays, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Banknote, Gift, CalendarDays, X, Settings } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader, Spinner } from '@/components/ui'
-import { useIncome, useSubmitIncomeClaim } from '@/hooks/useData'
+import { useIncome, useSubmitIncomeClaim, useBoot, canManageIncome } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { formatDate } from '@/lib/format'
 import type { IncomeOpportunity } from '@/lib/types'
@@ -30,6 +31,8 @@ function period(o: IncomeOpportunity) {
 }
 
 export default function IncomeScreen() {
+  const navigate = useNavigate()
+  const { data: boot } = useBoot()
   const { data, isLoading } = useIncome()
   const submit = useSubmitIncomeClaim()
   const toast = useToast()
@@ -52,7 +55,20 @@ export default function IncomeScreen() {
   }
 
   return (
-    <DetailScreen title="Extra Income">
+    <DetailScreen
+      title="Extra Income"
+      right={
+        canManageIncome(boot) ? (
+          <button
+            onClick={() => navigate('/income-admin')}
+            className="flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/15 px-3 py-1.5 text-sm font-semibold text-brand-600 dark:text-brand-300 active:scale-95"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Manage
+          </button>
+        ) : undefined
+      }
+    >
       {isLoading && !data ? (
         <FullScreenLoader />
       ) : (

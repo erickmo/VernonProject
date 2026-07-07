@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -175,6 +175,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       rows: [
         ...(canManageAttendance(boot)
           ? [{ icon: ClipboardList, label: 'Manage attendance', hue: 'emerald' as const, onClick: () => navigate('/attendance/manage') }]
+          : []),
+        ...(canManageIncome(boot)
+          ? [{ icon: Banknote, label: 'Manage Extra Income', hue: 'emerald' as const, onClick: () => navigate('/income-admin') }]
           : []),
         ...(canManageUsers(boot)
           ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]

@@ -36,6 +36,7 @@ import type {
   Leaderboard,
   MarketplaceData,
   IncomeData,
+  IncomeManageData,
   AdminReward,
   AdminRedemption,
   RewardFormPayload,
@@ -76,6 +77,7 @@ export const keys = {
     ['leaderboard', period, brand ?? ''] as const,
   marketplace: ['marketplace'] as const,
   income: ['income'] as const,
+  incomeManage: ['income-manage'] as const,
   rewardsAdmin: ['rewards-admin'] as const,
   rewardAdmin: (n: string) => ['reward-admin', n] as const,
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
@@ -943,6 +945,39 @@ export function useSubmitIncomeClaim() {
     mutationFn: (v: { opportunity: string; details: string }) =>
       mobileApi.submitIncomeClaim(v.opportunity, v.details),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.income }),
+  })
+}
+
+export function canManageIncome(boot: Boot | undefined): boolean {
+  return !!boot && (
+    boot.roles.includes('System Manager') ||
+    boot.roles.includes('Income Manager')
+  )
+}
+
+export const useIncomeManage = () =>
+  useQuery({ queryKey: keys.incomeManage, queryFn: () => mobileApi.incomeManage() as Promise<IncomeManageData> })
+
+export function useSaveOpportunity() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: Parameters<typeof mobileApi.saveOpportunity>[0]) => mobileApi.saveOpportunity(v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.incomeManage })
+      qc.invalidateQueries({ queryKey: keys.income })
+    },
+  })
+}
+
+export function useReviewIncomeClaim() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { name: string; status: string; review_note?: string }) =>
+      mobileApi.reviewIncomeClaim(v.name, v.status, v.review_note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.incomeManage })
+      qc.invalidateQueries({ queryKey: keys.income })
+    },
   })
 }
 

@@ -503,6 +503,33 @@ export interface IncomeData {
   claims: IncomeClaim[]
 }
 
+export interface ManagedOpportunity {
+  name: string
+  title: string
+  description: string | null
+  reward: string
+  period_start: string | null
+  period_end: string | null
+  status: string
+}
+
+export interface ManagedClaim {
+  name: string
+  opportunity: string
+  opportunity_title: string
+  claimed_by: string
+  claimed_by_name: string
+  details: string
+  status: string
+  review_note: string | null
+  at: string
+}
+
+export interface IncomeManageData {
+  opportunities: ManagedOpportunity[]
+  claims: ManagedClaim[]
+}
+
 export interface WalletLogEntry {
   kind: 'credit' | 'debit'
   amount: number

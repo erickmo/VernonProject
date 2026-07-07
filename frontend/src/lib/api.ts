@@ -263,6 +263,22 @@ export const mobileApi = {
   income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
   submitIncomeClaim: (opportunity: string, details: string) =>
     api.post<{ ok: boolean; name: string }>(IN + 'submit_claim', { opportunity, details }),
+  incomeManage: () => api.get<import('./types').IncomeManageData>(IN + 'manage_data'),
+  saveOpportunity: (v: {
+    name?: string
+    title: string
+    description?: string
+    reward: string
+    period_start: string
+    period_end?: string
+    status: string
+  }) => api.post<{ ok: boolean; name: string }>(IN + 'save_opportunity', v),
+  reviewIncomeClaim: (name: string, status: string, review_note?: string) =>
+    api.post<{ ok: boolean }>(IN + 'review_claim', {
+      name,
+      status,
+      ...(review_note ? { review_note } : {}),
+    }),
   giftPoints: (toUser: string, amount: number, note?: string) =>
     api.post<{ balance: number; gifted: number; to: string }>(M + 'gift_points', {
       to_user: toUser,

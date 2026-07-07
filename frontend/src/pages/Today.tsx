@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -188,6 +188,15 @@ export default function Today() {
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [sheet, setSheet] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
+  // Quick-action "Plan day" tile can only navigate, so it lands here with
+  // ?plan=1 — open the sheet and strip the param so re-tapping works.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('plan')) {
+      setPlanOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
   const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null)
   // Home work view: axis (Plan/Deadline/Waiting) + sub-tab within Plan/Deadline,
   // plus an optional specific day for the Plan date-picker (ISO yyyy-mm-dd).

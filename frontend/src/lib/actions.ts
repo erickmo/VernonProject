@@ -6,6 +6,7 @@ import {
   Trophy,
   Medal,
   Gift,
+  Banknote,
   HandHeart,
   StickyNote,
   Smile,
@@ -33,7 +34,7 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
     tile: 'bg-brand-500 text-white',
     items: [
       { icon: FolderKanban, title: 'Projects & todos', short: 'Projects', desc: 'Open a project, add work items and todos.', to: '/projects' },
-      { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/' },
+      { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/?plan=1' },
       { icon: QrCode, title: 'Check in with QR', short: 'Check-in', desc: 'Scan the station code to mark attendance.', to: '/scan' },
     ],
   },
@@ -53,6 +54,7 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
       { icon: Trophy, title: 'Climb the leaderboard', short: 'Leaderboard', desc: 'See where you rank on productivity and character.', to: '/leaderboard' },
       { icon: Medal, title: 'Earn achievements', short: 'Achievements', desc: 'Unlock badges and warrior tiers as you contribute.', to: '/achievements' },
       { icon: Gift, title: 'Spend your points', short: 'Rewards', desc: 'Redeem points for rewards in the marketplace.', to: '/marketplace' },
+      { icon: Banknote, title: 'Extra income', short: 'Income', desc: 'Claim extra-income opportunities.', to: '/income' },
     ],
   },
   {
