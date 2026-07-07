@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { CalendarDays, MapPin, Users, ArrowLeft } from 'lucide-react'
+import { CalendarDays, MapPin, Users, ArrowLeft, Ticket } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { useConfirm } from '@/components/Confirm'
@@ -102,6 +102,38 @@ export default function EventDetail() {
             className="prose prose-sm text-ink dark:prose-invert"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(ev.description) }}
           />
+        </Section>
+      )}
+
+      {ev.sub_events && ev.sub_events.length > 0 && (
+        <Section title="Sub-events">
+          <div className="flex flex-col gap-2">
+            {ev.sub_events.map((s) => (
+              <button
+                key={s.name}
+                onClick={() => navigate(`/events/${encodeURIComponent(s.name)}`)}
+                className="flex items-center gap-3 rounded-xl border border-line bg-hover/[0.02] p-3 text-left transition hover:bg-hover/[0.05]"
+              >
+                {s.cover_image ? (
+                  <img src={s.cover_image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-600/10">
+                    <Ticket className="h-4 w-4 text-brand-600" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-ink">{s.title}</span>
+                  <span className="block truncate text-sm text-muted">
+                    {new Date(s.start_datetime).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {s.pricing === 'Free' ? ' · Free' : s.pricing === 'Points' ? ` · ${s.points_cost ?? 0} pts` : ` · Rp ${(s.price ?? 0).toLocaleString('id-ID')}`}
+                  </span>
+                </span>
+                <span className="shrink-0 text-sm font-medium text-brand-600">
+                  {s.my_status === 'Confirmed' ? 'Joined' : 'View'}
+                </span>
+              </button>
+            ))}
+          </div>
         </Section>
       )}
 
