@@ -9,8 +9,9 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
 import { deleteErrorMessage } from '@/lib/format'
-import { useSaveEvent, useDeleteEvent, useManagedEvent } from '@/hooks/useData'
+import { useSaveEvent, useDeleteEvent, useManagedEvent, useManagedEvents } from '@/hooks/useData'
 import type { EventFormPayload } from '@/lib/types'
+import { EVENT_CATEGORIES } from '@/lib/events'
 
 const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
@@ -22,6 +23,7 @@ const toFrappe = (v: string) => (v ? v.replace('T', ' ') + (v.length === 16 ? ':
 const empty: EventFormPayload = {
   title: '', description: '', cover_image: null, start_datetime: '', end_datetime: '',
   location: '', capacity: 0, pricing: 'Free', points_cost: 0, price: 0, status: 'Draft',
+  category: '', is_featured: false, parent_event: '',
 }
 
 export default function EventForm() {
@@ -33,6 +35,7 @@ export default function EventForm() {
   const isEdit = !!name
   const save = useSaveEvent()
   const del = useDeleteEvent()
+  const managedEvents = useManagedEvents()
   const { data: existing, isLoading: loading } = useManagedEvent(name, isEdit)
 
   const [form, setForm] = useState<EventFormPayload>(empty)
@@ -54,6 +57,9 @@ export default function EventForm() {
       points_cost: (d.points_cost as number) ?? 0,
       price: (d.price as number) ?? 0,
       status: (d.status as string) ?? 'Draft',
+      category: (d.category as string) ?? '',
+      is_featured: !!d.is_featured,
+      parent_event: (d.parent_event as string) ?? '',
     })
   }, [isEdit, existing])
 
@@ -260,6 +266,51 @@ export default function EventForm() {
                     <option>Points</option>
                     <option>Rupiah</option>
                   </select>
+                )}
+              </Field>
+
+              <Field label="Category">
+                {(id) => (
+                  <select
+                    id={id}
+                    className={field}
+                    value={form.category ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  >
+                    <option value="">— Uncategorized —</option>
+                    {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                )}
+              </Field>
+
+              <Field label="Parent event (empty = top-level)">
+                {(id) => (
+                  <select
+                    id={id}
+                    className={field}
+                    value={form.parent_event ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, parent_event: e.target.value }))}
+                  >
+                    <option value="">— None (top-level) —</option>
+                    {(managedEvents.data ?? []).filter((m) => m.name !== name).map((m) => (
+                      <option key={m.name} value={m.name}>{m.title}</option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+
+              <Field label="Featured" className="sm:col-span-2">
+                {(id) => (
+                  <label htmlFor={id} className="flex items-center gap-2 text-sm text-ink">
+                    <input
+                      id={id}
+                      type="checkbox"
+                      checked={!!form.is_featured}
+                      onChange={(e) => setForm((f) => ({ ...f, is_featured: e.target.checked }))}
+                      className="h-4 w-4 rounded border-line text-brand-600 focus:ring-brand-500"
+                    />
+                    Show in the Browse hero
+                  </label>
                 )}
               </Field>
 
