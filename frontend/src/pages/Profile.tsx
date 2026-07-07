@@ -214,7 +214,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
       {boot && (
         <>
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-6 shadow-card">
-            {catalog ? (
+            {catalog && boot.avatar_config ? (
+              // avatar_config is nulled server-side when the user uploaded a real
+              // photo, so that photo wins over the gamified scene here too.
               <div className="relative h-[72px] w-[72px] overflow-hidden rounded-full border-2 border-paper-edge dark:border-slate-700">
                 <AvatarScene config={catalog.my} assets={catalog.assets} className="h-full w-full" />
               </div>

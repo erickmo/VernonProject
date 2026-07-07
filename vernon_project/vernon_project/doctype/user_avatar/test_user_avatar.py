@@ -3,7 +3,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from vernon_project.api.mobile import (
 	_is_free, buy_avatar_option, save_my_avatar, _my_avatar_config,
-	_avatar_owned_options, PREMIUM_PRICE,
+	_avatar_owned_options, PREMIUM_PRICE, _avatar_config_map,
 )
 
 USER = "Administrator"
@@ -42,3 +42,26 @@ class TestAvatarFreemium(FrappeTestCase):
 	def test_buy_free_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
 			buy_avatar_option("lorelei", "hair", "variant48")  # free → reject
+
+
+class TestAvatarPhotoOverride(FrappeTestCase):
+	"""A real uploaded profile picture must win over the DiceBear avatar config."""
+
+	def setUp(self):
+		self.user = "Administrator"
+		name = frappe.db.exists("User Avatar", {"user": self.user})
+		doc = frappe.get_doc("User Avatar", name) if name else frappe.new_doc("User Avatar")
+		doc.user = self.user
+		doc.config_json = '{"style":"lorelei","options":{}}'
+		doc.snapshot = "/files/avatar-administrator.png"
+		doc.save(ignore_permissions=True)
+
+	def test_uploaded_photo_suppresses_config(self):
+		# user_image differs from the generated snapshot => real upload => config hidden
+		frappe.db.set_value("User", self.user, "user_image", "/files/real-photo.png")
+		self.assertIsNone(_avatar_config_map([self.user])[self.user])
+
+	def test_generated_snapshot_keeps_config(self):
+		# identity image IS our own snapshot => keep the live DiceBear config
+		frappe.db.set_value("User", self.user, "user_image", "/files/avatar-administrator.png")
+		self.assertIsInstance(_avatar_config_map([self.user])[self.user], dict)
