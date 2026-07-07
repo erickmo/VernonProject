@@ -46,7 +46,8 @@ export default function EventsScreen() {
   const browseItems = (browse.data ?? []) as EventItem[]
   const hero = tab === 'browse' ? featuredUpcoming(browseItems) : []
   const cats = tab === 'browse' ? eventCategories(browseItems) : []
-  const browseList = tab === 'browse' ? filterEvents(browseItems, filter) : []
+  const heroNames = new Set(hero.map((h) => h.name))
+  const browseList = tab === 'browse' ? filterEvents(browseItems, filter).filter((e) => !heroNames.has(e.name)) : []
   const manageList = managed.data ?? []
 
   const addBtn =

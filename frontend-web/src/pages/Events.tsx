@@ -49,7 +49,8 @@ export default function Events() {
   const browseItems = (browse.data ?? []) as EventItem[]
   const hero = featuredUpcoming(browseItems)
   const cats = eventCategories(browseItems)
-  const browseRows = filterEvents(browseItems, filter)
+  const heroNames = new Set(hero.map((h) => h.name))
+  const browseRows = filterEvents(browseItems, filter).filter((e) => !heroNames.has(e.name))
 
   const toggle = (
     <div className="flex items-center gap-2">
