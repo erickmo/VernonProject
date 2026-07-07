@@ -2098,6 +2098,25 @@ def reset_user_password(user):
 
 
 @frappe.whitelist()
+def delete_user(user):
+	"""Hard-delete a user (System Manager only).
+
+	Relies on Frappe's own link integrity for the "not assigned" rule: delete_doc
+	refuses (LinkExistsError) while the user is still referenced by any Project
+	(owner/leader/admin/team) or Project Todo (assignee/role fields/allocations),
+	so an assigned user cannot be removed. ignore_permissions skips the perm gate
+	(we gate via _require_system_manager) but does NOT skip the link check.
+	"""
+	_require_system_manager()
+	if user in PROTECTED_USERS:
+		frappe.throw("This account cannot be deleted here")
+	if user == frappe.session.user:
+		frappe.throw("You cannot delete your own account")
+	frappe.delete_doc("User", user, ignore_permissions=True)
+	return {"deleted": user}
+
+
+@frappe.whitelist()
 def impersonate(user):
 	"""Log the current System Manager in AS another (non-admin) user.
 

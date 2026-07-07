@@ -112,7 +112,7 @@ export const keys = {
   adBans: ['adBans'] as const,
 }
 
-const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
+const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
 
 export function useDailyVerse() {
   const { data: boot } = useBoot()
@@ -805,6 +805,14 @@ export function useUpdateUser() {
 export function useResetUserPassword() {
   return useMutation({
     mutationFn: (user: string) => mobileApi.resetUserPassword(user),
+  })
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (user: string) => mobileApi.deleteUser(user),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
   })
 }
 

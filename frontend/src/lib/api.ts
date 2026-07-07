@@ -199,6 +199,8 @@ export const mobileApi = {
     }),
   resetUserPassword: (user: string) =>
     api.post<{ ok: boolean }>(M + 'reset_user_password', { user }),
+  deleteUser: (user: string) =>
+    api.post<{ deleted: string }>(M + 'delete_user', { user }),
   impersonate: (user: string) =>
     api.post<{ ok: boolean; user: string }>(M + 'impersonate', { user }),
   setUserPassword: (user: string, newPassword: string) =>

@@ -11,8 +11,10 @@ import {
   useUsers,
   useCreateUser,
   useResetUserPassword,
+  useDeleteUser,
   useSetUserPassword,
   useImpersonate,
+  useBoot,
   VERNON_ROLE_OPTIONS,
   MEMBER_TYPE_OPTIONS,
   keys,
@@ -44,8 +46,10 @@ export default function UserFormScreen() {
     onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
   })
   const resetPw = useResetUserPassword()
+  const del = useDeleteUser()
   const setPw = useSetUserPassword()
   const impersonate = useImpersonate()
+  const { data: boot } = useBoot()
 
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -188,6 +192,26 @@ export default function UserFormScreen() {
       toast('success', 'Reset email sent')
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Failed to send')
+    }
+  }
+
+  // Hide Delete for your own account; the server also blocks self/protected and
+  // refuses (link error) while the user is still assigned to a project or task.
+  const canDelete = isEdit && !!existing && existing.name !== boot?.user
+
+  async function onDelete() {
+    const ok = await confirm({
+      title: 'Delete user?',
+      message: `Permanently delete ${name}? This cannot be undone. It is blocked automatically if they are still assigned to any project or task.`,
+      confirmLabel: 'Delete',
+    })
+    if (!ok) return
+    try {
+      await del.mutateAsync(name as string)
+      toast('success', 'User deleted')
+      navigate('/users', { replace: true })
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Delete failed')
     }
   }
 
@@ -392,6 +416,15 @@ export default function UserFormScreen() {
                 </button>
               </div>
             </label>
+            {canDelete && (
+              <button
+                onClick={onDelete}
+                disabled={del.isPending}
+                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 active:bg-rose-100 disabled:opacity-50 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 dark:active:bg-rose-500/25"
+              >
+                {del.isPending ? 'Deleting…' : 'Delete user'}
+              </button>
+            )}
           </>
         )}
       </div>

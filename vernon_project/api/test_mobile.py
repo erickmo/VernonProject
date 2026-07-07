@@ -572,3 +572,48 @@ class TestMobileRecurring(unittest.TestCase):
 		rec4 = get_project_item(self.todo.name)["recurring"]
 		self.assertFalse(rec4["paused"], "re-enabled recurring must not be paused")
 		self.assertEqual(rec4["state"], "active", "re-enabled recurring must be active")
+
+
+class TestMobileDeleteUser(unittest.TestCase):
+	def setUp(self):
+		self.user = "del_target@example.com"
+		if not frappe.db.exists("User", self.user):
+			frappe.get_doc({"doctype": "User", "email": self.user,
+				"first_name": "Del"}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		frappe.set_user("Administrator")
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		if frappe.db.exists("User", self.user):
+			frappe.delete_doc("User", self.user, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_deletes_unassigned_user(self):
+		from vernon_project.api.mobile import delete_user
+		delete_user(self.user)
+		self.assertFalse(frappe.db.exists("User", self.user))
+
+	def test_non_system_manager_forbidden(self):
+		from vernon_project.api.mobile import delete_user
+		frappe.set_user(self.user)  # target has no roles -> not a System Manager
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				delete_user("someone@example.com")
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_protected_user_blocked(self):
+		from vernon_project.api.mobile import delete_user
+		with self.assertRaises(frappe.ValidationError):
+			delete_user("Guest")
+
+	def test_self_delete_blocked(self):
+		from vernon_project.api.mobile import delete_user
+		frappe.get_doc("User", self.user).add_roles("System Manager")
+		frappe.set_user(self.user)
+		try:
+			with self.assertRaises(frappe.ValidationError):
+				delete_user(self.user)
+		finally:
+			frappe.set_user("Administrator")
