@@ -21,3 +21,6 @@ class VernonEvent(Document):
 			# one level deep only: the chosen parent must itself be a top-level event
 			if frappe.db.get_value("Vernon Event", self.parent_event, "parent_event"):
 				frappe.throw("Sub-events can only nest one level deep.", frappe.ValidationError)
+			# reverse direction: an event that already has children can't itself become a sub-event
+			if frappe.db.exists("Vernon Event", {"parent_event": self.name}):
+				frappe.throw("This event has sub-events; it can't become a sub-event itself.", frappe.ValidationError)
