@@ -205,7 +205,8 @@ scheduler_events = {
 		"vernon_project.tasks.create_recurring_todos",
 		"vernon_project.tasks.notify_due_todos",
 		"vernon_project.tasks.notify_comeback_nudge",
-		"vernon_project.attendance.engine.nightly_finalize"
+		"vernon_project.attendance.engine.nightly_finalize",
+		"vernon_project.tasks.notify_overdue_courses",
 	]
 }
 

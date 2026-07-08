@@ -188,3 +188,23 @@ def notify_comeback_nudge():
     if sent:
         frappe.logger().info(f"Sent {sent} comeback nudges")
     return sent
+
+
+def notify_overdue_courses():
+    """Daily: nudge users whose assigned courses are past due and not completed."""
+    import frappe
+    from frappe.utils import today
+    from vernon_project.api.mobile import _notify
+
+    rows = frappe.get_all(
+        "Course Enrollment",
+        filters={"assigned": 1, "status": ["!=", "Completed"], "due_date": ["<", today()]},
+        fields=["user", "course", "due_date"],
+    )
+    for r in rows:
+        title = frappe.db.get_value("Course", r.course, "title")
+        _notify(
+            r.user, "Learning", "Course overdue",
+            f"Your assigned course “{title}” was due {r.due_date}.",
+            "Course", r.course,
+        )
