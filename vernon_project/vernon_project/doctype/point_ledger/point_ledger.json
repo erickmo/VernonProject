@@ -9,7 +9,7 @@
   "user", "role", "todo", "column_break_a",
   "group", "project", "level_name", "section_break_b",
   "point", "late_days", "early_days", "column_break_c",
-  "points_earned", "credited_on", "source", "note", "granted_by", "meeting", "attendance"
+  "points_earned", "credited_on", "source", "note", "granted_by", "meeting", "attendance", "course"
  ],
  "fields": [
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
@@ -26,11 +26,12 @@
   {"fieldname": "column_break_c", "fieldtype": "Column Break"},
   {"fieldname": "points_earned", "fieldtype": "Float", "label": "Points Earned", "in_list_view": 1},
   {"fieldname": "credited_on", "fieldtype": "Datetime", "label": "Credited On"},
-  {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance\nDaily\nReward\nAchievement\nMentoring\nRecognition\nFeedback", "default": "Todo", "in_list_view": 1},
+  {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance\nDaily\nReward\nAchievement\nMentoring\nRecognition\nFeedback\nLearning", "default": "Todo", "in_list_view": 1},
   {"fieldname": "note", "fieldtype": "Small Text", "label": "Note"},
   {"fieldname": "granted_by", "fieldtype": "Link", "label": "Granted By", "options": "User"},
   {"fieldname": "meeting", "fieldtype": "Link", "label": "Meeting", "options": "Meeting", "search_index": 1},
-  {"fieldname": "attendance", "fieldtype": "Link", "label": "Attendance", "options": "Daily Attendance", "search_index": 1}
+  {"fieldname": "attendance", "fieldtype": "Link", "label": "Attendance", "options": "Daily Attendance", "search_index": 1},
+  {"fieldname": "course", "fieldtype": "Link", "label": "Course", "options": "Course", "search_index": 1}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
