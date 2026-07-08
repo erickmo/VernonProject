@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -160,6 +160,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
         { icon: UsersRound, label: 'Team Wall', hue: 'violet', onClick: () => navigate('/team-wall') },
         { icon: Send, label: 'Send Points', hue: 'amber', onClick: () => navigate('/gift-points') },
         { icon: Banknote, label: 'Extra Income', hue: 'emerald', onClick: () => navigate('/income') },
+        { icon: BookOpen, label: 'Learn', hue: 'indigo', onClick: () => navigate('/learn') },
       ],
     },
     {
@@ -178,6 +179,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           : []),
         ...(canManageIncome(boot)
           ? [{ icon: Banknote, label: 'Manage Extra Income', hue: 'emerald' as const, onClick: () => navigate('/income-admin') }]
+          : []),
+        ...(canManageLms(boot)
+          ? [{ icon: BookOpen, label: 'Manage Learning', hue: 'indigo' as const, onClick: () => navigate('/learn-admin') }]
           : []),
         ...(canManageUsers(boot)
           ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]
@@ -465,6 +469,7 @@ const ROW_HUE: Record<string, string> = {
   pink: 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400',
   rose: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400',
   violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400',
+  indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400',
   slate: 'bg-paper-line text-stone-500 dark:bg-slate-700 dark:text-slate-300',
 }
 

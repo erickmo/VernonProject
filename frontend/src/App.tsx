@@ -39,6 +39,9 @@ import TransferTasksScreen from './pages/TransferTasksScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import IncomeScreen from './pages/IncomeScreen'
 import IncomeAdminScreen from './pages/IncomeAdminScreen'
+import LearnScreen from './pages/LearnScreen'
+import CourseScreen from './pages/CourseScreen'
+import LmsAdminScreen from './pages/LmsAdminScreen'
 import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
@@ -79,7 +82,7 @@ import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome } from './hooks/useData'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -219,6 +222,11 @@ export default function App() {
         <Route path="/income" element={<IncomeScreen />} />
         {canManageIncome(boot) && (
           <Route path="/income-admin" element={<IncomeAdminScreen />} />
+        )}
+        <Route path="/learn" element={<LearnScreen />} />
+        <Route path="/learn/:course" element={<CourseScreen />} />
+        {canManageLms(boot) && (
+          <Route path="/learn-admin" element={<LmsAdminScreen />} />
         )}
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/notes/new" element={<NoteFormScreen />} />
