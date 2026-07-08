@@ -1,0 +1,33 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-07-07 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "naming_rule": "Random",
+ "field_order": ["title","category","summary","description","cover_image","points_reward","estimated_minutes","status"],
+ "fields": [
+  {"fieldname":"title","fieldtype":"Data","label":"Title","reqd":1,"in_list_view":1},
+  {"fieldname":"category","fieldtype":"Data","label":"Category","in_list_view":1},
+  {"fieldname":"summary","fieldtype":"Small Text","label":"Summary"},
+  {"fieldname":"description","fieldtype":"Text Editor","label":"Description"},
+  {"fieldname":"cover_image","fieldtype":"Attach Image","label":"Cover Image"},
+  {"fieldname":"points_reward","fieldtype":"Float","label":"Points Reward","default":"0"},
+  {"fieldname":"estimated_minutes","fieldtype":"Int","label":"Estimated Minutes"},
+  {"fieldname":"status","fieldtype":"Select","label":"Status","options":"Draft\nPublished\nArchived","default":"Draft","in_list_view":1}
+ ],
+ "links": [],
+ "modified": "2026-07-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Course",
+ "owner": "Administrator",
+ "permissions": [
+  {"role":"System Manager","create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"share":1,"write":1},
+  {"role":"LMS Manager","create":1,"delete":1,"read":1,"report":1,"write":1},
+  {"role":"All","read":1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

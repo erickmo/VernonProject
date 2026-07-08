@@ -150,6 +150,7 @@ permission_query_conditions = {
 	"Resource Booking": "vernon_project.vernon_project.doctype.resource_booking.resource_booking.get_permission_query_conditions",
 	"Employee Profile": "vernon_project.vernon_project.doctype.employee_profile.employee_profile.get_permission_query_conditions",
 	"Income Opportunity Claim": "vernon_project.vernon_project.doctype.income_opportunity_claim.income_opportunity_claim.get_permission_query_conditions",
+	"Course Enrollment": "vernon_project.vernon_project.doctype.course_enrollment.course_enrollment.get_permission_query_conditions",
 }
 
 has_permission = {
@@ -162,6 +163,7 @@ has_permission = {
 	"Resource Booking": "vernon_project.vernon_project.doctype.resource_booking.resource_booking.has_permission",
 	"Employee Profile": "vernon_project.vernon_project.doctype.employee_profile.employee_profile.has_permission",
 	"Income Opportunity Claim": "vernon_project.vernon_project.doctype.income_opportunity_claim.income_opportunity_claim.has_permission",
+	"Course Enrollment": "vernon_project.vernon_project.doctype.course_enrollment.course_enrollment.has_permission",
 }
 
 # DocType Class
