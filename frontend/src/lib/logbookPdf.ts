@@ -205,7 +205,6 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
   const completedInnerW = completedW - 12;
 
   const generatedStr = new Date(opts.generatedAtIso).toLocaleString();
-  const appName = pdfSafe(opts.appName || '');
 
   // ── Header band ──
   fill(P.slate);
@@ -233,7 +232,6 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
 
   doc.setFontSize(8);
   doc.text(`Generated ${generatedStr}`, pageW - MARGIN, 26, { align: 'right' });
-  if (appName) doc.text(appName, pageW - MARGIN, 38, { align: 'right' });
 
   // ── Statistics band ──
   const s = res.summary;
@@ -446,8 +444,7 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
     doc.line(MARGIN, pageH - 28, pageW - MARGIN, pageH - 28);
     doc.setFont('helvetica', 'normal').setFontSize(7);
     txt(P.muted);
-    const left = appName ? `Generated ${generatedStr}  ·  ${appName}` : `Generated ${generatedStr}`;
-    doc.text(left, MARGIN, pageH - 18);
+    doc.text(`Generated ${generatedStr}`, MARGIN, pageH - 18);
     doc.text(`Page ${i} of ${pages}`, pageW - MARGIN, pageH - 18, { align: 'right' });
   }
 
