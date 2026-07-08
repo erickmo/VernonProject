@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, Plus, Trash2, ChevronLeft, Users, FileText } from 'lucide-react'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { ErrorState, Button, Field } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader, Section } from '@web/components/Page'
@@ -597,16 +598,16 @@ export default function LmsAdmin() {
                     </Field>
                     <Field label="Status">
                       {(id) => (
-                        <select
+                        <SearchableSelect
                           id={id}
-                          className={field}
                           value={courseDraft.status}
-                          onChange={(e) => patchCourse({ status: e.target.value })}
-                        >
-                          <option value="Draft">Draft</option>
-                          <option value="Published">Published</option>
-                          <option value="Archived">Archived</option>
-                        </select>
+                          onChange={(v: string) => patchCourse({ status: v })}
+                          options={[
+                            { value: 'Draft', label: 'Draft' },
+                            { value: 'Published', label: 'Published' },
+                            { value: 'Archived', label: 'Archived' },
+                          ]}
+                        />
                       )}
                     </Field>
                     <Field label="Points reward">
@@ -828,21 +829,15 @@ export default function LmsAdmin() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Course" required className="sm:col-span-2">
                 {(id) => (
-                  <select
+                  <SearchableSelect
                     id={id}
-                    className={field}
                     value={assignCourse}
-                    onChange={(e) => setAssignCourse(e.target.value)}
-                  >
-                    <option value="">Select a course…</option>
-                    {courses
+                    onChange={setAssignCourse}
+                    options={courses
                       .filter((c) => c.status === 'Published')
-                      .map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.title}
-                        </option>
-                      ))}
-                  </select>
+                      .map((c) => ({ value: c.name, label: c.title }))}
+                    placeholder="Select a course…"
+                  />
                 )}
               </Field>
               <Field label="Users" required className="sm:col-span-2">
@@ -891,19 +886,13 @@ export default function LmsAdmin() {
           <div className="max-w-sm">
             <Field label="Select course">
               {(id) => (
-                <select
+                <SearchableSelect
                   id={id}
-                  className={field}
                   value={reportCourse}
-                  onChange={(e) => setReportCourse(e.target.value)}
-                >
-                  <option value="">Select a course…</option>
-                  {courses.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setReportCourse}
+                  options={courses.map((c) => ({ value: c.name, label: c.title }))}
+                  placeholder="Select a course…"
+                />
               )}
             </Field>
           </div>

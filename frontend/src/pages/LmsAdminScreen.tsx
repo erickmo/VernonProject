@@ -17,6 +17,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { formatDate } from '@/lib/format'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import type { LmsManagedCourse, LmsLessonView } from '@/lib/types'
 
 // ─── shared input class (matches IncomeAdminScreen) ────────────────────────────
@@ -358,16 +359,12 @@ export default function LmsAdminScreen() {
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400">Course</label>
-              <select
-                className={inputCls}
+              <SearchableSelect
                 value={assignCourse}
-                onChange={(e) => setAssignCourse(e.target.value)}
-              >
-                <option value="">Select a course…</option>
-                {courses.map((c) => (
-                  <option key={c.name} value={c.name}>{c.title}</option>
-                ))}
-              </select>
+                onChange={setAssignCourse}
+                options={courses.map((c) => ({ value: c.name, label: c.title }))}
+                placeholder="Select a course…"
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400">Users</label>
@@ -396,16 +393,12 @@ export default function LmsAdminScreen() {
         {/* ── REPORT TAB ──────────────────────────────────────────────────── */}
         {tab === 'report' && (
           <div className="space-y-3">
-            <select
-              className={inputCls}
+            <SearchableSelect
               value={reportCourse}
-              onChange={(e) => setReportCourse(e.target.value)}
-            >
-              <option value="">Select a course…</option>
-              {courses.map((c) => (
-                <option key={c.name} value={c.name}>{c.title}</option>
-              ))}
-            </select>
+              onChange={setReportCourse}
+              options={courses.map((c) => ({ value: c.name, label: c.title }))}
+              placeholder="Select a course…"
+            />
 
             {reportLoading ? (
               <FullScreenLoader />
