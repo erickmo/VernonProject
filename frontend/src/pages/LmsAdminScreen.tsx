@@ -11,10 +11,12 @@ import {
   useDeleteLesson,
   useAssignCourse,
   useCourseReport,
+  useAssignableUsers,
 } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { formatDate } from '@/lib/format'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import type { LmsManagedCourse, LmsLessonView } from '@/lib/types'
 
 // ─── shared input class (matches IncomeAdminScreen) ────────────────────────────
@@ -97,7 +99,7 @@ export default function LmsAdminScreen() {
 
   // Assign tab state
   const [assignCourse, setAssignCourse] = useState('')
-  const [assignEmails, setAssignEmails] = useState('')
+  const [assignUsers, setAssignUsers] = useState<string[]>([])
   const [assignDue, setAssignDue] = useState('')
 
   // Report tab state
@@ -125,6 +127,8 @@ export default function LmsAdminScreen() {
   const saveLesson = useSaveLesson(managedCourse ?? '')
   const deleteLesson = useDeleteLesson(managedCourse ?? '')
   const assignMutation = useAssignCourse()
+  const { data: usersData } = useAssignableUsers()
+  const userOptions = (usersData?.users ?? []).map((u) => ({ value: u.name, label: u.full_name || u.name }))
   const { data: report, isLoading: reportLoading } = useCourseReport(reportCourse)
 
   const toast = useToast()
@@ -206,12 +210,11 @@ export default function LmsAdminScreen() {
 
   // ── assign course ────────────────────────────────────────────────────────────
   const doAssign = () => {
-    const users = assignEmails.split('\n').map((s) => s.trim()).filter(Boolean)
-    if (!assignCourse || users.length === 0) return
+    if (!assignCourse || assignUsers.length === 0) return
     assignMutation.mutate(
-      { course: assignCourse, users, due_date: assignDue || undefined },
+      { course: assignCourse, users: assignUsers, due_date: assignDue || undefined },
       {
-        onSuccess: (r) => { toast('success', `Assigned to ${r.created} user(s)`); setAssignEmails(''); setAssignDue('') },
+        onSuccess: (r) => { toast('success', `Assigned to ${r.created} user(s)`); setAssignUsers([]); setAssignDue('') },
         onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not assign'),
       },
     )
@@ -367,16 +370,13 @@ export default function LmsAdminScreen() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400">
-                User emails (one per line)
-              </label>
-              {/* ponytail: plain textarea — no user-picker exists yet in this app */}
-              <textarea
-                className={inputCls}
-                rows={4}
-                placeholder="user@example.com&#10;another@example.com"
-                value={assignEmails}
-                onChange={(e) => setAssignEmails(e.target.value)}
+              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-slate-400">Users</label>
+              <MultiSelectSearch
+                options={userOptions}
+                value={assignUsers}
+                onChange={setAssignUsers}
+                placeholder="Search users…"
+                emptyText="No users"
               />
             </div>
             <div>
@@ -384,7 +384,7 @@ export default function LmsAdminScreen() {
               <input type="date" className={inputCls} value={assignDue} onChange={(e) => setAssignDue(e.target.value)} />
             </div>
             <button
-              disabled={!assignCourse || !assignEmails.trim() || assignMutation.isPending}
+              disabled={!assignCourse || assignUsers.length === 0 || assignMutation.isPending}
               onClick={doAssign}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
             >

@@ -12,6 +12,7 @@ import {
   Smile,
   MessageSquarePlus,
   Megaphone,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -55,6 +56,7 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
       { icon: Medal, title: 'Earn achievements', short: 'Achievements', desc: 'Unlock badges and warrior tiers as you contribute.', to: '/achievements' },
       { icon: Gift, title: 'Spend your points', short: 'Rewards', desc: 'Redeem points for rewards in the marketplace.', to: '/marketplace' },
       { icon: Banknote, title: 'Extra income', short: 'Income', desc: 'Claim extra-income opportunities.', to: '/income' },
+      { icon: BookOpen, title: 'Learn and develop', short: 'Learn', desc: 'Browse courses and track your progress.', to: '/learn' },
     ],
   },
   {
