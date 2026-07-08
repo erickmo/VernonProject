@@ -449,5 +449,22 @@ export async function downloadLogbookPdf(
     }
   }
   const doc = renderLogbookDoc(res, { appName: branding?.appName, logoDataUrl, generatedAtIso });
-  doc.save(`logbook-${res.user}-${res.from_date}_${res.to_date}.pdf`);
+  triggerDownload(doc, `logbook-${res.user}-${res.from_date}_${res.to_date}.pdf`);
+}
+
+/** Force a real file download instead of inline display. jsPDF's doc.save() navigates to a
+ *  blob: URL on some browsers/PWAs, where the service worker then serves a blank app shell
+ *  (the "blank page"). An application/octet-stream blob (browsers can't render it inline) +
+ *  a hidden <a download> click downloads without any navigation. */
+function triggerDownload(doc: jsPDF, filename: string): void {
+  const blob = new Blob([doc.output('arraybuffer')], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
