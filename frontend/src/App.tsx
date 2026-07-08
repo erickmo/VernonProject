@@ -71,6 +71,7 @@ import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import TodosDueScreen from './pages/TodosDueScreen'
+import LogbookScreen from './pages/LogbookScreen'
 import MeetingRoomsScreen from './pages/MeetingRoomsScreen'
 import MeetingRoomFormScreen from './pages/MeetingRoomFormScreen'
 import EquipmentScreen from './pages/EquipmentScreen'
@@ -158,6 +159,7 @@ export default function App() {
         <Route path="/review" element={<Review />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/todos-due" element={<TodosDueScreen />} />
+        <Route path="/logbook" element={<LogbookScreen />} />
         <Route path="/report/:name" element={<ReportPage />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/project/:name" element={<ProjectScreen />} />

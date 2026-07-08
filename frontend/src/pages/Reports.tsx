@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, Sparkles, AlarmClock } from 'lucide-react'
+import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
@@ -13,6 +13,14 @@ const BESPOKE = [
     icon: AlarmClock,
     accent: 'from-rose-500 to-pink-600',
     to: '/reports/todos-due',
+  },
+  {
+    key: 'logbook',
+    title: 'Logbook',
+    desc: 'Daily plan & completion log with performance summary and PDF export',
+    icon: BookOpen,
+    accent: 'from-brand-500 to-indigo-600',
+    to: '/logbook',
   },
 ]
 
