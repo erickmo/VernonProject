@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult } from './types'
 
 const METHOD = '/api/method/'
 
@@ -690,6 +690,29 @@ export async function uploadAdImage(file: File): Promise<string> {
   }
   const out = data?.message ?? data
   return out.file_url as string
+}
+
+const LMS = 'vernon_project.api.lms.'
+
+export const lmsApi = {
+  catalog: () => api.get<{ courses: LmsCourseCard[] }>(LMS + 'get_catalog'),
+  course: (name: string) => api.get<LmsCourseDetail>(LMS + 'get_course', { name }),
+  enroll: (course: string) => api.post<{ ok: boolean; name: string }>(LMS + 'enroll', { course }),
+  completeLesson: (course: string, lesson: string) =>
+    api.post<LmsCompleteResult>(LMS + 'complete_lesson', { course, lesson }),
+  myLearning: () => api.get<{ enrollments: LmsMyEnrollment[] }>(LMS + 'my_learning'),
+  manageCourses: () => api.get<{ courses: LmsManagedCourse[] }>(LMS + 'manage_courses'),
+  saveCourse: (v: Record<string, unknown>) =>
+    api.post<{ ok: boolean; name: string }>(LMS + 'save_course', v),
+  saveLesson: (v: Record<string, unknown>) =>
+    api.post<{ ok: boolean; name: string }>(LMS + 'save_lesson', v),
+  deleteLesson: (name: string) => api.post<{ ok: boolean }>(LMS + 'delete_lesson', { name }),
+  deleteCourse: (name: string) => api.post<{ ok: boolean }>(LMS + 'delete_course', { name }),
+  assignCourse: (course: string, users: string[], due_date?: string) =>
+    api.post<{ ok: boolean; created: number }>(LMS + 'assign_course',
+      { course, users: JSON.stringify(users), ...(due_date ? { due_date } : {}) }),
+  courseReport: (course: string) =>
+    api.get<{ course_title: string; rows: LmsReportRow[] }>(LMS + 'course_report', { course }),
 }
 
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>

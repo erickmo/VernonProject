@@ -1016,3 +1016,39 @@ export interface AdBan {
   reason: string
   banned_by: string
 }
+
+export interface LmsCourseCard {
+  name: string; title: string; category: string | null; summary: string | null
+  cover_image: string | null; points_reward: number; estimated_minutes: number | null
+  lesson_count: number; my_status: string | null; my_progress: number
+}
+export interface LmsLessonFile { file: string; label: string | null }
+export interface LmsLessonView {
+  name: string; title: string; position: number; body: string | null
+  video_url: string | null; estimated_minutes: number | null
+  files: LmsLessonFile[]; done: boolean
+}
+export interface LmsCourseDetail {
+  course: { name: string; title: string; category: string | null; summary: string | null
+    description: string | null; cover_image: string | null; points_reward: number
+    estimated_minutes: number | null; status: string }
+  lessons: LmsLessonView[]
+  enrollment: { name: string; assigned: number; due_date: string | null; status: string
+    progress_pct: number; completed_on: string | null } | null
+}
+export interface LmsMyEnrollment {
+  name: string; course: string; course_title: string; assigned: number
+  due_date: string | null; status: string; progress_pct: number
+  overdue: boolean; completed_on: string | null
+}
+export interface LmsManagedCourse {
+  name: string; title: string; category: string | null; status: string
+  points_reward: number; lesson_count: number; enrolled: number; completed: number
+}
+export interface LmsReportRow {
+  user: string; user_name: string; assigned: number; due_date: string | null
+  status: string; progress_pct: number; overdue: boolean; completed_on: string | null
+}
+export interface LmsCompleteResult {
+  ok: boolean; progress_pct: number; completed: boolean; points_awarded: number
+}

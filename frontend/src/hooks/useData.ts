@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
@@ -49,6 +49,12 @@ import type {
   MeetingRoom,
   Equipment,
   AdPayload,
+  LmsCourseCard,
+  LmsCourseDetail,
+  LmsMyEnrollment,
+  LmsManagedCourse,
+  LmsReportRow,
+  LmsCompleteResult,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -114,6 +120,11 @@ export const keys = {
     ['ads', adType ?? 'all', q ?? '', mine ? 'mine' : 'all'] as const,
   ad: (n: string) => ['ad', n] as const,
   adBans: ['adBans'] as const,
+  lmsCatalog: ['lms-catalog'] as const,
+  lmsCourse: (n: string) => ['lms-course', n] as const,
+  lmsMine: ['lms-mine'] as const,
+  lmsManage: ['lms-manage'] as const,
+  lmsReport: (c: string) => ['lms-report', c] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -1797,4 +1808,74 @@ export function useUnbanUser() {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.adBans }),
   })
 }
+
+export function useCatalog() {
+  return useQuery({ queryKey: keys.lmsCatalog, queryFn: () => lmsApi.catalog() })
+}
+export function useCourse(name: string) {
+  return useQuery({ queryKey: keys.lmsCourse(name), queryFn: () => lmsApi.course(name), enabled: !!name })
+}
+export function useMyLearning() {
+  return useQuery({ queryKey: keys.lmsMine, queryFn: () => lmsApi.myLearning() })
+}
+export function useManageCourses() {
+  return useQuery({ queryKey: keys.lmsManage, queryFn: () => lmsApi.manageCourses() })
+}
+export function useCourseReport(course: string) {
+  return useQuery({ queryKey: keys.lmsReport(course), queryFn: () => lmsApi.courseReport(course), enabled: !!course })
+}
+export function useEnroll() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (course: string) => lmsApi.enroll(course),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.lmsCatalog }); qc.invalidateQueries({ queryKey: keys.lmsMine }) },
+  })
+}
+export function useCompleteLesson(courseName: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ course, lesson }: { course: string; lesson: string }) => lmsApi.completeLesson(course, lesson),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.lmsCourse(courseName) })
+      qc.invalidateQueries({ queryKey: keys.lmsMine })
+      qc.invalidateQueries({ queryKey: keys.lmsCatalog })
+    },
+  })
+}
+export function useSaveCourse() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (v: Record<string, unknown>) => lmsApi.saveCourse(v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.lmsManage }) })
+}
+export function useSaveLesson(courseName: string) {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (v: Record<string, unknown>) => lmsApi.saveLesson(v),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.lmsCourse(courseName) }); qc.invalidateQueries({ queryKey: keys.lmsManage }) } })
+}
+export function useDeleteLesson(courseName: string) {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (name: string) => lmsApi.deleteLesson(name),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.lmsCourse(courseName) }); qc.invalidateQueries({ queryKey: keys.lmsManage }) } })
+}
+export function useDeleteCourse() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (name: string) => lmsApi.deleteCourse(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.lmsManage }) })
+}
+export function useAssignCourse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ course, users, due_date }: { course: string; users: string[]; due_date?: string }) =>
+      lmsApi.assignCourse(course, users, due_date),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.lmsReport(v.course) }),
+  })
+}
+export function canManageLms(boot: Boot | undefined): boolean {
+  // mirrors canManageIncome: boot.roles is the real accessor (Boot.roles: string[])
+  return !!boot && (
+    boot.roles.includes('System Manager') ||
+    boot.roles.includes('LMS Manager')
+  )
+}
+
 
