@@ -51,6 +51,7 @@ import PapanIklanDetailScreen from './pages/PapanIklanDetailScreen'
 import PapanIklanFormScreen from './pages/PapanIklanFormScreen'
 import PapanIklanBansScreen from './pages/PapanIklanBansScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
+import FeedbackInboxScreen from './pages/FeedbackInboxScreen'
 import HelpScreen from './pages/HelpScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
@@ -203,6 +204,7 @@ export default function App() {
             <Route path="/users/new" element={<UserFormScreen />} />
             <Route path="/users/:name" element={<UserFormScreen />} />
             <Route path="/transfer-tasks" element={<TransferTasksScreen />} />
+            <Route path="/feedback-inbox" element={<FeedbackInboxScreen />} />
           </>
         )}
         {canManageBadges(boot) && (

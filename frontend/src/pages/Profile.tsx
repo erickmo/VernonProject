@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, User, Banknote } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -188,6 +188,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           : []),
         ...(canManageUsers(boot)
           ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky' as const, onClick: () => navigate('/transfer-tasks') }]
+          : []),
+        ...(canManageUsers(boot)
+          ? [{ icon: Inbox, label: 'Feedback Inbox', hue: 'sky' as const, onClick: () => navigate('/feedback-inbox') }]
           : []),
         ...(canManageGroups(boot)
           ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
