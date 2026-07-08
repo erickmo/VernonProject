@@ -3,6 +3,8 @@ import json
 import frappe
 from frappe.utils import now_datetime, today
 
+from vernon_project.api.mobile import _notify
+
 MANAGE_ROLES = ("System Manager", "LMS Manager")
 
 
@@ -262,9 +264,6 @@ def delete_course(name):
 		frappe.delete_doc("Course Enrollment", enr, ignore_permissions=True, force=1)
 	frappe.delete_doc("Course", name, ignore_permissions=True, force=1)
 	return {"ok": True}
-
-
-from vernon_project.api.mobile import _notify  # noqa: E402
 
 
 @frappe.whitelist()
