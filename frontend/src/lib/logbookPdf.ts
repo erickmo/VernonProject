@@ -25,10 +25,39 @@ export function shortDate(iso: string): string {
   return `${wd} ${day}/${m}`;
 }
 
+export interface PlanGroup {
+  project: string;
+  total: number; // total planned minutes for this project on the day
+  items: LogbookPlanItem[];
+}
+
+/** Group a day's plan items by project, with a per-project planned-minutes total.
+ *  Shared by the PDF and the on-screen plan column so both read the same way. */
+export function groupPlanByProject(items: LogbookPlanItem[]): PlanGroup[] {
+  const map = new Map<string, PlanGroup>();
+  for (const i of items) {
+    const project = i.project_name || i.project_detail || '—';
+    let g = map.get(project);
+    if (!g) {
+      g = { project, total: 0, items: [] };
+      map.set(project, g);
+    }
+    g.items.push(i);
+    g.total += i.planned_minutes;
+  }
+  return [...map.values()];
+}
+
 function planText(items: LogbookPlanItem[]): string {
   if (!items.length) return '—';
-  return items
-    .map((i) => `• ${i.to_do} · ${i.project_name} · ${i.planned_minutes}m · due ${i.deadline ?? '—'}`)
+  // Grouped by project: a "Project · Nm" header, then one indented line per todo.
+  return groupPlanByProject(items)
+    .map((g) => {
+      const lines = g.items.map(
+        (i) => `   - ${i.to_do} · ${i.planned_minutes}m · due ${i.deadline ?? '—'}`,
+      );
+      return `${g.project} · ${g.total}m\n${lines.join('\n')}`;
+    })
     .join('\n');
 }
 
@@ -39,7 +68,9 @@ function timingLabel(i: LogbookCompletedItem): string {
 }
 
 function resultLabel(r: LogbookCompletedItem['result']): string {
-  return r === 'approved' ? '✓ approved' : r === 'rejected' ? '✗ rejected' : '⏳ pending';
+  // jsPDF standard fonts are WinAnsi-only — ✓/✗/⏳ render as tofu. Plain word; the
+  // Completed cell's fill color already encodes approved/rejected/pending.
+  return r;
 }
 
 function completedText(items: LogbookCompletedItem[]): string {

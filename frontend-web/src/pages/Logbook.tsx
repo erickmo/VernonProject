@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, useLogbook, useWebsiteSettings, useUsers } from '@/hooks/useData'
-import { downloadLogbookPdf } from '@/lib/logbookPdf'
+import { downloadLogbookPdf, groupPlanByProject } from '@/lib/logbookPdf'
 import { formatDate } from '@/lib/format'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
@@ -132,9 +132,14 @@ export default function Logbook() {
                       <td className="px-3 py-2 align-top text-ink">
                         {day.plan.length === 0
                           ? <span className="text-muted">—</span>
-                          : day.plan.map((p, i) => (
-                              <div key={i} className="py-0.5">
-                                {p.to_do} · {p.project_name} · {p.planned_minutes}m · due {p.deadline ? formatDate(p.deadline) : '—'}
+                          : groupPlanByProject(day.plan).map((g) => (
+                              <div key={g.project} className="py-0.5">
+                                <div className="font-medium text-ink">{g.project} · {g.total}m</div>
+                                {g.items.map((p, i) => (
+                                  <div key={i} className="pl-3 text-muted">
+                                    {p.to_do} · {p.planned_minutes}m · due {p.deadline ? formatDate(p.deadline) : '—'}
+                                  </div>
+                                ))}
                               </div>
                             ))}
                       </td>

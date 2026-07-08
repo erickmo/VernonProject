@@ -5,7 +5,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, useLogbook, useWebsiteSettings } from '@/hooks/useData'
 import { mobileApi } from '@/lib/api'
-import { downloadLogbookPdf } from '@/lib/logbookPdf'
+import { downloadLogbookPdf, groupPlanByProject } from '@/lib/logbookPdf'
 import { formatDate } from '@/lib/format'
 import type { ManagedUser } from '@/lib/types'
 
@@ -120,11 +120,18 @@ export default function LogbookScreen() {
                   {day.plan.length > 0 && (
                     <div className="mb-2">
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">Plan</p>
-                      <div className="flex flex-col gap-0.5">
-                        {day.plan.map((p) => (
-                          <p key={p.todo} className="text-xs text-slate-500 dark:text-slate-400">
-                            {p.to_do} · {p.project_name} · {p.planned_minutes}m · due {p.deadline ?? '—'}
-                          </p>
+                      <div className="flex flex-col gap-1.5">
+                        {groupPlanByProject(day.plan).map((g) => (
+                          <div key={g.project} className="flex flex-col gap-0.5">
+                            <p className="text-xs font-semibold text-stone-700 dark:text-slate-200">
+                              {g.project} · {g.total}m
+                            </p>
+                            {g.items.map((p, i) => (
+                              <p key={`${p.todo}-${i}`} className="pl-3 text-xs text-slate-500 dark:text-slate-400">
+                                {p.to_do} · {p.planned_minutes}m · due {p.deadline ?? '—'}
+                              </p>
+                            ))}
+                          </div>
                         ))}
                       </div>
                     </div>
