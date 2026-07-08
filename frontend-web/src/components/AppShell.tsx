@@ -24,6 +24,7 @@ const SECTION: Record<string, { label: string; to: string }> = {
   'feedback-inbox': { label: 'Feedback', to: '/feedback-inbox' },
   reports: { label: 'Reports', to: '/reports' },
   report: { label: 'Reports', to: '/reports' },
+  logbook: { label: 'Logbook', to: '/logbook' },
   leaderboard: { label: 'Leaderboard', to: '/leaderboard' },
   marketplace: { label: 'Marketplace', to: '/marketplace' },
   wallet: { label: 'Wallet', to: '/wallet' },

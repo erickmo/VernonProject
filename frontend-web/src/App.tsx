@@ -59,6 +59,7 @@ import Onboarding from '@web/pages/Onboarding'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
 import AttendanceReport from '@web/pages/AttendanceReport'
+import Logbook from '@web/pages/Logbook'
 import Stations from '@web/pages/Stations'
 import Schedules from '@web/pages/Schedules'
 import Exceptions from '@web/pages/Exceptions'
@@ -183,6 +184,7 @@ export default function App() {
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
+          <Route path="/logbook" element={<Logbook />} />
           {canManageGroups(b) && (
             <Route path="/data-health" element={<DataHealth />} />
           )}

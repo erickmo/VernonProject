@@ -49,7 +49,9 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     { id: 'work', label: 'Work', leaves: WORK },
     { id: 'community', label: 'Community', leaves: COMMUNITY },
     { id: 'points', label: 'Points', leaves: POINTS },
-    { id: 'reports', label: 'Reports', to: '/reports', leaves: [] },
+    { id: 'reports', label: 'Reports', to: '/reports', leaves: [
+      { to: '/logbook', label: 'Logbook', sub: 'Daily task log', icon: StickyNote },
+    ] },
   ]
 
   // Admin group — nav.ts is the single source of truth; gated per capability
