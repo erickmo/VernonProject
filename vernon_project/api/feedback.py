@@ -6,7 +6,7 @@ import frappe
 from vernon_project.api.mobile import _notify, _humanize_datetime
 
 TYPES = {"Criticism", "Suggestion", "Praise", "Bug"}
-STATUSES = {"New", "Reviewed", "Resolved"}
+STATUSES = {"New", "Reviewed", "Resolved", "Rejected"}
 MAX_MESSAGE = 5000
 
 
