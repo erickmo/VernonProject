@@ -187,3 +187,118 @@ def my_learning():
 			"overdue": overdue,
 		})
 	return {"enrollments": out}
+
+
+# ── Admin endpoints ────────────────────────────────────────────────────────────
+
+@frappe.whitelist()
+def manage_courses():
+	_require_manage()
+	rows = frappe.get_all(
+		"Course",
+		fields=["name", "title", "category", "status", "points_reward"],
+		order_by="modified desc",
+	)
+	for c in rows:
+		c["lesson_count"] = _lesson_count(c["name"])
+		c["enrolled"] = frappe.db.count("Course Enrollment", {"course": c["name"]})
+		c["completed"] = frappe.db.count("Course Enrollment", {"course": c["name"], "status": "Completed"})
+	return {"courses": rows}
+
+
+@frappe.whitelist()
+def save_course(title, points_reward, status, name=None, category=None, summary=None,
+                description=None, cover_image=None, estimated_minutes=None):
+	_require_manage()
+	values = {
+		"title": title, "points_reward": points_reward, "status": status,
+		"category": category, "summary": summary, "description": description,
+		"cover_image": cover_image, "estimated_minutes": estimated_minutes,
+	}
+	if name:
+		doc = frappe.get_doc("Course", name)
+		doc.update(values)
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc({"doctype": "Course", **values})
+		doc.insert(ignore_permissions=True)
+	return {"ok": True, "name": doc.name}
+
+
+@frappe.whitelist()
+def save_lesson(course, title, name=None, position=None, body=None, video_url=None,
+                estimated_minutes=None, files=None):
+	_require_manage()
+	file_rows = json.loads(files) if isinstance(files, str) else (files or [])
+	values = {
+		"course": course, "title": title, "position": position or 0, "body": body,
+		"video_url": video_url, "estimated_minutes": estimated_minutes,
+	}
+	if name:
+		doc = frappe.get_doc("Course Lesson", name)
+		doc.update(values)
+	else:
+		doc = frappe.get_doc({"doctype": "Course Lesson", **values})
+	doc.set("files", [])
+	for f in file_rows:
+		doc.append("files", {"file": f.get("file"), "label": f.get("label")})
+	doc.save(ignore_permissions=True) if name else doc.insert(ignore_permissions=True)
+	return {"ok": True, "name": doc.name}
+
+
+@frappe.whitelist()
+def delete_lesson(name):
+	_require_manage()
+	frappe.delete_doc("Course Lesson", name, ignore_permissions=True, force=1)
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def delete_course(name):
+	_require_manage()
+	for ls in frappe.get_all("Course Lesson", filters={"course": name}, pluck="name"):
+		frappe.delete_doc("Course Lesson", ls, ignore_permissions=True, force=1)
+	for enr in frappe.get_all("Course Enrollment", filters={"course": name}, pluck="name"):
+		frappe.delete_doc("Course Enrollment", enr, ignore_permissions=True, force=1)
+	frappe.delete_doc("Course", name, ignore_permissions=True, force=1)
+	return {"ok": True}
+
+
+from vernon_project.api.mobile import _notify  # noqa: E402
+
+
+@frappe.whitelist()
+def assign_course(course, users, due_date=None):
+	_require_manage()
+	user_list = json.loads(users) if isinstance(users, str) else users
+	title = frappe.db.get_value("Course", course, "title")
+	actor = frappe.session.user
+	created = 0
+	for u in user_list:
+		if _enrollment(course, u):
+			continue
+		frappe.get_doc({
+			"doctype": "Course Enrollment", "course": course, "user": u,
+			"assigned": 1, "assigned_by": actor, "due_date": due_date, "status": "Assigned",
+		}).insert(ignore_permissions=True)
+		created += 1
+		body = f'You have been assigned the course “{title}”.'
+		if due_date:
+			body += f" Due {due_date}."
+		_notify(u, "Learning", "Course assigned", body, "Course", course, actor)
+	return {"ok": True, "created": created}
+
+
+@frappe.whitelist()
+def course_report(course):
+	_require_manage()
+	ref_today = today()
+	rows = frappe.get_all(
+		"Course Enrollment", filters={"course": course},
+		fields=["user", "assigned", "due_date", "status", "progress_pct", "completed_on"],
+		order_by="status asc, user asc",
+	)
+	for r in rows:
+		r["user_name"] = frappe.db.get_value("User", r.user, "full_name")
+		r["overdue"] = bool(r.status != "Completed" and r.assigned and r.due_date and str(r.due_date) < ref_today)
+	return {"course_title": frappe.db.get_value("Course", course, "title"), "rows": rows}
