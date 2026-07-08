@@ -1,12 +1,11 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import type {
   LogbookResponse,
   LogbookDay,
   LogbookPlanItem,
   LogbookCompletedItem,
+  WebsiteBranding,
 } from '@/lib/types';
-import type { WebsiteBranding } from '@/lib/types';
 
 export type LogbookFill = 'red' | 'green' | 'amber' | null;
 
@@ -69,7 +68,7 @@ function timingLabel(i: LogbookCompletedItem): string {
 
 function resultLabel(r: LogbookCompletedItem['result']): string {
   // jsPDF standard fonts are WinAnsi-only — ✓/✗/⏳ render as tofu. Plain word; the
-  // Completed cell's fill color already encodes approved/rejected/pending.
+  // Completed cell's color already encodes approved/rejected/pending.
   return r;
 }
 
@@ -90,7 +89,15 @@ export function completedFill(items: LogbookCompletedItem[]): LogbookFill {
   return null;
 }
 
-/** Pure: LogbookResponse -> one table row per day. Unit-tested. */
+/** RGB for a single completed line, matching the legend: red (rejected OR late) dominates,
+ *  then green (approved OR early), else amber (pending review). */
+export function completedItemColor(item: LogbookCompletedItem): [number, number, number] {
+  if (item.result === 'rejected' || item.late_days > 0) return [190, 40, 50];
+  if (item.result === 'approved' || item.early_days > 0) return [16, 122, 87];
+  return [180, 120, 10];
+}
+
+/** Pure: LogbookResponse -> one table row per day. Text model + spec for the drawing path. */
 export function buildLogbookRows(res: LogbookResponse): LogbookRow[] {
   return res.days.map((day: LogbookDay) => ({
     date: shortDate(day.date),
@@ -100,11 +107,321 @@ export function buildLogbookRows(res: LogbookResponse): LogbookRow[] {
   }));
 }
 
-const FILL_RGB: Record<Exclude<LogbookFill, null>, [number, number, number]> = {
-  red: [254, 226, 226],
-  green: [220, 252, 231],
-  amber: [254, 243, 199],
-};
+// ── Drawing ──────────────────────────────────────────────────────────────────
+
+type RGB = readonly [number, number, number];
+const P = {
+  ink: [17, 24, 39],
+  slate: [30, 41, 59],
+  muted: [107, 114, 128],
+  line: [226, 232, 240],
+  tintBg: [248, 250, 252],
+  green: [16, 122, 87],
+  red: [190, 40, 50],
+  amber: [180, 120, 10],
+  brand: [37, 99, 235],
+  white: [255, 255, 255],
+  faint: [226, 232, 240],
+} as const satisfies Record<string, RGB>;
+
+/** Clock: circle + hour/minute hands. Vector-drawn — jsPDF fonts can't render a glyph. */
+function drawClock(doc: jsPDF, cx: number, cy: number, r: number): void {
+  doc.setDrawColor(107, 114, 128);
+  doc.setLineWidth(0.6);
+  doc.circle(cx, cy, r, 'S');
+  doc.line(cx, cy, cx, cy - r * 0.6);
+  doc.line(cx, cy, cx + r * 0.55, cy);
+}
+
+/** Calendar: rounded body, two binder tabs above, a header rule near the top. Vector-drawn. */
+function drawCalendar(doc: jsPDF, x: number, y: number, s: number): void {
+  doc.setDrawColor(107, 114, 128);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(x, y, s, s * 0.85, 1, 1, 'S');
+  doc.line(x + s * 0.3, y - 2, x + s * 0.3, y);
+  doc.line(x + s * 0.7, y - 2, x + s * 0.7, y);
+  doc.line(x, y + s * 0.25, x + s, y + s * 0.25);
+}
+
+export interface RenderOpts {
+  appName?: string;
+  logoDataUrl?: string;
+  generatedAtIso: string;
+}
+
+// Layout constants (A4 landscape, pt).
+const MARGIN = 36;
+const HEADER_H = 64;
+const DATE_W = 70;
+const PLAN_W = 340;
+const GROUP_LH = 11;
+const TODO_LH = 9.5;
+const META_LH = 11;
+const COMP_LH = 9.5;
+const ROW_PAD = 5;
+
+interface DayLayout {
+  date: string;
+  groups: { header: string; items: { lines: string[]; pm: number; deadline: string | null }[] }[];
+  completed: { lines: string[]; color: [number, number, number] }[];
+  rowHeight: number;
+}
+
+/** Builds and returns the logbook PDF. All drawing lives here (no save). */
+export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const contentW = pageW - 2 * MARGIN;
+
+  const fill = (c: RGB) => doc.setFillColor(c[0], c[1], c[2]);
+  const draw = (c: RGB) => doc.setDrawColor(c[0], c[1], c[2]);
+  const txt = (c: RGB) => doc.setTextColor(c[0], c[1], c[2]);
+
+  const xDate = MARGIN;
+  const xPlan = xDate + DATE_W;
+  const xCompleted = xPlan + PLAN_W;
+  const completedW = pageW - MARGIN - xCompleted;
+  const planInnerW = PLAN_W - 12;
+  const completedInnerW = completedW - 12;
+
+  const generatedStr = new Date(opts.generatedAtIso).toLocaleString();
+  const appName = opts.appName || '';
+
+  // ── Header band ──
+  fill(P.slate);
+  doc.rect(0, 0, pageW, HEADER_H, 'F');
+
+  let titleX = MARGIN;
+  if (opts.logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(opts.logoDataUrl);
+      const h = 30;
+      const w = Math.min(90, (props.width / props.height) * h);
+      doc.addImage(opts.logoDataUrl, props.fileType || 'PNG', MARGIN, 16, w, h);
+      titleX = MARGIN + w + 14;
+    } catch {
+      /* bad/unsupported logo — text-only header */
+    }
+  }
+
+  doc.setFont('helvetica', 'bold').setFontSize(20);
+  txt(P.white);
+  doc.text('LOGBOOK', titleX, 33);
+  doc.setFont('helvetica', 'normal').setFontSize(10);
+  txt(P.faint);
+  doc.text(`${res.full_name}  ·  ${res.from_date} – ${res.to_date}`, titleX, 50);
+
+  doc.setFontSize(8);
+  doc.text(`Generated ${generatedStr}`, pageW - MARGIN, 26, { align: 'right' });
+  if (appName) doc.text(appName, pageW - MARGIN, 38, { align: 'right' });
+
+  // ── Statistics band ──
+  const s = res.summary;
+  const cards: [string, string, RGB][] = [
+    ['Points', String(s.points_earned), P.ink],
+    ['On-time', `${Math.round(s.on_time_rate * 100)}%`, P.ink],
+    ['Done', String(s.todos_done), P.ink],
+    ['Late', String(s.late), P.red],
+    ['Early', String(s.early), P.green],
+    ['Approved', String(s.approved), P.green],
+    ['Rejected', String(s.rejected), P.red],
+    ['Pending', String(s.pending), P.amber],
+    ['Planned', `${s.planned_minutes}m`, P.ink],
+  ];
+  const gap = 6;
+  const cardW = (contentW - gap * (cards.length - 1)) / cards.length;
+  const cardY = HEADER_H + 18;
+  const cardH = 40;
+  cards.forEach(([label, value, color], i) => {
+    const x = MARGIN + i * (cardW + gap);
+    fill(P.tintBg);
+    draw(P.line);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(x, cardY, cardW, cardH, 4, 4, 'FD');
+    const cx = x + cardW / 2;
+    doc.setFont('helvetica', 'normal').setFontSize(7);
+    txt(P.muted);
+    doc.text(label.toUpperCase(), cx, cardY + 14, { align: 'center' });
+    doc.setFont('helvetica', 'bold').setFontSize(12);
+    txt(color);
+    doc.text(value, cx, cardY + 31, { align: 'center' });
+  });
+
+  // ── Day table ──
+  const tableTop = cardY + cardH + 16;
+  const bottomLimit = pageH - 70;
+
+  // Column-header row; returns the y just below it. Redrawn on every page.
+  const columnHeader = (y: number): number => {
+    fill(P.tintBg);
+    doc.rect(MARGIN, y, contentW, 16, 'F');
+    doc.setFont('helvetica', 'bold').setFontSize(8.5);
+    txt(P.muted);
+    doc.text('DATE', xDate + 6, y + 11);
+    doc.text('PLAN', xPlan + 6, y + 11);
+    doc.text('COMPLETED', xCompleted + 6, y + 11);
+    draw(P.line);
+    doc.setLineWidth(0.6);
+    doc.line(MARGIN, y + 16, MARGIN + contentW, y + 16);
+    return y + 16 + 4;
+  };
+
+  // Pre-compute each drawable day's wrapped lines + height once (font size 8 governs wrap).
+  doc.setFontSize(8);
+  const layouts: DayLayout[] = res.days
+    .filter((d) => d.plan.length > 0 || d.completed.length > 0)
+    .map((d) => {
+      const groups = groupPlanByProject(d.plan).map((g) => ({
+        header: `${g.project} · ${g.total}m`,
+        items: g.items.map((i) => ({
+          lines: doc.splitTextToSize(i.to_do, planInnerW) as string[],
+          pm: i.planned_minutes,
+          deadline: i.deadline,
+        })),
+      }));
+      const completed = d.completed.map((i) => ({
+        lines: doc.splitTextToSize(
+          `${i.to_do} · ${i.project_name} · ${i.result} · ${timingLabel(i)}`,
+          completedInnerW,
+        ) as string[],
+        color: completedItemColor(i),
+      }));
+      let planH = 0;
+      for (const g of groups) {
+        planH += GROUP_LH;
+        for (const it of g.items) planH += it.lines.length * TODO_LH + META_LH;
+      }
+      const compH = completed.reduce((a, c) => a + c.lines.length * COMP_LH, 0);
+      const contentH = Math.max(planH, compH, 10);
+      return { date: shortDate(d.date), groups, completed, rowHeight: contentH + ROW_PAD * 2 };
+    });
+
+  let y = columnHeader(tableTop);
+
+  layouts.forEach((day, idx) => {
+    // ponytail: a single day taller than a page will overflow past the footer — acceptable per spec.
+    if (y + day.rowHeight > bottomLimit) {
+      doc.addPage();
+      y = columnHeader(MARGIN);
+    }
+    const rowTop = y;
+    const contentTop = rowTop + ROW_PAD;
+
+    if (idx % 2 === 1) {
+      fill(P.tintBg);
+      doc.rect(MARGIN, rowTop, contentW, day.rowHeight, 'F');
+    }
+
+    // Date cell.
+    doc.setFont('helvetica', 'bold').setFontSize(8);
+    txt(P.ink);
+    doc.text(day.date, xDate + 6, contentTop + 7);
+
+    // Plan cell.
+    let pc = contentTop;
+    for (const g of day.groups) {
+      doc.setFont('helvetica', 'bold').setFontSize(8);
+      txt(P.ink);
+      doc.text(g.header, xPlan + 6, pc + 8);
+      pc += GROUP_LH;
+      for (const it of g.items) {
+        doc.setFont('helvetica', 'normal').setFontSize(8);
+        txt(P.ink);
+        for (const ln of it.lines) {
+          doc.text(ln, xPlan + 6, pc + 7);
+          pc += TODO_LH;
+        }
+        // meta line: clock + estimate, calendar + deadline.
+        let mx = xPlan + 16;
+        drawClock(doc, mx + 3, pc + 4, 3);
+        mx += 8;
+        doc.setFont('helvetica', 'normal').setFontSize(7.5);
+        txt(P.muted);
+        const est = ` ${it.pm}m`;
+        doc.text(est, mx, pc + 7);
+        mx += doc.getTextWidth(est) + 8;
+        drawCalendar(doc, mx, pc + 1, 7);
+        mx += 9;
+        doc.text(` ${it.deadline ?? '—'}`, mx, pc + 7);
+        pc += META_LH;
+      }
+    }
+
+    // Completed cell.
+    let cc = contentTop;
+    doc.setFont('helvetica', 'normal').setFontSize(8);
+    for (const c of day.completed) {
+      txt(c.color);
+      for (const ln of c.lines) {
+        doc.text(ln, xCompleted + 6, cc + 7);
+        cc += COMP_LH;
+      }
+    }
+
+    // Row separator.
+    draw(P.line);
+    doc.setLineWidth(0.5);
+    doc.line(MARGIN, rowTop + day.rowHeight, MARGIN + contentW, rowTop + day.rowHeight);
+    y = rowTop + day.rowHeight;
+  });
+
+  // ── Legend ──
+  let ly = y + 18;
+  if (ly > bottomLimit - 24) {
+    doc.addPage();
+    ly = MARGIN + 4;
+  }
+  doc.setFont('helvetica', 'bold').setFontSize(8);
+  txt(P.slate);
+  doc.text('Legend', MARGIN, ly);
+
+  // Color key row.
+  const swatches: [RGB, string][] = [
+    [P.green, 'Early / Approved'],
+    [P.red, 'Late / Rejected'],
+    [P.amber, 'Pending review'],
+  ];
+  let sx = MARGIN;
+  const swatchY = ly + 12;
+  doc.setFont('helvetica', 'normal').setFontSize(8);
+  for (const [color, text] of swatches) {
+    fill(color);
+    doc.rect(sx, swatchY - 7, 8, 8, 'F');
+    sx += 12;
+    txt(P.muted);
+    doc.text(text, sx, swatchY);
+    sx += doc.getTextWidth(text) + 20;
+  }
+
+  // Icon key row.
+  let ix = MARGIN;
+  const iconY = swatchY + 14;
+  txt(P.muted);
+  drawClock(doc, ix + 3, iconY - 3, 3);
+  ix += 10;
+  doc.text('Estimated time', ix, iconY);
+  ix += doc.getTextWidth('Estimated time') + 20;
+  drawCalendar(doc, ix, iconY - 6, 7);
+  ix += 10;
+  doc.text('Due date', ix, iconY);
+
+  // ── Footer (every page) ──
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    draw(P.line);
+    doc.setLineWidth(0.5);
+    doc.line(MARGIN, pageH - 28, pageW - MARGIN, pageH - 28);
+    doc.setFont('helvetica', 'normal').setFontSize(7);
+    txt(P.muted);
+    const left = appName ? `Generated ${generatedStr}  ·  ${appName}` : `Generated ${generatedStr}`;
+    doc.text(left, MARGIN, pageH - 18);
+    doc.text(`Page ${i} of ${pages}`, pageW - MARGIN, pageH - 18, { align: 'right' });
+  }
+
+  return doc;
+}
 
 async function toDataUrl(url: string): Promise<string> {
   const resp = await fetch(url);
@@ -117,66 +434,20 @@ async function toDataUrl(url: string): Promise<string> {
   });
 }
 
-/** Generate + download the logbook PDF. `generatedAtIso` is passed in (keeps builders pure). */
+/** Resolve the logo (best-effort), render, and download. Signature unchanged for LogbookPage. */
 export async function downloadLogbookPdf(
   res: LogbookResponse,
   branding: WebsiteBranding | undefined,
   generatedAtIso: string,
 ): Promise<void> {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  const marginX = 40;
-  let y = 40;
-
-  // Logo (best-effort — never block the PDF on a missing/failed image).
+  let logoDataUrl: string | undefined;
   if (branding?.logoUrl) {
     try {
-      const dataUrl = await toDataUrl(branding.logoUrl);
-      doc.addImage(dataUrl, 'PNG', marginX, y - 12, 90, 30);
+      logoDataUrl = await toDataUrl(branding.logoUrl);
     } catch {
-      /* no logo — fall through to text header */
+      /* never block the PDF on a missing/failed image */
     }
   }
-
-  doc.setFontSize(16).setFont('helvetica', 'bold');
-  doc.text(`${branding?.appName || 'Logbook'} — Logbook`, marginX + 100, y + 4);
-  doc.setFontSize(10).setFont('helvetica', 'normal');
-  y += 26;
-  doc.text(
-    `${res.full_name} · ${res.from_date} – ${res.to_date} · Generated ${new Date(generatedAtIso).toLocaleString()}`,
-    marginX + 100,
-    y,
-  );
-
-  y += 20;
-  const s = res.summary;
-  doc.text(
-    `${s.planned_minutes}m planned · ${s.todos_done} done · ${s.on_time} on-time · ${s.late} late · ` +
-      `${s.early} early · ${s.approved} approved · ${s.rejected} rejected · ${s.pending} pending · ` +
-      `${s.points_earned} pts · ${Math.round(s.on_time_rate * 100)}% on-time`,
-    marginX,
-    y,
-  );
-
-  const rows = buildLogbookRows(res);
-  autoTable(doc, {
-    startY: y + 14,
-    head: [['Date', 'Plan', 'Completed']],
-    body: rows.map((r) => [r.date, r.plan, r.completed]),
-    styles: { fontSize: 8, cellPadding: 4, valign: 'top' },
-    headStyles: { fillColor: [30, 41, 59] },
-    columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 320 }, 2: { cellWidth: 'auto' } },
-    didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 2) {
-        const fill = rows[data.row.index]?.fill;
-        if (fill) data.cell.styles.fillColor = FILL_RGB[fill];
-      }
-    },
-  });
-
-  // ponytail: as unknown cast — lastAutoTable not in jspdf-autotable types but set at runtime
-  const legendY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 16;
-  doc.setFontSize(8);
-  doc.text('Legend: green = early/approved · red = late/rejected · amber = pending review', marginX, legendY);
-
+  const doc = renderLogbookDoc(res, { appName: branding?.appName, logoDataUrl, generatedAtIso });
   doc.save(`logbook-${res.user}-${res.from_date}_${res.to_date}.pdf`);
 }
