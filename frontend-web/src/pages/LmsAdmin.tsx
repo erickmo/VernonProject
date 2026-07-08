@@ -18,7 +18,9 @@ import {
   useDeleteLesson,
   useAssignCourse,
   useCourseReport,
+  useAssignableUsers,
 } from '@/hooks/useData'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import type { LmsManagedCourse, LmsLessonView, LmsReportRow } from '@/lib/types'
@@ -118,7 +120,7 @@ export default function LmsAdmin() {
   const [editCourseId, setEditCourseId] = useState<string | null>(null)
 
   const [assignCourse, setAssignCourse] = useState('')
-  const [assignEmails, setAssignEmails] = useState('')
+  const [assignUsers, setAssignUsers] = useState<string[]>([])
   const [assignDue, setAssignDue] = useState('')
   const [reportCourse, setReportCourse] = useState('')
 
@@ -126,6 +128,7 @@ export default function LmsAdmin() {
   const { data: courseDetail, isLoading: lessonsLoading } = useCourse(managedCourse ?? '')
   const { data: editDetail } = useCourse(editCourseId ?? '')
   const { data: report, isLoading: reportLoading } = useCourseReport(reportCourse)
+  const { data: assignableData } = useAssignableUsers()
 
   const saveCourse = useSaveCourse()
   const deleteCourse = useDeleteCourse()
@@ -249,20 +252,16 @@ export default function LmsAdmin() {
   }
 
   const doAssign = () => {
-    const users = assignEmails
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    if (!assignCourse || users.length === 0) {
-      toast('error', 'Select a course and enter at least one email')
+    if (!assignCourse || assignUsers.length === 0) {
+      toast('error', 'Select a course and at least one user')
       return
     }
     assignMutation.mutate(
-      { course: assignCourse, users, due_date: assignDue || undefined },
+      { course: assignCourse, users: assignUsers, due_date: assignDue || undefined },
       {
         onSuccess: (r) => {
           toast('success', `Assigned to ${r.created} user(s)`)
-          setAssignEmails('')
+          setAssignUsers([])
           setAssignDue('')
         },
         onError: (e) =>
@@ -846,20 +845,16 @@ export default function LmsAdmin() {
                   </select>
                 )}
               </Field>
-              <Field
-                label="User emails (one per line)"
-                required
-                className="sm:col-span-2"
-                hint="Enter each email on a new line."
-              >
-                {(id) => (
-                  <textarea
-                    id={id}
-                    className={field}
-                    rows={4}
-                    value={assignEmails}
-                    onChange={(e) => setAssignEmails(e.target.value)}
-                    placeholder="user@example.com"
+              <Field label="Users" required className="sm:col-span-2">
+                {() => (
+                  <MultiSelectSearch
+                    options={(assignableData?.users ?? []).map((u) => ({
+                      value: u.name,
+                      label: u.full_name || u.name,
+                    }))}
+                    value={assignUsers}
+                    onChange={setAssignUsers}
+                    placeholder="Search and select users…"
                   />
                 )}
               </Field>
