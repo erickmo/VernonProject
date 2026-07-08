@@ -5,7 +5,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, useLogbook, useWebsiteSettings } from '@/hooks/useData'
 import { mobileApi } from '@/lib/api'
-import { downloadLogbookPdf, groupPlanByProject } from '@/lib/logbookPdf'
+import { downloadLogbookPdf, groupPlanByProject, dayTotals, resolveLogoDataUrl } from '@/lib/logbookPdf'
 import { formatDate } from '@/lib/format'
 import type { ManagedUser } from '@/lib/types'
 
@@ -29,6 +29,15 @@ export default function LogbookScreen() {
   const isManager = !!boot?.roles.includes('System Manager')
   const { data, isFetching } = useLogbook(from, to, user || undefined, !!from && !!to)
   const { data: branding } = useWebsiteSettings()
+
+  // Pre-resolve the logo so the PDF download stays synchronous inside the tap gesture
+  // (awaiting a fetch at tap time blocks the download and blanks the standalone PWA).
+  const [logoDataUrl, setLogoDataUrl] = useState<string>()
+  useEffect(() => {
+    let alive = true
+    resolveLogoDataUrl(branding?.logoUrl).then((d) => alive && setLogoDataUrl(d))
+    return () => { alive = false }
+  }, [branding?.logoUrl])
 
   useEffect(() => {
     if (!isManager) return
@@ -80,7 +89,13 @@ export default function LogbookScreen() {
             </label>
           )}
           <button
-            onClick={() => void downloadLogbookPdf(data!, branding, new Date().toISOString())}
+            onClick={() =>
+              downloadLogbookPdf(data!, {
+                appName: branding?.appName,
+                logoDataUrl,
+                generatedAtIso: new Date().toISOString(),
+              })
+            }
             disabled={!data}
             className="mt-1 flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
           >
@@ -115,11 +130,24 @@ export default function LogbookScreen() {
               .filter((day) => day.plan.length > 0 || day.completed.length > 0)
               .map((day) => (
                 <div key={day.date} className={card}>
-                  <p className="mb-2 font-semibold text-stone-800 dark:text-slate-100">{formatDate(day.date)}</p>
+                  <div className="mb-2 flex items-baseline justify-between gap-2">
+                    <p className="font-semibold text-stone-800 dark:text-slate-100">{formatDate(day.date)}</p>
+                    {(() => {
+                      const t = dayTotals(day)
+                      return (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Plan {t.planned}m · Done {t.doneEst}m ·{' '}
+                          <span className={t.ratio != null && t.ratio >= 1 ? 'font-semibold text-emerald-600' : 'font-semibold'}>
+                            {t.ratio == null ? '—' : `${Math.round(t.ratio * 100)}%`}
+                          </span>
+                        </p>
+                      )
+                    })()}
+                  </div>
 
                   {day.plan.length > 0 && (
                     <div className="mb-2">
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">Plan</p>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">Self Planned</p>
                       <div className="flex flex-col gap-1.5">
                         {groupPlanByProject(day.plan).map((g) => (
                           <div key={g.project} className="flex flex-col gap-0.5">

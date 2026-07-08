@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, useLogbook, useWebsiteSettings, useUsers } from '@/hooks/useData'
-import { downloadLogbookPdf, groupPlanByProject } from '@/lib/logbookPdf'
+import { downloadLogbookPdf, groupPlanByProject, dayTotals, resolveLogoDataUrl } from '@/lib/logbookPdf'
 import { formatDate } from '@/lib/format'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
@@ -48,6 +48,15 @@ export default function Logbook() {
   const { data, isLoading } = useLogbook(from, to, user, !!from && !!to)
   const { data: branding } = useWebsiteSettings()
 
+  // Pre-resolve the logo so the PDF download stays synchronous inside the click gesture
+  // (awaiting a fetch at click time blocks the download).
+  const [logoDataUrl, setLogoDataUrl] = useState<string>()
+  useEffect(() => {
+    let alive = true
+    resolveLogoDataUrl(branding?.logoUrl).then((d) => alive && setLogoDataUrl(d))
+    return () => { alive = false }
+  }, [branding?.logoUrl])
+
   const hasDays = !!data && data.days.some((d) => d.plan.length > 0 || d.completed.length > 0)
 
   return (
@@ -56,7 +65,13 @@ export default function Logbook() {
         title="Logbook"
         actions={
           <button
-            onClick={() => void downloadLogbookPdf(data!, branding, new Date().toISOString())}
+            onClick={() =>
+              downloadLogbookPdf(data!, {
+                appName: branding?.appName,
+                logoDataUrl,
+                generatedAtIso: new Date().toISOString(),
+              })
+            }
             disabled={!data}
             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
@@ -120,15 +135,29 @@ export default function Logbook() {
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 z-10 bg-surface">
                   <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                    <th className="px-3 py-2 font-medium w-24">Date</th>
-                    <th className="px-3 py-2 font-medium">Plan</th>
+                    <th className="px-3 py-2 font-medium w-28">Date / Totals</th>
+                    <th className="px-3 py-2 font-medium">Self Planned</th>
                     <th className="px-3 py-2 font-medium">Completed</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.days.map((day) => (
                     <tr key={day.date} className="border-b border-line/70 last:border-0 hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]">
-                      <td className="whitespace-nowrap px-3 py-2 align-top font-medium text-ink">{fmtDay(day.date)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 align-top text-ink">
+                        <div className="font-medium">{fmtDay(day.date)}</div>
+                        {(() => {
+                          const t = dayTotals(day)
+                          return (
+                            <div className="mt-1 text-xs text-muted">
+                              <div>Plan {t.planned}m</div>
+                              <div>Done {t.doneEst}m</div>
+                              <div className={t.ratio != null && t.ratio >= 1 ? 'font-semibold text-emerald-600' : 'font-semibold text-ink'}>
+                                Ratio {t.ratio == null ? '—' : `${Math.round(t.ratio * 100)}%`}
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </td>
                       <td className="px-3 py-2 align-top text-ink">
                         {day.plan.length === 0
                           ? <span className="text-muted">—</span>

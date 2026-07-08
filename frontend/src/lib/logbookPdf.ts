@@ -4,7 +4,6 @@ import type {
   LogbookDay,
   LogbookPlanItem,
   LogbookCompletedItem,
-  WebsiteBranding,
 } from '@/lib/types';
 
 export type LogbookFill = 'red' | 'green' | 'amber' | null;
@@ -97,6 +96,14 @@ export function completedItemColor(item: LogbookCompletedItem): [number, number,
   return [180, 120, 10];
 }
 
+/** Per-day totals: planned minutes (self-planned), completed estimated minutes, and their
+ *  ratio (done ÷ planned, null when nothing planned). Shared by the PDF and the screens. */
+export function dayTotals(day: LogbookDay): { planned: number; doneEst: number; ratio: number | null } {
+  const planned = day.plan.reduce((a, p) => a + p.planned_minutes, 0);
+  const doneEst = day.completed.reduce((a, c) => a + c.estimated, 0);
+  return { planned, doneEst, ratio: planned > 0 ? doneEst / planned : null };
+}
+
 /** Pure: LogbookResponse -> one table row per day. Text model + spec for the drawing path. */
 export function buildLogbookRows(res: LogbookResponse): LogbookRow[] {
   return res.days.map((day: LogbookDay) => ({
@@ -164,6 +171,7 @@ interface DayLayout {
   date: string;
   groups: { header: string; items: { lines: string[]; pm: number; deadline: string | null }[] }[];
   completed: { lines: string[]; color: [number, number, number] }[];
+  totals: { planned: number; doneEst: number; ratio: number | null };
   rowHeight: number;
 }
 
@@ -258,8 +266,8 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
     doc.rect(MARGIN, y, contentW, 16, 'F');
     doc.setFont('helvetica', 'bold').setFontSize(8.5);
     txt(P.muted);
-    doc.text('DATE', xDate + 6, y + 11);
-    doc.text('PLAN', xPlan + 6, y + 11);
+    doc.text('DATE / TOTALS', xDate + 6, y + 11);
+    doc.text('SELF PLANNED', xPlan + 6, y + 11);
     doc.text('COMPLETED', xCompleted + 6, y + 11);
     draw(P.line);
     doc.setLineWidth(0.6);
@@ -293,8 +301,9 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
         for (const it of g.items) planH += it.lines.length * TODO_LH + META_LH;
       }
       const compH = completed.reduce((a, c) => a + c.lines.length * COMP_LH, 0);
-      const contentH = Math.max(planH, compH, 10);
-      return { date: shortDate(d.date), groups, completed, rowHeight: contentH + ROW_PAD * 2 };
+      const dateH = 18 + 3 * 10; // date line + Plan/Done/Ratio total lines
+      const contentH = Math.max(planH, compH, dateH, 10);
+      return { date: shortDate(d.date), groups, completed, totals: dayTotals(d), rowHeight: contentH + ROW_PAD * 2 };
     });
 
   let y = columnHeader(tableTop);
@@ -313,10 +322,21 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
       doc.rect(MARGIN, rowTop, contentW, day.rowHeight, 'F');
     }
 
-    // Date cell.
+    // Date cell + per-day totals (self-planned vs completed estimate + ratio).
     doc.setFont('helvetica', 'bold').setFontSize(8);
     txt(P.ink);
     doc.text(day.date, xDate + 6, contentTop + 7);
+    let dc = contentTop + 20;
+    doc.setFont('helvetica', 'normal').setFontSize(7);
+    txt(P.muted);
+    doc.text(`Plan ${day.totals.planned}m`, xDate + 6, dc);
+    dc += 10;
+    doc.text(`Done ${day.totals.doneEst}m`, xDate + 6, dc);
+    dc += 10;
+    const ratioStr = day.totals.ratio == null ? '—' : `${Math.round(day.totals.ratio * 100)}%`;
+    doc.setFont('helvetica', 'bold').setFontSize(7.5);
+    txt(day.totals.ratio != null && day.totals.ratio >= 1 ? P.green : P.ink);
+    doc.text(`Ratio ${ratioStr}`, xDate + 6, dc);
 
     // Plan cell.
     let pc = contentTop;
@@ -435,20 +455,23 @@ async function toDataUrl(url: string): Promise<string> {
 }
 
 /** Resolve the logo (best-effort), render, and download. Signature unchanged for LogbookPage. */
-export async function downloadLogbookPdf(
-  res: LogbookResponse,
-  branding: WebsiteBranding | undefined,
-  generatedAtIso: string,
-): Promise<void> {
-  let logoDataUrl: string | undefined;
-  if (branding?.logoUrl) {
-    try {
-      logoDataUrl = await toDataUrl(branding.logoUrl);
-    } catch {
-      /* never block the PDF on a missing/failed image */
-    }
+/** Resolve a logo URL to a data URL ahead of time (best-effort → undefined on miss/failure).
+ *  Call this BEFORE the download click (e.g. in an effect), never inside it — see downloadLogbookPdf. */
+export async function resolveLogoDataUrl(url: string | null | undefined): Promise<string | undefined> {
+  if (!url) return undefined;
+  try {
+    return await toDataUrl(url);
+  } catch {
+    return undefined;
   }
-  const doc = renderLogbookDoc(res, { appName: branding?.appName, logoDataUrl, generatedAtIso });
+}
+
+/** Render + download — SYNCHRONOUS on purpose. It must run inside the click's user gesture:
+ *  awaiting a logo fetch first consumes the user activation, so the browser blocks the download
+ *  and a standalone PWA shows a blank page. The caller pre-resolves the logo (resolveLogoDataUrl)
+ *  and passes it via opts.logoDataUrl. */
+export function downloadLogbookPdf(res: LogbookResponse, opts: RenderOpts): void {
+  const doc = renderLogbookDoc(res, opts);
   triggerDownload(doc, `logbook-${res.user}-${res.from_date}_${res.to_date}.pdf`);
 }
 
