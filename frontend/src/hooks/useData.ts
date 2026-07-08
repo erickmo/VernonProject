@@ -1845,7 +1845,11 @@ export function useCompleteLesson(courseName: string) {
 export function useSaveCourse() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: (v: Record<string, unknown>) => lmsApi.saveCourse(v),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.lmsManage }) })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.lmsManage })
+      qc.invalidateQueries({ queryKey: keys.lmsCatalog })
+    }
+  })
 }
 export function useSaveLesson(courseName: string) {
   const qc = useQueryClient()
@@ -1877,5 +1881,3 @@ export function canManageLms(boot: Boot | undefined): boolean {
     boot.roles.includes('LMS Manager')
   )
 }
-
-
