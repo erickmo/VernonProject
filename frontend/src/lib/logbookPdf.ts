@@ -471,23 +471,41 @@ export async function resolveLogoDataUrl(url: string | null | undefined): Promis
  *  and a standalone PWA shows a blank page. The caller pre-resolves the logo (resolveLogoDataUrl)
  *  and passes it via opts.logoDataUrl. */
 export function downloadLogbookPdf(res: LogbookResponse, opts: RenderOpts): void {
-  const doc = renderLogbookDoc(res, opts);
-  triggerDownload(doc, `logbook-${res.user}-${res.from_date}_${res.to_date}.pdf`);
-}
+  const filename = `logbook-${res.user}-${res.from_date}_${res.to_date}.pdf`;
+  try {
+    const doc = renderLogbookDoc(res, opts);
+    const blob = new Blob([doc.output('arraybuffer')], { type: 'application/pdf' });
 
-/** Force a real file download instead of inline display. jsPDF's doc.save() navigates to a
- *  blob: URL on some browsers/PWAs, where the service worker then serves a blank app shell
- *  (the "blank page"). An application/octet-stream blob (browsers can't render it inline) +
- *  a hidden <a download> click downloads without any navigation. */
-function triggerDownload(doc: jsPDF, filename: string): void {
-  const blob = new Blob([doc.output('arraybuffer')], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+    // Mobile / standalone PWA: an <a download> click NAVIGATES the single app window to the
+    // blob: URL (download isn't honored there) and the PWA white-screens with no way back.
+    // The Web Share sheet delivers the file WITHOUT navigating — the same approach the app
+    // already uses for image sharing. Must be invoked inside the click gesture (it is).
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (typeof nav.canShare === 'function' && nav.canShare({ files: [file] }) && typeof nav.share === 'function') {
+      void nav.share({ files: [file], title: filename }).catch(() => {
+        /* user dismissed the share sheet — not an error */
+      });
+      return;
+    }
+
+    // Desktop / browsers without file share: a hidden <a download> click (no navigation).
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    // Never white-screen the app — surface the failure so it can be reported.
+    try {
+      alert('PDF export failed: ' + (err instanceof Error ? err.message : String(err)));
+    } catch {
+      /* noop */
+    }
+  }
 }
