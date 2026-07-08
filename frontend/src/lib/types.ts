@@ -1053,3 +1053,11 @@ export interface LmsCompleteResult {
   ok: boolean; progress_pct: number; completed: boolean; points_awarded: number
 }
 export interface LmsAssignableUser { name: string; full_name: string | null }
+
+export type LogbookResult = 'approved' | 'rejected' | 'pending'
+export interface LogbookPlanItem { todo: string; to_do: string; project_detail: string; project_name: string; planned_minutes: number; estimated: number; deadline: string | null }
+export interface LogbookCompletedItem { todo: string; to_do: string; project_detail: string; project_name: string; estimated: number; deadline: string | null; done_on: string; late_days: number; early_days: number; status: string; result: LogbookResult; points: number }
+export interface LogbookDay { date: string; plan: LogbookPlanItem[]; completed: LogbookCompletedItem[] }
+export interface LogbookSummary { planned_minutes: number; done_minutes_estimated: number; todos_planned: number; todos_done: number; on_time: number; late: number; early: number; approved: number; rejected: number; pending: number; points_earned: number; on_time_rate: number }
+export interface LogbookResponse { from_date: string; to_date: string; user: string; full_name: string; dates: string[]; days: LogbookDay[]; summary: LogbookSummary }
+export interface WebsiteBranding { appName: string; logoUrl: string | null }

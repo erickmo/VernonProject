@@ -533,6 +533,10 @@ export const mobileApi = {
       ...payload,
       roles: JSON.stringify((payload.roles as string[]) ?? []),
     }),
+  logbook: (from_date: string, to_date: string, user?: string) =>
+    api.get<import('./types').LogbookResponse>('vernon_project.api.report.logbook', { from_date, to_date, ...(user ? { user } : {}) }),
+  websiteBranding: () =>
+    api.get<{ app_name?: string; app_logo?: string }>('frappe.client.get_value', { doctype: 'Website Settings', fieldname: JSON.stringify(['app_name', 'app_logo']) }),
 }
 
 const EV = 'vernon_project.api.events.'

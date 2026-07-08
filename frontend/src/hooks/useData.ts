@@ -126,6 +126,9 @@ export const keys = {
   lmsManage: ['lms-manage'] as const,
   lmsReport: (c: string) => ['lms-report', c] as const,
   lmsAssignable: ['lms-assignable'] as const,
+  logbook: (from_date: string, to_date: string, user?: string) =>
+    ['logbook', from_date, to_date, user ?? ''] as const,
+  websiteSettings: ['website-settings'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -1884,4 +1887,24 @@ export function canManageLms(boot: Boot | undefined): boolean {
     boot.roles.includes('System Manager') ||
     boot.roles.includes('LMS Manager')
   )
+}
+
+export function useLogbook(from_date: string, to_date: string, user: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: keys.logbook(from_date, to_date, user),
+    queryFn: () => mobileApi.logbook(from_date, to_date, user),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useWebsiteSettings() {
+  return useQuery({
+    queryKey: keys.websiteSettings,
+    queryFn: async () => {
+      const r = await mobileApi.websiteBranding()
+      return { appName: r.app_name ?? '', logoUrl: r.app_logo || null } as import('@/lib/types').WebsiteBranding
+    },
+    staleTime: 1000 * 60 * 60, // ponytail: 1h — branding rarely changes
+  })
 }
