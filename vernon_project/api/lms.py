@@ -212,11 +212,13 @@ def manage_courses():
 def save_course(title, points_reward, status, name=None, category=None, summary=None,
                 description=None, cover_image=None, estimated_minutes=None):
 	_require_manage()
-	values = {
-		"title": title, "points_reward": points_reward, "status": status,
-		"category": category, "summary": summary, "description": description,
-		"cover_image": cover_image, "estimated_minutes": estimated_minutes,
-	}
+	# ponytail: required fields always written; optional only when caller sent a value — prevents
+	# blanking existing data when the edit form omits a field (e.g. quick status toggle).
+	values = {"title": title, "points_reward": points_reward, "status": status}
+	for k, v in {"category": category, "summary": summary, "description": description,
+	             "cover_image": cover_image, "estimated_minutes": estimated_minutes}.items():
+		if v is not None:
+			values[k] = v
 	if name:
 		doc = frappe.get_doc("Course", name)
 		doc.update(values)

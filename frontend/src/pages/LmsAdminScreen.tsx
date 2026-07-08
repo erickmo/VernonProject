@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, X, BookOpen, ChevronLeft, Trash2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -46,6 +46,7 @@ type CourseDraft = {
   category: string
   summary: string
   description: string
+  cover_image: string
   points_reward: number | ''
   estimated_minutes: number | ''
   status: string
@@ -62,24 +63,11 @@ type LessonDraft = {
 }
 
 const EMPTY_COURSE: CourseDraft = {
-  title: '', category: '', summary: '', description: '',
+  title: '', category: '', summary: '', description: '', cover_image: '',
   points_reward: '', estimated_minutes: '', status: 'Draft',
 }
 const EMPTY_LESSON: LessonDraft = {
   title: '', position: '', body: '', video_url: '', files: [],
-}
-
-function toCourseDraft(c: LmsManagedCourse): CourseDraft {
-  return {
-    name: c.name,
-    title: c.title,
-    category: c.category ?? '',
-    summary: '',
-    description: '',
-    points_reward: c.points_reward,
-    estimated_minutes: '',
-    status: c.status,
-  }
 }
 
 function toLessonDraft(l: LmsLessonView): LessonDraft {
@@ -104,6 +92,8 @@ export default function LmsAdminScreen() {
   const [managedCourse, setManagedCourse] = useState<string | null>(null)
   const [courseDraft, setCourseDraft] = useState<CourseDraft | null>(null)
   const [lessonDraft, setLessonDraft] = useState<LessonDraft | null>(null)
+  // ponytail: tracks which course the admin wants to edit; cleared once full data populates courseDraft
+  const [editCourseId, setEditCourseId] = useState<string | null>(null)
 
   // Assign tab state
   const [assignCourse, setAssignCourse] = useState('')
@@ -115,6 +105,21 @@ export default function LmsAdminScreen() {
 
   // Hooks
   const { data: courseDetail, isLoading: lessonsLoading } = useCourse(managedCourse ?? '')
+  const { data: editDetail } = useCourse(editCourseId ?? '')
+
+  // Populate edit form once full course data arrives (belt-and-suspenders with backend fix)
+  useEffect(() => {
+    if (editCourseId && editDetail?.course) {
+      const c = editDetail.course
+      setCourseDraft({
+        name: c.name, title: c.title, category: c.category ?? '',
+        summary: c.summary ?? '', description: c.description ?? '',
+        cover_image: c.cover_image ?? '', points_reward: c.points_reward,
+        estimated_minutes: c.estimated_minutes ?? '', status: c.status,
+      })
+      setEditCourseId(null)
+    }
+  }, [editDetail, editCourseId])
   const saveCourse = useSaveCourse()
   const deleteCourse = useDeleteCourse()
   const saveLesson = useSaveLesson(managedCourse ?? '')
@@ -137,6 +142,7 @@ export default function LmsAdminScreen() {
         category: courseDraft.category.trim() || undefined,
         summary: courseDraft.summary.trim() || undefined,
         description: courseDraft.description.trim() || undefined,
+        cover_image: courseDraft.cover_image.trim() || undefined,
         points_reward: courseDraft.points_reward !== '' ? Number(courseDraft.points_reward) : 0,
         estimated_minutes: courseDraft.estimated_minutes !== '' ? Number(courseDraft.estimated_minutes) : undefined,
         status: courseDraft.status,
@@ -316,7 +322,7 @@ export default function LmsAdminScreen() {
                         </div>
                         <div className="mt-2 flex gap-2">
                           <button
-                            onClick={() => setCourseDraft(toCourseDraft(c))}
+                            onClick={() => setEditCourseId(c.name)}
                             className="flex-1 rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2 text-xs font-semibold text-brand-600 dark:text-brand-300 active:scale-95"
                           >
                             Edit
@@ -443,6 +449,7 @@ export default function LmsAdminScreen() {
             <input className={inputCls} placeholder="Category (optional)" value={courseDraft.category} onChange={(e) => setCourseDraft({ ...courseDraft, category: e.target.value })} />
             <input className={inputCls} placeholder="Summary (short)" value={courseDraft.summary} onChange={(e) => setCourseDraft({ ...courseDraft, summary: e.target.value })} />
             <textarea className={inputCls} rows={3} placeholder="Description (optional)" value={courseDraft.description} onChange={(e) => setCourseDraft({ ...courseDraft, description: e.target.value })} />
+            <input className={inputCls} placeholder="Cover image URL (optional)" value={courseDraft.cover_image} onChange={(e) => setCourseDraft({ ...courseDraft, cover_image: e.target.value })} />
             <div className="flex gap-2">
               <label className="flex-1 text-xs font-medium text-stone-500 dark:text-slate-400">
                 Points reward
