@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState, OverflowMenu } from '@web/components/ui'
+import { ErrorState } from '@web/components/ui'
 import { useBoot, canManageUsers, useFeedbackInbox, useSetFeedbackStatus } from '@/hooks/useData'
 
-const STATUSES = ['New', 'Reviewed', 'Resolved'] as const
+const STATUSES = ['New', 'Reviewed', 'Resolved', 'Rejected'] as const
 const FILTERS = ['All', ...STATUSES] as const
 
 const chip = (active: boolean) =>
@@ -26,6 +26,7 @@ const STATUS_TONE: Record<string, string> = {
   New: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
   Reviewed: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
   Resolved: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+  Rejected: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 }
 
 const pill = (cls: string) =>
@@ -108,15 +109,24 @@ export default function FeedbackInbox() {
                     {item.message}
                   </p>
                 </div>
-                <OverflowMenu
-                  size="sm"
-                  label="Change status"
-                  items={STATUSES.map((s) => ({
-                    label: `Mark ${s}`,
-                    disabled: item.status === s || setStatus.isPending,
-                    onClick: () => setStatus.mutate({ name: item.name, status: s }),
-                  }))}
-                />
+                {(item.status === 'New' || item.status === 'Reviewed') && (
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      disabled={setStatus.isPending}
+                      onClick={() => setStatus.mutate({ name: item.name, status: 'Resolved' })}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      disabled={setStatus.isPending}
+                      onClick={() => setStatus.mutate({ name: item.name, status: 'Rejected' })}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25 disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
