@@ -12,6 +12,7 @@ import {
   canManageAttendance,
   canManageResources,
   canModerateAds,
+  canManageLms,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -78,6 +79,9 @@ import PapanIklan from '@web/pages/PapanIklan'
 import PapanIklanDetail from '@web/pages/PapanIklanDetail'
 import PapanIklanForm from '@web/pages/PapanIklanForm'
 import PapanIklanBans from '@web/pages/PapanIklanBans'
+import Learn from '@web/pages/Learn'
+import Course from '@web/pages/Course'
+import LmsAdmin from '@web/pages/LmsAdmin'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -267,6 +271,9 @@ export default function App() {
           {canModerateAds(b) && <Route path="/papan-iklan/bans" element={<PapanIklanBans />} />}
           <Route path="/papan-iklan/:name/edit" element={<PapanIklanForm />} />
           <Route path="/papan-iklan/:name" element={<PapanIklanDetail />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/learn/:course" element={<Course />} />
+          {canManageLms(b) && <Route path="/learn-admin" element={<LmsAdmin />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

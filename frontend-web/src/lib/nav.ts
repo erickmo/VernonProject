@@ -3,13 +3,13 @@ import {
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
-  CalendarClock, Building2, Megaphone, Ban,
+  CalendarClock, Building2, Megaphone, Ban, BookOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
   canManageAttendance, canManageResources,
-  canModerateAds,
+  canModerateAds, canManageLms,
 } from '@/hooks/useData'
 
 export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string }
@@ -25,6 +25,7 @@ const WORK: NavLeaf[] = [
   { to: '/feedback', label: 'Feedback', sub: 'Send · admins triage', icon: MessageSquarePlus, match: '/feedback' },
   { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
   { to: '/attendance/my-approvals', label: 'Approvals', sub: 'Leave/WFH to approve', icon: Inbox },
+  { to: '/learn', label: 'Learn', sub: 'Courses & progress', icon: BookOpen, match: '/learn' },
 ]
 
 // Social / people-facing surfaces.
@@ -62,6 +63,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Resources', sub: 'Rooms & equipment', icon: Building2 } as NavLeaf] : []),
     ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
     ...(canModerateAds(b) ? [{ to: '/papan-iklan/bans', label: 'Iklan Bans', sub: 'Banned posters', icon: Ban } as NavLeaf] : []),
+    ...(canManageLms(b) ? [{ to: '/learn-admin', label: 'Manage Learning', sub: 'Author & assign courses', icon: BookOpen } as NavLeaf] : []),
   ]
   if (admin.length) groups.push({ id: 'admin', label: 'Admin', leaves: admin })
 
