@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser } from './types'
 
 const METHOD = '/api/method/'
 
@@ -713,6 +713,7 @@ export const lmsApi = {
       { course, users: JSON.stringify(users), ...(due_date ? { due_date } : {}) }),
   courseReport: (course: string) =>
     api.get<{ course_title: string; rows: LmsReportRow[] }>(LMS + 'course_report', { course }),
+  assignableUsers: () => api.get<{ users: LmsAssignableUser[] }>(LMS + 'list_assignable_users'),
 }
 
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>

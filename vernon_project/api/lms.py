@@ -303,3 +303,17 @@ def course_report(course):
 		r["user_name"] = frappe.db.get_value("User", r.user, "full_name")
 		r["overdue"] = bool(r.status != "Completed" and r.assigned and r.due_date and str(r.due_date) < ref_today)
 	return {"course_title": frappe.db.get_value("Course", course, "title"), "rows": rows}
+
+
+@frappe.whitelist()
+def list_assignable_users():
+	_require_manage()
+	from vernon_project.api.mobile import PROTECTED_USERS
+	users = frappe.get_all(
+		"User",
+		filters={"name": ["not in", list(PROTECTED_USERS)], "enabled": 1},
+		fields=["name", "full_name"],
+		order_by="full_name asc",
+		limit_page_length=0,
+	)
+	return {"users": users}

@@ -125,6 +125,7 @@ export const keys = {
   lmsMine: ['lms-mine'] as const,
   lmsManage: ['lms-manage'] as const,
   lmsReport: (c: string) => ['lms-report', c] as const,
+  lmsAssignable: ['lms-assignable'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -1823,6 +1824,9 @@ export function useManageCourses() {
 }
 export function useCourseReport(course: string) {
   return useQuery({ queryKey: keys.lmsReport(course), queryFn: () => lmsApi.courseReport(course), enabled: !!course })
+}
+export function useAssignableUsers() {
+  return useQuery({ queryKey: keys.lmsAssignable, queryFn: () => lmsApi.assignableUsers() })
 }
 export function useEnroll() {
   const qc = useQueryClient()

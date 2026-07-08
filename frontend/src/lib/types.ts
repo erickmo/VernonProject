@@ -1052,3 +1052,4 @@ export interface LmsReportRow {
 export interface LmsCompleteResult {
   ok: boolean; progress_pct: number; completed: boolean; points_awarded: number
 }
+export interface LmsAssignableUser { name: string; full_name: string | null }
