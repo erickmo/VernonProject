@@ -2,6 +2,7 @@ import datetime
 import unittest
 
 import frappe
+from frappe.utils import nowdate
 from vernon_project.api.report import (
 	_date_list, _build_daily_matrix, _assigned_minutes,
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
@@ -9,6 +10,7 @@ from vernon_project.api.report import (
 	_template_minutes, _resolve_expected,
 	_build_todos_due, todos_due,
 	_runs_project, buzz_todo,
+	logbook, STATUS_PLANNED, STATUS_COMPLETED,
 )
 
 
@@ -498,3 +500,157 @@ class TestBuzzTodoEndpoint(unittest.TestCase):
 		# string (never resolved as a get_value filter), so this is a plain not-found.
 		with self.assertRaises(frappe.DoesNotExistError):
 			buzz_todo({"assigned_to": "someone@example.com"})
+
+
+class TestLogbookEndpoint(unittest.TestCase):
+	"""Integration: seed a target user's plan/done todos over 2026-07-01..05 and assert
+	the logbook buckets, lateness/result classification, summary, and the auth gate."""
+
+	FROM = "2026-07-01"
+	TO = "2026-07-05"
+	TARGET = "logbook_target@example.com"
+	OTHER = "logbook_other@example.com"
+	GUEST = "logbook_guest@example.com"
+	DONE = "\U0001f7e0 Done"  # 🟠 Done
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		from vernon_project.vernon_project.doctype.project_todo.test_project_todo import _ensure_test_group
+		for email, fn in ((self.TARGET, "Target"), (self.OTHER, "Other"), (self.GUEST, "Guest")):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
+					"send_welcome_email": 0}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Logbook Brand"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Logbook Brand"}).insert(ignore_permissions=True)
+		self.group, self.level_id = _ensure_test_group()
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Logbook Project", "brand": "Logbook Brand",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": "2026-12-31",
+			# Reward fields: unsynced parallel work on the Project controller reads these
+			# in before_validate; pass them so the fixture doesn't trip on a missing attr.
+			"reward_type": "Point", "bonus_amount": 0, "discount": 0,
+			"team_members": [{"user": "Administrator"}, {"user": self.TARGET}, {"user": self.OTHER}],
+		}).insert(ignore_permissions=True)
+		self.grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Logbook Grouping",
+			"project": self.project.name}).insert(ignore_permissions=True).name
+		self.detail = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
+			"title": "Logbook Detail", "grouping": self.grouping,
+			"project_deadline": "2026-12-31", "estimated": 500}).insert(ignore_permissions=True).name
+
+		# planned on day A (07-01), done early on 07-02 (< deadline 07-03), Completed → approved
+		self.t1 = self._todo("T1 early", self.TARGET, "2026-07-03", 120,
+			allocations=[{"allocation_date": "2026-07-01", "estimated_minutes": 120}])
+		self._stamp(self.t1, done="2026-07-02 09:00:00", status=STATUS_COMPLETED, earned=50)
+		# done late on 07-04 (> deadline 07-02), Done → pending
+		self.t2 = self._todo("T2 late", self.TARGET, "2026-07-02", 90)
+		self._stamp(self.t2, done="2026-07-04 09:00:00", status=self.DONE)
+		# rejected: bounced back to Planned with rejected_at, done_on 07-03 == deadline → on_time
+		self.t3 = self._todo("T3 rejected", self.TARGET, "2026-07-03", 30)
+		self._stamp(self.t3, done="2026-07-03 09:00:00", rejected="2026-07-03 12:00:00")
+		# planned on 07-05, never done → plan only
+		self.t4 = self._todo("T4 planned", self.TARGET, "2026-07-05", 60,
+			allocations=[{"allocation_date": "2026-07-05", "estimated_minutes": 60}])
+		# a DIFFERENT user's todo — must be absent from target's logbook
+		self.t5 = self._todo("T5 other", self.OTHER, "2026-07-02", 45,
+			allocations=[{"allocation_date": "2026-07-02", "estimated_minutes": 45}])
+		self._stamp(self.t5, done="2026-07-02 09:00:00", status=STATUS_COMPLETED, earned=99)
+		frappe.db.commit()
+
+	def _todo(self, to_do, assigned_to, deadline, estimated, allocations=None):
+		doc = {"doctype": "Project Todo", "project_detail": self.detail, "to_do": to_do,
+			"assigned_to": assigned_to, "start_date": self.FROM, "deadline": deadline,
+			"estimated": estimated, "group": self.group, "level_id": self.level_id}
+		if allocations:
+			doc["allocations"] = allocations
+		return frappe.get_doc(doc).insert(ignore_permissions=True).name
+
+	def _stamp(self, name, done=None, status=None, rejected=None, earned=None):
+		"""Write done/status/reject/points straight to the DB, bypassing the controller
+		so phase-timestamp auto-stamping and ledger side effects don't fight the fixture."""
+		vals = {}
+		if done:
+			vals["done_started_at"] = done
+		if status:
+			vals["status"] = status
+		if rejected:
+			vals["rejected_at"] = rejected
+		if earned is not None:
+			vals["assignee_earned"] = earned
+		frappe.db.set_value("Project Todo", name, vals, update_modified=False)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for name in frappe.get_all("Project Todo", filters={"project_detail": self.detail}, pluck="name"):
+			frappe.db.set_value("Project Todo", name, "status", STATUS_PLANNED, update_modified=False)
+			frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True)
+		frappe.delete_doc("Project Detail", self.detail, ignore_permissions=True, force=True)
+		frappe.delete_doc("Glossary", self.grouping, ignore_permissions=True, force=True)
+		frappe.delete_doc("Project", self.project.name, ignore_permissions=True, force=True)
+		if frappe.db.exists("User", self.GUEST):
+			frappe.delete_doc("User", self.GUEST, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_logbook_full_scenario(self):
+		frappe.set_user("Administrator")  # System Manager viewing someone else's logbook
+		out = logbook(self.FROM, self.TO, user=self.TARGET)
+
+		self.assertEqual(out["user"], self.TARGET)
+		self.assertEqual(out["from_date"], self.FROM)
+		self.assertEqual(out["to_date"], self.TO)
+		self.assertEqual(out["dates"],
+			["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"])
+
+		days = {d["date"]: d for d in out["days"]}
+		# PLAN buckets by allocation_date
+		self.assertEqual([p["todo"] for p in days["2026-07-01"]["plan"]], [self.t1])
+		self.assertEqual(days["2026-07-01"]["plan"][0]["planned_minutes"], 120)
+		self.assertEqual([p["todo"] for p in days["2026-07-05"]["plan"]], [self.t4])
+		self.assertEqual(days["2026-07-02"]["plan"], [])  # T5 (other user) absent
+		# COMPLETED buckets by done-date
+		self.assertEqual([c["todo"] for c in days["2026-07-02"]["completed"]], [self.t1])
+		self.assertEqual([c["todo"] for c in days["2026-07-03"]["completed"]], [self.t3])
+		self.assertEqual([c["todo"] for c in days["2026-07-04"]["completed"]], [self.t2])
+
+		by_todo = {c["todo"]: c for d in out["days"] for c in d["completed"]}
+		self.assertEqual(by_todo[self.t1]["early_days"], 1)
+		self.assertEqual(by_todo[self.t1]["late_days"], 0)
+		self.assertEqual(by_todo[self.t1]["result"], "approved")
+		self.assertEqual(by_todo[self.t1]["points"], 50)
+		self.assertEqual(by_todo[self.t2]["late_days"], 2)
+		self.assertEqual(by_todo[self.t2]["early_days"], 0)
+		self.assertEqual(by_todo[self.t2]["result"], "pending")
+		self.assertEqual(by_todo[self.t3]["late_days"], 0)
+		self.assertEqual(by_todo[self.t3]["early_days"], 0)
+		self.assertEqual(by_todo[self.t3]["result"], "rejected")
+
+		# other user's todo absent from both plan and completed
+		seen = {x["todo"] for d in out["days"] for x in d["plan"] + d["completed"]}
+		self.assertNotIn(self.t5, seen)
+
+		s = out["summary"]
+		self.assertEqual(s["planned_minutes"], 180)         # 120 + 60
+		self.assertEqual(s["todos_planned"], 2)             # t1, t4
+		self.assertEqual(s["todos_done"], 3)                # t1, t2, t3
+		self.assertEqual(s["done_minutes_estimated"], 240)  # 120 + 90 + 30
+		self.assertEqual(s["on_time"], 1)                   # t3
+		self.assertEqual(s["late"], 1)                      # t2
+		self.assertEqual(s["early"], 1)                     # t1
+		self.assertEqual(s["approved"], 1)                  # t1
+		self.assertEqual(s["rejected"], 1)                  # t3
+		self.assertEqual(s["pending"], 1)                   # t2
+		self.assertEqual(s["points_earned"], 50)
+		self.assertAlmostEqual(s["on_time_rate"], 2 / 3)
+
+	def test_self_scoped_needs_no_permission(self):
+		frappe.set_user(self.TARGET)
+		out = logbook(self.FROM, self.TO)  # own logbook, no user arg → no gate
+		frappe.set_user("Administrator")
+		self.assertEqual(out["user"], self.TARGET)
+		self.assertEqual(out["summary"]["todos_done"], 3)
+
+	def test_non_system_manager_cannot_view_other(self):
+		frappe.set_user(self.GUEST)
+		with self.assertRaises(frappe.PermissionError):
+			logbook(self.FROM, self.TO, user=self.TARGET)
+		frappe.set_user("Administrator")

@@ -20,6 +20,8 @@ WEEKDAY_FIELDS = ["monday", "tuesday", "wednesday", "thursday", "friday", "satur
 # Project Todo statuses excluded from the "due" buzz list (finished / dead — nothing to chase).
 STATUS_COMPLETED = "✅ Completed"      # ✅ Completed
 STATUS_CANCELLED = "\U0001f6ab Cancelled"  # 🚫 Cancelled
+STATUS_PLANNED = "⚪️ Planned"       # ⚪️ Planned (medium white circle + variation selector)
+STATUS_CHECKED = "\U0001f537 Checked By PL"   # 🔷 Checked By PL
 
 
 def _date_list(from_date, to_date):
@@ -529,6 +531,135 @@ def todos_due(due_by):
 	} if uids else {}
 
 	return _build_todos_due(role_by_project, todos, users, due, getdate())
+
+
+@frappe.whitelist()
+def logbook(from_date, to_date, user=None):
+	"""Per-day plan-vs-done logbook for one user over the inclusive [from_date, to_date]
+	range. Self-scoped by default (frappe.session.user); a System Manager may pass `user`
+	to view anyone else's logbook. Each day lists the todos the user planned to work on
+	(from their day allocations) and the todos they marked done that day, with lateness,
+	approval result and points, plus a range summary."""
+	caller = frappe.session.user
+	target = user or caller
+	if user and user != caller:
+		_require_system_manager()
+
+	start, end = _validated_range(from_date, to_date)
+	dates = _date_list(start, end)
+	params = {"target": target, "from_date": str(start), "to_date": str(end),
+		"cancelled": STATUS_CANCELLED}
+
+	# PLAN: one row per (todo, allocation day) the user scheduled work in range.
+	plan_rows = frappe.db.sql(
+		"""
+		SELECT todo.name AS todo, todo.to_do AS to_do, todo.project AS project,
+		       todo.project_detail AS project_detail, proj.project_name AS project_name,
+		       todo.estimated AS estimated, todo.deadline AS deadline,
+		       alloc.allocation_date AS allocation_date,
+		       alloc.estimated_minutes AS planned_minutes
+		FROM `tabProject Todo Allocation` AS alloc
+		JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
+		LEFT JOIN `tabProject` AS proj ON todo.project = proj.name
+		WHERE todo.assigned_to = %(target)s
+		  AND alloc.parenttype = 'Project Todo'
+		  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
+		ORDER BY alloc.allocation_date, todo.name
+		""",
+		params, as_dict=True,
+	)
+
+	# COMPLETED: one row per todo whose done-date (done_started_at, else developed_at)
+	# lands in range. Cancelled todos are dead — excluded.
+	completed_rows = frappe.db.sql(
+		"""
+		SELECT todo.name AS todo, todo.to_do AS to_do, todo.project AS project,
+		       todo.project_detail AS project_detail, proj.project_name AS project_name,
+		       todo.estimated AS estimated, todo.deadline AS deadline,
+		       todo.status AS status, todo.rejected_at AS rejected_at,
+		       todo.assignee_earned AS assignee_earned,
+		       DATE(COALESCE(todo.done_started_at, todo.developed_at)) AS done_on
+		FROM `tabProject Todo` AS todo
+		LEFT JOIN `tabProject` AS proj ON todo.project = proj.name
+		WHERE todo.assigned_to = %(target)s
+		  AND todo.status != %(cancelled)s
+		  AND DATE(COALESCE(todo.done_started_at, todo.developed_at))
+		      BETWEEN %(from_date)s AND %(to_date)s
+		ORDER BY done_on, todo.name
+		""",
+		params, as_dict=True,
+	)
+
+	plan_by_date, plan_items = {}, []
+	for r in plan_rows:
+		item = {
+			"todo": r.todo, "to_do": r.to_do,
+			"project_detail": r.project_detail,
+			"project_name": r.project_name or r.project or r.project_detail,
+			"planned_minutes": int(r.planned_minutes or 0),
+			"estimated": int(r.estimated or 0),
+			"deadline": str(r.deadline) if r.deadline else None,
+		}
+		plan_items.append(item)
+		plan_by_date.setdefault(str(r.allocation_date), []).append(item)
+
+	completed_by_date, completed_items = {}, []
+	for r in completed_rows:
+		done_on = str(r.done_on)
+		if r.deadline:
+			late_days = max(0, date_diff(done_on, r.deadline))
+			early_days = max(0, date_diff(r.deadline, done_on))
+		else:
+			late_days = early_days = 0
+		# Rejected: bounced back to Planned after review, with a rejection stamped.
+		if r.rejected_at and r.status == STATUS_PLANNED:
+			result = "rejected"
+		elif r.status in (STATUS_CHECKED, STATUS_COMPLETED):
+			result = "approved"
+		else:
+			result = "pending"
+		item = {
+			"todo": r.todo, "to_do": r.to_do,
+			"project_detail": r.project_detail,
+			"project_name": r.project_name or r.project or r.project_detail,
+			"estimated": int(r.estimated or 0),
+			"deadline": str(r.deadline) if r.deadline else None,
+			"done_on": done_on,
+			"late_days": late_days, "early_days": early_days,
+			"status": r.status, "result": result,
+			"points": float(r.assignee_earned or 0),
+		}
+		completed_items.append(item)
+		completed_by_date.setdefault(done_on, []).append(item)
+
+	days = [
+		{"date": d, "plan": plan_by_date.get(d, []), "completed": completed_by_date.get(d, [])}
+		for d in dates
+	]
+
+	todos_done = len(completed_items)
+	late = sum(1 for c in completed_items if c["late_days"] > 0)
+	summary = {
+		"planned_minutes": sum(p["planned_minutes"] for p in plan_items),
+		"done_minutes_estimated": sum(c["estimated"] for c in completed_items),
+		"todos_planned": len({p["todo"] for p in plan_items}),
+		"todos_done": todos_done,
+		"on_time": sum(1 for c in completed_items if c["late_days"] == 0 and c["early_days"] == 0),
+		"late": late,
+		"early": sum(1 for c in completed_items if c["early_days"] > 0),
+		"approved": sum(1 for c in completed_items if c["result"] == "approved"),
+		"rejected": sum(1 for c in completed_items if c["result"] == "rejected"),
+		"pending": sum(1 for c in completed_items if c["result"] == "pending"),
+		"points_earned": sum(c["points"] for c in completed_items),
+		"on_time_rate": (todos_done - late) / todos_done if todos_done else 0,
+	}
+
+	return {
+		"from_date": str(start), "to_date": str(end),
+		"user": target,
+		"full_name": frappe.db.get_value("User", target, "full_name") or target,
+		"dates": dates, "days": days, "summary": summary,
+	}
 
 
 def _runs_project(user, project_row):
