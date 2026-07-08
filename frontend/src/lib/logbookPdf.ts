@@ -114,6 +114,17 @@ export function buildLogbookRows(res: LogbookResponse): LogbookRow[] {
   }));
 }
 
+/** jsPDF core fonts encode WinAnsi only, so anything outside it (emoji, symbols, non-Latin
+ *  scripts in a todo/project name) renders as tofu boxes. Keep ASCII + Latin-1 + a few common
+ *  typographic marks jsPDF supports; drop the rest. */
+export function pdfSafe(s: string | null | undefined): string {
+  const extra = '–—‘’“”•…€™'; // – — ' ' " " • … € ™
+  return (s ?? '')
+    .replace(/[^\x20-\x7E -ÿ]/g, (ch) => (extra.includes(ch) ? ch : ''))
+    .replace(/ {2,}/g, ' ')
+    .trim();
+}
+
 // ── Drawing ──────────────────────────────────────────────────────────────────
 
 type RGB = readonly [number, number, number];
@@ -194,7 +205,7 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
   const completedInnerW = completedW - 12;
 
   const generatedStr = new Date(opts.generatedAtIso).toLocaleString();
-  const appName = opts.appName || '';
+  const appName = pdfSafe(opts.appName || '');
 
   // ── Header band ──
   fill(P.slate);
@@ -218,7 +229,7 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
   doc.text('LOGBOOK', titleX, 33);
   doc.setFont('helvetica', 'normal').setFontSize(10);
   txt(P.faint);
-  doc.text(`${res.full_name}  ·  ${res.from_date} – ${res.to_date}`, titleX, 50);
+  doc.text(`${pdfSafe(res.full_name)}  ·  ${res.from_date} – ${res.to_date}`, titleX, 50);
 
   doc.setFontSize(8);
   doc.text(`Generated ${generatedStr}`, pageW - MARGIN, 26, { align: 'right' });
@@ -281,16 +292,16 @@ export function renderLogbookDoc(res: LogbookResponse, opts: RenderOpts): jsPDF 
     .filter((d) => d.plan.length > 0 || d.completed.length > 0)
     .map((d) => {
       const groups = groupPlanByProject(d.plan).map((g) => ({
-        header: `${g.project} · ${g.total}m`,
+        header: `${pdfSafe(g.project)} · ${g.total}m`,
         items: g.items.map((i) => ({
-          lines: doc.splitTextToSize(i.to_do, planInnerW) as string[],
+          lines: doc.splitTextToSize(pdfSafe(i.to_do), planInnerW) as string[],
           pm: i.planned_minutes,
           deadline: i.deadline,
         })),
       }));
       const completed = d.completed.map((i) => ({
         lines: doc.splitTextToSize(
-          `${i.to_do} · ${i.project_name} · ${i.result} · ${timingLabel(i)}`,
+          `${pdfSafe(i.to_do)} · ${pdfSafe(i.project_name)} · ${i.result} · ${timingLabel(i)}`,
           completedInnerW,
         ) as string[],
         color: completedItemColor(i),
