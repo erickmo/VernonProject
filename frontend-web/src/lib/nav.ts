@@ -55,6 +55,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   // Admin group — nav.ts is the single source of truth; gated per capability
   const admin: NavLeaf[] = [
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', sub: 'People & roles', icon: UsersIcon } as NavLeaf] : []),
+    ...(canManageUsers(b) ? [{ to: '/feedback-inbox', label: 'Feedback Inbox', sub: 'Read & triage feedback', icon: Inbox } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/transfer-tasks', label: 'Transfer Tasks', sub: 'Reassign a user’s tasks', icon: ArrowLeftRight } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/groups', label: 'Groups', sub: 'Work-type taxonomy', icon: Layers } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', sub: 'Integrity checks', icon: ShieldAlert } as NavLeaf] : []),
