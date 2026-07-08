@@ -846,16 +846,18 @@ export default function LmsAdmin() {
                 )}
               </Field>
               <Field label="Users" required className="sm:col-span-2">
-                {() => (
-                  <MultiSelectSearch
-                    options={(assignableData?.users ?? []).map((u) => ({
-                      value: u.name,
-                      label: u.full_name || u.name,
-                    }))}
-                    value={assignUsers}
-                    onChange={setAssignUsers}
-                    placeholder="Search and select users…"
-                  />
+                {(id) => (
+                  <div id={id}>
+                    <MultiSelectSearch
+                      options={(assignableData?.users ?? []).map((u) => ({
+                        value: u.name,
+                        label: u.full_name || u.name,
+                      }))}
+                      value={assignUsers}
+                      onChange={setAssignUsers}
+                      placeholder="Search and select users…"
+                    />
+                  </div>
                 )}
               </Field>
               <Field label="Due date (optional)">
