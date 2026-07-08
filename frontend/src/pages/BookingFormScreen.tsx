@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { useCreateBooking, useCheckAvailability, useRooms, useEquipment } from '@/hooks/useData'
 import type { Conflict } from '@/lib/types'
 
@@ -75,11 +76,12 @@ export default function BookingFormScreen() {
         </fieldset>
         {equip.length > 0 && (
           <label className="text-xs font-semibold text-slate-500">Equipment
-            <span className="mb-1 block font-normal text-slate-400">Hold Ctrl/Cmd to pick several</span>
-            <select multiple size={Math.min(Math.max(equip.length, 3), 6)} className={field} value={equipment}
-              onChange={(e) => setEquipment(Array.from(e.target.selectedOptions, (o) => o.value))}>
-              {equip.map((e) => <option key={e.name} value={e.name}>{e.equipment_name}</option>)}
-            </select>
+            <MultiSelectSearch
+              options={equip.map((e) => ({ value: e.name, label: e.equipment_name }))}
+              value={equipment}
+              onChange={setEquipment}
+              placeholder="Select equipment…"
+            />
           </label>
         )}
         {err && (

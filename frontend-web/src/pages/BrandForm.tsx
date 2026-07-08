@@ -8,6 +8,7 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { deleteErrorMessage } from '@/lib/format'
 import {
   useBrand,
@@ -191,23 +192,17 @@ export default function BrandForm() {
 
               <Field label="Company" required>
                 {(id) => (
-                  <select
+                  <SearchableSelect
                     id={id}
-                    className={field}
                     value={form.company}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, company: e.target.value }))
+                    onChange={(v) => {
+                      setForm((f) => ({ ...f, company: v }))
                       setDirty(true)
                       if (error) setError('')
                     }}
-                  >
-                    <option value="">Select a company…</option>
-                    {(companies ?? []).map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.company_name}
-                      </option>
-                    ))}
-                  </select>
+                    options={(companies ?? []).map((c) => ({ value: c.name, label: c.company_name }))}
+                    placeholder="Select a company…"
+                  />
                 )}
               </Field>
 

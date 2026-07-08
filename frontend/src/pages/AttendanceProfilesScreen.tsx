@@ -6,6 +6,7 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
 import { resource } from '@/lib/api'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 type Profile = { name: string; user: string; brand: string; enrolled_from: string; active: number }
 type Brand = { name: string }
@@ -93,25 +94,23 @@ export default function AttendanceProfilesScreen() {
           <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Employee</span>
-              <select className={field} value={user} onChange={(e) => setUser(e.target.value)}>
-                <option value="">Pick a user…</option>
-                {users.map((u) => (
-                  <option key={u.name} value={u.name}>
-                    {u.full_name ? `${u.full_name} (${u.name})` : u.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={user}
+                onChange={setUser}
+                options={users.map((u) => ({ value: u.name, label: u.full_name ? `${u.full_name} (${u.name})` : u.name }))}
+                placeholder="Pick a user…"
+                allowClear
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Brand</span>
-              <select className={field} value={brand} onChange={(e) => setBrand(e.target.value)}>
-                <option value="">Pick a brand…</option>
-                {brands.map((b) => (
-                  <option key={b.name} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={brand}
+                onChange={setBrand}
+                options={brands.map((b) => ({ value: b.name, label: b.name }))}
+                placeholder="Pick a brand…"
+                allowClear
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Enrolled from</span>

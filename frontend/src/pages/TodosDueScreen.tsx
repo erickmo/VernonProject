@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AlarmClock, Mail, Phone, BellRing } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useTodosDue, useBuzzTodo } from '@/hooks/useData'
@@ -57,12 +58,13 @@ export default function TodosDueScreen() {
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
               Project
-              <select className={field} value={project} onChange={(e) => setProject(e.target.value)}>
-                <option value="">All projects</option>
-                {projects.map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={project}
+                onChange={(v) => setProject(v)}
+                options={projects.map(([id, name]) => ({ value: id, label: name }))}
+                placeholder="All projects"
+                allowClear
+              />
             </label>
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500">

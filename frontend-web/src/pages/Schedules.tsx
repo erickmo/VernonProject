@@ -5,6 +5,7 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
 type Tpl = { name: string; shift_name: string; start_time: string; end_time: string }
@@ -81,10 +82,13 @@ export default function Schedules() {
         <BentoTile span="lg" tone="plain" title="Assignments">
           <div className="mb-3 flex flex-col gap-2">
             <input className={inputCls} placeholder="Employee (user id)" value={asgForm.employee} onChange={(e) => setAsgForm({ ...asgForm, employee: e.target.value })} />
-            <select className={inputCls} value={asgForm.shift_template} onChange={(e) => setAsgForm({ ...asgForm, shift_template: e.target.value })}>
-              <option value="">Shift template…</option>
-              {(tpls ?? []).map((t) => <option key={t.name} value={t.name}>{t.shift_name}</option>)}
-            </select>
+            <SearchableSelect
+              value={asgForm.shift_template}
+              onChange={(v) => setAsgForm({ ...asgForm, shift_template: v })}
+              options={(tpls ?? []).map((t) => ({ value: t.name, label: t.shift_name }))}
+              placeholder="Shift template…"
+              allowClear
+            />
             <div className="flex gap-2">
               <input type="date" className={inputCls} value={asgForm.effective_from} onChange={(e) => setAsgForm({ ...asgForm, effective_from: e.target.value })} />
               <input type="date" className={inputCls} value={asgForm.effective_to} onChange={(e) => setAsgForm({ ...asgForm, effective_to: e.target.value })} />

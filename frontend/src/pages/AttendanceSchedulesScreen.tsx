@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
@@ -158,18 +159,13 @@ export default function AttendanceSchedulesScreen() {
               value={asgForm.employee}
               onChange={(e) => setAsgForm({ ...asgForm, employee: e.target.value })}
             />
-            <select
-              className={field}
+            <SearchableSelect
               value={asgForm.shift_template}
-              onChange={(e) => setAsgForm({ ...asgForm, shift_template: e.target.value })}
-            >
-              <option value="">Shift template…</option>
-              {(tpls ?? []).map((t) => (
-                <option key={t.name} value={t.name}>
-                  {t.shift_name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setAsgForm({ ...asgForm, shift_template: v })}
+              options={(tpls ?? []).map((t) => ({ value: t.name, label: t.shift_name }))}
+              placeholder="Shift template…"
+              allowClear
+            />
             <div className="flex gap-2">
               <div className="flex flex-1 flex-col gap-1">
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Effective from</label>

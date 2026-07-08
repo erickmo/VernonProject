@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, CalendarDays } from 'lucide-react'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -128,18 +129,13 @@ export default function AttendanceHolidaysScreen() {
               {brands.map((b) => (
                 <li key={b.name} className="flex flex-col gap-1.5">
                   <span className="font-semibold text-slate-800 dark:text-slate-100">{b.name}</span>
-                  <select
-                    className={field}
+                  <SearchableSelect
                     value={b.holiday_list || ''}
-                    onChange={(e) => assign(b.name, e.target.value)}
-                  >
-                    <option value="">No holidays</option>
-                    {(lists ?? []).map((l) => (
-                      <option key={l.name} value={l.name}>
-                        {l.list_name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => assign(b.name, v)}
+                    options={(lists ?? []).map((l) => ({ value: l.name, label: l.list_name }))}
+                    placeholder="No holidays"
+                    allowClear
+                  />
                 </li>
               ))}
             </ul>

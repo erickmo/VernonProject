@@ -5,6 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings, useAvatarCatalog } from '@/hooks/useData'
 
 const field =
@@ -185,10 +186,13 @@ export default function GamificationSettingsScreen() {
                     <div><Lbl>Reward pts</Lbl><input type="number" className={field} value={l.reward_points} onChange={(e) => setLevel(i, { reward_points: e.target.value })} placeholder="100" /></div>
                     <div className="col-span-2">
                       <Lbl>Reward asset</Lbl>
-                      <select className={field} value={l.reward_asset} onChange={(e) => setLevel(i, { reward_asset: e.target.value })}>
-                        <option value="">(none)</option>
-                        {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
+                      <SearchableSelect
+                        value={l.reward_asset}
+                        onChange={(v) => setLevel(i, { reward_asset: v })}
+                        options={assetNames.map((n) => ({ value: n, label: n }))}
+                        placeholder="(none)"
+                        allowClear
+                      />
                     </div>
                   </div>
                 </div>
@@ -242,10 +246,13 @@ export default function GamificationSettingsScreen() {
                     </div>
                     <div className="col-span-2">
                       <Lbl>Reward asset</Lbl>
-                      <select className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })}>
-                        <option value="">(none)</option>
-                        {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
+                      <SearchableSelect
+                        value={a.reward_asset}
+                        onChange={(v) => setAchiev(i, { reward_asset: v })}
+                        options={assetNames.map((n) => ({ value: n, label: n }))}
+                        placeholder="(none)"
+                        allowClear
+                      />
                       <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">Item kosmetik yang diberikan sebagai hadiah.</p>
                     </div>
                     <div>

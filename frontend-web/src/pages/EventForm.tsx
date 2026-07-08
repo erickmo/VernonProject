@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import { ArrowLeft, Trash2, Check, ImagePlus, Users } from 'lucide-react'
 import { Spinner } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { ErrorState, Field } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
@@ -285,17 +286,14 @@ export default function EventForm() {
 
               <Field label="Parent event (empty = top-level)">
                 {(id) => (
-                  <select
+                  <SearchableSelect
                     id={id}
-                    className={field}
                     value={form.parent_event ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, parent_event: e.target.value }))}
-                  >
-                    <option value="">— None (top-level) —</option>
-                    {(managedEvents.data ?? []).filter((m) => m.name !== name).map((m) => (
-                      <option key={m.name} value={m.name}>{m.title}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, parent_event: v }))}
+                    options={(managedEvents.data ?? []).filter((m) => m.name !== name).map((m) => ({ value: m.name, label: m.title }))}
+                    placeholder="— None (top-level) —"
+                    allowClear
+                  />
                 )}
               </Field>
 

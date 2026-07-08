@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile } from '@web/components/bento'
@@ -74,10 +75,13 @@ export default function HolidayLists() {
               {brands.map((b) => (
                 <li key={b.name} className="flex items-center justify-between gap-3 py-2">
                   <span className="font-medium text-ink">{b.name}</span>
-                  <select className={inputCls} value={b.holiday_list || ''} onChange={(e) => assign(b.name, e.target.value)}>
-                    <option value="">No holidays</option>
-                    {(lists ?? []).map((l) => <option key={l.name} value={l.name}>{l.list_name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    value={b.holiday_list || ''}
+                    onChange={(v) => assign(b.name, v)}
+                    options={(lists ?? []).map((l) => ({ value: l.name, label: l.list_name }))}
+                    placeholder="No holidays"
+                    allowClear
+                  />
                 </li>
               ))}
             </ul>

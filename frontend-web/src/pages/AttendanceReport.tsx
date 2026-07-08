@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useBoot, canManageAttendance, useAttendanceReport } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
@@ -84,10 +85,13 @@ export default function AttendanceReport() {
               <input className={inputCls} placeholder="user id (optional)" value={employee} onChange={(e) => setEmployee(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Brand
-              <select className={inputCls} value={brand} onChange={(e) => setBrand(e.target.value)}>
-                <option value="">All brands</option>
-                {brands.map((b) => <option key={b.name} value={b.name}>{b.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={brand}
+                onChange={setBrand}
+                options={brands.map((b) => ({ value: b.name, label: b.name }))}
+                placeholder="All brands"
+                allowClear
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Status
               <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>

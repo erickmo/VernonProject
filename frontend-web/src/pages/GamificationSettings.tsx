@@ -4,6 +4,7 @@ import { Check, Plus, Trash2 } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Field } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useBoot, canManageBadges, useGamificationSettings, useSaveGamificationSettings, useAvatarCatalog } from '@/hooks/useData'
@@ -202,10 +203,7 @@ export default function GamificationSettings() {
                         <div className="flex-1">
                           <Field label="Reward asset">
                             {(id) => (
-                              <select id={id} className={field} value={l.reward_asset} onChange={(e) => setLevel(i, { reward_asset: e.target.value })}>
-                                <option value="">(none)</option>
-                                {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                              </select>
+                              <SearchableSelect id={id} value={l.reward_asset} onChange={(v) => setLevel(i, { reward_asset: v })} options={assetNames.map((n) => ({ value: n, label: n }))} placeholder="(none)" allowClear />
                             )}
                           </Field>
                         </div>
@@ -283,10 +281,7 @@ export default function GamificationSettings() {
                         </Field>
                         <Field label="Reward asset">
                           {(id) => (
-                            <select id={id} className={field} value={a.reward_asset} onChange={(e) => setAchiev(i, { reward_asset: e.target.value })}>
-                              <option value="">(none)</option>
-                              {assetNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                            </select>
+                            <SearchableSelect id={id} value={a.reward_asset} onChange={(v) => setAchiev(i, { reward_asset: v })} options={assetNames.map((n) => ({ value: n, label: n }))} placeholder="(none)" allowClear />
                           )}
                         </Field>
                         <Field label="Color (tier pill)">

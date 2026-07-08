@@ -8,6 +8,7 @@ import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { EntityChip } from '@web/components/EntityChip'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 type Profile = { name: string; user: string; brand: string; enrolled_from: string; active: number }
 type Brand = { name: string }
@@ -143,25 +144,23 @@ export default function AttendanceProfiles() {
           <div className="mt-2 flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
               Employee
-              <select className={inputCls} value={user} onChange={(e) => setUser(e.target.value)}>
-                <option value="">Pick a user…</option>
-                {users.map((u) => (
-                  <option key={u.name} value={u.name}>
-                    {u.full_name ? `${u.full_name} (${u.name})` : u.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={user}
+                onChange={setUser}
+                options={users.map((u) => ({ value: u.name, label: u.full_name ? `${u.full_name} (${u.name})` : u.name }))}
+                placeholder="Pick a user…"
+                allowClear
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
               Brand
-              <select className={inputCls} value={brand} onChange={(e) => setBrand(e.target.value)}>
-                <option value="">Pick a brand…</option>
-                {brands.map((b) => (
-                  <option key={b.name} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={brand}
+                onChange={setBrand}
+                options={brands.map((b) => ({ value: b.name, label: b.name }))}
+                placeholder="Pick a brand…"
+                allowClear
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
               Enrolled from

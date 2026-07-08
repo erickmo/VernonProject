@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
 import { deleteErrorMessage } from '@/lib/format'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import {
   useBrand,
   useBrands,
@@ -134,18 +135,12 @@ export default function BrandFormScreen() {
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Company</label>
-          <select
-            className={field}
+          <SearchableSelect
             value={form.company}
-            onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-          >
-            <option value="">Select a company…</option>
-            {(companies ?? []).map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.company_name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setForm((f) => ({ ...f, company: v }))}
+            options={(companies ?? []).map((c) => ({ value: c.name, label: c.company_name }))}
+            placeholder="Select a company…"
+          />
         </div>
 
         <button

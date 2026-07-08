@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Field } from '@web/components/ui'
 import { useCreateBooking, useRooms, useEquipment, useCheckAvailability } from '@/hooks/useData'
 import type { Conflict } from '@/lib/types'
@@ -128,22 +129,13 @@ export default function BookingForm() {
 
         {equip.length > 0 && (
           <Field label="Equipment">
-            {(id) => (
-              <>
-                <select
-                  id={id}
-                  multiple
-                  size={Math.min(Math.max(equip.length, 3), 6)}
-                  className={field}
-                  value={equipment}
-                  onChange={(e) => setEquipment(Array.from(e.target.selectedOptions, (o) => o.value))}
-                >
-                  {equip.map((e) => (
-                    <option key={e.name} value={e.name}>{e.equipment_name}</option>
-                  ))}
-                </select>
-                <span className="mt-1 block text-xs opacity-70">Hold Ctrl/Cmd to pick several</span>
-              </>
+            {() => (
+              <MultiSelectSearch
+                options={equip.map((e) => ({ value: e.name, label: e.equipment_name }))}
+                value={equipment}
+                onChange={setEquipment}
+                placeholder="Select equipment…"
+              />
             )}
           </Field>
         )}

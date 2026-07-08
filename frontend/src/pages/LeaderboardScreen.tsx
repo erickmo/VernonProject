@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Trophy } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { Avatar, EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
 import type { LeaderboardEntry, LeaderboardPeriod, LeaderboardDimension } from '@/lib/types'
@@ -74,18 +75,15 @@ export default function LeaderboardScreen() {
       </div>
 
       {data && data.brands.length > 0 && (
-        <select
-          value={brand}
-          onChange={(ev) => setBrand(ev.target.value)}
-          className="mt-3 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200"
-        >
-          <option value="">All brands</option>
-          {data.brands.map((b) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
-        </select>
+        <div className="mt-3">
+          <SearchableSelect
+            value={brand}
+            onChange={setBrand}
+            options={data.brands.map((b) => ({ value: b, label: b }))}
+            placeholder="All brands"
+            allowClear
+          />
+        </div>
       )}
 
       {isLoading && !data ? (

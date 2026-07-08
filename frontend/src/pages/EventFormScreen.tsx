@@ -10,6 +10,7 @@ import { deleteErrorMessage } from '@/lib/format'
 import { useSaveEvent, useDeleteEvent, useManagedEvent, useManagedEvents } from '@/hooks/useData'
 import type { EventFormPayload } from '@/lib/types'
 import { EVENT_CATEGORIES } from '@/lib/events'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100'
@@ -173,13 +174,13 @@ export default function EventFormScreen() {
           </select></label>
 
         <label className="text-xs font-semibold text-slate-500">Parent event (leave empty for a top-level event)
-          <select className={field} value={form.parent_event ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, parent_event: e.target.value }))}>
-            <option value="">— None (top-level) —</option>
-            {(managedEvents.data ?? []).filter((m) => m.name !== name).map((m) => (
-              <option key={m.name} value={m.name}>{m.title}</option>
-            ))}
-          </select></label>
+          <SearchableSelect
+            value={form.parent_event ?? ''}
+            onChange={(v) => setForm((f) => ({ ...f, parent_event: v }))}
+            options={(managedEvents.data ?? []).filter((m) => m.name !== name).map((m) => ({ value: m.name, label: m.title }))}
+            placeholder="— None (top-level) —"
+            allowClear
+          /></label>
 
         <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
           <input type="checkbox" checked={!!form.is_featured}
