@@ -9,7 +9,6 @@ import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useD
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
-import { useSetCrumbs } from '@web/lib/crumbs'
 import CommentThread from '@/components/CommentThread'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -81,8 +80,6 @@ export default function Project() {
     setTeamOpen(false)
     setWorkloadMember(null)
   }, [id])
-
-  useSetCrumbs(project.data ? [{ label: 'Projects', to: '/projects' }, { label: project.data.project_name }] : [])
 
   if (project.isLoading) {
     return (
@@ -265,7 +262,7 @@ export default function Project() {
             gantt.isError ? (
               <ErrorState onRetry={() => gantt.refetch()} />
             ) : gantt.isLoading ? (
-              <div className="rounded-lg bg-surface border border-line p-8 text-center text-sm text-muted">
+              <div className="rounded-2xl bg-surface p-8 text-center text-sm text-muted shadow-card">
                 Loading timeline…
               </div>
             ) : (
@@ -355,7 +352,7 @@ export default function Project() {
           {p.blocked_by && (
             <button
               onClick={() => nav(`/project/${encodeURIComponent(p.blocked_by!)}`)}
-              className="flex w-full items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-500/15 px-3 py-2.5 text-left text-sm font-medium text-amber-800 dark:text-amber-300"
+              className="flex w-full items-center gap-2 rounded-2xl bg-amber-50 px-3 py-2.5 text-left text-sm font-medium text-amber-800 shadow-card transition active:scale-[0.99] dark:bg-amber-500/15 dark:text-amber-300"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span className="flex-1">Blocked by <b>{p.blocked_by_name ?? p.blocked_by}</b></span>

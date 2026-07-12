@@ -140,7 +140,7 @@ function StatTile({
   const iconColor =
     tone === 'danger' ? 'text-rose-500' : tone === 'brand' ? 'text-brand-500' : 'text-muted'
   return (
-    <div className={clsx('rounded-lg border p-3', accent)}>
+    <div className={clsx('rounded-xl border p-3', accent)}>
       <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
         <Icon className={clsx('h-3 w-3', iconColor)} /> {label}
       </p>
@@ -177,7 +177,7 @@ function DepGroup({
           <Link
             key={id}
             to={`/project-item/${encodeURIComponent(id)}`}
-            className="inline-flex max-w-full items-center rounded-lg bg-canvas px-2.5 py-1 text-xs font-medium text-ink dark:text-slate-200 transition hover:bg-hover/[0.04]"
+            className="inline-flex max-w-full items-center rounded-xl bg-canvas px-2.5 py-1 text-xs font-medium text-ink dark:text-slate-200 transition active:scale-[0.99] hover:bg-hover/[0.04]"
           >
             <span className="truncate">{resolve(id)}</span>
           </Link>
@@ -307,7 +307,7 @@ function Files({ todoId, files, canEdit }: { todoId: string; files: TodoFile[]; 
       {files.map((f) => (
         <div
           key={f.name}
-          className="flex items-center gap-2 rounded-lg border border-line bg-hover/[0.04] px-3 py-2"
+          className="flex items-center gap-2 rounded-xl border border-line bg-hover/[0.04] px-3 py-2"
         >
           <FileText className="h-4 w-4 shrink-0 text-muted" />
           <a
@@ -338,7 +338,7 @@ function Files({ todoId, files, canEdit }: { todoId: string; files: TodoFile[]; 
           <button
             onClick={() => inputRef.current?.click()}
             disabled={up.isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-line px-3 py-2 text-sm font-medium text-muted transition hover:border-brand-400 hover:text-brand-600 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-sm font-medium text-muted transition active:scale-[0.99] hover:border-brand-400 hover:text-brand-600 disabled:opacity-60"
           >
             {up.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {up.isPending ? 'Uploading…' : 'Add files'}
@@ -397,7 +397,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   }
 
   return (
-    <div className="mt-4 rounded-lg bg-surface p-4 border border-line">
+    <div className="mt-4 rounded-xl bg-surface p-4 border border-line">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
           <CalendarRange className="h-4 w-4" /> Split across days
@@ -439,7 +439,7 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
               />
               <button
                 onClick={() => removeRow(i)}
-                className="shrink-0 rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15"
+                className="shrink-0 rounded-xl p-1.5 text-rose-600 transition active:scale-[0.97] hover:bg-rose-50 dark:hover:bg-rose-500/15"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -516,7 +516,7 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
   const alloc = data.assigned_allocation ?? []
 
   return (
-    <div className="mt-4 rounded-lg bg-surface p-4 border border-line">
+    <div className="mt-4 rounded-xl bg-surface p-4 border border-line">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
           <CalendarRange className="h-4 w-4" /> Assigned plan
@@ -561,7 +561,7 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
                   />
                   <button
                     onClick={() => removeRow(i)}
-                    className="shrink-0 rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15"
+                    className="shrink-0 rounded-xl p-1.5 text-rose-600 transition active:scale-[0.97] hover:bg-rose-50 dark:hover:bg-rose-500/15"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -719,7 +719,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
 
   return (
-    <div className="rounded-lg bg-surface p-4 border border-line">
+    <div className="rounded-2xl bg-surface p-4 border border-line">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
 
       <label className="mb-1 block text-xs font-medium text-muted">Title</label>
@@ -952,7 +952,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       )}
 
       {locked && (
-        <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+        <p className="mb-3 flex items-center gap-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           <Lock className="h-3.5 w-3.5" />
           Assignee, start date, deadline &amp; estimate are locked once a todo is Done.
         </p>
@@ -1275,7 +1275,7 @@ const [followOpen, setFollowOpen] = useState(false)
 
             {/* Stat grid */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-line bg-hover/[0.04] p-3">
+              <div className="rounded-xl border border-line bg-hover/[0.04] p-3">
                 <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
                   <Target className="h-3 w-3 text-muted" /> Assignee
                 </p>
@@ -1374,7 +1374,7 @@ const [followOpen, setFollowOpen] = useState(false)
               <AllocationCard data={data} />
             ) : (
               (data.allocations ?? []).length > 0 && (
-                <div className="rounded-lg bg-surface p-4 border border-line">
+                <div className="rounded-xl bg-surface p-4 border border-line">
                   <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                     <CalendarRange className="h-4 w-4" /> Day split
                   </p>
@@ -1397,7 +1397,7 @@ const [followOpen, setFollowOpen] = useState(false)
             {!data.can_edit_assigned && <AssignedAllocationCard data={data} />}
 
             {/* Workflow */}
-            <div className="rounded-lg bg-surface p-4 border border-line">
+            <div className="rounded-xl bg-surface p-4 border border-line">
               <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">
                 Workflow
               </p>
@@ -1427,7 +1427,7 @@ const [followOpen, setFollowOpen] = useState(false)
                   {data.can_reject && (
                     <button
                       onClick={onReject}
-                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-rose-200 dark:border-rose-500/40 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                      className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 dark:border-rose-500/40 text-sm font-semibold text-rose-600 dark:text-rose-400 transition active:scale-[0.97] hover:bg-rose-50 dark:hover:bg-rose-500/10"
                     >
                       <X className="h-4 w-4" />
                       Reject
@@ -1452,13 +1452,13 @@ const [followOpen, setFollowOpen] = useState(false)
                         onChange={(e) => setCancelReason(e.target.value)}
                         rows={2}
                         placeholder="Reason (optional)"
-                        className="w-full resize-none rounded-lg border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
+                        className="w-full resize-none rounded-xl border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
                       />
                       <div className="flex items-center gap-2">
                         <button
                           onClick={onCancel}
                           disabled={cancelTodo.isPending}
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-rose-700 disabled:opacity-60"
                         >
                           {cancelTodo.isPending ? <Spinner className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                           Confirm cancel
@@ -1481,7 +1481,7 @@ const [followOpen, setFollowOpen] = useState(false)
 
             {/* Recurrence history */}
             {data.occurrences.length > 1 && (
-              <div className="rounded-lg bg-surface p-4 border border-line">
+              <div className="rounded-xl bg-surface p-4 border border-line">
                 <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                   <Repeat className="h-3.5 w-3.5" /> Recurrence history ({data.occurrences.length})
                 </p>
@@ -1529,7 +1529,7 @@ const [followOpen, setFollowOpen] = useState(false)
           {/* ── RIGHT COLUMN ── */}
           <BentoTile span="md" tone="plain" className="space-y-5">
             {/* Notes */}
-            <div className="rounded-lg bg-surface p-4 border border-line">
+            <div className="rounded-xl bg-surface p-4 border border-line">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                 <FileText className="h-3.5 w-3.5" /> Notes
               </p>
@@ -1537,7 +1537,7 @@ const [followOpen, setFollowOpen] = useState(false)
             </div>
 
             {/* Files */}
-            <div className="rounded-lg bg-surface p-4 border border-line">
+            <div className="rounded-xl bg-surface p-4 border border-line">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                 <FileText className="h-3.5 w-3.5" /> Files
               </p>
@@ -1546,7 +1546,7 @@ const [followOpen, setFollowOpen] = useState(false)
 
             {/* Dependencies */}
             {(data.blocked_by.length > 0 || data.blocking.length > 0) && (
-              <div className="rounded-lg bg-surface p-4 border border-line">
+              <div className="rounded-xl bg-surface p-4 border border-line">
                 <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                   <Link2 className="h-3.5 w-3.5" /> Dependencies
                 </p>
@@ -1569,7 +1569,7 @@ const [followOpen, setFollowOpen] = useState(false)
 
             {/* Timeline */}
             {data.timeline.length > 0 && (
-              <div className="rounded-lg bg-surface p-4 border border-line">
+              <div className="rounded-xl bg-surface p-4 border border-line">
                 <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                   <History className="h-3.5 w-3.5" /> Activity
                 </p>

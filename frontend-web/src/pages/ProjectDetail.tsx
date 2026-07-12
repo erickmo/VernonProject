@@ -10,7 +10,6 @@ import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
-import { useSetCrumbs } from '@web/lib/crumbs'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import CommentThread from '@/components/CommentThread'
@@ -42,16 +41,6 @@ export default function ProjectDetail() {
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const itemSelected = !!itemName
-
-  useSetCrumbs(
-    detail.data
-      ? [
-          { label: 'Projects', to: '/projects' },
-          { label: detail.data.project_name, to: `/project/${encodeURIComponent(detail.data.project)}` },
-          { label: detail.data.title },
-        ]
-      : [],
-  )
 
   if (detail.isLoading && !detail.data) {
     return (
@@ -272,7 +261,7 @@ export default function ProjectDetail() {
           </div>
 
           {/* Right: selected item pane */}
-          <div className="min-w-0 rounded-lg bg-surface border border-line p-5 min-h-[320px]">
+          <div className="min-w-0 rounded-2xl bg-surface shadow-card p-5 min-h-[320px]">
             {itemSelected ? (
               <Outlet />
             ) : (
