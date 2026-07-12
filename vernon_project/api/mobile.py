@@ -159,6 +159,20 @@ def _can_set_auto_approve(project, user):
 	return user == project.get("project_owner") and "Partner" in frappe.get_roles(user)
 
 
+def _auto_approve_fields(row):
+	"""(mode, effective) for a todo row from _fetch_todos."""
+	if row.get("auto_approve"):
+		mode = "on"
+	elif row.get("auto_approve_opt_out"):
+		mode = "off"
+	else:
+		mode = "inherit"
+	effective = bool(row.get("auto_approve")) or (
+		not row.get("auto_approve_opt_out") and bool(row.get("project_auto_approve"))
+	)
+	return mode, effective
+
+
 def _avatar_config_map(users):
 	"""Map user -> parsed DiceBear avatar config (or None). Batch-reads User Avatar.
 	A user's gamified avatar always wins over any uploaded profile photo, so the
@@ -434,12 +448,12 @@ def _fetch_todos(project_names, include_cancelled=False):
 			t.name, t.to_do, t.status, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.is_recurring, t.auto_approve,
+			t.ongoing, t.notes, t.is_recurring, t.auto_approve, t.auto_approve_opt_out,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
 			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
-			p.project_name, p.project_owner, p.project_leader, p.project_admin,
+			p.project_name, p.project_owner, p.project_leader, p.project_admin, p.auto_approve AS project_auto_approve,
 			p.brand
 		FROM `tabProject Todo` t
 		JOIN `tabProject Detail` pd
@@ -556,7 +570,8 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"next_status_label": NEXT_LABEL.get(skey),
 		"can_advance": can_advance,
 		"can_reject": can_reject,
-		"auto_approve": bool(row.get("auto_approve")),
+		"auto_approve_mode": _auto_approve_fields(row)[0],
+		"auto_approve_effective": _auto_approve_fields(row)[1],
 		"can_set_auto_approve": _can_set_auto_approve(project, user),
 		"start_date": str(row["start_date"]) if row.get("start_date") else None,
 		"start_date_human": _humanize_date(row.get("start_date")),
@@ -653,6 +668,11 @@ def _shape_item_row(row, user, name_map):
 		"is_waiting": bool(row.get("is_waiting")),
 		"assigned_to": row["assigned_to"],
 		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
+		"auto_approve_mode": _auto_approve_fields(row)[0],
+		"auto_approve_effective": _auto_approve_fields(row)[1],
+		"can_set_auto_approve": (
+			user == row.get("project_owner") and "Partner" in frappe.get_roles(user)
+		),
 	}
 
 
@@ -1012,6 +1032,8 @@ def get_project(project):
 		"project_owner": doc.project_owner,
 		"project_leader": doc.project_leader,
 		"project_admin": doc.project_admin,
+		"auto_approve": bool(doc.auto_approve),
+		"can_set_auto_approve": _can_set_auto_approve({"project_owner": doc.project_owner}, user),
 		"blocked_by": doc.blocked_by,
 		"blocked_by_name": frappe.get_value("Project", doc.blocked_by, "project_name") if doc.blocked_by else None,
 		"groupings": frappe.get_all(
@@ -1285,6 +1307,8 @@ def get_project_detail(project_detail, include_cancelled=0):
 	is_sm = "System Manager" in frappe.get_roles(user)
 	detail["can_create"] = is_sm or user in (owner, leader)
 	detail["can_edit"] = is_sm or user in (owner, leader)
+	detail["auto_approve"] = bool(frappe.db.get_value("Project", detail["project"], "auto_approve"))
+	detail["can_set_auto_approve"] = user == owner and "Partner" in frappe.get_roles(user)
 	detail["groupings"] = frappe.get_all(
 		"Glossary", filters={"project": detail["project"]}, pluck="glossary", limit_page_length=0
 	)
