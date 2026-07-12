@@ -279,13 +279,33 @@ export function useRejectStatus() {
 export function useSetAutoApprove() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ todoId, enabled }: { todoId: string; enabled: 0 | 1 }) => {
-      const res = await mobileApi.setAutoApprove(todoId, enabled)
+    mutationFn: async ({ todoId, mode }: { todoId: string; mode: 'on' | 'off' | 'inherit' }) => {
+      const res = await mobileApi.setAutoApprove(todoId, mode)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+// Project-level auto-approve default. Owner/admin only; affects todos whose
+// own mode is "inherit". Invalidates the same query set as the todo-level
+// toggle plus the projects list (project cards may surface the setting).
+export function useSetProjectAutoApprove() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ project, enabled }: { project: string; enabled: 0 | 1 }) => {
+      const res = await mobileApi.setProjectAutoApprove(project, enabled)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: ['project-detail'] })

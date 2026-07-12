@@ -143,10 +143,15 @@ export const mobileApi = {
       'vernon_project.api.project_todo.reject_status',
       { todo_id: todoId, reason },
     ),
-  setAutoApprove: (todoId: string, enabled: 0 | 1) =>
-    api.post<{ status: string; message?: string; auto_approve?: 0 | 1 }>(
+  setAutoApprove: (todoId: string, mode: 'on' | 'off' | 'inherit') =>
+    api.post<{ status: string; message?: string; mode?: 'on' | 'off' | 'inherit' }>(
       'vernon_project.api.project_todo.set_auto_approve',
-      { todo_id: todoId, enabled },
+      { todo_id: todoId, mode },
+    ),
+  setProjectAutoApprove: (project: string, enabled: 0 | 1) =>
+    api.post<{ status: string; message?: string; auto_approve?: 0 | 1 }>(
+      'vernon_project.api.project_todo.set_project_auto_approve',
+      { project, enabled },
     ),
   cancelTodo: (projectItem: string, reason?: string) =>
     api.post<{ status: string; message: string }>(M + 'cancel_todo', {

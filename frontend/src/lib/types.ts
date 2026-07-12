@@ -102,7 +102,8 @@ export interface ProjectItem {
   next_status_label: string | null
   can_advance: boolean
   can_reject: boolean
-  auto_approve: boolean
+  auto_approve_mode: 'on' | 'off' | 'inherit'
+  auto_approve_effective: boolean
   can_set_auto_approve: boolean
   start_date: string | null
   start_date_human: string | null
@@ -326,6 +327,8 @@ export interface ProjectFull {
   groupings: string[]
   project_details: ProjectDetailSummary[]
   team: TeamMember[]
+  auto_approve: boolean
+  can_set_auto_approve: boolean
 }
 
 export interface ProjectDetail {
