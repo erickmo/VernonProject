@@ -969,7 +969,7 @@ export type EmployeeSoft = {
   home_address?: string;
   emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
   education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
-  religion?: string; verse_enabled?: 0 | 1;
+  religion?: string; verse_enabled?: 0 | 1; show_auto_approve?: 0 | 1;
 }
 
 export type DailyVerse = { reference: string; text: string } | null

@@ -40,7 +40,7 @@ import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot } from '@/hooks/useData'
 import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -971,6 +971,7 @@ export default function ProjectItemScreen() {
   const navigate = useNavigate()
   const id = decodeURIComponent(name)
   const { data, isLoading } = useProjectItem(id)
+  const { data: boot } = useBoot()
   const advanceConfirm = useAdvance()
   const rejectConfirm = useReject()
   const cancelTodo = useCancelTodo()
@@ -1412,7 +1413,7 @@ const [followOpen, setFollowOpen] = useState(false)
               </button>
             )}
 
-            {data.can_set_auto_approve && (
+            {data.can_set_auto_approve && boot?.employee?.show_auto_approve && (
               <AutoApproveSegment
                 mode={data.auto_approve_mode}
                 effective={data.auto_approve_effective}

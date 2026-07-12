@@ -10,7 +10,7 @@ import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
-import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove } from '@/hooks/useData'
+import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
 import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimateRatio } from '@/lib/format'
 import { STATUS } from '@/lib/status'
 
@@ -20,6 +20,7 @@ export default function ProjectDetailScreen() {
   const id = decodeURIComponent(name)
   const [showCancelled, setShowCancelled] = useState(false)
   const { data, isLoading } = useProjectDetail(id, showCancelled)
+  const { data: boot } = useBoot()
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const toast = useToast()
@@ -81,7 +82,7 @@ export default function ProjectDetailScreen() {
           </span>
         </div>
 
-        {data.can_set_auto_approve && (
+        {data.can_set_auto_approve && boot?.employee?.show_auto_approve && (
           <div className="mt-3">
             <ProjectAutoApproveSwitch
               enabled={data.auto_approve}
@@ -227,7 +228,7 @@ export default function ProjectDetailScreen() {
                       </>
                     )}
                   </div>
-                  {t.can_set_auto_approve && (
+                  {t.can_set_auto_approve && boot?.employee?.show_auto_approve && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <AutoApproveSegment
                         mode={t.auto_approve_mode}
