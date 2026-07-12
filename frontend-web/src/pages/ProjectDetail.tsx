@@ -15,6 +15,7 @@ import { useToast } from '@/components/Toast'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
+import { PostponeDialog } from '@web/components/PostponeDialog'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { PropertyRow, Property } from '@web/components/Property'
 import { DataTable, type Column } from '@web/components/DataTable'
@@ -33,6 +34,7 @@ export default function ProjectDetail() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [postponeOpen, setPostponeOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
 
@@ -108,6 +110,9 @@ export default function ProjectDetail() {
   const overflowItems: MenuItem[] = [
     ...(d.can_edit
       ? [{ label: 'Edit', icon: Pencil, onClick: () => setEditOpen(true) }]
+      : []),
+    ...(d.can_edit
+      ? [{ label: 'Postpone', icon: CalendarClock, onClick: () => setPostponeOpen(true) }]
       : []),
     ...(d.can_edit
       ? [{ label: 'Delete', icon: Trash2, danger: true, onClick: handleDelete }]
@@ -294,6 +299,14 @@ export default function ProjectDetail() {
         onClose={() => setEditOpen(false)}
         project={d.project}
         detail={d.name}
+      />
+      <PostponeDialog
+        open={postponeOpen}
+        onClose={() => setPostponeOpen(false)}
+        targetType="Project Detail"
+        targetName={d.name}
+        targetLabel={d.title}
+        anchorDate={d.latest_deadline ?? ''}
       />
     </Page>
   )

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, Gift } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, Gift, CalendarClock } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
 import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
+import { PostponeSheet } from '@/components/PostponeSheet'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
@@ -34,6 +35,7 @@ export default function ProjectScreen() {
   const [wiOpen, setWiOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [editDetail, setEditDetail] = useState<string | null>(null)
+  const [postpone, setPostpone] = useState<{ type: 'Project' | 'Project Detail'; name: string; label: string; anchor: string } | null>(null)
   const [itemFor, setItemFor] = useState<string | null>(null)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
   const [view, setView] = useState<'list' | 'gantt'>('list')
@@ -125,6 +127,12 @@ export default function ProjectScreen() {
             <button onClick={() => setTeamOpen(true)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95">
               <Users className="h-4 w-4" /> Team
+            </button>
+          )}
+          {flags.can_edit && (
+            <button onClick={() => setPostpone({ type: 'Project', name: data.name, label: data.project_name, anchor: data.deadline ?? '' })}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95">
+              <CalendarClock className="h-4 w-4" /> Postpone
             </button>
           )}
           {flags.can_delete && (
@@ -324,6 +332,12 @@ export default function ProjectScreen() {
                   {flags.can_edit ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <button
+                        onClick={(e) => { e.stopPropagation(); setPostpone({ type: 'Project Detail', name: w.name, label: w.title, anchor: '' }) }}
+                        className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
+                      >
+                        <CalendarClock className="h-4 w-4" />
+                      </button>
+                      <button
                         onClick={(e) => { e.stopPropagation(); setEditDetail(w.name) }}
                         className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
                       >
@@ -391,6 +405,16 @@ export default function ProjectScreen() {
         onClose={() => setEditDetail(null)}
         projectDetailName={editDetail ?? ''}
       />
+      {postpone && (
+        <PostponeSheet
+          open={!!postpone}
+          onClose={() => setPostpone(null)}
+          targetType={postpone.type}
+          targetName={postpone.name}
+          targetLabel={postpone.label}
+          anchorDate={postpone.anchor}
+        />
+      )}
       <TeamManagerSheet
         open={teamOpen}
         onClose={() => setTeamOpen(false)}

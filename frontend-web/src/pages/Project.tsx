@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import {
-  Target, Users, CalendarDays, AlertCircle, ChevronRight,
+  Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
   Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift,
 } from 'lucide-react'
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove } from '@/hooks/useData'
@@ -14,6 +14,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
+import { PostponeDialog } from '@web/components/PostponeDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { TeamWorkloadDrawer } from '@web/components/TeamWorkloadDrawer'
 import { TeamManagerDrawer } from '@web/components/TeamManagerDrawer'
@@ -67,6 +68,9 @@ export default function Project() {
   const [editDetail, setEditDetail] = useState<string | null>(null)
   const [teamOpen, setTeamOpen] = useState(false)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
+  const [postpone, setPostpone] = useState<
+    { type: 'Project' | 'Project Detail'; name: string; label: string; anchor: string } | null
+  >(null)
 
   const gantt = useProjectGantt(id, view === 'gantt')
 
@@ -79,6 +83,7 @@ export default function Project() {
     setEditDetail(null)
     setTeamOpen(false)
     setWorkloadMember(null)
+    setPostpone(null)
   }, [id])
 
   if (project.isLoading) {
@@ -174,6 +179,7 @@ export default function Project() {
             size="sm"
             items={[
               { label: 'Edit', icon: Pencil, onClick: () => setEditDetail(r.name) },
+              { label: 'Postpone', icon: CalendarClock, onClick: () => setPostpone({ type: 'Project Detail', name: r.name, label: r.title, anchor: '' }) },
               { divider: true },
               { label: 'Delete', icon: Trash2, danger: true, disabled: r.total > 0, onClick: () => doDeleteDetail(r) },
             ]}
@@ -207,6 +213,15 @@ export default function Project() {
             {perms.can_edit && (
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
                 <Pencil className="h-4 w-4" /> Edit
+              </Button>
+            )}
+            {perms.can_edit && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setPostpone({ type: 'Project', name: p.name, label: p.project_name, anchor: p.deadline ?? '' })}
+              >
+                <CalendarClock className="h-4 w-4" /> Postpone
               </Button>
             )}
             {perms.can_delete && (
@@ -442,6 +457,14 @@ export default function Project() {
         onClose={() => setTeamOpen(false)}
         project={p}
         canReassign={perms.can_reassign}
+      />
+      <PostponeDialog
+        open={!!postpone}
+        onClose={() => setPostpone(null)}
+        targetType={postpone?.type ?? 'Project'}
+        targetName={postpone?.name ?? ''}
+        targetLabel={postpone?.label ?? ''}
+        anchorDate={postpone?.anchor ?? ''}
       />
     </div>
   )

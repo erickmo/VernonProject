@@ -183,6 +183,11 @@ export const mobileApi = {
       project_item: todoId,
       ...fields,
     }),
+  postpone: (targetType: 'Project' | 'Project Detail', targetName: string, newDate: string) =>
+    api.post<{ shifted_count: number; skipped_count: number; delta_days: number }>(
+      'vernon_project.api.postpone.postpone',
+      { target_type: targetType, target_name: targetName, new_date: newDate },
+    ),
   setTodoAllocations: (todoId: string, allocations: { date: string; minutes: number; note?: string }[]) =>
     api.post<{ status: string; message: string; allocations: { date: string; minutes: number; note?: string }[] }>(
       M + 'set_todo_allocations',

@@ -426,6 +426,32 @@ export function useUpdateTodo(todoId: string) {
   })
 }
 
+// Postpone (or pull earlier) a Project or single Project Detail by picking a
+// new deadline date. The server shifts every date field of every active todo
+// under the target by the same delta. Invalidates the same broad query set as
+// useUpdateTodo since many todos + the container move at once.
+export function usePostpone() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      targetType,
+      targetName,
+      newDate,
+    }: {
+      targetType: 'Project' | 'Project Detail'
+      targetName: string
+      newDate: string
+    }) => mobileApi.postpone(targetType, targetName, newDate),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
 export function useSetTodoAllocations(todoId: string) {
   const qc = useQueryClient()
   return useMutation({
