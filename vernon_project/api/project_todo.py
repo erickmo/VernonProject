@@ -161,13 +161,17 @@ def bulk_reject_status(todo_ids, reason=None):
 	return {"status": "ok", "rejected": rejected, "failed": len(ids) - rejected, "results": results}
 
 @frappe.whitelist()
-def set_auto_approve(todo_id, enabled):
-	"""Toggle a todo's auto_approve flag (skips the Owner review gate on advance).
+def set_auto_approve(todo_id, mode):
+	"""Set a todo's auto-approve override: "on" (force skip Owner gate), "off"
+	(force wait, opt out of the project default), or "inherit" (follow the
+	project-wide default).
 
 	Trust boundary: only the Project Owner who also holds the "Partner" role may
-	set it, so an owner opts into auto-approving their own project's todos.
+	set it.
 	"""
 	try:
+		if mode not in ("on", "off", "inherit"):
+			return {"status": "error", "message": f"Invalid mode {mode!r}."}
 		todo = frappe.get_doc("Project Todo", todo_id)
 		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
 		project = frappe.get_doc("Project", project_detail.project)
@@ -176,13 +180,36 @@ def set_auto_approve(todo_id, enabled):
 		if not (user == project.project_owner and "Partner" in frappe.get_roles(user)):
 			return {"status": "error", "message": "Hanya Project Owner dengan role Partner yang bisa mengatur auto-approve."}
 
-		value = frappe.utils.cint(enabled)
-		todo.auto_approve = value
+		todo.auto_approve = 1 if mode == "on" else 0
+		todo.auto_approve_opt_out = 1 if mode == "off" else 0
 		todo.save(ignore_permissions=True)
-		return {"status": "info", "auto_approve": value}
+		return {"status": "info", "mode": mode}
 
 	except frappe.DoesNotExistError:
 		return {"status": "error", "message": f"Todo {todo_id} does not exist."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def set_project_auto_approve(project, enabled):
+	"""Set the project-wide auto-approve default. Every todo inherits this unless
+	it overrides via set_auto_approve.
+
+	Trust boundary: only the Project Owner who also holds the "Partner" role.
+	"""
+	try:
+		doc = frappe.get_doc("Project", project)
+		user = frappe.session.user
+		if not (user == doc.project_owner and "Partner" in frappe.get_roles(user)):
+			return {"status": "error", "message": "Hanya Project Owner dengan role Partner yang bisa mengatur auto-approve."}
+		value = frappe.utils.cint(enabled)
+		doc.auto_approve = value
+		doc.save(ignore_permissions=True)
+		return {"status": "info", "auto_approve": value}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Project {project} does not exist."}
 	except Exception as e:
 		return {"status": "error", "message": str(e)}
 
