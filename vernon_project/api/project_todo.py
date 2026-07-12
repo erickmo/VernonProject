@@ -6,7 +6,7 @@ def get_notes(todo_id):
 	notes = frappe.db.get_value('Project Todo', todo_id, 'notes')
 	return {'notes': notes or ''}
 
-def _auto_advance(todo, project_leader, project_owner):
+def _auto_advance(todo, project_leader, project_owner, project_auto_approve=0):
 	"""Collapse redundant self-approval gates in place (mutates todo, no save).
 
 	Two review gates exist: 🟠 Done → 🔷 Checked By PL (Leader approves) and
@@ -17,18 +17,22 @@ def _auto_advance(todo, project_leader, project_owner):
 	  - leader IS the owner    -> the Owner gate is the same person who just
 	    cleared the Leader gate; skip it.
 
-	Sequential ifs (not elif) so assignee==leader==owner completes in one hop.
-	Audit stamps record the role that would have approved. Truthiness guards keep
-	empty leader/owner (None==None) from auto-completing.
+	Auto-approve also clears the Owner gate. It resolves per-todo over the
+	project-wide default: a todo may force it ON (auto_approve) or force it OFF
+	(auto_approve_opt_out); otherwise it inherits project_auto_approve.
 
-	The todo.auto_approve flag also clears the Owner gate (owner-trusted todo).
+	Sequential ifs (not elif) so assignee==leader==owner completes in one hop.
+	Truthiness guards keep an empty owner (None) from auto-completing.
 	"""
 	now = frappe.utils.now()
 	if todo.status == "🟠 Done" and todo.assigned_to and todo.assigned_to == project_leader:
 		todo.status = "🔷 Checked By PL"
 		todo.tested_at = now
 		todo.tested_by = project_leader
-	if todo.status == "🔷 Checked By PL" and project_owner and (todo.auto_approve or project_leader == project_owner):
+	effective = bool(todo.auto_approve) or (
+		not getattr(todo, "auto_approve_opt_out", 0) and bool(project_auto_approve)
+	)
+	if todo.status == "🔷 Checked By PL" and project_owner and (effective or project_leader == project_owner):
 		todo.status = "✅ Completed"
 		todo.completed_at = now
 		todo.completed_by = project_owner
@@ -93,7 +97,7 @@ def update_status(todo_id):
 		# Skip redundant self-review gates: assignee==leader auto-clears the Leader
 		# gate; leader==owner auto-clears the Owner gate. One atomic save, so points
 		# still mint once at ✅ Completed and only the final-status notification fires.
-		_auto_advance(todo, project_leader, project_owner)
+		_auto_advance(todo, project_leader, project_owner, project.auto_approve)
 
 		# Save and ignore permission
 		todo.save(ignore_permissions=True)
