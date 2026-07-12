@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trophy } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { Button, ErrorState } from '@web/components/ui'
 import { useScoringGroups, useBoot, canManageGroups } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
@@ -41,12 +41,9 @@ export default function Groups() {
         icon={Trophy}
         title="Groups"
         actions={
-          <button
-            onClick={() => navigate('/groups/new')}
-            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
+          <Button variant="primary" size="sm" onClick={() => navigate('/groups/new')}>
             <Plus className="h-3.5 w-3.5" /> New group
-          </button>
+          </Button>
         }
       />
 
@@ -63,12 +60,9 @@ export default function Groups() {
                 title="No groups yet"
                 subtitle="Create a scoring group to start weighting tasks."
               />
-              <button
-                onClick={() => navigate('/groups/new')}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-              >
+              <Button variant="primary" onClick={() => navigate('/groups/new')}>
                 <Plus className="h-4 w-4" /> New group
-              </button>
+              </Button>
             </div>
           ) : (
             <DataTable

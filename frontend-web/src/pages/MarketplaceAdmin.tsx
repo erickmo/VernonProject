@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Store, Check, Gift } from 'lucide-react'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { ErrorState, Button } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
@@ -55,12 +55,9 @@ export default function MarketplaceAdmin() {
               onChange={setTab}
             />
             {tab === 'rewards' && (
-              <button
-                onClick={() => navigate('/marketplace-admin/reward/new')}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-              >
+              <Button variant="primary" size="sm" onClick={() => navigate('/marketplace-admin/reward/new')}>
                 <Plus className="h-4 w-4" /> New reward
-              </button>
+              </Button>
             )}
           </div>
         </BentoTile>
@@ -236,7 +233,7 @@ function RedemptionsTable() {
                   <button
                     onClick={(e) => { e.stopPropagation(); markFulfilled(r.name) }}
                     disabled={fulfillingName === r.name}
-                    className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+                    className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-60"
                   >
                     {fulfillingName === r.name ? (
                       <Spinner className="h-3.5 w-3.5" />

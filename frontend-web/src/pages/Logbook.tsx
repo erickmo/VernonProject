@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useBoot, useLogbook, useWebsiteSettings, useUsers } from '@/hooks/useData'
 import { downloadLogbookPdf, groupPlanByProject, dayTotals, resolveLogoDataUrl } from '@/lib/logbookPdf'
 import { formatDate } from '@/lib/format'
@@ -14,7 +15,7 @@ function isoDaysAgo(n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-const inputCls = 'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink'
+const inputCls = 'rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink'
 
 function fmtDay(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
@@ -73,7 +74,7 @@ export default function Logbook() {
               })
             }
             disabled={!data}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-50"
           >
             <Download className="h-4 w-4" /> Download PDF
           </button>
@@ -91,18 +92,17 @@ export default function Logbook() {
               <input type="date" className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
             </label>
             {isManager && (
-              <label className="flex flex-col gap-1 text-xs font-semibold text-muted">User
-                <select
-                  className={inputCls}
+              <div className="flex w-48 flex-col gap-1 text-xs font-semibold text-muted">
+                User
+                <SearchableSelect
                   value={user ?? ''}
-                  onChange={(e) => setUser(e.target.value || undefined)}
-                >
-                  <option value="">Self</option>
-                  {users?.map((u) => (
-                    <option key={u.name} value={u.name}>{u.full_name ?? u.name}</option>
-                  ))}
-                </select>
-              </label>
+                  onChange={(v) => setUser(v || undefined)}
+                  options={[
+                    { value: '', label: 'Self' },
+                    ...(users?.map((u) => ({ value: u.name, label: u.full_name ?? u.name })) ?? []),
+                  ]}
+                />
+              </div>
             )}
             {isLoading && <Spinner className="h-4 w-4 text-brand-500" />}
           </div>

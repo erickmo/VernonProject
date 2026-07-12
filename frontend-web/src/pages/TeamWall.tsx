@@ -3,6 +3,7 @@ import { UsersRound } from 'lucide-react'
 import { EmptyState, Spinner, Segmented } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 import { useTeamWall } from '@/hooks/useData'
 import { TeamWallCanvas, WALL_MODES, type WallMode } from '@/components/TeamWallCanvas'
 
@@ -12,11 +13,8 @@ export default function TeamWall() {
   const { data, isLoading } = q
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Team Wall</h1>
-        <Segmented options={WALL_MODES} value={mode} onChange={setMode} />
-      </div>
+    <Page>
+      <PageHeader icon={UsersRound} title="Team Wall" actions={<Segmented options={WALL_MODES} value={mode} onChange={setMode} />} />
 
       {q.isError ? (
         <ErrorState onRetry={() => q.refetch()} />
@@ -33,6 +31,6 @@ export default function TeamWall() {
           </BentoTile>
         </BentoGrid>
       )}
-    </div>
+    </Page>
   )
 }

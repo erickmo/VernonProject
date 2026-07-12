@@ -93,7 +93,7 @@ export default function MeetingRooms() {
           actions={
             <button
               onClick={() => navigate('/meeting-rooms/new')}
-              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
+              className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition"
             >
               <Plus className="h-3.5 w-3.5" /> New room
             </button>
@@ -112,7 +112,7 @@ export default function MeetingRooms() {
               />
               <button
                 onClick={() => navigate('/meeting-rooms/new')}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition"
               >
                 <Plus className="h-4 w-4" /> New room
               </button>

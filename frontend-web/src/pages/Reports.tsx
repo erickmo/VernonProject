@@ -1,59 +1,41 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, AlarmClock } from 'lucide-react'
+import { BarChart3, AlarmClock } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
-import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Card, CardList } from '@web/components/Card'
+import { Page, PageHeader } from '@web/components/Page'
+
+function ReportBadge({ icon: Icon, accent }: { icon: React.ComponentType<{ className?: string }>; accent: string }) {
+  return (
+    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br ${accent} text-white`}>
+      <Icon className="h-3.5 w-3.5" />
+    </span>
+  )
+}
 
 export default function Reports() {
   const navigate = useNavigate()
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Reports</h1>
+    <Page>
+      <PageHeader icon={BarChart3} title="Reports" subtitle={`${REPORTS.length} reports`} />
 
-      <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="brand" icon={BarChart3}>
-          <BentoStat value={REPORTS.length} label="reports" />
-        </BentoTile>
-
-        <BentoTile span="full" tone="plain">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {/* Bespoke report: its own screen, not the generic /report/:name engine. */}
-            <button
-              onClick={() => navigate('/reports/todos-due')}
-              className="flex w-full items-center gap-3 rounded-lg bg-canvas p-4 text-left transition hover:bg-hover/[0.04]"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white">
-                <AlarmClock className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-ink">Todos Due</p>
-                <p className="truncate text-xs text-muted">Open todos to chase across projects you own, lead, or admin</p>
-              </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-muted dark:text-slate-600" />
-            </button>
-            {REPORTS.map((r) => {
-              const Icon = r.icon
-              return (
-                <button
-                  key={r.name}
-                  onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
-                  className="flex w-full items-center gap-3 rounded-lg bg-canvas p-4 text-left transition hover:bg-hover/[0.04]"
-                >
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${r.accent} text-white`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-ink">{r.title}</p>
-                    <p className="truncate text-xs text-muted">{r.desc}</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted dark:text-slate-600" />
-                </button>
-              )
-            })}
-          </div>
-        </BentoTile>
-      </BentoGrid>
-    </div>
+      <CardList>
+        {/* Bespoke report: its own screen, not the generic /report/:name engine. */}
+        <Card
+          onClick={() => navigate('/reports/todos-due')}
+          eyebrow={<ReportBadge icon={AlarmClock} accent="from-rose-500 to-pink-600" />}
+          title="Todos Due"
+          meta="Open todos to chase across projects you own, lead, or admin"
+        />
+        {REPORTS.map((r) => (
+          <Card
+            key={r.name}
+            onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
+            eyebrow={<ReportBadge icon={r.icon} accent={r.accent} />}
+            title={r.title}
+            meta={r.desc}
+          />
+        ))}
+      </CardList>
+    </Page>
   )
 }

@@ -8,7 +8,7 @@ import { Popover } from '@web/components/overlays/Popover'
 
 /** Animated placeholder block for loading states. */
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-line ${className}`} />
+  return <div className={`animate-pulse rounded-xl bg-line ${className}`} />
 }
 
 /** Loading placeholder for card-grid pages (Projects, Marketplace, …). */
@@ -18,7 +18,7 @@ export function CardGridSkeleton({ cards = 8 }: { cards?: number }) {
       <Skeleton className="h-8 w-44" />
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {Array.from({ length: cards }).map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full rounded-lg" />
+          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
         ))}
       </div>
     </div>
@@ -121,7 +121,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export type ButtonSize = 'sm' | 'md'
 
 const BTN_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100'
+  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100'
 
 const BTN_VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 hover:shadow-md',

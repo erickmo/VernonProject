@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { ErrorState, Button } from '@web/components/ui'
 import { useBookings, useCancelBooking, useBoot } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
@@ -21,13 +21,9 @@ export default function Bookings() {
         icon={CalendarClock}
         title="Bookings"
         actions={
-          <button
-            type="button"
-            onClick={() => navigate('/bookings/new')}
-            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
+          <Button variant="primary" size="sm" onClick={() => navigate('/bookings/new')}>
             New Booking
-          </button>
+          </Button>
         }
       />
       {cancel.error && (
@@ -57,7 +53,7 @@ export default function Bookings() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); cancel.mutate(b.name) }}
                     disabled={cancel.isPending}
-                    className="rounded-lg border border-rose-300 px-2 py-0.5 text-xs font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60 transition-colors"
+                    className="rounded-xl border border-rose-300 px-2 py-0.5 text-xs font-medium text-rose-600 hover:bg-rose-50 active:scale-[0.97] transition disabled:opacity-60"
                   >
                     Cancel
                   </button>

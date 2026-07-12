@@ -1,6 +1,8 @@
 import { useGamification } from '@/hooks/useData'
 import { Trophy } from 'lucide-react'
+import { EmptyState, Spinner } from '@/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 import { ErrorState } from '@web/components/ui'
 import type { Achievement } from '@/lib/types'
 
@@ -58,18 +60,17 @@ export default function Achievements() {
   const list = (gami?.achievements ?? []).filter((a) => !a.is_tier)
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Achievements</h1>
+    <Page>
+      <PageHeader icon={Trophy} title="Achievements" />
 
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading && !gami ? (
-        <p className="text-sm text-muted">Loading…</p>
-      ) : list.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted">
-          <Trophy className="w-12 h-12 opacity-30" />
-          <p className="text-sm">No achievements yet — complete tasks to unlock rewards.</p>
+        <div className="flex justify-center py-20">
+          <Spinner />
         </div>
+      ) : list.length === 0 ? (
+        <EmptyState icon={Trophy} title="No achievements yet" subtitle="Complete tasks to unlock rewards." />
       ) : (
         <BentoGrid>
           {list.map((a) => (
@@ -77,6 +78,6 @@ export default function Achievements() {
           ))}
         </BentoGrid>
       )}
-    </div>
+    </Page>
   )
 }

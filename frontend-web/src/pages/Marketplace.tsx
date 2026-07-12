@@ -6,9 +6,10 @@ import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace, useWall
 import { useToast } from '@/components/Toast'
 import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
-import { Dialog } from '@web/components/overlays/Dialog'
-import { ErrorState, rowButtonProps, CardGridSkeleton } from '@web/components/ui'
+import { Sheet } from '@web/components/Sheet'
+import { ErrorState, rowButtonProps, CardGridSkeleton, Button } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 
 function RewardDetailDialog({
   reward,
@@ -28,43 +29,10 @@ function RewardDetailDialog({
   const disabled = soldOut || tooPricey || pending
   const after = reward ? balance - reward.point_cost : 0
   return (
-    <Dialog
-      open={!!reward}
-      onClose={() => !pending && onClose()}
-      title={reward?.reward_name ?? ''}
-      onSubmit={() => !disabled && onRedeem()}
-      footer={
-        <>
-          <button
-            type="button"
-            onClick={() => !pending && onClose()}
-            disabled={pending}
-            className="rounded-lg bg-canvas px-4 py-2 text-sm font-semibold text-ink dark:text-slate-200 disabled:opacity-60"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            onClick={onRedeem}
-            disabled={disabled}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-line dark:disabled:bg-slate-700 disabled:text-muted"
-          >
-            {pending ? (
-              <Spinner className="h-4 w-4" />
-            ) : soldOut ? (
-              'Sold out'
-            ) : tooPricey ? (
-              'Not enough points'
-            ) : (
-              'Redeem'
-            )}
-          </button>
-        </>
-      }
-    >
+    <Sheet open={!!reward} onClose={() => !pending && onClose()} title={reward?.reward_name ?? ''} size="sm">
       {reward && (
         <div className="space-y-4">
-          <div className="aspect-square w-full max-w-xs mx-auto overflow-hidden rounded-lg bg-canvas">
+          <div className="aspect-square w-full max-w-xs mx-auto overflow-hidden rounded-2xl bg-canvas">
             {reward.image ? (
               <img src={reward.image} alt={reward.reward_name} className="h-full w-full object-cover" />
             ) : (
@@ -103,9 +71,26 @@ function RewardDetailDialog({
               .
             </p>
           )}
+
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <Button variant="ghost" onClick={() => !pending && onClose()} disabled={pending}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={onRedeem} disabled={disabled}>
+              {pending ? (
+                <Spinner className="h-4 w-4" />
+              ) : soldOut ? (
+                'Sold out'
+              ) : tooPricey ? (
+                'Not enough points'
+              ) : (
+                'Redeem'
+              )}
+            </Button>
+          </div>
         </div>
       )}
-    </Dialog>
+    </Sheet>
   )
 }
 
@@ -145,8 +130,8 @@ export default function Marketplace() {
   }
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Marketplace</h1>
+    <Page>
+      <PageHeader icon={Store} title="Marketplace" />
 
       <BentoGrid>
         <BentoTile span="sm" tone="solid" accent="amber" icon={Coins} title="Spendable balance">
@@ -171,28 +156,19 @@ export default function Marketplace() {
 
         <BentoTile span="sm" tone="tint" accent="emerald">
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => navigate('/wallet')}
-              className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted hover:bg-hover/[0.04] transition"
-            >
+            <Button variant="secondary" size="sm" onClick={() => navigate('/wallet')}>
               <Wallet className="h-4 w-4 text-brand-500" />
               Log
-            </button>
-            <button
-              onClick={() => navigate('/leaderboard')}
-              className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted hover:bg-hover/[0.04] transition"
-            >
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => navigate('/leaderboard')}>
               <Trophy className="h-4 w-4 text-amber-500" />
               Leaderboard
-            </button>
+            </Button>
             {canManageMarketplace(boot) && (
-              <button
-                onClick={() => navigate('/marketplace-admin')}
-                className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-muted hover:bg-hover/[0.04] transition"
-              >
+              <Button variant="secondary" size="sm" onClick={() => navigate('/marketplace-admin')}>
                 <Settings className="h-4 w-4 text-muted" />
                 Manage
-              </button>
+              </Button>
             )}
           </div>
         </BentoTile>
@@ -213,7 +189,7 @@ export default function Marketplace() {
                     key={r.name}
                     {...rowButtonProps(() => setDetail(r))}
                     aria-label={`View reward ${r.reward_name}`}
-                    className="flex flex-col overflow-hidden rounded-lg bg-surface border border-line cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
+                    className="flex flex-col overflow-hidden rounded-2xl bg-surface border border-line cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 active:scale-[0.99] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                   >
                     <div className="aspect-square w-full bg-canvas">
                       {r.image ? (
@@ -240,7 +216,7 @@ export default function Marketplace() {
                           ev.stopPropagation()
                           setDetail(r)
                         }}
-                        className="mt-2 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition"
+                        className="mt-2 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition"
                       >
                         {soldOut ? 'View reward' : 'Redeem'}
                       </button>
@@ -260,6 +236,6 @@ export default function Marketplace() {
         onRedeem={confirm}
         onClose={() => setDetail(null)}
       />
-    </div>
+    </Page>
   )
 }

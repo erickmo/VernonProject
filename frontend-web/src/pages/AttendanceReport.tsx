@@ -17,7 +17,7 @@ function isoDaysAgo(n: number): string {
 }
 
 // ponytail: FALLBACK — columns come from the API at runtime, so DataTable (static Column<T>) can't be used here
-const inputCls = 'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink'
+const inputCls = 'rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink'
 
 export default function AttendanceReport() {
   const navigate = useNavigate()
@@ -105,7 +105,7 @@ export default function AttendanceReport() {
             <button
               onClick={downloadCsv}
               disabled={!data || !data.rows.length}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-50"
             >
               <Download className="h-4 w-4" /> CSV
             </button>

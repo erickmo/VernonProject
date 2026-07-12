@@ -152,7 +152,7 @@ export default function TransferTasks() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-line bg-surface p-6 space-y-5">
+      <div className="rounded-2xl bg-surface p-6 shadow-card space-y-5">
         {usersQ.isError ? (
           <ErrorState onRetry={() => usersQ.refetch()} />
         ) : usersQ.isLoading ? (
@@ -231,7 +231,7 @@ export default function TransferTasks() {
             type="button"
             onClick={runPreview}
             disabled={previewing || !fromName || !toName}
-            className="inline-flex items-center gap-2 rounded-xl border border-line px-5 py-2.5 text-sm font-semibold text-ink hover:bg-hover disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl border border-line px-5 py-2.5 text-sm font-semibold text-ink hover:bg-hover disabled:opacity-60 transition active:scale-[0.99]"
           >
             {previewing ? <Spinner className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             Preview
@@ -239,7 +239,7 @@ export default function TransferTasks() {
           <button
             type="submit"
             disabled={submitting || !canTransfer}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition active:scale-[0.99]"
           >
             {submitting ? <Spinner className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
             Transfer tasks

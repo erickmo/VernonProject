@@ -11,7 +11,7 @@ import { DataTable, type Column } from '@web/components/DataTable'
 
 type Row = NonNullable<ReturnType<typeof useTodosDue>['data']>['rows'][number]
 
-const inputCls = 'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink'
+const inputCls = 'rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink'
 
 /** Local YYYY-MM-DD, `days` from today. Default cutoff = the coming week. */
 function todayPlus(days: number): string {
@@ -106,7 +106,7 @@ export default function TodosDue() {
           <button
             onClick={() => onBuzz(r.todo, r.assignee_name)}
             disabled={buzzing}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-600 bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:opacity-50 dark:bg-brand-500/15 dark:text-brand-300"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-600 bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-700 transition active:scale-[0.97] hover:bg-brand-100 disabled:opacity-50 dark:bg-brand-500/15 dark:text-brand-300"
           >
             {buzzing ? <Spinner className="h-3.5 w-3.5" /> : <BellRing className="h-3.5 w-3.5" />}
             Buzz

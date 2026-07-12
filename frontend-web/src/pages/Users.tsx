@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Users as UsersIcon, Search } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { Button, ErrorState } from '@web/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
@@ -144,12 +144,9 @@ export default function Users() {
         icon={UsersIcon}
         title="Users"
         actions={
-          <button
-            onClick={() => navigate('/users/new')}
-            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
+          <Button variant="primary" size="sm" onClick={() => navigate('/users/new')}>
             <Plus className="h-3.5 w-3.5" /> New user
-          </button>
+          </Button>
         }
       />
 
@@ -216,12 +213,9 @@ export default function Users() {
                 title="No users yet"
                 subtitle="Invite your first teammate to get started."
               />
-              <button
-                onClick={() => navigate('/users/new')}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-              >
+              <Button variant="primary" onClick={() => navigate('/users/new')}>
                 <Plus className="h-4 w-4" /> New user
-              </button>
+              </Button>
             </div>
           ) : (
             <DataTable

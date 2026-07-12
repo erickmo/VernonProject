@@ -11,7 +11,7 @@ import { DataTable, type Column } from '@web/components/DataTable'
 
 type Station = { name: string; station_name: string; location?: string; active: number; display_key: string }
 
-const inputCls = 'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink'
+const inputCls = 'rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink'
 
 // ponytail: columns defined outside component — no closure deps
 const COLUMNS: Column<Station>[] = [
@@ -104,7 +104,7 @@ export default function Stations() {
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Location
               <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
             </label>
-            <button onClick={create} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
+            <button onClick={create} disabled={saving} className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-50">
               <Plus className="h-4 w-4" /> Add station
             </button>
           </div>

@@ -170,7 +170,7 @@ export default function GamificationSettings() {
           <p className="mb-2 text-xs text-muted">Hadiah Level — saat user mencapai level tertentu, beri poin + item kosmetik (sekali).</p>
           <div className="mt-1 space-y-3">
             {levels.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-line dark:border-slate-700 p-8 text-center">
+              <div className="rounded-xl border border-dashed border-line dark:border-slate-700 p-8 text-center">
                 <p className="text-sm text-muted">No level rewards yet.</p>
                 <button type="button" onClick={() => setLevels((ls) => [...ls, emptyLevel()])}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
@@ -181,7 +181,7 @@ export default function GamificationSettings() {
               <>
                 <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
                   {levels.map((l, i) => (
-                    <div key={i} className="rounded-lg bg-hover/[0.04] p-4">
+                    <div key={i} className="rounded-xl bg-hover/[0.04] p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wide text-muted">Level reward {i + 1}</span>
                         <button type="button" aria-label="Remove level reward" onClick={() => removeLevel(i)}
@@ -224,7 +224,7 @@ export default function GamificationSettings() {
           <p className="mb-2 text-xs text-muted">Pencapaian — saat kondisi tercapai, beri hadiah (sekali). Centang 'Tier' untuk menjadikannya tingkat peringkat (badge).</p>
           <div className="mt-1 space-y-3">
             {achievements.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-line dark:border-slate-700 p-8 text-center">
+              <div className="rounded-xl border border-dashed border-line dark:border-slate-700 p-8 text-center">
                 <p className="text-sm text-muted">No achievements yet.</p>
                 <button type="button" onClick={() => setAchievements((as) => [...as, emptyAchiev()])}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
@@ -235,7 +235,7 @@ export default function GamificationSettings() {
               <>
                 <div className="grid grid-cols-1 gap-3">
                   {achievements.map((a, i) => (
-                    <div key={i} className="rounded-lg bg-hover/[0.04] p-4">
+                    <div key={i} className="rounded-xl bg-hover/[0.04] p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wide text-muted">Achievement {i + 1}</span>
                         <button type="button" aria-label="Remove achievement" onClick={() => removeAchiev(i)}
@@ -334,7 +334,7 @@ export default function GamificationSettings() {
                               type="number"
                               inputMode="decimal"
                               min={0}
-                              className="w-20 rounded-lg border border-line px-2 py-1 text-xs text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
+                              className="w-20 rounded-xl border border-line px-2 py-1 text-xs text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none"
                               value={a.price}
                               onChange={(e) => setAsset(idx, { price: Number(e.target.value) })}
                             />

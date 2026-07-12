@@ -90,7 +90,7 @@ export default function Course() {
                 <button
                   key={l.name}
                   onClick={() => setActiveLesson(l)}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                  className={`w-full rounded-xl border p-3 text-left transition active:scale-[0.99] ${
                     activeLesson?.name === l.name
                       ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10'
                       : 'border-line bg-surface hover:bg-hover/[0.04]'
@@ -139,11 +139,11 @@ export default function Course() {
         {/* Lesson viewer */}
         {activeLesson ? (
           <div className="space-y-4">
-            <div className="rounded-lg border border-line bg-surface p-5">
+            <div className="rounded-2xl bg-surface p-5 shadow-card">
               <h2 className="mb-4 text-lg font-semibold text-ink">{activeLesson.title}</h2>
 
               {activeLesson.video_url && (
-                <div className="mb-4 aspect-video w-full overflow-hidden rounded-lg bg-black">
+                <div className="mb-4 aspect-video w-full overflow-hidden rounded-xl bg-black">
                   <iframe
                     src={activeLesson.video_url}
                     className="h-full w-full"
@@ -171,7 +171,7 @@ export default function Course() {
                       href={f.file}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-medium text-brand-600 hover:bg-hover/[0.04] transition-colors"
+                      className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-sm font-medium text-brand-600 hover:bg-hover/[0.04] transition active:scale-[0.99]"
                     >
                       <Download className="h-4 w-4 shrink-0" />
                       {f.label ?? f.file.split('/').pop()}
@@ -200,7 +200,7 @@ export default function Course() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center rounded-lg border border-dashed border-line py-20 text-center">
+          <div className="flex items-center justify-center rounded-2xl border border-dashed border-line py-20 text-center">
             <div>
               <BookOpen className="mx-auto mb-2 h-8 w-8 text-muted" />
               <p className="text-sm text-muted">Select a lesson to start learning</p>

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { CheckSquare, Plus, StickyNote } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { ErrorState, Button } from '@web/components/ui'
 import { usePersonalNotes } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import type { PersonalNote } from '@/lib/types'
@@ -15,7 +15,7 @@ function NoteCard({ note }: { note: PersonalNote }) {
     <button
       type="button"
       onClick={() => navigate(`/notes/${encodeURIComponent(note.name)}`)}
-      className="flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+      className="flex flex-col gap-1.5 rounded-2xl border border-line bg-surface p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
     >
       <p className="truncate font-semibold text-ink">
         {note.title?.trim() || 'Untitled'}
@@ -67,12 +67,9 @@ export default function Notes() {
           tone="tint"
           accent="brand"
           actions={
-            <button
-              onClick={() => navigate('/notes/new')}
-              className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition-colors"
-            >
+            <Button variant="primary" size="sm" onClick={() => navigate('/notes/new')}>
               <Plus className="h-3.5 w-3.5" /> New note
-            </button>
+            </Button>
           }
         >
           <BentoStat value={owned.length + shared.length} label="notes" />
@@ -86,12 +83,9 @@ export default function Notes() {
                 title="No notes yet"
                 subtitle="Jot down a quick note or checklist."
               />
-              <button
-                onClick={() => navigate('/notes/new')}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-              >
+              <Button variant="primary" onClick={() => navigate('/notes/new')}>
                 <Plus className="h-4 w-4" /> New note
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">

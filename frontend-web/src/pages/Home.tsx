@@ -2,34 +2,35 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentTyp
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  Sparkles, Plus, Gift, CheckCircle2, ShieldCheck, CheckCheck, Video, Check,
-  CalendarClock, FolderKanban, Trophy, Flame, QrCode, ArrowRight, BarChart3,
-  BookOpen, Pause, Search, X, SearchX, AlertTriangle, Users, Wand2,
+  Sparkles, Plus, Gift, ShieldCheck, CheckCheck, Video, Check, CalendarClock,
+  FolderKanban, Trophy, Flame, QrCode, BarChart3, BookOpen, Pause, Search, X,
+  SearchX, AlertTriangle, Users, Wand2, User, KeyRound, Flag, ChevronRight,
 } from 'lucide-react'
 import {
   useBoot, useDashboard, useProjects, useWallet, useGamification, useMyAttendance,
-  useMeetings, useWeeklyRecap, useClaimDaily, useSetTodoAllocations,
-  useDailyVerse, useHomeBanners, usePreviousShiftShortfall,
+  useMeetings, useWeeklyRecap, useClaimDaily, useDailyVerse, useHomeBanners,
+  usePreviousShiftShortfall,
 } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc } from '@/lib/format'
-import { buildNext, focusedFirst } from '@/lib/planDay'
+import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { FilterButton, activeFilterCount, type FilterValue, type FilterDimension } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MarkDoneSheet } from '@/components/MarkDoneSheet'
 import { MeetingSheet } from '@/components/MeetingSheet'
+import { TodoCard } from '@/components/TodoCard'
 import { Popover } from '@web/components/overlays/Popover'
 import { Segmented, EmptyState } from '@/components/ui'
 import { Page, PageHeader } from '@web/components/Page'
 import { Button, ErrorState, Skeleton } from '@web/components/ui'
-import { DataTable, StatusCell, type Column } from '@web/components/DataTable'
+import { CardList } from '@web/components/Card'
 import { PlanDayDrawer } from '@web/components/PlanDayDrawer'
 import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
 import { QuickCreate } from '@web/components/QuickCreate'
 import { buildNavGroups } from '@web/lib/nav'
-import type { ProjectItem, BannerSlide, MeetingListItem } from '@/lib/types'
+import type { ProjectItem, BannerSlide, MeetingListItem, ProjectCard as ProjectCardType } from '@/lib/types'
 
 // ── small building blocks ─────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ const ACCENT: Record<string, string> = {
   ink: 'text-ink',
 }
 
+// Soft-pop stat tile — the "at a glance" summary blocks that stand in for the
+// mobile Today Spotlight/progress hero.
 function StatTile({
   label, value, sub, accent = 'ink', to, onClick, active,
 }: {
@@ -49,9 +52,9 @@ function StatTile({
   to?: string; onClick?: () => void; active?: boolean
 }) {
   const cls = clsx(
-    'block rounded-lg border bg-surface p-3 text-left transition',
-    active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line',
-    (to || onClick) && 'hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]',
+    'block rounded-2xl bg-surface p-4 text-left shadow-card transition',
+    active && 'ring-2 ring-brand-500',
+    (to || onClick) && 'hover:bg-hover/[0.03] active:scale-[0.99] dark:hover:bg-hover/[0.04]',
   )
   const inner = (
     <>
@@ -65,6 +68,7 @@ function StatTile({
   return <div className={cls}>{inner}</div>
 }
 
+// Soft-pop section container (meetings / attendance / this-week / verse).
 function Card({
   title, icon: Icon, to, action, className, children,
 }: {
@@ -80,7 +84,7 @@ function Card({
     </div>
   )
   return (
-    <div className={clsx('rounded-lg border border-line bg-surface p-4', className)}>
+    <div className={clsx('rounded-2xl bg-surface p-4 shadow-card', className)}>
       {(title || action) && (
         <div className="mb-3 flex items-center justify-between gap-2">
           {heading}
@@ -92,84 +96,64 @@ function Card({
   )
 }
 
-// Inline "plan for today" toggle — one mutation per row, so it lives in its own
-// component (hooks can't run inside a table cell render fn).
-function PlanCell({ todo }: { todo: ProjectItem }) {
-  const setAlloc = useSetTodoAllocations(todo.name)
-  const planned = todo.today_allocation > 0
-  const toggle = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (setAlloc.isPending) return
-    const minutes = planned ? 0 : todo.estimated > 0 ? todo.estimated : 30
-    setAlloc.mutate(buildNext(todo.allocations ?? [], todayISO(), minutes))
-  }
+// Brand nudge banner — mirrors Today's per-lens ActionBanner (approvals to owe).
+function ActionBanner({
+  icon: Icon, text, onClick,
+}: {
+  icon: ComponentType<{ className?: string }>; text: string; onClick: () => void
+}) {
   return (
     <button
       type="button"
-      onClick={toggle}
-      aria-disabled={setAlloc.isPending}
-      className={clsx(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition',
-        setAlloc.isPending && 'opacity-50',
-        planned
-          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-          : 'bg-black/[0.04] text-muted hover:text-ink dark:bg-white/[0.06]',
-      )}
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-2xl bg-brand-50 p-4 text-left shadow-card transition active:scale-[0.99] dark:bg-brand-500/15"
     >
-      {planned ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-      {planned ? formatEstimate(todo.today_allocation) : 'Plan'}
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="flex-1 text-sm font-semibold text-brand-800 dark:text-brand-300">{text}</span>
+      <ChevronRight className="h-5 w-5 text-brand-400" />
     </button>
   )
 }
 
-const WORK_COLUMNS: Column<ProjectItem>[] = [
-  {
-    key: 'task',
-    header: 'Task',
-    sortValue: (r) => r.to_do,
-    render: (r) => (
-      <div className="min-w-0 max-w-[38rem]">
-        <div className={clsx(
-          'truncate font-medium',
-          r.status_key === 'cancelled' ? 'text-muted line-through'
-            : r.is_overdue ? 'text-rose-700 dark:text-rose-400' : 'text-ink',
-        )}>{r.to_do}</div>
-        <div className="truncate text-xs text-muted">{r.project_name} · {r.project_detail_title}</div>
+// One project as a soft-pop card (single source — dedupes the old steer/member copies).
+function ProjectRow({ p }: { p: ProjectCardType }) {
+  const pct = p.item_total ? Math.round((p.item_done / p.item_total) * 100) : 0
+  return (
+    <Link
+      to={`/project/${encodeURIComponent(p.name)}`}
+      className="block rounded-2xl bg-surface p-4 shadow-card transition hover:bg-hover/[0.03] active:scale-[0.99] dark:hover:bg-hover/[0.04]"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate text-sm font-semibold text-ink">{p.project_name}</span>
+        <span className="shrink-0 text-xs tabular-nums text-muted">{pct}%</span>
       </div>
-    ),
-  },
-  {
-    key: 'deadline',
-    header: 'Deadline',
-    width: 'w-40',
-    sortValue: (r) => r.deadline ?? '',
-    render: (r) => r.deadline
-      ? <span className={clsx('text-sm', r.is_overdue ? 'font-medium text-rose-600 dark:text-rose-400' : 'text-muted')}>
-          {r.is_overdue ? `Overdue · ${r.deadline_human}` : r.deadline_human}
-        </span>
-      : <span className="text-sm text-muted">—</span>,
-  },
-  {
-    key: 'est',
-    header: 'Est',
-    width: 'w-20',
-    align: 'right',
-    sortValue: (r) => r.estimated,
-    render: (r) => <span className="text-sm text-muted">{r.estimated > 0 ? formatEstimate(r.estimated) : '—'}</span>,
-  },
-  {
-    key: 'plan',
-    header: 'Today',
-    width: 'w-24',
-    render: (r) => <PlanCell todo={r} />,
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    width: 'w-52',
-    render: (r) => <StatusCell todo={r} />,
-  },
-]
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.08]">
+        <div className="h-full rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
+      </div>
+      {(p.overdue > 0 || p.review > 0) && (
+        <div className="mt-1.5 flex gap-2 text-[11px]">
+          {p.overdue > 0 && <span className="text-rose-600 dark:text-rose-400">{p.overdue} overdue</span>}
+          {p.review > 0 && <span className="text-amber-600 dark:text-amber-400">{p.review} to review</span>}
+        </div>
+      )}
+    </Link>
+  )
+}
+
+function ProjectLens({ items, empty }: { items: ProjectCardType[]; empty: string }) {
+  if (!items.length) return <EmptyState icon={FolderKanban} title="Nothing here" subtitle={empty} />
+  return <CardList>{items.map((p) => <ProjectRow key={p.name} p={p} />)}</CardList>
+}
+
+type Lens = 'me' | 'owned' | 'led' | 'in'
+const LENS_META: Record<Lens, { label: string; icon: ComponentType<{ className?: string }> }> = {
+  me: { label: 'For me', icon: User },
+  owned: { label: 'Owned', icon: KeyRound },
+  led: { label: 'Led', icon: Flag },
+  in: { label: "I'm in", icon: Users },
+}
 
 type Tab = 'overdue' | 'today' | 'upcoming' | 'planned' | 'waiting'
 
@@ -185,11 +169,10 @@ function HomeSkeleton() {
     <div className="space-y-6">
       <Skeleton className="h-9 w-64" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
       </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <Skeleton className="h-96 rounded-lg xl:col-span-8" />
-        <Skeleton className="h-96 rounded-lg xl:col-span-4" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
       </div>
     </div>
   )
@@ -199,7 +182,7 @@ function VerseCard() {
   const { data: verse } = useDailyVerse()
   if (!verse) return null
   return (
-    <div className="mt-6 rounded-lg border border-line bg-surface p-5">
+    <div className="rounded-2xl bg-surface p-5 shadow-card">
       <div className="mb-2 flex items-center gap-2 text-muted">
         <BookOpen className="h-4 w-4" />
         <span className="text-xs font-semibold uppercase tracking-wide">Ayat Hari Ini</span>
@@ -229,7 +212,7 @@ function WebBanners({ slides }: { slides: BannerSlide[] }) {
     else window.open(link, '_blank', 'noopener')
   }
   return (
-    <div className="relative mb-6 max-w-3xl overflow-hidden rounded-xl border border-line">
+    <div className="relative max-w-3xl overflow-hidden rounded-2xl shadow-card">
       <div
         onScroll={(e) => setIdx(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
         className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -276,6 +259,7 @@ export default function Home() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
+  const [lens, setLens] = useState<Lens>('me')
   const [tab, setTab] = useState<Tab | null>(null)
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<FilterValue>({})
@@ -311,6 +295,13 @@ export default function Home() {
 
   // Silent auto-plan toward the daily minimum (same logic as Auto-plan button).
   useAutoPlanToday({ due_today: dash.data?.due_today, overdue: dash.data?.overdue, upcoming: dash.data?.upcoming })
+
+  // Jump to the "For me" work list on a given tab (KPI tiles switch lens + tab).
+  const goTab = (t: Tab) => {
+    setLens('me')
+    setTab(t)
+    setTimeout(() => document.getElementById('my-work')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+  }
 
   if (!dash.data) {
     return dash.isError ? <ErrorState onRetry={() => dash.refetch()} /> : <HomeSkeleton />
@@ -366,7 +357,7 @@ export default function Home() {
       )
     : filteredRows
 
-  // review split (approvals I owe)
+  // review split (approvals I owe) — surfaced via the per-lens ActionBanners.
   const review = d.review ?? []
   const ownerApprovals = review.filter((t) => t.status_key === 'checked')
   const leadChecks = review.filter((t) => t.status_key === 'done')
@@ -383,15 +374,17 @@ export default function Home() {
   const attRows = attendance.data?.rows ?? []
   const attToday = attRows.find((r) => r.attendance_date === today) ?? attRows[0]
 
-  // my projects (things I steer)
-  const myProjects = (projects.data ?? [])
-    .filter((p) => p.is_owner || p.is_leader)
-    .slice(0, 6)
-
-  // projects I'm a member of but don't own or lead — mobile Today's "I'm in" lens
-  const memberProjects = (projects.data ?? [])
-    .filter((p) => p.is_member && !p.is_owner && !p.is_leader)
-    .slice(0, 6)
+  // Lens project sets — mirror mobile Today's For me / Owned / Led / I'm in.
+  const allProjects = projects.data ?? []
+  const owned = allProjects.filter((p) => p.is_owner)
+  const led = allProjects.filter((p) => p.is_leader)
+  const memberIn = allProjects.filter((p) => p.is_member && !p.is_owner && !p.is_leader)
+  const lensCount: Record<Lens, number> = {
+    me: workActive.length,
+    owned: owned.length,
+    led: led.length,
+    in: memberIn.length,
+  }
 
   const daily = gam.data?.daily
   const w = wallet.data
@@ -404,7 +397,7 @@ export default function Home() {
   const firstName = (b?.full_name || '').trim().split(' ')[0]
 
   return (
-    <Page>
+    <Page className="space-y-6">
       <PageHeader
         title={firstName ? `${greeting}, ${firstName}` : greeting}
         subtitle={`${dateStr} · ${needCount === 0 ? 'nothing needs you right now — nice.' : `${needCount} thing${needCount === 1 ? '' : 's'} need you today`}`}
@@ -433,19 +426,12 @@ export default function Home() {
         }
       />
 
-      {/* Vibrant meeting reminder — impossible to miss when meetings are on today */}
-      <MeetingReminder
-        meetings={upcoming}
-        onOpen={() => navigate('/meetings')}
-        onOpenMeeting={setOpenMeeting}
-      />
-
       {/* Managed promo banners — from Settings → Home Banners */}
       <WebBanners slides={banners.data ?? []} />
 
       {/* DANGER: previous shift day fell below the daily-minimum minutes setting */}
       {shortfall.data?.under && (
-        <div role="alert" className="mb-6 flex items-start gap-3 rounded-lg border border-rose-300 bg-rose-50 p-4 dark:border-rose-500/40 dark:bg-rose-500/10">
+        <div role="alert" className="flex items-start gap-3 rounded-2xl bg-rose-50 p-4 shadow-card dark:bg-rose-500/10">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Daily minimum missed</p>
@@ -459,34 +445,73 @@ export default function Home() {
         </div>
       )}
 
-      {/* KPI strip */}
+      {/* Vibrant meeting reminder — impossible to miss when meetings are on today */}
+      <MeetingReminder
+        meetings={upcoming}
+        onOpen={() => navigate('/meetings')}
+        onOpenMeeting={setOpenMeeting}
+      />
+
+      {/* At-a-glance summary — soft-pop tiles standing in for the mobile Spotlight hero */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatTile label="Overdue" value={counts.overdue} accent="rose" active={activeTab === 'overdue'} onClick={() => setTab('overdue')} />
-        <StatTile label="Due today" value={counts.due_today} accent="brand" active={activeTab === 'today'} onClick={() => setTab('today')} />
-        <StatTile label="Upcoming" value={counts.upcoming} active={activeTab === 'upcoming'} onClick={() => setTab('upcoming')} />
+        <StatTile label="Overdue" value={counts.overdue} accent="rose" active={lens === 'me' && activeTab === 'overdue'} onClick={() => goTab('overdue')} />
+        <StatTile label="Due today" value={counts.due_today} accent="brand" active={lens === 'me' && activeTab === 'today'} onClick={() => goTab('today')} />
+        <StatTile label="Upcoming" value={counts.upcoming} active={lens === 'me' && activeTab === 'upcoming'} onClick={() => goTab('upcoming')} />
         <StatTile label="To review" value={counts.review} accent="amber" to="/review" />
         <StatTile label="Done today" value={counts.completed_today} accent="emerald" sub={counts.completed_minutes_today > 0 ? formatEstimate(counts.completed_minutes_today) : undefined} />
         <StatTile label="Points" value={w ? w.balance.toLocaleString() : '—'} accent="violet" sub={w && w.today_earned ? `+${w.today_earned} today` : undefined} to="/wallet" />
       </div>
 
+      {/* Weekly recap — mirrors mobile Today's RecapCard */}
+      {r && (
+        <Card title="This week" icon={CalendarClock}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniStat label="Completed" value={r.completed} />
+            <MiniStat label="Focused" value={formatEstimate(r.minutes)} />
+            <MiniStat label="Points" value={`+${r.points}`} accent="violet" />
+            <MiniStat label="Streak" value={<span className="inline-flex items-center gap-1">{r.streak}<Flame className="h-4 w-4 text-amber-500" /></span>} />
+          </div>
+        </Card>
+      )}
+
       {/* Daily verse — only when the user enabled Ayat Harian */}
       <VerseCard />
 
-      {/* main work grid */}
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
-        {/* left: my work + review */}
-        <div className="space-y-6 xl:col-span-8">
-          <Card
-            title="My work"
-            icon={activeTab === 'waiting' ? Pause : undefined}
-            action={
-              <div className="w-full max-w-md overflow-x-auto no-scrollbar">
-                <Segmented options={tabs} value={activeTab} onChange={setTab} />
-              </div>
-            }
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <div className="relative flex-1">
+      {/* Lens switcher — For me / Owned / Led / I'm in (mobile Today parity) */}
+      <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
+        {(Object.keys(LENS_META) as Lens[]).map((k) => {
+          const M = LENS_META[k]
+          const Icon = M.icon
+          const active = lens === k
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setLens(k)}
+              className={clsx(
+                'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold shadow-card transition active:scale-95',
+                active ? 'bg-brand-600 text-white' : 'bg-surface text-muted hover:text-ink',
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {M.label}
+              <span className={clsx('rounded-full px-1.5 text-[11px] font-bold tabular-nums', active ? 'bg-white/25' : 'bg-black/[0.05] dark:bg-white/[0.08]')}>
+                {lensCount[k]}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ----- For me: the work list ----- */}
+      {lens === 'me' && (
+        <div id="my-work" className="scroll-mt-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="w-full max-w-xl overflow-x-auto no-scrollbar sm:w-auto">
+              <Segmented options={tabs} value={activeTab} onChange={setTab} />
+            </div>
+            <div className="flex flex-1 items-center gap-2 sm:flex-none">
+              <div className="relative min-w-0 flex-1 sm:w-64">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
                   type="search"
@@ -494,7 +519,7 @@ export default function Home() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search tasks…"
                   aria-label="Search tasks"
-                  className="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-9 text-sm text-ink placeholder:text-muted focus:border-brand-500 focus:outline-none"
+                  className="w-full rounded-full border border-line bg-surface py-2 pl-9 pr-9 text-sm text-ink placeholder:text-muted focus:border-brand-500 focus:outline-none"
                 />
                 {query && (
                   <button
@@ -535,172 +560,103 @@ export default function Home() {
                 </Popover>
               </div>
             </div>
-            <DataTable
-              rows={rows}
-              columns={WORK_COLUMNS}
-              getKey={(t) => t.name}
-              onRowClick={(t) => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
-              empty={
-                q ? (
-                  <EmptyState icon={SearchX} title={`No matches for "${query.trim()}"`} subtitle="Try a different search." />
-                ) : (
-                  <EmptyState
-                    icon={activeTab === 'waiting' ? Pause : CheckCircle2}
-                    title={activeTab === 'overdue' ? 'Nothing overdue' : activeTab === 'planned' ? 'Nothing planned yet' : activeTab === 'waiting' ? 'Nothing waiting' : 'All clear'}
-                    subtitle={activeTab === 'planned' ? 'Hit "Plan my day" to allocate today.' : activeTab === 'waiting' ? 'No parked tasks.' : 'No tasks in this view.'}
-                  />
-                )
-              }
+          </div>
+
+          {rows.length ? (
+            <CardList>
+              {rows.map((t) => <TodoCard key={t.name} todo={t} />)}
+            </CardList>
+          ) : q ? (
+            <EmptyState icon={SearchX} title={`No matches for "${query.trim()}"`} subtitle="Try a different search." />
+          ) : (
+            <EmptyState
+              icon={activeTab === 'waiting' ? Pause : Sparkles}
+              title={activeTab === 'overdue' ? 'Nothing overdue' : activeTab === 'planned' ? 'Nothing planned yet' : activeTab === 'waiting' ? 'Nothing waiting' : 'All clear'}
+              subtitle={activeTab === 'planned' ? 'Hit "Plan my day" to allocate today.' : activeTab === 'waiting' ? 'No parked tasks.' : 'No tasks in this view.'}
             />
-          </Card>
-
-          {review.length > 0 && (
-            <Card title={`Waiting on you to approve · ${review.length}`} icon={ShieldCheck} to="/review">
-              <div className="space-y-1.5">
-                {leadChecks.length > 0 && (
-                  <Link to="/review" className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm text-ink transition hover:bg-hover/[0.03]">
-                    <CheckCheck className="h-4 w-4 shrink-0 text-amber-500" />
-                    <span>{leadChecks.length} to check &amp; approve as leader</span>
-                    <ArrowRight className="ml-auto h-4 w-4 text-muted" />
-                  </Link>
-                )}
-                {ownerApprovals.length > 0 && (
-                  <Link to="/review" className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm text-ink transition hover:bg-hover/[0.03]">
-                    <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
-                    <span>{ownerApprovals.length} awaiting your final approval as owner</span>
-                    <ArrowRight className="ml-auto h-4 w-4 text-muted" />
-                  </Link>
-                )}
-              </div>
-            </Card>
           )}
         </div>
+      )}
 
-        {/* right: context */}
-        <div className="space-y-6 xl:col-span-4">
-          <Card title="Today's meetings" icon={Video} to="/meetings">
-            {todaysMeetings.length === 0 ? (
-              <p className="text-sm text-muted">No meetings scheduled today.</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {todaysMeetings.map((m) => (
-                  <li key={m.name} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
-                    <button type="button" onClick={() => setOpenMeeting(m)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                      <span className="tabular-nums text-xs font-semibold text-muted">{m.scheduled_at?.slice(11, 16) ?? '--:--'}</span>
-                      <span className="min-w-0 flex-1 truncate text-sm text-ink hover:text-brand-700 dark:hover:text-brand-300">{m.title}</span>
-                    </button>
-                    {m.can_mark_done && (
-                      <button
-                        type="button"
-                        onClick={() => setMarkDoneMeeting(m)}
-                        title="Mark done"
-                        className="rounded-md p-1 text-emerald-600 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                      >
-                        <Check className="h-4 w-4" />
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          {attToday && (
-            <Card title="Attendance" icon={QrCode} to={canManage(b) ? '/attendance-report' : undefined}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-ink">{attToday.status}</span>
-                <span className="text-xs text-muted">
-                  {attToday.first_scan ? `in ${attToday.first_scan.slice(11, 16)}` : 'no scan yet'}
-                </span>
-              </div>
-              {(attToday.late_minutes > 0 || attToday.penalty_points !== 0) && (
-                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
-                  {attToday.late_minutes > 0 ? `${attToday.late_minutes}m late` : ''}
-                  {attToday.penalty_points !== 0 ? `${attToday.late_minutes > 0 ? ' · ' : ''}${attToday.penalty_points} pts` : ''}
-                </p>
-              )}
-            </Card>
+      {/* ----- Owned ----- */}
+      {lens === 'owned' && (
+        <div className="space-y-4">
+          {ownerApprovals.length > 0 && (
+            <ActionBanner
+              icon={ShieldCheck}
+              text={`${ownerApprovals.length} todo${ownerApprovals.length > 1 ? 's' : ''} awaiting your final approval`}
+              onClick={() => navigate('/review')}
+            />
           )}
-
-          <Card title="Projects I steer" icon={FolderKanban} to="/projects">
-            {myProjects.length === 0 ? (
-              <p className="text-sm text-muted">You don't own or lead any projects.</p>
-            ) : (
-              <ul className="space-y-2">
-                {myProjects.map((p) => {
-                  const pct = p.item_total ? Math.round((p.item_done / p.item_total) * 100) : 0
-                  return (
-                    <li key={p.name}>
-                      <Link to={`/project/${encodeURIComponent(p.name)}`} className="block rounded-lg border border-line px-3 py-2 transition hover:bg-hover/[0.03]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate text-sm font-medium text-ink">{p.project_name}</span>
-                          <span className="shrink-0 text-xs tabular-nums text-muted">{pct}%</span>
-                        </div>
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.08]">
-                          <div className="h-full rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        {(p.overdue > 0 || p.review > 0) && (
-                          <div className="mt-1 flex gap-2 text-[11px]">
-                            {p.overdue > 0 && <span className="text-rose-600 dark:text-rose-400">{p.overdue} overdue</span>}
-                            {p.review > 0 && <span className="text-amber-600 dark:text-amber-400">{p.review} to review</span>}
-                          </div>
-                        )}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </Card>
-
-          {/* ponytail: list markup duplicated from "Projects I steer" to stay strictly
-              additive (leaves the working steer card untouched); dedupe if a third copy appears */}
-          <Card title="Projects I'm in" icon={Users} to="/projects">
-            {memberProjects.length === 0 ? (
-              <p className="text-sm text-muted">You're not a member of other projects.</p>
-            ) : (
-              <ul className="space-y-2">
-                {memberProjects.map((p) => {
-                  const pct = p.item_total ? Math.round((p.item_done / p.item_total) * 100) : 0
-                  return (
-                    <li key={p.name}>
-                      <Link to={`/project/${encodeURIComponent(p.name)}`} className="block rounded-lg border border-line px-3 py-2 transition hover:bg-hover/[0.03]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate text-sm font-medium text-ink">{p.project_name}</span>
-                          <span className="shrink-0 text-xs tabular-nums text-muted">{pct}%</span>
-                        </div>
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.08]">
-                          <div className="h-full rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        {(p.overdue > 0 || p.review > 0) && (
-                          <div className="mt-1 flex gap-2 text-[11px]">
-                            {p.overdue > 0 && <span className="text-rose-600 dark:text-rose-400">{p.overdue} overdue</span>}
-                            {p.review > 0 && <span className="text-amber-600 dark:text-amber-400">{p.review} to review</span>}
-                          </div>
-                        )}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </Card>
-
-          {r && (
-            <Card title="This week" icon={CalendarClock}>
-              <div className="grid grid-cols-2 gap-3">
-                <MiniStat label="Completed" value={r.completed} />
-                <MiniStat label="Focused" value={formatEstimate(r.minutes)} />
-                <MiniStat label="Points" value={`+${r.points}`} accent="violet" />
-                <MiniStat label="Streak" value={<span className="inline-flex items-center gap-1">{r.streak}<Flame className="h-4 w-4 text-amber-500" /></span>} />
-              </div>
-            </Card>
-          )}
+          <ProjectLens items={owned} empty="You don't own any projects yet." />
         </div>
-      </div>
+      )}
 
-      {/* jump-to launcher — everything I can do, role-gated via nav.ts */}
-      <div className="mt-8">
+      {/* ----- Led ----- */}
+      {lens === 'led' && (
+        <div className="space-y-4">
+          {leadChecks.length > 0 && (
+            <ActionBanner
+              icon={CheckCheck}
+              text={`${leadChecks.length} todo${leadChecks.length > 1 ? 's' : ''} to check & approve`}
+              onClick={() => navigate('/review')}
+            />
+          )}
+          <ProjectLens items={led} empty="You're not leading any projects yet." />
+        </div>
+      )}
+
+      {/* ----- I'm in ----- */}
+      {lens === 'in' && <ProjectLens items={memberIn} empty="You're not a member of other projects." />}
+
+      {/* Today's meetings — carries the mark-done capability (web extra, kept) */}
+      <Card title="Today's meetings" icon={Video} to="/meetings">
+        {todaysMeetings.length === 0 ? (
+          <p className="text-sm text-muted">No meetings scheduled today.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {todaysMeetings.map((m) => (
+              <li key={m.name} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2">
+                <button type="button" onClick={() => setOpenMeeting(m)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                  <span className="tabular-nums text-xs font-semibold text-muted">{m.scheduled_at?.slice(11, 16) ?? '--:--'}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink hover:text-brand-700 dark:hover:text-brand-300">{m.title}</span>
+                </button>
+                {m.can_mark_done && (
+                  <button
+                    type="button"
+                    onClick={() => setMarkDoneMeeting(m)}
+                    title="Mark done"
+                    className="rounded-md p-1 text-emerald-600 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* Attendance — surfaces only when the module is in use (web extra, kept) */}
+      {attToday && (
+        <Card title="Attendance" icon={QrCode} to={canManage(b) ? '/attendance-report' : undefined}>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-ink">{attToday.status}</span>
+            <span className="text-xs text-muted">
+              {attToday.first_scan ? `in ${attToday.first_scan.slice(11, 16)}` : 'no scan yet'}
+            </span>
+          </div>
+          {(attToday.late_minutes > 0 || attToday.penalty_points !== 0) && (
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+              {attToday.late_minutes > 0 ? `${attToday.late_minutes}m late` : ''}
+              {attToday.penalty_points !== 0 ? `${attToday.late_minutes > 0 ? ' · ' : ''}${attToday.penalty_points} pts` : ''}
+            </p>
+          )}
+        </Card>
+      )}
+
+      {/* Jump-to launcher — the web's rich QuickActions (everything I can do, role-gated) */}
+      <div>
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
           <Trophy className="h-4 w-4" /> Jump to
         </h2>
@@ -722,7 +678,7 @@ export default function Home() {
                       <Link
                         key={l.to}
                         to={l.to}
-                        className="flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2.5 transition hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]"
+                        className="flex items-center gap-2.5 rounded-2xl bg-surface px-3 py-2.5 shadow-card transition hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]"
                       >
                         <Icon className="h-4 w-4 shrink-0 text-muted" />
                         <span className="min-w-0">

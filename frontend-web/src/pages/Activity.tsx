@@ -65,7 +65,7 @@ function ReactionBar({ item }: { item: ActivityItem }) {
 
 function ActivityCard({ item }: { item: ActivityItem }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
+    <div className="rounded-2xl bg-surface p-4 shadow-card">
       <div className="flex items-start gap-3">
         <Avatar name={item.assigned_to_name} image={item.assigned_to_image ?? undefined} config={item.assigned_to_avatar_config} size={40} />
         <div className="min-w-0 flex-1">

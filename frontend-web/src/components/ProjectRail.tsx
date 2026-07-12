@@ -19,8 +19,8 @@ function ProjectRow({ p }: { p: ProjectCard }) {
       to={`/project/${encodeURIComponent(p.name)}`}
       className={({ isActive }) =>
         clsx(
-          'block rounded-lg px-2.5 py-2 transition',
-          isActive ? 'bg-brand-50 dark:bg-brand-500/15' : 'hover:bg-hover/[0.04]',
+          'block rounded-xl px-2.5 py-2 transition active:scale-[0.99]',
+          isActive ? 'bg-brand-50 shadow-sm dark:bg-brand-500/15' : 'hover:bg-hover/[0.04]',
         )
       }
     >
@@ -133,7 +133,7 @@ export function ProjectRail() {
             onChange={(e) => setQ(e.target.value)}
             aria-label="Search projects or people"
             placeholder="Search projects or people"
-            className="w-full rounded-lg border border-line bg-transparent py-1.5 pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
+            className="w-full rounded-xl border border-line bg-transparent py-1.5 pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
           />
         </div>
 

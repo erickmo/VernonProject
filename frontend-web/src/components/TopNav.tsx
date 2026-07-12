@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
-import { Search, Plus, Coins, Menu, ChevronRight, Sun, Moon, Monitor, LogOut, User } from 'lucide-react'
-import { useBoot, useWallet } from '@/hooks/useData'
+import { NavLink, useLocation } from 'react-router-dom'
+import { Search, Plus, Coins, Sun, Moon, Monitor, LogOut, User, Grid3x3 } from 'lucide-react'
+import clsx from 'clsx'
+import { useBoot, useWallet, useDashboard } from '@/hooks/useData'
 import { Avatar } from '@/components/ui'
 import { logout } from '@/lib/api'
 import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
@@ -9,6 +10,7 @@ import { formatNumber } from '@/lib/format'
 import type { AvatarConfig } from '@/lib/types'
 import { useModalA11y } from '@web/lib/useModalA11y'
 import { NotificationBell } from '@web/components/NotificationBell'
+import { NAV_PRIMARY } from '@web/lib/nav'
 
 const THEMES: { value: Theme; icon: typeof Sun; label: string }[] = [
   { value: 'light', icon: Sun, label: 'Light' },
@@ -16,19 +18,22 @@ const THEMES: { value: Theme; icon: typeof Sun; label: string }[] = [
   { value: 'system', icon: Monitor, label: 'System' },
 ]
 
-// Slim top bar inside the sidebar-offset content column. Primary navigation
-// lives in the Sidebar; this bar holds the breadcrumb + search / create /
-// notifications / wallet / account actions, and the mobile menu trigger.
+// Top tab bar (mobile-flow shell). Primary navigation lives here as a
+// horizontal tab row (mirrors /m's BottomNav); everything else lives behind
+// the More overlay. This bar also holds search / create / notifications /
+// wallet / account actions.
 export function TopBar({
-  onOpenSidebar, onOpenPalette, onQuickCreate, crumbs,
+  onOpenPalette, onQuickCreate, onOpenMore,
 }: {
-  onOpenSidebar: () => void
   onOpenPalette: () => void
   onQuickCreate: () => void
-  crumbs: { label: string; to?: string }[]
+  onOpenMore: () => void
 }) {
   const boot = useBoot()
   const wallet = useWallet()
+  const { data: dash } = useDashboard()
+  const reviewCount = dash?.counts.review ?? 0
+  const { pathname } = useLocation()
   const [theme, setThemeState] = useState<Theme>(getStoredTheme())
   const b = boot.data
   const pickTheme = (t: Theme) => { setTheme(t); setThemeState(t) }
@@ -37,19 +42,37 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur">
       <div className="flex h-14 items-center gap-2 px-4 lg:px-6">
-        <button className="-ml-1 p-1.5 text-muted lg:hidden" aria-label="Open menu" onClick={onOpenSidebar}>
-          <Menu className="h-5 w-5" />
-        </button>
-
-        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
-          {crumbs.map((c, i) => (
-            <span key={i} className="flex min-w-0 items-center gap-1.5">
-              {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-line" />}
-              {c.to
-                ? <NavLink to={c.to} className="truncate text-muted hover:text-ink">{c.label}</NavLink>
-                : <span className="truncate font-medium text-ink">{c.label}</span>}
-            </span>
-          ))}
+        <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto no-scrollbar">
+          <NavLink to="/" className="mr-2 shrink-0 font-display text-lg font-semibold text-ink">Vernon</NavLink>
+          {NAV_PRIMARY.map((t) => {
+            const Icon = t.icon
+            const badge = t.badge === 'review' ? reviewCount : 0
+            const active = t.end ? pathname === t.to : pathname.startsWith(t.match ?? t.to)
+            return (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                end={t.end}
+                aria-current={active ? 'page' : undefined}
+                className={clsx(
+                  'relative flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition active:scale-95',
+                  active ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:bg-hover/[0.04]',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="hidden md:inline">{t.label}</span>
+                {badge > 0 && (
+                  <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </NavLink>
+            )
+          })}
+          <button onClick={onOpenMore} aria-label="More destinations"
+            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-muted hover:bg-hover/[0.04] active:scale-95">
+            <Grid3x3 className="h-4 w-4" /> <span className="hidden md:inline">More</span>
+          </button>
         </nav>
 
         <button onClick={onOpenPalette} aria-label="Search"

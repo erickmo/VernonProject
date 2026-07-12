@@ -12,7 +12,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 type Tpl = { name: string; shift_name: string; start_time: string; end_time: string }
 type Asg = { name: string; employee: string; shift_template: string; effective_from: string; effective_to?: string }
 
-const inputCls = 'rounded-lg border border-line dark:border-slate-600 bg-surface px-3 py-2 text-sm'
+const inputCls = 'rounded-xl border border-line dark:border-slate-600 bg-surface px-3 py-2 text-sm'
 
 export default function Schedules() {
   const navigate = useNavigate()
@@ -89,7 +89,7 @@ export default function Schedules() {
             <input className={inputCls} placeholder="Name" value={tplForm.shift_name} onChange={(e) => setTplForm({ ...tplForm, shift_name: e.target.value })} />
             <input type="time" className={inputCls} value={tplForm.start_time.slice(0, 5)} onChange={(e) => setTplForm({ ...tplForm, start_time: e.target.value + ':00' })} />
             <input type="time" className={inputCls} value={tplForm.end_time.slice(0, 5)} onChange={(e) => setTplForm({ ...tplForm, end_time: e.target.value + ':00' })} />
-            <button onClick={addTpl} disabled={savingTpl} className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">{savingTpl ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}</button>
+            <button onClick={addTpl} disabled={savingTpl} className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-60">{savingTpl ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}</button>
           </div>
           {tpls === null ? <Spinner /> : tpls.length === 0 ? <EmptyState icon={Plus} title="No templates" subtitle="Add a shift window." /> : (
             <ul className="divide-y divide-line dark:divide-slate-800 text-sm">
@@ -118,13 +118,13 @@ export default function Schedules() {
                 <button
                   key={d}
                   onClick={() => setAsgForm({ ...asgForm, days: { ...asgForm.days, [d]: !asgForm.days[d] } })}
-                  className={`rounded-md border px-2 py-1 text-xs capitalize ${asgForm.days[d] ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line dark:border-slate-700 text-muted'}`}
+                  className={`rounded-full border px-2 py-1 text-xs capitalize transition active:scale-[0.97] ${asgForm.days[d] ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line dark:border-slate-700 text-muted'}`}
                 >
                   {d.slice(0, 3)}
                 </button>
               ))}
             </div>
-            <button onClick={addAsg} disabled={savingAsg} className="inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">{savingAsg ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Add assignment</button>
+            <button onClick={addAsg} disabled={savingAsg} className="inline-flex items-center justify-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-60">{savingAsg ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Add assignment</button>
           </div>
           {asgs === null ? <Spinner /> : asgs.length === 0 ? <EmptyState icon={Plus} title="No assignments" subtitle="Assign a shift to an employee." /> : (
             <ul className="divide-y divide-line dark:divide-slate-800 text-sm">

@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Send, Users } from 'lucide-react'
-import { Spinner, EmptyState, Avatar } from '@/components/ui'
+import { Gift, Search, Send, Users } from 'lucide-react'
+import { Spinner, EmptyState, Avatar, Segmented } from '@/components/ui'
 import { useGiftRecipients, useGiftPoints, useWallet, useBoot, canGrantPoints } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import type { GiftUser } from '@/lib/types'
 import { formatNumber } from '@/lib/format'
-import { Dialog } from '@web/components/overlays/Dialog'
-import { ErrorState } from '@web/components/ui'
+import { Sheet } from '@web/components/Sheet'
+import { ErrorState, Button } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 
 export default function GiftPoints() {
   const navigate = useNavigate()
@@ -76,18 +77,16 @@ export default function GiftPoints() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Send Points</h1>
+    <Page>
+      <PageHeader icon={Gift} title="Send Points" />
 
       {canGrantPoints(boot) && (
-        <div className="flex items-center gap-2">
-          <button className="rounded-full px-3 py-1.5 text-sm font-medium bg-brand-600 text-white">Gift</button>
-          <button
-            onClick={() => navigate('/grant-points')}
-            className="rounded-full px-3 py-1.5 text-sm font-medium bg-hover/[0.05] text-muted hover:bg-hover/[0.1]"
-          >
-            Grant
-          </button>
+        <div className="mb-4 max-w-xs">
+          <Segmented
+            options={[{ value: 'gift', label: 'Gift' }, { value: 'grant', label: 'Grant' }]}
+            value="gift"
+            onChange={(v) => { if (v === 'grant') navigate('/grant-points') }}
+          />
         </div>
       )}
 
@@ -116,7 +115,7 @@ export default function GiftPoints() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search users"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-line bg-hover/[0.04] text-sm text-ink focus:border-brand-600 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-line bg-hover/[0.04] text-sm text-ink focus:border-brand-600 focus:outline-none"
               />
             </div>
 
@@ -140,7 +139,7 @@ export default function GiftPoints() {
                       setNote('')
                     }}
                     aria-label={`Gift points to ${u.full_name}`}
-                    className="flex items-center gap-3 rounded-lg border border-line bg-surface p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
+                    className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left hover:border-brand-300 dark:hover:border-brand-500/40 hover:bg-hover/[0.03] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
                   >
                     <Avatar name={u.full_name} image={u.user_image} config={u.avatar_config} size={40} />
                     <div className="min-w-0 flex-1">
@@ -161,35 +160,10 @@ export default function GiftPoints() {
         </BentoTile>
       </BentoGrid>
 
-      <Dialog
-        open={!!selected}
-        onClose={closeDialog}
-        title="Gift points"
-        onSubmit={submit}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={closeDialog}
-              disabled={gift.isPending}
-              className="rounded-lg bg-canvas px-4 py-2 text-sm font-semibold text-ink dark:text-slate-200 disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-line dark:disabled:bg-slate-700 disabled:text-muted"
-            >
-              {gift.isPending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-              Gift points
-            </button>
-          </>
-        }
-      >
+      <Sheet open={!!selected} onClose={closeDialog} title="Gift points" size="sm">
         {selected && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg bg-hover/[0.04] p-4">
+          <form onSubmit={(e) => { e.preventDefault(); submit() }} className="space-y-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-hover/[0.04] p-4">
               <Avatar name={selected.full_name} image={selected.user_image} config={selected.avatar_config} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-ink">{selected.full_name}</p>
@@ -209,7 +183,7 @@ export default function GiftPoints() {
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"
                 aria-invalid={!!amountError}
-                className={`w-full rounded-lg border bg-transparent px-3 py-2.5 text-lg font-semibold text-ink outline-none ${
+                className={`w-full rounded-xl border bg-transparent px-3 py-2.5 text-lg font-semibold text-ink outline-none ${
                   amountError
                     ? 'border-red-400 focus:border-red-500'
                     : 'border-line focus:border-brand-500'
@@ -227,7 +201,7 @@ export default function GiftPoints() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="Say something nice"
-                className="w-full resize-none rounded-lg border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500"
+                className="w-full resize-none rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500"
               />
             </label>
 
@@ -235,9 +209,19 @@ export default function GiftPoints() {
               Your balance:{' '}
               <span className="font-semibold text-muted">{formatNumber(balance)}</span>
             </p>
-          </div>
+
+            <div className="flex justify-end gap-2 border-t border-line pt-4">
+              <Button variant="ghost" onClick={closeDialog} disabled={gift.isPending}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={!canSubmit}>
+                {gift.isPending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                Gift points
+              </Button>
+            </div>
+          </form>
         )}
-      </Dialog>
-    </div>
+      </Sheet>
+    </Page>
   )
 }

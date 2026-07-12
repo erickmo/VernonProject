@@ -10,9 +10,9 @@ import { Page, PageHeader } from '@web/components/Page'
 import type { AdPayload, AdType } from '@/lib/types'
 
 const cls =
-  'w-full rounded-lg border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15'
+  'w-full rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15'
 const shell =
-  'flex items-center gap-2 rounded-lg border border-line bg-hover/[0.04] px-3 py-2.5 transition focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/15'
+  'flex items-center gap-2 rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 transition focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/15'
 
 // Type cards reuse the board's per-type hues so form and list read as one system.
 const TYPES = [
@@ -80,7 +80,7 @@ export default function PapanIklanForm() {
                   key={t.value}
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, ad_type: t.value as AdType }))}
-                  className={`flex flex-col items-center gap-1 rounded-xl border py-3 transition ${active ? `${t.sel} shadow-sm` : 'border-line bg-hover/[0.02] text-muted hover:bg-hover/[0.05]'}`}
+                  className={`flex flex-col items-center gap-1 rounded-xl border py-3 transition active:scale-95 ${active ? `${t.sel} shadow-sm` : 'border-line bg-hover/[0.02] text-muted hover:bg-hover/[0.05]'}`}
                 >
                   <Icon className={`h-5 w-5 ${active ? t.ic : 'text-muted'}`} />
                   <span className="text-sm font-semibold">{t.label}</span>
@@ -108,7 +108,7 @@ export default function PapanIklanForm() {
                   const on = form.rate_period === p
                   return (
                     <button key={p} type="button" onClick={() => setForm((f) => ({ ...f, rate_period: on ? '' : p }))}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition ${on ? 'bg-brand-600 text-white' : 'border border-line text-muted hover:bg-hover/[0.05]'}`}>{p}</button>
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition active:scale-95 ${on ? 'bg-brand-600 text-white' : 'border border-line text-muted hover:bg-hover/[0.05]'}`}>{p}</button>
                   )
                 })}
               </div>

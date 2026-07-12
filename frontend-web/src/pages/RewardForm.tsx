@@ -286,7 +286,7 @@ export default function RewardForm() {
                   type="button"
                   onClick={remove}
                   disabled={del.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/10"
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 active:scale-[0.99] transition disabled:opacity-60 dark:hover:bg-rose-500/10"
                 >
                   {del.isPending ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />} Delete reward
                 </button>
@@ -297,7 +297,7 @@ export default function RewardForm() {
               <button
                 type="submit"
                 disabled={saving || uploading}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-60"
               >
                 {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
                 {isEdit ? 'Save changes' : 'Create reward'}
@@ -314,14 +314,14 @@ export default function RewardForm() {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="flex h-32 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-emerald-300 bg-emerald-50/50 text-muted hover:border-emerald-400 dark:border-emerald-600/40 dark:bg-emerald-500/5"
+              className="flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 text-muted hover:border-emerald-400 dark:border-emerald-600/40 dark:bg-emerald-500/5"
             >
               {uploading ? (
                 <span className="flex flex-col items-center gap-1 text-xs">
                   <Spinner className="h-5 w-5" /> Uploading…
                 </span>
               ) : form.image ? (
-                <img src={form.image} alt="" className="h-full w-full object-cover rounded-lg" />
+                <img src={form.image} alt="" className="h-full w-full object-cover rounded-xl" />
               ) : (
                 <span className="flex flex-col items-center gap-1 text-xs">
                   <ImagePlus className="h-6 w-6" /> Click to upload

@@ -203,7 +203,7 @@ export default function ReportPage() {
             <div className="flex items-center gap-3">
               <Link
                 to="/reports"
-                className="flex h-9 w-9 items-center justify-center rounded-lg opacity-70 hover:opacity-100 hover:bg-hover/[0.04]"
+                className="flex h-9 w-9 items-center justify-center rounded-xl opacity-70 transition active:scale-[0.97] hover:opacity-100 hover:bg-hover/[0.04]"
                 aria-label="Back to reports"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -215,7 +215,7 @@ export default function ReportPage() {
               <span ref={filterRef}>
                 <button
                   onClick={() => setFilterOpen((o) => !o)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-canvas/60 px-3 py-2 text-sm font-medium hover:bg-canvas"
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-canvas/60 px-3 py-2 text-sm font-medium transition active:scale-[0.97] hover:bg-canvas"
                 >
                   <Filter className="h-4 w-4" />
                   Filters
@@ -280,7 +280,7 @@ export default function ReportPage() {
                                       setVal(c.key, next.length ? next : '')
                                     }}
                                     className={clsx(
-                                      'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
+                                      'rounded-xl border px-2.5 py-1 text-xs font-medium transition active:scale-[0.97]',
                                       on
                                         ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
                                         : 'border-line bg-canvas text-muted hover:bg-hover/[0.03]',
@@ -327,7 +327,7 @@ export default function ReportPage() {
                                   setVal(c.key, p.range())
                                 }}
                                 className={clsx(
-                                  'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
+                                  'rounded-xl border px-2.5 py-1 text-xs font-medium transition active:scale-[0.97]',
                                   active
                                     ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
                                     : 'border-line bg-canvas text-ink hover:bg-hover/[0.03]',
@@ -362,7 +362,7 @@ export default function ReportPage() {
         {/* Report messages */}
         {data?.messages?.length ? (
           <BentoTile span="full" tone="plain">
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+            <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-500/15 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="space-y-1">
                 {data.messages.map((m, i) => (
@@ -485,7 +485,7 @@ export default function ReportPage() {
                   <button
                     type="button"
                     onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-hover/[0.03] outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition active:scale-[0.97] hover:bg-hover/[0.03] outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                   >
                     Load more
                     <span className="text-xs text-muted">

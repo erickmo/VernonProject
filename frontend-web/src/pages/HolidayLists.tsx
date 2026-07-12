@@ -10,7 +10,7 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 
 type HList = { name: string; list_name: string }
 type Brand = { name: string; holiday_list?: string }
-const inputCls = 'rounded-lg border border-line dark:border-slate-600 bg-surface px-3 py-2 text-sm'
+const inputCls = 'rounded-xl border border-line dark:border-slate-600 bg-surface px-3 py-2 text-sm'
 
 export default function HolidayLists() {
   const navigate = useNavigate()
@@ -76,7 +76,7 @@ export default function HolidayLists() {
           <div className="flex flex-col gap-2">
             <input className={inputCls} placeholder="List name" value={listName} onChange={(e) => setListName(e.target.value)} />
             <textarea className={inputCls + ' min-h-[120px] font-mono'} placeholder={'2026-08-17\n2026-12-25'} value={dates} onChange={(e) => setDates(e.target.value)} />
-            <button onClick={createList} disabled={saving || !listName.trim()} className="inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">{saving ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Create list</button>
+            <button onClick={createList} disabled={saving || !listName.trim()} className="inline-flex items-center justify-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-60">{saving ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Create list</button>
           </div>
           {lists === null ? <Spinner /> : lists.length === 0 ? <EmptyState icon={Plus} title="No lists" subtitle="Create one above." /> : (
             <ul className="mt-3 divide-y divide-line dark:divide-slate-800 text-sm">

@@ -5,6 +5,7 @@ import { useBoot, useLeaderboard } from '@/hooks/useData'
 import type { LeaderboardEntry, LeaderboardPeriod, LeaderboardDimension } from '@/lib/types'
 import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { DataTable } from '@web/components/DataTable'
 import type { Column } from '@web/components/DataTable'
@@ -84,25 +85,28 @@ export default function Leaderboard() {
   ]
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Leaderboard</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
-          <Segmented options={PERIODS} value={period} onChange={setPeriod} />
-          {data && data.brands.length > 0 && (
-            <div className="w-44">
-              <SearchableSelect
-                value={brand}
-                onChange={setBrand}
-                options={data.brands.map((b) => ({ value: b, label: b }))}
-                placeholder="All brands"
-                allowClear
-              />
-            </div>
-          )}
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        icon={Trophy}
+        title="Leaderboard"
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
+            <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+            {data && data.brands.length > 0 && (
+              <div className="w-44">
+                <SearchableSelect
+                  value={brand}
+                  onChange={setBrand}
+                  options={data.brands.map((b) => ({ value: b, label: b }))}
+                  placeholder="All brands"
+                  allowClear
+                />
+              </div>
+            )}
+          </div>
+        }
+      />
 
       {q.isError ? (
         <ErrorState onRetry={() => q.refetch()} />
@@ -161,6 +165,6 @@ export default function Leaderboard() {
           </BentoTile>
         </BentoGrid>
       )}
-    </div>
+    </Page>
   )
 }

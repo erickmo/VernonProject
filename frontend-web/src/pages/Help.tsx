@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { Card, CardList } from '@web/components/Card'
 import { ACTION_GROUPS } from '@/lib/actions'
 
 // Onboarding "what can I do" list, rendered from the shared mobile source of
@@ -24,24 +24,25 @@ export default function Help() {
       {groups.map((g) => (
         <div key={g.title}>
           <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted/70">{g.title}</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <CardList>
             {g.items.map((it) => (
-              <button
+              <Card
                 key={it.title}
                 onClick={() => nav(it.to)}
-                className="group flex items-start gap-3 rounded-xl border border-line bg-surface p-4 text-left transition-colors hover:bg-hover/[0.04]"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600/10 text-brand-600">
-                  <it.icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">{it.title}</p>
-                  <p className="mt-0.5 text-xs text-muted">{it.desc}</p>
-                </div>
-                <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
-              </button>
+                title={
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600/10 text-brand-600">
+                      <it.icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-ink">{it.title}</p>
+                      <p className="mt-0.5 text-xs font-normal text-muted">{it.desc}</p>
+                    </div>
+                  </div>
+                }
+              />
             ))}
-          </div>
+          </CardList>
         </div>
       ))}
     </div>

@@ -371,7 +371,7 @@ export default function GroupForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(['Assignee', 'Leader'] as const).map((grp) => (
-                <div key={grp} className="rounded-lg bg-canvas p-3">
+                <div key={grp} className="rounded-xl bg-canvas p-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">{grp}</p>
                   <div className="flex flex-col gap-2">
                     {WEIGHTS.filter((w) => w.group === grp).map((w) => (
@@ -403,7 +403,7 @@ export default function GroupForm() {
             </div>
 
             {/* Types & Levels */}
-            <div className="rounded-lg bg-canvas p-3">
+            <div className="rounded-xl bg-canvas p-3">
               <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
                 <Layers className="h-3.5 w-3.5" /> Types &amp; Levels
               </p>

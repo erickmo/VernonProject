@@ -6,6 +6,7 @@ import { useToast } from '@/components/Toast'
 import { useBoot, canManageAttendance, useApproveException, useRejectException } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { Card, CardList } from '@web/components/Card'
 
 type Exc = { name: string; employee: string; exception_type: string; from_date: string; to_date: string; status: string; reason?: string }
 
@@ -58,18 +59,21 @@ export default function Exceptions() {
           ) : list.length === 0 ? (
             <EmptyState icon={Check} title="All clear" subtitle="No pending requests." />
           ) : (
-            <div className="flex flex-col gap-2">
+            <CardList>
               {list.map((e) => (
-                <div key={e.name} className="flex items-center gap-3 rounded-lg border border-line p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-ink">{e.employee} · {e.exception_type}</p>
-                    <p className="text-xs text-muted">{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''}</p>
-                  </div>
-                  <button onClick={() => decide(e.name, 'Approved')} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"><Check className="h-4 w-4" /> Approve</button>
-                  <button onClick={() => decide(e.name, 'Rejected')} className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"><X className="h-4 w-4" /> Reject</button>
-                </div>
+                <Card
+                  key={e.name}
+                  title={`${e.employee} · ${e.exception_type}`}
+                  meta={<span>{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''}</span>}
+                  footer={
+                    <>
+                      <button onClick={() => decide(e.name, 'Approved')} className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700 active:scale-[0.99] transition"><Check className="h-4 w-4" /> Approve</button>
+                      <button onClick={() => decide(e.name, 'Rejected')} className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-rose-600 py-2 text-sm font-semibold text-white hover:bg-rose-700 active:scale-[0.99] transition"><X className="h-4 w-4" /> Reject</button>
+                    </>
+                  }
+                />
               ))}
-            </div>
+            </CardList>
           )}
         </BentoTile>
       </BentoGrid>

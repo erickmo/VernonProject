@@ -415,7 +415,7 @@ export default function NoteForm() {
                 <button
                   onClick={addItem}
                   disabled={!newItem.trim()}
-                  className="flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-3 text-white hover:bg-brand-700 disabled:opacity-50"
+                  className="flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-3 text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-50"
                   aria-label="Add item"
                 >
                   <Plus className="h-4 w-4" />
@@ -466,7 +466,7 @@ export default function NoteForm() {
               ) : (
                 <button
                   onClick={() => setPicking(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-ink hover:bg-hover/[0.04] dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-ink hover:bg-hover/[0.04] active:scale-[0.99] transition dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
                 >
                   <UserPlus className="h-4 w-4" /> Share with someone
                 </button>
@@ -481,7 +481,7 @@ export default function NoteForm() {
             <div className="mt-1">
               <button
                 onClick={remove}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-surface py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 transition-colors"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-surface py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 active:scale-[0.99] transition dark:border-rose-500/30 dark:hover:bg-rose-500/10"
               >
                 <Trash2 className="h-4 w-4" /> Delete note
               </button>
@@ -523,7 +523,7 @@ function SharePicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search users"
-            className="w-full rounded-lg border border-line bg-hover/[0.04] py-2 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500"
+            className="w-full rounded-xl border border-line bg-hover/[0.04] py-2 pl-9 pr-3 text-sm text-ink outline-none focus:border-brand-500"
           />
         </div>
         <button onClick={onCancel} className="px-2 text-sm font-medium text-muted" aria-label="Cancel">
@@ -540,7 +540,7 @@ function SharePicker({
             <button
               key={u.value}
               onClick={() => onPick(u.value)}
-              className="flex w-full items-center gap-3 px-2 py-2.5 text-left hover:bg-hover/[0.04] dark:hover:bg-slate-700/50"
+              className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-hover/[0.04] active:scale-[0.99] transition dark:hover:bg-slate-700/50"
             >
               <Avatar name={u.label} size={32} />
               <div className="min-w-0 flex-1">

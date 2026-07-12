@@ -43,7 +43,7 @@ export default function Kiosk() {
       {error ? (
         <p className="text-rose-400">{error}</p>
       ) : (
-        <div className="rounded-lg bg-white p-4">
+        <div className="rounded-2xl bg-white p-4">
           <canvas ref={canvasRef} />
         </div>
       )}

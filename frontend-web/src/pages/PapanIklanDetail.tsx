@@ -84,7 +84,7 @@ export default function PapanIklanDetail() {
             href={waLink(ad.contact)}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white"
+            className="flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-semibold text-white shadow-sm transition active:scale-[0.99]"
           >
             <MessageCircle className="h-4 w-4" /> Hubungi ({ad.contact})
           </a>
@@ -99,7 +99,7 @@ export default function PapanIklanDetail() {
             </>
           )}
           {ad.is_admin && !ad.is_owner && (
-            <div className="space-y-2 rounded-xl border border-rose-200 p-3">
+            <div className="space-y-2 rounded-2xl border border-rose-200 bg-rose-50/50 p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
               <p className="text-xs font-semibold text-rose-600">Admin</p>
               <Button variant="danger" className="w-full" onClick={takedown} disabled={adminRemove.isPending}><ShieldX className="h-4 w-4" /> Turunkan</Button>
               <Button variant="danger" className="w-full" onClick={() => setBanOpen((v) => !v)}><Ban className="h-4 w-4" /> Ban pengguna</Button>

@@ -19,8 +19,8 @@ export function EntityChip({
 }) {
   const inner = (
     <span className={clsx(
-      'inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm text-ink',
-      to && 'hover:bg-hover/[0.04]',
+      'inline-flex max-w-full items-center gap-1.5 rounded-full bg-hover/[0.05] px-2.5 py-0.5 text-sm text-ink',
+      to && 'hover:bg-hover/[0.1]',
       className,
     )}>
       {avatarName != null

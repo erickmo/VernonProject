@@ -6,7 +6,8 @@ import { ErrorState } from '@web/components/ui'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
-import { Dialog } from '@web/components/overlays/Dialog'
+import { Sheet } from '@web/components/Sheet'
+import { Button } from '@web/components/ui'
 import {
   useBoot,
   canManageIncome,
@@ -40,7 +41,7 @@ function Chip({ status }: { status: string }) {
 }
 
 const inputCls =
-  'w-full rounded-lg border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500'
+  'w-full rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500'
 
 type Draft = {
   name?: string
@@ -157,12 +158,9 @@ export default function IncomeAdmin() {
               onChange={setTab}
             />
             {tab === 'opps' && (
-              <button
-                onClick={() => setDraft({ ...EMPTY })}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-              >
+              <Button variant="primary" size="sm" onClick={() => setDraft({ ...EMPTY })}>
                 <Plus className="h-4 w-4" /> New opportunity
-              </button>
+              </Button>
             )}
           </div>
         </BentoTile>
@@ -277,26 +275,9 @@ export default function IncomeAdmin() {
       </BentoGrid>
 
       {/* Opportunity form */}
-      <Dialog
-        open={!!draft}
-        onClose={closeDraft}
-        title={draft?.name ? 'Edit opportunity' : 'New opportunity'}
-        onSubmit={saveDraft}
-        footer={
-          <>
-            <button type="button" onClick={closeDraft} disabled={saveOpp.isPending} className="rounded-lg bg-canvas px-4 py-2 text-sm font-semibold text-ink disabled:opacity-60">Cancel</button>
-            <button
-              type="submit"
-              disabled={!draft?.title.trim() || !draft?.reward.trim() || !draft?.period_start || saveOpp.isPending}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-line dark:disabled:bg-slate-700 disabled:text-muted"
-            >
-              {saveOpp.isPending ? <Spinner className="h-4 w-4" /> : 'Save'}
-            </button>
-          </>
-        }
-      >
+      <Sheet open={!!draft} onClose={closeDraft} title={draft?.name ? 'Edit opportunity' : 'New opportunity'} size="sm">
         {draft && (
-          <div className="space-y-3">
+          <form onSubmit={(e) => { e.preventDefault(); saveDraft() }} className="space-y-3">
             <input className={inputCls} placeholder="Title" autoFocus value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
             <textarea className={`${inputCls} resize-none`} rows={3} placeholder="Description (optional)" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
             <input className={inputCls} placeholder="Reward (e.g. Rp 500.000 / voucher)" value={draft.reward} onChange={(e) => setDraft({ ...draft, reward: e.target.value })} />
@@ -316,7 +297,7 @@ export default function IncomeAdmin() {
                   key={s}
                   type="button"
                   onClick={() => setDraft({ ...draft, status: s })}
-                  className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
+                  className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-colors ${
                     draft.status === s ? 'bg-brand-600 text-white' : 'border border-line text-muted hover:bg-hover/[0.04]'
                   }`}
                 >
@@ -324,19 +305,29 @@ export default function IncomeAdmin() {
                 </button>
               ))}
             </div>
-          </div>
+            <div className="flex justify-end gap-2 border-t border-line pt-4">
+              <Button variant="ghost" onClick={closeDraft} disabled={saveOpp.isPending}>Cancel</Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!draft.title.trim() || !draft.reward.trim() || !draft.period_start || saveOpp.isPending}
+              >
+                {saveOpp.isPending ? <Spinner className="h-4 w-4" /> : 'Save'}
+              </Button>
+            </div>
+          </form>
         )}
-      </Dialog>
+      </Sheet>
 
       {/* Claim review */}
-      <Dialog open={!!reviewing} onClose={closeReview} title="Review claim">
+      <Sheet open={!!reviewing} onClose={closeReview} title="Review claim" size="sm">
         {reviewing && (
           <div className="space-y-3">
             <div>
               <p className="text-sm font-semibold text-ink">{reviewing.claimed_by_name}</p>
               <p className="text-xs text-muted">{reviewing.opportunity_title}</p>
             </div>
-            <p className="whitespace-pre-line rounded-lg bg-hover/[0.04] px-3 py-2.5 text-sm text-muted">{reviewing.details}</p>
+            <p className="whitespace-pre-line rounded-xl bg-hover/[0.04] px-3 py-2.5 text-sm text-muted">{reviewing.details}</p>
             <textarea
               className={`${inputCls} resize-none`}
               rows={2}
@@ -350,7 +341,7 @@ export default function IncomeAdmin() {
                   key={s}
                   disabled={review.isPending}
                   onClick={() => applyStatus(s)}
-                  className={`rounded-lg py-2.5 text-sm font-semibold transition disabled:opacity-50 ${STATUS_HUE[s]}`}
+                  className={`rounded-xl py-2.5 text-sm font-semibold active:scale-[0.99] transition disabled:opacity-50 ${STATUS_HUE[s]}`}
                 >
                   {reviewing.status === s ? `● ${s}` : s}
                 </button>
@@ -358,7 +349,7 @@ export default function IncomeAdmin() {
             </div>
           </div>
         )}
-      </Dialog>
+      </Sheet>
     </Page>
   )
 }

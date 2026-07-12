@@ -10,7 +10,7 @@ export default function Calendar() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Calendar</h1>
         <button
           onClick={() => navigate('/meetings')}
-          className="flex items-center gap-1.5 rounded-lg bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300"
+          className="flex items-center gap-1.5 rounded-xl bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-[0.99]"
         >
           <CalendarClock className="h-4 w-4" /> Meetings
         </button>

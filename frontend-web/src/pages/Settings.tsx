@@ -222,7 +222,7 @@ export default function Settings() {
                     pickForIdx.current = i
                     bannerFileRef.current?.click()
                   }}
-                  className="relative flex aspect-[16/7] w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-hover/[0.04] text-muted"
+                  className="relative flex aspect-[16/7] w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-hover/[0.04] text-muted"
                 >
                   {uploadingIdx === i ? (
                     <Spinner className="h-5 w-5" />

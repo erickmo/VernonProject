@@ -6,7 +6,8 @@ import { ErrorState } from '@web/components/ui'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
-import { Dialog } from '@web/components/overlays/Dialog'
+import { Sheet } from '@web/components/Sheet'
+import { Button } from '@web/components/ui'
 import { useIncome, useSubmitIncomeClaim, useBoot, canManageIncome } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { formatDate } from '@/lib/format'
@@ -76,12 +77,9 @@ export default function Income() {
         title="Extra Income"
         actions={
           canManageIncome(boot) ? (
-            <button
-              onClick={() => navigate('/income-admin')}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover/[0.04] transition-colors"
-            >
+            <Button variant="secondary" size="sm" onClick={() => navigate('/income-admin')}>
               <Settings className="h-4 w-4" /> Manage
-            </button>
+            </Button>
           ) : undefined
         }
       />
@@ -109,7 +107,7 @@ export default function Income() {
                   const claimed = o.my_claim_status
                   const canClaim = !claimed || claimed === 'Rejected'
                   return (
-                    <div key={o.name} className="flex flex-col rounded-lg border border-line bg-surface p-4">
+                    <div key={o.name} className="flex flex-col rounded-2xl border border-line bg-surface p-4 shadow-card">
                       <div className="mb-1 flex items-start justify-between gap-2">
                         <p className="font-semibold text-ink">{o.title}</p>
                         {claimed && <StatusChip status={claimed} />}
@@ -128,7 +126,7 @@ export default function Income() {
                       {canClaim ? (
                         <button
                           onClick={() => { setClaiming(o); setDetails('') }}
-                          className="mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+                          className="mt-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition"
                         >
                           <Send className="h-4 w-4" /> {claimed === 'Rejected' ? 'Claim again' : 'Claim'}
                         </button>
@@ -183,32 +181,8 @@ export default function Income() {
         </BentoGrid>
       )}
 
-      <Dialog
-        open={!!claiming}
-        onClose={closeClaim}
-        title={claiming ? `Claim: ${claiming.title}` : 'Claim'}
-        onSubmit={send}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={closeClaim}
-              disabled={submit.isPending}
-              className="rounded-lg bg-canvas px-4 py-2 text-sm font-semibold text-ink disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!details.trim() || submit.isPending}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-line dark:disabled:bg-slate-700 disabled:text-muted"
-            >
-              {submit.isPending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />} Submit claim
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-3">
+      <Sheet open={!!claiming} onClose={closeClaim} title={claiming ? `Claim: ${claiming.title}` : 'Claim'} size="sm">
+        <form onSubmit={(e) => { e.preventDefault(); send() }} className="space-y-3">
           <p className="text-sm text-muted">
             Tell the reviewer what you did to earn this. They'll review and mark it paid.
           </p>
@@ -218,10 +192,18 @@ export default function Income() {
             rows={4}
             autoFocus
             placeholder="Describe your claim…"
-            className="w-full resize-none rounded-lg border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500"
+            className="w-full resize-none rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500"
           />
-        </div>
-      </Dialog>
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <Button variant="ghost" onClick={closeClaim} disabled={submit.isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={!details.trim() || submit.isPending}>
+              {submit.isPending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />} Submit claim
+            </Button>
+          </div>
+        </form>
+      </Sheet>
     </Page>
   )
 }

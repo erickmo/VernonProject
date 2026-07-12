@@ -40,7 +40,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         aria-modal="true"
         aria-label="Welcome to Vernon"
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-lg bg-surface shadow-xl flex flex-col"
+        className="relative w-full max-w-md rounded-2xl bg-surface shadow-xl flex flex-col"
       >
         <div className="flex justify-end px-5 pt-4">
           <button onClick={onDone} className="text-sm font-medium text-muted hover:text-ink rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
@@ -51,7 +51,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         <div className="flex flex-col items-center justify-center px-8 pt-2 pb-6 text-center">
           <div
             className={clsx(
-              'mb-8 flex h-28 w-28 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-lg',
+              'mb-8 flex h-28 w-28 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg',
               slide.accent,
             )}
           >
@@ -77,14 +77,14 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             {i > 0 && (
               <button
                 onClick={() => setI(i - 1)}
-                className="flex items-center justify-center gap-1 rounded-lg border border-line px-5 py-3.5 text-base font-semibold text-muted hover:bg-hover/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                className="flex items-center justify-center gap-1 rounded-xl border border-line px-5 py-3.5 text-base font-semibold text-muted transition active:scale-[0.99] hover:bg-hover/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <ArrowLeft className="h-5 w-5" /> Back
               </button>
             )}
             <button
               onClick={() => (last ? onDone() : setI(i + 1))}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-600 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 py-3.5 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               {last ? 'Get started' : 'Next'}
               <ArrowRight className="h-5 w-5" />

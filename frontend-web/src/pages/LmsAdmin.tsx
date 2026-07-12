@@ -468,7 +468,7 @@ export default function LmsAdmin() {
                               onClick={() =>
                                 patchLesson({ files: lessonDraft.files.filter((_, j) => j !== i) })
                               }
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-rose-500 hover:bg-rose-50 active:scale-[0.97] transition dark:hover:bg-rose-500/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -529,7 +529,7 @@ export default function LmsAdmin() {
                   {lessons.map((l) => (
                     <div
                       key={l.name}
-                      className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+                      className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-ink">{l.title}</p>
@@ -546,7 +546,7 @@ export default function LmsAdmin() {
                         type="button"
                         onClick={() => doDeleteLesson(l)}
                         aria-label="Delete lesson"
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-line text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-line text-rose-500 hover:bg-rose-50 active:scale-[0.97] transition dark:hover:bg-rose-500/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

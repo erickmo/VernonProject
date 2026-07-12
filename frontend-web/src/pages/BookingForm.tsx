@@ -143,7 +143,7 @@ export default function BookingForm() {
         <button
           type="submit"
           disabled={check.isPending || create.isPending}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-60"
         >
           {(check.isPending || create.isPending) ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           Book

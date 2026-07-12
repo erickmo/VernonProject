@@ -15,7 +15,7 @@ type Profile = { name: string; user: string; brand: string; enrolled_from: strin
 type Brand = { name: string }
 type User = { name: string; full_name?: string }
 
-const inputCls = 'rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink'
+const inputCls = 'rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink'
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -107,7 +107,7 @@ export default function AttendanceProfiles() {
       header: 'Status',
       render: (p) => (
         <span
-          className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
             p.active
               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
               : 'bg-surface text-muted'
@@ -123,7 +123,7 @@ export default function AttendanceProfiles() {
       render: (p) => (
         <button
           onClick={(e) => { e.stopPropagation(); toggleActive(p) }}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink active:scale-[0.97] transition"
         >
           {p.active ? (
             <><UserX className="h-3.5 w-3.5" /> Deactivate</>
@@ -175,7 +175,7 @@ export default function AttendanceProfiles() {
             <button
               onClick={enroll}
               disabled={saving || !user || !brand}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.97] transition disabled:opacity-50"
             >
               <Plus className="h-4 w-4" /> Enrol
             </button>

@@ -4,6 +4,8 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { usePendingExceptionApprovals, useApproveException, useRejectException } from '@/hooks/useData'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { Card, CardList } from '@web/components/Card'
+import { Sheet } from '@web/components/Sheet'
 
 export default function ExceptionApprovals() {
   const toast = useToast()
@@ -35,61 +37,57 @@ export default function ExceptionApprovals() {
           ) : !rows || rows.length === 0 ? (
             <EmptyState icon={Check} title="All clear" subtitle="Nothing awaiting your approval." />
           ) : (
-            <div className="flex flex-col gap-2">
+            <CardList>
               {rows.map((e) => (
-                <div key={e.name} className="flex items-center gap-3 rounded-lg border border-line p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-ink">{e.employee} · {e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}</p>
-                    <p className="text-xs text-muted">
-                      {e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''} · {e.approved_count}/{e.total} approved
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => approve.mutate(e.name, {
-                      onSuccess: () => toast('success', 'Approved'),
-                      onError: (err) => toast('error', (err as Error).message),
-                    })}
-                    disabled={approve.isPending}
-                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    <Check className="h-4 w-4" /> Approve
-                  </button>
-                  <button
-                    onClick={() => { setRejecting(e.name); setReason('') }}
-                    className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-700"
-                  >
-                    <X className="h-4 w-4" /> Reject
-                  </button>
-                </div>
+                <Card
+                  key={e.name}
+                  title={`${e.employee} · ${e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}`}
+                  meta={<span>{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''} · {e.approved_count}/{e.total} approved</span>}
+                  footer={
+                    <>
+                      <button
+                        onClick={() => approve.mutate(e.name, {
+                          onSuccess: () => toast('success', 'Approved'),
+                          onError: (err) => toast('error', (err as Error).message),
+                        })}
+                        disabled={approve.isPending}
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700 active:scale-[0.99] transition disabled:opacity-50"
+                      >
+                        <Check className="h-4 w-4" /> Approve
+                      </button>
+                      <button
+                        onClick={() => { setRejecting(e.name); setReason('') }}
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-rose-600 py-2 text-sm font-semibold text-white hover:bg-rose-700 active:scale-[0.99] transition"
+                      >
+                        <X className="h-4 w-4" /> Reject
+                      </button>
+                    </>
+                  }
+                />
               ))}
-            </div>
+            </CardList>
           )}
         </BentoTile>
       </BentoGrid>
 
-      {rejecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setRejecting(null)}>
-          <div className="w-full max-w-md rounded-xl bg-surface p-4 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
-            <p className="mb-2 font-medium text-ink">Reason for rejection</p>
-            <textarea
-              className="w-full min-h-[90px] resize-y rounded-lg border border-line px-3 py-2 text-sm text-ink"
-              value={reason}
-              onChange={(ev) => setReason(ev.target.value)}
-              autoFocus
-            />
-            <div className="mt-3 flex justify-end gap-2">
-              <button onClick={() => setRejecting(null)} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted">Cancel</button>
-              <button
-                onClick={submitReject}
-                disabled={reject.isPending || !reason.trim()}
-                className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Confirm reject
-              </button>
-            </div>
-          </div>
+      <Sheet open={!!rejecting} onClose={() => setRejecting(null)} title="Reason for rejection" size="sm">
+        <textarea
+          className="w-full min-h-[90px] resize-y rounded-xl border border-line px-3 py-2 text-sm text-ink"
+          value={reason}
+          onChange={(ev) => setReason(ev.target.value)}
+          autoFocus
+        />
+        <div className="mt-3 flex justify-end gap-2">
+          <button onClick={() => setRejecting(null)} className="rounded-xl border border-line px-3 py-1.5 text-sm text-muted active:scale-[0.99] transition">Cancel</button>
+          <button
+            onClick={submitReject}
+            disabled={reject.isPending || !reason.trim()}
+            className="rounded-xl bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white active:scale-[0.99] transition disabled:opacity-50"
+          >
+            Confirm reject
+          </button>
         </div>
-      )}
+      </Sheet>
     </div>
   )
 }

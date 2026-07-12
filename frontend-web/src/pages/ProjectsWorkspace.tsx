@@ -12,13 +12,18 @@ export default function ProjectsWorkspace() {
     <div className="flex min-h-[calc(100vh-9rem)] gap-5">
       <aside
         className={clsx(
-          'sticky top-24 max-h-[calc(100vh-7rem)] shrink-0 self-start overflow-hidden rounded-xl border border-line bg-surface',
+          'sticky top-24 max-h-[calc(100vh-7rem)] shrink-0 self-start overflow-hidden rounded-2xl bg-surface shadow-card',
           onProject ? 'hidden lg:block lg:w-64' : 'block w-full lg:w-64',
         )}
       >
         <ProjectRail />
       </aside>
-      <div className={clsx('min-w-0 flex-1', onProject ? 'block' : 'hidden lg:block')}>
+      <div
+        className={clsx(
+          'min-w-0 flex-1 rounded-2xl bg-surface p-5 shadow-card lg:p-6',
+          onProject ? 'block' : 'hidden lg:block',
+        )}
+      >
         <Outlet />
       </div>
     </div>

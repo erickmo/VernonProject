@@ -23,7 +23,7 @@ export const NAV_PRIMARY: NavLeaf[] = [
   { to: '/projects', label: 'Projects', sub: '', icon: FolderKanban, match: '/project' },
   { to: '/review', label: 'Review', sub: '', icon: CheckCircle2, badge: 'review' },
   { to: '/reports', label: 'Reports', sub: '', icon: BarChart3, match: '/report' },
-  { to: '/me', label: 'Me', sub: '', icon: User, end: true },
+  { to: '/me', label: 'Me', sub: '', icon: User, match: '/me' },
 ]
 export const NAV_PRIMARY_PATHS = new Set(NAV_PRIMARY.map((l) => l.to))
 

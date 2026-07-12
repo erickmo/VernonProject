@@ -147,7 +147,7 @@ export default function Learn() {
               <BentoTile key={c.name} span="md" tone={c.my_status ? 'tint' : 'plain'} accent="brand">
                 <div className="flex h-full flex-col gap-2">
                   {c.cover_image && (
-                    <div className="-mx-4 -mt-4 mb-1 overflow-hidden rounded-t-lg">
+                    <div className="-mx-4 -mt-4 mb-1 overflow-hidden rounded-t-2xl">
                       <img src={c.cover_image} alt={c.title} className="h-32 w-full object-cover" />
                     </div>
                   )}

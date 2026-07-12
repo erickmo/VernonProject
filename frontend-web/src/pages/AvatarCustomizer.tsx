@@ -167,7 +167,7 @@ export default function AvatarCustomizer() {
       <BentoGrid>
         {/* AvatarScene preview — sticky so it stays visible while controls scroll */}
         <BentoTile span="lg" tone="plain" className="min-h-[18rem] sticky top-14 lg:top-4 self-start">
-          <div ref={previewRef} className="relative mx-auto flex aspect-square w-72 max-w-full items-center justify-center overflow-hidden rounded-lg bg-hover/[0.04]">
+          <div ref={previewRef} className="relative mx-auto flex aspect-square w-72 max-w-full items-center justify-center overflow-hidden rounded-xl bg-hover/[0.04]">
             <AvatarScene config={draft} assets={catalog.assets} className="h-full w-full" />
           </div>
         </BentoTile>
@@ -182,7 +182,7 @@ export default function AvatarCustomizer() {
                 key={value}
                 onClick={() => setDraft((d) => ({ style: value as StyleKey, options: {}, scene: d?.scene ?? null, props: d?.props ?? [], featured_collectible: d?.featured_collectible ?? null }))}
                 className={[
-                  'rounded-lg px-4 py-2 text-sm font-semibold transition',
+                  'rounded-xl px-4 py-2 text-sm font-semibold transition active:scale-[0.97]',
                   draft.style === value
                     ? 'bg-brand-600 text-white'
                     : 'bg-canvas text-muted hover:bg-hover/[0.04]',

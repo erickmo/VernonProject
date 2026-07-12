@@ -20,7 +20,7 @@ function ItemRow({ item, onClick }: { item: DataHealthItem; onClick: () => void 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left flex flex-col gap-0.5 rounded-xl px-3 py-2.5 bg-canvas hover:bg-hover/[0.04] transition"
+      className="w-full text-left flex flex-col gap-0.5 rounded-xl px-3 py-2.5 bg-canvas hover:bg-hover/[0.04] active:scale-[0.99] transition"
     >
       <span className="font-medium text-sm text-ink truncate">{item.to_do}</span>
       <span className="text-xs text-muted truncate">

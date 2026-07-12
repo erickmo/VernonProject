@@ -8,7 +8,7 @@ import { useBoot, canManageUsers, useFeedbackInbox, useSetFeedbackStatus } from 
 import FeedbackMessage from '@/components/FeedbackMessage'
 import { useFeedbackToTask } from '@/hooks/useFeedbackToTask'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { Drawer } from '@web/components/overlays/Drawer'
+import { Sheet } from '@web/components/Sheet'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 
 const STATUSES = ['New', 'Reviewed', 'Resolved', 'Rejected'] as const
@@ -99,7 +99,7 @@ export default function FeedbackInbox() {
           {items.map((item) => (
             <div
               key={item.name}
-              className="rounded-lg border border-line bg-surface p-4"
+              className="rounded-2xl bg-surface p-4 shadow-card"
             >
               <div className="flex items-start gap-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -129,7 +129,7 @@ export default function FeedbackInbox() {
                   <div className="flex shrink-0 gap-1.5">
                     <button
                       onClick={() => flow.start(item)}
-                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
+                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25 transition active:scale-95"
                     >
                       Create task
                     </button>
@@ -141,7 +141,7 @@ export default function FeedbackInbox() {
                           { onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not update') },
                         )
                       }
-                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 disabled:opacity-50"
+                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 disabled:opacity-50 transition active:scale-95"
                     >
                       Approve
                     </button>
@@ -153,7 +153,7 @@ export default function FeedbackInbox() {
                           { onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not update') },
                         )
                       }
-                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25 disabled:opacity-50"
+                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25 disabled:opacity-50 transition active:scale-95"
                     >
                       Reject
                     </button>
@@ -165,25 +165,7 @@ export default function FeedbackInbox() {
         </div>
       )}
 
-      <Drawer
-        open={flow.picking}
-        onClose={flow.cancel}
-        title="Create task from feedback"
-        footer={
-          <>
-            <Button variant="ghost" onClick={flow.cancel}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!(flow.detail && flow.detailData)}
-              onClick={flow.openDialog}
-            >
-              Continue
-            </Button>
-          </>
-        }
-      >
+      <Sheet open={flow.picking} onClose={flow.cancel} title="Create task from feedback" size="sm">
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted">Project</label>
@@ -203,8 +185,20 @@ export default function FeedbackInbox() {
               placeholder="Select a detail…"
             />
           </div>
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <Button variant="ghost" onClick={flow.cancel}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!(flow.detail && flow.detailData)}
+              onClick={flow.openDialog}
+            >
+              Continue
+            </Button>
+          </div>
         </div>
-      </Drawer>
+      </Sheet>
 
       {flow.dialogOpen && flow.detailData && (
         <CreateProjectItemDialog

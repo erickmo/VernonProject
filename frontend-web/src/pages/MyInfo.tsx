@@ -103,7 +103,7 @@ export default function MyInfo() {
           <button
             onClick={doSave}
             disabled={save.isPending || !hydrated || !dirty}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-brand-700 disabled:opacity-50"
           >
             {save.isPending ? <Spinner className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
             {dirty ? 'Save' : 'Saved'}
@@ -176,7 +176,7 @@ export default function MyInfo() {
           span="md" tone="plain" title="Skills" icon={Award}
           actions={
             <button type="button" onClick={() => setSkills((s) => [...s, { skill: '', proficiency: 'Intermediate' }])}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-hover/[0.04]">
+              className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold text-brand-600 transition active:scale-[0.97] hover:bg-hover/[0.04]">
               <Plus className="h-3.5 w-3.5" /> Add
             </button>
           }
@@ -194,7 +194,7 @@ export default function MyInfo() {
                     onChange={(v) => setSkills((s) => s.map((x, j) => (j === i ? { ...x, proficiency: v } : x)))}
                     options={PROFICIENCIES.map((p) => ({ value: p, label: p }))} />
                   <button type="button" onClick={() => setSkills((s) => s.filter((_, j) => j !== i))}
-                    className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" aria-label="Remove skill">
+                    className="shrink-0 rounded-xl p-1.5 text-muted transition active:scale-[0.97] hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" aria-label="Remove skill">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -208,7 +208,7 @@ export default function MyInfo() {
           span="lg" tone="plain" title="Education" icon={BookOpen}
           actions={
             <button type="button" onClick={() => setEducation((s) => [...s, { level: '', institution: '', major: '', year: undefined }])}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-hover/[0.04]">
+              className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold text-brand-600 transition active:scale-[0.97] hover:bg-hover/[0.04]">
               <Plus className="h-3.5 w-3.5" /> Add
             </button>
           }
@@ -224,7 +224,7 @@ export default function MyInfo() {
                       onChange={(v) => setEducation((s) => s.map((x, j) => (j === i ? { ...x, level: v } : x)))}
                       options={EDU_LEVELS.map((l) => ({ value: l, label: l }))} />
                     <button type="button" onClick={() => setEducation((s) => s.filter((_, j) => j !== i))}
-                      className="ml-auto shrink-0 rounded-lg p-1.5 text-muted hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" aria-label="Remove education">
+                      className="ml-auto shrink-0 rounded-xl p-1.5 text-muted transition active:scale-[0.97] hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" aria-label="Remove education">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>

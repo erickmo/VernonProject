@@ -9,7 +9,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
-import { BentoGrid, BentoTile } from '@web/components/bento'
+import { BentoTile } from '@web/components/bento'
 import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 import { AvatarScene } from '@/avatar/AvatarScene'
 
@@ -28,6 +28,9 @@ function useOnline() {
   return online
 }
 
+// Vertical card stack, echoing mobile Profile's grouping order:
+// identity/avatar → stats → settings entries. Every section is full-width
+// (BentoTile span="full") so it reads as a single-column stack, not a mosaic.
 export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
   const navigate = useNavigate()
@@ -48,7 +51,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Me</h1>
 
       <div
@@ -62,102 +65,103 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
         {online ? 'Online — synced with server' : 'Offline — showing saved data'}
       </div>
 
-      <BentoGrid>
-        {/* Profile hero */}
-        <BentoTile span="lg" tall tone="gradient" accent="violet" title="Profile">
-          <div className="flex flex-1 items-center gap-5 pt-2">
-            <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config} size={72} />
-            <div className="min-w-0">
-              <div className="text-xl font-semibold">{b?.full_name}</div>
-              <div className="text-sm text-muted">{b?.user}</div>
-              {b?.badge && (
+      {/* Identity / avatar */}
+      <BentoTile span="full" tone="gradient" accent="violet" title="Profile">
+        <div className="flex flex-1 items-center gap-5 pt-2">
+          <Avatar name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config} size={72} />
+          <div className="min-w-0">
+            <div className="text-xl font-semibold">{b?.full_name}</div>
+            <div className="text-sm text-muted">{b?.user}</div>
+            {b?.badge && (
+              <span
+                className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-canvas text-muted'}`}
+                style={b.badge.color ? { backgroundColor: `${b.badge.color}22`, color: b.badge.color } : undefined}
+              >
+                {b.badge.icon && <span>{b.badge.icon}</span>}
+                {b.badge.tier_name}
+              </span>
+            )}
+            <div className="flex flex-wrap gap-1 mt-3">
+              {(b?.roles ?? []).map((r) => (
                 <span
-                  className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-canvas text-muted'}`}
-                  style={b.badge.color ? { backgroundColor: `${b.badge.color}22`, color: b.badge.color } : undefined}
+                  key={r}
+                  className="text-xs px-2 py-0.5 rounded-full bg-white/60 dark:bg-slate-800 text-muted"
                 >
-                  {b.badge.icon && <span>{b.badge.icon}</span>}
-                  {b.badge.tier_name}
+                  {r}
                 </span>
-              )}
-              <div className="flex flex-wrap gap-1 mt-3">
-                {(b?.roles ?? []).map((r) => (
-                  <span
-                    key={r}
-                    className="text-xs px-2 py-0.5 rounded-full bg-white/60 dark:bg-slate-800 text-muted"
-                  >
-                    {r}
-                  </span>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
-        </BentoTile>
+        </div>
+      </BentoTile>
 
-        {/* Settings & links */}
-        <BentoTile span="md" tone="tint" accent="brand" title="Settings">
-          <div className="divide-y divide-line/60 dark:divide-slate-700/60 -mx-5 mt-1">
-            <button
-              onClick={() => navigate('/me/info')}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
-            >
-              <User className="w-4 h-4" />
-              My Info
-            </button>
-            <button
-              onClick={() => navigate('/achievements')}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
-            >
-              <Trophy className="w-4 h-4" />
-              Achievements
-            </button>
-            <button
-              onClick={() => setPwOpen(true)}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
-            >
-              <KeyRound className="w-4 h-4" />
-              Change password
-            </button>
-            {/* No push toggle on /w: the web build registers no service worker,
-                so subscribeToPush would hang on navigator.serviceWorker.ready. */}
-            <button
-              onClick={refresh}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh data
-            </button>
-            <a
-              href="/m"
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm hover:bg-hover/[0.04]"
-            >
-              <Smartphone className="w-4 h-4" />
-              Open mobile app
-            </a>
-            {onReplayOnboarding && (
-              <button
-                onClick={onReplayOnboarding}
-                className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
-              >
-                <Sparkles className="w-4 h-4" />
-                Replay onboarding
-              </button>
-            )}
-            <button
-              onClick={doLogout}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
-            >
-              <LogOut className="w-4 h-4" />
-              Log out
-            </button>
-          </div>
-        </BentoTile>
+      <AvatarTile />
 
-        <GamificationTile />
-        <DailyTile />
-        <AvatarTile />
-        <PasskeyTile />
-        <VerseSettingsTile />
-      </BentoGrid>
+      {/* Stats */}
+      <GamificationTile />
+      <DailyTile />
+
+      {/* Settings entries */}
+      <PasskeyTile />
+      <VerseSettingsTile />
+
+      <BentoTile span="full" tone="tint" accent="brand" title="Settings">
+        <div className="divide-y divide-line/60 dark:divide-slate-700/60 -mx-5 mt-1">
+          <button
+            onClick={() => navigate('/me/info')}
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
+          >
+            <User className="w-4 h-4" />
+            My Info
+          </button>
+          <button
+            onClick={() => navigate('/achievements')}
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
+          >
+            <Trophy className="w-4 h-4" />
+            Achievements
+          </button>
+          <button
+            onClick={() => setPwOpen(true)}
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
+          >
+            <KeyRound className="w-4 h-4" />
+            Change password
+          </button>
+          {/* No push toggle on /w: the web build registers no service worker,
+              so subscribeToPush would hang on navigator.serviceWorker.ready. */}
+          <button
+            onClick={refresh}
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh data
+          </button>
+          <a
+            href="/m"
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm hover:bg-hover/[0.04] active:scale-[0.99]"
+          >
+            <Smartphone className="w-4 h-4" />
+            Open mobile app
+          </a>
+          {onReplayOnboarding && (
+            <button
+              onClick={onReplayOnboarding}
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
+            >
+              <Sparkles className="w-4 h-4" />
+              Replay onboarding
+            </button>
+          )}
+          <button
+            onClick={doLogout}
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-[0.99]"
+          >
+            <LogOut className="w-4 h-4" />
+            Log out
+          </button>
+        </div>
+      </BentoTile>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
     </div>
@@ -178,7 +182,7 @@ function GamificationTile() {
   }, [gami, toast])
 
   return (
-    <BentoTile span="md" tone="tint" accent="amber" title="Level" icon={Trophy}>
+    <BentoTile span="full" tone="tint" accent="amber" title="Level" icon={Trophy}>
       {gami ? (
         <div className="mt-1 space-y-3">
           <div className="flex items-baseline gap-2">
@@ -211,7 +215,7 @@ function DailyTile() {
   const toast = useToast()
 
   return (
-    <BentoTile span="md" tone="tint" accent="emerald" title="Daily Reward">
+    <BentoTile span="full" tone="tint" accent="emerald" title="Daily Reward">
       {gami ? (
         <div className="mt-1 space-y-3">
           <div className="flex items-center gap-2">
@@ -248,7 +252,7 @@ function AvatarTile() {
   const b = boot.data
 
   return (
-    <BentoTile span="md" tone="tint" accent="violet" title="My Avatar" icon={Wand2}
+    <BentoTile span="full" tone="tint" accent="violet" title="My Avatar" icon={Wand2}
       actions={
         <button
           type="button"
@@ -314,7 +318,7 @@ function PasskeyTile() {
   }
 
   return (
-    <BentoTile span="md" tone="tint" accent="sky" title="Fingerprint sign-in">
+    <BentoTile span="full" tone="tint" accent="sky" title="Fingerprint sign-in">
       <div className="mt-1 space-y-2">
         {list.map((pk) => (
           <div key={pk.name} className="flex items-center gap-3">
@@ -328,7 +332,7 @@ function PasskeyTile() {
             <button
               onClick={() => remove(pk.name, pk.label)}
               disabled={revoke.isPending}
-              className="rounded-md p-1.5 text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/10"
+              className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/10"
               aria-label="Remove passkey"
             >
               <Trash2 className="w-4 h-4" />
@@ -384,7 +388,7 @@ function VerseSettingsTile() {
   }
 
   return (
-    <BentoTile span="md" tone="tint" accent="violet" title="Ayat Harian" icon={BookOpen}>
+    <BentoTile span="full" tone="tint" accent="violet" title="Ayat Harian" icon={BookOpen}>
       <div className="mt-1 space-y-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted">Agama</span>

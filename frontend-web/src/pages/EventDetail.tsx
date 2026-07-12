@@ -76,7 +76,7 @@ export default function EventDetail() {
       />
 
       {ev.cover_image && (
-        <img src={ev.cover_image} alt="" className="mb-6 w-full rounded-xl object-cover max-h-64" />
+        <img src={ev.cover_image} alt="" className="mb-6 w-full rounded-2xl object-cover max-h-64" />
       )}
 
       <Section title="Details" divider={false}>
@@ -112,7 +112,7 @@ export default function EventDetail() {
               <button
                 key={s.name}
                 onClick={() => navigate(`/events/${encodeURIComponent(s.name)}`)}
-                className="flex items-center gap-3 rounded-xl border border-line bg-hover/[0.02] p-3 text-left transition hover:bg-hover/[0.05]"
+                className="flex items-center gap-3 rounded-2xl bg-surface p-3 text-left shadow-card transition active:scale-[0.99]"
               >
                 {s.cover_image ? (
                   <img src={s.cover_image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
@@ -141,7 +141,7 @@ export default function EventDetail() {
         <button
           disabled={joined || ev.is_full || busy}
           onClick={onRegister}
-          className="w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
+          className="w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-[0.99] disabled:opacity-50 disabled:active:scale-100"
         >
           {ev.is_full && !joined ? 'Full' : busy ? 'Processing…' : cta}
         </button>

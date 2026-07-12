@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Page } from '@web/components/Page'
+import { Card, CardList } from '@web/components/Card'
 import { useProjects, useMeetings, useReopenMeeting } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { formatDate } from '@/lib/format'
@@ -8,8 +9,8 @@ import { CreateMeetingDialog } from '../components/CreateMeetingDialog'
 import { MarkDoneSheet } from '@/components/MarkDoneSheet'
 import type { MeetingListItem } from '@/lib/types'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
-import { Video } from 'lucide-react'
+import { ErrorState, Button } from '@web/components/ui'
+import { Video, Users, Clock } from 'lucide-react'
 
 export function Meetings() {
   const toast = useToast()
@@ -38,13 +39,9 @@ export function Meetings() {
     <Page>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Meetings</h1>
-        <button
-          disabled={!project}
-          onClick={() => setDialog(true)}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-        >
+        <Button variant="primary" disabled={!project} onClick={() => setDialog(true)}>
           New meeting
-        </button>
+        </Button>
       </div>
 
       <div className="mb-6 max-w-sm">
@@ -58,31 +55,48 @@ export function Meetings() {
       ) : (meetings.data?.meetings ?? []).length === 0 ? (
         <EmptyState icon={Video} title="No meetings" subtitle={project ? 'No meetings for this project yet.' : 'Pick a project to see its meetings.'} />
       ) : (
-      <div className="flex flex-col gap-3">
+      <CardList>
         {(meetings.data?.meetings ?? []).map((m) => (
-          <div key={m.name} className="flex items-center justify-between rounded-xl border border-line p-4">
-            <div>
-              <div className="font-semibold text-ink">{m.title}</div>
-              <div className="text-xs text-muted">
+          <Card
+            key={m.name}
+            title={m.title}
+            meta={
+              <>
                 {m.scheduled_at && (
-                  <>{formatDate(m.scheduled_at)}{m.scheduled_at.length > 10 ? ` ${m.scheduled_at.slice(11, 16)}` : ''} · </>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatDate(m.scheduled_at)}{m.scheduled_at.length > 10 ? ` ${m.scheduled_at.slice(11, 16)}` : ''}
+                  </span>
                 )}
-                {m.participants.length} invited · {Math.round(m.point)} pts each · {m.status}
-              </div>
-            </div>
-            {m.can_mark_done &&
-              (m.status === '✅ Done' ? (
-                <button onClick={() => onReopen(m.name)} className="text-sm font-semibold text-muted">
-                  Reopen
-                </button>
-              ) : (
-                <button onClick={() => setMarkDoneMeeting(m)} className="rounded-lg bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300">
-                  Mark done & award
-                </button>
-              ))}
-          </div>
+                <span className="inline-flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  {m.participants.length} invited
+                </span>
+                <span>{Math.round(m.point)} pts each</span>
+                <span>{m.status}</span>
+              </>
+            }
+            footer={
+              m.can_mark_done
+                ? m.status === '✅ Done'
+                  ? (
+                    <button onClick={() => onReopen(m.name)} className="text-sm font-semibold text-muted active:scale-[0.99]">
+                      Reopen
+                    </button>
+                  )
+                  : (
+                    <button
+                      onClick={() => setMarkDoneMeeting(m)}
+                      className="w-full rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-[0.99]"
+                    >
+                      Mark done & award
+                    </button>
+                  )
+                : undefined
+            }
+          />
         ))}
-      </div>
+      </CardList>
       )}
 
       {project && <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} project={project} />}

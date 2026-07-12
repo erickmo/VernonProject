@@ -15,7 +15,7 @@ const SPAN: Record<Span, string> = {
   full: 'col-span-2 md:col-span-6 xl:col-span-12',
 }
 
-// Flat mode: accent only faintly tints a `tint` tile; gradient degrades to subtle, solid to plain/surface.
+// Per-accent wash used by the `tint` tone only.
 const ACCENT_TINT: Record<Accent, string> = {
   brand:   'bg-brand-50 dark:bg-brand-500/10',
   amber:   'bg-amber-50 dark:bg-amber-500/10',
@@ -52,16 +52,19 @@ export function BentoTile({
   span = 'md', tall = false, tone = 'plain', accent = 'brand',
   title, subtitle, icon: Icon, actions, to, className, children,
 }: BentoTileProps) {
-  // ponytail: in flat mode 'plain' and 'solid' render identically; accent only tints 'tint' tiles.
+  // Four distinct soft-pop looks. `solid` sets its own text color (white on
+  // brand-600) instead of inheriting the shared `text-ink` below — header
+  // icon/subtitle and BentoStat label/delta use text-current so they follow.
   const toneClass =
-    tone === 'plain' ? 'bg-surface border border-line'
+    tone === 'plain' ? 'bg-surface shadow-card'
     : tone === 'tint' ? `${ACCENT_TINT[accent]} border border-line`
-    : tone === 'gradient' ? 'bg-black/[0.02] dark:bg-white/[0.03] border border-line'
-    : 'bg-surface border border-line'   // solid falls through to plain
+    : tone === 'gradient' ? 'bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-500/15 dark:to-brand-500/5'
+    : 'bg-brand-600 text-white'   // solid
   const clickable = !!to
   const cls = clsx(
     SPAN[span], tall && 'row-span-2',
-    'rounded-lg p-4 transition flex flex-col text-ink',
+    'rounded-2xl p-4 transition flex flex-col',
+    tone !== 'solid' && 'text-ink',
     toneClass,
     clickable && 'hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] cursor-pointer',
     className,
@@ -69,11 +72,11 @@ export function BentoTile({
   const header = (title || actions || Icon) && (
     <div className="mb-3 flex items-start justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
-        {Icon && <Icon className="h-4 w-4 shrink-0 text-muted" />}
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-current opacity-60" />}
         {(title || subtitle) && (
           <div className="min-w-0">
             {title && <div className="truncate font-semibold leading-tight">{title}</div>}
-            {subtitle && <div className="truncate text-xs text-muted">{subtitle}</div>}
+            {subtitle && <div className="truncate text-xs text-current opacity-60">{subtitle}</div>}
           </div>
         )}
       </div>
@@ -92,8 +95,8 @@ export function BentoStat({ value, label, delta, className }: {
   return (
     <div className={clsx('flex h-full flex-col justify-end', className)}>
       <div className="text-3xl font-semibold leading-none tabular-nums">{value}</div>
-      <div className="mt-1 text-xs uppercase tracking-wide text-muted">{label}</div>
-      {delta && <div className="mt-1 text-xs text-muted">{delta}</div>}
+      <div className="mt-1 text-xs uppercase tracking-wide text-current opacity-60">{label}</div>
+      {delta && <div className="mt-1 text-xs text-current opacity-60">{delta}</div>}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarDays, CalendarCog, Search, Ticket } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { Button, ErrorState } from '@web/components/ui'
 import { useEvents, useManagedEvents } from '@/hooks/useData'
 import { filterEvents, featuredUpcoming, eventCategories, type EventFilter } from '@/lib/events'
 import { Page, PageHeader } from '@web/components/Page'
@@ -64,12 +64,9 @@ export default function Events() {
         </button>
       ))}
       {tab === 'manage' && (
-        <button
-          onClick={() => navigate('/events/manage/new')}
-          className="ml-1 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
-        >
+        <Button variant="primary" size="sm" className="ml-1" onClick={() => navigate('/events/manage/new')}>
           New event
-        </button>
+        </Button>
       )}
     </div>
   )
@@ -90,7 +87,7 @@ export default function Events() {
                 <button
                   key={e.name}
                   onClick={() => navigate(`/events/${encodeURIComponent(e.name)}`)}
-                  className="overflow-hidden rounded-xl border border-line bg-hover/[0.02] text-left transition hover:bg-hover/[0.05]"
+                  className="overflow-hidden rounded-2xl bg-surface text-left shadow-card transition active:scale-[0.99]"
                 >
                   {e.cover_image ? (
                     <img src={e.cover_image} alt="" className="h-32 w-full object-cover" />
@@ -117,7 +114,7 @@ export default function Events() {
                 value={filter.q}
                 onChange={(e) => setFilter((f) => ({ ...f, q: e.target.value }))}
                 placeholder="Search events…"
-                className="rounded-lg border border-line bg-hover/[0.04] py-1.5 pl-8 pr-3 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
+                className="rounded-xl border border-line bg-hover/[0.04] py-1.5 pl-8 pr-3 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
               />
             </div>
             <Chip active={filter.period === 'upcoming'} onClick={() => setFilter((f) => ({ ...f, period: 'upcoming' }))}>Upcoming</Chip>
