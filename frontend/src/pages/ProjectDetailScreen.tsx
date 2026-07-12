@@ -7,6 +7,7 @@ import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
+import { useToast } from '@/components/Toast'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
 import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove } from '@/hooks/useData'
@@ -21,6 +22,7 @@ export default function ProjectDetailScreen() {
   const { data, isLoading } = useProjectDetail(id, showCancelled)
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
+  const toast = useToast()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [todoFilter, setTodoFilter] = useState<'all' | 'open' | 'completed'>('all')
@@ -85,7 +87,10 @@ export default function ProjectDetailScreen() {
               enabled={data.auto_approve}
               disabled={setProjectAutoApprove.isPending}
               onToggle={() =>
-                setProjectAutoApprove.mutate({ project: data.project, enabled: data.auto_approve ? 0 : 1 })
+                setProjectAutoApprove.mutate(
+                  { project: data.project, enabled: data.auto_approve ? 0 : 1 },
+                  { onError: (e) => toast('error', (e as Error).message) },
+                )
               }
             />
           </div>
@@ -229,7 +234,12 @@ export default function ProjectDetailScreen() {
                         effective={t.auto_approve_effective}
                         projectDefault={data.auto_approve}
                         disabled={setAutoApprove.isPending}
-                        onChange={(mode) => setAutoApprove.mutate({ todoId: t.name, mode })}
+                        onChange={(mode) =>
+                          setAutoApprove.mutate(
+                            { todoId: t.name, mode },
+                            { onError: (e) => toast('error', (e as Error).message) },
+                          )
+                        }
                       />
                     </div>
                   )}

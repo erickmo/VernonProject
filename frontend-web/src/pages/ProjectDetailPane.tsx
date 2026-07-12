@@ -8,6 +8,7 @@ import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button } from '@web/components/ui'
+import { useToast } from '@/components/Toast'
 import CommentThread from '@/components/CommentThread'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { DataTable, type Column } from '@web/components/DataTable'
@@ -33,6 +34,7 @@ export default function ProjectDetailPane() {
   const detail = useProjectDetail(id, showCancelled)
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
+  const toast = useToast()
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
 
   if (detail.isLoading && !detail.data) {
@@ -70,7 +72,13 @@ export default function ProjectDetailPane() {
             effective={t.auto_approve_effective}
             projectDefault={d.auto_approve}
             disabled={setAutoApprove.isPending}
-            onChange={(mode) => setAutoApprove.mutate({ todoId: t.name, mode })}
+            compact
+            onChange={(mode) =>
+              setAutoApprove.mutate(
+                { todoId: t.name, mode },
+                { onError: (e) => toast('error', (e as Error).message) },
+              )
+            }
           />
         </div>
       ) : null,
@@ -132,7 +140,10 @@ export default function ProjectDetailPane() {
             enabled={d.auto_approve}
             disabled={setProjectAutoApprove.isPending}
             onToggle={() =>
-              setProjectAutoApprove.mutate({ project: d.project, enabled: d.auto_approve ? 0 : 1 })
+              setProjectAutoApprove.mutate(
+                { project: d.project, enabled: d.auto_approve ? 0 : 1 },
+                { onError: (e) => toast('error', (e as Error).message) },
+              )
             }
           />
         </div>

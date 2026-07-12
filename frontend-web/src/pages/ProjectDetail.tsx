@@ -12,6 +12,7 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
 import { useSetCrumbs } from '@web/lib/crumbs'
 import { useConfirm } from '@/components/Confirm'
+import { useToast } from '@/components/Toast'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
@@ -29,6 +30,7 @@ export default function ProjectDetail() {
   const id = safeDecode(name)
   const nav = useNavigate()
   const confirm = useConfirm()
+  const toast = useToast()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -88,7 +90,13 @@ export default function ProjectDetail() {
             effective={t.auto_approve_effective}
             projectDefault={d.auto_approve}
             disabled={setAutoApprove.isPending}
-            onChange={(mode) => setAutoApprove.mutate({ todoId: t.name, mode })}
+            compact
+            onChange={(mode) =>
+              setAutoApprove.mutate(
+                { todoId: t.name, mode },
+                { onError: (e) => toast('error', (e as Error).message) },
+              )
+            }
           />
         </div>
       ) : null,
@@ -176,7 +184,10 @@ export default function ProjectDetail() {
               enabled={d.auto_approve}
               disabled={setProjectAutoApprove.isPending}
               onToggle={() =>
-                setProjectAutoApprove.mutate({ project: d.project, enabled: d.auto_approve ? 0 : 1 })
+                setProjectAutoApprove.mutate(
+                  { project: d.project, enabled: d.auto_approve ? 0 : 1 },
+                  { onError: (e) => toast('error', (e as Error).message) },
+                )
               }
             />
           </div>

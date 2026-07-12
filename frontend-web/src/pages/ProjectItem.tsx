@@ -1028,7 +1028,10 @@ const [followOpen, setFollowOpen] = useState(false)
 
   const onSetAutoApprove = (mode: 'on' | 'off' | 'inherit') => {
     if (!data || setAutoApprove.isPending) return
-    setAutoApprove.mutate({ todoId: data.name, mode })
+    setAutoApprove.mutate(
+      { todoId: data.name, mode },
+      { onError: (err) => toast('error', (err as Error).message) },
+    )
   }
 
   const onCancel = async () => {

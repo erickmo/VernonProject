@@ -152,7 +152,10 @@ export default function ProjectScreen() {
             enabled={data.auto_approve}
             disabled={setProjectAutoApprove.isPending}
             onToggle={() =>
-              setProjectAutoApprove.mutate({ project: data.name, enabled: data.auto_approve ? 0 : 1 })
+              setProjectAutoApprove.mutate(
+                { project: data.name, enabled: data.auto_approve ? 0 : 1 },
+                { onError: (e) => toast('error', (e as Error).message) },
+              )
             }
           />
         </div>
