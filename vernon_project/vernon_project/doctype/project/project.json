@@ -15,6 +15,7 @@
   "deadline",
   "column_break_nukl",
   "status",
+  "auto_approve",
   "blocked_by",
   "section_break_gwge",
   "project_owner",
@@ -140,6 +141,14 @@
    "label": "Status",
    "options": "Ongoing\nClosed",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_approve",
+   "fieldtype": "Check",
+   "label": "Auto-Approve All Todos (Owner)",
+   "read_only": 1,
+   "description": "Project-wide default. When set, every todo reaching Checked By PL auto-advances to Completed without Owner approval, unless the todo opts out. Only a Partner project owner can set this."
   },
   {
    "fieldname": "blocked_by",

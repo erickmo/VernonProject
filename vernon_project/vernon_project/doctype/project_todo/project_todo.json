@@ -18,6 +18,7 @@
       "leader_deadline",
       "owner_deadline",
       "auto_approve",
+      "auto_approve_opt_out",
       "estimated",
       "blocked_by",
       "blocking",
@@ -174,6 +175,14 @@
          "label": "Auto-Approve (Owner)",
          "read_only": 1,
          "description": "When set, a todo reaching Checked By PL auto-advances to Completed without Owner approval. Only a Partner project owner can set this."
+      },
+      {
+         "default": "0",
+         "fieldname": "auto_approve_opt_out",
+         "fieldtype": "Check",
+         "label": "Auto-Approve Opt-Out",
+         "read_only": 1,
+         "description": "When set, this todo is excluded from the project-wide auto-approve and always waits for Owner approval. Only a Partner project owner can set this."
       },
       {
          "columns": 3,
