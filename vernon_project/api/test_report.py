@@ -7,6 +7,7 @@ from vernon_project.api.report import (
 	_date_list, _build_daily_matrix, _assigned_minutes,
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
 	_build_over_occupied, over_occupied,
+	_previous_shift_shortfall,
 	_template_minutes, _resolve_expected,
 	_build_todos_due, todos_due,
 	_runs_project, buzz_todo,
@@ -654,3 +655,43 @@ class TestLogbookEndpoint(unittest.TestCase):
 		with self.assertRaises(frappe.PermissionError):
 			logbook(self.FROM, self.TO, user=self.TARGET)
 		frappe.set_user("Administrator")
+
+
+class TestPreviousShiftShortfall(unittest.TestCase):
+	"""Pure verdict for the home-page danger banner (_previous_shift_shortfall)."""
+
+	def test_under_when_latest_shift_day_below_minimum(self):
+		expected = {"2026-07-06": 480, "2026-07-08": 480}
+		assigned = {"2026-07-06": 480, "2026-07-08": 300}
+		out = _previous_shift_shortfall(expected, assigned, 480)
+		self.assertTrue(out["under"])
+		self.assertEqual(out["date"], "2026-07-08")  # most recent shift day wins
+		self.assertEqual(out["assigned"], 300)
+		self.assertEqual(out["minimum"], 480)
+		self.assertEqual(out["expected"], 480)
+
+	def test_ok_when_latest_shift_day_meets_minimum(self):
+		out = _previous_shift_shortfall({"2026-07-08": 480}, {"2026-07-08": 480}, 480)
+		self.assertFalse(out["under"])
+
+	def test_picks_latest_shift_day_across_off_day_gap(self):
+		# Sat/Sun are off -> simply absent from `expected`; the latest present day is judged.
+		expected = {"2026-07-03": 480, "2026-07-06": 480}  # Fri, then Mon
+		assigned = {"2026-07-03": 0, "2026-07-06": 200}
+		out = _previous_shift_shortfall(expected, assigned, 480)
+		self.assertEqual(out["date"], "2026-07-06")
+		self.assertTrue(out["under"])
+
+	def test_no_shift_days_returns_not_under(self):
+		out = _previous_shift_shortfall({}, {"2026-07-08": 0}, 480)
+		self.assertFalse(out["under"])
+		self.assertIsNone(out["date"])
+
+	def test_zero_threshold_never_under(self):
+		out = _previous_shift_shortfall({"2026-07-08": 480}, {"2026-07-08": 0}, 0)
+		self.assertFalse(out["under"])
+
+	def test_missing_assigned_day_counts_as_zero(self):
+		out = _previous_shift_shortfall({"2026-07-08": 480}, {}, 480)
+		self.assertTrue(out["under"])
+		self.assertEqual(out["assigned"], 0)

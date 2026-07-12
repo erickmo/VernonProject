@@ -9,7 +9,9 @@ import { AdvanceProvider } from './components/AdvanceProvider'
 import { RejectProvider } from './components/RejectProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import FocusOverlay from './components/FocusOverlay'
-import { FocusMiniBar } from './components/FocusMiniBar'
+import { Fab } from './components/Fab'
+import UpdateBanner from './components/UpdateBanner'
+import { useBoot } from './hooks/useData'
 import './index.css'
 import { initTheme } from './lib/theme'
 
@@ -44,6 +46,13 @@ if ('serviceWorker' in navigator) {
   })
 }
 
+// Global chrome (FAB, focus overlay) only once signed in — hidden on the
+// splash/login screens, where `boot` is absent.
+function AuthedOnly({ children }: { children: React.ReactNode }) {
+  const { data: boot } = useBoot()
+  return boot ? <>{children}</> : null
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
@@ -55,8 +64,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <ErrorBoundary>
                   <App />
                 </ErrorBoundary>
-                <FocusMiniBar />
-                <FocusOverlay />
+                <AuthedOnly>
+                  <Fab />
+                  <UpdateBanner />
+                  <FocusOverlay />
+                </AuthedOnly>
               </RejectProvider>
             </AdvanceProvider>
           </ConfirmProvider>

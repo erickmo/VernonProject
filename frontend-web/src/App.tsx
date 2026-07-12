@@ -13,6 +13,8 @@ import {
   canManageResources,
   canModerateAds,
   canManageLms,
+  canManageIncome,
+  canManageCompanies,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -26,9 +28,16 @@ import ProjectItem from '@web/pages/ProjectItem'
 import ProjectDetail from '@web/pages/ProjectDetail'
 import Review from '@web/pages/Review'
 import Me from '@web/pages/Me'
+import MyInfo from '@web/pages/MyInfo'
 import Reports from '@web/pages/Reports'
 import DataHealth from '@web/pages/DataHealth'
 import ReportPage from '@web/pages/ReportPage'
+import TodosDue from '@web/pages/TodosDue'
+import Income from '@web/pages/Income'
+import IncomeAdmin from '@web/pages/IncomeAdmin'
+import Companies from '@web/pages/Companies'
+import CompanyForm from '@web/pages/CompanyForm'
+import Activity from '@web/pages/Activity'
 import Leaderboard from '@web/pages/Leaderboard'
 import TeamWall from '@web/pages/TeamWall'
 import Marketplace from '@web/pages/Marketplace'
@@ -83,6 +92,7 @@ import PapanIklanBans from '@web/pages/PapanIklanBans'
 import Learn from '@web/pages/Learn'
 import Course from '@web/pages/Course'
 import LmsAdmin from '@web/pages/LmsAdmin'
+import WhatsNew from '@web/pages/WhatsNew'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -184,6 +194,7 @@ export default function App() {
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
+          <Route path="/reports/todos-due" element={<TodosDue />} />
           <Route path="/logbook" element={<Logbook />} />
           {canManageGroups(b) && (
             <Route path="/data-health" element={<DataHealth />} />
@@ -266,6 +277,17 @@ export default function App() {
           <Route path="/my-registrations" element={<MyRegistrations />} />
           <Route path="/attendance/my-approvals" element={<ExceptionApprovals />} />
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
+          <Route path="/me/info" element={<MyInfo />} />
+          <Route path="/income" element={<Income />} />
+          {canManageIncome(b) && <Route path="/income-admin" element={<IncomeAdmin />} />}
+          <Route path="/activity" element={<Activity />} />
+          {canManageCompanies(b) && (
+            <>
+              <Route path="/companies" element={<Companies />} />
+              <Route path="/companies/new" element={<CompanyForm />} />
+              <Route path="/companies/:name" element={<CompanyForm />} />
+            </>
+          )}
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />
           <Route path="/papan-iklan" element={<PapanIklan />} />
@@ -276,6 +298,7 @@ export default function App() {
           <Route path="/learn" element={<Learn />} />
           <Route path="/learn/:course" element={<Course />} />
           {canManageLms(b) && <Route path="/learn-admin" element={<LmsAdmin />} />}
+          <Route path="/whats-new" element={<WhatsNew />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

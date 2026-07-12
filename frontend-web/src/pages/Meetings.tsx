@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Page } from '@web/components/Page'
-import { useProjects, useMeetings, useMarkMeetingDone, useReopenMeeting } from '@/hooks/useData'
+import { useProjects, useMeetings, useReopenMeeting } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { formatDate } from '@/lib/format'
 import { useToast } from '@/components/Toast'
 import { CreateMeetingDialog } from '../components/CreateMeetingDialog'
+import { MarkDoneSheet } from '@/components/MarkDoneSheet'
+import type { MeetingListItem } from '@/lib/types'
 import { Spinner, EmptyState } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { Video } from 'lucide-react'
@@ -14,20 +16,18 @@ export function Meetings() {
   const projects = useProjects()
   const [project, setProject] = useState('')
   const [dialog, setDialog] = useState(false)
+  const [markDoneMeeting, setMarkDoneMeeting] = useState<MeetingListItem | null>(null)
   const meetings = useMeetings(project || undefined)
-  const markDone = useMarkMeetingDone()
   const reopen = useReopenMeeting()
 
-  const projectOptions = (projects.data ?? []).map((p) => ({
-    value: p.name,
-    label: p.project_name ?? p.name,
-  }))
+  // meetings can only be scheduled for unclosed (Ongoing) projects
+  const projectOptions = (projects.data ?? [])
+    .filter((p) => p.status !== 'Closed')
+    .map((p) => ({
+      value: p.name,
+      label: p.project_name ?? p.name,
+    }))
 
-  const onDone = (name: string) =>
-    markDone.mutate(name, {
-      onSuccess: (r) => toast('success', r.message),
-      onError: (e) => toast('error', (e as Error).message),
-    })
   const onReopen = (name: string) =>
     reopen.mutate(name, {
       onSuccess: (r) => toast('success', r.message),
@@ -76,7 +76,7 @@ export function Meetings() {
                   Reopen
                 </button>
               ) : (
-                <button onClick={() => onDone(m.name)} className="rounded-lg bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300">
+                <button onClick={() => setMarkDoneMeeting(m)} className="rounded-lg bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300">
                   Mark done & award
                 </button>
               ))}
@@ -86,6 +86,7 @@ export function Meetings() {
       )}
 
       {project && <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} project={project} />}
+      <MarkDoneSheet meeting={markDoneMeeting} onClose={() => setMarkDoneMeeting(null)} />
     </Page>
   )
 }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
+  ArrowRight,
+  ArrowUpRight,
   CalendarDays,
   Clock,
   Coffee,
@@ -17,6 +20,8 @@ import {
 import { formatClock } from '@/lib/format'
 import { ambient, loadSoundPrefs, saveSoundPrefs } from '@/lib/ambientSound'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
+import { useProjectItem } from '@/hooks/useData'
+import { useAdvance } from '@/components/AdvanceProvider'
 import { useFocusOverlay, closeFocusOverlay } from '@/lib/focusUI'
 
 // Single app-global focus overlay. Mounted once at the app root; shows when a
@@ -28,6 +33,11 @@ export default function FocusOverlay() {
   const { timer, elapsedMs, remainingMs, fraction, hasEstimate, pause, resume, reset, stop } =
     useFocusTimer(taskId ?? '')
   const meta = timer?.meta
+  const navigate = useNavigate()
+  const advanceConfirm = useAdvance()
+  // Current status/auth for the open task; drives the Open/advance actions.
+  // enabled: !!name → no fetch while the overlay is closed.
+  const { data: todo } = useProjectItem(taskId ?? '')
 
   // ---- ambient sound (coffeeshop) ---- hooks must run unconditionally, so
   // they sit before the early return. Sound plays only while the overlay is up.
@@ -80,6 +90,15 @@ export default function FocusOverlay() {
       <h2 className="line-clamp-2 max-w-xs text-center font-display text-xl font-semibold text-stone-800 dark:text-slate-100">
         {timer.taskTitle}
       </h2>
+      <button
+        onClick={() => {
+          closeFocusOverlay()
+          navigate(`/project-item/${encodeURIComponent(timer.taskId)}`)
+        }}
+        className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 transition active:scale-95 dark:text-brand-400"
+      >
+        Open task <ArrowUpRight className="h-3.5 w-3.5" />
+      </button>
 
       {/* Task detail */}
       {meta && (
@@ -187,6 +206,23 @@ export default function FocusOverlay() {
           <Square className="h-6 w-6" fill="currentColor" />
         </button>
       </div>
+
+      {/* Mark done / approve — label + availability come from the server per
+          stage & auth (can_advance). One button covers both transitions. */}
+      {todo?.can_advance && todo.next_status_label && (
+        <button
+          onClick={() =>
+            advanceConfirm(timer.taskId, todo.next_status_label!, todo.to_do, () => {
+              stop() // end this task's focus timer …
+              closeFocusOverlay() // … and exit focus mode
+            })
+          }
+          className="mt-8 flex w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3 font-semibold text-white shadow-card transition active:scale-95"
+        >
+          {todo.next_status_label}
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      )}
 
       {/* Ambient sound */}
       <div className="mt-10 flex w-full max-w-xs flex-col items-center gap-3">

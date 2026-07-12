@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { useToast } from '@/components/Toast'
 import { usePendingExceptionApprovals, useApproveException, useRejectException } from '@/hooks/useData'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 
 export default function ExceptionApprovals() {
+  const toast = useToast()
   const { data: rows, isLoading } = usePendingExceptionApprovals()
   const approve = useApproveException()
   const reject = useRejectException()
@@ -13,9 +15,14 @@ export default function ExceptionApprovals() {
 
   const submitReject = async () => {
     if (!rejecting || !reason.trim()) return
-    await reject.mutateAsync({ name: rejecting, reason: reason.trim() })
-    setRejecting(null)
-    setReason('')
+    try {
+      await reject.mutateAsync({ name: rejecting, reason: reason.trim() })
+      toast('success', 'Rejected')
+      setRejecting(null)
+      setReason('')
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
   }
 
   return (
@@ -38,7 +45,10 @@ export default function ExceptionApprovals() {
                     </p>
                   </div>
                   <button
-                    onClick={() => approve.mutate(e.name)}
+                    onClick={() => approve.mutate(e.name, {
+                      onSuccess: () => toast('success', 'Approved'),
+                      onError: (err) => toast('error', (err as Error).message),
+                    })}
                     disabled={approve.isPending}
                     className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >

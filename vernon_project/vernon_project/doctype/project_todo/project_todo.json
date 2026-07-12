@@ -17,6 +17,7 @@
       "deadline",
       "leader_deadline",
       "owner_deadline",
+      "auto_approve",
       "estimated",
       "blocked_by",
       "blocking",
@@ -165,6 +166,14 @@
          "fieldtype": "Date",
          "label": "Owner Approval Deadline",
          "description": "Optional target date for Owner approval (status Completed). For long tasks."
+      },
+      {
+         "default": "0",
+         "fieldname": "auto_approve",
+         "fieldtype": "Check",
+         "label": "Auto-Approve (Owner)",
+         "read_only": 1,
+         "description": "When set, a todo reaching Checked By PL auto-advances to Completed without Owner approval. Only a Partner project owner can set this."
       },
       {
          "columns": 3,

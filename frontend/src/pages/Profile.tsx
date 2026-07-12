@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -115,107 +115,148 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
     setTheme(v)
   }
 
-  // Grouped menu. Admin rows are gated; sections with no visible rows are hidden.
+  // Menu grouped into 3 buckets: My Account / Features / System Settings.
+  // Features + System Settings carry sub-groups; any (sub)group with no visible
+  // rows hides itself, and a bucket whose every sub-group is empty is dropped.
   const menu: {
     title: string
-    rows: {
-      icon: React.ComponentType<{ className?: string }>
-      label: string
-      hue: keyof typeof ROW_HUE
-      onClick: () => void
+    groups: {
+      title: string
+      rows: {
+        icon: React.ComponentType<{ className?: string }>
+        label: string
+        hue: keyof typeof ROW_HUE
+        onClick: () => void
+      }[]
     }[]
   }[] = [
     {
-      title: 'Me',
-      rows: [
-        { icon: User, label: 'My Info', hue: 'sky', onClick: () => navigate('/me/info') },
-        { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
-        { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
-        { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
-        ...(pushSupported()
-          ? [
-              {
-                icon: pushOn ? Bell : BellOff,
-                label: pushBusy ? 'Working…' : pushOn ? 'Notifications: On' : 'Enable notifications',
-                hue: 'sky' as const,
-                onClick: togglePush,
-              },
-            ]
-          : []),
+      title: 'My Account',
+      groups: [
+        {
+          title: '',
+          rows: [
+            { icon: User, label: 'My Info', hue: 'sky', onClick: () => navigate('/me/info') },
+            { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
+            { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
+            { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
+            ...(pushSupported()
+              ? [
+                  {
+                    icon: pushOn ? Bell : BellOff,
+                    label: pushBusy ? 'Working…' : pushOn ? 'Notifications: On' : 'Enable notifications',
+                    hue: 'sky' as const,
+                    onClick: togglePush,
+                  },
+                ]
+              : []),
+          ],
+        },
       ],
     },
     {
-      title: 'Work',
-      rows: [
-        { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
-        { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
-        { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },
+      title: 'Features',
+      groups: [
+        {
+          title: 'Work',
+          rows: [
+            { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
+            { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
+            { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },
+          ],
+        },
+        {
+          title: 'Community',
+          rows: [
+            { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
+            { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
+            { icon: UsersRound, label: 'Team Wall', hue: 'violet', onClick: () => navigate('/team-wall') },
+            { icon: Send, label: 'Send Points', hue: 'amber', onClick: () => navigate('/gift-points') },
+            { icon: Banknote, label: 'Extra Income', hue: 'emerald', onClick: () => navigate('/income') },
+            { icon: BookOpen, label: 'Learn', hue: 'indigo', onClick: () => navigate('/learn') },
+          ],
+        },
       ],
     },
     {
-      title: 'Community',
-      rows: [
-        { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
-        { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
-        { icon: UsersRound, label: 'Team Wall', hue: 'violet', onClick: () => navigate('/team-wall') },
-        { icon: Send, label: 'Send Points', hue: 'amber', onClick: () => navigate('/gift-points') },
-        { icon: Banknote, label: 'Extra Income', hue: 'emerald', onClick: () => navigate('/income') },
-        { icon: BookOpen, label: 'Learn', hue: 'indigo', onClick: () => navigate('/learn') },
-      ],
-    },
-    {
-      title: 'App',
-      rows: [
-        { icon: MessageSquarePlus, label: 'Send feedback', hue: 'violet', onClick: () => navigate('/feedback') },
-        { icon: RefreshCw, label: 'Refresh data', hue: 'slate', onClick: refresh },
-        { icon: BookOpen, label: 'Replay quick tour', hue: 'slate', onClick: onReplayOnboarding },
-      ],
-    },
-    {
-      title: 'Admin',
-      rows: [
-        ...(canManageAttendance(boot)
-          ? [{ icon: ClipboardList, label: 'Manage attendance', hue: 'emerald' as const, onClick: () => navigate('/attendance/manage') }]
-          : []),
-        ...(canManageIncome(boot)
-          ? [{ icon: Banknote, label: 'Manage Extra Income', hue: 'emerald' as const, onClick: () => navigate('/income-admin') }]
-          : []),
-        ...(canManageLms(boot)
-          ? [{ icon: BookOpen, label: 'Manage Learning', hue: 'indigo' as const, onClick: () => navigate('/learn-admin') }]
-          : []),
-        ...(canManageUsers(boot)
-          ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]
-          : []),
-        ...(canManageUsers(boot)
-          ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky' as const, onClick: () => navigate('/transfer-tasks') }]
-          : []),
-        ...(canManageUsers(boot)
-          ? [{ icon: Inbox, label: 'Feedback Inbox', hue: 'sky' as const, onClick: () => navigate('/feedback-inbox') }]
-          : []),
-        ...(canManageGroups(boot)
-          ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
-          : []),
-        ...(canManageCompanies(boot)
-          ? [{ icon: Building2, label: 'Manage Companies', hue: 'sky' as const, onClick: () => navigate('/companies') }]
-          : []),
-        ...(canManageBrands(boot)
-          ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
-          : []),
-        ...(canManageResources(boot)
-          ? [{ icon: DoorOpen, label: 'Resources', hue: 'indigo' as const, onClick: () => navigate('/meeting-rooms') }]
-          : []),
-        ...(canManageBadges(boot)
-          ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
-          : []),
-        ...(canManageGroups(boot)
-          ? [{ icon: ShieldAlert, label: 'Data Health', hue: 'rose' as const, onClick: () => navigate('/data-health') }]
-          : []),
-        ...(canManageGroups(boot)
-          ? [{ icon: Settings, label: 'Settings', hue: 'slate' as const, onClick: () => navigate('/settings') }]
-          : []),
-        ...(boot?.roles.includes('System Manager')
-          ? [{ icon: UserMinus, label: 'Under-Occupied', hue: 'amber' as const, onClick: () => navigate('/reports/under-occupied') }]
-          : []),
+      title: 'System Settings',
+      groups: [
+        {
+          title: 'App',
+          rows: [
+            { icon: Sparkles, label: "What's New", hue: 'violet', onClick: () => navigate('/whats-new') },
+            { icon: MessageSquarePlus, label: 'Send feedback', hue: 'violet', onClick: () => navigate('/feedback') },
+            { icon: RefreshCw, label: 'Refresh data', hue: 'slate', onClick: refresh },
+            { icon: BookOpen, label: 'Replay quick tour', hue: 'slate', onClick: onReplayOnboarding },
+          ],
+        },
+        {
+          title: 'User Management',
+          rows: [
+            ...(canManageUsers(boot)
+              ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]
+              : []),
+            ...(canManageUsers(boot)
+              ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky' as const, onClick: () => navigate('/transfer-tasks') }]
+              : []),
+            ...(boot?.roles.includes('System Manager')
+              ? [{ icon: UserMinus, label: 'Under-Occupied', hue: 'amber' as const, onClick: () => navigate('/reports/under-occupied') }]
+              : []),
+          ],
+        },
+        {
+          title: 'Feedbacks',
+          rows: [
+            ...(canManageUsers(boot)
+              ? [{ icon: Inbox, label: 'Feedback Inbox', hue: 'sky' as const, onClick: () => navigate('/feedback-inbox') }]
+              : []),
+          ],
+        },
+        {
+          title: 'Points',
+          rows: [
+            ...(canManageBadges(boot)
+              ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
+              : []),
+          ],
+        },
+        {
+          title: 'Companies',
+          rows: [
+            ...(canManageCompanies(boot)
+              ? [{ icon: Building2, label: 'Manage Companies', hue: 'sky' as const, onClick: () => navigate('/companies') }]
+              : []),
+            ...(canManageBrands(boot)
+              ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
+              : []),
+          ],
+        },
+        {
+          title: 'Admin',
+          rows: [
+            ...(canManageAttendance(boot)
+              ? [{ icon: ClipboardList, label: 'Manage attendance', hue: 'emerald' as const, onClick: () => navigate('/attendance/manage') }]
+              : []),
+            ...(canManageIncome(boot)
+              ? [{ icon: Banknote, label: 'Manage Extra Income', hue: 'emerald' as const, onClick: () => navigate('/income-admin') }]
+              : []),
+            ...(canManageLms(boot)
+              ? [{ icon: BookOpen, label: 'Manage Learning', hue: 'indigo' as const, onClick: () => navigate('/learn-admin') }]
+              : []),
+            ...(canManageGroups(boot)
+              ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
+              : []),
+            ...(canManageResources(boot)
+              ? [{ icon: DoorOpen, label: 'Resources', hue: 'indigo' as const, onClick: () => navigate('/meeting-rooms') }]
+              : []),
+            ...(canManageGroups(boot)
+              ? [{ icon: ShieldAlert, label: 'Data Health', hue: 'rose' as const, onClick: () => navigate('/data-health') }]
+              : []),
+            ...(canManageGroups(boot)
+              ? [{ icon: Settings, label: 'Settings', hue: 'slate' as const, onClick: () => navigate('/settings') }]
+              : []),
+          ],
+        },
       ],
     },
   ]
@@ -328,20 +369,31 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
 
           <PasskeyCard />
 
-          {menu.map((section) =>
-            section.rows.length === 0 ? null : (
-              <div key={section.title} className="mt-4">
-                <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+          {menu.map((section) => {
+            const groups = section.groups.filter((g) => g.rows.length > 0)
+            if (groups.length === 0) return null
+            return (
+              <div key={section.title} className="mt-6">
+                <p className="mb-2 px-1 text-sm font-bold text-stone-700 dark:text-slate-200">
                   {section.title}
                 </p>
-                <div className="divide-y divide-paper-edge dark:divide-slate-700 overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card">
-                  {section.rows.map((r) => (
-                    <Row key={r.label} icon={r.icon} label={r.label} hue={r.hue} onClick={r.onClick} />
-                  ))}
-                </div>
+                {groups.map((g) => (
+                  <div key={g.title || section.title} className="mt-2">
+                    {g.title && (
+                      <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
+                        {g.title}
+                      </p>
+                    )}
+                    <div className="divide-y divide-paper-edge dark:divide-slate-700 overflow-hidden rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card">
+                      {g.rows.map((r) => (
+                        <Row key={r.label} icon={r.icon} label={r.label} hue={r.hue} onClick={r.onClick} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ),
-          )}
+            )
+          })}
 
           <button
             onClick={doLogout}

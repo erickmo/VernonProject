@@ -51,6 +51,14 @@ export interface NotificationsResponse {
   unread: number
 }
 
+export interface AppRelease {
+  version: string
+  release_date: string
+  title: string
+  notes: string
+  platform: string
+}
+
 export type ReactionKey = 'clap' | 'celebrate' | 'fire' | 'heart'
 
 export interface ReactionCounts {
@@ -90,9 +98,12 @@ export interface ProjectItem {
   to_do: string
   status: string
   status_key: StatusKey
+  modified: string | null
   next_status_label: string | null
   can_advance: boolean
   can_reject: boolean
+  auto_approve: boolean
+  can_set_auto_approve: boolean
   start_date: string | null
   start_date_human: string | null
   deadline: string | null
@@ -134,10 +145,22 @@ export interface ProjectItem {
   is_leader: boolean
 }
 
+export interface TodoFile {
+  name: string
+  file_name: string
+  file_url: string
+  file_size: number
+  is_private: number
+  owner: string
+  creation: string
+}
+
 export interface ProjectItemDetail extends ProjectItem {
   notes: string
   can_edit_notes: boolean
   can_edit: boolean
+  can_edit_files: boolean
+  files: TodoFile[]
   can_edit_assigned: boolean
   can_edit_estimate: boolean
   can_delete: boolean
@@ -669,6 +692,16 @@ export interface BannerSlide {
   link: string
 }
 
+// Home-page danger banner: the caller's most recent scheduled shift day (before
+// today) vs the Min Daily Estimated Minutes setting. `under` drives the banner.
+export interface PreviousShiftShortfall {
+  under: boolean
+  date: string | null
+  assigned: number
+  minimum: number
+  expected: number
+}
+
 export interface AppSettings {
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
@@ -692,6 +725,9 @@ export interface MeetingListItem {
   status: string
   participants: string[]
   can_mark_done: boolean
+  notes?: string | null
+  group?: string | null
+  level_id?: string | null
 }
 
 export interface MeetingInvitableUser {
@@ -758,6 +794,7 @@ export type FeedbackItem = {
   submitter: string
   at: string
   at_human: string
+  linked_todo?: string | null
 }
 
 export interface Achievement {

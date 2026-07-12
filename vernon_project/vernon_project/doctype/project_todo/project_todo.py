@@ -110,6 +110,14 @@ class ProjectTodo(Document):
 	def validate_assigned_to_team_member(self):
 		if not self.assigned_to or not self.project_detail:
 			return
+		# Only gate when the assignment is being set/changed. An existing todo whose
+		# assignee later leaves the Project Team must stay approvable — approve/reject
+		# only touch status, so re-checking the unchanged assignee here would let a
+		# departed member block sign-off. New/reassigned todos still can't target a
+		# non-member.
+		old = self.get_old_doc()
+		if old and old.assigned_to == self.assigned_to:
+			return
 		project_name = frappe.get_value("Project Detail", self.project_detail, "project")
 		if not project_name:
 			return

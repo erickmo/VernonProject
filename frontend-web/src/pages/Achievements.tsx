@@ -10,7 +10,7 @@ function AchievementTile({ a }: { a: Achievement }) {
     <BentoTile
       span="md"
       tone={a.met ? 'tint' : 'plain'}
-      accent={a.met ? 'amber' : 'slate'}
+      accent={a.met ? 'amber' : 'brand'}
       className={a.met ? '' : 'opacity-60'}
     >
       <div className="flex items-start gap-3">
@@ -24,17 +24,17 @@ function AchievementTile({ a }: { a: Achievement }) {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{a.condition}</p>
+          <p className="mt-0.5 text-xs text-muted dark:text-slate-400">{a.condition}</p>
         </div>
       </div>
 
       {!a.met && (
         <div className="mt-3">
-          <div className="mb-1 flex justify-between text-xs text-slate-400">
+          <div className="mb-1 flex justify-between text-xs text-muted">
             <span>{a.progress}/{a.threshold}</span>
             <span>{Math.round(pct)}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-line dark:bg-slate-700">
             <div
               className="h-full rounded-full bg-brand-500 transition-all duration-500"
               style={{ width: `${pct}%` }}
@@ -46,7 +46,7 @@ function AchievementTile({ a }: { a: Achievement }) {
       <div className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-400">
         +{a.reward_points} pts
         {a.reward_asset && (
-          <span className="ml-1 text-slate-400 dark:text-slate-500">· {a.reward_asset}</span>
+          <span className="ml-1 text-muted dark:text-slate-500">· {a.reward_asset}</span>
         )}
       </div>
     </BentoTile>
@@ -64,9 +64,9 @@ export default function Achievements() {
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading && !gami ? (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       ) : list.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-slate-400">
+        <div className="flex flex-col items-center gap-3 py-16 text-muted">
           <Trophy className="w-12 h-12 opacity-30" />
           <p className="text-sm">No achievements yet — complete tasks to unlock rewards.</p>
         </div>

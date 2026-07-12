@@ -170,7 +170,7 @@ export default function EquipmentForm() {
                 {(id) => (
                   <input
                     id={id}
-                    className={field + (isEdit ? ' bg-slate-100 text-muted dark:bg-slate-700' : '')}
+                    className={field + (isEdit ? ' bg-canvas text-muted' : '')}
                     value={form.equipment_name}
                     readOnly={isEdit}
                     autoFocus={!isEdit}
@@ -209,7 +209,7 @@ export default function EquipmentForm() {
                       setForm((f) => ({ ...f, is_active: e.target.checked }))
                       setDirty(true)
                     }}
-                    className="h-4 w-4 rounded border-line text-brand-600 focus:ring-brand-500"
+                    className="h-4 w-4 rounded border-line accent-brand-600"
                   />
                 )}
               </Field>
@@ -225,7 +225,7 @@ export default function EquipmentForm() {
             </div>
           </BentoTile>
 
-          <BentoTile span="sm" tone="tint" accent="slate" title="Preview">
+          <BentoTile span="sm" tone="tint" accent="brand" title="Preview">
             <div className="mt-1 space-y-2">
               <p className="text-lg font-bold text-ink truncate">
                 {form.equipment_name || <span className="opacity-40">Untitled</span>}

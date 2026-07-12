@@ -145,10 +145,9 @@ export default function EventFormScreen() {
             <input type="text" inputMode="numeric" className={field} value={String(form.capacity)}
               onChange={(e) => setForm((f) => ({ ...f, capacity: Number(e.target.value.replace(/[^\d]/g, '')) }))} /></label>
           <label className="flex-1 text-xs font-semibold text-slate-500">Pricing
-            <select className={field} value={form.pricing}
-              onChange={(e) => setForm((f) => ({ ...f, pricing: e.target.value as EventFormPayload['pricing'] }))}>
-              <option>Free</option><option>Points</option><option>Rupiah</option>
-            </select></label>
+            <SearchableSelect value={form.pricing}
+              onChange={(v) => setForm((f) => ({ ...f, pricing: v as EventFormPayload['pricing'] }))}
+              options={[{ value: 'Free', label: 'Free' }, { value: 'Points', label: 'Points' }, { value: 'Rupiah', label: 'Rupiah' }]} /></label>
         </div>
         {form.pricing === 'Points' && (
           <label className="text-xs font-semibold text-slate-500">Points cost
@@ -161,17 +160,15 @@ export default function EventFormScreen() {
               onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value.replace(/[^\d]/g, '')) }))} /></label>
         )}
         <label className="text-xs font-semibold text-slate-500">Status
-          <select className={field} value={form.status}
-            onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-            <option>Draft</option><option>Published</option><option>Cancelled</option><option>Completed</option>
-          </select></label>
+          <SearchableSelect value={form.status}
+            onChange={(v) => setForm((f) => ({ ...f, status: v }))}
+            options={[{ value: 'Draft', label: 'Draft' }, { value: 'Published', label: 'Published' }, { value: 'Cancelled', label: 'Cancelled' }, { value: 'Completed', label: 'Completed' }]} /></label>
 
         <label className="text-xs font-semibold text-slate-500">Category
-          <select className={field} value={form.category ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
-            <option value="">— Uncategorized —</option>
-            {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select></label>
+          <SearchableSelect value={form.category ?? ''}
+            onChange={(v) => setForm((f) => ({ ...f, category: v }))}
+            options={EVENT_CATEGORIES.map((c) => ({ value: c, label: c }))}
+            placeholder="— Uncategorized —" /></label>
 
         <label className="text-xs font-semibold text-slate-500">Parent event (leave empty for a top-level event)
           <SearchableSelect

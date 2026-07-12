@@ -31,12 +31,35 @@
       })()
     </script>
     <script>
+      // TEMP DEBUG (blank-page diagnosis): surface any uncaught module-load or
+      // unhandled render error on screen instead of a white page. Remove once fixed.
+      (function () {
+        var shown = false
+        function show(msg) {
+          if (shown) return
+          shown = true
+          var r = document.getElementById('root') || document.body
+          r.innerHTML =
+            '<pre style="margin:0;padding:16px;white-space:pre-wrap;word-break:break-word;font:12px/1.5 monospace;color:#b91c1c;background:#fff">APP ERROR\n\n' +
+            msg +
+            '</pre>'
+        }
+        window.addEventListener('error', function (e) {
+          show((e.message || 'error') + '\n' + ((e.error && e.error.stack) || e.filename + ':' + e.lineno))
+        })
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason
+          show('unhandledrejection: ' + ((r && (r.stack || r.message)) || r))
+        })
+      })()
+    </script>
+    <script>
       // Injected by Frappe when this file is served as www/m.html. Used by the
       // API client for CSRF-protected POST requests.
       window.csrf_token = '{{ frappe.session.csrf_token }}'
     </script>
-    <script type="module" crossorigin src="/assets/vernon_project/frontend/assets/index-4o8A5VK8.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/vernon_project/frontend/assets/index-RmR6zvDZ.css">
+    <script type="module" crossorigin src="/assets/vernon_project/frontend/assets/index-De2VON4b.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/vernon_project/frontend/assets/index-OLopQXLD.css">
   </head>
   <body>
     <div id="root"></div>

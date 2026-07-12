@@ -20,7 +20,7 @@ function ItemRow({ item, onClick }: { item: DataHealthItem; onClick: () => void 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left flex flex-col gap-0.5 rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+      className="w-full text-left flex flex-col gap-0.5 rounded-xl px-3 py-2.5 bg-canvas hover:bg-hover/[0.04] transition"
     >
       <span className="font-medium text-sm text-ink truncate">{item.to_do}</span>
       <span className="text-xs text-muted truncate">
@@ -115,7 +115,7 @@ export default function DataHealth() {
 
       <BentoGrid>
         <BentoTile span="sm" tone="tint" accent={totalAccent} icon={ShieldAlert}>
-          <BentoStat value={data?.counts.total ?? 0} label="problems" />
+          <BentoStat value={total} label={total === 1 ? 'total problem' : 'total problems'} />
         </BentoTile>
 
         {data && sections.map((key) => (

@@ -43,7 +43,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         className="relative w-full max-w-md rounded-lg bg-surface shadow-xl flex flex-col"
       >
         <div className="flex justify-end px-5 pt-4">
-          <button onClick={onDone} className="text-sm font-medium text-muted hover:text-slate-600 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+          <button onClick={onDone} className="text-sm font-medium text-muted hover:text-ink rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
             Skip
           </button>
         </div>
@@ -68,7 +68,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                 key={idx}
                 className={clsx(
                   'h-2 rounded-full transition-all',
-                  idx === i ? 'w-6 bg-brand-600' : 'w-2 bg-slate-200 dark:bg-slate-700',
+                  idx === i ? 'w-6 bg-brand-600' : 'w-2 bg-line',
                 )}
               />
             ))}
@@ -77,7 +77,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             {i > 0 && (
               <button
                 onClick={() => setI(i - 1)}
-                className="flex items-center justify-center gap-1 rounded-lg border border-slate-300 dark:border-slate-700 px-5 py-3.5 text-base font-semibold text-muted hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                className="flex items-center justify-center gap-1 rounded-lg border border-line px-5 py-3.5 text-base font-semibold text-muted hover:bg-hover/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <ArrowLeft className="h-5 w-5" /> Back
               </button>

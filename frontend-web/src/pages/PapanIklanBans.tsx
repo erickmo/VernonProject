@@ -4,6 +4,7 @@ import { Ban } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button, ErrorState } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
 import { useBoot, canModerateAds, useAdBans, useUnbanUser } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
@@ -11,6 +12,7 @@ import { DataTable } from '@web/components/DataTable'
 export default function PapanIklanBans() {
   const navigate = useNavigate()
   const toast = useToast()
+  const confirm = useConfirm()
   const { data: boot } = useBoot()
   const bans = useAdBans()
   const unban = useUnbanUser()
@@ -18,6 +20,14 @@ export default function PapanIklanBans() {
   const blocked = !!boot && !canModerateAds(boot)
   useEffect(() => { if (blocked) navigate('/', { replace: true }) }, [blocked, navigate])
   if (blocked) return null
+
+  const lift = async (user: string, userName: string) => {
+    if (!(await confirm({ title: `Cabut ban ${userName}?`, confirmLabel: 'Cabut' }))) return
+    unban.mutate(user, {
+      onSuccess: () => toast('success', 'Dicabut'),
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
 
   return (
     <Page>
@@ -33,7 +43,7 @@ export default function PapanIklanBans() {
               { key: 'until', header: 'Sampai', render: (b) => <span className="text-muted">{b.banned_until}</span> },
               { key: 'reason', header: 'Alasan', render: (b) => <span className="text-muted">{b.reason}</span> },
               { key: 'by', header: 'Oleh', render: (b) => <span className="text-muted">{b.banned_by}</span> },
-              { key: 'act', header: '', render: (b) => <Button variant="secondary" size="sm" onClick={() => unban.mutate(b.user, { onSuccess: () => toast('success', 'Dicabut'), onError: (e) => toast('error', (e as Error).message) })}>Cabut</Button> },
+              { key: 'act', header: '', render: (b) => <Button variant="secondary" size="sm" disabled={unban.isPending} onClick={() => lift(b.user, b.user_name)}>Cabut</Button> },
             ]}
             getKey={(b) => b.name}
           />

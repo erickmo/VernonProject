@@ -5,6 +5,7 @@ import { User } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import {
@@ -274,18 +275,11 @@ export default function UserFormScreen() {
 
         <label className="block">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Member type</span>
-          <select
+          <SearchableSelect
             value={memberType}
-            onChange={(e) => setMemberType(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-          >
-            <option value="">External / none</option>
-            {MEMBER_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setMemberType(v)}
+            options={[{ value: '', label: 'External / none' }, ...MEMBER_TYPE_OPTIONS]}
+          />
         </label>
 
         {!isEdit && (
@@ -339,13 +333,17 @@ export default function UserFormScreen() {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Contract</p>
               <div className="flex flex-col gap-3">
                 <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Employment status</span>
-                  <select value={employmentStatus} onChange={(e) => setEmploymentStatus(e.target.value)} className={field}>
-                    <option value="">— select —</option>
-                    <option value="Permanent">Permanent</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Probation">Probation</option>
-                    <option value="Intern">Intern</option>
-                  </select></label>
+                  <SearchableSelect
+                    value={employmentStatus}
+                    onChange={(v) => setEmploymentStatus(v)}
+                    placeholder="— select —"
+                    options={[
+                      { value: 'Permanent', label: 'Permanent' },
+                      { value: 'Contract', label: 'Contract' },
+                      { value: 'Probation', label: 'Probation' },
+                      { value: 'Intern', label: 'Intern' },
+                    ]}
+                  /></label>
                 <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Job title</span>
                   <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className={field} /></label>
                 <label className="block"><span className="text-xs font-medium text-slate-500 dark:text-slate-400">Date joined</span>

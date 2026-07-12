@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { useToast } from '@/components/Toast'
 import { useBoot, canManageAttendance, useApproveException, useRejectException } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile } from '@web/components/bento'
@@ -10,6 +11,7 @@ type Exc = { name: string; employee: string; exception_type: string; from_date: 
 
 export default function Exceptions() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { data: boot } = useBoot()
   const blocked = !!boot && !canManageAttendance(boot)
   useEffect(() => {
@@ -34,9 +36,14 @@ export default function Exceptions() {
   }, [])
 
   const decide = async (name: string, status: 'Approved' | 'Rejected') => {
-    if (status === 'Approved') await approve.mutateAsync(name)
-    else await reject.mutateAsync({ name, reason: 'Rejected by admin' })
-    load()
+    try {
+      if (status === 'Approved') await approve.mutateAsync(name)
+      else await reject.mutateAsync({ name, reason: 'Rejected by admin' })
+      toast('success', status)
+      load()
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
   }
 
   if (blocked) return null

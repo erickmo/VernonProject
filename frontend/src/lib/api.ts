@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease } from './types'
 
 const METHOD = '/api/method/'
 
@@ -80,6 +80,7 @@ const M = 'vernon_project.api.mobile.'
 const A = 'vernon_project.api.attendance.'
 const BK = 'vernon_project.api.booking.'
 const IN = 'vernon_project.api.income.'
+const R = 'vernon_project.api.report.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -127,10 +128,25 @@ export const mobileApi = {
       can_advance?: boolean
       next_status_label?: string | null
     }>('vernon_project.api.project_todo.update_status', { todo_id: todoId }),
+  bulkAdvance: (todoIds: string[]) =>
+    api.post<{ status: string; approved: number; failed: number }>(
+      'vernon_project.api.project_todo.bulk_update_status',
+      { todo_ids: JSON.stringify(todoIds) },
+    ),
+  bulkReject: (todoIds: string[], reason: string) =>
+    api.post<{ status: string; rejected: number; failed: number }>(
+      'vernon_project.api.project_todo.bulk_reject_status',
+      { todo_ids: JSON.stringify(todoIds), reason },
+    ),
   rejectStatus: (todoId: string, reason: string) =>
     api.post<{ status: string; message: string; status_key?: string }>(
       'vernon_project.api.project_todo.reject_status',
       { todo_id: todoId, reason },
+    ),
+  setAutoApprove: (todoId: string, enabled: 0 | 1) =>
+    api.post<{ status: string; message?: string; auto_approve?: 0 | 1 }>(
+      'vernon_project.api.project_todo.set_auto_approve',
+      { todo_id: todoId, enabled },
     ),
   cancelTodo: (projectItem: string, reason?: string) =>
     api.post<{ status: string; message: string }>(M + 'cancel_todo', {
@@ -150,6 +166,13 @@ export const mobileApi = {
       'vernon_project.api.project_todo.save_notes',
       { todo_id: todoId, notes },
     ),
+  listTodoFiles: (todoId: string) =>
+    api.get<TodoFile[]>('vernon_project.api.project_todo.list_todo_files', { todo_id: todoId }),
+  deleteTodoFile: (todoId: string, fileName: string) =>
+    api.post<{ status: string }>('vernon_project.api.project_todo.delete_todo_file', {
+      todo_id: todoId,
+      file_name: fileName,
+    }),
   updateTodo: (todoId: string, fields: Record<string, unknown>) =>
     api.post<{ status: string; message: string }>(M + 'update_todo', {
       project_item: todoId,
@@ -294,8 +317,12 @@ export const mobileApi = {
       settings as Record<string, unknown>,
     ),
   getHomeBanners: () => api.get<import('./types').BannerSlide[]>(M + 'get_home_banners'),
+  previousShiftShortfall: () =>
+    api.get<import('./types').PreviousShiftShortfall>(R + 'my_previous_shift_shortfall'),
   getNotifications: (limit = 30) =>
     api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit }),
+  getAppReleases: (platform?: string) =>
+    api.get<AppRelease[]>('vernon_project.api.app_release.get_app_releases', platform ? { platform } : {}),
   markNotificationRead: (name: string) =>
     api.post<{ ok: boolean }>(M + 'mark_notification_read', { name }),
   markAllRead: () => api.post<{ ok: boolean; marked: number }>(M + 'mark_all_read'),
@@ -363,10 +390,15 @@ export const mobileApi = {
       meeting,
       users: JSON.stringify(users),
     }),
-  markMeetingDone: (meeting: string) =>
-    api.post<{ status: string; message: string }>(M + 'mark_meeting_done', { meeting }),
+  markMeetingDone: (meeting: string, awardees?: string[]) =>
+    api.post<{ status: string; message: string }>(M + 'mark_meeting_done', {
+      meeting,
+      ...(awardees ? { awardees: JSON.stringify(awardees) } : {}),
+    }),
   reopenMeeting: (meeting: string) =>
     api.post<{ status: string; message: string }>(M + 'reopen_meeting', { meeting }),
+  deleteMeeting: (meeting: string) =>
+    api.post<{ status: string; message: string }>(M + 'delete_meeting', { meeting }),
   meetingInvitableUsers: (project: string, txt = '') =>
     api.get<{ users: import('./types').MeetingInvitableUser[] }>(M + 'meeting_invitable_users', {
       project,
@@ -441,6 +473,11 @@ export const mobileApi = {
     api.post<{ status: string }>('vernon_project.api.feedback.set_feedback_status', {
       name,
       status,
+    }),
+  linkTask: (feedback: string, todo: string) =>
+    api.post<{ status: string }>('vernon_project.api.feedback.link_task', {
+      feedback,
+      todo,
     }),
   stationToken: (station: string, key: string) =>
     api.get<{ station: string; counter: number; token: string }>(A + 'station_token', { station, key }),
@@ -648,6 +685,33 @@ export async function uploadCommentImage(
   }
   const out = data?.message ?? data
   return out.file_url as string
+}
+
+// Multipart upload of a file attached to a Project Todo. Edit-gated server-side
+// (assignee/owner/leader/System Manager). Stored private; returns the saved row.
+export async function uploadTodoFile(todoId: string, file: File): Promise<TodoFile> {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('todo_id', todoId)
+  const res = await fetch(METHOD + 'vernon_project.api.project_todo.upload_todo_file', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out as TodoFile
 }
 
 const PI = 'vernon_project.api.papan_iklan.'

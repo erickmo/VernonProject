@@ -5,6 +5,7 @@ import { Spinner } from '@/components/ui'
 import { Button, Field } from '@web/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
 import { useAd, useSetAdStatus, useDeleteAd, useAdminRemoveAd, useBanUser } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
 import type { AdDetail } from '@/lib/types'
@@ -20,6 +21,7 @@ const fieldCls = 'w-full rounded-xl border border-line px-3 py-2 text-sm text-in
 export default function PapanIklanDetail() {
   const navigate = useNavigate()
   const toast = useToast()
+  const confirm = useConfirm()
   const { name: rawName } = useParams()
   const name = rawName ? decodeURIComponent(rawName) : ''
   const { data: ad, isLoading } = useAd(name)
@@ -38,14 +40,20 @@ export default function PapanIklanDetail() {
     { name, status: ad.status === 'Fulfilled' ? 'Active' : 'Fulfilled' },
     { onSuccess: () => toast('success', 'Status diperbarui'), onError: (e) => toast('error', (e as Error).message) },
   )
-  const remove = () => del.mutate(name, {
-    onSuccess: () => { toast('success', 'Iklan dihapus'); navigate('/papan-iklan') },
-    onError: (e) => toast('error', (e as Error).message),
-  })
-  const takedown = () => adminRemove.mutate({ name, reason: 'Melanggar aturan.' }, {
-    onSuccess: () => { toast('success', 'Iklan diturunkan'); navigate('/papan-iklan') },
-    onError: (e) => toast('error', (e as Error).message),
-  })
+  const remove = async () => {
+    if (!(await confirm({ title: 'Hapus iklan ini?', confirmLabel: 'Hapus', destructive: true }))) return
+    del.mutate(name, {
+      onSuccess: () => { toast('success', 'Iklan dihapus'); navigate('/papan-iklan') },
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
+  const takedown = async () => {
+    if (!(await confirm({ title: 'Turunkan iklan ini?', confirmLabel: 'Turunkan', destructive: true }))) return
+    adminRemove.mutate({ name, reason: 'Melanggar aturan.' }, {
+      onSuccess: () => { toast('success', 'Iklan diturunkan'); navigate('/papan-iklan') },
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
   const submitBan = () => {
     if (!banUntil) return toast('error', 'Pilih tanggal')
     if (!banReason.trim()) return toast('error', 'Alasan wajib')

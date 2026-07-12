@@ -13,7 +13,7 @@ const chip = (active: boolean) =>
   `rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
     active
       ? 'bg-brand-600 text-white'
-      : 'bg-slate-100 text-muted hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'
+      : 'bg-canvas text-muted hover:bg-hover/[0.04]'
   }`
 
 const fieldCls =
@@ -93,7 +93,7 @@ export default function Feedback() {
               )}
             </Field>
 
-            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={anon}

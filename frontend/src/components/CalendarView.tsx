@@ -3,8 +3,9 @@ import { ChevronLeft, ChevronRight, X, CalendarDays, Users, MapPin, Clock } from
 import clsx from 'clsx'
 import { useNavigate } from 'react-router-dom'
 import { TodoCard } from '@/components/TodoCard'
+import { MeetingSheet } from '@/components/MeetingSheet'
 import { Segmented, EmptyState, FullScreenLoader } from '@/components/ui'
-import { useCalendar, useMeetings, useBookings, useProjects } from '@/hooks/useData'
+import { useCalendar, useMeetings, useBookings, useProjects, useBoot } from '@/hooks/useData'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatEstimate } from '@/lib/format'
 import type { ProjectItem, MeetingListItem, Booking, ProjectCard } from '@/lib/types'
@@ -35,9 +36,23 @@ type CalItem =
   | { kind: 'booking'; day: string; minutes: number; color: string; label: string; booking: Booking }
   | { kind: 'project'; day: string; minutes: number; color: string; label: string; project: ProjectCard }
 
-const MEETING_COLOR = 'bg-sky-500'
 const BOOKING_COLOR = 'bg-violet-500'
 const PROJECT_COLOR = 'bg-rose-500'
+
+// Meeting chips are colored by how I'm involved: organizing, invited, or just
+// observing (visible via the project but not on the invite list).
+const MEETING_INVOLVEMENT = {
+  organizer: { color: 'bg-emerald-500', label: 'Meeting · organizer' },
+  participant: { color: 'bg-sky-500', label: 'Meeting · invited' },
+  observer: { color: 'bg-slate-400', label: 'Meeting · observing' },
+} as const
+type Involvement = keyof typeof MEETING_INVOLVEMENT
+function meetingInvolvement(m: MeetingListItem, me: string): Involvement {
+  if (m.organizer === me) return 'organizer'
+  if (m.participants.includes(me)) return 'participant'
+  return 'observer'
+}
+const meetingColor = (m: MeetingListItem, me: string) => MEETING_INVOLVEMENT[meetingInvolvement(m, me)].color
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const keyOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -76,6 +91,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
   const meetings = useMeetings()
   const bookings = useBookings()
   const projects = useProjects()
+  const me = useBoot().data?.user ?? ''
 
   const isLoading =
     (mode === 'assigned' || mode === 'plan') ? calendar.isLoading
@@ -86,6 +102,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
   const now = new Date()
   const [cursor, setCursor] = useState({ y: now.getFullYear(), m: now.getMonth() })
   const [openDay, setOpenDay] = useState<string | null>(null)
+  const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
 
   // Build every CalItem for the active mode, then bucket onto days + sum minutes.
   const { byDay, estByDay, undated } = useMemo(() => {
@@ -94,7 +111,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
       meetings: meetings.data?.meetings ?? [],
       bookings: bookings.data ?? [],
       projects: projects.data ?? [],
-    })
+    }, me)
     const map = new Map<string, CalItem[]>()
     const est = new Map<string, number>()
     let undatedCount = 0
@@ -106,7 +123,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
       est.set(it.day, (est.get(it.day) ?? 0) + (it.minutes || 0))
     }
     return { byDay: map, estByDay: est, undated: undatedCount }
-  }, [mode, calendar.data, meetings.data, bookings.data, projects.data])
+  }, [mode, calendar.data, meetings.data, bookings.data, projects.data, me])
 
   // Build the 6-week (42-cell) grid, Monday-first.
   const cells = useMemo(() => {
@@ -293,12 +310,14 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
             </div>
             <div className="space-y-2.5">
               {dayItems.map((it, i) => (
-                <DayRow key={i} item={it} navigate={navigate} onClose={() => setOpenDay(null)} />
+                <DayRow key={i} item={it} me={me} navigate={navigate} onClose={() => setOpenDay(null)} onOpenMeeting={setOpenMeeting} />
               ))}
             </div>
           </div>
         </div>
       )}
+
+      <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} />
     </div>
   )
 }
@@ -306,30 +325,42 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
 // One row in the day sheet, rendered per item kind.
 function DayRow({
   item,
+  me,
   navigate,
   onClose,
+  onOpenMeeting,
 }: {
   item: CalItem
+  me: string
   navigate: (to: string) => void
   onClose: () => void
+  onOpenMeeting: (m: MeetingListItem) => void
 }) {
   if (item.kind === 'todo') {
     return <TodoCard todo={item.todo} showAssignee={false} />
   }
   if (item.kind === 'meeting') {
     const m = item.meeting
+    const inv = MEETING_INVOLVEMENT[meetingInvolvement(m, me)]
     return (
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-slate-900 dark:text-slate-50">{m.title}</span>
-          <span className="text-xs text-slate-500">{m.status}</span>
+      <button
+        onClick={() => onOpenMeeting(m)}
+        className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-left active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate font-semibold text-slate-900 dark:text-slate-50">{m.title}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500">
+            <span className={clsx('h-2 w-2 rounded-full', inv.color)} />
+            {inv.label.replace('Meeting · ', '')}
+          </span>
         </div>
+        <div className="mt-0.5 text-right text-[11px] text-slate-400">{m.status}</div>
         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
           {m.scheduled_at && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{timeOf(m.scheduled_at)}</span>}
           <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{m.participants.length}</span>
           {m.estimated > 0 && <span>{formatEstimate(m.estimated)}</span>}
         </div>
-      </div>
+      </button>
     )
   }
   if (item.kind === 'booking') {
@@ -367,6 +398,7 @@ function DayRow({
 function buildItems(
   mode: Mode,
   src: { todos: ProjectItem[]; meetings: MeetingListItem[]; bookings: Booking[]; projects: ProjectCard[] },
+  me: string,
 ): CalItem[] {
   const out: CalItem[] = []
   if (mode === 'assigned' || mode === 'plan') {
@@ -387,13 +419,20 @@ function buildItems(
         out.push({ kind: 'todo', day: '', minutes: 0, color: todoColor(t), label: t.to_do, todo: t })
       }
     }
+    // My meetings live on the same personal calendar — a meeting I organize or
+    // am invited to shows alongside my tasks on its scheduled day.
+    for (const m of src.meetings) {
+      if (!m.scheduled_at) continue
+      if (m.organizer !== me && !m.participants.includes(me)) continue
+      out.push({ kind: 'meeting', day: m.scheduled_at.slice(0, 10), minutes: m.estimated || 0, color: meetingColor(m, me), label: m.title, meeting: m })
+    }
   } else if (mode === 'meeting') {
     for (const m of src.meetings) {
       out.push({
         kind: 'meeting',
         day: m.scheduled_at ? m.scheduled_at.slice(0, 10) : '',
         minutes: m.estimated || 0,
-        color: MEETING_COLOR,
+        color: meetingColor(m, me),
         label: m.title,
         meeting: m,
       })
@@ -415,12 +454,15 @@ function buildItems(
 
 function legendFor(mode: Mode): { color: string; label: string }[] {
   if (mode === 'assigned' || mode === 'plan') {
+    // personal lens only surfaces meetings I organize or am invited to
     return [
       ...STATUS_ORDER.map((k) => ({ color: STATUS[k].dot, label: STATUS[k].label })),
       { color: 'bg-rose-400', label: 'Overdue' },
+      MEETING_INVOLVEMENT.organizer,
+      MEETING_INVOLVEMENT.participant,
     ]
   }
-  if (mode === 'meeting') return [{ color: MEETING_COLOR, label: 'Meeting' }]
+  if (mode === 'meeting') return [MEETING_INVOLVEMENT.organizer, MEETING_INVOLVEMENT.participant, MEETING_INVOLVEMENT.observer]
   if (mode === 'booking') return [{ color: BOOKING_COLOR, label: 'Reservation' }]
   return [{ color: PROJECT_COLOR, label: 'Project deadline' }]
 }

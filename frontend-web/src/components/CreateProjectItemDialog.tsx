@@ -21,9 +21,10 @@ interface Props {
   /** Prefill the form (e.g. duplicating a todo). Remount to re-seed — useState
    *  initializers only run once, so mount this dialog fresh per open. */
   initial?: CreateTodoInitial
+  onCreated?: (todoName: string) => void
 }
 
-export function CreateProjectItemDialog({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial }: Props) {
+export function CreateProjectItemDialog({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial, onCreated }: Props) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
 
@@ -118,7 +119,8 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       if (until) fields.recurring_until = until
     }
     create.mutate(fields, {
-      onSuccess: () => {
+      onSuccess: (doc) => {
+        onCreated?.((doc as { name?: string })?.name ?? '')
         toast('success', 'Todo created')
         if (addAnother) resetForNext()
         else close()
@@ -288,7 +290,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
         </label>
 
         {isRecurring && (
-          <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
+          <div className="flex flex-col gap-3 rounded-xl bg-canvas p-3">
             <label className="text-sm font-medium text-muted">
               Frequency
               <SearchableSelect

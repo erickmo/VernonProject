@@ -286,7 +286,7 @@ export default function NoteForm() {
                 <h2 className="text-lg font-semibold text-ink">{title}</h2>
               )}
               {body.trim() && (
-                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">{body}</p>
+                <p className="whitespace-pre-wrap text-sm text-ink dark:text-slate-200">{body}</p>
               )}
               {items.length > 0 && (
                 <ul className="flex flex-col gap-2">
@@ -376,7 +376,7 @@ export default function NoteForm() {
                         onClick={() => moveItem(i, -1)}
                         disabled={i === 0}
                         aria-label="Move up"
-                        className="text-muted disabled:opacity-30 hover:text-slate-600"
+                        className="text-muted disabled:opacity-30 hover:text-ink"
                       >
                         <ArrowUp className="h-4 w-4" />
                       </button>
@@ -384,7 +384,7 @@ export default function NoteForm() {
                         onClick={() => moveItem(i, 1)}
                         disabled={i === items.length - 1}
                         aria-label="Move down"
-                        className="text-muted disabled:opacity-30 hover:text-slate-600"
+                        className="text-muted disabled:opacity-30 hover:text-ink"
                       >
                         <ArrowDown className="h-4 w-4" />
                       </button>
@@ -427,7 +427,7 @@ export default function NoteForm() {
 
         {/* Share manager (owner only; existing notes only) */}
         {isOwner && isEdit && (
-          <BentoTile span="sm" tone="tint" accent="slate" title="Shared with">
+          <BentoTile span="sm" tone="tint" accent="brand" title="Shared with">
             <div className="mt-1">
               {shares.length > 0 && (
                 <ul className="mb-2 flex flex-col gap-2">
@@ -466,7 +466,7 @@ export default function NoteForm() {
               ) : (
                 <button
                   onClick={() => setPicking(true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-ink hover:bg-hover/[0.04] dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
                 >
                   <UserPlus className="h-4 w-4" /> Share with someone
                 </button>
@@ -518,7 +518,7 @@ function SharePicker({
     <div className="rounded-xl border border-line dark:border-slate-700 bg-surface p-2 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -535,12 +535,12 @@ function SharePicker({
       ) : filtered.length === 0 ? (
         <p className="px-3 py-4 text-center text-sm text-muted">No users</p>
       ) : (
-        <div className="max-h-64 divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto">
+        <div className="max-h-64 divide-y divide-line dark:divide-slate-700 overflow-y-auto">
           {filtered.map((u) => (
             <button
               key={u.value}
               onClick={() => onPick(u.value)}
-              className="flex w-full items-center gap-3 px-2 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50"
+              className="flex w-full items-center gap-3 px-2 py-2.5 text-left hover:bg-hover/[0.04] dark:hover:bg-slate-700/50"
             >
               <Avatar name={u.label} size={32} />
               <div className="min-w-0 flex-1">

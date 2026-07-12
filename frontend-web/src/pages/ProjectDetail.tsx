@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import {
-  ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2,
+  ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3,
 } from 'lucide-react'
 import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
+import { GanttChart } from '@/components/GanttChart'
+import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
@@ -28,6 +30,7 @@ export default function ProjectDetail() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
+  const [view, setView] = useState<'list' | 'gantt'>('list')
 
   const detail = useProjectDetail(id, showCancelled)
   const deleteMutation = useDeleteProjectDetail()
@@ -112,7 +115,7 @@ export default function ProjectDetail() {
         <PropertyRow>
           <Property label="Status" icon={undefined}>
             <span className="inline-flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-medium text-muted dark:text-slate-300">
                 {d.status}
               </span>
               {d.is_pending ? (
@@ -151,6 +154,22 @@ export default function ProjectDetail() {
         title="Todos"
         actions={
           <div className="flex items-center gap-3">
+            <div className="flex rounded-full bg-canvas p-0.5">
+              <button
+                onClick={() => setView('list')}
+                aria-pressed={view === 'list'}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+              >
+                <List className="h-3.5 w-3.5" /> List
+              </button>
+              <button
+                onClick={() => setView('gantt')}
+                aria-pressed={view === 'gantt'}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" /> Gantt
+              </button>
+            </div>
             <label className="flex items-center gap-2 text-xs text-muted">
               <input
                 type="checkbox"
@@ -168,6 +187,13 @@ export default function ProjectDetail() {
           </div>
         }
       >
+        {view === 'gantt' ? (
+          <GanttChart
+            groups={[groupFromItems(d.title, items)]}
+            title={d.title}
+            onBarClick={(tid) => nav(`/project-detail/${encodeURIComponent(d.name)}/item/${encodeURIComponent(tid)}`)}
+          />
+        ) : (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr,40%]">
           {/* Left: grouped tables */}
           <div className="min-w-0 space-y-5">
@@ -178,7 +204,7 @@ export default function ProjectDetail() {
             ) : (
               todoGroups.map((g) => (
                 <div key={g.label}>
-                  <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-muted dark:text-slate-500">
                     {g.label} ({g.rows.length})
                   </p>
                   <DataTable
@@ -202,13 +228,14 @@ export default function ProjectDetail() {
             {itemSelected ? (
               <Outlet />
             ) : (
-              <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-400 dark:text-slate-500">
+              <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted dark:text-slate-500">
                 <MousePointerClick className="h-8 w-8 opacity-50" />
                 Select a todo to view its details here — or use the Status cell to advance it inline.
               </div>
             )}
           </div>
         </div>
+        )}
       </Section>
 
       {/* Comments */}

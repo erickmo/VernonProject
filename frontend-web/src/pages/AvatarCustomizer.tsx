@@ -10,10 +10,10 @@ import {
   PROB_SLOTS, isFreeVariant, variantLabel, BG_PALETTE,
 } from '@/avatar/styles'
 import type { StyleKey } from '@/avatar/styles'
-import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset } from '@/hooks/useData'
+import { useAvatarCatalog, useSaveAvatar, useBuyAvatarOption, useBuyAvatarAsset, useCrateStatus, useOpenCrate } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { CollectibleIcon } from '@/avatar/collectibleIcons'
-import type { AvatarConfig } from '@/lib/types'
+import type { AvatarConfig, CrateOpenResult } from '@/lib/types'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 
 const STYLE_TABS = STYLE_LIST.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }))
@@ -146,16 +146,23 @@ export default function AvatarCustomizer() {
   const assetProps = catalog.assets.filter(a => a.asset_type === 'Prop')
   const collectibles = catalog.assets.filter(a => a.asset_type === 'Collectible')
 
+  const onBuyAsset = (name: string) => buyAsset.mutate(name, {
+    onSuccess: (r) => { if (r?.completed) toast('success', `${r.completed.set} set complete! +${r.completed.rebate.toLocaleString()} pts`) },
+    onError: (e) => toast('error', e instanceof Error ? e.message : 'Purchase failed'),
+  })
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-ink">Customize Avatar</h1>
         <div className="flex items-center gap-1.5 text-sm">
           <Coins className="h-4 w-4 text-amber-500" />
-          <span className="font-semibold text-slate-700 dark:text-slate-200">{catalog.balance.toLocaleString()}</span>
+          <span className="font-semibold text-ink dark:text-slate-200">{catalog.balance.toLocaleString()}</span>
           <span className="text-muted">pts</span>
         </div>
       </div>
+
+      <CrateCard />
 
       <BentoGrid>
         {/* AvatarScene preview — sticky so it stays visible while controls scroll */}
@@ -178,7 +185,7 @@ export default function AvatarCustomizer() {
                   'rounded-lg px-4 py-2 text-sm font-semibold transition',
                   draft.style === value
                     ? 'bg-brand-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-muted hover:bg-slate-200 dark:hover:bg-slate-700',
+                    : 'bg-canvas text-muted hover:bg-hover/[0.04]',
                 ].join(' ')}
               >
                 {label}
@@ -239,7 +246,7 @@ export default function AvatarCustomizer() {
 
           {/* Color swatches */}
           {colorSlots.length > 0 && (
-            <div className="mb-5 space-y-4 rounded-xl border border-line dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+            <div className="mb-5 space-y-4 rounded-xl border border-line dark:border-slate-700 bg-canvas p-4">
               {colorSlots.map((cSlot) => {
                 const isBg = cSlot === 'backgroundColor'
                 const cur = isBg ? bgColor1 : (draft.options[cSlot]?.[0] ?? '')
@@ -349,7 +356,7 @@ export default function AvatarCustomizer() {
                       {!a.owned && (
                         <button
                           type="button"
-                          onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                          onClick={() => onBuyAsset(a.asset_name)}
                           disabled={buyAsset.isPending}
                           className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
                         >Buy</button>
@@ -388,9 +395,11 @@ export default function AvatarCustomizer() {
                           active ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-line dark:border-slate-700 bg-surface',
                         ].join(' ')}
                       >
-                        {a.icon
-                          ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
-                          : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
+                        {a.image
+                          ? <img src={a.image} alt="" className="h-7 w-7 object-contain" />
+                          : a.icon
+                            ? <CollectibleIcon name={a.icon} className="h-7 w-7" />
+                            : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>}
                         <span className="text-[10px] font-medium text-muted whitespace-nowrap">{a.asset_name}</span>
                         {!a.owned && (
                           <span className="text-[8px] leading-none text-amber-500 flex items-center gap-0.5">
@@ -401,7 +410,7 @@ export default function AvatarCustomizer() {
                       {!a.owned && (
                         <button
                           type="button"
-                          onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                          onClick={() => onBuyAsset(a.asset_name)}
                           disabled={buyAsset.isPending}
                           className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
                         >Buy</button>
@@ -430,25 +439,29 @@ export default function AvatarCustomizer() {
                           featured ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/15' : 'border-line dark:border-slate-700 bg-surface',
                         ].join(' ')}
                       >
-                        {a.icon
-                          ? <CollectibleIcon name={a.icon} className="h-8 w-8 text-slate-700 dark:text-slate-200" />
-                          : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
+                        {a.image
+                          ? <img src={a.image} alt="" className="h-9 w-9 object-contain" />
+                          : a.icon
+                            ? <CollectibleIcon name={a.icon} className="h-8 w-8 text-ink dark:text-slate-200" />
+                            : <span className="text-2xl leading-none">{a.emoji ?? '?'}</span>
                         }
                         <span className="text-[10px] font-medium text-muted whitespace-nowrap">{a.asset_name}</span>
                         {a.owned ? (
                           <span className={['text-[9px] font-semibold', featured ? 'text-brand-600 dark:text-brand-400' : 'text-muted'].join(' ')}>
                             {featured ? 'Featured' : 'Feature'}
                           </span>
+                        ) : a.earn_only ? (
+                          <span className="text-[8px] leading-none text-violet-500">🔒 Earn</span>
                         ) : (
                           <span className="text-[8px] leading-none text-amber-500 flex items-center gap-0.5">
                             <Lock className="h-2.5 w-2.5" />{a.price?.toLocaleString()}
                           </span>
                         )}
                       </button>
-                      {!a.owned && (
+                      {!a.owned && !a.earn_only && (
                         <button
                           type="button"
-                          onClick={() => buyAsset.mutate(a.asset_name, { onError: e => toast('error', e instanceof Error ? e.message : 'Purchase failed') })}
+                          onClick={() => onBuyAsset(a.asset_name)}
                           disabled={buyAsset.isPending}
                           className="w-full rounded-md bg-amber-500 px-1.5 py-0.5 text-[9px] font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
                         >Buy</button>
@@ -527,6 +540,73 @@ function VariantTile({
           Buy
         </button>
       )}
+    </div>
+  )
+}
+
+// Work-earned gacha: keys come from completing tasks (never bought with points),
+// each open grants a guaranteed NEW cosmetic. Daily-capped.
+function CrateCard() {
+  const { data: st } = useCrateStatus()
+  const openCrate = useOpenCrate()
+  const toast = useToast()
+  const [reveal, setReveal] = useState<CrateOpenResult['asset'] | null>(null)
+  if (!st) return null
+  const canOpen = st.keys > 0 && st.opened_today < st.daily_cap && st.remaining > 0
+  return (
+    <div className="rounded-xl border border-line dark:border-slate-700 bg-surface p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">🎁 Task Crate</p>
+          <p className="text-xs text-muted">
+            {st.keys > 0 ? `${st.keys} key${st.keys > 1 ? 's' : ''} ready` : 'No keys yet'} · {st.remaining} cosmetics left
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => openCrate.mutate(undefined, {
+            onSuccess: (r) => { setReveal(r.asset); if (r?.completed) toast('success', `${r.completed.set} set complete! +${r.completed.rebate.toLocaleString()} pts`) },
+            onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not open'),
+          })}
+          disabled={!canOpen || openCrate.isPending}
+          className="shrink-0 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {openCrate.isPending ? 'Opening…' : st.keys > 0 ? 'Open' : 'Locked'}
+        </button>
+      </div>
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-line dark:bg-slate-700">
+        <div className="h-full rounded-full bg-brand-400 transition-all" style={{ width: `${Math.min(100, st.progress_pct)}%` }} />
+      </div>
+      <p className="mt-1 text-[10px] text-muted">
+        {Math.round(st.progress).toLocaleString()}/{st.key_cost.toLocaleString()} task pts to next key · {st.opened_today}/{st.daily_cap} opened today
+      </p>
+      {reveal && <CrateReveal asset={reveal} onClose={() => setReveal(null)} />}
+    </div>
+  )
+}
+
+function CrateReveal({ asset, onClose }: { asset: CrateOpenResult['asset']; onClose: () => void }) {
+  const isScene = asset.asset_type === 'Scene'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
+      <div className="flex flex-col items-center gap-3 rounded-2xl bg-surface px-8 py-7 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-500">New cosmetic!</p>
+        <div
+          className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-line dark:border-slate-700"
+          style={isScene && asset.gradient ? { background: asset.gradient } : undefined}
+        >
+          {asset.image
+            ? <img src={asset.image} alt="" className="h-full w-full object-contain" />
+            : asset.icon
+              ? <CollectibleIcon name={asset.icon} className="h-14 w-14 text-ink dark:text-slate-200" />
+              : isScene
+                ? null
+                : <span className="text-5xl leading-none">{asset.emoji ?? '🎁'}</span>}
+        </div>
+        <p className="text-sm font-semibold text-ink">{asset.asset_name}</p>
+        <p className="text-[11px] text-muted">{asset.asset_type} · added to your collection</p>
+        <button type="button" onClick={onClose} className="mt-1 rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700">Nice!</button>
+      </div>
     </div>
   )
 }

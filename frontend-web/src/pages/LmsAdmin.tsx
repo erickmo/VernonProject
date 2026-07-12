@@ -31,7 +31,7 @@ const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
 const STATUS_CLS: Record<string, string> = {
-  Draft: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+  Draft: 'bg-slate-100 text-muted dark:bg-slate-700 dark:text-slate-300',
   Published: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
   Archived: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
   'In Progress': 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
@@ -43,7 +43,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-        STATUS_CLS[status] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+        STATUS_CLS[status] ?? 'bg-slate-100 text-muted dark:bg-slate-700 dark:text-slate-300'
       }`}
     >
       {status}

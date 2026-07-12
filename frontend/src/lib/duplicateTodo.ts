@@ -1,4 +1,5 @@
 import type { ProjectItemDetail } from './types'
+import { todayISO } from './format'
 
 /** Prefill values for the create form. Every field optional; the form falls
  *  back to its own empty defaults when a key is absent. */
@@ -57,5 +58,21 @@ export function todoDuplicateInitial(data: ProjectItemDetail): CreateTodoInitial
     levelId: data.level_id ?? '',
     blockedBy: data.blocked_by ?? [],
     blocking: data.blocking ?? [],
+  }
+}
+
+/** Seed the create form as a follow-up of an existing todo. Carries only the
+ *  identity fields (assignee, group, level, title + suffix) and sets blocked_by
+ *  to the source task so the follow-up can't start until it's done; everything
+ *  else (dates, notes, recurrence) is left blank for the user to fill fresh. */
+export function todoFollowUpInitial(data: ProjectItemDetail): CreateTodoInitial {
+  return {
+    toDo: `${data.to_do} (Follow Up)`,
+    assignedTo: data.assigned_to,
+    startDate: todayISO(),
+    group: data.group ?? '',
+    typeName: data.level_type ?? '',
+    levelId: data.level_id ?? '',
+    blockedBy: [data.name],
   }
 }

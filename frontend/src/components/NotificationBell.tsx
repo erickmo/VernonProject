@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import { useNotifications } from '@/hooks/useData'
+import { useAppUpdate } from '@/lib/appUpdate'
 
 export function NotificationBell() {
   const navigate = useNavigate()
   const { data } = useNotifications()
-  const unread = data?.unread ?? 0
+  const { updateAvailable } = useAppUpdate()
+  const unread = (data?.unread ?? 0) + (updateAvailable ? 1 : 0)
   return (
     <button
       onClick={() => navigate('/notifications')}

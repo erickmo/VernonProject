@@ -53,7 +53,7 @@ export default function Login() {
           <input
             id="login-email"
             type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2"
+            className="w-full rounded-lg border border-line dark:border-slate-700 bg-transparent px-3 py-2"
           />
         </div>
         <div className="space-y-1">
@@ -62,7 +62,7 @@ export default function Login() {
             <input
               id="login-pwd"
               type={show ? 'text' : 'password'} value={pwd} onChange={(e) => setPwd(e.target.value)} required
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 pr-10"
+              className="w-full rounded-lg border border-line dark:border-slate-700 bg-transparent px-3 py-2 pr-10"
             />
             <button type="button" aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted">
               {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -75,15 +75,15 @@ export default function Login() {
         {pkAvailable && (
           <>
             <div className="flex items-center gap-3 text-xs font-medium text-muted">
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              <span className="h-px flex-1 bg-line dark:bg-slate-700" />
               or
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              <span className="h-px flex-1 bg-line dark:bg-slate-700" />
             </div>
             <button
               type="button"
               onClick={passkeySignIn}
               disabled={pkBusy || busy}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="w-full rounded-lg border border-line dark:border-slate-700 py-2.5 font-medium flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-hover/[0.04]"
             >
               {pkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4 text-brand-600" />}
               Sign in with fingerprint

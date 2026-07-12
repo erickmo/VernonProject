@@ -232,18 +232,18 @@ export default function Project() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Details</h2>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5">
+              <div className="flex rounded-full bg-canvas p-0.5">
                 <button
                   onClick={() => setView('list')}
                   aria-pressed={view === 'list'}
-                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
                 >
                   <List className="h-3.5 w-3.5" /> List
                 </button>
                 <button
                   onClick={() => setView('gantt')}
                   aria-pressed={view === 'gantt'}
-                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
                 >
                   <BarChart3 className="h-3.5 w-3.5" /> Gantt
                 </button>
@@ -285,7 +285,7 @@ export default function Project() {
                     <button
                       key={key}
                       onClick={() => setDetailFilter(key)}
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${detailFilter === key ? 'bg-brand-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${detailFilter === key ? 'bg-brand-600 text-white' : 'bg-canvas text-muted dark:text-slate-400 hover:bg-hover/[0.04]'}`}
                     >
                       {label}
                     </button>
@@ -348,7 +348,7 @@ export default function Project() {
 
           {p.goal && (
             <Section title={<span className="inline-flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Goal</span>}>
-              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{p.goal}</p>
+              <p className="text-sm leading-relaxed text-muted dark:text-slate-300">{p.goal}</p>
             </Section>
           )}
 
@@ -359,7 +359,7 @@ export default function Project() {
                 perms.can_edit ? (
                   <button
                     onClick={() => setTeamOpen(true)}
-                    className="flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                    className="flex items-center gap-1 rounded-full bg-canvas px-3 py-1.5 text-xs font-semibold text-muted dark:text-slate-300 hover:bg-hover/[0.04] transition"
                   >
                     <Users className="h-3.5 w-3.5" /> Manage
                   </button>

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck, Sparkles } from 'lucide-react'
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useData'
+import { useAppUpdate } from '@/lib/appUpdate'
 import type { AppNotification } from '@/lib/types'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { Button, Skeleton, ErrorState } from '@web/components/ui'
@@ -19,6 +20,7 @@ function deepLink(n: AppNotification): string {
 
 export function NotificationSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data, isLoading, isError, refetch } = useNotifications()
+  const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
   const navigate = useNavigate()
@@ -49,6 +51,22 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
         </Button>
       }
     >
+      {updateAvailable && (
+        <button
+          onClick={() => applyUpdate()}
+          className="-mx-5 mb-1 flex w-[calc(100%+2.5rem)] items-start gap-3 border-b border-line bg-brand-50 px-5 py-3 text-left hover:bg-brand-100 dark:bg-brand-500/15 dark:hover:bg-brand-500/25"
+        >
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+              Update available
+            </span>
+            <span className="block text-sm text-muted dark:text-slate-400">
+              Click to load the latest version
+            </span>
+          </span>
+        </button>
+      )}
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -58,17 +76,17 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-400 dark:text-slate-500">
+        <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted dark:text-slate-500">
           <Bell className="h-8 w-8" />
           <p className="text-sm">No notifications yet</p>
         </div>
       ) : (
-        <ul className="-mx-5 divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="-mx-5 divide-y divide-line">
           {items.map((n) => (
             <li key={n.name}>
               <button
                 onClick={() => openItem(n)}
-                className="flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                className="flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-hover/[0.04]"
               >
                 <span
                   className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
@@ -76,16 +94,16 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
                   }`}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <span className="block text-sm font-semibold text-ink dark:text-slate-100">
                     {n.title}
                   </span>
                   {n.body && (
-                    <span className="block truncate text-sm text-slate-500 dark:text-slate-400">
+                    <span className="block truncate text-sm text-muted dark:text-slate-400">
                       {n.body}
                     </span>
                   )}
                   {n.at_human && (
-                    <span className="block text-xs text-slate-400 dark:text-slate-500">
+                    <span className="block text-xs text-muted dark:text-slate-500">
                       {n.at_human}
                     </span>
                   )}

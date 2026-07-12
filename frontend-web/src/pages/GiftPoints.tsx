@@ -111,7 +111,7 @@ export default function GiftPoints() {
         <BentoTile span="full" tone="plain" title="Choose recipient">
           <div className="mt-1 space-y-5">
             <div className="relative max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -172,14 +172,14 @@ export default function GiftPoints() {
               type="button"
               onClick={closeDialog}
               disabled={gift.isPending}
-              className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-60"
+              className="rounded-lg bg-canvas px-4 py-2 text-sm font-semibold text-ink dark:text-slate-200 disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-line dark:disabled:bg-slate-700 disabled:text-muted"
             >
               {gift.isPending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               Gift points

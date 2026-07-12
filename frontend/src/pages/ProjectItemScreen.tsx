@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
@@ -13,6 +13,7 @@ import {
   Check,
   Clock,
   Copy,
+  CornerDownRight,
   FileText,
   FolderKanban,
   History,
@@ -39,7 +40,7 @@ import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove } from '@/hooks/useData'
 import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -48,8 +49,8 @@ import { useReject } from '@/components/RejectProvider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
-import { todoDuplicateInitial } from '@/lib/duplicateTodo'
-import type { ProjectItemDetail } from '@/lib/types'
+import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
+import type { ProjectItemDetail, TodoFile } from '@/lib/types'
 import { recurrenceFromDetail, serializeRecurrence, summarizeRecurrence, type Recurrence } from '@/lib/recurrence'
 import { RecurrenceEditor } from '@/components/RecurrenceEditor'
 
@@ -538,6 +539,102 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   )
 }
 
+function fmtFileSize(bytes: number): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function Files({ todoId, files, canEdit }: { todoId: string; files: TodoFile[]; canEdit: boolean }) {
+  const up = useUploadTodoFile(todoId)
+  const del = useDeleteTodoFile(todoId)
+  const toast = useToast()
+  const confirm = useConfirm()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files
+    if (!picked || !picked.length) return
+    const list = Array.from(picked)
+    e.target.value = '' // let the same file be re-picked later
+    let ok = 0
+    for (const f of list) {
+      try {
+        await up.mutateAsync(f)
+        ok++
+      } catch (err) {
+        toast('error', (err as Error).message)
+        break
+      }
+    }
+    if (ok) toast('success', ok > 1 ? `${ok} files uploaded` : 'File uploaded')
+  }
+
+  const onDelete = async (f: TodoFile) => {
+    const yes = await confirm({
+      title: 'Delete file?',
+      message: f.file_name,
+      confirmLabel: 'Delete',
+      destructive: true,
+    })
+    if (!yes) return
+    del.mutate(f.name, {
+      onSuccess: () => toast('success', 'File deleted'),
+      onError: (err) => toast('error', (err as Error).message),
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      {files.length === 0 && (
+        <p className="text-sm italic text-slate-400 dark:text-slate-500">No files yet.</p>
+      )}
+      {files.map((f) => (
+        <div
+          key={f.name}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2"
+        >
+          <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+          <a
+            href={f.file_url}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 flex-1 truncate text-sm text-brand-600 hover:underline dark:text-brand-400"
+          >
+            {f.file_name}
+          </a>
+          {f.file_size ? (
+            <span className="shrink-0 text-xs text-slate-400">{fmtFileSize(f.file_size)}</span>
+          ) : null}
+          {canEdit && (
+            <button
+              onClick={() => onDelete(f)}
+              className="shrink-0 rounded-lg p-1 text-slate-400 transition hover:bg-slate-200 hover:text-red-500 dark:hover:bg-slate-700"
+              aria-label={`Delete ${f.file_name}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ))}
+      {canEdit && (
+        <div>
+          <input ref={inputRef} type="file" multiple hidden onChange={onPick} />
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={up.isPending}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-brand-400 hover:text-brand-600 disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
+          >
+            {up.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {up.isPending ? 'Uploading…' : 'Add files'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StatTile({
   icon: Icon,
   label,
@@ -878,6 +975,7 @@ export default function ProjectItemScreen() {
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
+  const setAutoApprove = useSetAutoApprove()
   const setDeadlineToday = useUpdateTodo(id)
   const setWaiting = useUpdateTodo(id)
   const confirm = useConfirm()
@@ -887,6 +985,7 @@ export default function ProjectItemScreen() {
   const [cancelReason, setCancelReason] = useState('')
   const [showWaiting, setShowWaiting] = useState(false)
   const [dupOpen, setDupOpen] = useState(false)
+const [followOpen, setFollowOpen] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer(id)
 
@@ -910,6 +1009,18 @@ export default function ProjectItemScreen() {
   }
 
   const onReject = () => rejectConfirm(data.name, data.to_do)
+
+  const onToggleAutoApprove = () => {
+    if (setAutoApprove.isPending) return
+    const next = data.auto_approve ? 0 : 1
+    setAutoApprove.mutate(
+      { todoId: data.name, enabled: next },
+      {
+        onSuccess: () => toast('success', next ? 'Auto-setujui aktif' : 'Auto-setujui mati'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
 
   const onCancel = async () => {
     try {
@@ -1002,7 +1113,12 @@ export default function ProjectItemScreen() {
       {editBtn}
       <TopMenu
         items={[
-          ...(data.can_edit ? [{ label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) }] : []),
+          ...(data.can_edit
+            ? [
+                { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
+                { label: 'Add follow-up todo', icon: CornerDownRight, onClick: () => setFollowOpen(true) },
+              ]
+            : []),
           ...(canSetDeadlineToday
             ? [{ label: 'Set deadline to today', icon: CalendarCheck, onClick: onDeadlineToday, disabled: setDeadlineToday.isPending }]
             : []),
@@ -1299,6 +1415,31 @@ export default function ProjectItemScreen() {
               </button>
             )}
 
+            {data.can_set_auto_approve && (
+              <button
+                onClick={onToggleAutoApprove}
+                disabled={setAutoApprove.isPending}
+                className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60"
+              >
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Auto-setujui (Owner)
+                </span>
+                <span
+                  className={clsx(
+                    'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition',
+                    data.auto_approve ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-600',
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      'inline-block h-5 w-5 transform rounded-full bg-white shadow transition',
+                      data.auto_approve ? 'translate-x-5' : 'translate-x-0.5',
+                    )}
+                  />
+                </span>
+              </button>
+            )}
+
             {data.can_edit && data.status_key !== 'completed' && showCancel && (
                 <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
                   <textarea
@@ -1379,6 +1520,14 @@ export default function ProjectItemScreen() {
         <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
       </div>
 
+      {/* Files */}
+      <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <FileText className="h-3.5 w-3.5" /> Files
+        </p>
+        <Files todoId={data.name} files={data.files ?? []} canEdit={data.can_edit_files ?? false} />
+      </div>
+
       {/* Dependencies */}
       {(data.blocked_by.length > 0 || data.blocking.length > 0) && (
         <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
@@ -1455,18 +1604,25 @@ export default function ProjectItemScreen() {
         </div>
       )}
 
-      {dupOpen && (
+      {(dupOpen || followOpen) && (
         <CreateProjectItemSheet
           open
-          onClose={() => setDupOpen(false)}
+          onClose={() => {
+            setDupOpen(false)
+            setFollowOpen(false)
+          }}
           projectDetail={data.project_detail}
           team={
             data.team.some((m) => m.user === data.assigned_to)
               ? data.team
               : [{ user: data.assigned_to, name: data.assigned_to_name }, ...data.team]
           }
-          siblings={data.detail_todos}
-          initial={todoDuplicateInitial(data)}
+          siblings={
+            followOpen
+              ? [{ name: data.name, to_do: data.to_do }, ...data.detail_todos]
+              : data.detail_todos
+          }
+          initial={followOpen ? todoFollowUpInitial(data) : todoDuplicateInitial(data)}
         />
       )}
     </DetailScreen>

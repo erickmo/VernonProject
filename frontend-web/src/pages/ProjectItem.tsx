@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import clsx from 'clsx'
@@ -14,12 +14,16 @@ import {
   Check,
   Clock,
   Copy,
+  CornerDownRight,
   FileText,
+  FolderKanban,
   History,
   Layers,
   Link2,
   Lock,
+  Pause,
   Pencil,
+  Play,
   Plus,
   Repeat,
   RotateCcw,
@@ -33,12 +37,16 @@ import {
   useProjectItem,
   useSaveNotes,
   useSetTodoAllocations,
+  useSetAssignedAllocation,
   useUpdateTodo,
   useScoringGroups,
   useScoringGroup,
   useCancelTodo,
   useRestoreTodo,
   useDeleteTodo,
+  useUploadTodoFile,
+  useDeleteTodoFile,
+  useSetAutoApprove,
 } from '@/hooks/useData'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
@@ -56,8 +64,8 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
-import { todoDuplicateInitial } from '@/lib/duplicateTodo'
-import type { ProjectItemDetail, StatusKey } from '@/lib/types'
+import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
+import type { ProjectItemDetail, StatusKey, TodoFile } from '@/lib/types'
 
 // ─────────────────────────── Stepper ───────────────────────────
 
@@ -77,7 +85,7 @@ function Stepper({ current }: { current: StatusKey }) {
                   'flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm transition',
                   active && 'border-brand-500 bg-brand-500 text-white',
                   done && 'border-emerald-500 bg-emerald-500 text-white',
-                  !active && !done && 'border-slate-200 dark:border-slate-700 bg-surface text-slate-300 dark:text-slate-600',
+                  !active && !done && 'border-line dark:border-slate-700 bg-surface text-muted dark:text-slate-600',
                 )}
               >
                 {done ? <Check className="h-4 w-4" /> : <span>{meta.emoji}</span>}
@@ -92,7 +100,7 @@ function Stepper({ current }: { current: StatusKey }) {
               </span>
             </div>
             {i < STATUS_ORDER.length - 1 && (
-              <div className={clsx('-mt-5 h-0.5 flex-1', i < idx ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700')} />
+              <div className={clsx('-mt-5 h-0.5 flex-1', i < idx ? 'bg-emerald-500' : 'bg-line dark:bg-slate-700')} />
             )}
           </div>
         )
@@ -168,7 +176,7 @@ function DepGroup({
           <Link
             key={id}
             to={`/project-item/${encodeURIComponent(id)}`}
-            className="inline-flex max-w-full items-center rounded-lg bg-slate-100 dark:bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-700"
+            className="inline-flex max-w-full items-center rounded-lg bg-canvas px-2.5 py-1 text-xs font-medium text-ink dark:text-slate-200 transition hover:bg-hover/[0.04]"
           >
             <span className="truncate">{resolve(id)}</span>
           </Link>
@@ -225,7 +233,7 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
         onBlur={commit}
         rows={4}
         placeholder="Add a quick note about your progress…"
-        className="w-full resize-none rounded-xl border border-line bg-hover/[0.04] p-3 text-sm leading-relaxed text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100"
+        className="w-full resize-none rounded-xl border border-line bg-hover/[0.04] p-3 text-sm leading-relaxed text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100"
       />
       <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-muted">
         {save.isPending ? (
@@ -240,6 +248,102 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
           <span>Click outside to save</span>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+// ─────────────────────────── Files ───────────────────────────
+
+function fmtFileSize(bytes: number): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function Files({ todoId, files, canEdit }: { todoId: string; files: TodoFile[]; canEdit: boolean }) {
+  const up = useUploadTodoFile(todoId)
+  const del = useDeleteTodoFile(todoId)
+  const toast = useToast()
+  const confirm = useConfirm()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files
+    if (!picked || !picked.length) return
+    const list = Array.from(picked)
+    e.target.value = '' // let the same file be re-picked later
+    let ok = 0
+    for (const f of list) {
+      try {
+        await up.mutateAsync(f)
+        ok++
+      } catch (err) {
+        toast('error', (err as Error).message)
+        break
+      }
+    }
+    if (ok) toast('success', ok > 1 ? `${ok} files uploaded` : 'File uploaded')
+  }
+
+  const onDelete = async (f: TodoFile) => {
+    const yes = await confirm({
+      title: 'Delete file?',
+      message: f.file_name,
+      confirmLabel: 'Delete',
+      destructive: true,
+    })
+    if (!yes) return
+    del.mutate(f.name, {
+      onSuccess: () => toast('success', 'File deleted'),
+      onError: (err) => toast('error', (err as Error).message),
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      {files.length === 0 && <p className="text-sm italic text-muted">No files yet.</p>}
+      {files.map((f) => (
+        <div
+          key={f.name}
+          className="flex items-center gap-2 rounded-lg border border-line bg-hover/[0.04] px-3 py-2"
+        >
+          <FileText className="h-4 w-4 shrink-0 text-muted" />
+          <a
+            href={f.file_url}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 flex-1 truncate text-sm text-brand-600 hover:underline dark:text-brand-400"
+          >
+            {f.file_name}
+          </a>
+          {f.file_size ? (
+            <span className="shrink-0 text-xs text-muted">{fmtFileSize(f.file_size)}</span>
+          ) : null}
+          {canEdit && (
+            <button
+              onClick={() => onDelete(f)}
+              className="shrink-0 rounded-md p-1 text-muted transition hover:bg-hover hover:text-red-500"
+              aria-label={`Delete ${f.file_name}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ))}
+      {canEdit && (
+        <div>
+          <input ref={inputRef} type="file" multiple hidden onChange={onPick} />
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={up.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-line px-3 py-2 text-sm font-medium text-muted transition hover:border-brand-400 hover:text-brand-600 disabled:opacity-60"
+          >
+            {up.isPending ? <Spinner className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {up.isPending ? 'Uploading…' : 'Add files'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -366,6 +470,147 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   )
 }
 
+// ─────────────────────────── AssignedAllocationCard ───────────────────────────
+
+// Leader/SM-set day plan. Editable when can_edit_assigned (shown inside the edit
+// form); read-only everywhere else. Saved via its own endpoint — never scores.
+function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
+  const save = useSetAssignedAllocation(data.name)
+  const toast = useToast()
+  const [rows, setRows] = useState<AllocRow[]>(
+    (data.assigned_allocation ?? []).map((a) => ({ date: a.date, minutes: a.minutes, note: a.note ?? '' })),
+  )
+
+  const total = rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0)
+  const field =
+    'rounded-xl border border-line bg-hover/[0.04] text-ink px-2.5 py-2 text-sm focus:border-brand-600 focus:outline-none placeholder:text-muted'
+
+  const addRow = () => setRows((r) => [...r, { date: '', minutes: 0, note: '' }])
+  const removeRow = (i: number) => setRows((r) => r.filter((_, j) => j !== i))
+  const setRow = (i: number, patch: Partial<AllocRow>) =>
+    setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+
+  const onSave = () => {
+    if (rows.some((r) => !r.date && Number(r.minutes) > 0)) {
+      toast('error', 'Add a date to every allocation row')
+      return
+    }
+    if (data.estimated > 0 && total !== data.estimated) {
+      const diff = data.estimated - total
+      toast(
+        'error',
+        diff > 0
+          ? `${diff}m short of the ${data.estimated}m estimate`
+          : `${-diff}m over the ${data.estimated}m estimate`,
+      )
+      return
+    }
+    const clean = rows.filter((r) => r.date)
+    save.mutate(clean, {
+      onSuccess: () => toast('success', 'Assigned plan saved'),
+      onError: (e) => toast('error', (e as Error).message),
+    })
+  }
+
+  const alloc = data.assigned_allocation ?? []
+
+  return (
+    <div className="mt-4 rounded-lg bg-surface p-4 border border-line">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+          <CalendarRange className="h-4 w-4" /> Assigned plan
+        </p>
+        <span
+          className={
+            'rounded-full px-2 py-0.5 text-[11px] font-bold ' +
+            (!data.estimated
+              ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
+              : total === data.estimated
+                ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300')
+          }
+        >
+          {total}m{data.estimated ? ` / ${data.estimated}m est` : ''}
+        </span>
+      </div>
+
+      {data.can_edit_assigned ? (
+        <>
+          <div className="flex flex-col gap-2">
+            {rows.map((r, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-2 rounded-xl border border-line bg-hover/[0.04] p-2"
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={r.date}
+                    onChange={(e) => setRow(i, { date: e.target.value })}
+                    className={field + ' min-w-0 flex-1'}
+                  />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    value={String(r.minutes || '')}
+                    placeholder="min"
+                    onChange={(e) => setRow(i, { minutes: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    className={field + ' w-20 shrink-0 text-center'}
+                  />
+                  <button
+                    onClick={() => removeRow(i)}
+                    className="shrink-0 rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={r.note}
+                  placeholder="Note…"
+                  onChange={(e) => setRow(i, { note: e.target.value })}
+                  className={field + ' w-full'}
+                />
+              </div>
+            ))}
+            {!rows.length && (
+              <p className="py-1 text-center text-xs text-muted">No assigned plan yet — add a day.</p>
+            )}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Button variant="secondary" onClick={addRow}>
+              <Plus className="h-4 w-4" /> Add day
+            </Button>
+            <Button variant="primary" onClick={onSave} disabled={save.isPending}>
+              {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save plan
+            </Button>
+          </div>
+        </>
+      ) : alloc.length > 0 ? (
+        <div className="flex flex-col gap-2 text-sm text-muted">
+          {alloc.map((a, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                <FolderKanban className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <span>{a.date}</span>
+                  <span className="font-medium">{a.minutes}m</span>
+                </div>
+                {a.note && <p className="mt-0.5 text-xs text-muted">{a.note}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="py-1 text-center text-xs text-muted">No assigned plan yet.</p>
+      )}
+    </div>
+  )
+}
+
 // ─────────────────────────── EditForm ───────────────────────────
 
 function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => void }) {
@@ -374,6 +619,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const locked = data.fields_locked
   const [toDo, setToDo] = useState(data.to_do)
   const [assignee, setAssignee] = useState(data.assigned_to)
+  const [mentor, setMentor] = useState(data.mentor ?? '')
   const [startDate, setStartDate] = useState(data.start_date ?? '')
   const [deadline, setDeadline] = useState(data.deadline ?? '')
   const [leaderDeadline, setLeaderDeadline] = useState(data.leader_deadline ?? '')
@@ -442,6 +688,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       fields.deadline = deadline
       fields.estimated = estimated === '' ? 0 : Number(estimated)
     }
+    // Mentor credit is leader/owner-set (backend re-checks). Empty clears it.
+    if (data.can_edit_estimate) {
+      fields.mentor = mentor
+    }
     fields.estimated_done_to_checked = Number(pDC) || 0
     fields.estimated_checked_to_completed = Number(pCC) || 0
     fields.is_recurring = recurring ? 1 : 0
@@ -465,7 +715,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   }
 
   const fieldCls =
-    'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
+    'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
 
   return (
     <div className="rounded-lg bg-surface p-4 border border-line">
@@ -489,6 +739,28 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           placeholder="Select a team member…"
         />
       </div>
+
+      {data.can_edit_estimate && (
+        <>
+          <label className="mb-1 block text-xs font-medium text-muted">
+            Mentor <span className="font-normal text-muted">· optional, earns a share for coaching</span>
+          </label>
+          <div className="mb-3">
+            <SearchableSelect
+              value={mentor}
+              onChange={setMentor}
+              options={[
+                { value: '', label: '— No mentor —' },
+                ...(data.mentor && !team.some((m) => m.user === data.mentor)
+                  ? [{ value: data.mentor, label: data.mentor_name || data.mentor }]
+                  : []),
+                ...team.filter((m) => m.user !== assignee).map((m) => ({ value: m.user, label: m.name })),
+              ]}
+              placeholder="Who helped on this task?"
+            />
+          </div>
+        </>
+      )}
 
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
@@ -594,11 +866,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           <div className="mt-3 flex gap-3">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-muted">Frequency</label>
-              <select value={freq} onChange={(e) => setFreq(e.target.value)} className={fieldCls}>
-                <option value="Daily">Daily</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-              </select>
+              <SearchableSelect value={freq} onChange={(v) => setFreq(v)} options={[{ value: 'Daily', label: 'Daily' }, { value: 'Weekly', label: 'Weekly' }, { value: 'Monthly', label: 'Monthly' }]} />
             </div>
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-muted">
@@ -689,6 +957,9 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </p>
       )}
 
+      {/* Assigned plan (leader/SM-editable) */}
+      {data.can_edit_assigned && <AssignedAllocationCard data={data} />}
+
       <div className="flex items-center justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>
           <X className="h-4 w-4" /> Cancel
@@ -717,15 +988,20 @@ export default function ProjectItem() {
   const cancelTodo = useCancelTodo()
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
+  const setAutoApprove = useSetAutoApprove()
   const setDeadlineToday = useUpdateTodo(todoName)
+  const setWaiting = useUpdateTodo(todoName)
   const confirm = useConfirm()
   const navigate = useNavigate()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [showWaiting, setShowWaiting] = useState(false)
+  const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer(todoName)
   const [dupOpen, setDupOpen] = useState(false)
+const [followOpen, setFollowOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
@@ -748,6 +1024,18 @@ export default function ProjectItem() {
   }
 
   const onReject = () => rejectConfirm(data.name, data.to_do)
+
+  const onToggleAutoApprove = () => {
+    if (setAutoApprove.isPending) return
+    const next = data.auto_approve ? 0 : 1
+    setAutoApprove.mutate(
+      { todoId: data.name, enabled: next },
+      {
+        onSuccess: () => toast('success', next ? 'Auto-approve on' : 'Auto-approve off'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
 
   const onCancel = async () => {
     try {
@@ -804,6 +1092,29 @@ export default function ProjectItem() {
   }
   const canSetDeadlineToday =
     data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
+
+  const onMarkWaiting = () => {
+    if (setWaiting.isPending || !waitingReason.trim()) return
+    setWaiting.mutate(
+      { is_waiting: 1, waiting_reason: waitingReason.trim() },
+      {
+        onSuccess: () => { setShowWaiting(false); setWaitingReason(''); toast('success', 'Marked as waiting') },
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+  const onResume = () => {
+    if (setWaiting.isPending) return
+    setWaiting.mutate(
+      { is_waiting: 0 },
+      {
+        onSuccess: () => toast('success', 'Resumed'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+  // Parking is only meaningful while the todo is still Planned and editable.
+  const canWait = data.can_edit && data.status_key === 'planned'
 
   const focusActive = focus.timer != null
   const openFocus = () => {
@@ -876,7 +1187,10 @@ export default function ProjectItem() {
               size="sm"
               items={[
                 ...(data.can_edit
-                  ? [{ label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) }]
+                  ? [
+                      { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
+                      { label: 'Add follow-up todo', icon: CornerDownRight, onClick: () => setFollowOpen(true) },
+                    ]
                   : []),
                 ...(canSetDeadlineToday
                   ? [{ label: 'Set deadline to today', icon: CalendarCheck, onClick: onDeadlineToday, disabled: setDeadlineToday.isPending }]
@@ -896,18 +1210,25 @@ export default function ProjectItem() {
         )}
       </div>
 
-      {dupOpen && (
+      {(dupOpen || followOpen) && (
         <CreateProjectItemDialog
           open
-          onClose={() => setDupOpen(false)}
+          onClose={() => {
+            setDupOpen(false)
+            setFollowOpen(false)
+          }}
           projectDetail={data.project_detail}
           team={
             data.team.some((m) => m.user === data.assigned_to)
               ? data.team
               : [{ user: data.assigned_to, name: data.assigned_to_name }, ...data.team]
           }
-          siblings={data.detail_todos}
-          initial={todoDuplicateInitial(data)}
+          siblings={
+            followOpen
+              ? [{ name: data.name, to_do: data.to_do }, ...data.detail_todos]
+              : data.detail_todos
+          }
+          initial={followOpen ? todoFollowUpInitial(data) : todoDuplicateInitial(data)}
         />
       )}
 
@@ -935,6 +1256,21 @@ export default function ProjectItem() {
                 {data.phase_estimates.total > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 dark:bg-brand-500/20 px-2.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-300">
                     <Clock className="h-3.5 w-3.5" /> {formatEstimate(data.phase_estimates.total)} total
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Waiting / parked */}
+            {data.is_waiting && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-500/15 px-2.5 py-1 text-xs font-semibold text-yellow-800 dark:text-yellow-300">
+                  <Pause className="h-3.5 w-3.5" /> Waiting{data.waiting_reason ? ` · ${data.waiting_reason}` : ''}
+                </span>
+                {data.waiting_since && (
+                  <span className="text-xs text-muted">
+                    Waiting since {data.waiting_since.slice(0, 10)}
+                    {data.waiting_by_name ? ` · set by ${data.waiting_by_name}` : ''}
                   </span>
                 )}
               </div>
@@ -1021,6 +1357,21 @@ export default function ProjectItem() {
               )}
             </div>
 
+            {/* Waiting toggle — park a planned todo or resume it */}
+            {canWait && (
+              <div>
+                {data.is_waiting ? (
+                  <Button variant="secondary" onClick={onResume} disabled={setWaiting.isPending}>
+                    <Play className="h-4 w-4" /> Resume
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => setShowWaiting(true)}>
+                    <Pause className="h-4 w-4" /> Mark waiting
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Day allocations — editable for assignee, read-only for others */}
             {data.is_mine ? (
               <AllocationCard data={data} />
@@ -1044,6 +1395,9 @@ export default function ProjectItem() {
                 </div>
               )
             )}
+
+            {/* Assigned plan: read-only here; leaders edit it in the Edit form */}
+            {!data.can_edit_assigned && <AssignedAllocationCard data={data} />}
 
             {/* Workflow */}
             <div className="rounded-lg bg-surface p-4 border border-line">
@@ -1080,6 +1434,29 @@ export default function ProjectItem() {
                     >
                       <X className="h-4 w-4" />
                       Reject
+                    </button>
+                  )}
+
+                  {data.can_set_auto_approve && (
+                    <button
+                      onClick={onToggleAutoApprove}
+                      disabled={setAutoApprove.isPending}
+                      className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg border border-line px-4 py-2.5 text-left hover:bg-hover/[0.04] disabled:opacity-60"
+                    >
+                      <span className="text-sm font-semibold text-ink">Auto-approve (Owner)</span>
+                      <span
+                        className={clsx(
+                          'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition',
+                          data.auto_approve ? 'bg-brand-600' : 'bg-line',
+                        )}
+                      >
+                        <span
+                          className={clsx(
+                            'inline-block h-4 w-4 transform rounded-full bg-white shadow transition',
+                            data.auto_approve ? 'translate-x-4' : 'translate-x-0.5',
+                          )}
+                        />
+                      </span>
                     </button>
                   )}
 
@@ -1140,7 +1517,7 @@ export default function ProjectItem() {
                             'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition',
                             o.is_current
                               ? 'bg-brand-50 dark:bg-brand-500/15 ring-1 ring-brand-200'
-                              : 'bg-hover/[0.04] hover:bg-slate-100 dark:hover:bg-slate-700',
+                              : 'bg-hover/[0.04] hover:bg-hover/[0.04]',
                           )}
                         >
                           <span>{meta.emoji}</span>
@@ -1173,6 +1550,14 @@ export default function ProjectItem() {
                 <FileText className="h-3.5 w-3.5" /> Notes
               </p>
               <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
+            </div>
+
+            {/* Files */}
+            <div className="rounded-lg bg-surface p-4 border border-line">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <FileText className="h-3.5 w-3.5" /> Files
+              </p>
+              <Files todoId={data.name} files={data.files ?? []} canEdit={data.can_edit_files ?? false} />
             </div>
 
             {/* Dependencies */}
@@ -1211,7 +1596,7 @@ export default function ProjectItem() {
                         <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div className="text-sm">
-                        <p className="font-medium text-slate-700 dark:text-slate-200">
+                        <p className="font-medium text-ink dark:text-slate-200">
                           {e.label}{' '}
                           <span className="font-normal text-muted">by {e.by_name}</span>
                         </p>
@@ -1227,6 +1612,31 @@ export default function ProjectItem() {
             <CommentThread referenceDoctype="Project Todo" referenceName={todoName} />
           </BentoTile>
         </BentoGrid>
+      )}
+
+      {showWaiting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-surface p-4 shadow-xl border border-line">
+            <h3 className="text-base font-bold text-ink">Mark as waiting</h3>
+            <p className="mt-1 text-sm text-muted">What is this todo waiting on?</p>
+            <textarea
+              autoFocus
+              value={waitingReason}
+              onChange={(e) => setWaitingReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. waiting on client reply"
+              className="mt-3 w-full rounded-xl border border-line bg-hover/[0.04] p-3 text-sm text-ink placeholder:text-muted outline-none focus:border-brand-400"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setShowWaiting(false); setWaitingReason('') }}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={onMarkWaiting} disabled={!waitingReason.trim() || setWaiting.isPending}>
+                {setWaiting.isPending ? <Spinner className="h-4 w-4" /> : <Pause className="h-4 w-4" />} Mark waiting
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -108,7 +108,7 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
     >
       <div className="flex flex-col gap-4">
         {/* Roles */}
-        <div className="flex flex-col gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3">
+        <div className="flex flex-col gap-3 rounded-xl bg-canvas p-3">
           <label className="text-sm font-medium text-muted">
             Owner<span className="text-red-500"> *</span>
             <SearchableSelect value={owner} onChange={setOwnerRole} options={owners} disabled={!canReassign} placeholder="Select…" />
@@ -136,10 +136,10 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
           {members.map((email) => {
             const role = roleOf(email)
             return (
-              <div key={email} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5">
+              <div key={email} className="flex items-center justify-between gap-2 rounded-xl border border-line p-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Avatar name={nameFor(email)} image={imageFor(email)} config={configFor(email)} size={32} />
-                  <span className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{nameFor(email)}</span>
+                  <span className="truncate text-sm font-medium text-ink">{nameFor(email)}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {role ? (

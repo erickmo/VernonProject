@@ -136,7 +136,7 @@ export function ProjectFormDialog({
           <input
             value={f.project_name}
             onChange={(e) => set('project_name', e.target.value)}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
 
@@ -227,7 +227,7 @@ export function ProjectFormDialog({
             type="date"
             value={f.start_date}
             onChange={(e) => set('start_date', e.target.value)}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
 
@@ -240,7 +240,7 @@ export function ProjectFormDialog({
             type="date"
             value={f.deadline}
             onChange={(e) => set('deadline', e.target.value)}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
 
@@ -251,7 +251,7 @@ export function ProjectFormDialog({
             value={f.goal ?? ''}
             onChange={(e) => set('goal', e.target.value)}
             rows={2}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
 
@@ -276,7 +276,7 @@ export function ProjectFormDialog({
             min={0}
             value={f.bonus_amount || ''}
             onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
 

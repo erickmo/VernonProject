@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Dialog } from '@web/components/overlays/Dialog'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { GroupLevelPicker, emptyGroupLevel, type GroupLevel } from '@/components/GroupLevelPicker'
 import { useCreateMeeting, useMeetingInvitableUsers } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 
@@ -16,17 +17,21 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
   const invitable = useMeetingInvitableUsers(project)
 
   const [title, setTitle] = useState('')
-  const [scheduledAt, setScheduledAt] = useState('')
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
   const [estimated, setEstimated] = useState('')
   const [notes, setNotes] = useState('')
   const [participants, setParticipants] = useState<string[]>([])
+  const [gl, setGl] = useState<GroupLevel>(emptyGroupLevel)
 
   const close = () => {
     setTitle('')
-    setScheduledAt('')
+    setDate('')
+    setTime('')
     setEstimated('')
     setNotes('')
     setParticipants([])
+    setGl(emptyGroupLevel)
     onClose()
   }
 
@@ -40,9 +45,11 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
       title: title.trim(),
       participants: JSON.stringify(participants),
     }
-    if (scheduledAt) fields.scheduled_at = scheduledAt
+    if (date) fields.scheduled_at = `${date}T${time || '09:00'}`
     if (estimated) fields.estimated = Number(estimated)
     if (notes) fields.notes = notes
+    if (gl.group) fields.group = gl.group
+    if (gl.levelId) fields.level_id = gl.levelId
     create.mutate(fields, {
       onSuccess: () => {
         toast('success', 'Meeting created')
@@ -64,8 +71,12 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
     <Dialog open={open} onClose={close} title="New meeting">
       <div className="flex flex-col gap-3">
         <input className={field} placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input className={field} type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+        <div className="flex gap-3">
+          <input className={field + ' flex-1'} type="date" aria-label="Meeting date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <input className={field + ' w-32'} type="time" aria-label="Meeting time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </div>
         <input className={field} type="number" placeholder="Estimated minutes" value={estimated} onChange={(e) => setEstimated(e.target.value)} />
+        <GroupLevelPicker value={gl} onChange={setGl} estimated={estimated} />
         <MultiSelectSearch value={participants} onChange={setParticipants} options={options} placeholder="Invite team members…" />
         <textarea className={field} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <button onClick={submit} disabled={create.isPending} className="rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white disabled:opacity-40">

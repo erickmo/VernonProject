@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, Coins, Wallet, Trophy, Settings } from 'lucide-react'
+import { Store, Coins, Wallet, Trophy, Settings, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { EmptyState, Spinner } from '@/components/ui'
-import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace } from '@/hooks/useData'
+import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace, useWallet } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { formatNumber } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
@@ -39,7 +39,7 @@ function RewardDetailDialog({
             type="button"
             onClick={() => !pending && onClose()}
             disabled={pending}
-            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-60"
+            className="rounded-lg bg-canvas px-4 py-2 text-sm font-semibold text-ink dark:text-slate-200 disabled:opacity-60"
           >
             Cancel
           </button>
@@ -47,7 +47,7 @@ function RewardDetailDialog({
             type="submit"
             onClick={onRedeem}
             disabled={disabled}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-line dark:disabled:bg-slate-700 disabled:text-muted"
           >
             {pending ? (
               <Spinner className="h-4 w-4" />
@@ -64,11 +64,11 @@ function RewardDetailDialog({
     >
       {reward && (
         <div className="space-y-4">
-          <div className="aspect-square w-full max-w-xs mx-auto overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+          <div className="aspect-square w-full max-w-xs mx-auto overflow-hidden rounded-lg bg-canvas">
             {reward.image ? (
               <img src={reward.image} alt={reward.reward_name} className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
+              <div className="flex h-full w-full items-center justify-center text-muted dark:text-slate-600">
                 <Store className="h-10 w-10" />
               </div>
             )}
@@ -114,11 +114,21 @@ export default function Marketplace() {
   const { data: boot } = useBoot()
   const marketplace = useMarketplace()
   const { data, isLoading } = marketplace
+  const { data: wallet } = useWallet()
   const redeem = useRedeemReward()
   const toast = useToast()
   const [detail, setDetail] = useState<MarketplaceReward | null>(null)
 
   const balance = data?.balance ?? 0
+  const today = wallet?.today_earned ?? 0
+  const yesterday = wallet?.yesterday_earned ?? 0
+  const delta = today - yesterday
+  const Trend = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus
+  const trendLabel =
+    delta > 0 ? `+${formatNumber(delta)} vs yesterday`
+    : delta < 0 ? `−${formatNumber(-delta)} vs yesterday`
+    : 'Same as yesterday'
+  const trendColor = delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : delta < 0 ? 'text-rose-500' : 'text-muted'
 
   const confirm = () => {
     if (!detail) return
@@ -143,6 +153,19 @@ export default function Marketplace() {
           <BentoStat
             value={balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
             label="points"
+          />
+        </BentoTile>
+
+        <BentoTile span="sm" tone="tint" accent="emerald" icon={TrendingUp} title="Earned today">
+          <BentoStat
+            value={`+${formatNumber(today)}`}
+            label="points today"
+            delta={
+              <span className={`inline-flex items-center gap-1 font-semibold ${trendColor}`}>
+                <Trend className="h-3 w-3" />
+                {trendLabel}
+              </span>
+            }
           />
         </BentoTile>
 
@@ -192,11 +215,11 @@ export default function Marketplace() {
                     aria-label={`View reward ${r.reward_name}`}
                     className="flex flex-col overflow-hidden rounded-lg bg-surface border border-line cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                   >
-                    <div className="aspect-square w-full bg-slate-100 dark:bg-slate-800">
+                    <div className="aspect-square w-full bg-canvas">
                       {r.image ? (
                         <img src={r.image} alt={r.reward_name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
+                        <div className="flex h-full w-full items-center justify-center text-muted dark:text-slate-600">
                           <Store className="h-8 w-8" />
                         </div>
                       )}

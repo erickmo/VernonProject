@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { CalendarDays, Search, Ticket } from 'lucide-react'
-import { Spinner } from '@/components/ui'
+import { CalendarDays, CalendarCog, Search, Ticket } from 'lucide-react'
+import { Spinner, EmptyState } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { useEvents, useManagedEvents } from '@/hooks/useData'
 import { filterEvents, featuredUpcoming, eventCategories, type EventFilter } from '@/lib/events'
@@ -148,6 +148,7 @@ export default function Events() {
             ]}
             getKey={(e) => e.name}
             onRowClick={(e) => navigate(`/events/${encodeURIComponent(e.name)}`)}
+            empty={<EmptyState icon={CalendarDays} title="No events" subtitle="Try different filters." />}
           />
         </div>
       ) : (
@@ -163,6 +164,7 @@ export default function Events() {
           ]}
           getKey={(e) => e.name}
           onRowClick={(e) => navigate(`/events/manage/${encodeURIComponent(e.name)}`)}
+          empty={<EmptyState icon={CalendarCog} title="No events yet" subtitle="Click New event to create one." />}
         />
       )}
     </Page>

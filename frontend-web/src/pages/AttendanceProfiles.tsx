@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, UserCheck, UserX } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
+import { useToast } from '@/components/Toast'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
@@ -22,6 +23,7 @@ function today(): string {
 
 export default function AttendanceProfiles() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { data: boot } = useBoot()
   const blocked = !!boot && !canManageAttendance(boot)
   useEffect(() => {
@@ -73,8 +75,12 @@ export default function AttendanceProfiles() {
   }
 
   const toggleActive = async (p: Profile) => {
-    await resource.update('Attendance Profile', p.name, { active: p.active ? 0 : 1 })
-    load()
+    try {
+      await resource.update('Attendance Profile', p.name, { active: p.active ? 0 : 1 })
+      await load()
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
   }
 
   const columns: Column<Profile>[] = [
@@ -136,7 +142,7 @@ export default function AttendanceProfiles() {
       <PageHeader title="Enrolled Employees" />
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="slate">
+        <BentoTile span="sm" tone="tint" accent="amber">
           <BentoStat value={list?.length ?? 0} label="enrolled" />
         </BentoTile>
 

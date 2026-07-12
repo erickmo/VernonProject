@@ -5,6 +5,10 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, FilterChips } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useBoot, canManageUsers, useFeedbackInbox, useSetFeedbackStatus } from '@/hooks/useData'
+import { useFeedbackToTask } from '@/hooks/useFeedbackToTask'
+import { SearchableSelect } from '@/components/SearchableSelect'
+import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
+import FeedbackMessage from '@/components/FeedbackMessage'
 
 type StatusFilter = 'All' | 'New' | 'Reviewed' | 'Resolved' | 'Rejected'
 
@@ -39,6 +43,7 @@ export default function FeedbackInboxScreen() {
   const [filter, setFilter] = useState<StatusFilter>('All')
   const list = useFeedbackInbox(filter === 'All' ? undefined : filter)
   const setStatus = useSetFeedbackStatus()
+  const flow = useFeedbackToTask()
   const toast = useToast()
 
   const blocked = !boot ? false : !canManageUsers(boot)
@@ -89,9 +94,7 @@ export default function FeedbackInboxScreen() {
                       )}
                       <span className="text-xs text-slate-400 dark:text-slate-500">· {item.at_human}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
-                      {item.message}
-                    </p>
+                    <FeedbackMessage message={item.message} className="text-sm text-slate-700 dark:text-slate-200" />
                   </div>
                   {(item.status === 'New' || item.status === 'Reviewed') && (
                     <div className="flex shrink-0 flex-col gap-1.5">
@@ -119,14 +122,86 @@ export default function FeedbackInboxScreen() {
                       >
                         Reject
                       </button>
+                      <button
+                        onClick={() => flow.start(item)}
+                        className="rounded-full px-2.5 py-1 text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
+                      >
+                        Create task
+                      </button>
                     </div>
                   )}
                 </div>
+                {item.linked_todo && (
+                  <button
+                    onClick={() => navigate('/project-item/' + item.linked_todo)}
+                    className="mt-2 text-xs font-medium text-brand-600 dark:text-brand-400"
+                  >
+                    View task →
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {flow.picking && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={flow.cancel}>
+          <div
+            className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-50">Create task from feedback</h3>
+            <div className="flex flex-col gap-3">
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                Project
+                <SearchableSelect
+                  value={flow.project}
+                  onChange={flow.chooseProject}
+                  options={flow.projectCards.map((p) => ({ value: p.name, label: p.project_name }))}
+                  placeholder="Select a project…"
+                />
+              </label>
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                Detail
+                <SearchableSelect
+                  value={flow.detail}
+                  onChange={flow.chooseDetail}
+                  options={flow.projectDetails.map((d) => ({ value: d.name, label: d.title }))}
+                  placeholder="Select a detail…"
+                />
+              </label>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={flow.cancel}
+                  className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 active:scale-95 dark:border-slate-700 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={flow.openDialog}
+                  disabled={!flow.detail || !flow.detailData}
+                  className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {flow.dialogOpen && flow.detailData && (
+        <CreateProjectItemSheet
+          open
+          onClose={flow.cancel}
+          projectDetail={flow.detail}
+          team={flow.detailData.team.map((t) => ({ user: t.user, name: t.name }))}
+          defaultGroup={flow.detailData.default_group ?? null}
+          initial={flow.initial}
+          onCreated={flow.onCreated}
+        />
+      )}
     </DetailScreen>
   )
 }

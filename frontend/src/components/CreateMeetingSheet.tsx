@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { Opt2 } from '@/lib/types'
 import { MultiSelectSearch } from './MultiSelectSearch'
+import { GroupLevelPicker, emptyGroupLevel, type GroupLevel } from './GroupLevelPicker'
 import { useCreateMeeting, useMeetingInvitableUsers } from '@/hooks/useData'
 import { useToast } from './Toast'
 
@@ -17,17 +18,21 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
   const invitable = useMeetingInvitableUsers(project)
 
   const [title, setTitle] = useState('')
-  const [scheduledAt, setScheduledAt] = useState('')
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
   const [estimated, setEstimated] = useState('')
   const [notes, setNotes] = useState('')
   const [participants, setParticipants] = useState<string[]>([])
+  const [gl, setGl] = useState<GroupLevel>(emptyGroupLevel)
 
   const reset = () => {
     setTitle('')
-    setScheduledAt('')
+    setDate('')
+    setTime('')
     setEstimated('')
     setNotes('')
     setParticipants([])
+    setGl(emptyGroupLevel)
   }
   const close = () => {
     reset()
@@ -44,9 +49,14 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
       title: title.trim(),
       participants: JSON.stringify(participants),
     }
-    if (scheduledAt) fields.scheduled_at = scheduledAt
+    // Separate native date + time inputs (each opens the OS modal picker — no
+    // clipped-in-a-scroll-sheet calendar). Recombine to the datetime the API
+    // expects; default an unset time to 09:00 rather than midnight.
+    if (date) fields.scheduled_at = `${date}T${time || '09:00'}`
     if (estimated) fields.estimated = Number(estimated)
     if (notes) fields.notes = notes
+    if (gl.group) fields.group = gl.group
+    if (gl.levelId) fields.level_id = gl.levelId
     create.mutate(fields, {
       onSuccess: () => {
         toast('success', 'Meeting created')
@@ -86,12 +96,22 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <input
-            className={field}
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-          />
+          <div className="flex gap-3">
+            <input
+              className={field + ' flex-1'}
+              type="date"
+              aria-label="Meeting date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            <input
+              className={field + ' w-32'}
+              type="time"
+              aria-label="Meeting time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
           <input
             className={field}
             type="number"
@@ -99,6 +119,7 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
             value={estimated}
             onChange={(e) => setEstimated(e.target.value)}
           />
+          <GroupLevelPicker value={gl} onChange={setGl} estimated={estimated} />
           <MultiSelectSearch
             value={participants}
             onChange={setParticipants}

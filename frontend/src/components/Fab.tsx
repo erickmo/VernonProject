@@ -1,24 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X, CheckSquare, StickyNote, Compass, Megaphone } from 'lucide-react'
+import { Plus, X, StickyNote, Compass, Megaphone, Timer } from 'lucide-react'
 import { useFocusTimers } from '@/hooks/useFocusTimer'
+import { useFocusOverlay } from '@/lib/focusUI'
+import { FocusSheet } from './FocusSheet'
 
-// One-time hint persists across sessions once dismissed (or after first use).
+// Global quick-add button, mounted once for every /m route. Tap opens a small
+// action menu; long-press jumps straight to a new note. While focus timers are
+// running it grows a second timer button (with a count badge) that opens the
+// focus list sheet.
 const TIP_KEY = 'vernon.fabTipDismissed'
-// Long-press threshold. A press held this long fires onLongPress and cancels the tap.
 const LONG_MS = 450
 
-export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: () => void }) {
+export function Fab() {
   const navigate = useNavigate()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longFired = useRef(false)
-  const armed = useRef(false) // true only between pointerdown and its resolution
+  const armed = useRef(false)
   const [showTip, setShowTip] = useState(false)
-  // Tap opens a small action menu; long-press stays a shortcut straight to a note.
   const [menuOpen, setMenuOpen] = useState(false)
-  // Lift above the focus mini-bar (z-40, ~+4.25rem) when a timer is running so
-  // the two don't overlap in the bottom-right corner.
-  const focusing = useFocusTimers().timers.length > 0
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  const focusCount = useFocusTimers().timers.length
+  const overlayOpen = useFocusOverlay().open
+
+  const newNote = () => navigate('/notes/new')
 
   useEffect(() => {
     try {
@@ -52,7 +58,7 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
       longFired.current = true
       armed.current = false
       if (showTip) dismissTip()
-      onLongPress()
+      newNote()
     }, LONG_MS)
   }
 
@@ -65,18 +71,18 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
     }
   }
 
-  // Run a menu action and close the menu.
   const pick = (fn: () => void) => {
     setMenuOpen(false)
     fn()
   }
 
-  // Finger dragged off the button, or the gesture was cancelled by the OS:
-  // disarm so the trailing pointerup does not fire a stray tap.
   const onCancel = () => {
     armed.current = false
     clear()
   }
+
+  // Hidden while the full-screen focus overlay is up (mirrors the old mini-bar).
+  if (overlayOpen) return null
 
   return (
     <>
@@ -98,11 +104,10 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
           <div
             role="menu"
             aria-label="Quick actions"
-            className={`fixed ${focusing ? 'bottom-[calc(env(safe-area-inset-bottom)+12.5rem)]' : 'bottom-[calc(env(safe-area-inset-bottom)+9rem)]'} right-4 z-40 w-56 rounded-2xl border border-paper-edge bg-paper-card p-1.5 shadow-card animate-pop dark:border-slate-700 dark:bg-slate-800`}
+            className="fixed bottom-[calc(env(safe-area-inset-bottom)+9rem)] right-4 z-40 w-56 rounded-2xl border border-paper-edge bg-paper-card p-1.5 shadow-card animate-pop dark:border-slate-700 dark:bg-slate-800"
           >
             {[
-              { icon: CheckSquare, label: 'New task', run: onTap },
-              { icon: StickyNote, label: 'New note', run: onLongPress },
+              { icon: StickyNote, label: 'New note', run: newNote },
               { icon: Megaphone, label: 'New ad', run: () => navigate('/papan-iklan/new') },
               { icon: Compass, label: 'What can I do', run: () => navigate('/help') },
             ].map((m) => (
@@ -119,20 +124,37 @@ export function Fab({ onTap, onLongPress }: { onTap: () => void; onLongPress: ()
           </div>
         </>
       )}
-      <button
-        aria-label="Quick add"
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onCancel}
-        onPointerCancel={onCancel}
-        onContextMenu={(e) => e.preventDefault()}
-        style={{ touchAction: 'manipulation' }}
-        className={`fixed ${focusing ? 'bottom-[calc(env(safe-area-inset-bottom)+8.5rem)]' : 'bottom-[calc(env(safe-area-inset-bottom)+5rem)]'} right-4 z-30 flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition-all active:scale-90 ${menuOpen ? '' : 'animate-float'}`}
-      >
-        <Plus className={`h-7 w-7 transition-transform ${menuOpen ? 'rotate-45' : ''}`} strokeWidth={2.4} />
-      </button>
+
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-30 flex items-center gap-3">
+        {focusCount > 0 && (
+          <button
+            aria-label={`${focusCount} focus timer${focusCount > 1 ? 's' : ''} running — show list`}
+            onClick={() => setSheetOpen(true)}
+            className="relative flex h-14 w-14 select-none items-center justify-center rounded-full border border-paper-edge bg-paper-card text-brand-600 shadow-card transition-all active:scale-90 animate-pop dark:border-slate-700 dark:bg-slate-800 dark:text-brand-300"
+          >
+            <Timer className="h-6 w-6" />
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-600 px-1 text-xs font-bold text-white">
+              {focusCount}
+            </span>
+          </button>
+        )}
+        <button
+          aria-label="Quick add"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onCancel}
+          onPointerCancel={onCancel}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{ touchAction: 'manipulation' }}
+          className={`flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition-all active:scale-90 ${menuOpen ? '' : 'animate-float'}`}
+        >
+          <Plus className={`h-7 w-7 transition-transform ${menuOpen ? 'rotate-45' : ''}`} strokeWidth={2.4} />
+        </button>
+      </div>
+
+      <FocusSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </>
   )
 }

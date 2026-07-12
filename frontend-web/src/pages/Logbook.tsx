@@ -118,8 +118,8 @@ export default function Logbook() {
             <BentoTile span="sm" tone="tint" accent="violet"><BentoStat value={data.summary.early} label="Early" /></BentoTile>
             <BentoTile span="sm" tone="tint" accent="emerald"><BentoStat value={data.summary.approved} label="Approved" /></BentoTile>
             <BentoTile span="sm" tone="tint" accent="rose"><BentoStat value={data.summary.rejected} label="Rejected" /></BentoTile>
-            <BentoTile span="sm" tone="tint" accent="slate"><BentoStat value={data.summary.pending} label="Pending" /></BentoTile>
-            <BentoTile span="sm" tone="tint" accent="slate"><BentoStat value={data.summary.planned_minutes} label="Planned (min)" /></BentoTile>
+            <BentoTile span="sm" tone="tint" accent="amber"><BentoStat value={data.summary.pending} label="Pending" /></BentoTile>
+            <BentoTile span="sm" tone="tint" accent="amber"><BentoStat value={data.summary.planned_minutes} label="Planned (min)" /></BentoTile>
             <BentoTile span="sm" tone="tint" accent="sky"><BentoStat value={data.summary.done_minutes_estimated} label="Done est. (min)" /></BentoTile>
           </>
         )}

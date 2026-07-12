@@ -97,7 +97,7 @@ export default function WalletLog() {
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           <p
                             className={`text-sm font-semibold ${
-                              credit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                              e.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                             }`}
                           >
                             {fmt(e.amount)}

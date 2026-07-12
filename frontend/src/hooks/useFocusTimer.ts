@@ -130,7 +130,7 @@ function resetTimer(taskId: string) {
   mapTimer(taskId, (t) => ({ ...t, startedAt: Date.now(), elapsedBeforeMs: 0 }))
 }
 
-function stopTimer(taskId: string) {
+export function stopTimer(taskId: string) {
   setTimers(current.filter((t) => t.taskId !== taskId))
 }
 

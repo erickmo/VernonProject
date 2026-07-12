@@ -173,7 +173,7 @@ export default function MeetingRoomForm() {
                 {(id) => (
                   <input
                     id={id}
-                    className={field + (isEdit ? ' bg-slate-100 text-muted dark:bg-slate-700' : '')}
+                    className={field + (isEdit ? ' bg-canvas text-muted' : '')}
                     value={form.room_name}
                     readOnly={isEdit}
                     autoFocus={!isEdit}
@@ -245,7 +245,7 @@ export default function MeetingRoomForm() {
             </div>
           </BentoTile>
 
-          <BentoTile span="sm" tone="tint" accent="slate" title="Preview">
+          <BentoTile span="sm" tone="tint" accent="brand" title="Preview">
             <div className="mt-1 space-y-2">
               <p className="text-lg font-bold text-ink truncate">
                 {form.room_name || <span className="opacity-40">Untitled</span>}

@@ -2,8 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
-import { ErrorState } from '@web/components/ui'
+import { useToast } from '@/components/Toast'
+import { ErrorState, Button } from '@web/components/ui'
 import { useBoot, canManageUsers, useFeedbackInbox, useSetFeedbackStatus } from '@/hooks/useData'
+import FeedbackMessage from '@/components/FeedbackMessage'
+import { useFeedbackToTask } from '@/hooks/useFeedbackToTask'
+import { SearchableSelect } from '@/components/SearchableSelect'
+import { Drawer } from '@web/components/overlays/Drawer'
+import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 
 const STATUSES = ['New', 'Reviewed', 'Resolved', 'Rejected'] as const
 const FILTERS = ['All', ...STATUSES] as const
@@ -12,7 +18,7 @@ const chip = (active: boolean) =>
   `rounded-full px-3 py-1 text-xs font-medium transition-colors ${
     active
       ? 'bg-brand-600 text-white'
-      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+      : 'bg-canvas text-muted hover:bg-hover/[0.04] dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
   }`
 
 const TYPE_TONE: Record<string, string> = {
@@ -25,7 +31,7 @@ const TYPE_TONE: Record<string, string> = {
 const STATUS_TONE: Record<string, string> = {
   New: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
   Reviewed: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  Resolved: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+  Resolved: 'bg-canvas text-muted dark:bg-slate-700 dark:text-slate-300',
   Rejected: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 }
 
@@ -38,6 +44,8 @@ export default function FeedbackInbox() {
   const [filter, setFilter] = useState<string>('All')
   const list = useFeedbackInbox(filter === 'All' ? undefined : filter)
   const setStatus = useSetFeedbackStatus()
+  const toast = useToast()
+  const flow = useFeedbackToTask()
 
   const blocked = !!boot && !canManageUsers(boot)
   useEffect(() => {
@@ -102,25 +110,49 @@ export default function FeedbackInbox() {
                     <span className={pill(STATUS_TONE[item.status] ?? STATUS_TONE.Resolved)}>
                       {item.status}
                     </span>
-                    <span className="text-xs text-muted">{item.submitter}</span>
+                    {!item.is_anonymous && (
+                      <span className="text-xs text-muted">{item.submitter}</span>
+                    )}
                     <span className="text-xs text-muted">· {item.at_human}</span>
+                    {item.linked_todo && (
+                      <button
+                        onClick={() => navigate('/project-item/' + item.linked_todo)}
+                        className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                      >
+                        View task →
+                      </button>
+                    )}
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-ink">
-                    {item.message}
-                  </p>
+                  <FeedbackMessage message={item.message} className="text-sm text-ink" />
                 </div>
                 {(item.status === 'New' || item.status === 'Reviewed') && (
                   <div className="flex shrink-0 gap-1.5">
                     <button
+                      onClick={() => flow.start(item)}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
+                    >
+                      Create task
+                    </button>
+                    <button
                       disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate({ name: item.name, status: 'Resolved' })}
+                      onClick={() =>
+                        setStatus.mutate(
+                          { name: item.name, status: 'Resolved' },
+                          { onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not update') },
+                        )
+                      }
                       className="rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 disabled:opacity-50"
                     >
                       Approve
                     </button>
                     <button
                       disabled={setStatus.isPending}
-                      onClick={() => setStatus.mutate({ name: item.name, status: 'Rejected' })}
+                      onClick={() =>
+                        setStatus.mutate(
+                          { name: item.name, status: 'Rejected' },
+                          { onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not update') },
+                        )
+                      }
                       className="rounded-full px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25 disabled:opacity-50"
                     >
                       Reject
@@ -131,6 +163,59 @@ export default function FeedbackInbox() {
             </div>
           ))}
         </div>
+      )}
+
+      <Drawer
+        open={flow.picking}
+        onClose={flow.cancel}
+        title="Create task from feedback"
+        footer={
+          <>
+            <Button variant="ghost" onClick={flow.cancel}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!(flow.detail && flow.detailData)}
+              onClick={flow.openDialog}
+            >
+              Continue
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted">Project</label>
+            <SearchableSelect
+              value={flow.project}
+              onChange={flow.chooseProject}
+              options={flow.projectCards.map((p) => ({ value: p.name, label: p.project_name }))}
+              placeholder="Select a project…"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted">Detail</label>
+            <SearchableSelect
+              value={flow.detail}
+              onChange={flow.chooseDetail}
+              options={flow.projectDetails.map((d) => ({ value: d.name, label: d.title }))}
+              placeholder="Select a detail…"
+            />
+          </div>
+        </div>
+      </Drawer>
+
+      {flow.dialogOpen && flow.detailData && (
+        <CreateProjectItemDialog
+          open
+          onClose={flow.cancel}
+          projectDetail={flow.detail}
+          team={flow.detailData.team.map((t) => ({ user: t.user, name: t.name }))}
+          defaultGroup={flow.detailData.default_group ?? null}
+          initial={flow.initial}
+          onCreated={flow.onCreated}
+        />
       )}
     </div>
   )

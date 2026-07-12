@@ -65,7 +65,7 @@ export default function Notes() {
         <BentoTile
           span="sm"
           tone="tint"
-          accent="slate"
+          accent="brand"
           actions={
             <button
               onClick={() => navigate('/notes/new')}

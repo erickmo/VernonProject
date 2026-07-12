@@ -21,9 +21,10 @@ interface CreateProjectItemSheetProps {
   /** Prefill the form (e.g. duplicating a todo). Remount to re-seed — useState
    *  initializers only run once, so mount this sheet fresh per open. */
   initial?: CreateTodoInitial
+  onCreated?: (todoName: string) => void
 }
 
-export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial }: CreateProjectItemSheetProps) {
+export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial, onCreated }: CreateProjectItemSheetProps) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
 
@@ -105,7 +106,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
     Object.assign(fields, serializeRecurrence(recurrence))
     create.mutate(fields, {
-      onSuccess: () => { toast('success', 'Todo created'); close() },
+      onSuccess: (doc) => { onCreated?.((doc as { name?: string })?.name ?? ''); toast('success', 'Todo created'); close() },
       onError: (err) => toast('error', (err as Error).message),
     })
   }

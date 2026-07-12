@@ -1,7 +1,7 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert'
 import type { ProjectItem } from './types'
-import { filterCandidates, sortForPlanning, touchedDiff, buildNext } from './planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext } from './planDay'
 import { byAllocationAsc } from './format'
 
 // Minimal ProjectItem factory — only the fields these pure fns read.
@@ -57,5 +57,116 @@ const sorted = [
   item({ name: 'small', today_allocation: 15, estimated: 0 }),
 ].sort(byAllocationAsc)
 assert.deepEqual(sorted.map((t) => t.name), ['small', 'big'], 'fewest minutes first')
+
+// autoFillPlan
+const names = (picks: { todo: ProjectItem }[]) => picks.map((p) => p.todo.name)
+
+// base only when min already met by base (no overdue/future pulled)
+assert.deepEqual(
+  names(
+    autoFillPlan(
+      {
+        due_today: [item({ name: 'd1', estimated: 60, deadline: '2026-07-12' })],
+        overdue: [item({ name: 'o1', estimated: 30, deadline: '2026-07-10' })],
+        upcoming: [item({ name: 'u1', estimated: 30, deadline: '2026-07-20' })],
+      },
+      60,
+    ),
+  ),
+  ['d1'],
+  'base (60m) already meets min 60 → no overdue/future pulled',
+)
+
+// under min pulls overdue BEFORE future
+assert.deepEqual(
+  names(
+    autoFillPlan(
+      {
+        due_today: [],
+        overdue: [item({ name: 'o1', estimated: 30, deadline: '2026-07-10' })],
+        upcoming: [item({ name: 'u1', estimated: 30, deadline: '2026-07-20' })],
+      },
+      45,
+    ),
+  ),
+  ['o1', 'u1'],
+  'under min: overdue pulled before future',
+)
+
+// overdue oldest-first, future nearest-first
+assert.deepEqual(
+  names(
+    autoFillPlan(
+      {
+        due_today: [],
+        overdue: [
+          item({ name: 'oNew', estimated: 30, deadline: '2026-07-11' }),
+          item({ name: 'oOld', estimated: 30, deadline: '2026-07-01' }),
+        ],
+        upcoming: [
+          item({ name: 'uFar', estimated: 30, deadline: '2026-08-01' }),
+          item({ name: 'uNear', estimated: 30, deadline: '2026-07-15' }),
+        ],
+      },
+      999,
+    ),
+  ),
+  ['oOld', 'oNew', 'uNear', 'uFar'],
+  'overdue oldest-first, then future nearest-first',
+)
+
+// is_waiting excluded; null-deadline upcoming excluded from future pool
+assert.deepEqual(
+  names(
+    autoFillPlan(
+      {
+        due_today: [item({ name: 'dWait', estimated: 60, deadline: '2026-07-12', is_waiting: true })],
+        overdue: [item({ name: 'oWait', estimated: 30, deadline: '2026-07-10', is_waiting: true })],
+        upcoming: [
+          item({ name: 'uNull', estimated: 30, deadline: null }),
+          item({ name: 'uOk', estimated: 30, deadline: '2026-07-20' }),
+        ],
+      },
+      999,
+    ),
+  ),
+  ['uOk'],
+  'waiting tasks skipped everywhere; null-deadline upcoming not in future pool',
+)
+
+// already-planned-today counted toward total (fewer pulled) and NOT in picks
+assert.deepEqual(
+  names(
+    autoFillPlan(
+      {
+        due_today: [],
+        overdue: [
+          item({ name: 'oPlanned', estimated: 30, deadline: '2026-07-05', today_allocation: 40 }),
+          item({ name: 'oFree', estimated: 30, deadline: '2026-07-10' }),
+        ],
+        upcoming: [item({ name: 'u1', estimated: 30, deadline: '2026-07-20' })],
+      },
+      60,
+    ),
+  ),
+  ['oFree'],
+  'planned-today (40m) counts toward total → only oFree pulled to reach 60; planned not re-added',
+)
+
+// minMinutes <= 0 => only base returned
+assert.deepEqual(
+  names(
+    autoFillPlan(
+      {
+        due_today: [item({ name: 'd1', estimated: 30, deadline: '2026-07-12' })],
+        overdue: [item({ name: 'o1', estimated: 30, deadline: '2026-07-10' })],
+        upcoming: [item({ name: 'u1', estimated: 30, deadline: '2026-07-20' })],
+      },
+      0,
+    ),
+  ),
+  ['d1'],
+  'min <= 0 → base only',
+)
 
 console.log('planDay self-check OK')

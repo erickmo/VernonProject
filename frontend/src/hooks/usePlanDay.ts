@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { mobileApi } from '@/lib/api'
 import { keys } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
-import { todayISO } from '@/lib/format'
-import { filterCandidates, sortForPlanning, touchedDiff, buildNext } from '@/lib/planDay'
+import { todayISO, formatEstimate } from '@/lib/format'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext } from '@/lib/planDay'
+import { usePreviousShiftShortfall } from '@/hooks/useData'
 import type { ProjectItem } from '@/lib/types'
 
 // Shared plan-my-day state + save semantics for both the mobile sheet and the
@@ -50,4 +51,79 @@ export function usePlanDay(candidates: ProjectItem[]) {
   }
 
   return { mins, setMin, useEstimate, query, setQuery, visible, total, saving, save }
+}
+
+// Silent auto-plan. Mounted on both dashboards, so it fires on load AND every
+// refetch (after create / edit-deadline / complete) — the "multiple trigger
+// points". Runs the SAME logic as the Auto-plan button (autoFillPlan): base =
+// every today-deadline task, then top up toward the daily minimum
+// (min_daily_estimated_minutes, via the shortfall endpoint) pulling overdue
+// (oldest first) then future (nearest first). The only differences from the
+// button are: no toast, and seenRef idempotency.
+// ponytail: idempotent per todo/day/session via seenRef — honors in-session manual
+// removal (a task the user clears from today is not re-added this session), re-plans
+// across reloads and at day rollover. Ceiling: a big backlog fires N parallel writes
+// on first load (no batch API — add one if it drags).
+export function useAutoPlanToday(buckets: {
+  due_today?: ProjectItem[]
+  overdue?: ProjectItem[]
+  upcoming?: ProjectItem[]
+}) {
+  const qc = useQueryClient()
+  const today = todayISO()
+  const shortfall = usePreviousShiftShortfall()
+  const min = shortfall.data?.minimum ?? 0
+  const { due_today, overdue, upcoming } = buckets
+  const seen = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    const picks = autoFillPlan(
+      { due_today: due_today ?? [], overdue: overdue ?? [], upcoming: upcoming ?? [] },
+      min,
+    ).filter((p) => !seen.current.has(`${today}:${p.todo.name}`))
+    if (!picks.length) return
+    for (const p of picks) seen.current.add(`${today}:${p.todo.name}`)
+    Promise.all(
+      picks.map((p) => mobileApi.setTodoAllocations(p.todo.name, buildNext(p.todo.allocations ?? [], today, p.minutes))),
+    )
+      .then(() => qc.invalidateQueries({ queryKey: keys.dashboard }))
+      .catch(() => {}) // silent — a failed write just retries on the next trigger
+  }, [due_today, overdue, upcoming, min, today, qc])
+}
+
+// One-click auto-plan: fill today toward the daily-minimum minutes (Vernon
+// Settings.min_daily_estimated_minutes, read via the shortfall endpoint). Writes
+// est-minutes to today's allocation for the picked tasks; never rewrites tasks
+// already planned today. Reversible in the Plan-my-day drawer/sheet.
+export function useAutoFillPlan() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const today = todayISO()
+  const shortfall = usePreviousShiftShortfall()
+  const [saving, setSaving] = useState(false)
+
+  const run = async (buckets: { due_today: ProjectItem[]; overdue: ProjectItem[]; upcoming: ProjectItem[] }) => {
+    const min = shortfall.data?.minimum ?? 0
+    const picks = autoFillPlan(buckets, min)
+    if (!picks.length) {
+      toast('success', "You're already at today's target")
+      return
+    }
+    setSaving(true)
+    try {
+      await Promise.all(
+        picks.map((p) => mobileApi.setTodoAllocations(p.todo.name, buildNext(p.todo.allocations ?? [], today, p.minutes))),
+      )
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      for (const p of picks) qc.invalidateQueries({ queryKey: keys.projectItem(p.todo.name) })
+      const added = picks.reduce((s, p) => s + p.minutes, 0)
+      toast('success', `Auto-planned ${picks.length} task${picks.length === 1 ? '' : 's'} · ${formatEstimate(added)} added`)
+    } catch (e) {
+      toast('error', (e as Error).message || 'Could not auto-plan')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return { run, saving }
 }

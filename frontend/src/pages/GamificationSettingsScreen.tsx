@@ -229,9 +229,7 @@ export default function GamificationSettingsScreen() {
                     <div><Lbl>Icon</Lbl><input className={field} value={a.icon} onChange={(e) => setAchiev(i, { icon: e.target.value })} placeholder="🏆" /></div>
                     <div>
                       <Lbl>Condition</Lbl>
-                      <select className={field} value={a.condition} onChange={(e) => setAchiev(i, { condition: e.target.value })}>
-                        {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      <SearchableSelect value={a.condition} onChange={(v) => setAchiev(i, { condition: v })} options={CONDITIONS.map((c) => ({ value: c, label: c }))} />
                       <p className="mt-1 text-xs text-stone-400 dark:text-slate-500">todos_completed · badge_points · streak_days</p>
                     </div>
                     <div>

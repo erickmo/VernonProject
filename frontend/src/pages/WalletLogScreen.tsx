@@ -13,12 +13,12 @@ export default function WalletLogScreen() {
 
   return (
     <DetailScreen title="Points log">
-      <div className="mb-4 flex items-center gap-3 rounded-3xl bg-amber-600 border border-amber-700/50 p-5 text-white shadow-sm">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+      <div className="mb-4 flex items-center gap-3 rounded-3xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-500 p-5 text-white shadow-md">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20">
           <Wallet className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-amber-200">Spendable balance</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-white/80">Spendable balance</p>
           <p className="text-2xl font-bold leading-tight">
             {(wallet?.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
           </p>
@@ -53,7 +53,7 @@ export default function WalletLogScreen() {
                 <div className="text-right">
                   <p
                     className={`text-sm font-semibold ${
-                      credit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                      e.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                     }`}
                   >
                     {fmt(e.amount)}

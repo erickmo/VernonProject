@@ -54,7 +54,7 @@ export default function BookingForm() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Bookings
         </button>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">New Booking</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">New booking</h1>
       </div>
 
       {err && (
@@ -114,12 +114,12 @@ export default function BookingForm() {
           {(id) => (
             <div id={id} className="flex flex-col gap-2">
               <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
-                <input type="radio" name="room" checked={room === ''} onChange={() => setRoom('')} />
+                <input type="radio" name="room" checked={room === ''} onChange={() => setRoom('')} className="accent-brand-600" />
                 — None —
               </label>
               {rooms.map((r) => (
                 <label key={r.name} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
-                  <input type="radio" name="room" checked={room === r.name} onChange={() => setRoom(r.name)} />
+                  <input type="radio" name="room" checked={room === r.name} onChange={() => setRoom(r.name)} className="accent-brand-600" />
                   {r.room_name}
                 </label>
               ))}

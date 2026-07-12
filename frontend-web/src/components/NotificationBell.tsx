@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Bell } from 'lucide-react'
 import { useNotifications } from '@/hooks/useData'
+import { useAppUpdate } from '@/lib/appUpdate'
 import { NotificationSheet } from '@web/components/NotificationSheet'
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const { data } = useNotifications()
-  const unread = data?.unread ?? 0
+  const { updateAvailable } = useAppUpdate()
+  const unread = (data?.unread ?? 0) + (updateAvailable ? 1 : 0)
 
   return (
     <>

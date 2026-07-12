@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ChevronRight, FolderKanban } from 'lucide-react'
+import { Outlet, useLocation } from 'react-router-dom'
+import { FolderKanban } from 'lucide-react'
 import { useBoot } from '@/hooks/useData'
 import { CommandPalette, type Command } from '@web/components/CommandPalette'
 import { useCrumbs } from '@web/lib/crumbs'
-import { TopNav } from '@web/components/TopNav'
+import { TopBar } from '@web/components/TopNav'
+import { Sidebar } from '@web/components/Sidebar'
 import { buildNavGroups } from '@web/lib/nav'
 import { QuickCreate } from '@web/components/QuickCreate'
 import { FocusDock } from '@web/components/FocusDock'
 import { FocusHost } from '@web/components/FocusHost'
+import UpdateBanner from '@web/components/UpdateBanner'
 
 const SECTION: Record<string, { label: string; to: string }> = {
   '': { label: 'Today', to: '/' },
@@ -67,8 +69,12 @@ export function AppShell() {
   const { pathname } = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { crumbs: pageCrumbs } = useCrumbs()
   const crumbs = pageCrumbs ?? buildCrumbs(pathname)
+
+  // Close the mobile drawer on route change.
+  useEffect(() => { setSidebarOpen(false) }, [pathname])
 
   // ⌘K / Ctrl+K toggles the command palette; bare `c` opens quick-create.
   useEffect(() => {
@@ -100,29 +106,26 @@ export function AppShell() {
   )
 
   return (
-    <div className="min-h-screen bg-canvas text-ink font-sans">
-      <TopNav onOpenPalette={() => setPaletteOpen(true)} onQuickCreate={() => setQuickOpen(true)} />
-      {/* secondary nav (breadcrumb bar) — LOCKED full width on every route */}
-      <div className="sticky top-14 z-20 border-b border-line bg-canvas/85 px-4 lg:px-6 backdrop-blur">
-        <nav aria-label="Breadcrumb" className="flex h-9 w-full items-center gap-1.5 text-sm">
-          {crumbs.map((c, i) => (
-            <span key={i} className="flex min-w-0 items-center gap-1.5">
-              {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-line" />}
-              {c.to
-                ? <NavLink to={c.to} className="truncate text-muted hover:text-ink">{c.label}</NavLink>
-                : <span className="truncate font-medium text-ink">{c.label}</span>}
-            </span>
-          ))}
-        </nav>
+    <div className="min-h-screen bg-canvas font-sans text-ink">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Content column, offset by the persistent sidebar width on lg+. */}
+      <div className="lg:pl-60">
+        <TopBar
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onOpenPalette={() => setPaletteOpen(true)}
+          onQuickCreate={() => setQuickOpen(true)}
+          crumbs={crumbs}
+        />
+        <main className="px-4 py-6 lg:px-6">
+          {/* LOCKED: main area is full width on every route (product decision — do not re-add max-w). */}
+          <div className="w-full"><Outlet /></div>
+        </main>
       </div>
-      <main className="px-4 py-6 lg:px-6">
-        {/* LOCKED: main area is full width on every route (product decision — do not re-add max-w). */}
-        <div className="w-full"><Outlet /></div>
-      </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
       <FocusDock />
       <FocusHost />
+      <UpdateBanner />
     </div>
   )
 }

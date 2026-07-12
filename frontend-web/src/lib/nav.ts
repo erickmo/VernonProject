@@ -3,17 +3,29 @@ import {
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
-  CalendarClock, Building2, Megaphone, Ban, BookOpen,
+  CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
+  Banknote, Activity as ActivityIcon, Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
   canManageAttendance, canManageResources,
-  canModerateAds, canManageLms,
+  canModerateAds, canManageLms, canManageIncome, canManageCompanies,
 } from '@/hooks/useData'
 
 export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string }
 export type NavGroup = { id: string; label: string; to?: string; leaves: NavLeaf[] }
+
+// Mobile's 5 primary tabs (BottomNav) — pinned at the top of the web sidebar so
+// the web's primary flow mirrors the mobile app. Groups below exclude these.
+export const NAV_PRIMARY: NavLeaf[] = [
+  { to: '/', label: 'Today', sub: '', icon: Home, end: true },
+  { to: '/projects', label: 'Projects', sub: '', icon: FolderKanban, match: '/project' },
+  { to: '/review', label: 'Review', sub: '', icon: CheckCircle2, badge: 'review' },
+  { to: '/reports', label: 'Reports', sub: '', icon: BarChart3, match: '/report' },
+  { to: '/me', label: 'Me', sub: '', icon: User, end: true },
+]
+export const NAV_PRIMARY_PATHS = new Set(NAV_PRIMARY.map((l) => l.to))
 
 const WORK: NavLeaf[] = [
   { to: '/', label: 'Today', sub: "Today's work & progress", icon: Home, end: true },
@@ -33,8 +45,11 @@ const COMMUNITY: NavLeaf[] = [
   { to: '/events', label: 'Events', sub: 'Browse, register & host', icon: CalendarDays, match: '/events' },
   { to: '/my-registrations', label: 'My Registrations', sub: 'Your events', icon: Ticket },
   { to: '/team-wall', label: 'Team Wall', sub: 'Recognition feed', icon: UsersRound },
+  { to: '/activity', label: 'Activity', sub: 'Recent team activity', icon: ActivityIcon },
   { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
+  { to: '/income', label: 'Extra Income', sub: 'Opportunities & claims', icon: Banknote },
   { to: '/papan-iklan', label: 'Papan Iklan', sub: 'Jual · beli · sewa', icon: Megaphone },
+  { to: '/whats-new', label: "What's New", sub: 'Latest updates', icon: Sparkles },
 ]
 
 // Everything points-denominated.
@@ -63,6 +78,8 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', sub: 'Integrity checks', icon: ShieldAlert } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon } as NavLeaf] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', sub: 'Brand registry', icon: Tag } as NavLeaf] : []),
+    ...(canManageCompanies(b) ? [{ to: '/companies', label: 'Companies', sub: 'Company registry', icon: Building2 } as NavLeaf] : []),
+    ...(canManageIncome(b) ? [{ to: '/income-admin', label: 'Manage Extra Income', sub: 'Review claims & opportunities', icon: Banknote } as NavLeaf] : []),
     ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Resources', sub: 'Rooms & equipment', icon: Building2 } as NavLeaf] : []),
     ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
     ...(canModerateAds(b) ? [{ to: '/papan-iklan/bans', label: 'Iklan Bans', sub: 'Banned posters', icon: Ban } as NavLeaf] : []),

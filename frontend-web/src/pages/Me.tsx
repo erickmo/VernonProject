@@ -1,21 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen, Wifi, WifiOff, RefreshCw, User } from 'lucide-react'
 import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 import { AvatarScene } from '@/avatar/AvatarScene'
 
+function useOnline() {
+  const [online, setOnline] = useState(navigator.onLine)
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
+  return online
+}
+
 export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => void }) {
   const boot = useBoot()
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const toast = useToast()
+  const online = useOnline()
   const [pwOpen, setPwOpen] = useState(false)
   const b = boot.data
+
+  const refresh = async () => {
+    await qc.invalidateQueries()
+    toast('success', 'Refreshed')
+  }
 
   const doLogout = async () => {
     await logout()
@@ -25,6 +50,17 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Me</h1>
+
+      <div
+        className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
+          online
+            ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+            : 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300'
+        }`}
+      >
+        {online ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+        {online ? 'Online — synced with server' : 'Offline — showing saved data'}
+      </div>
 
       <BentoGrid>
         {/* Profile hero */}
@@ -36,7 +72,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
               <div className="text-sm text-muted">{b?.user}</div>
               {b?.badge && (
                 <span
-                  className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-slate-100 dark:bg-slate-800 text-muted'}`}
+                  className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge.color ? '' : 'bg-canvas text-muted'}`}
                   style={b.badge.color ? { backgroundColor: `${b.badge.color}22`, color: b.badge.color } : undefined}
                 >
                   {b.badge.icon && <span>{b.badge.icon}</span>}
@@ -58,25 +94,41 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
         </BentoTile>
 
         {/* Settings & links */}
-        <BentoTile span="md" tone="tint" accent="slate" title="Settings">
-          <div className="divide-y divide-slate-200/60 dark:divide-slate-700/60 -mx-5 mt-1">
+        <BentoTile span="md" tone="tint" accent="brand" title="Settings">
+          <div className="divide-y divide-line/60 dark:divide-slate-700/60 -mx-5 mt-1">
+            <button
+              onClick={() => navigate('/me/info')}
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
+            >
+              <User className="w-4 h-4" />
+              My Info
+            </button>
             <button
               onClick={() => navigate('/achievements')}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
             >
               <Trophy className="w-4 h-4" />
               Achievements
             </button>
             <button
               onClick={() => setPwOpen(true)}
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
             >
               <KeyRound className="w-4 h-4" />
               Change password
             </button>
+            {/* No push toggle on /w: the web build registers no service worker,
+                so subscribeToPush would hang on navigator.serviceWorker.ready. */}
+            <button
+              onClick={refresh}
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh data
+            </button>
             <a
               href="/m"
-              className="w-full flex items-center gap-3 px-5 py-3 text-sm hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm hover:bg-hover/[0.04]"
             >
               <Smartphone className="w-4 h-4" />
               Open mobile app
@@ -84,7 +136,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
             {onReplayOnboarding && (
               <button
                 onClick={onReplayOnboarding}
-                className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+                className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04]"
               >
                 <Sparkles className="w-4 h-4" />
                 Replay onboarding
@@ -291,7 +343,7 @@ function PasskeyTile() {
         <button
           onClick={add}
           disabled={enroll.isPending}
-          className="mt-1 inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-slate-100/60 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800/60"
+          className="mt-1 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium text-brand-600 hover:bg-hover/[0.04] disabled:opacity-60 dark:border-slate-700"
         >
           {enroll.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
           {list.length > 0 ? 'Add this device' : 'Set up fingerprint sign-in'}
@@ -302,7 +354,7 @@ function PasskeyTile() {
 }
 
 const RELIGIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
-const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
+const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
 
 function VerseSettingsTile() {
   const { data: boot } = useBoot()
@@ -336,14 +388,12 @@ function VerseSettingsTile() {
       <div className="mt-1 space-y-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted">Agama</span>
-          <select
+          <SearchableSelect
             value={religion}
-            onChange={(e) => { const v = e.target.value; setReligion(v); persist(v, verseEnabled) }}
-            className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink"
-          >
-            <option value="">— Pilih —</option>
-            {RELIGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+            onChange={(v) => { setReligion(v); persist(v, verseEnabled) }}
+            placeholder="— Pilih —"
+            options={RELIGIONS.map((r) => ({ value: r, label: r }))}
+          />
         </label>
         {VERSE_SUPPORTED.has(religion) ? (
           <label className="flex items-center justify-between gap-3">

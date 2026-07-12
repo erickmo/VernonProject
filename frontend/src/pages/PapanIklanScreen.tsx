@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Tag, ShoppingBag, Search } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Segmented, Spinner, EmptyState } from '@/components/ui'
-import { Fab } from '@/components/Fab'
 import { useAds } from '@/hooks/useData'
 import type { AdListItem, AdType } from '@/lib/types'
 
@@ -82,7 +81,6 @@ export default function PapanIklanScreen() {
           </div>
         )}
       </div>
-      <Fab onTap={() => navigate('/papan-iklan/new')} onLongPress={() => navigate('/papan-iklan/new')} />
     </DetailScreen>
   )
 }

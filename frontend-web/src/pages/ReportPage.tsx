@@ -198,7 +198,7 @@ export default function ReportPage() {
     <div className="space-y-5">
       <BentoGrid>
         {/* Header hero tile */}
-        <BentoTile span="wide" tone="gradient" accent="slate">
+        <BentoTile span="wide" tone="gradient" accent="brand">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
@@ -230,7 +230,7 @@ export default function ReportPage() {
                 <div className="space-y-4">
                   {def.controls.map((c) => {
                     const label = (
-                      <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <label className="mb-1 block text-xs font-semibold text-muted dark:text-slate-400">
                         {c.label}
                         {c.required && <span className="text-rose-500"> *</span>}
                       </label>
@@ -291,7 +291,7 @@ export default function ReportPage() {
                                 )
                               })}
                             </div>
-                            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                            <p className="mt-1 text-[11px] text-muted dark:text-slate-500">
                               {sel.length ? `${sel.length} selected` : 'All statuses'}
                             </p>
                           </div>
@@ -350,10 +350,10 @@ export default function ReportPage() {
         {/* Summary stat tiles — shown once data is loaded */}
         {data && data.rows.length > 0 && (
           <>
-            <BentoTile span="sm" tone="tint" accent="slate">
+            <BentoTile span="sm" tone="tint" accent="brand">
               <BentoStat value={data.rows.length} label="Rows" delta={data.total > data.rows.length ? `of ${data.total} total` : undefined} />
             </BentoTile>
-            <BentoTile span="sm" tone="tint" accent="slate">
+            <BentoTile span="sm" tone="tint" accent="brand">
               <BentoStat value={data.columns.length} label="Columns" />
             </BentoTile>
           </>

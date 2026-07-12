@@ -1,14 +1,11 @@
 import type { ProjectItem } from './types'
+import { matchProjectItem } from './filters'
 
 export type Alloc = { date: string; minutes: number; note?: string }
 
-// Case-insensitive substring match on todo title + project name. Empty query → all.
+// Case-insensitive substring match across the shared searchable fields (see matchProjectItem).
 export function filterCandidates(candidates: ProjectItem[], query: string): ProjectItem[] {
-  const q = query.trim().toLowerCase()
-  if (!q) return candidates
-  return candidates.filter(
-    (t) => t.to_do.toLowerCase().includes(q) || (t.project_name || '').toLowerCase().includes(q),
-  )
+  return candidates.filter((t) => matchProjectItem(t, query))
 }
 
 // Todos with planned minutes (mins > 0) float to the top, most-minutes first;
@@ -49,4 +46,49 @@ export function focusedFirst(list: ProjectItem[], focused: Set<string>): Project
   const no: ProjectItem[] = []
   for (const t of list) (focused.has(t.name) ? yes : no).push(t)
   return [...yes, ...no]
+}
+
+// Auto-fill today's plan toward the daily minimum. Base = every today-deadline
+// task; if the running total (already-planned-today + base) is under `minMinutes`,
+// pull OVERDUE tasks (oldest deadline first) then FUTURE tasks (nearest deadline
+// first) until the minimum is met or candidates run out. Whole tasks only — the
+// last add may overshoot; no partial splitting. Waiting tasks are never auto-filled;
+// null-deadline tasks are excluded from the future pool (the rule is deadline-driven).
+// Tasks already allocated today are counted toward the total but never rewritten
+// (idempotent with useAutoPlanToday). minMinutes <= 0 => base only.
+// Bucketing is trusted from the server (due_today/overdue/upcoming); deadline
+// strings are used only to sort the overdue/future pools.
+export function autoFillPlan(
+  buckets: { due_today: ProjectItem[]; overdue: ProjectItem[]; upcoming: ProjectItem[] },
+  minMinutes: number,
+): { todo: ProjectItem; minutes: number }[] {
+  const est = (t: ProjectItem) => (t.estimated > 0 ? t.estimated : 30)
+  const active = (arr: ProjectItem[]) => arr.filter((t) => !t.is_waiting)
+  const plannedToday = (t: ProjectItem) => (t.today_allocation || 0) > 0
+  const byDeadlineAsc = (a: ProjectItem, b: ProjectItem) =>
+    (a.deadline || '￿').localeCompare(b.deadline || '￿')
+
+  const dueToday = active(buckets.due_today)
+  const overdue = active(buckets.overdue).slice().sort(byDeadlineAsc) // oldest first
+  const upcoming = active(buckets.upcoming)
+  const future = upcoming.filter((t) => t.deadline).slice().sort(byDeadlineAsc) // nearest first
+
+  // base: today-deadline tasks not yet planned today (always written)
+  const base = dueToday.filter((t) => !plannedToday(t))
+  const result: { todo: ProjectItem; minutes: number }[] = base.map((t) => ({ todo: t, minutes: est(t) }))
+
+  const min = Math.max(0, minMinutes || 0)
+  let total =
+    [...dueToday, ...overdue, ...upcoming]
+      .filter(plannedToday)
+      .reduce((s, t) => s + (t.today_allocation || 0), 0) +
+    result.reduce((s, r) => s + r.minutes, 0)
+
+  for (const t of [...overdue, ...future]) {
+    if (total >= min) break
+    if (plannedToday(t)) continue
+    result.push({ todo: t, minutes: est(t) })
+    total += est(t)
+  }
+  return result
 }

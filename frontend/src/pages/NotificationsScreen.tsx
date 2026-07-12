@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, ClipboardList, MessageCircle, AtSign, Coins, Gift, Hand, MessageSquareText, AlarmClock, Heart, CalendarClock } from 'lucide-react'
+import { Bell, CheckCheck, ClipboardList, MessageCircle, AtSign, Coins, Gift, Hand, MessageSquareText, AlarmClock, Heart, CalendarClock, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { DetailScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useData'
+import { useAppUpdate } from '@/lib/appUpdate'
 import type { AppNotification, NotificationType } from '@/lib/types'
 
 const TYPE_ICON: Record<NotificationType, LucideIcon> = {
@@ -50,6 +51,7 @@ function deepLink(n: AppNotification): string {
 export default function NotificationsScreen() {
   const navigate = useNavigate()
   const { data, isLoading, refetch } = useNotifications()
+  const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
   const items = data?.items ?? []
@@ -75,10 +77,34 @@ export default function NotificationsScreen() {
         <FullScreenLoader label="Loading notifications…" />
       ) : (
         <PullToRefresh onRefresh={refetch}>
-          {items.length === 0 ? (
+          {items.length === 0 && !updateAvailable ? (
             <EmptyState icon={Bell} title="No notifications yet" />
           ) : (
             <ul className="divide-y divide-paper-edge dark:divide-slate-700">
+              {updateAvailable && (
+                <li>
+                  <button
+                    onClick={applyUpdate}
+                    className="flex w-full items-start gap-3 rounded-2xl bg-brand-50 px-3 py-3 text-left dark:bg-brand-500/15 active:scale-[0.99]"
+                  >
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-500/25 dark:text-brand-300">
+                      <Sparkles className="h-[18px] w-[18px]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[11px] font-semibold uppercase tracking-wide text-brand-500 dark:text-brand-400">
+                        Update
+                      </span>
+                      <span className="block text-sm font-semibold text-stone-800 dark:text-slate-50">
+                        Update available
+                      </span>
+                      <span className="mt-0.5 block text-sm text-stone-500 dark:text-slate-400">
+                        Tap to load the latest version
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )}
               {items.map((n) => {
                 const Icon = TYPE_ICON[n.type] ?? Bell
                 return (

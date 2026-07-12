@@ -204,17 +204,12 @@ export default function EventForm() {
 
               <Field label="Status">
                 {(id) => (
-                  <select
+                  <SearchableSelect
                     id={id}
-                    className={field}
                     value={form.status}
-                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  >
-                    <option>Draft</option>
-                    <option>Published</option>
-                    <option>Cancelled</option>
-                    <option>Completed</option>
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, status: v }))}
+                    options={[{ value: 'Draft', label: 'Draft' }, { value: 'Published', label: 'Published' }, { value: 'Cancelled', label: 'Cancelled' }, { value: 'Completed', label: 'Completed' }]}
+                  />
                 )}
               </Field>
 
@@ -257,30 +252,24 @@ export default function EventForm() {
 
               <Field label="Pricing">
                 {(id) => (
-                  <select
+                  <SearchableSelect
                     id={id}
-                    className={field}
                     value={form.pricing}
-                    onChange={(e) => setForm((f) => ({ ...f, pricing: e.target.value as EventFormPayload['pricing'] }))}
-                  >
-                    <option>Free</option>
-                    <option>Points</option>
-                    <option>Rupiah</option>
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, pricing: v as EventFormPayload['pricing'] }))}
+                    options={[{ value: 'Free', label: 'Free' }, { value: 'Points', label: 'Points' }, { value: 'Rupiah', label: 'Rupiah' }]}
+                  />
                 )}
               </Field>
 
               <Field label="Category">
                 {(id) => (
-                  <select
+                  <SearchableSelect
                     id={id}
-                    className={field}
                     value={form.category ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  >
-                    <option value="">— Uncategorized —</option>
-                    {EVENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, category: v }))}
+                    options={EVENT_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                    placeholder="— Uncategorized —"
+                  />
                 )}
               </Field>
 
@@ -305,7 +294,7 @@ export default function EventForm() {
                       type="checkbox"
                       checked={!!form.is_featured}
                       onChange={(e) => setForm((f) => ({ ...f, is_featured: e.target.checked }))}
-                      className="h-4 w-4 rounded border-line text-brand-600 focus:ring-brand-500"
+                      className="h-4 w-4 rounded border-line accent-brand-600"
                     />
                     Show in the Browse hero
                   </label>

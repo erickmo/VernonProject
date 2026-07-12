@@ -70,7 +70,7 @@ export default function AttendanceReport() {
 
   return (
     <Page>
-      <PageHeader title="Attendance Report" />
+      <PageHeader title="Attendance report" />
 
       <BentoGrid>
         <BentoTile span="full" tone="plain">
@@ -94,9 +94,13 @@ export default function AttendanceReport() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Status
-              <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
-                {STATUSES.map((s) => <option key={s} value={s}>{s || 'All statuses'}</option>)}
-              </select>
+              <SearchableSelect
+                value={status}
+                onChange={(v) => setStatus(v)}
+                options={STATUSES.filter(Boolean).map((s) => ({ value: s, label: s }))}
+                placeholder="All statuses"
+                allowClear
+              />
             </label>
             <button
               onClick={downloadCsv}
@@ -114,7 +118,7 @@ export default function AttendanceReport() {
             <BentoTile span="sm" tone="tint" accent="emerald"><BentoStat value={data.stats.present} label="Present" /></BentoTile>
             <BentoTile span="sm" tone="tint" accent="amber"><BentoStat value={data.stats.late} label="Late / early" /></BentoTile>
             <BentoTile span="sm" tone="tint" accent="rose"><BentoStat value={data.stats.absent} label="Absent" /></BentoTile>
-            <BentoTile span="sm" tone="tint" accent="slate"><BentoStat value={Math.round(data.stats.penalty)} label="Penalty pts" /></BentoTile>
+            <BentoTile span="sm" tone="tint" accent="brand"><BentoStat value={Math.round(data.stats.penalty)} label="Penalty pts" /></BentoTile>
           </>
         )}
 

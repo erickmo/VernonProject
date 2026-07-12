@@ -87,7 +87,21 @@ export default function Leaderboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Leaderboard</h1>
-        <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented options={DIMENSIONS} value={dimension} onChange={setDimension} />
+          <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+          {data && data.brands.length > 0 && (
+            <div className="w-44">
+              <SearchableSelect
+                value={brand}
+                onChange={setBrand}
+                options={data.brands.map((b) => ({ value: b, label: b }))}
+                placeholder="All brands"
+                allowClear
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {q.isError ? (
@@ -133,28 +147,6 @@ export default function Leaderboard() {
               />
             </BentoTile>
           )}
-
-          {/* Period / filter controls */}
-          <BentoTile span="sm" tone="tint" accent="slate" title="Filter">
-            <div className="flex flex-col gap-3 pt-1">
-              <Segmented options={PERIODS} value={period} onChange={setPeriod} />
-              {data.brands.length > 0 && (
-                <div className="w-full">
-                  <SearchableSelect
-                    value={brand}
-                    onChange={setBrand}
-                    options={data.brands.map((b) => ({ value: b, label: b }))}
-                    placeholder="All brands"
-                    allowClear
-                  />
-                </div>
-              )}
-              <p className="text-xs text-muted">
-                Showing <b className="text-ink">{PERIODS.find((p) => p.value === period)?.label}</b>{' '}
-                standings{brand ? <> for <b className="text-ink">{brand}</b></> : ''}.
-              </p>
-            </div>
-          </BentoTile>
 
           {/* Full ranking */}
           <BentoTile span="full" tone="plain">

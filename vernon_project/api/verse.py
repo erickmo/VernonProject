@@ -1,5 +1,7 @@
 # Daily Verse (Ayat Harian): per-religion daily scripture in Bahasa Indonesia.
-# Only Islam/Kristen/Katolik have a Bahasa API; others get nothing (feature hidden).
+# Islam/Kristen/Katolik pull text from a free Bahasa API; Hindu/Buddha have none,
+# so their verses are baked in below (curated, original renderings). Konghucu:
+# no source -> feature stays hidden for it.
 
 import hashlib
 import re
@@ -7,7 +9,7 @@ import re
 import frappe
 import requests
 
-SUPPORTED = {"Islam", "Kristen", "Katolik"}
+SUPPORTED = {"Islam", "Kristen", "Katolik", "Hindu", "Buddha"}
 
 _TIMEOUT = 8
 
@@ -61,6 +63,67 @@ BIBLE_VERSES = [
 	("Yosua 1:9", 6, 1, 9),
 ]
 
+# Hindu — Bhagavad Gita. No free Bahasa-Indonesia API exists, so text is baked in.
+# These are original, concise Indonesian renderings of well-known verses (NOT a
+# verbatim copy of any single copyrighted translation), attributed by reference.
+GITA = [
+	("Bhagawadgita 2.47", "Hakmu hanyalah pada perbuatan, bukan pada hasilnya. Jangan jadikan hasil sebagai motifmu, dan jangan pula terikat pada kelambanan."),
+	("Bhagawadgita 2.20", "Sang jiwa tak pernah lahir dan tak pernah mati; ia kekal, abadi, dan tak binasa meski tubuh dihancurkan."),
+	("Bhagawadgita 2.14", "Suka dan duka datang dan pergi bagai musim; keduanya tidak kekal. Hadapilah dengan sabar."),
+	("Bhagawadgita 2.48", "Tunaikan tugasmu dengan seimbang, lepas dari keterikatan, sama dalam keberhasilan maupun kegagalan. Keseimbangan batin itulah yoga."),
+	("Bhagawadgita 2.62", "Dari perenungan objek indria lahir keterikatan, dari keterikatan lahir keinginan, dan dari keinginan yang terhalang lahir kemarahan."),
+	("Bhagawadgita 2.70", "Bagai lautan yang tetap tenang meski dialiri banyak sungai, orang yang damai tak terguncang oleh datangnya keinginan."),
+	("Bhagawadgita 2.71", "Orang yang melepas segala keinginan, hidup tanpa keakuan dan rasa memiliki, akan mencapai kedamaian sejati."),
+	("Bhagawadgita 3.19", "Tunaikanlah tugasmu tanpa keterikatan pada hasil; dengan berbuat tanpa pamrih, seseorang mencapai yang tertinggi."),
+	("Bhagawadgita 3.21", "Apa pun yang dilakukan orang besar akan diikuti orang lain; teladan yang ia berikan menjadi panutan dunia."),
+	("Bhagawadgita 3.35", "Lebih baik menjalankan tugasmu sendiri meski tak sempurna, daripada menjalankan tugas orang lain dengan sempurna."),
+	("Bhagawadgita 4.7", "Kapan pun kebenaran merosot dan ketidakadilan merajalela, Aku menjelma ke dunia."),
+	("Bhagawadgita 4.8", "Untuk melindungi yang baik, membinasakan yang jahat, dan menegakkan kebenaran, Aku hadir dari masa ke masa."),
+	("Bhagawadgita 4.38", "Tak ada penyucian sebanding dengan pengetahuan sejati; ia yang matang dalam yoga menemukannya dalam dirinya sendiri."),
+	("Bhagawadgita 5.10", "Ia yang berbuat tanpa keterikatan, mempersembahkan hasilnya kepada Yang Maha Kuasa, tak ternoda dosa bagai daun teratai tak tersentuh air."),
+	("Bhagawadgita 6.5", "Angkatlah dirimu oleh dirimu sendiri; jangan biarkan dirimu terpuruk. Sebab diri sendiri bisa menjadi sahabat, bisa pula menjadi musuh."),
+	("Bhagawadgita 6.6", "Bagi yang telah menaklukkan diri, diri menjadi sahabat; bagi yang belum, diri sendiri berlaku bagai musuh."),
+	("Bhagawadgita 6.19", "Bagai nyala pelita yang tak bergoyang di tempat tanpa angin, demikian pikiran yogi yang terpusat dalam meditasi."),
+	("Bhagawadgita 6.35", "Pikiran memang sukar dikendalikan dan gelisah, tetapi ia dapat ditaklukkan melalui latihan dan pelepasan."),
+	("Bhagawadgita 9.22", "Bagi mereka yang senantiasa mengabdi dengan penuh kasih, Aku menjaga apa yang mereka miliki dan mencukupi kebutuhan mereka."),
+	("Bhagawadgita 9.34", "Pusatkan pikiranmu pada-Ku, mengabdilah kepada-Ku, dan sujudlah kepada-Ku; dengan demikian engkau pasti sampai kepada-Ku."),
+	("Bhagawadgita 12.13", "Ia yang tak membenci makhluk apa pun, penuh kasih dan welas, bebas dari keakuan dan keterikatan — ia dikasihi."),
+	("Bhagawadgita 16.21", "Ada tiga gerbang menuju kejatuhan diri: nafsu, kemarahan, dan keserakahan. Tinggalkanlah ketiganya."),
+	("Bhagawadgita 18.66", "Berserahlah sepenuhnya kepada Yang Maha Kuasa; janganlah khawatir, sebab engkau akan dibebaskan dari segala dosa."),
+	("Bhagawadgita 2.3", "Jangan menyerah pada kelemahan; itu tak pantas bagimu. Buanglah kelemahan hati yang hina dan bangkitlah."),
+	("Bhagawadgita 2.13", "Sebagaimana jiwa berpindah dari masa kanak, muda, ke tua dalam tubuh ini, demikian pula ia berpindah ke tubuh lain. Orang bijak tak tergoyahkan olehnya."),
+]
+
+# Buddha — Dhammapada. No free Bahasa-Indonesia API exists, so text is baked in.
+# Original, concise Indonesian renderings of well-known verses, attributed by number.
+DHAMMAPADA = [
+	("Dhammapada 1", "Pikiran mendahului segala sesuatu. Bila seseorang berbicara atau bertindak dengan pikiran jahat, penderitaan akan mengikutinya bagai roda mengikuti langkah lembu penariknya."),
+	("Dhammapada 2", "Pikiran mendahului segala sesuatu. Bila seseorang berbicara atau bertindak dengan pikiran murni, kebahagiaan akan mengikutinya bagai bayangan yang tak pernah pergi."),
+	("Dhammapada 5", "Kebencian tak pernah berakhir oleh kebencian; hanya oleh cinta kasih kebencian berakhir. Inilah hukum abadi."),
+	("Dhammapada 25", "Melalui usaha, kewaspadaan, disiplin, dan pengendalian diri, orang bijak membangun sebuah pulau yang tak dapat ditenggelamkan banjir."),
+	("Dhammapada 35", "Pikiran sukar dikendalikan dan bergerak ke mana pun ia suka. Melatihnya adalah baik; pikiran yang terkendali membawa kebahagiaan."),
+	("Dhammapada 50", "Janganlah memperhatikan kesalahan orang lain; perhatikanlah apa yang telah dan belum kaulakukan sendiri."),
+	("Dhammapada 62", "'Anak-anakku, kekayaanku' — demikian orang bodoh gelisah. Padahal dirinya sendiri bukan miliknya, apalagi anak dan kekayaannya."),
+	("Dhammapada 80", "Petani mengairi ladang, pembuat panah meluruskan anak panah, tukang kayu membentuk kayu; orang bijak membentuk dirinya sendiri."),
+	("Dhammapada 96", "Tenang pikirannya, tenang ucapannya, tenang perbuatannya — demikianlah orang yang telah bebas dan berada dalam kedamaian sempurna."),
+	("Dhammapada 100", "Lebih baik satu kata bermakna yang mendatangkan kedamaian, daripada seribu kata yang tak berguna."),
+	("Dhammapada 103", "Menaklukkan diri sendiri jauh lebih mulia daripada menaklukkan ribuan orang dalam pertempuran."),
+	("Dhammapada 121", "Jangan meremehkan perbuatan buruk kecil dengan berkata 'itu tak berakibat.' Setetes demi setetes air pun memenuhi tempayan."),
+	("Dhammapada 122", "Jangan meremehkan perbuatan baik kecil dengan berkata 'itu tak berarti.' Setetes demi setetes, orang bijak terisi kebajikan."),
+	("Dhammapada 129", "Semua makhluk gemetar menghadapi kekerasan dan takut akan kematian. Menyadari hal ini, janganlah membunuh atau menyebabkan pembunuhan."),
+	("Dhammapada 131", "Barang siapa mencari kebahagiaan dengan menyakiti makhluk lain yang juga mendambakan kebahagiaan, ia takkan menemukan kebahagiaan."),
+	("Dhammapada 160", "Diri sendiri adalah pelindung bagi diri sendiri; siapa lagi yang dapat menjadi pelindung? Dengan diri yang terlatih, seseorang memperoleh pelindung sejati."),
+	("Dhammapada 165", "Oleh diri sendiri kejahatan dilakukan, oleh diri sendiri pula seseorang menjadi suci. Kesucian bergantung pada diri sendiri; tak seorang pun dapat menyucikan orang lain."),
+	("Dhammapada 183", "Tidak berbuat jahat, memperbanyak kebajikan, dan menyucikan hati — inilah ajaran para Buddha."),
+	("Dhammapada 197", "Sungguh bahagia kita hidup tanpa kebencian di antara mereka yang penuh kebencian."),
+	("Dhammapada 204", "Kesehatan adalah keuntungan terbesar, kepuasan adalah kekayaan terbesar, kepercayaan adalah sahabat terbaik, dan Nibbana adalah kebahagiaan tertinggi."),
+	("Dhammapada 223", "Taklukkan kemarahan dengan cinta kasih, kejahatan dengan kebaikan, kekikiran dengan kemurahan, dan kebohongan dengan kebenaran."),
+	("Dhammapada 251", "Tak ada api seperti nafsu, tak ada cengkeraman seperti kebencian, tak ada jaring seperti kebodohan, tak ada arus seperti keinginan."),
+	("Dhammapada 276", "Engkau sendiri yang harus berusaha; para Buddha hanya menunjukkan jalan."),
+	("Dhammapada 222", "Ia yang menahan kemarahan yang meletup bagai kusir mengendalikan kereta yang oleng — dialah pengendali sejati; yang lain hanya memegang tali kekang."),
+	("Dhammapada 90", "Bagi ia yang telah menyelesaikan perjalanan, bebas dari duka dan segala ikatan, tak ada lagi panasnya nafsu."),
+]
+
 
 def pick_index(date_str, n):
 	"""Deterministic index in [0, n) from a date string. No RNG -> concurrent
@@ -106,9 +169,25 @@ def _fetch_bible(date_str):
 	return {"reference": label, "text": text, "source": "bolls.life"}
 
 
+def _fetch_gita(date_str):
+	"""Pick a curated Bhagavad Gita verse by date. No network -> cannot fail."""
+	ref, text = GITA[pick_index(date_str, len(GITA))]
+	return {"reference": ref, "text": text, "source": "Bhagawadgita"}
+
+
+def _fetch_dhammapada(date_str):
+	"""Pick a curated Dhammapada verse by date. No network -> cannot fail."""
+	ref, text = DHAMMAPADA[pick_index(date_str, len(DHAMMAPADA))]
+	return {"reference": ref, "text": text, "source": "Dhammapada"}
+
+
 def _fetch(religion, date_str):
 	if religion == "Islam":
 		return _fetch_islam(date_str)
+	if religion == "Hindu":
+		return _fetch_gita(date_str)
+	if religion == "Buddha":
+		return _fetch_dhammapada(date_str)
 	# Kristen + Katolik share the Bible.
 	return _fetch_bible(date_str)
 

@@ -170,7 +170,7 @@ export default function GamificationSettings() {
           <p className="mb-2 text-xs text-muted">Hadiah Level — saat user mencapai level tertentu, beri poin + item kosmetik (sekali).</p>
           <div className="mt-1 space-y-3">
             {levels.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
+              <div className="rounded-lg border border-dashed border-line dark:border-slate-700 p-8 text-center">
                 <p className="text-sm text-muted">No level rewards yet.</p>
                 <button type="button" onClick={() => setLevels((ls) => [...ls, emptyLevel()])}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
@@ -212,7 +212,7 @@ export default function GamificationSettings() {
                   ))}
                 </div>
                 <button type="button" onClick={() => setLevels((ls) => [...ls, emptyLevel()])}
-                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 px-4 text-sm font-semibold text-muted hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500">
+                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-line py-3 px-4 text-sm font-semibold text-muted hover:border-muted dark:border-slate-600 dark:hover:border-slate-500">
                   <Plus className="h-4 w-4" /> Add level reward
                 </button>
               </>
@@ -224,7 +224,7 @@ export default function GamificationSettings() {
           <p className="mb-2 text-xs text-muted">Pencapaian — saat kondisi tercapai, beri hadiah (sekali). Centang 'Tier' untuk menjadikannya tingkat peringkat (badge).</p>
           <div className="mt-1 space-y-3">
             {achievements.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
+              <div className="rounded-lg border border-dashed border-line dark:border-slate-700 p-8 text-center">
                 <p className="text-sm text-muted">No achievements yet.</p>
                 <button type="button" onClick={() => setAchievements((as) => [...as, emptyAchiev()])}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
@@ -256,9 +256,7 @@ export default function GamificationSettings() {
                         <Field label="Condition">
                           {(id) => (
                             <>
-                              <select id={id} className={field} value={a.condition} onChange={(e) => setAchiev(i, { condition: e.target.value })}>
-                                {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                              </select>
+                              <SearchableSelect id={id} value={a.condition} onChange={(v) => setAchiev(i, { condition: v })} options={CONDITIONS.map((c) => ({ value: c, label: c }))} />
                               <p className={hint}>todos_completed = jumlah todo selesai · badge_points = poin kerja kumulatif · streak_days = hari beruntun.</p>
                             </>
                           )}
@@ -306,7 +304,7 @@ export default function GamificationSettings() {
                   ))}
                 </div>
                 <button type="button" onClick={() => setAchievements((as) => [...as, emptyAchiev()])}
-                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-3 px-4 text-sm font-semibold text-muted hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500">
+                  className="flex items-center gap-1.5 rounded-xl border border-dashed border-line py-3 px-4 text-sm font-semibold text-muted hover:border-muted dark:border-slate-600 dark:hover:border-slate-500">
                   <Plus className="h-4 w-4" /> Add achievement
                 </button>
               </>
@@ -331,7 +329,7 @@ export default function GamificationSettings() {
                         const idx = assets.indexOf(a)
                         return (
                           <div key={a.asset_name} className="flex items-center gap-2 rounded-xl bg-hover/[0.04] px-3 py-2">
-                            <span className="flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-200" title={a.asset_name}>{a.asset_name}</span>
+                            <span className="flex-1 truncate text-xs font-medium text-ink dark:text-slate-200" title={a.asset_name}>{a.asset_name}</span>
                             <input
                               type="number"
                               inputMode="decimal"

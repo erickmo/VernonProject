@@ -10,7 +10,7 @@
 import datetime
 
 import frappe
-from frappe.utils import getdate, add_days, date_diff
+from frappe.utils import getdate, add_days, date_diff, nowdate
 
 MAX_SPAN_DAYS = 92
 
@@ -438,6 +438,48 @@ def over_occupied(from_date, to_date):
 	expected_rows = _expected_minutes(names, str(start), str(end))
 
 	return _build_over_occupied(users, assigned_rows, expected_rows, start, end, tolerance)
+
+
+# Days to look back for the current user's most recent scheduled shift day.
+PREV_SHIFT_LOOKBACK_DAYS = 14
+
+
+def _previous_shift_shortfall(expected_by_day, assigned_by_day, threshold):
+	"""Pure verdict for the home-page danger banner. Both dicts are {'YYYY-MM-DD': minutes}
+	for ONE user; `expected_by_day` already excludes off/holiday days (no shift -> no key),
+	so its latest key is the most recent scheduled shift day. A day is a shortfall when its
+	assigned/estimated minutes fall below `threshold` (Min Daily Estimated Minutes).
+	Returns under=False (and date=None) when there is nothing to evaluate."""
+	threshold = int(threshold or 0)
+	if threshold <= 0 or not expected_by_day:
+		return {"under": False, "date": None, "assigned": 0, "minimum": threshold, "expected": 0}
+	day = max(expected_by_day)  # ISO date strings sort chronologically
+	assigned = int(assigned_by_day.get(day, 0))
+	return {
+		"under": assigned < threshold,
+		"date": day,
+		"assigned": assigned,
+		"minimum": threshold,
+		"expected": int(expected_by_day[day]),
+	}
+
+
+@frappe.whitelist()
+def my_previous_shift_shortfall():
+	"""Home-page danger banner: did the CURRENT user's most recent scheduled shift day
+	(before today) fall below Vernon Settings.min_daily_estimated_minutes in assigned
+	minutes? Off/holiday days are skipped (no shift target), matching the Under-Occupied
+	report. Self-serve — scoped to the caller only, so no System-Manager gate."""
+	user = frappe.session.user
+	threshold = frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0
+	if user in ("Guest", "Administrator"):
+		return _previous_shift_shortfall({}, {}, threshold)
+	end = add_days(getdate(nowdate()), -1)  # strictly before today
+	start = add_days(end, -(PREV_SHIFT_LOOKBACK_DAYS - 1))
+	names = [user]
+	expected = _pivot(_expected_minutes(names, str(start), str(end))).get(user, {})
+	assigned = _pivot(_assigned_minutes(names, str(start), str(end))).get(user, {})
+	return _previous_shift_shortfall(expected, assigned, threshold)
 
 
 def _build_todos_due(role_by_project, todos, users, due, today):

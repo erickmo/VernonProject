@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Clock } from 'lucide-react'
-import { Spinner, EmptyState } from '@/components/ui'
+import { BookOpen, Clock, ChevronRight } from 'lucide-react'
+import { Spinner, EmptyState, ProgressBar } from '@/components/ui'
 import { ErrorState, Button } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader, Section } from '@web/components/Page'
@@ -21,7 +21,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-        STATUS_CLS[status] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+        STATUS_CLS[status] ?? 'bg-canvas text-muted'
       }`}
     >
       {status}
@@ -71,7 +71,7 @@ export default function Learn() {
       align: 'right',
       sortValue: (e) => e.progress_pct,
       render: (e) => (
-        <span className="text-sm font-medium tabular-nums">{e.progress_pct}%</span>
+        <span className="text-sm font-medium tabular-nums">{e.progress_pct}% complete</span>
       ),
     },
     {
@@ -146,6 +146,11 @@ export default function Learn() {
             {catalog.map((c: LmsCourseCard) => (
               <BentoTile key={c.name} span="md" tone={c.my_status ? 'tint' : 'plain'} accent="brand">
                 <div className="flex h-full flex-col gap-2">
+                  {c.cover_image && (
+                    <div className="-mx-4 -mt-4 mb-1 overflow-hidden rounded-t-lg">
+                      <img src={c.cover_image} alt={c.title} className="h-32 w-full object-cover" />
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <button
                       onClick={() => navigate(`/learn/${encodeURIComponent(c.name)}`)}
@@ -176,11 +181,22 @@ export default function Learn() {
                     )}
                   </div>
                   {c.my_status ? (
-                    <div className="flex items-center justify-between gap-2">
-                      <StatusChip status={c.my_status} />
-                      <span className="text-xs font-medium tabular-nums text-muted">
-                        {c.my_progress}%
-                      </span>
+                    <div className="mt-auto flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <StatusChip status={c.my_status} />
+                        <span className="text-xs font-medium tabular-nums text-muted">
+                          {c.my_progress}%
+                        </span>
+                      </div>
+                      <ProgressBar value={c.my_progress} />
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => navigate(`/learn/${encodeURIComponent(c.name)}`)}
+                      >
+                        {c.my_status === 'Completed' ? 'Review' : 'Continue'}
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   ) : (
                     <Button

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Monitor, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Spinner, EmptyState } from '@/components/ui'
+import { useToast } from '@/components/Toast'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
@@ -50,6 +51,7 @@ const COLUMNS: Column<Station>[] = [
 
 export default function Stations() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { data: boot } = useBoot()
   const blocked = !!boot && !canManageAttendance(boot)
   useEffect(() => {
@@ -78,6 +80,9 @@ export default function Stations() {
       setName('')
       setLocation('')
       await load()
+      toast('success', 'Station added')
+    } catch (e) {
+      toast('error', (e as Error).message)
     } finally {
       setSaving(false)
     }
@@ -90,7 +95,7 @@ export default function Stations() {
       <PageHeader title="Stations" />
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="slate"><BentoStat value={list?.length ?? 0} label="stations" /></BentoTile>
+        <BentoTile span="sm" tone="tint" accent="brand"><BentoStat value={list?.length ?? 0} label="stations" /></BentoTile>
         <BentoTile span="wide" tone="plain">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Name

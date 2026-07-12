@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Check, X } from 'lucide-react'
-import { useDashboard } from '@/hooks/useData'
-import { byDeadlineAsc, formatDate } from '@/lib/format'
+import { CheckCircle2, Check, X, CheckSquare, Square } from 'lucide-react'
+import { useDashboard, useBulkAdvance, useBulkReject } from '@/hooks/useData'
+import { useToast } from '@/components/Toast'
+import { byModifiedDesc, formatDate } from '@/lib/format'
 import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { buildOptions } from '@/lib/filters'
 import { FilterButton, activeFilterCount, type FilterValue } from '@/components/FilterSheet'
@@ -63,24 +64,71 @@ export default function Review() {
             (!filters.assignee || t.assigned_to === filters.assignee),
         )
         .slice()
-        .sort(byDeadlineAsc),
+        .sort(byModifiedDesc),
     [all, filters, rel],
   )
-
-  const byProject = useMemo(() => {
-    const m = new Map<string, { displayName: string; items: typeof visible }>()
-    for (const t of visible) {
-      const existing = m.get(t.project)
-      if (existing) existing.items.push(t)
-      else m.set(t.project, { displayName: t.project_name, items: [t] })
-    }
-    return [...m.entries()]
-  }, [visible])
 
   const approve = (t: { name: string; next_status_label: string | null; to_do: string }) =>
     advanceConfirm(t.name, t.next_status_label || 'Approve', t.to_do)
 
   const reject = (t: { name: string; to_do: string }) => rejectConfirm(t.name, t.to_do)
+
+  const bulk = useBulkAdvance()
+  const bulkReject = useBulkReject()
+  const toast = useToast()
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  // null = closed; otherwise which bulk action the confirm modal is for.
+  const [confirmMode, setConfirmMode] = useState<null | 'approve' | 'reject'>(null)
+  const [reason, setReason] = useState('')
+  const busy = bulk.isPending || bulkReject.isPending
+
+  const advanceable = useMemo(() => visible.filter((t) => t.can_advance), [visible])
+  const advIds = useMemo(() => new Set(advanceable.map((t) => t.name)), [advanceable])
+
+  // Drop selections that left the queue (refetch, filter change).
+  useEffect(() => {
+    setSelected((prev) => {
+      const next = new Set([...prev].filter((id) => advIds.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [advIds])
+
+  const allSelected = advanceable.length > 0 && selected.size === advanceable.length
+  const toggle = (name: string) =>
+    setSelected((p) => {
+      const n = new Set(p)
+      if (n.has(name)) n.delete(name)
+      else n.add(name)
+      return n
+    })
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(advanceable.map((t) => t.name)))
+
+  const closeConfirm = () => {
+    if (busy) return
+    setConfirmMode(null)
+    setReason('')
+  }
+
+  const runBulk = async () => {
+    const ids = [...selected]
+    if (!ids.length) return
+    try {
+      if (confirmMode === 'reject') {
+        const r = reason.trim()
+        if (!r) return
+        const res = await bulkReject.mutateAsync({ todoIds: ids, reason: r })
+        toast('success', res.failed ? `Rejected ${res.rejected} · ${res.failed} failed` : `Rejected ${res.rejected}`)
+      } else {
+        const res = await bulk.mutateAsync(ids)
+        toast('success', res.failed ? `Approved ${res.approved} · ${res.failed} failed` : `Approved ${res.approved}`)
+      }
+      setSelected(new Set())
+      setConfirmMode(null)
+      setReason('')
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
+  }
 
   if (dash.isLoading) {
     return (
@@ -144,6 +192,35 @@ export default function Review() {
               <Segmented options={REL_TABS} value={rel} onChange={setRel} />
             </div>
           )}
+          {advanceable.length > 0 && (
+            <div className="mb-3 flex items-center gap-3">
+              <button
+                onClick={toggleAll}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink"
+              >
+                {allSelected ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4" />}
+                {allSelected ? 'Clear all' : `Select all (${advanceable.length})`}
+              </button>
+              {selected.size > 0 && (
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => setConfirmMode('reject')}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-500/40 px-3 py-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4" /> Reject {selected.size}
+                  </button>
+                  <button
+                    onClick={() => setConfirmMode('approve')}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" /> Approve {selected.size}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {visible.length === 0 ? (
             <EmptyState
               icon={CheckCircle2}
@@ -151,71 +228,131 @@ export default function Review() {
               subtitle="The queue is empty."
             />
           ) : (
-            // ponytail: flat-restyle (not DataTable) — grouped by project; DataTable has no group support
-            <div className="space-y-5">
-              {byProject.map(([projId, { displayName, items }]) => (
-                <section key={projId} className="space-y-2">
-                  <h2 className="text-sm font-semibold text-muted">{displayName}</h2>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
-                      <tbody>
-                        {items.map((t) => (
-                          <tr
-                            key={t.name}
-                            className="border-b border-line/70 last:border-0 hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] cursor-pointer"
-                            onClick={() => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
+            // ponytail: flat list, latest-modified first; project shown per-row (no grouping)
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <tbody>
+                  {visible.map((t) => (
+                    <tr
+                      key={t.name}
+                      className="border-b border-line/70 last:border-0 hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] cursor-pointer"
+                      onClick={() => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
+                    >
+                      <td className="px-2 py-2 w-8" onClick={(e) => e.stopPropagation()}>
+                        {t.can_advance && (
+                          <button
+                            onClick={() => toggle(t.name)}
+                            aria-label="Select task"
+                            className="flex items-center text-muted"
                           >
-                            <td className="px-3 py-2 font-medium text-ink">{t.to_do}</td>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center gap-2">
-                                <Avatar
-                                  name={t.assigned_to_name}
-                                  image={t.assigned_to_image ?? undefined}
-                                  config={t.assigned_to_avatar_config}
-                                  size={24}
-                                />
-                                <span className="whitespace-nowrap text-muted">{t.assigned_to_name}</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-muted">
-                              {formatDate(t.deadline ?? null)}
-                            </td>
-                            <td
-                              className="px-3 py-2 text-right"
-                              onClick={(e) => e.stopPropagation()}
+                            {selected.has(t.name) ? (
+                              <CheckSquare className="w-5 h-5 text-brand-600" />
+                            ) : (
+                              <Square className="w-5 h-5" />
+                            )}
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-ink">{t.to_do}</div>
+                        <div className="text-xs text-muted truncate">{t.project_name}</div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar
+                            name={t.assigned_to_name}
+                            image={t.assigned_to_image ?? undefined}
+                            config={t.assigned_to_avatar_config}
+                            size={24}
+                          />
+                          <span className="whitespace-nowrap text-muted">{t.assigned_to_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-muted">
+                        {formatDate(t.deadline ?? null)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          {t.can_reject && (
+                            <button
+                              onClick={() => reject(t)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/40 text-rose-600 dark:text-rose-400 text-xs font-medium hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
                             >
-                              <div className="flex items-center justify-end gap-1.5">
-                                {t.can_reject && (
-                                  <button
-                                    onClick={() => reject(t)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/40 text-rose-600 dark:text-rose-400 text-xs font-medium hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-                                  >
-                                    <X className="w-3 h-3" />
-                                    Reject
-                                  </button>
-                                )}
-                                {t.can_advance && (
-                                  <button
-                                    onClick={() => approve(t)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
-                                  >
-                                    <Check className="w-3 h-3" />
-                                    {t.next_status_label || 'Approve'}
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              ))}
+                              <X className="w-3 h-3" />
+                              Reject
+                            </button>
+                          )}
+                          {t.can_advance && (
+                            <button
+                              onClick={() => approve(t)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
+                            >
+                              <Check className="w-3 h-3" />
+                              {t.next_status_label || 'Approve'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </BentoTile>
       </BentoGrid>
+
+      {confirmMode && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeConfirm}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-surface p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="font-medium text-ink">
+              {confirmMode === 'reject' ? 'Reject' : 'Approve'} {selected.size} task{selected.size > 1 ? 's' : ''}?
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {confirmMode === 'reject'
+                ? 'Each goes back to the assignee. No points are earned.'
+                : 'Each advances one step.'}
+            </p>
+            {confirmMode === 'reject' && (
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                autoFocus
+                placeholder="Why are these rejected? (applies to all)"
+                className="mt-3 w-full resize-none rounded-lg border border-line bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-rose-400"
+              />
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={closeConfirm}
+                className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={runBulk}
+                disabled={busy || (confirmMode === 'reject' && !reason.trim())}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50 ${
+                  confirmMode === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-600 hover:bg-brand-700'
+                }`}
+              >
+                {busy
+                  ? confirmMode === 'reject'
+                    ? 'Rejecting…'
+                    : 'Approving…'
+                  : `${confirmMode === 'reject' ? 'Reject' : 'Approve'} ${selected.size}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Page>
   )
 }

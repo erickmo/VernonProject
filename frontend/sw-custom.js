@@ -3,7 +3,9 @@
 // controls the app. Uses only absolute URLs + runtime caching, so it works
 // regardless of where the script itself is served from.
 
-const ASSET_CACHE = 'vernon-assets-v9'
+// v10: bumped to evict a poisoned 0-byte bundle entry a CDN edge cached during a
+// same-hash rebuild; the old cache is dropped on activate so assets re-fetch fresh.
+const ASSET_CACHE = 'vernon-assets-v10'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
@@ -29,6 +31,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
+
+  // version.json is the update-detection probe — never cache it, always hit network.
+  if (url.pathname.endsWith('version.json')) return
 
   // Built app assets (JS/CSS/icons): cache-first — they are content-hashed.
   if (url.pathname.startsWith(ASSET_PREFIX)) {

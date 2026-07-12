@@ -47,26 +47,26 @@ export function PlanDayDrawer({
     >
       {/* Progress */}
       <div className="mb-3">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between text-xs font-medium text-muted dark:text-slate-400">
           <span>Planned today</span>
           <span>
             <span className="font-bold text-brand-600 dark:text-brand-400">{formatEstimate(plan.total)}</span> /{' '}
             {formatEstimate(DAILY_TARGET_MIN)}
           </span>
         </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div className="mt-1 h-2 overflow-hidden rounded-full bg-canvas">
           <div className="h-full rounded-full bg-brand-500 transition-[width] duration-300" style={{ width: `${pct * 100}%` }} />
         </div>
       </div>
 
       {/* Search */}
-      <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 dark:bg-slate-800">
-        <Search className="h-4 w-4 shrink-0 text-slate-400" />
+      <div className="mb-3 flex items-center gap-2 rounded-xl bg-canvas px-3 py-2">
+        <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
           value={plan.query}
           onChange={(e) => plan.setQuery(e.target.value)}
           placeholder="Search tasks…"
-          className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100"
+          className="w-full bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none dark:text-slate-100"
         />
       </div>
 

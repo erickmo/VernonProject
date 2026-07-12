@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3 } from 'lucide-react'
+import { ChevronRight, BarChart3, AlarmClock } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 
@@ -10,12 +10,26 @@ export default function Reports() {
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Reports</h1>
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="slate" icon={BarChart3}>
+        <BentoTile span="sm" tone="tint" accent="brand" icon={BarChart3}>
           <BentoStat value={REPORTS.length} label="reports" />
         </BentoTile>
 
         <BentoTile span="full" tone="plain">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {/* Bespoke report: its own screen, not the generic /report/:name engine. */}
+            <button
+              onClick={() => navigate('/reports/todos-due')}
+              className="flex w-full items-center gap-3 rounded-lg bg-canvas p-4 text-left transition hover:bg-hover/[0.04]"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white">
+                <AlarmClock className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-ink">Todos Due</p>
+                <p className="truncate text-xs text-muted">Open todos to chase across projects you own, lead, or admin</p>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted dark:text-slate-600" />
+            </button>
             {REPORTS.map((r) => {
               const Icon = r.icon
               return (
@@ -33,7 +47,7 @@ export default function Reports() {
                     <p className="font-semibold text-ink">{r.title}</p>
                     <p className="truncate text-xs text-muted">{r.desc}</p>
                   </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted dark:text-slate-600" />
                 </button>
               )
             })}

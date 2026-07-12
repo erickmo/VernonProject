@@ -83,7 +83,7 @@ export default function Equipment() {
         <BentoTile
           span="sm"
           tone="tint"
-          accent="slate"
+          accent="brand"
           actions={
             <button
               onClick={() => navigate('/equipment/new')}

@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { mobileApi } from '@/lib/api'
@@ -14,8 +15,10 @@ import {
   useUsers,
   useCreateUser,
   useResetUserPassword,
+  useDeleteUser,
   useSetUserPassword,
   useImpersonate,
+  useBoot,
   VERNON_ROLE_OPTIONS,
   MEMBER_TYPE_OPTIONS,
   keys,
@@ -45,8 +48,10 @@ export default function UserForm() {
     onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
   })
   const resetPw = useResetUserPassword()
+  const del = useDeleteUser()
   const setPw = useSetUserPassword()
   const impersonate = useImpersonate()
+  const { data: boot } = useBoot()
 
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
@@ -209,6 +214,26 @@ export default function UserForm() {
     }
   }
 
+  // Hide Delete for your own account; the server also blocks self/protected and
+  // refuses (link error) while the user is still assigned to a project or task.
+  const canDelete = isEdit && !!existing && existing.name !== boot?.user
+
+  async function onDelete() {
+    const ok = await confirm({
+      title: 'Delete user?',
+      message: `Permanently delete ${name}? This cannot be undone. It is blocked automatically if they are still assigned to any project or task.`,
+      confirmLabel: 'Delete',
+    })
+    if (!ok) return
+    try {
+      await del.mutateAsync(name as string)
+      toast('success', 'User deleted')
+      navigate('/users', { replace: true })
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Delete failed')
+    }
+  }
+
   if (isEdit && isLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -334,7 +359,7 @@ export default function UserForm() {
             {isEdit && (
               <div>
                 <span className="text-xs text-muted">Status</span>
-                <p className={`font-medium ${enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                <p className={`font-medium ${enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted'}`}>
                   {enabled ? 'Enabled' : 'Disabled'}
                 </p>
               </div>
@@ -360,28 +385,21 @@ export default function UserForm() {
 
             <Field label="Member type">
               {(id) => (
-                <select
+                <SearchableSelect
                   id={id}
                   value={memberType}
-                  onChange={(e) => {
-                    setMemberType(e.target.value)
+                  onChange={(v) => {
+                    setMemberType(v)
                     setDirty(true)
                   }}
-                  className={field}
-                >
-                  <option value="">External / none</option>
-                  {MEMBER_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  options={[{ value: '', label: 'External / none' }, ...MEMBER_TYPE_OPTIONS]}
+                />
               )}
             </Field>
 
             {!isEdit && (
               <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
-                <span className="text-sm text-slate-700 dark:text-slate-200">Send welcome email</span>
+                <span className="text-sm text-ink">Send welcome email</span>
                 <input
                   type="checkbox"
                   checked={sendWelcome}
@@ -396,7 +414,7 @@ export default function UserForm() {
 
             {isEdit && (
               <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
-                <span className="text-sm text-slate-700 dark:text-slate-200">Account enabled</span>
+                <span className="text-sm text-ink">Account enabled</span>
                 <input
                   type="checkbox"
                   checked={enabled}
@@ -463,13 +481,18 @@ export default function UserForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
               <Field label="Employment status">
                 {(id) => (
-                  <select id={id} value={employmentStatus} onChange={(e) => { setEmploymentStatus(e.target.value); setDirty(true) }} className={field}>
-                    <option value="">— select —</option>
-                    <option value="Permanent">Permanent</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Probation">Probation</option>
-                    <option value="Intern">Intern</option>
-                  </select>
+                  <SearchableSelect
+                    id={id}
+                    value={employmentStatus}
+                    onChange={(v) => { setEmploymentStatus(v); setDirty(true) }}
+                    placeholder="— select —"
+                    options={[
+                      { value: 'Permanent', label: 'Permanent' },
+                      { value: 'Contract', label: 'Contract' },
+                      { value: 'Probation', label: 'Probation' },
+                      { value: 'Intern', label: 'Intern' },
+                    ]}
+                  />
                 )}
               </Field>
               <Field label="Job title">
@@ -560,7 +583,7 @@ export default function UserForm() {
                 type="button"
                 onClick={onResetPassword}
                 disabled={resetPw.isPending}
-                className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink hover:bg-hover/[0.04] disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
               >
                 {resetPw.isPending ? 'Sending…' : 'Send password reset email'}
               </button>
@@ -580,13 +603,23 @@ export default function UserForm() {
                       type="button"
                       onClick={onSetPassword}
                       disabled={!newPassword || setPw.isPending}
-                      className="shrink-0 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                      className="shrink-0 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-hover/[0.04] disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
                     >
                       {setPw.isPending ? 'Setting…' : 'Set password'}
                     </button>
                   </div>
                 )}
               </Field>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={del.isPending}
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 dark:hover:bg-rose-500/25 transition-colors"
+                >
+                  {del.isPending ? 'Deleting…' : 'Delete user'}
+                </button>
+              )}
             </div>
           </BentoTile>
         )}

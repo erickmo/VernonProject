@@ -20,11 +20,15 @@ import {
   Flame,
   Coffee,
   Sparkles,
+  Wand2,
   Star,
   ArrowUpRight,
   Trophy,
   Ticket,
   BookOpen,
+  Search,
+  X,
+  AlertTriangle,
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
@@ -37,15 +41,17 @@ import type { AvatarConfig } from '@/lib/types'
 import { NotesButton } from '@/components/NotesButton'
 import { RecapCard } from '@/components/RecapCard'
 import { PlanDaySheet } from '@/components/PlanDaySheet'
-import { Fab } from '@/components/Fab'
-import { QuickAddSheet, type QuickAddMode } from '@/components/QuickAddSheet'
+import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
-import { useBoot, useDashboard, useProjects, useWallet, useHomeBanners, useDailyVerse } from '@/hooks/useData'
+import { useBoot, useDashboard, useProjects, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings } from '@/hooks/useData'
+import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
+import { MeetingSheet } from '@/components/MeetingSheet'
+import type { MeetingListItem } from '@/lib/types'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { focusedFirst } from '@/lib/planDay'
-import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
+import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS, matchProjectItem } from '@/lib/filters'
 import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
 import type { ProjectCard as ProjectCardType, StatusKey, ProjectItem } from '@/lib/types'
 
@@ -54,6 +60,16 @@ function greeting() {
   if (h < 12) return 'Good morning'
   if (h < 18) return 'Good afternoon'
   return 'Good evening'
+}
+
+// Friendly label for the shortfall banner's day (ISO 'YYYY-MM-DD').
+function shortfallDateLabel(iso: string | null) {
+  if (!iso) return 'Your last shift'
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function Ring({ pct }: { pct: number }) {
@@ -184,10 +200,16 @@ export default function Today() {
   const { data: projects } = useProjects()
   const { data: wallet } = useWallet()
   const { data: banners } = useHomeBanners()
+  const { data: shortfall } = usePreviousShiftShortfall()
+  const { data: meetingsData } = useMeetings()
+  const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
   const [lens, setLens] = useState<Lens>('me')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  // Free-text search over the to-do lists (all axes), matched on todo text + project.
+  const [query, setQuery] = useState('')
   const [sheet, setSheet] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
+  const autoFill = useAutoFillPlan()
   // Quick-action "Plan day" tile can only navigate, so it lands here with
   // ?plan=1 — open the sheet and strip the param so re-tapping works.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -197,7 +219,6 @@ export default function Today() {
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, setSearchParams])
-  const [quickAdd, setQuickAdd] = useState<QuickAddMode | null>(null)
   // Home work view: axis (Plan/Deadline/Waiting) + sub-tab within Plan/Deadline,
   // plus an optional specific day for the Plan date-picker (ISO yyyy-mm-dd).
   const [axis, setAxis] = useState<Axis>('plan')
@@ -287,6 +308,8 @@ export default function Today() {
   // Plan view groups by allocation date: today / past (slipped, still planned) /
   // upcoming. A todo allocated across several days appears under each it touches.
   const todayStr = todayISO()
+  // next 5 un-done meetings (today or later) → vibrant top reminder
+  const upcoming = upcomingMeetings(meetingsData?.meetings ?? [])
   const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
     (t.allocations ?? []).some((a) => a.date != null && pred(a.date))
   // Mutually exclusive buckets, precedence Today > Past > Upcoming — a todo
@@ -324,19 +347,53 @@ export default function Today() {
     return [...byId.values()]
   }, [data])
 
-  // Shared list renderer: cards, or a contextual empty state.
-  const renderList = (list: ProjectItem[], emptyTitle: string) =>
-    list.length ? (
+  // Silent auto-plan toward the daily minimum (same logic as Auto-plan button).
+  useAutoPlanToday({ due_today: data?.due_today, overdue: data?.overdue, upcoming: data?.upcoming })
+
+  // Shared list renderer: cards, or a contextual empty state. Applies the
+  // free-text search (todo text + project) so every axis is searchable at once.
+  const renderList = (list: ProjectItem[], emptyTitle: string) => {
+    const q = query.trim().toLowerCase()
+    const shown = list.filter((t) => matchProjectItem(t, query))
+    return shown.length ? (
       <div className="mt-3 flex flex-col gap-3">
-        {list.map((t) => (
+        {shown.map((t) => (
           <TodoCard key={t.name} todo={t} />
         ))}
       </div>
+    ) : q ? (
+      <EmptyState icon={SearchX} title={`No matches for "${query.trim()}"`} subtitle="Try a different search." />
     ) : activeTodos.length || waitingTodos.length ? (
       <EmptyState icon={SearchX} title={emptyTitle} subtitle="Peek at another tab, or clear the filters." />
     ) : (
       <EmptyState icon={PartyPopper} title="All caught up!" subtitle="Nothing on your plate right now. Go you." />
     )
+  }
+
+  // Search box — rendered under each axis' sub-tab row so it sits directly above
+  // the list it filters. Defined once, placed per axis.
+  const searchBox = (
+    <div className="relative mt-3">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search to-dos…"
+        aria-label="Search to-dos"
+        className="w-full rounded-2xl border border-paper-edge bg-paper-card py-2.5 pl-9 pr-9 text-sm text-stone-800 placeholder:text-stone-400 focus:border-brand-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+      />
+      {query && (
+        <button
+          onClick={() => setQuery('')}
+          aria-label="Clear search"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 active:scale-90 dark:text-slate-500"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
 
   const right = boot ? (
     <div className="flex items-center gap-1">
@@ -439,6 +496,36 @@ export default function Today() {
               {/* Managed promo banners — full-bleed strip, flush to the top. */}
               <BannerCarousel slides={banners ?? []} />
 
+              {/* DANGER: last shift day fell below the daily-minimum minutes setting. */}
+              {shortfall?.under && (
+                <div
+                  role="alert"
+                  className="mt-4 flex items-start gap-3 rounded-2xl border-2 border-rose-300 bg-gradient-to-br from-rose-600 to-red-700 p-4 text-white shadow-[0_12px_32px_-8px_rgba(225,29,72,0.75)] ring-2 ring-rose-500/50"
+                >
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 animate-pulse items-center justify-center rounded-full bg-white/20">
+                    <AlertTriangle className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-extrabold uppercase tracking-wide">Daily minimum missed</p>
+                    <p className="mt-0.5 text-sm font-medium text-rose-50">
+                      {shortfallDateLabel(shortfall.date)}: you planned only{' '}
+                      <span className="font-bold">{formatEstimate(shortfall.assigned)}</span> of the{' '}
+                      <span className="font-bold">{formatEstimate(shortfall.minimum)}</span> minimum —{' '}
+                      <span className="font-bold">{formatEstimate(shortfall.minimum - shortfall.assigned)} short</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Vibrant meeting reminder — impossible to miss when meetings are on today */}
+              <div className={clsx((banners?.length ?? 0) > 0 && 'mt-4')}>
+                <MeetingReminder
+                  meetings={upcoming}
+                  onOpen={() => navigate('/meetings')}
+                  onOpenMeeting={setOpenMeeting}
+                />
+              </div>
+
               {/* Rotating spotlight hero — auto-cycles the most relevant nudge. */}
               <div className={clsx('mb-3', (banners?.length ?? 0) > 0 && 'mt-4')}>
                 <Spotlight slides={spotlight} />
@@ -503,23 +590,34 @@ export default function Today() {
                       />
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPlanOpen(true)}
-                    className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3.5 text-left transition active:scale-[0.99] dark:border-brand-500/30 dark:bg-brand-500/15"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
-                      <Sparkles className="h-5 w-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-brand-800 dark:text-brand-300">Plan my day</span>
-                      <span className="block text-xs text-brand-600/80 dark:text-brand-300/70">
-                        {plannedTodayMin > 0
-                          ? `${formatEstimate(plannedTodayMin)} planned for today`
-                          : "Allocate minutes to today's tasks"}
+                  <div className="mt-4 flex items-stretch gap-2">
+                    <button
+                      onClick={() => setPlanOpen(true)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3.5 text-left transition active:scale-[0.99] dark:border-brand-500/30 dark:bg-brand-500/15"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
+                        <Sparkles className="h-5 w-5" />
                       </span>
-                    </span>
-                    <ChevronRight className="h-5 w-5 text-brand-400" />
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-brand-800 dark:text-brand-300">Plan my day</span>
+                        <span className="block text-xs text-brand-600/80 dark:text-brand-300/70">
+                          {plannedTodayMin > 0
+                            ? `${formatEstimate(plannedTodayMin)} planned for today`
+                            : "Allocate minutes to today's tasks"}
+                        </span>
+                      </span>
+                      <ChevronRight className="h-5 w-5 text-brand-400" />
+                    </button>
+                    <button
+                      onClick={() => autoFill.run({ due_today: data.due_today, overdue: data.overdue, upcoming: data.upcoming })}
+                      disabled={autoFill.saving}
+                      aria-label="Auto-plan my day"
+                      className="flex w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-brand-200 bg-paper-card text-brand-700 transition active:scale-95 disabled:opacity-50 dark:border-brand-500/30 dark:bg-slate-800 dark:text-brand-300"
+                    >
+                      <Wand2 className={clsx('h-5 w-5', autoFill.saving && 'animate-pulse')} />
+                      <span className="text-[11px] font-semibold">{autoFill.saving ? 'Planning…' : 'Auto-plan'}</span>
+                    </button>
+                  </div>
                   <div id="today-groups" className="mt-5 scroll-mt-4">
                     {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) */}
                     <PillTabs<Axis>
@@ -573,6 +671,8 @@ export default function Today() {
                           </label>
                         </div>
 
+                        {searchBox}
+
                         {pickedDate ? (
                           <p className="mt-4 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                             <CalendarDays className="h-3.5 w-3.5 text-brand-500" />
@@ -608,6 +708,7 @@ export default function Today() {
                             onChange={setDeadlineSub}
                           />
                         </div>
+                        {searchBox}
                         {renderList(
                           deadlineSub === 'today' ? filtered.due_today : deadlineSub === 'overdue' ? filtered.overdue : filtered.upcoming,
                           deadlineSub === 'overdue' ? 'Nothing overdue' : deadlineSub === 'today' ? 'Nothing due today' : 'Nothing upcoming',
@@ -615,7 +716,12 @@ export default function Today() {
                       </>
                     )}
 
-                    {axis === 'waiting' && renderList(waitingTodos, 'Nothing waiting')}
+                    {axis === 'waiting' && (
+                      <>
+                        {searchBox}
+                        {renderList(waitingTodos, 'Nothing waiting')}
+                      </>
+                    )}
                   </div>
                 </>
               )}
@@ -667,9 +773,7 @@ export default function Today() {
       />
 
       {planOpen && <PlanDaySheet todos={planCandidates} onClose={() => setPlanOpen(false)} />}
-
-      <Fab onTap={() => setQuickAdd('task')} onLongPress={() => setQuickAdd('note')} />
-      <QuickAddSheet open={quickAdd !== null} mode={quickAdd ?? 'task'} onClose={() => setQuickAdd(null)} />
+      <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} />
     </TabScreen>
   )
 }

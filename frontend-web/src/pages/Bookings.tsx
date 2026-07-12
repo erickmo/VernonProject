@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock } from 'lucide-react'
-import { Spinner } from '@/components/ui'
+import { Spinner, EmptyState } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { useBookings, useCancelBooking, useBoot } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
@@ -67,6 +67,7 @@ export default function Bookings() {
           },
         ]}
         getKey={(b: Booking) => b.name}
+        empty={<EmptyState icon={CalendarClock} title="No bookings yet" subtitle="Click New to create one." />}
       />
     </Page>
   )

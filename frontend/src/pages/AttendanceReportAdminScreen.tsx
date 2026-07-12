@@ -84,9 +84,13 @@ export default function AttendanceReportAdminScreen() {
             />
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300">Status
-            <select className={field} value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s || 'All statuses'}</option>)}
-            </select>
+            <SearchableSelect
+              value={status}
+              onChange={(v) => setStatus(v)}
+              options={STATUSES.filter(Boolean).map((s) => ({ value: s, label: s }))}
+              placeholder="All statuses"
+              allowClear
+            />
           </label>
           <button
             onClick={downloadCsv}

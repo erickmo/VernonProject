@@ -51,7 +51,7 @@ export default function Groups() {
       />
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="slate">
+        <BentoTile span="sm" tone="tint" accent="brand">
           <BentoStat value={list.length} label="groups" />
         </BentoTile>
 

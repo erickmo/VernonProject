@@ -87,7 +87,7 @@ def list_feedback(status=None):
 		filters=filters,
 		fields=[
 			"name", "feedback_type", "message", "status",
-			"is_anonymous", "submitted_by", "creation",
+			"is_anonymous", "submitted_by", "creation", "linked_todo",
 		],
 		order_by="creation desc",
 		limit_page_length=0,
@@ -113,6 +113,7 @@ def list_feedback(status=None):
 			else (name_map.get(r["submitted_by"]) or r["submitted_by"] or "—"),
 			"at": str(r["creation"]),
 			"at_human": _humanize_datetime(r["creation"]),
+			"linked_todo": r.get("linked_todo"),
 		}
 		for r in rows
 	]
@@ -128,4 +129,20 @@ def set_feedback_status(name, status):
 	if not frappe.db.exists("Company Feedback", name):
 		frappe.throw("Feedback not found.")
 	frappe.db.set_value("Company Feedback", name, "status", status)
+	return {"status": "ok"}
+
+
+@frappe.whitelist()
+def link_task(feedback, todo):
+	"""Admin-only. Attach a created Project Todo to a feedback row and mark it Reviewed."""
+	_require_admin()
+	if not frappe.db.exists("Company Feedback", feedback):
+		frappe.throw("Feedback not found.")
+	if not frappe.db.exists("Project Todo", todo):
+		frappe.throw("Todo not found.")
+	frappe.db.set_value(
+		"Company Feedback", feedback,
+		{"linked_todo": todo, "status": "Reviewed"},
+	)
+	frappe.db.commit()
 	return {"status": "ok"}

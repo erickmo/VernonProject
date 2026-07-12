@@ -127,7 +127,7 @@ export default function Settings() {
       </h1>
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="slate" title="Estimate Limits">
+        <BentoTile span="sm" tone="tint" accent="amber" title="Estimate Limits">
           <div className="mt-3 space-y-4">
             <Field label="Max estimated minutes (0 = no limit)">
               {(id) => (
@@ -163,7 +163,7 @@ export default function Settings() {
         <BentoTile span="md" tone="tint" accent="brand" title="Attendance">
           <div className="mt-3 space-y-4">
             <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Enable attendance</span>
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Enable attendance</span>
               <input
                 type="checkbox"
                 className="h-5 w-5 accent-brand-600"
@@ -205,7 +205,7 @@ export default function Settings() {
           </div>
         </BentoTile>
 
-        <BentoTile span="full" tone="tint" accent="slate" title="Home Banners">
+        <BentoTile span="full" tone="tint" accent="amber" title="Home Banners">
           <p className="mt-1 text-xs text-muted">
             Full-width promo banners at the top of the mobile home. Landscape images (~16:7) look best. Link is
             optional — an in-app route (<code>/events</code>) or a full URL.

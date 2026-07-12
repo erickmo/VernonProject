@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
-import { ListChecks, Plus, CalendarClock } from 'lucide-react'
+import { ListChecks, Plus, CalendarClock, List, BarChart3 } from 'lucide-react'
 import { useProjectDetail } from '@/hooks/useData'
+import { GanttChart } from '@/components/GanttChart'
+import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
 import { Spinner, EmptyState } from '@/components/ui'
 import { Button } from '@web/components/ui'
@@ -23,6 +25,7 @@ export default function ProjectDetailPane() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
+  const [view, setView] = useState<'list' | 'gantt'>('list')
 
   const detail = useProjectDetail(id, showCancelled)
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
@@ -65,6 +68,22 @@ export default function ProjectDetailPane() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex rounded-full bg-canvas p-0.5">
+            <button
+              onClick={() => setView('list')}
+              aria-pressed={view === 'list'}
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+            >
+              <List className="h-3.5 w-3.5" /> List
+            </button>
+            <button
+              onClick={() => setView('gantt')}
+              aria-pressed={view === 'gantt'}
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Gantt
+            </button>
+          </div>
           <label className="flex items-center gap-2 text-xs text-muted">
             <input
               type="checkbox"
@@ -83,7 +102,13 @@ export default function ProjectDetailPane() {
       </div>
 
       {/* Grouped todo tables */}
-      {items.length === 0 ? (
+      {view === 'gantt' ? (
+        <GanttChart
+          groups={[groupFromItems(d.title, items)]}
+          title={d.title}
+          onBarClick={(tid) => nav(`${base}/item/${encodeURIComponent(tid)}`)}
+        />
+      ) : items.length === 0 ? (
         <EmptyState icon={ListChecks} title="No todos in this detail" />
       ) : visibleItems.length === 0 ? (
         <EmptyState icon={ListChecks} title="No visible todos" />
@@ -91,7 +116,7 @@ export default function ProjectDetailPane() {
         <div className="space-y-5">
           {todoGroups.map((g) => (
             <div key={g.label}>
-              <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-muted dark:text-slate-500">
                 {g.label} ({g.rows.length})
               </p>
               <DataTable

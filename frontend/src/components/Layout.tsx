@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 import clsx from 'clsx'
 import { BottomNav } from './BottomNav'
+import { TodoSearchOverlay } from './TodoSearchOverlay'
 
 // Page shell with bottom navigation (top-level tabs).
 export function TabScreen({
@@ -16,6 +17,7 @@ export function TabScreen({
   right?: React.ReactNode
   children: React.ReactNode
 }) {
+  const [searchOpen, setSearchOpen] = useState(false)
   return (
     <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
       <header className="sticky top-0 z-20 bg-paper/95 dark:bg-slate-900 backdrop-blur-sm px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
@@ -24,11 +26,21 @@ export function TabScreen({
             <h1 className="font-display text-[1.7rem] font-semibold tracking-tight text-stone-800 dark:text-slate-50">{title}</h1>
             {subtitle && <p className="mt-0.5 text-sm text-stone-500 dark:text-slate-400">{subtitle}</p>}
           </div>
-          {right}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-200/70 dark:active:bg-slate-700"
+            >
+              <Search className="h-[22px] w-[22px]" />
+            </button>
+            {right}
+          </div>
         </div>
       </header>
       <main className="flex-1 px-4 pb-28">{children}</main>
       <BottomNav />
+      <TodoSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   )
 }

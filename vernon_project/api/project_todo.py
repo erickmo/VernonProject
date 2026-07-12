@@ -20,13 +20,15 @@ def _auto_advance(todo, project_leader, project_owner):
 	Sequential ifs (not elif) so assignee==leader==owner completes in one hop.
 	Audit stamps record the role that would have approved. Truthiness guards keep
 	empty leader/owner (None==None) from auto-completing.
+
+	The todo.auto_approve flag also clears the Owner gate (owner-trusted todo).
 	"""
 	now = frappe.utils.now()
 	if todo.status == "🟠 Done" and todo.assigned_to and todo.assigned_to == project_leader:
 		todo.status = "🔷 Checked By PL"
 		todo.tested_at = now
 		todo.tested_by = project_leader
-	if todo.status == "🔷 Checked By PL" and project_leader and project_leader == project_owner:
+	if todo.status == "🔷 Checked By PL" and project_owner and (todo.auto_approve or project_leader == project_owner):
 		todo.status = "✅ Completed"
 		todo.completed_at = now
 		todo.completed_by = project_owner
@@ -109,6 +111,76 @@ def update_status(todo_id):
 			return {"status": "error", "message": f"Todo {todo_id} does not exist."}
 	except Exception as e:
 			return {"status": "error", "message": str(e)}
+
+@frappe.whitelist()
+def bulk_update_status(todo_ids):
+	"""Advance many Project Todos one step each — bulk approve from the review queue.
+
+	Reuses the per-todo, permission-checked update_status so every item obeys the same
+	gates and mints points exactly as a single approve would. Never aborts the batch on
+	one failure: collects a per-id result and returns approved/failed counts.
+	"""
+	import json
+	ids = todo_ids if isinstance(todo_ids, (list, tuple)) else json.loads(todo_ids or "[]")
+	results = []
+	approved = 0
+	for tid in ids:
+		res = update_status(tid)
+		ok = res.get("status") != "error"
+		if ok:
+			approved += 1
+		results.append({"todo_id": tid, "ok": ok, "message": res.get("message")})
+	return {"status": "ok", "approved": approved, "failed": len(ids) - approved, "results": results}
+
+@frappe.whitelist()
+def bulk_reject_status(todo_ids, reason=None):
+	"""Reject many Project Todos with ONE shared reason — bulk reject from the review queue.
+
+	Reuses the per-todo, permission-checked reject_status so every item obeys the same
+	gates (owner/leader only, review stages only) and the assignee gets notified. Never
+	aborts the batch on one failure: collects a per-id result and returns rejected/failed
+	counts. Reason is validated once up front (reject_status re-validates per item anyway).
+	"""
+	import json
+	reason = (reason or "").strip()
+	if not reason:
+		return {"status": "error", "message": "Alasan penolakan wajib diisi."}
+	ids = todo_ids if isinstance(todo_ids, (list, tuple)) else json.loads(todo_ids or "[]")
+	results = []
+	rejected = 0
+	for tid in ids:
+		res = reject_status(tid, reason)
+		ok = res.get("status") != "error"
+		if ok:
+			rejected += 1
+		results.append({"todo_id": tid, "ok": ok, "message": res.get("message")})
+	return {"status": "ok", "rejected": rejected, "failed": len(ids) - rejected, "results": results}
+
+@frappe.whitelist()
+def set_auto_approve(todo_id, enabled):
+	"""Toggle a todo's auto_approve flag (skips the Owner review gate on advance).
+
+	Trust boundary: only the Project Owner who also holds the "Partner" role may
+	set it, so an owner opts into auto-approving their own project's todos.
+	"""
+	try:
+		todo = frappe.get_doc("Project Todo", todo_id)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
+		project = frappe.get_doc("Project", project_detail.project)
+
+		user = frappe.session.user
+		if not (user == project.project_owner and "Partner" in frappe.get_roles(user)):
+			return {"status": "error", "message": "Hanya Project Owner dengan role Partner yang bisa mengatur auto-approve."}
+
+		value = frappe.utils.cint(enabled)
+		todo.auto_approve = value
+		todo.save(ignore_permissions=True)
+		return {"status": "info", "auto_approve": value}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Todo {todo_id} does not exist."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
 def reject_status(todo_id, reason=None):
@@ -208,4 +280,91 @@ def save_notes(todo_id, notes):
 		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
 	except Exception as e:
 		return {"status": "error", "message": str(e)}
+
+
+# --------------------------------------------------------------------------------
+# File attachments — a Project Todo can hold multiple uploaded files, stored as
+# native private Frappe File docs (attached_to the todo). Kept private so
+# arbitrary file types are never served publicly. Upload/delete are gated to the
+# same people who may edit the todo (mirrors save_notes): assignee, project
+# owner, project leader, or System Manager. Frappe cascades File deletion when
+# the todo is deleted, so nothing extra is needed on trash.
+# --------------------------------------------------------------------------------
+
+MAX_TODO_FILE_BYTES = 25 * 1024 * 1024  # 25 MB
+_FILE_FIELDS = ["name", "file_name", "file_url", "file_size", "is_private", "owner", "creation"]
+
+
+def _assert_can_edit_todo(todo_id):
+	"""Gate mirroring save_notes. Returns nothing; raises PermissionError if the
+	current user is not the assignee, project owner, project leader, or a System
+	Manager."""
+	todo = frappe.get_doc("Project Todo", todo_id)
+	detail = frappe.get_doc("Project Detail", todo.project_detail)
+	project = frappe.get_doc("Project", detail.project)
+	user = frappe.session.user
+	allowed = {todo.assigned_to, project.project_owner, project.project_leader}
+	if user not in allowed and "System Manager" not in frappe.get_roles(user):
+		frappe.throw(
+			"You are not allowed to change files on this todo.",
+			frappe.PermissionError,
+		)
+
+
+@frappe.whitelist()
+def list_todo_files(todo_id):
+	"""Files attached to a Project Todo, oldest first. A user who can open the
+	todo can list its files; downloading a private file is separately enforced by
+	Frappe via attached_to permissions."""
+	frappe.get_doc("Project Todo", todo_id)  # 404 if the todo is gone
+	return frappe.get_all(
+		"File",
+		filters={"attached_to_doctype": "Project Todo", "attached_to_name": todo_id},
+		fields=_FILE_FIELDS,
+		order_by="creation asc",
+	)
+
+
+def _attach_file_to_todo(todo_id, filename, content):
+	"""Core attach: gate, size-check, save a private File linked to the todo, and
+	return its row. Split from the request handler so it is unit-testable without
+	a multipart request. save_file bypasses File-level permissions internally, so
+	the gate above is the real access control."""
+	_assert_can_edit_todo(todo_id)
+	if not filename:
+		frappe.throw("Missing file name.")
+	if len(content) > MAX_TODO_FILE_BYTES:
+		frappe.throw("File too large (max 25 MB).")
+	from frappe.utils.file_manager import save_file
+
+	f = save_file(filename, content, "Project Todo", todo_id, is_private=1)
+	return {k: f.get(k) for k in _FILE_FIELDS}
+
+
+@frappe.whitelist()
+def upload_todo_file(todo_id):
+	"""Attach an uploaded file (multipart `file`) to a Project Todo. Edit-gated;
+	stored private. Returns the saved file row."""
+	f = frappe.request.files.get("file")
+	if not f:
+		frappe.throw("No file uploaded")
+	row = _attach_file_to_todo(todo_id, f.filename, f.stream.read())
+	frappe.db.commit()
+	return row
+
+
+@frappe.whitelist()
+def delete_todo_file(todo_id, file_name):
+	"""Detach + delete a File from a Project Todo. Edit-gated. Verifies the File
+	is actually attached to THIS todo first, so a caller cannot delete an
+	unrelated File by name."""
+	_assert_can_edit_todo(todo_id)
+	ref = frappe.db.get_value(
+		"File", file_name, ["attached_to_doctype", "attached_to_name"], as_dict=True
+	)
+	if not ref or ref.attached_to_doctype != "Project Todo" or ref.attached_to_name != todo_id:
+		frappe.throw("File is not attached to this todo.")
+	frappe.delete_doc("File", file_name, ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok"}
 

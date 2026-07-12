@@ -1,13 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { useAdvanceStatus } from '@/hooks/useData'
+import { stopTimer } from '@/hooks/useFocusTimer'
 import { Spinner } from './ui'
 
 // Opens a confirm dialog for a Project Todo status advance. After a successful
 // advance, if the SAME user is permitted to advance again, the dialog stays open
 // and relabels to the next step so consecutive approvals chain in one session.
 // Otherwise the dialog closes. On error it stays open and shows the message.
-type AdvanceFn = (todoId: string, label: string, title?: string) => void
+// onAdvanced (optional) fires once per successful advance — e.g. the focus
+// overlay stops its timer + exits focus mode when its task is marked done.
+type AdvanceFn = (todoId: string, label: string, title?: string, onAdvanced?: () => void) => void
 
 const AdvanceCtx = createContext<AdvanceFn>(() => {})
 export const useAdvance = () => useContext(AdvanceCtx)
@@ -16,6 +19,7 @@ interface State {
   todoId: string
   label: string // current step's action label, e.g. "Approve (Leader)"
   title: string // task title, shown for context
+  onAdvanced?: () => void // called after each successful advance
 }
 
 export function AdvanceProvider({ children }: { children: React.ReactNode }) {
@@ -23,9 +27,9 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const advance = useAdvanceStatus()
 
-  const open = useCallback<AdvanceFn>((todoId, label, title = '') => {
+  const open = useCallback<AdvanceFn>((todoId, label, title = '', onAdvanced) => {
     setError(null)
-    setState({ todoId, label, title })
+    setState({ todoId, label, title, onAdvanced })
   }, [])
 
   const close = useCallback(() => {
@@ -39,6 +43,11 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     try {
       const res = await advance.mutateAsync(state.todoId)
+      // Done → drop its focus timer (clears the /m FAB badge + /w dock, both
+      // derive from the shared store). Any where the todo is marked done routes
+      // through here, so this covers the card, list, detail and overlay alike.
+      if (res.status_key === 'completed') stopTimer(state.todoId)
+      state.onAdvanced?.()
       if (res.can_advance && res.next_status_label) {
         // chain: relabel and keep the dialog open for the next step
         const nextLabel = res.next_status_label

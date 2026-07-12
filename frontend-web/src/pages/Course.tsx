@@ -71,7 +71,7 @@ export default function Course() {
             />
           </div>
           <span className="shrink-0 text-sm font-medium tabular-nums text-muted">
-            {enrollment.progress_pct}%
+            {enrollment.progress_pct}% complete
           </span>
         </div>
       )}

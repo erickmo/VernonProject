@@ -94,7 +94,7 @@ export default function RewardForm() {
       <div className="space-y-5 max-w-2xl">
         <Link
           to="/marketplace-admin"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink dark:hover:text-slate-300"
         >
           <ArrowLeft className="h-4 w-4" /> Marketplace Admin
         </Link>
@@ -196,7 +196,7 @@ export default function RewardForm() {
         <Link
           to="/marketplace-admin"
           onClick={onBack}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink dark:hover:text-slate-300"
         >
           <ArrowLeft className="h-4 w-4" /> Marketplace Admin
         </Link>
@@ -258,7 +258,7 @@ export default function RewardForm() {
             </div>
 
             <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Active</span>
+              <span className="text-sm font-medium text-ink dark:text-slate-200">Active</span>
               <input
                 type="checkbox"
                 className="h-5 w-5 accent-brand-600"
@@ -349,7 +349,7 @@ export default function RewardForm() {
                 className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
                   form.active === 1
                     ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300'
-                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    : 'bg-canvas text-muted dark:text-slate-400'
                 }`}
               >
                 {form.active === 1 ? 'Active' : 'Inactive'} · {formatNumber(form.stock_quantity)} in stock

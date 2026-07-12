@@ -3,6 +3,7 @@ import { Phone, MapPin, CalendarDays, Award, BookOpen, ClipboardList, Trash2, Pl
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useBoot, useSaveMyProfile } from '@/hooks/useData'
 import type { EmployeeChildSkill, EmployeeChildEducation, EmployeeChildTraining } from '@/lib/types'
 
@@ -12,7 +13,7 @@ const INPUT_CLS =
 const PROFICIENCIES = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
 const EDU_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3']
 const RELIGIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
-const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik'])
+const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
 
 export default function MyInfoScreen() {
   const { data: boot } = useBoot()
@@ -123,10 +124,8 @@ export default function MyInfoScreen() {
 
         <label className="flex flex-col gap-1 text-sm font-medium text-stone-600 dark:text-slate-300">
           <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" /> Agama</span>
-          <select value={religion} onChange={(e) => setReligion(e.target.value)} className={INPUT_CLS}>
-            <option value="">— Pilih —</option>
-            {RELIGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <SearchableSelect value={religion} onChange={(v) => setReligion(v)} placeholder="— Pilih —"
+            options={RELIGIONS.map((r) => ({ value: r, label: r }))} />
         </label>
 
         {VERSE_SUPPORTED.has(religion) ? (
@@ -188,13 +187,11 @@ export default function MyInfoScreen() {
                   className={INPUT_CLS.replace('w-full', 'flex-1')}
                   placeholder="Skill name"
                 />
-                <select
+                <SearchableSelect
                   value={sk.proficiency ?? 'Intermediate'}
-                  onChange={(e) => setSkills((s) => s.map((x, j) => j === i ? { ...x, proficiency: e.target.value } : x))}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-brand-400"
-                >
-                  {PROFICIENCIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                  onChange={(v) => setSkills((s) => s.map((x, j) => j === i ? { ...x, proficiency: v } : x))}
+                  options={PROFICIENCIES.map((p) => ({ value: p, label: p }))}
+                />
                 <button
                   type="button"
                   onClick={() => setSkills((s) => s.filter((_, j) => j !== i))}
@@ -228,14 +225,12 @@ export default function MyInfoScreen() {
             {education.map((ed, i) => (
               <div key={i} className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
                 <div className="flex items-center gap-2">
-                  <select
+                  <SearchableSelect
                     value={ed.level ?? ''}
-                    onChange={(e) => setEducation((s) => s.map((x, j) => j === i ? { ...x, level: e.target.value } : x))}
-                    className={INPUT_CLS.replace('w-full', 'flex-1')}
-                  >
-                    <option value="">Level</option>
-                    {EDU_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
-                  </select>
+                    onChange={(v) => setEducation((s) => s.map((x, j) => j === i ? { ...x, level: v } : x))}
+                    placeholder="Level"
+                    options={EDU_LEVELS.map((l) => ({ value: l, label: l }))}
+                  />
                   <button
                     type="button"
                     onClick={() => setEducation((s) => s.filter((_, j) => j !== i))}

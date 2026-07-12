@@ -978,6 +978,115 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		self.assertFalse(todo.waiting_since)
 
 
+class TestProjectTodoFiles(FrappeTestCase):
+	"""Multiple file attachments on a Project Todo via native Frappe File
+	attachments. Edit gate mirrors save_notes: assignee / owner / leader / SM."""
+
+	def setUp(self):
+		if not frappe.db.exists("Brand", "Test Customer Files"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Files"}).insert(ignore_permissions=True)
+		self.assignee = "todofiles_user@example.com"
+		self.other = "todofiles_other@example.com"
+		for email, fn in ((self.assignee, "TodoFiles"), (self.other, "OtherFiles")):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn, "send_welcome_email": 0}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": "Todo Files Test Project",
+			"brand": "Test Customer Files",
+			"project_owner": "Administrator",
+			"project_leader": "Administrator",
+			"status": "Ongoing",
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}, {"user": self.assignee}, {"user": self.other}],
+		}).insert(ignore_permissions=True)
+		self.group, self.level_id = _ensure_test_group()
+		grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Todo Files Grouping", "project": self.project.name}).insert(ignore_permissions=True)
+		self.grouping_name = grouping.name
+		self.project_detail = frappe.get_doc({
+			"doctype": "Project Detail",
+			"project": self.project.name,
+			"title": "Todo Files Detail",
+			"grouping": grouping.name,
+			"project_deadline": add_days(nowdate(), 30),
+			"estimated": 60,
+		}).insert(ignore_permissions=True)
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail.name,
+			"to_do": "Todo with files",
+			"assigned_to": self.assignee,
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 5),
+			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for fn in frappe.get_all("File", filters={"attached_to_doctype": "Project Todo", "attached_to_name": self.todo.name}, pluck="name"):
+			frappe.delete_doc("File", fn, force=True, ignore_permissions=True)
+		for name in frappe.get_all("Project Todo", filters={"project_detail": self.project_detail.name}, pluck="name"):
+			frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
+			frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project Detail", self.project_detail.name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Glossary", self.grouping_name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_attach_lists_multiple_private_files(self):
+		"""A todo can hold several files; all stored private and listed oldest-first."""
+		from vernon_project.api.project_todo import _attach_file_to_todo, list_todo_files
+		_attach_file_to_todo(self.todo.name, "alpha.txt", b"alpha-bytes")
+		_attach_file_to_todo(self.todo.name, "beta.txt", b"beta-bytes")
+		rows = list_todo_files(self.todo.name)
+		self.assertEqual(len(rows), 2, "both files should be attached to the todo")
+		self.assertTrue(all(r["is_private"] for r in rows), "todo files must be private")
+		self.assertTrue(all(r["file_url"].startswith("/private/files/") for r in rows))
+
+	def test_assignee_can_attach(self):
+		"""Assignee (read-only Team role) may attach — matches save_notes gate."""
+		from vernon_project.api.project_todo import _attach_file_to_todo, list_todo_files
+		frappe.set_user(self.assignee)
+		try:
+			_attach_file_to_todo(self.todo.name, "mine.txt", b"x")
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(len(list_todo_files(self.todo.name)), 1)
+
+	def test_delete_removes_file(self):
+		from vernon_project.api.project_todo import _attach_file_to_todo, list_todo_files, delete_todo_file
+		row = _attach_file_to_todo(self.todo.name, "gone.txt", b"bye")
+		delete_todo_file(self.todo.name, row["name"])
+		self.assertEqual(list_todo_files(self.todo.name), [])
+
+	def test_non_editor_cannot_attach_or_delete(self):
+		"""A plain team member (not assignee/owner/leader/SM) is rejected."""
+		from vernon_project.api.project_todo import _attach_file_to_todo, delete_todo_file
+		row = _attach_file_to_todo(self.todo.name, "admin.txt", b"a")  # as Administrator
+		frappe.set_user(self.other)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				_attach_file_to_todo(self.todo.name, "sneaky.txt", b"s")
+			with self.assertRaises(frappe.PermissionError):
+				delete_todo_file(self.todo.name, row["name"])
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_delete_rejects_file_not_attached_to_this_todo(self):
+		"""Cross-doc guard: deleting a File attached elsewhere must fail, file survives."""
+		from frappe.utils.file_manager import save_file
+		from vernon_project.api.project_todo import delete_todo_file
+		foreign = save_file("foreign.txt", b"f", "Project Detail", self.project_detail.name, is_private=1)
+		with self.assertRaises(frappe.ValidationError):
+			delete_todo_file(self.todo.name, foreign.name)
+		self.assertTrue(frappe.db.exists("File", foreign.name), "foreign file must not be deleted")
+		frappe.delete_doc("File", foreign.name, force=True, ignore_permissions=True)
+
+
 def run_tests():
 	"""Helper function to run all tests"""
 	loader = unittest.TestLoader()
@@ -985,6 +1094,7 @@ def run_tests():
 
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodo))
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodoPhaseTracking))
+	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodoFiles))
 
 	runner = unittest.TextTestRunner(verbosity=2)
 	result = runner.run(suite)

@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import type {
   AppSettings,
@@ -221,6 +221,39 @@ export function useAdvanceStatus() {
   })
 }
 
+// Advance many todos one step each (bulk approve). The server loops the per-todo
+// permission-checked advance in ONE request; invalidate the same queries once.
+export function useBulkAdvance() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (todoIds: string[]) => mobileApi.bulkAdvance(todoIds),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+// Reject many todos under review with one shared reason (bulk reject). Mirrors
+// useBulkAdvance; invalidates the same queries so review queues refresh once.
+export function useBulkReject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ todoIds, reason }: { todoIds: string[]; reason: string }) =>
+      mobileApi.bulkReject(todoIds, reason),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
 // Reject a todo under review, bouncing it back to Planned with a required
 // reason. Invalidates the same queries as an advance so review queues refresh.
 export function useRejectStatus() {
@@ -228,6 +261,26 @@ export function useRejectStatus() {
   return useMutation({
     mutationFn: async ({ todoId, reason }: { todoId: string; reason: string }) => {
       const res = await mobileApi.rejectStatus(todoId, reason)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+// Owner-only auto-approve toggle. Skips the owner approval gate at "Checked By
+// PL". Invalidates the same queries as an advance so the detail/review refresh.
+export function useSetAutoApprove() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ todoId, enabled }: { todoId: string; enabled: 0 | 1 }) => {
+      const res = await mobileApi.setAutoApprove(todoId, enabled)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
@@ -395,6 +448,28 @@ export function useSaveNotes(todoId: string) {
     mutationFn: async (notes: string) => {
       const res = await mobileApi.saveNotes(todoId, notes)
       if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.projectItem(todoId) }),
+  })
+}
+
+// Upload one file, attaching it to the todo. Refreshes the detail so the new
+// file appears in the list. Caller uploads each selected file in turn.
+export function useUploadTodoFile(todoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => uploadTodoFile(todoId, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.projectItem(todoId) }),
+  })
+}
+
+export function useDeleteTodoFile(todoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (fileName: string) => {
+      const res = await mobileApi.deleteTodoFile(todoId, fileName)
+      if (res.status !== 'ok') throw new Error('Delete failed')
       return res
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.projectItem(todoId) }),
@@ -1134,12 +1209,27 @@ export function useHomeBanners() {
   return useQuery({ queryKey: ['home-banners'], queryFn: () => mobileApi.getHomeBanners() })
 }
 
+export function usePreviousShiftShortfall() {
+  return useQuery({
+    queryKey: ['previous-shift-shortfall'],
+    queryFn: () => mobileApi.previousShiftShortfall(),
+  })
+}
+
 export function useNotifications() {
   return useQuery({
     queryKey: keys.notifications,
     queryFn: () => mobileApi.getNotifications(30),
     refetchInterval: 30_000,
     refetchIntervalInBackground: true,
+  })
+}
+
+export function useAppReleases(platform?: string) {
+  return useQuery({
+    queryKey: ['app-releases', platform],
+    queryFn: () => mobileApi.getAppReleases(platform),
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -1204,8 +1294,9 @@ export function useCreateMeeting() {
 export function useMarkMeetingDone() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (meeting: string) => {
-      const res = await mobileApi.markMeetingDone(meeting)
+    // awardees = who actually attended (gets points). Omit to credit everyone.
+    mutationFn: async ({ meeting, awardees }: { meeting: string; awardees?: string[] }) => {
+      const res = await mobileApi.markMeetingDone(meeting, awardees)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
@@ -1228,6 +1319,47 @@ export function useReopenMeeting() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.meetings })
       qc.invalidateQueries({ queryKey: keys.wallet })
+    },
+  })
+}
+
+export function useUpdateMeeting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (fields: Record<string, unknown>) => {
+      const res = await mobileApi.updateMeeting(fields)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.meetings }),
+  })
+}
+
+export function useSetMeetingParticipants() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ meeting, users }: { meeting: string; users: string[] }) => {
+      const res = await mobileApi.setMeetingParticipants(meeting, users)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.meetings }),
+  })
+}
+
+export function useDeleteMeeting() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (meeting: string) => {
+      const res = await mobileApi.deleteMeeting(meeting)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    // A deleted done-meeting claws back points, so refresh wallet/dashboard too.
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.meetings })
+      qc.invalidateQueries({ queryKey: keys.wallet })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
     },
   })
 }
@@ -1359,6 +1491,15 @@ export function useSetFeedbackStatus() {
   return useMutation({
     mutationFn: (v: { name: string; status: string }) =>
       mobileApi.setFeedbackStatus(v.name, v.status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feedback-inbox'] }),
+  })
+}
+
+export function useLinkTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { feedback: string; todo: string }) =>
+      mobileApi.linkTask(v.feedback, v.todo),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['feedback-inbox'] }),
   })
 }

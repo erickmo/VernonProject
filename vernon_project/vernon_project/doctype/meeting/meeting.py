@@ -81,10 +81,17 @@ class Meeting(Document):
 			self.remove_ledger()
 
 	def sync_point_ledger(self):
-		"""Credit each participant once. Idempotent on (meeting, user)."""
-		for row in self.participants:
-			self._upsert_ledger_row(row.user)
-			self._notify_award(row.user)
+		"""Credit each attendee once. Idempotent on (meeting, user).
+
+		Attendees default to the full participant list, but mark_meeting_done can
+		pass an explicit `award_users` set via flags — so no-shows are skipped and
+		people who turned up without an invite can still be credited."""
+		users = self.flags.get("award_users")
+		if users is None:
+			users = [row.user for row in self.participants]
+		for user in users:
+			self._upsert_ledger_row(user)
+			self._notify_award(user)
 
 	def _upsert_ledger_row(self, user):
 		if not user:
@@ -112,6 +119,11 @@ class Meeting(Document):
 	def remove_ledger(self):
 		for name in frappe.get_all("Point Ledger", filters={"meeting": self.name}, pluck="name"):
 			frappe.delete_doc("Point Ledger", name, ignore_permissions=True, force=True)
+
+	def on_trash(self):
+		# Deleting a done meeting must claw back its awarded points, else the
+		# Point Ledger rows dangle (and block the delete via link constraint).
+		self.remove_ledger()
 
 	def _notify_award(self, user):
 		"""Best-effort in-app + push notification; never breaks the save."""

@@ -53,6 +53,7 @@ import PapanIklanBansScreen from './pages/PapanIklanBansScreen'
 import FeedbackScreen from './pages/FeedbackScreen'
 import FeedbackInboxScreen from './pages/FeedbackInboxScreen'
 import HelpScreen from './pages/HelpScreen'
+import WhatsNew from './pages/WhatsNew'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
 import NotificationsScreen from './pages/NotificationsScreen'
@@ -244,6 +245,7 @@ export default function App() {
         <Route path="/papan-iklan/:name" element={<PapanIklanDetailScreen />} />
         <Route path="/feedback" element={<FeedbackScreen />} />
         <Route path="/help" element={<HelpScreen />} />
+        <Route path="/whats-new" element={<WhatsNew />} />
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
         <Route path="/notifications" element={<NotificationsScreen />} />

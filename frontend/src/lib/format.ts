@@ -221,6 +221,17 @@ export function byDeadlineDesc(
   return b.deadline.localeCompare(a.deadline)
 }
 
+/** Sort by ISO datetime string descending (latest modified first); nulls last. */
+export function byModifiedDesc(
+  a: { modified: string | null },
+  b: { modified: string | null },
+): number {
+  if (!a.modified && !b.modified) return 0
+  if (!a.modified) return 1
+  if (!b.modified) return -1
+  return b.modified.localeCompare(a.modified)
+}
+
 /** Sort by today's allocated minutes ascending (fewest first); estimate as tiebreak. */
 export function byAllocationAsc(
   a: { today_allocation: number; estimated: number; deadline: string | null },

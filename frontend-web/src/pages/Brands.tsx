@@ -41,7 +41,7 @@ export default function Brands() {
         <BentoTile
           span="sm"
           tone="tint"
-          accent="slate"
+          accent="brand"
           actions={
             <button
               onClick={() => navigate('/brands/new')}

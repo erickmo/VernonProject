@@ -158,7 +158,7 @@ export default function Users() {
           <BentoStat value={total} label="users" />
         </BentoTile>
 
-        <BentoTile span="sm" tone="tint" accent="slate">
+        <BentoTile span="sm" tone="tint" accent="brand">
           <div className="space-y-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />

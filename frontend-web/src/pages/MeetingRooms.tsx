@@ -89,7 +89,7 @@ export default function MeetingRooms() {
         <BentoTile
           span="sm"
           tone="tint"
-          accent="slate"
+          accent="brand"
           actions={
             <button
               onClick={() => navigate('/meeting-rooms/new')}

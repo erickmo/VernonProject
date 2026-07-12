@@ -41,7 +41,7 @@ export default function MarketplaceAdmin() {
 
   return (
     <Page>
-      <PageHeader icon={Store} title="Marketplace Admin" />
+      <PageHeader icon={Store} title="Marketplace admin" />
 
       <BentoGrid>
         <BentoTile span="sm" tone="tint" accent="emerald" title="Manage">

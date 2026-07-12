@@ -18,7 +18,7 @@ export function DetailMeta({ d }: { d: ProjectDetail }) {
       {hasCondition && (
         <Section title="Current condition">
           <div
-            className="text-sm prose-notes text-slate-700 dark:text-slate-300"
+            className="text-sm prose-notes text-ink dark:text-slate-300"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(conditionHtml) }}
           />
         </Section>
@@ -26,7 +26,7 @@ export function DetailMeta({ d }: { d: ProjectDetail }) {
       {hasOutcome && (
         <Section title="Expected outcome">
           <div
-            className="text-sm prose-notes text-slate-700 dark:text-slate-300"
+            className="text-sm prose-notes text-ink dark:text-slate-300"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(outcomeHtml) }}
           />
         </Section>
@@ -34,7 +34,7 @@ export function DetailMeta({ d }: { d: ProjectDetail }) {
       {hasSow && (
         <Section title="Keterangan di SOW">
           <div
-            className="text-sm prose-notes text-slate-700 dark:text-slate-300"
+            className="text-sm prose-notes text-ink dark:text-slate-300"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(sowHtml) }}
           />
         </Section>

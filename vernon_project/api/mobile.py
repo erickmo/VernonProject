@@ -153,6 +153,12 @@ def _can_reject(status_key, project, user):
 	return False
 
 
+def _can_set_auto_approve(project, user):
+	"""Mirror vernon_project.api.project_todo.set_auto_approve. Only the project
+	owner who also holds the Partner role may toggle auto-approve."""
+	return user == project.get("project_owner") and "Partner" in frappe.get_roles(user)
+
+
 def _avatar_config_map(users):
 	"""Map user -> parsed DiceBear avatar config (or None). Batch-reads User Avatar.
 	A user's gamified avatar always wins over any uploaded profile photo, so the
@@ -425,10 +431,10 @@ def _fetch_todos(project_names, include_cancelled=False):
 	return frappe.db.sql(
 		f"""
 		SELECT
-			t.name, t.to_do, t.status, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
+			t.name, t.to_do, t.status, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.is_recurring,
+			t.ongoing, t.notes, t.is_recurring, t.auto_approve,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
@@ -546,9 +552,12 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"to_do": row["to_do"],
 		"status": row["status"],
 		"status_key": skey,
+		"modified": str(row["modified"]) if row.get("modified") else None,
 		"next_status_label": NEXT_LABEL.get(skey),
 		"can_advance": can_advance,
 		"can_reject": can_reject,
+		"auto_approve": bool(row.get("auto_approve")),
+		"can_set_auto_approve": _can_set_auto_approve(project, user),
 		"start_date": str(row["start_date"]) if row.get("start_date") else None,
 		"start_date_human": _humanize_date(row.get("start_date")),
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
@@ -740,8 +749,8 @@ def get_dashboard():
 			else:
 				upcoming.append(shaped)
 
-	# Sort review oldest-waiting first (by deadline already asc); overdue first within review
-	review.sort(key=lambda t: (not t["is_overdue"], t["deadline"] or "9999"))
+	# Sort review by latest modified first (most recently submitted/updated on top)
+	review.sort(key=lambda t: t["modified"] or "", reverse=True)
 	upcoming.sort(key=lambda t: t["deadline"] or "9999")
 
 	completed_today = 0
@@ -1352,6 +1361,10 @@ def get_project_item(project_item):
 	shaped["can_edit"] = is_sm or user in (
 		r["project_owner"], r["project_leader"], r["assigned_to"]
 	)
+	# Attached files ride down with the detail (same edit gate as notes).
+	from vernon_project.api.project_todo import list_todo_files
+	shaped["files"] = list_todo_files(project_item)
+	shaped["can_edit_files"] = shaped["can_edit"]
 	shaped["fields_locked"] = shaped["status_key"] in ("done", "completed")
 	is_leader = user == r["project_leader"]
 	is_owner = user == r["project_owner"]
@@ -2631,6 +2644,33 @@ def say_thanks(to_user):
 	return {"status": "ok"}
 
 
+# Why a credit exists, for the points-log subtitle. Role answers "who earned it"
+# (you did the task / you lead / you mentored / you attended); late/early answer
+# "why the number moved". Source labels cover the non-todo credits.
+_ROLE_WHY = {"Assignee": "Task done", "Leader": "Leader share", "Mentor": "Mentor share", "Participant": "Attended"}
+_SOURCE_WHY = {
+	"Meeting": "Meeting", "Attendance": "Attendance", "Learning": "Course completed",
+	"Achievement": "Achievement", "Daily": "Daily bonus", "Recognition": "Recognition",
+	"Feedback": "Feedback", "Mentoring": "Mentoring", "Reward": "Reward",
+}
+
+
+def _credit_reason(role, source, late_days, early_days, group):
+	"""Human 'why' line for a points-log credit: role/source tag + timing bonus
+	or penalty + group context. e.g. 'Task done · −2d late penalty · Frontend'."""
+	bits = []
+	tag = _ROLE_WHY.get(role) or _SOURCE_WHY.get(source)
+	if tag:
+		bits.append(tag)
+	if late_days:
+		bits.append(f"−{late_days}d late penalty")
+	if early_days:
+		bits.append(f"+{early_days}d early bonus")
+	if group:
+		bits.append(group)
+	return " · ".join(bits) or None
+
+
 @frappe.whitelist()
 def get_wallet_log():
 	"""Unified credit/debit timeline (latest 100), newest first, with a running
@@ -2640,7 +2680,7 @@ def get_wallet_log():
 	credits = frappe.get_all(
 		"Point Ledger",
 		filters={"user": user},
-		fields=["points_earned as amount", "todo", "group", "role", "source", "note", "granted_by", "credited_on as date"],
+		fields=["points_earned as amount", "todo", "group", "role", "source", "note", "granted_by", "credited_on as date", "late_days", "early_days"],
 		order_by="credited_on desc",
 		limit=100,
 	)
@@ -2694,7 +2734,9 @@ def get_wallet_log():
 				"kind": "credit",
 				"amount": amt,
 				"title": "Points granted" if is_grant else (subj.get(c.get("todo")) or "Points earned"),
-				"subtitle": (c.get("note") or "Granted") if is_grant else (c.get("group") or (c.get("role") and f"{c['role']} reward")),
+				"subtitle": (c.get("note") or "Granted") if is_grant else _credit_reason(
+					c.get("role"), src, c.get("late_days"), c.get("early_days"), c.get("group")
+				),
 				"status": None,
 				"date": str(c["date"]) if c.get("date") else None,
 				"date_human": _humanize_datetime(c.get("date")),
@@ -3742,6 +3784,19 @@ def set_meeting_participants(meeting, users):
 
 
 @frappe.whitelist()
+def delete_meeting(meeting):
+	try:
+		doc = frappe.get_doc("Meeting", meeting)
+		if not _meeting_can_manage(doc):
+			return {"status": "error", "message": "Only the organizer or Project Owner/Leader can delete this meeting."}
+		# on_trash claws back any awarded points before the row goes.
+		frappe.delete_doc("Meeting", meeting, ignore_permissions=True)
+		return {"status": "success", "message": "Meeting deleted."}
+	except (frappe.ValidationError, ValueError, TypeError) as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
 def list_meetings(project=None):
 	filters = {}
 	if project:
@@ -3750,7 +3805,7 @@ def list_meetings(project=None):
 		"Meeting",
 		filters=filters,
 		fields=["name", "title", "project", "organizer", "scheduled_at",
-				"estimated", "point", "status"],
+				"estimated", "point", "status", "notes", "group", "level_id"],
 		order_by="scheduled_at desc",
 	)
 	user = frappe.session.user
@@ -3761,7 +3816,10 @@ def list_meetings(project=None):
 			filters={"parent": r["name"], "parenttype": "Meeting"},
 			pluck="user",
 		)
-		owner, leader = frappe.get_value("Project", r["project"], ["project_owner", "project_leader"])
+		# A meeting can outlive its project (deleted). get_value returns None then;
+		# guard the unpack so one dangling ref doesn't 500 the whole list → the
+		# calendar/meetings screen going empty for every user who can see it.
+		owner, leader = frappe.get_value("Project", r["project"], ["project_owner", "project_leader"]) or (None, None)
 		r["can_mark_done"] = (
 			"System Manager" in roles or user in (r["organizer"], owner, leader)
 		)
@@ -3769,13 +3827,18 @@ def list_meetings(project=None):
 
 
 @frappe.whitelist()
-def mark_meeting_done(meeting):
+def mark_meeting_done(meeting, awardees=None):
+	"""Mark done and award points. `awardees` (JSON list) picks who actually
+	attended — points go only to them; the invited participant list is untouched.
+	Omit it to fall back to crediting every participant."""
 	try:
 		doc = frappe.get_doc("Meeting", meeting)
 		if not _meeting_can_manage(doc):
 			return {"status": "error", "message": "Only the organizer or Project Owner/Leader can mark this done."}
 		if doc.status == MEETING_DONE:
 			return {"status": "success", "message": "Already done."}
+		if awardees is not None:
+			doc.flags.award_users = json.loads(awardees) if isinstance(awardees, str) else awardees
 		doc.status = MEETING_DONE
 		doc.save(ignore_permissions=True)
 		return {"status": "success", "message": "Meeting marked done; points awarded."}

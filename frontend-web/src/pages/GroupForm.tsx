@@ -338,7 +338,7 @@ export default function GroupForm() {
                 {(id) => (
                   <input
                     id={id}
-                    className={field + (isEdit ? ' bg-slate-100 text-muted dark:bg-slate-700' : '')}
+                    className={field + (isEdit ? ' bg-canvas text-muted' : '')}
                     value={form.group_name}
                     readOnly={isEdit}
                     autoFocus={!isEdit}
@@ -371,12 +371,12 @@ export default function GroupForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(['Assignee', 'Leader'] as const).map((grp) => (
-                <div key={grp} className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
+                <div key={grp} className="rounded-lg bg-canvas p-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">{grp}</p>
                   <div className="flex flex-col gap-2">
                     {WEIGHTS.filter((w) => w.group === grp).map((w) => (
                       <div key={w.key} className="flex items-center gap-3">
-                        <label className="min-w-0 flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">{w.label}</label>
+                        <label className="min-w-0 flex-1 text-sm font-medium text-ink dark:text-slate-200">{w.label}</label>
                         <input
                           type="number"
                           inputMode="decimal"
@@ -392,7 +392,7 @@ export default function GroupForm() {
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="min-w-0 flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">Base rate (points / minute)</label>
+              <label className="min-w-0 flex-1 text-sm font-medium text-ink dark:text-slate-200">Base rate (points / minute)</label>
               <input
                 type="number"
                 inputMode="decimal"
@@ -403,7 +403,7 @@ export default function GroupForm() {
             </div>
 
             {/* Types & Levels */}
-            <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
+            <div className="rounded-lg bg-canvas p-3">
               <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
                 <Layers className="h-3.5 w-3.5" /> Types &amp; Levels
               </p>
@@ -446,7 +446,7 @@ export default function GroupForm() {
                             type="button"
                             aria-label="Decrease difficulty"
                             onClick={() => bumpLevelDifficulty(l._key, -LEVEL_STEP)}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-hover/[0.04] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
                           >
                             <Minus className="h-4 w-4" />
                           </button>
@@ -462,7 +462,7 @@ export default function GroupForm() {
                             type="button"
                             aria-label="Increase difficulty"
                             onClick={() => bumpLevelDifficulty(l._key, LEVEL_STEP)}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-hover/[0.04] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700/50"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -482,7 +482,7 @@ export default function GroupForm() {
                     <button
                       type="button"
                       onClick={() => addLevelToType(type_name)}
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-xs font-medium text-muted hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800/60"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-line py-2 text-xs font-medium text-muted hover:bg-hover/[0.04] dark:border-slate-600 dark:hover:bg-slate-800/60"
                     >
                       <Plus className="h-3.5 w-3.5" /> Add level
                     </button>
@@ -494,7 +494,7 @@ export default function GroupForm() {
               <button
                 type="button"
                 onClick={addType}
-                className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-medium text-muted hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800/60"
+                className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-line py-2 text-sm font-medium text-muted hover:bg-hover/[0.04] dark:border-slate-600 dark:hover:bg-slate-800/60"
               >
                 <Plus className="h-4 w-4" /> Add type
               </button>
@@ -512,23 +512,23 @@ export default function GroupForm() {
         </BentoTile>
 
         {/* How points are scored info tile */}
-        <BentoTile span="md" tone="tint" accent="slate">
-          <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-            <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+        <BentoTile span="md" tone="tint" accent="brand">
+          <div className="text-xs leading-relaxed text-ink dark:text-slate-300">
+            <p className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wide text-muted dark:text-slate-400">
               <Info className="h-3.5 w-3.5" /> How points are scored
             </p>
             <p className="mb-1">
               When a todo is completed, the <b>assignee</b> earns points based on <b>base rate × estimated minutes × difficulty%</b>,
               then adjusted for timing:
             </p>
-            <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
+            <p className="mb-1 rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-ink dark:bg-slate-800/85 dark:text-slate-300">
               assignee = base_rate × minutes × difficulty% × (1 − late_days×late% + early_days×early%)
             </p>
             <p className="mb-1">
               The <b>leader</b> earns a share of the assignee's points — using <b>leader weight</b>
               when the todo is on-time or early, or <b>leader late weight</b> when it's late:
             </p>
-            <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-slate-700 dark:bg-slate-800/85 dark:text-slate-300">
+            <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-ink dark:bg-slate-800/85 dark:text-slate-300">
               leader = assignee × (late ? leader_late_weight% : leader_weight%)
             </p>
           </div>
@@ -540,7 +540,7 @@ export default function GroupForm() {
             <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
               <ListChecks className="h-3.5 w-3.5" /> Linked tasks
               {linkedTodos && (
-                <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-muted dark:bg-slate-700">
+                <span className="ml-0.5 rounded-full bg-line px-1.5 text-[11px] font-bold text-muted dark:bg-slate-700">
                   {linkedTodos.length}
                 </span>
               )}
@@ -555,7 +555,7 @@ export default function GroupForm() {
                   <Link
                     key={t.name}
                     to={`/project-item/${encodeURIComponent(t.name)}`}
-                    className="flex items-center gap-2 rounded-xl border border-slate-100 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-hover/[0.04] dark:hover:bg-slate-800/50 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-ink">{t.to_do || t.name}</p>
@@ -564,7 +564,7 @@ export default function GroupForm() {
                         {t.deadline ? ` · ${formatDate(t.deadline)}` : ''}
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted dark:text-slate-600" />
                   </Link>
                 ))}
               </div>
