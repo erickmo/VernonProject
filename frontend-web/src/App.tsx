@@ -84,7 +84,6 @@ import EventDetail from '@web/pages/EventDetail'
 import EventForm from '@web/pages/EventForm'
 import EventRoster from '@web/pages/EventRoster'
 import MyRegistrations from '@web/pages/MyRegistrations'
-import { CrumbProvider } from '@web/lib/crumbs'
 import PapanIklan from '@web/pages/PapanIklan'
 import PapanIklanDetail from '@web/pages/PapanIklanDetail'
 import PapanIklanForm from '@web/pages/PapanIklanForm'
@@ -160,7 +159,7 @@ export default function App() {
   const b = boot.data
 
   return (
-    <CrumbProvider>
+    <>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
       <Routes>
         <Route path="/kiosk/:station" element={<Kiosk />} />
@@ -302,6 +301,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </CrumbProvider>
+    </>
   )
 }
