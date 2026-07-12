@@ -7,7 +7,9 @@ import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
-import { useProjectDetail } from '@/hooks/useData'
+import { AutoApproveSegment } from '@/components/AutoApproveSegment'
+import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
+import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove } from '@/hooks/useData'
 import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimateRatio } from '@/lib/format'
 import { STATUS } from '@/lib/status'
 
@@ -17,6 +19,8 @@ export default function ProjectDetailScreen() {
   const id = decodeURIComponent(name)
   const [showCancelled, setShowCancelled] = useState(false)
   const { data, isLoading } = useProjectDetail(id, showCancelled)
+  const setAutoApprove = useSetAutoApprove()
+  const setProjectAutoApprove = useSetProjectAutoApprove()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [todoFilter, setTodoFilter] = useState<'all' | 'open' | 'completed'>('all')
@@ -74,6 +78,18 @@ export default function ProjectDetailScreen() {
             {formatEstimateRatio(minutesDone, minutesTotal)} done
           </span>
         </div>
+
+        {data.can_set_auto_approve && (
+          <div className="mt-3">
+            <ProjectAutoApproveSwitch
+              enabled={data.auto_approve}
+              disabled={setProjectAutoApprove.isPending}
+              onToggle={() =>
+                setProjectAutoApprove.mutate({ project: data.project, enabled: data.auto_approve ? 0 : 1 })
+              }
+            />
+          </div>
+        )}
 
         <div className="mt-3 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-sm">
           {hasCondition && (
@@ -206,6 +222,17 @@ export default function ProjectDetailScreen() {
                       </>
                     )}
                   </div>
+                  {t.can_set_auto_approve && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <AutoApproveSegment
+                        mode={t.auto_approve_mode}
+                        effective={t.auto_approve_effective}
+                        projectDefault={data.auto_approve}
+                        disabled={setAutoApprove.isPending}
+                        onChange={(mode) => setAutoApprove.mutate({ todoId: t.name, mode })}
+                      />
+                    </div>
+                  )}
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
               </Link>

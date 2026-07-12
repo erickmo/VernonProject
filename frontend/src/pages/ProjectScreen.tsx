@@ -11,9 +11,10 @@ import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
 import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
+import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, permFlags } from '@/hooks/useData'
+import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
@@ -28,6 +29,7 @@ export default function ProjectScreen() {
   const confirm = useConfirm()
   const del = useDeleteProject()
   const delDetail = useDeleteProjectDetail()
+  const setProjectAutoApprove = useSetProjectAutoApprove()
   const [editOpen, setEditOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
@@ -141,6 +143,18 @@ export default function ProjectScreen() {
               <Trash2 className="h-4 w-4" /> Delete
             </button>
           )}
+        </div>
+      )}
+
+      {data.can_set_auto_approve && (
+        <div className="mt-3">
+          <ProjectAutoApproveSwitch
+            enabled={data.auto_approve}
+            disabled={setProjectAutoApprove.isPending}
+            onToggle={() =>
+              setProjectAutoApprove.mutate({ project: data.name, enabled: data.auto_approve ? 0 : 1 })
+            }
+          />
         </div>
       )}
 

@@ -353,6 +353,8 @@ export interface ProjectDetail {
   glossaries: string[]
   glossary_options: { name: string; glossary: string }[]
   default_group?: string | null
+  auto_approve: boolean
+  can_set_auto_approve: boolean
 }
 
 export interface Group {
