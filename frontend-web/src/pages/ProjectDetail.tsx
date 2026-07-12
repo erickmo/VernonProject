@@ -4,7 +4,7 @@ import { safeDecode } from '@web/lib/route'
 import {
   ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3,
 } from 'lucide-react'
-import { useProjectDetail, useDeleteProjectDetail } from '@/hooks/useData'
+import { useProjectDetail, useDeleteProjectDetail, useSetAutoApprove, useSetProjectAutoApprove } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
@@ -17,9 +17,12 @@ import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { PropertyRow, Property } from '@web/components/Property'
-import { DataTable } from '@web/components/DataTable'
+import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
 import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
+import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
+import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
+import type { ProjectItem } from '@/lib/types'
 
 export default function ProjectDetail() {
   const { name = '', itemName } = useParams()
@@ -34,6 +37,8 @@ export default function ProjectDetail() {
 
   const detail = useProjectDetail(id, showCancelled)
   const deleteMutation = useDeleteProjectDetail()
+  const setAutoApprove = useSetAutoApprove()
+  const setProjectAutoApprove = useSetProjectAutoApprove()
   const itemSelected = !!itemName
 
   useSetCrumbs(
@@ -69,6 +74,26 @@ export default function ProjectDetail() {
     .filter((t) => t.status_key === 'completed')
     .reduce((s, t) => s + (t.estimated || 0), 0)
   const { visibleItems, todoGroups } = todoGroupsOf(items, showCancelled)
+
+  // Owner-only per-todo auto-approve control, appended to the shared todo
+  // columns only when at least one visible row can use it.
+  const autoApproveColumn: Column<ProjectItem> = {
+    key: 'auto_approve',
+    header: '',
+    render: (t) =>
+      t.can_set_auto_approve ? (
+        <div onClick={(e) => e.stopPropagation()}>
+          <AutoApproveSegment
+            mode={t.auto_approve_mode}
+            effective={t.auto_approve_effective}
+            projectDefault={d.auto_approve}
+            disabled={setAutoApprove.isPending}
+            onChange={(mode) => setAutoApprove.mutate({ todoId: t.name, mode })}
+          />
+        </div>
+      ) : null,
+  }
+  const todoColumns = items.some((t) => t.can_set_auto_approve) ? [...TODO_COLUMNS, autoApproveColumn] : TODO_COLUMNS
 
   const handleDelete = async () => {
     const ok = await confirm({
@@ -144,6 +169,18 @@ export default function ProjectDetail() {
             </span>
           </Property>
         </PropertyRow>
+
+        {d.can_set_auto_approve && (
+          <div className="mt-3 max-w-sm">
+            <ProjectAutoApproveSwitch
+              enabled={d.auto_approve}
+              disabled={setProjectAutoApprove.isPending}
+              onToggle={() =>
+                setProjectAutoApprove.mutate({ project: d.project, enabled: d.auto_approve ? 0 : 1 })
+              }
+            />
+          </div>
+        )}
       </Section>
 
       {/* Rich HTML meta sections */}
@@ -209,7 +246,7 @@ export default function ProjectDetail() {
                   </p>
                   <DataTable
                     rows={g.rows}
-                    columns={TODO_COLUMNS}
+                    columns={todoColumns}
                     getKey={(r) => r.name}
                     activeKey={itemName}
                     onRowClick={(r) =>

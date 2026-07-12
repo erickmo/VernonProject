@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import { ListChecks, Plus, CalendarClock, List, BarChart3 } from 'lucide-react'
-import { useProjectDetail } from '@/hooks/useData'
+import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
@@ -10,10 +10,13 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { Button } from '@web/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { Drawer } from '@web/components/overlays/Drawer'
-import { DataTable } from '@web/components/DataTable'
+import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
+import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
+import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
+import type { ProjectItem } from '@/lib/types'
 
 // Right pane of a project's detail split: the selected work-package's todos.
 // Todo detail opens in a slide-over so the columns stay two-pane.
@@ -28,6 +31,8 @@ export default function ProjectDetailPane() {
   const [view, setView] = useState<'list' | 'gantt'>('list')
 
   const detail = useProjectDetail(id, showCancelled)
+  const setAutoApprove = useSetAutoApprove()
+  const setProjectAutoApprove = useSetProjectAutoApprove()
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
 
   if (detail.isLoading && !detail.data) {
@@ -51,6 +56,26 @@ export default function ProjectDetailPane() {
     .filter((t) => t.status_key === 'completed')
     .reduce((s, t) => s + (t.estimated || 0), 0)
   const { visibleItems, todoGroups } = todoGroupsOf(items, showCancelled)
+
+  // Owner-only per-todo auto-approve control, appended to the shared todo
+  // columns only when at least one visible row can use it.
+  const autoApproveColumn: Column<ProjectItem> = {
+    key: 'auto_approve',
+    header: '',
+    render: (t) =>
+      t.can_set_auto_approve ? (
+        <div onClick={(e) => e.stopPropagation()}>
+          <AutoApproveSegment
+            mode={t.auto_approve_mode}
+            effective={t.auto_approve_effective}
+            projectDefault={d.auto_approve}
+            disabled={setAutoApprove.isPending}
+            onChange={(mode) => setAutoApprove.mutate({ todoId: t.name, mode })}
+          />
+        </div>
+      ) : null,
+  }
+  const todoColumns = items.some((t) => t.can_set_auto_approve) ? [...TODO_COLUMNS, autoApproveColumn] : TODO_COLUMNS
 
   return (
     <div className="min-w-0">
@@ -101,6 +126,18 @@ export default function ProjectDetailPane() {
         </div>
       </div>
 
+      {d.can_set_auto_approve && (
+        <div className="mb-4 max-w-sm">
+          <ProjectAutoApproveSwitch
+            enabled={d.auto_approve}
+            disabled={setProjectAutoApprove.isPending}
+            onToggle={() =>
+              setProjectAutoApprove.mutate({ project: d.project, enabled: d.auto_approve ? 0 : 1 })
+            }
+          />
+        </div>
+      )}
+
       {/* Grouped todo tables */}
       {view === 'gantt' ? (
         <GanttChart
@@ -121,7 +158,7 @@ export default function ProjectDetailPane() {
               </p>
               <DataTable
                 rows={g.rows}
-                columns={TODO_COLUMNS}
+                columns={todoColumns}
                 getKey={(r) => r.name}
                 activeKey={itemName}
                 onRowClick={(r) => nav(`${base}/item/${encodeURIComponent(r.name)}`)}

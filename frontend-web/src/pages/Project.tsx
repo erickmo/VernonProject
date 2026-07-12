@@ -5,7 +5,7 @@ import {
   Target, Users, CalendarDays, AlertCircle, ChevronRight,
   Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift,
 } from 'lucide-react'
-import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail } from '@/hooks/useData'
+import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
@@ -23,6 +23,7 @@ import { PropertyRow, Property } from '@web/components/Property'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { EntityChip } from '@web/components/EntityChip'
 import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
+import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
 import type { TeamMember, ProjectDetailSummary } from '@/lib/types'
 
 type View = 'list' | 'gantt'
@@ -56,6 +57,7 @@ export default function Project() {
   const boot = useBoot()
   const del = useDeleteProject()
   const delDetail = useDeleteProjectDetail()
+  const setProjectAutoApprove = useSetProjectAutoApprove()
   const confirm = useConfirm()
   const toast = useToast()
 
@@ -334,6 +336,18 @@ export default function Project() {
               <EntityChip icon={Tag} label={p.brand} />
             </Property>
           </PropertyRow>
+
+          {p.can_set_auto_approve && (
+            <div className="max-w-sm">
+              <ProjectAutoApproveSwitch
+                enabled={p.auto_approve}
+                disabled={setProjectAutoApprove.isPending}
+                onToggle={() =>
+                  setProjectAutoApprove.mutate({ project: p.name, enabled: p.auto_approve ? 0 : 1 })
+                }
+              />
+            </div>
+          )}
 
           {p.blocked_by && (
             <button
