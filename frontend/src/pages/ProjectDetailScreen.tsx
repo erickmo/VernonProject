@@ -82,7 +82,7 @@ export default function ProjectDetailScreen() {
           </span>
         </div>
 
-        {data.can_set_auto_approve && boot?.employee?.show_auto_approve && (
+        {data.can_set_auto_approve && !!boot?.employee?.show_auto_approve && (
           <div className="mt-3">
             <ProjectAutoApproveSwitch
               enabled={data.auto_approve}
@@ -228,7 +228,7 @@ export default function ProjectDetailScreen() {
                       </>
                     )}
                   </div>
-                  {t.can_set_auto_approve && boot?.employee?.show_auto_approve && (
+                  {t.can_set_auto_approve && !!boot?.employee?.show_auto_approve && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <AutoApproveSegment
                         mode={t.auto_approve_mode}
