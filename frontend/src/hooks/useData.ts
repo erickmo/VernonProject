@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   useMutation,
   useQuery,
@@ -221,37 +222,43 @@ export function useAdvanceStatus() {
   })
 }
 
-// Advance many todos one step each (bulk approve). The server loops the per-todo
-// permission-checked advance in ONE request; invalidate the same queries once.
-export function useBulkAdvance() {
+// Process a bulk review action (approve or reject) item-by-item so the UI can
+// show a DETERMINATE progress bar (done/total). Each item hits the same per-todo,
+// permission-checked endpoint a single action would, so gates + points behave
+// identically; a failure is counted, not fatal. Invalidates the review queues
+// once at the end. Returns { ok, failed }.
+// ponytail: client loop instead of the bulk_* endpoints because a single request
+// yields no incremental progress; review batches are small so N requests is fine.
+export function useBulkProcess() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (todoIds: string[]) => mobileApi.bulkAdvance(todoIds),
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.dashboard })
-      qc.invalidateQueries({ queryKey: keys.projects })
-      qc.invalidateQueries({ queryKey: ['project'] })
-      qc.invalidateQueries({ queryKey: ['project-detail'] })
-      qc.invalidateQueries({ queryKey: ['project-item'] })
-    },
-  })
-}
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
-// Reject many todos under review with one shared reason (bulk reject). Mirrors
-// useBulkAdvance; invalidates the same queries so review queues refresh once.
-export function useBulkReject() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ todoIds, reason }: { todoIds: string[]; reason: string }) =>
-      mobileApi.bulkReject(todoIds, reason),
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.dashboard })
-      qc.invalidateQueries({ queryKey: keys.projects })
-      qc.invalidateQueries({ queryKey: ['project'] })
-      qc.invalidateQueries({ queryKey: ['project-detail'] })
-      qc.invalidateQueries({ queryKey: ['project-item'] })
-    },
-  })
+  const run = async (ids: string[], mode: 'approve' | 'reject', reason = '') => {
+    if (!ids.length) return { ok: 0, failed: 0 }
+    let ok = 0
+    setProgress({ done: 0, total: ids.length })
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        const res =
+          mode === 'reject'
+            ? await mobileApi.rejectStatus(ids[i], reason)
+            : await mobileApi.advanceStatus(ids[i])
+        if (res.status !== 'error') ok++
+      } catch {
+        /* count as failed, keep going */
+      }
+      setProgress({ done: i + 1, total: ids.length })
+    }
+    qc.invalidateQueries({ queryKey: keys.dashboard })
+    qc.invalidateQueries({ queryKey: keys.projects })
+    qc.invalidateQueries({ queryKey: ['project'] })
+    qc.invalidateQueries({ queryKey: ['project-detail'] })
+    qc.invalidateQueries({ queryKey: ['project-item'] })
+    setProgress(null)
+    return { ok, failed: ids.length - ok }
+  }
+
+  return { run, progress, busy: progress !== null }
 }
 
 // Reject a todo under review, bouncing it back to Planned with a required

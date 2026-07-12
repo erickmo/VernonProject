@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Check, X, CheckSquare, Square } from 'lucide-react'
-import { useDashboard, useBulkAdvance, useBulkReject } from '@/hooks/useData'
+import { useDashboard, useBulkProcess } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { byModifiedDesc, formatDate } from '@/lib/format'
 import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
@@ -73,14 +73,13 @@ export default function Review() {
 
   const reject = (t: { name: string; to_do: string }) => rejectConfirm(t.name, t.to_do)
 
-  const bulk = useBulkAdvance()
-  const bulkReject = useBulkReject()
+  const proc = useBulkProcess()
   const toast = useToast()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   // null = closed; otherwise which bulk action the confirm modal is for.
   const [confirmMode, setConfirmMode] = useState<null | 'approve' | 'reject'>(null)
   const [reason, setReason] = useState('')
-  const busy = bulk.isPending || bulkReject.isPending
+  const busy = proc.busy
 
   const advanceable = useMemo(() => visible.filter((t) => t.can_advance), [visible])
   const advIds = useMemo(() => new Set(advanceable.map((t) => t.name)), [advanceable])
@@ -116,11 +115,11 @@ export default function Review() {
       if (confirmMode === 'reject') {
         const r = reason.trim()
         if (!r) return
-        const res = await bulkReject.mutateAsync({ todoIds: ids, reason: r })
-        toast('success', res.failed ? `Rejected ${res.rejected} · ${res.failed} failed` : `Rejected ${res.rejected}`)
+        const res = await proc.run(ids, 'reject', r)
+        toast('success', res.failed ? `Rejected ${res.ok} · ${res.failed} failed` : `Rejected ${res.ok}`)
       } else {
-        const res = await bulk.mutateAsync(ids)
-        toast('success', res.failed ? `Approved ${res.approved} · ${res.failed} failed` : `Approved ${res.approved}`)
+        const res = await proc.run(ids, 'approve')
+        toast('success', res.failed ? `Approved ${res.ok} · ${res.failed} failed` : `Approved ${res.ok}`)
       }
       setSelected(new Set())
       setConfirmMode(null)
@@ -193,7 +192,7 @@ export default function Review() {
             </div>
           )}
           {advanceable.length > 0 && (
-            <div className="mb-3 flex items-center gap-3">
+            <div className="sticky top-14 lg:top-4 z-20 -mx-4 mb-3 flex items-center gap-3 border-b border-line bg-surface px-4 py-2">
               <button
                 onClick={toggleAll}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink"
@@ -329,10 +328,26 @@ export default function Review() {
                 className="mt-3 w-full resize-none rounded-lg border border-line bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-rose-400"
               />
             )}
+            {busy && proc.progress && (
+              <div className="mt-3">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
+                  <div
+                    className={`h-full rounded-full transition-[width] duration-200 ${
+                      confirmMode === 'reject' ? 'bg-rose-500' : 'bg-brand-600'
+                    }`}
+                    style={{ width: `${(proc.progress.done / proc.progress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  {proc.progress.done} / {proc.progress.total}
+                </p>
+              </div>
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={closeConfirm}
-                className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted"
+                disabled={busy}
+                className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted disabled:opacity-50"
               >
                 Cancel
               </button>
