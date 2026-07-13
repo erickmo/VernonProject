@@ -59,6 +59,7 @@ import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { BentoGrid, BentoTile } from '@web/components/bento'
@@ -741,6 +742,12 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           placeholder="Select a team member…"
         />
       </div>
+      <AssignmentOverloadBanner
+        user={assignee}
+        date={deadline}
+        minutes={estimated === '' ? 0 : Number(estimated)}
+        enabled={assignee !== data.assigned_to}
+      />
 
       {data.can_edit_estimate && (
         <>

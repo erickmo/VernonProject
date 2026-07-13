@@ -5,6 +5,7 @@ import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { Button } from '@web/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { computeTodoPoints } from '@/lib/points'
@@ -173,6 +174,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
             placeholder="Select a team member…"
           />
         </label>
+        <AssignmentOverloadBanner user={assignedTo} date={deadline} minutes={Number(estimated) || 0} />
 
         <label className="text-sm font-medium text-muted">
           Start date<span className="text-red-500"> *</span>
