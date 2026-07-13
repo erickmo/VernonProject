@@ -523,19 +523,25 @@ def _previous_shift_shortfall(expected_by_day, assigned_by_day, threshold):
 @frappe.whitelist()
 def my_previous_shift_shortfall():
 	"""Home-page danger banner: did the CURRENT user's most recent scheduled shift day
-	(before today) fall below Vernon Settings.min_daily_estimated_minutes in assigned
-	minutes? Off/holiday days are skipped (no shift target), matching the Under-Occupied
-	report. Self-serve — scoped to the caller only, so no System-Manager gate."""
+	(before today) fall below their resolved daily minimum in assigned minutes? Off/holiday
+	days are skipped (no shift target), matching the Under-Occupied report. Also returns
+	`today_minimum` (the resolved floor for TODAY) so the auto-plan can fill toward it.
+	Self-serve — scoped to the caller only, so no System-Manager gate."""
 	user = frappe.session.user
-	threshold = frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0
 	if user in ("Guest", "Administrator"):
-		return _previous_shift_shortfall({}, {}, threshold)
+		verdict = _previous_shift_shortfall({}, {}, 0)
+		verdict["today_minimum"] = 0
+		return verdict
 	end = add_days(getdate(nowdate()), -1)  # strictly before today
 	start = add_days(end, -(PREV_SHIFT_LOOKBACK_DAYS - 1))
 	names = [user]
 	expected = _pivot(_expected_minutes(names, str(start), str(end))).get(user, {})
 	assigned = _pivot(_assigned_minutes(names, str(start), str(end))).get(user, {})
-	return _previous_shift_shortfall(expected, assigned, threshold)
+	day = max(expected) if expected else None
+	threshold = _resolve_min_minutes(user, day) if day else 0
+	verdict = _previous_shift_shortfall(expected, assigned, threshold)
+	verdict["today_minimum"] = _resolve_min_minutes(user, str(nowdate()))
+	return verdict
 
 
 def _build_todos_due(role_by_project, todos, users, due, today):

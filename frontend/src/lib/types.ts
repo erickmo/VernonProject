@@ -706,6 +706,7 @@ export interface PreviousShiftShortfall {
   assigned: number
   minimum: number
   expected: number
+  today_minimum: number
 }
 
 export interface AppSettings {
