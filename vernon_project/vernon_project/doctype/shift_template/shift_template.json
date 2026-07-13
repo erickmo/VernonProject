@@ -5,11 +5,12 @@
  "creation": "2026-06-28 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["shift_name", "start_time", "end_time"],
+ "field_order": ["shift_name", "start_time", "end_time", "minimum_estimated_minutes"],
  "fields": [
   {"fieldname": "shift_name", "fieldtype": "Data", "label": "Shift Name", "reqd": 1, "unique": 1, "in_list_view": 1},
   {"fieldname": "start_time", "fieldtype": "Time", "label": "Start Time", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "end_time", "fieldtype": "Time", "label": "End Time", "reqd": 1, "in_list_view": 1}
+  {"fieldname": "end_time", "fieldtype": "Time", "label": "End Time", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "minimum_estimated_minutes", "fieldtype": "Int", "label": "Minimum Estimated Minutes", "non_negative": 1, "description": "Daily floor for days on this shift. Blank/0 = use the shift length (end−start), then the global Min Daily Estimated Minutes."}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
