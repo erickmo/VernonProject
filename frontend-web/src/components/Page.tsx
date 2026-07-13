@@ -50,6 +50,6 @@ export function Section({
 // Stagger entrance for card feeds: spread onto each item's wrapper div.
 // Delay caps at item 8 so long feeds don't crawl in.
 export const rise = (i: number) => ({
-  className: 'animate-rise',
+  className: 'animate-rise grid',
   style: { animationDelay: `${Math.min(i, 8) * 40}ms` },
 })

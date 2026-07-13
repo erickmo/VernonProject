@@ -550,13 +550,13 @@ export default function Home() {
               </div>
 
               {rows.length ? (
-                <CardList>
+                <div className="grid gap-3 sm:grid-cols-2">
                   {rows.map((t, i) => (
                     <div key={t.name} {...rise(i)}>
                       <TodoCard todo={t} />
                     </div>
                   ))}
-                </CardList>
+                </div>
               ) : q ? (
                 <EmptyState icon={SearchX} title={`No matches for "${query.trim()}"`} subtitle="Try a different search." />
               ) : (
