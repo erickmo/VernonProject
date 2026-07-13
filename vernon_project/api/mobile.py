@@ -27,7 +27,7 @@ MEMBER_TYPES = ("", "Internal Team", "Intern")
 # Employee Profile self-editable soft fields (mobile /m). Legal/contract/quota are NOT here.
 EMPLOYEE_SOFT_FIELDS = (
 	"home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
-	"religion", "verse_enabled", "show_auto_approve",
+	"religion", "verse_enabled",
 )
 EMPLOYEE_SOFT_CHILDREN = {
 	"education": ("level", "institution", "major", "year"),
@@ -729,6 +729,9 @@ def bootstrap():
 		"badge": _user_badge(user),
 		"vapid_public_key": frappe.conf.get("vapid_public_key") or None,
 		"employee": employee,
+		"settings": {
+			"show_auto_approve": int(frappe.db.get_single_value("Vernon Settings", "show_auto_approve") or 0),
+		},
 		"leave": _leave_balance(user),
 	}
 
@@ -2320,6 +2323,7 @@ def get_app_settings():
 		"max_estimated_minutes": int(g("max_estimated_minutes") or 0),
 		"under_occupied_tolerance_minutes": int(g("under_occupied_tolerance_minutes") or 0),
 		"attendance_enabled": int(g("attendance_enabled") or 0),
+		"show_auto_approve": int(g("show_auto_approve") or 0),
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
@@ -2381,6 +2385,7 @@ def save_app_settings(
 	max_estimated_minutes=None,
 	under_occupied_tolerance_minutes=None,
 	attendance_enabled=None,
+	show_auto_approve=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
 	late_penalty_per_minute=None,
@@ -2396,6 +2401,7 @@ def save_app_settings(
 		"max_estimated_minutes": max_estimated_minutes,
 		"under_occupied_tolerance_minutes": under_occupied_tolerance_minutes,
 		"attendance_enabled": attendance_enabled,
+		"show_auto_approve": show_auto_approve,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
 	}
@@ -5235,7 +5241,7 @@ def update_my_profile(
 	home_address=None, emergency_contact_name=None,
 	emergency_contact_phone=None, emergency_contact_relation=None,
 	education=None, skills=None, trainings=None,
-	religion=None, verse_enabled=None, show_auto_approve=None,
+	religion=None, verse_enabled=None,
 ):
 	"""Self-service: caller edits ONLY their own soft fields. Legal/contract/quota unreachable here."""
 	user = frappe.session.user
@@ -5262,8 +5268,6 @@ def update_my_profile(
 		doc.set("religion", religion)
 	if verse_enabled is not None:
 		doc.set("verse_enabled", int(verse_enabled))
-	if show_auto_approve is not None:
-		doc.set("show_auto_approve", int(show_auto_approve))
 
 	def _rows(raw):
 		return json.loads(raw) if isinstance(raw, str) else (raw or [])

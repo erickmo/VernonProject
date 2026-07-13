@@ -986,7 +986,7 @@ export default function ProjectItem() {
 
   const { data, isLoading } = useProjectItem(todoName)
   const { data: boot } = useBoot()
-  const canAutoApprove = !!boot?.employee?.show_auto_approve
+  const canAutoApprove = !!boot?.settings?.show_auto_approve
   const advanceConfirm = useAdvance()
   const rejectConfirm = useReject()
   const cancelTodo = useCancelTodo()

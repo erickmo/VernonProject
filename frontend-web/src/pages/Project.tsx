@@ -100,7 +100,7 @@ export default function Project() {
 
   const p = project.data
   const perms = permFlags(p, boot.data)
-  const canAutoApprove = !!boot.data?.employee?.show_auto_approve
+  const canAutoApprove = !!boot.data?.settings?.show_auto_approve
 
   const filteredDetails = p.project_details.filter((w) =>
     detailFilter === 'all' ? true : detailFilter === 'completed' ? isDetailCompleted(w) : !isDetailCompleted(w),

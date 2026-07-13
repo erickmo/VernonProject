@@ -43,7 +43,7 @@ export default function ProjectDetail() {
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
-  const canAutoApprove = !!boot?.employee?.show_auto_approve
+  const canAutoApprove = !!boot?.settings?.show_auto_approve
   const itemSelected = !!itemName
 
   if (detail.isLoading && !detail.data) {

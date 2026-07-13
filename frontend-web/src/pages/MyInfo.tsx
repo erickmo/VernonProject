@@ -40,7 +40,6 @@ export default function MyInfo() {
   const [trainings, setTrainings] = useState<EmployeeChildTraining[]>([])
   const [religion, setReligion] = useState('')
   const [verseEnabled, setVerseEnabled] = useState(false)
-  const [showAutoApprove, setShowAutoApprove] = useState(false)
 
   // One-shot hydration once boot's employee arrives (useState ignores later prop changes).
   const [hydrated, setHydrated] = useState(false)
@@ -58,7 +57,6 @@ export default function MyInfo() {
       setTrainings(employee.trainings ?? [])
       setReligion(employee.religion ?? '')
       setVerseEnabled(!!employee.verse_enabled)
-      setShowAutoApprove(!!employee.show_auto_approve)
       setHydrated(true)
     }
   }, [employee, hydrated])
@@ -69,9 +67,8 @@ export default function MyInfo() {
       emergency_contact_name: ecName, emergency_contact_phone: ecPhone, emergency_contact_relation: ecRelation,
       skills, education, trainings,
       religion, verse_enabled: (verseEnabled ? 1 : 0) as 0 | 1,
-      show_auto_approve: (showAutoApprove ? 1 : 0) as 0 | 1,
     }),
-    [phone, birthdate, bio, homeAddress, ecName, ecPhone, ecRelation, skills, education, trainings, religion, verseEnabled, showAutoApprove],
+    [phone, birthdate, bio, homeAddress, ecName, ecPhone, ecRelation, skills, education, trainings, religion, verseEnabled],
   )
 
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
@@ -171,10 +168,6 @@ export default function MyInfo() {
             ) : religion ? (
               <p className="text-xs text-muted">Belum tersedia untuk agama ini.</p>
             ) : null}
-            <label className="flex items-center justify-between gap-3">
-              <span className="text-sm text-ink">Kontrol Auto-Setujui</span>
-              <input type="checkbox" checked={showAutoApprove} onChange={(e) => setShowAutoApprove(e.target.checked)} className="h-5 w-5 accent-violet-600" />
-            </label>
           </div>
         </BentoTile>
 

@@ -34,7 +34,6 @@ export default function MyInfoScreen() {
   const [trainings, setTrainings] = useState<EmployeeChildTraining[]>(employee?.trainings ?? [])
   const [religion, setReligion] = useState(employee?.religion ?? '')
   const [verseEnabled, setVerseEnabled] = useState<boolean>(!!employee?.verse_enabled)
-  const [showAutoApprove, setShowAutoApprove] = useState<boolean>(!!employee?.show_auto_approve)
 
   // ponytail: one-shot hydration — useState ignores prop changes after first render; fire once when employee arrives
   const [hydrated, setHydrated] = useState(false)
@@ -52,7 +51,6 @@ export default function MyInfoScreen() {
       setTrainings(employee.trainings ?? [])
       setReligion(employee.religion ?? '')
       setVerseEnabled(!!employee.verse_enabled)
-      setShowAutoApprove(!!employee.show_auto_approve)
       setHydrated(true)
     }
   }, [employee, hydrated])
@@ -62,7 +60,7 @@ export default function MyInfoScreen() {
       { phone, birthdate, bio, home_address: homeAddress,
         emergency_contact_name: ecName, emergency_contact_phone: ecPhone, emergency_contact_relation: ecRelation,
         skills, education, trainings,
-        religion, verse_enabled: verseEnabled ? 1 : 0, show_auto_approve: showAutoApprove ? 1 : 0 },
+        religion, verse_enabled: verseEnabled ? 1 : 0 },
       {
         onSuccess: () => toast('success', 'Profile saved'),
         onError: (e) => toast('error', e instanceof Error ? e.message : 'Could not save profile'),
@@ -139,15 +137,6 @@ export default function MyInfoScreen() {
         ) : religion ? (
           <p className="text-xs text-stone-400 dark:text-slate-500">Ayat Harian belum tersedia untuk agama ini.</p>
         ) : null}
-
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5">
-          <span className="flex flex-col">
-            <span className="text-sm font-medium text-stone-600 dark:text-slate-300">Kontrol Auto-Setujui</span>
-            <span className="text-xs text-stone-400 dark:text-slate-500">Tampilkan tombol auto-setujui di proyek & todo</span>
-          </span>
-          <input type="checkbox" checked={showAutoApprove} onChange={(e) => setShowAutoApprove(e.target.checked)}
-            className="h-5 w-5 shrink-0 accent-brand-600" />
-        </label>
       </div>
 
       {/* Emergency Contact */}

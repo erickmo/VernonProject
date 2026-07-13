@@ -35,7 +35,7 @@ export default function ProjectDetailPane() {
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
-  const canAutoApprove = !!boot?.employee?.show_auto_approve
+  const canAutoApprove = !!boot?.settings?.show_auto_approve
   const toast = useToast()
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
 

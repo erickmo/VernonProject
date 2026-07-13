@@ -1413,7 +1413,7 @@ const [followOpen, setFollowOpen] = useState(false)
               </button>
             )}
 
-            {data.can_set_auto_approve && !!boot?.employee?.show_auto_approve && (
+            {data.can_set_auto_approve && !!boot?.settings?.show_auto_approve && (
               <AutoApproveSegment
                 mode={data.auto_approve_mode}
                 effective={data.auto_approve_effective}

@@ -154,7 +154,7 @@ export default function ProjectScreen() {
         </div>
       )}
 
-      {data.can_set_auto_approve && !!boot?.employee?.show_auto_approve && (
+      {data.can_set_auto_approve && !!boot?.settings?.show_auto_approve && (
         <div className="mt-3">
           <ProjectAutoApproveSwitch
             enabled={data.auto_approve}

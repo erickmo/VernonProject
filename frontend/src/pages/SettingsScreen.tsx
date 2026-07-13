@@ -21,6 +21,7 @@ export default function SettingsScreen() {
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<number>(0)
   const [toleranceMinutes, setToleranceMinutes] = useState<number>(0)
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
+  const [showAutoApprove, setShowAutoApprove] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
   const [graceMinutes, setGraceMinutes] = useState<number>(0)
   const [lateRate, setLateRate] = useState<number>(0)
@@ -36,6 +37,7 @@ export default function SettingsScreen() {
     setMaxEstimatedMinutes(loaded.max_estimated_minutes)
     setToleranceMinutes(loaded.under_occupied_tolerance_minutes)
     setAttendanceEnabled(!!loaded.attendance_enabled)
+    setShowAutoApprove(!!loaded.show_auto_approve)
     setQrValiditySeconds(loaded.qr_validity_seconds)
     setGraceMinutes(loaded.attendance_grace_minutes)
     setLateRate(loaded.late_penalty_per_minute)
@@ -66,6 +68,7 @@ export default function SettingsScreen() {
         max_estimated_minutes: maxEstimatedMinutes,
         under_occupied_tolerance_minutes: toleranceMinutes,
         attendance_enabled: attendanceEnabled ? 1 : 0,
+        show_auto_approve: showAutoApprove ? 1 : 0,
         qr_validity_seconds: qrValiditySeconds,
         attendance_grace_minutes: graceMinutes,
         late_penalty_per_minute: lateRate,
@@ -178,6 +181,20 @@ export default function SettingsScreen() {
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Points deducted per minute late / early-leave; flat for absence. 0 = no penalty.
           </p>
+        </div>
+
+        <div className="mt-2 border-t border-paper-edge pt-4 dark:border-slate-700">
+          <p className="mb-3 text-sm font-bold text-stone-800 dark:text-slate-100">Auto-Approve</p>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-paper-card px-3 py-2.5 shadow-card dark:bg-slate-800">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Kontrol Auto-Setujui</span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={showAutoApprove}
+              onChange={(e) => setShowAutoApprove(e.target.checked)}
+            />
+          </label>
         </div>
 
         <div className="mt-2 border-t border-paper-edge pt-4 dark:border-slate-700">

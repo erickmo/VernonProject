@@ -16,6 +16,7 @@ export interface Boot {
   badge?: Badge | null
   vapid_public_key?: string | null
   employee?: EmployeeSoft | null
+  settings?: { show_auto_approve?: 0 | 1 }
   leave?: LeaveBalance | null
 }
 
@@ -711,6 +712,7 @@ export interface AppSettings {
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
   attendance_enabled: number
+  show_auto_approve: number
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number
@@ -969,7 +971,7 @@ export type EmployeeSoft = {
   home_address?: string;
   emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
   education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
-  religion?: string; verse_enabled?: 0 | 1; show_auto_approve?: 0 | 1;
+  religion?: string; verse_enabled?: 0 | 1;
 }
 
 export type DailyVerse = { reference: string; text: string } | null
