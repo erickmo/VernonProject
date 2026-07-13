@@ -5,6 +5,7 @@ import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { computeTodoPoints } from '@/lib/points'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 import { emptyRecurrence, recurrenceFromDetail, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
@@ -138,6 +139,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             Assigned to<span className="text-red-500"> *</span>
             <SearchableSelect value={assignedTo} onChange={setAssignedTo} options={team.map((m) => ({ value: m.user, label: m.name }))} placeholder="Select a team member…" />
           </label>
+          <AssignmentOverloadBanner user={assignedTo} date={deadline} minutes={Number(estimated) || 0} />
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Start date<span className="text-red-500"> *</span>

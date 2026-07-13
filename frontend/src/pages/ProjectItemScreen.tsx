@@ -48,6 +48,7 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
@@ -232,6 +233,12 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           placeholder="Select a team member…"
         />
       </div>
+      <AssignmentOverloadBanner
+        user={assignee}
+        date={deadline}
+        minutes={estimated === '' ? 0 : Number(estimated)}
+        enabled={assignee !== data.assigned_to}
+      />
 
       {data.can_edit_estimate && (
         <>
