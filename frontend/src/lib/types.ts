@@ -709,6 +709,18 @@ export interface PreviousShiftShortfall {
   today_minimum: number
 }
 
+// Advisory returned by assignment_overload_check: would this todo's estimate push the
+// assignee's day above their daily minimum + tolerance? `over` drives the picker banner.
+export interface AssignmentOverload {
+  over: boolean
+  assigned: number
+  added: number
+  minimum: number
+  tolerance: number
+  user: string
+  date: string
+}
+
 export interface AppSettings {
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number

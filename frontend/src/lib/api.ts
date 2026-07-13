@@ -329,6 +329,8 @@ export const mobileApi = {
   getHomeBanners: () => api.get<import('./types').BannerSlide[]>(M + 'get_home_banners'),
   previousShiftShortfall: () =>
     api.get<import('./types').PreviousShiftShortfall>(R + 'my_previous_shift_shortfall'),
+  assignmentOverloadCheck: (user: string, date: string, added_minutes: number) =>
+    api.get<import('./types').AssignmentOverload>(R + 'assignment_overload_check', { user, date, added_minutes }),
   getNotifications: (limit = 30) =>
     api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit }),
   getAppReleases: (platform?: string) =>

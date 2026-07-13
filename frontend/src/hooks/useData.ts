@@ -1269,6 +1269,15 @@ export function usePreviousShiftShortfall() {
   })
 }
 
+export function useAssignmentOverload(user: string, date: string, addedMinutes: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['assignment-overload', user, date, addedMinutes],
+    queryFn: () => mobileApi.assignmentOverloadCheck(user, date, addedMinutes),
+    enabled: enabled && !!user && !!date && addedMinutes > 0,
+    staleTime: 30_000,
+  })
+}
+
 export function useNotifications() {
   return useQuery({
     queryKey: keys.notifications,
