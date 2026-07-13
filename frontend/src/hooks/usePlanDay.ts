@@ -72,7 +72,7 @@ export function useAutoPlanToday(buckets: {
   const qc = useQueryClient()
   const today = todayISO()
   const shortfall = usePreviousShiftShortfall()
-  const min = shortfall.data?.minimum ?? 0
+  const min = shortfall.data?.today_minimum ?? 0
   const { due_today, overdue, upcoming } = buckets
   const seen = useRef<Set<string>>(new Set())
 
@@ -103,7 +103,7 @@ export function useAutoFillPlan() {
   const [saving, setSaving] = useState(false)
 
   const run = async (buckets: { due_today: ProjectItem[]; overdue: ProjectItem[]; upcoming: ProjectItem[] }) => {
-    const min = shortfall.data?.minimum ?? 0
+    const min = shortfall.data?.today_minimum ?? 0
     const picks = autoFillPlan(buckets, min)
     if (!picks.length) {
       toast('success', "You're already at today's target")
