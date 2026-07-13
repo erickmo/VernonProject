@@ -6,9 +6,10 @@ import ProjectItem from '@web/pages/ProjectItem'
 // ProjectItem reads its id from useParams exactly as on the full page.
 // closeOnEscape is false: ProjectItem hosts its own cancel/waiting/duplicate
 // confirms whose Escape must close THEM, not this drawer.
+// zClass="z-40": sit below AppShell's z-50 full-screen overlays so Focus/⌘K/quick-create open ON TOP of the drawer, not behind it.
 export default function TodoDrawer({ onClose }: { onClose: () => void }) {
   return (
-    <Drawer open onClose={onClose} title="Todo details" widthClass="max-w-2xl" closeOnEscape={false}>
+    <Drawer open onClose={onClose} title="Todo details" widthClass="max-w-2xl" closeOnEscape={false} zClass="z-40">
       <ProjectItem />
     </Drawer>
   )

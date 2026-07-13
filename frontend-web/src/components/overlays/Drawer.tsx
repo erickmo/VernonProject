@@ -4,7 +4,7 @@ import { useModalA11y } from '@web/lib/useModalA11y'
 
 export function Drawer({
   open, onClose, title, children, footer, widthClass = 'max-w-md', onSubmit,
-  scrim = 'bg-black/50', closeOnEscape = true,
+  scrim = 'bg-black/50', closeOnEscape = true, zClass = 'z-50',
 }: {
   open: boolean
   onClose: () => void
@@ -19,6 +19,8 @@ export function Drawer({
   /** Set false when the drawer hosts its own nested dialogs/confirms whose Escape
    *  must not also close this drawer (close via the X or scrim instead). */
   closeOnEscape?: boolean
+  /** Root stacking. Lower (e.g. 'z-40') to sit below full-screen z-50 modals. */
+  zClass?: string
 }) {
   const ref = useModalA11y(open, onClose, { closeOnEscape })
   if (!open) return null
@@ -35,7 +37,7 @@ export function Drawer({
   )
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className={`fixed inset-0 ${zClass}`}>
       <div className={`absolute inset-0 animate-fade-in ${scrim}`} onClick={onClose} />
       <div
         ref={ref}
