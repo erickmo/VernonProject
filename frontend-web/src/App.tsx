@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate, type Location } from 'react-router-dom'
 import { FolderKanban, AlertTriangle, RotateCw } from 'lucide-react'
 import {
   useBoot,
@@ -92,6 +92,8 @@ import Learn from '@web/pages/Learn'
 import Course from '@web/pages/Course'
 import LmsAdmin from '@web/pages/LmsAdmin'
 import WhatsNew from '@web/pages/WhatsNew'
+import { isTodoPath } from '@web/lib/todoDrawer'
+import TodoDrawer from '@web/components/TodoDrawer'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -124,6 +126,15 @@ function BootError() {
 export default function App() {
   const boot = useBoot()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const bgRef = useRef<Location | null>(null)
+  const onTodo = isTodoPath(location.pathname)
+  // Freeze the last non-todo page; it stays mounted behind the drawer.
+  if (!onTodo) bgRef.current = location
+  const showDrawer = onTodo && bgRef.current !== null
+  const background = showDrawer ? bgRef.current! : location
+  const closeDrawer = () => navigate((bgRef.current?.pathname ?? '/') + (bgRef.current?.search ?? ''))
 
   useEffect(() => {
     if (boot.data && !localStorage.getItem(ONBOARDED_KEY)) setShowOnboarding(true)
@@ -161,7 +172,7 @@ export default function App() {
   return (
     <>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
-      <Routes>
+      <Routes location={background}>
         <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
@@ -301,6 +312,11 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      {showDrawer && (
+        <Routes location={location}>
+          <Route path="/project-item/:name" element={<TodoDrawer onClose={closeDrawer} />} />
+        </Routes>
+      )}
     </>
   )
 }
