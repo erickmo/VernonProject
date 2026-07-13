@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { FolderKanban } from 'lucide-react'
+import clsx from 'clsx'
 import { useBoot } from '@/hooks/useData'
 import { CommandPalette, type Command } from '@web/components/CommandPalette'
 import { TopBar } from '@web/components/TopNav'
@@ -10,6 +11,16 @@ import { buildNavGroups } from '@web/lib/nav'
 import { QuickCreate } from '@web/components/QuickCreate'
 import { FocusHost } from '@web/components/FocusHost'
 import UpdateBanner from '@web/components/UpdateBanner'
+
+// Content-type width: workspaces full-bleed, table/grid-heavy routes wide,
+// feeds stay at the readable 6xl cap. Route-based because most pages don't
+// render <Page> — the shell is the only place that always wraps content.
+function mainWidth(path: string): string {
+  if (path.startsWith('/project/') || path === '/projects') return ''
+  if (path === '/' || path === '/review' || path === '/reports' ||
+      path.startsWith('/reports/') || path.startsWith('/report/')) return 'max-w-7xl'
+  return 'max-w-6xl'
+}
 
 export function AppShell() {
   const boot = useBoot()
@@ -48,7 +59,7 @@ export function AppShell() {
       />
       {/* Centered column that fits 2–3 card columns — soft-pop desktop-fit.
           (Replaces the former LOCKED full-width main — deliberate per redesign.) */}
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 pb-28 lg:px-6">
+      <main className={clsx('mx-auto w-full px-4 py-6 pb-28 lg:px-6', mainWidth(pathname))}>
         <Outlet />
       </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}

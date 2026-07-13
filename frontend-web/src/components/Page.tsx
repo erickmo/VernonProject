@@ -2,8 +2,8 @@ import type { ReactNode, ComponentType } from 'react'
 import clsx from 'clsx'
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  // LOCKED: full width on every route (matches AppShell — do not re-add max-w-5xl).
-  // A page that needs a narrow column passes its own max-w via `className`.
+  // Full width within the shell column; AppShell's route→width map owns the
+  // outer cap (feed 6xl / wide 7xl / full). Narrow pages pass their own max-w.
   return <div className={clsx('w-full animate-rise', className)}>{children}</div>
 }
 
