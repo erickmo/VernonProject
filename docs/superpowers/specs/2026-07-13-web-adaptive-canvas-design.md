@@ -13,15 +13,11 @@ tokens, and mobile (/m) parity untouched.
 
 ## 1. Width system
 
-- `AppShell` `<main>` drops `max-w-6xl` → neutral container
-  (`w-full px-4 py-6 pb-28 lg:px-6`).
-- `Page` gains `width?: 'feed' | 'wide' | 'full'`:
-  - `feed` (default) = `max-w-6xl mx-auto` — every existing page renders
-    exactly as today with zero edits.
-  - `wide` = `max-w-7xl mx-auto` — table-heavy pages opt in.
-  - `full` = no cap — workspaces.
-- Projects workspace: keep current full-width behavior; if it uses a breakout
-  hack against the old shell cap, delete the hack and use `width="full"`.
+- AMENDED during planning: 37 of ~50 pages never render `<Page>`, so a Page
+  prop cannot own width. Instead `AppShell` keeps ownership via a
+  route→width map: `/project*` → full-bleed, `/`, `/review`, `/reports*`,
+  `/report/*` → `max-w-7xl`, everything else → `max-w-6xl` (unchanged).
+- Zero page edits; `Page` untouched except comments.
 
 ## 2. Data density (DataTable)
 
@@ -51,14 +47,16 @@ tokens, and mobile (/m) parity untouched.
 - `xl:grid-cols-[minmax(0,1fr)_380px]`.
 - Main column: today's plan / todos / review queue (current primary flow).
 - Side rail: stats, pulse/activity, quick links.
-- Below xl: current single-column order, unchanged.
+- Below xl: single column; AMENDED — side-rail content (recap, verse,
+  meetings, attendance, jump-to) stacks after the work list instead of the
+  old interleaved order. Accepted tradeoff of the 2-col split.
 
 ## 5. Key pages
 
 - **Projects workspace**: `width="full"`; denser rail rows; hover polish on
   rail + todo tables.
-- **Review**: `width="wide"`; feed becomes `xl:grid-cols-2` card grid with
-  stagger.
+- **Review**: wide via route map; AMENDED — feed is already a 3-col grid via
+  `CardList`, so Review only gains width + stagger.
 - **Reports**: `width="wide"`; tighter report-card grid; report tables get
   density from §2.
 
