@@ -34,9 +34,10 @@ In `App.tsx`, wrap the router:
 - **new** `frontend-web/src/lib/todoDrawer.ts` — pure helper
   `isTodoPath(path: string): boolean` (regex `^/project-item/[^/]+$`), the
   single source of truth for both the app-Routes branch and the bg-ref guard.
-- **new** `frontend-web/src/lib/todoDrawer.test.ts` — asserts `isTodoPath`
-  matches `/project-item/T1`, rejects `/project-item/T1/x`, `/project-detail/
-  T1`, `/`, `/projects`.
+- **new** `frontend-web/src/lib/todoDrawer.selfcheck.ts` — repo-convention
+  `node:assert` self-check (mirrors `match.selfcheck.ts`; no test runner is
+  installed), verified by `tsc`: `isTodoPath` matches `/project-item/T1`,
+  rejects `/project-item/T1/x`, `/project-detail/T1`, `/`, `/projects`.
 
 `ProjectItem.tsx` is reused unchanged: its root is `<div class="space-y-6">`
 with no outer width wrapper and no standalone back-link (only the `in {detail}`
@@ -81,9 +82,10 @@ Unchanged. No API changes. `ProjectItem` fetches by name via react-query.
 
 ## Testing
 
-Live-site convention: `npx tsc --noEmit` + manual. One runnable unit self-check
-on the pure `isTodoPath` helper (the only non-trivial branch logic); the rest
-is router wiring, verified live.
+Live-site convention: `npx tsc --noEmit` + manual. A co-located
+`todoDrawer.selfcheck.ts` (`node:assert`, repo convention — no runner
+installed) pins `isTodoPath` behavior and is verified by `tsc`; the rest is
+router wiring, verified live.
 
 ## Non-goals
 
