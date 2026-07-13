@@ -4,7 +4,7 @@ import { safeDecode } from '@web/lib/route'
 import {
   ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3,
 } from 'lucide-react'
-import { useProjectDetail, useDeleteProjectDetail, useSetAutoApprove, useSetProjectAutoApprove } from '@/hooks/useData'
+import { useProjectDetail, useDeleteProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
@@ -42,6 +42,8 @@ export default function ProjectDetail() {
   const deleteMutation = useDeleteProjectDetail()
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
+  const { data: boot } = useBoot()
+  const canAutoApprove = !!boot?.employee?.show_auto_approve
   const itemSelected = !!itemName
 
   if (detail.isLoading && !detail.data) {
@@ -74,7 +76,7 @@ export default function ProjectDetail() {
     key: 'auto_approve',
     header: '',
     render: (t) =>
-      t.can_set_auto_approve ? (
+      t.can_set_auto_approve && canAutoApprove ? (
         <div onClick={(e) => e.stopPropagation()}>
           <AutoApproveSegment
             mode={t.auto_approve_mode}
@@ -92,7 +94,7 @@ export default function ProjectDetail() {
         </div>
       ) : null,
   }
-  const todoColumns = items.some((t) => t.can_set_auto_approve) ? [...TODO_COLUMNS, autoApproveColumn] : TODO_COLUMNS
+  const todoColumns = items.some((t) => t.can_set_auto_approve) && canAutoApprove ? [...TODO_COLUMNS, autoApproveColumn] : TODO_COLUMNS
 
   const handleDelete = async () => {
     const ok = await confirm({
@@ -172,7 +174,7 @@ export default function ProjectDetail() {
           </Property>
         </PropertyRow>
 
-        {d.can_set_auto_approve && (
+        {d.can_set_auto_approve && canAutoApprove && (
           <div className="mt-3 max-w-sm">
             <ProjectAutoApproveSwitch
               enabled={d.auto_approve}

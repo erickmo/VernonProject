@@ -47,6 +47,7 @@ import {
   useUploadTodoFile,
   useDeleteTodoFile,
   useSetAutoApprove,
+  useBoot,
 } from '@/hooks/useData'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
@@ -984,6 +985,8 @@ export default function ProjectItem() {
   const wsProject = params.name ?? ''
 
   const { data, isLoading } = useProjectItem(todoName)
+  const { data: boot } = useBoot()
+  const canAutoApprove = !!boot?.employee?.show_auto_approve
   const advanceConfirm = useAdvance()
   const rejectConfirm = useReject()
   const cancelTodo = useCancelTodo()
@@ -1434,7 +1437,7 @@ const [followOpen, setFollowOpen] = useState(false)
                     </button>
                   )}
 
-                  {data.can_set_auto_approve && (
+                  {data.can_set_auto_approve && canAutoApprove && (
                     <AutoApproveSegment
                       mode={data.auto_approve_mode}
                       effective={data.auto_approve_effective}

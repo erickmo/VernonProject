@@ -100,6 +100,7 @@ export default function Project() {
 
   const p = project.data
   const perms = permFlags(p, boot.data)
+  const canAutoApprove = !!boot.data?.employee?.show_auto_approve
 
   const filteredDetails = p.project_details.filter((w) =>
     detailFilter === 'all' ? true : detailFilter === 'completed' ? isDetailCompleted(w) : !isDetailCompleted(w),
@@ -349,7 +350,7 @@ export default function Project() {
             </Property>
           </PropertyRow>
 
-          {p.can_set_auto_approve && (
+          {p.can_set_auto_approve && canAutoApprove && (
             <div className="max-w-sm">
               <ProjectAutoApproveSwitch
                 enabled={p.auto_approve}
