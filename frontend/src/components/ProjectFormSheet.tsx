@@ -16,7 +16,7 @@ interface Props {
   onSaved?: (name: string) => void
 }
 
-const STATUSES = ['Ongoing', 'Closed']
+const STATUSES = ['Ongoing', 'Closed', 'Inbox']
 
 export function ProjectFormSheet({ open, onClose, project, canReassign = true, onSaved }: Props) {
   const toast = useToast()

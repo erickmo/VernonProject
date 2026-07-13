@@ -26,7 +26,11 @@ export function ProjectCard({ p }: { p: ProjectCardType }) {
         ) : (
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              p.status === 'Ongoing' ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-paper-line dark:bg-slate-700 text-stone-500 dark:text-slate-400'
+              p.status === 'Ongoing'
+                ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : p.status === 'Inbox'
+                  ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'
+                  : 'bg-paper-line dark:bg-slate-700 text-stone-500 dark:text-slate-400'
             }`}
           >
             {p.status}

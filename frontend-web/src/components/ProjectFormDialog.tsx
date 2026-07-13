@@ -11,6 +11,7 @@ import type { ProjectFull, ProjectInput } from '@/lib/types'
 const STATUS_OPTS = [
   { value: 'Ongoing', label: 'Ongoing' },
   { value: 'Closed', label: 'Closed' },
+  { value: 'Inbox', label: 'Inbox' },
 ]
 
 export function ProjectFormDialog({

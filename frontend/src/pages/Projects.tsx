@@ -9,7 +9,7 @@ import { NotificationBell } from '@/components/NotificationBell'
 import { useProjects, useBoot, canCreateProject } from '@/hooks/useData'
 import { buildOptions } from '@/lib/filters'
 
-type StatusFilter = 'Ongoing' | 'Closed' | 'all'
+type StatusFilter = 'Ongoing' | 'Inbox' | 'Closed' | 'all'
 
 export default function Projects() {
   const { data, isLoading, refetch } = useProjects()
@@ -139,6 +139,7 @@ export default function Projects() {
                 onChange={setStatus}
                 options={[
                   { value: 'Ongoing', label: 'Ongoing' },
+                  { value: 'Inbox', label: 'Inbox' },
                   { value: 'Closed', label: 'Closed' },
                   { value: 'all', label: 'All' },
                 ]}

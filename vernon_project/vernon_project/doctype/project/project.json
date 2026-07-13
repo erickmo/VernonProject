@@ -139,7 +139,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Ongoing\nClosed",
+   "options": "Ongoing\nClosed\nInbox",
    "reqd": 1
   },
   {

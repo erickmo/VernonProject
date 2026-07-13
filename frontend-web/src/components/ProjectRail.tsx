@@ -10,7 +10,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { Popover } from '@web/components/overlays/Popover'
 import type { ProjectCard } from '@/lib/types'
 
-type StatusFilter = 'Ongoing' | 'Closed' | 'all'
+type StatusFilter = 'Ongoing' | 'Inbox' | 'Closed' | 'all'
 
 // Single source of truth for a rail row so grouped + flat lists render identically.
 function ProjectRow({ p }: { p: ProjectCard }) {
@@ -142,6 +142,7 @@ export function ProjectRail() {
           onChange={setStatus}
           options={[
             { value: 'Ongoing', label: 'Ongoing' },
+            { value: 'Inbox', label: 'Inbox' },
             { value: 'Closed', label: 'Closed' },
             { value: 'all', label: 'All' },
           ]}
