@@ -724,6 +724,13 @@ export interface AssignmentOverload {
 export interface AppSettings {
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
+  min_minutes_monday: number
+  min_minutes_tuesday: number
+  min_minutes_wednesday: number
+  min_minutes_thursday: number
+  min_minutes_friday: number
+  min_minutes_saturday: number
+  min_minutes_sunday: number
   attendance_enabled: number
   show_auto_approve: number
   qr_validity_seconds: number

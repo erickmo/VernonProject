@@ -11,6 +11,13 @@ import type { HomeBanner } from '@/lib/types'
 const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
+// Per-weekday minimum-minutes fields, Mon..Sun (matches Vernon Settings + AppSettings).
+const WEEKDAY_MIN_KEYS = [
+  'min_minutes_monday', 'min_minutes_tuesday', 'min_minutes_wednesday', 'min_minutes_thursday',
+  'min_minutes_friday', 'min_minutes_saturday', 'min_minutes_sunday',
+] as const
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 export default function Settings() {
   const toast = useToast()
   const { data: boot } = useBoot()
@@ -19,6 +26,7 @@ export default function Settings() {
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<string>('0')
   const [toleranceMinutes, setToleranceMinutes] = useState<string>('0')
+  const [minByWeekday, setMinByWeekday] = useState<string[]>(['0', '0', '0', '0', '0', '0', '0'])
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
@@ -34,6 +42,7 @@ export default function Settings() {
     if (!loaded) return
     setMaxEstimatedMinutes(String(loaded.max_estimated_minutes))
     setToleranceMinutes(String(loaded.under_occupied_tolerance_minutes))
+    setMinByWeekday(WEEKDAY_MIN_KEYS.map((k) => String(loaded[k])))
     setAttendanceEnabled(!!loaded.attendance_enabled)
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
@@ -75,6 +84,13 @@ export default function Settings() {
       {
         max_estimated_minutes: n(maxEstimatedMinutes),
         under_occupied_tolerance_minutes: n(toleranceMinutes),
+        min_minutes_monday: n(minByWeekday[0]),
+        min_minutes_tuesday: n(minByWeekday[1]),
+        min_minutes_wednesday: n(minByWeekday[2]),
+        min_minutes_thursday: n(minByWeekday[3]),
+        min_minutes_friday: n(minByWeekday[4]),
+        min_minutes_saturday: n(minByWeekday[5]),
+        min_minutes_sunday: n(minByWeekday[6]),
         attendance_enabled: attendanceEnabled ? 1 : 0,
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
@@ -157,6 +173,32 @@ export default function Settings() {
                 />
               )}
             </Field>
+          </div>
+        </BentoTile>
+
+        <BentoTile span="md" tone="tint" accent="amber" title="Minimum Minutes / Weekday">
+          <p className="mt-1 text-xs text-muted">
+            Daily floor everyone should plan, by weekday. Drives auto-plan, the daily-minimum
+            banner, and the assignment-overload warning. A user's shift template overrides this;
+            holidays and days off count as 0. 0 = use Min Daily Estimated Minutes.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {WEEKDAY_LABELS.map((lbl, i) => (
+              <Field key={lbl} label={lbl}>
+                {(id) => (
+                  <input
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className={field}
+                    value={minByWeekday[i]}
+                    onChange={(e) => setMinByWeekday((m) => m.map((v, k) => (k === i ? e.target.value : v)))}
+                    placeholder="0"
+                  />
+                )}
+              </Field>
+            ))}
           </div>
         </BentoTile>
 

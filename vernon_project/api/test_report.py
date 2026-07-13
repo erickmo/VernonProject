@@ -212,16 +212,14 @@ class TestDailyMinimum(unittest.TestCase):
 	"""Pure daily-floor decision (_daily_minimum) — no DB."""
 
 	def test_holiday_is_zero(self):
-		self.assertEqual(_daily_minimum(True, True, {"min": 300, "length": 480}, 480), 0)
+		self.assertEqual(_daily_minimum(True, True, {"min": 300}, 480), 0)
 
 	def test_template_min_wins(self):
-		self.assertEqual(_daily_minimum(False, True, {"min": 300, "length": 480}, 480), 300)
+		self.assertEqual(_daily_minimum(False, True, {"min": 300}, 480), 300)
 
-	def test_blank_min_falls_to_shift_length(self):
-		self.assertEqual(_daily_minimum(False, True, {"min": 0, "length": 420}, 480), 420)
-
-	def test_blank_min_and_zero_length_falls_to_global(self):
-		self.assertEqual(_daily_minimum(False, True, {"min": 0, "length": 0}, 480), 480)
+	def test_blank_template_min_falls_to_global(self):
+		# Shift day, no explicit template minimum -> the per-weekday global floor.
+		self.assertEqual(_daily_minimum(False, True, {"min": 0}, 480), 480)
 
 	def test_day_off_is_zero(self):
 		self.assertEqual(_daily_minimum(False, True, None, 480), 0)

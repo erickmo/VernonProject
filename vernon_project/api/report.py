@@ -307,30 +307,40 @@ def _daily_minimum(is_holiday, has_assignments, chosen, global_min):
 	"""Pure: the daily floor in minutes for one user-day.
 
 	is_holiday:      date is a holiday for the user  -> 0.
-	chosen:          {'min': int, 'length': int} for the covering shift on this weekday,
-	                 or None (day off / no covering assignment). min>0 wins; else length>0;
-	                 else the global fallback.
+	chosen:          {'min': int} for the covering shift on this weekday, or None (day off /
+	                 no covering assignment). Shift min>0 overrides; else the global floor.
 	has_assignments: user has >=1 covering Shift Assignment. No assignments at all -> global
-	                 (pre-shift behavior); assignments but this weekday off (chosen None) -> 0.
+	                 (works every weekday); assignments but this weekday off (chosen None) -> 0.
+	global_min:      the per-weekday global floor for this date (from Vernon Settings), already
+	                 resolved by the caller.
 	"""
 	global_min = int(global_min or 0)
 	if is_holiday:
 		return 0
 	if chosen is not None:
-		if chosen.get("min"):
-			return int(chosen["min"])
-		length = int(chosen.get("length") or 0)
-		return length if length > 0 else global_min
+		return int(chosen["min"]) if chosen.get("min") else global_min
 	return 0 if has_assignments else global_min
 
 
+# Per-weekday global minimum fields on Vernon Settings, indexed by date.weekday() (Mon=0..Sun=6).
+WEEKDAY_MIN_FIELDS = [
+	"min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday",
+	"min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday",
+]
+
+
 def _resolve_min_minutes(user, date):
-	"""Per-user daily minimum estimated minutes for one date — the auto-plan / underperformed
-	floor. DB-gathering wrapper around _daily_minimum: holiday -> 0; shift day ->
-	Shift Template.minimum_estimated_minutes or shift length or the global fallback; day off
-	-> 0; no covering shift assignment -> global fallback (preserves pre-shift behavior)."""
+	"""Per-user daily minimum estimated minutes for one date — the auto-plan / underperformed /
+	assignment-overload floor. Global per-weekday floor (Vernon Settings min_minutes_<weekday>,
+	falling back to the flat min_daily_estimated_minutes) is the base for everyone; a covering
+	Shift Template.minimum_estimated_minutes overrides it for that user; holidays and non-shift
+	weekdays (a user who has shifts but is off this weekday) -> 0. A user with no shift setup
+	works every weekday and gets the per-weekday global."""
+	wd = getdate(date).weekday()
 	date = str(getdate(date))
-	global_min = int(frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0)
+	per_weekday = int(frappe.db.get_single_value("Vernon Settings", WEEKDAY_MIN_FIELDS[wd]) or 0)
+	flat = int(frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0)
+	global_min = per_weekday if per_weekday > 0 else flat
 	is_holiday = date in (_holidays_by_user([user], date, date).get(user) or set())
 	assignments = frappe.get_all(
 		"Shift Assignment",
@@ -338,24 +348,17 @@ def _resolve_min_minutes(user, date):
 		or_filters=[["effective_to", ">=", date], ["effective_to", "is", "not set"]],
 		fields=["shift_template", "effective_from", "effective_to", *WEEKDAY_FIELDS],
 	)
-	weekday_field = WEEKDAY_FIELDS[getdate(date).weekday()]
 	chosen_assign = None
 	for a in assignments:
-		if a.get(weekday_field) and (
+		if a.get(WEEKDAY_FIELDS[wd]) and (
 			chosen_assign is None
 			or str(a["effective_from"]) >= str(chosen_assign["effective_from"])
 		):
 			chosen_assign = a
 	chosen = None
 	if chosen_assign:
-		tmpl = frappe.db.get_value(
-			"Shift Template", chosen_assign["shift_template"],
-			["minimum_estimated_minutes", "start_time", "end_time"], as_dict=True,
-		) or {}
-		chosen = {
-			"min": int(tmpl.get("minimum_estimated_minutes") or 0),
-			"length": _template_minutes(tmpl.get("start_time"), tmpl.get("end_time")),
-		}
+		chosen = {"min": int(frappe.db.get_value(
+			"Shift Template", chosen_assign["shift_template"], "minimum_estimated_minutes") or 0)}
 	return _daily_minimum(is_holiday, bool(assignments), chosen, global_min)
 
 

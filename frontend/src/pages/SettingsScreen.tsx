@@ -11,6 +11,13 @@ import type { HomeBanner } from '@/lib/types'
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
+// Per-weekday minimum-minutes fields, Mon..Sun (matches Vernon Settings + AppSettings).
+const WEEKDAY_MIN_KEYS = [
+  'min_minutes_monday', 'min_minutes_tuesday', 'min_minutes_wednesday', 'min_minutes_thursday',
+  'min_minutes_friday', 'min_minutes_saturday', 'min_minutes_sunday',
+] as const
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 export default function SettingsScreen() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -20,6 +27,7 @@ export default function SettingsScreen() {
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<number>(0)
   const [toleranceMinutes, setToleranceMinutes] = useState<number>(0)
+  const [minByWeekday, setMinByWeekday] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
   const [showAutoApprove, setShowAutoApprove] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
@@ -36,6 +44,7 @@ export default function SettingsScreen() {
     if (!loaded) return
     setMaxEstimatedMinutes(loaded.max_estimated_minutes)
     setToleranceMinutes(loaded.under_occupied_tolerance_minutes)
+    setMinByWeekday(WEEKDAY_MIN_KEYS.map((k) => loaded[k]))
     setAttendanceEnabled(!!loaded.attendance_enabled)
     setShowAutoApprove(!!loaded.show_auto_approve)
     setQrValiditySeconds(loaded.qr_validity_seconds)
@@ -67,6 +76,13 @@ export default function SettingsScreen() {
       {
         max_estimated_minutes: maxEstimatedMinutes,
         under_occupied_tolerance_minutes: toleranceMinutes,
+        min_minutes_monday: minByWeekday[0],
+        min_minutes_tuesday: minByWeekday[1],
+        min_minutes_wednesday: minByWeekday[2],
+        min_minutes_thursday: minByWeekday[3],
+        min_minutes_friday: minByWeekday[4],
+        min_minutes_saturday: minByWeekday[5],
+        min_minutes_sunday: minByWeekday[6],
         attendance_enabled: attendanceEnabled ? 1 : 0,
         show_auto_approve: showAutoApprove ? 1 : 0,
         qr_validity_seconds: qrValiditySeconds,
@@ -141,6 +157,37 @@ export default function SettingsScreen() {
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Flag a day under (min daily − this) in the Under-Occupied report.
           </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Minimum minutes per weekday
+          </label>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Daily floor everyone should plan, by weekday. Drives auto-plan, the daily-minimum
+            banner, and the assignment-overload warning. A user's shift template overrides this;
+            holidays and days off count as 0. 0 = use Min Daily Estimated Minutes.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {WEEKDAY_LABELS.map((lbl, i) => (
+              <label key={lbl} className="flex items-center gap-2">
+                <span className="w-9 shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">{lbl}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className={field}
+                  value={String(minByWeekday[i])}
+                  onChange={(e) =>
+                    setMinByWeekday((m) =>
+                      m.map((v, k) => (k === i ? (e.target.value === '' ? 0 : Number(e.target.value)) : v)),
+                    )
+                  }
+                  placeholder="0"
+                />
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="mt-2 border-t border-paper-edge pt-4 dark:border-slate-700">
