@@ -496,6 +496,40 @@ def over_occupied(from_date, to_date):
 	return _build_over_occupied(users, assigned_rows, expected_rows, start, end, tolerance)
 
 
+def _overload_verdict(assigned, added, minimum, tolerance):
+	"""Pure: would `added` minutes on top of `assigned` push a user's day above the daily
+	minimum + tolerance? Strict >. Returns the advisory dict for the assignee picker."""
+	assigned, added = int(assigned or 0), int(added or 0)
+	minimum, tolerance = int(minimum or 0), int(tolerance or 0)
+	return {
+		"over": (assigned + added) > (minimum + tolerance),
+		"assigned": assigned,
+		"added": added,
+		"minimum": minimum,
+		"tolerance": tolerance,
+	}
+
+
+@frappe.whitelist()
+def assignment_overload_check(user, date, added_minutes):
+	"""Advisory for the assignee picker: does assigning `added_minutes` of work to `user` on
+	`date` push their day total above the daily minimum + tolerance? Non-blocking. `assigned`
+	= the user's already-allocated minutes that day (same source as the Over-Occupied report).
+	ponytail: on self-reassign the todo's own virtual-default allocation is already counted in
+	`assigned`, so the estimate can double-count — acceptable for a soft warning; the UI only
+	shows it when the assignee actually changes. Session-authed (whitelist); returns aggregate
+	minutes only, no todo content."""
+	user = frappe.utils.cstr(user)
+	date = str(getdate(date))
+	added = frappe.utils.cint(added_minutes)
+	minimum = _resolve_min_minutes(user, date)
+	tolerance = int(frappe.db.get_single_value("Vernon Settings", "under_occupied_tolerance_minutes") or 0)
+	assigned = _pivot(_assigned_minutes([user], date, date)).get(user, {}).get(date, 0)
+	verdict = _overload_verdict(assigned, added, minimum, tolerance)
+	verdict.update({"user": user, "date": date})
+	return verdict
+
+
 # Days to look back for the current user's most recent scheduled shift day.
 PREV_SHIFT_LOOKBACK_DAYS = 14
 

@@ -8,6 +8,7 @@ from vernon_project.api.report import (
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
 	_build_over_occupied, over_occupied,
 	_previous_shift_shortfall,
+	_overload_verdict,
 	_template_minutes, _resolve_expected,
 	_daily_minimum,
 	_build_todos_due, todos_due,
@@ -717,4 +718,29 @@ class TestPreviousShiftShortfall(unittest.TestCase):
 	def test_missing_assigned_day_counts_as_zero(self):
 		out = _previous_shift_shortfall({"2026-07-08": 480}, {}, 480)
 		self.assertTrue(out["under"])
+		self.assertEqual(out["assigned"], 0)
+
+
+class TestOverloadVerdict(unittest.TestCase):
+	"""Pure assignment-overload verdict (_overload_verdict) — no DB."""
+
+	def test_over_when_above_minimum_plus_tolerance(self):
+		out = _overload_verdict(assigned=400, added=200, minimum=480, tolerance=60)
+		self.assertTrue(out["over"])  # 600 > 540
+		self.assertEqual(out["assigned"], 400)
+		self.assertEqual(out["added"], 200)
+		self.assertEqual(out["minimum"], 480)
+		self.assertEqual(out["tolerance"], 60)
+
+	def test_not_over_within_tolerance(self):
+		out = _overload_verdict(assigned=400, added=120, minimum=480, tolerance=60)
+		self.assertFalse(out["over"])  # 520 <= 540
+
+	def test_exactly_at_band_is_not_over(self):
+		out = _overload_verdict(assigned=540, added=0, minimum=480, tolerance=60)
+		self.assertFalse(out["over"])  # strict > ; 540 is not > 540
+
+	def test_handles_none_inputs(self):
+		out = _overload_verdict(None, None, None, None)
+		self.assertFalse(out["over"])
 		self.assertEqual(out["assigned"], 0)
