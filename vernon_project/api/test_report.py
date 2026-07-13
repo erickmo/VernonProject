@@ -744,3 +744,8 @@ class TestOverloadVerdict(unittest.TestCase):
 		out = _overload_verdict(None, None, None, None)
 		self.assertFalse(out["over"])
 		self.assertEqual(out["assigned"], 0)
+
+	def test_zero_minimum_never_over(self):
+		# No positive daily minimum configured -> nothing to overload, no warning.
+		out = _overload_verdict(assigned=500, added=500, minimum=0, tolerance=30)
+		self.assertFalse(out["over"])

@@ -502,7 +502,7 @@ def _overload_verdict(assigned, added, minimum, tolerance):
 	assigned, added = int(assigned or 0), int(added or 0)
 	minimum, tolerance = int(minimum or 0), int(tolerance or 0)
 	return {
-		"over": (assigned + added) > (minimum + tolerance),
+		"over": minimum > 0 and (assigned + added) > (minimum + tolerance),
 		"assigned": assigned,
 		"added": added,
 		"minimum": minimum,
