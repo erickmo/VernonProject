@@ -61,7 +61,7 @@ export function DataTable<T>({
                 key={c.key}
                 scope="col"
                 aria-sort={c.sortValue ? (sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none') : undefined}
-                className={clsx('px-4 py-3 font-medium', c.width, c.align === 'right' && 'text-right')}
+                className={clsx('px-3 py-2.5 font-medium', c.width, c.align === 'right' && 'text-right')}
               >
                 {c.sortValue ? (
                   <button type="button" onClick={() => toggleSort(c)}
@@ -85,14 +85,14 @@ export function DataTable<T>({
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={clsx(
                   'border-b border-line last:border-0',
-                  onRowClick && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04]',
+                  onRowClick && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] hover:shadow-[inset_2px_0_0_#6366f1]',
                   activeKey === k && 'bg-brand-50 dark:bg-brand-500/10',
                 )}
               >
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={clsx('px-4 py-3 align-middle', c.align === 'right' && 'text-right')}
+                    className={clsx('px-3 py-2 align-middle', c.align === 'right' && 'text-right')}
                   >
                     {c.render(row)}
                   </td>
