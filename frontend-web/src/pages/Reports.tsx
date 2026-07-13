@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { BarChart3, AlarmClock } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
 import { Card, CardList } from '@web/components/Card'
-import { Page, PageHeader } from '@web/components/Page'
+import { Page, PageHeader, rise } from '@web/components/Page'
 
 function ReportBadge({ icon: Icon, accent }: { icon: React.ComponentType<{ className?: string }>; accent: string }) {
   return (
@@ -20,20 +20,23 @@ export default function Reports() {
 
       <CardList>
         {/* Bespoke report: its own screen, not the generic /report/:name engine. */}
-        <Card
-          onClick={() => navigate('/reports/todos-due')}
-          eyebrow={<ReportBadge icon={AlarmClock} accent="from-rose-500 to-pink-600" />}
-          title="Todos Due"
-          meta="Open todos to chase across projects you own, lead, or admin"
-        />
-        {REPORTS.map((r) => (
+        <div {...rise(0)}>
           <Card
-            key={r.name}
-            onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
-            eyebrow={<ReportBadge icon={r.icon} accent={r.accent} />}
-            title={r.title}
-            meta={r.desc}
+            onClick={() => navigate('/reports/todos-due')}
+            eyebrow={<ReportBadge icon={AlarmClock} accent="from-rose-500 to-pink-600" />}
+            title="Todos Due"
+            meta="Open todos to chase across projects you own, lead, or admin"
           />
+        </div>
+        {REPORTS.map((r, i) => (
+          <div key={r.name} {...rise(i + 1)}>
+            <Card
+              onClick={() => navigate(`/report/${encodeURIComponent(r.name)}`)}
+              eyebrow={<ReportBadge icon={r.icon} accent={r.accent} />}
+              title={r.title}
+              meta={r.desc}
+            />
+          </div>
         ))}
       </CardList>
     </Page>

@@ -10,7 +10,7 @@ import { useConfirm } from '@/components/Confirm'
 import { buildOptions } from '@/lib/filters'
 import { byModifiedDesc } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
-import { Page, PageHeader } from '@web/components/Page'
+import { Page, PageHeader, rise } from '@web/components/Page'
 import { CardList } from '@web/components/Card'
 import { Sheet } from '@web/components/Sheet'
 
@@ -229,7 +229,7 @@ export default function Review() {
 
       {visible.length > 0 ? (
         <CardList>
-          {visible.map((t) =>
+          {visible.map((t, i) =>
             selectMode && t.can_advance ? (
               <label key={t.name} className="flex items-center gap-2.5">
                 <input
@@ -247,7 +247,9 @@ export default function Review() {
                 <TodoCard todo={t} showAssignee />
               </div>
             ) : (
-              <TodoCard key={t.name} todo={t} showAssignee />
+              <div key={t.name} {...rise(i)}>
+                <TodoCard todo={t} showAssignee />
+              </div>
             ),
           )}
         </CardList>

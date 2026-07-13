@@ -13,7 +13,7 @@ export default function ProjectsWorkspace() {
       <aside
         className={clsx(
           'sticky top-24 max-h-[calc(100vh-7rem)] shrink-0 self-start overflow-hidden rounded-2xl bg-surface shadow-card',
-          onProject ? 'hidden lg:block lg:w-64' : 'block w-full lg:w-64',
+          onProject ? 'hidden lg:block lg:w-64 xl:w-72' : 'block w-full lg:w-64 xl:w-72',
         )}
       >
         <ProjectRail />
