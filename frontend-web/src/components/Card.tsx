@@ -22,7 +22,7 @@ export function Card({
       onClick={onClick}
       className={clsx(
         'group w-full rounded-2xl bg-surface p-4 text-left shadow-card transition',
-        onClick && 'active:scale-[0.99]',
+        onClick && 'active:scale-[0.99] hover:-translate-y-px hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
         stripe ? `border-l-4 ${stripe}` : '',
       )}
     >

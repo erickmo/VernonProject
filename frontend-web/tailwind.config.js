@@ -36,6 +36,7 @@ export default {
       boxShadow: {
         // Warm-tinted shadows to match mobile (shared /m components use shadow-card/nav).
         card: '0 2px 10px -2px rgb(120 80 40 / 0.08), 0 1px 2px 0 rgb(120 80 40 / 0.05)',
+        'card-hover': '0 6px 20px -4px rgb(120 80 40 / 0.12), 0 2px 6px -1px rgb(120 80 40 / 0.07)',
         pop: '0 4px 24px -6px rgb(15 15 15 / 0.12), 0 1px 3px 0 rgb(15 15 15 / 0.06)',
         nav: '0 -1px 12px 0 rgb(120 80 40 / 0.07)',
       },

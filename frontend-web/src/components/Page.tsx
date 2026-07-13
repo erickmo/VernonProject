@@ -19,7 +19,7 @@ export function PageHeader({
         <div className="flex min-w-0 items-center gap-2.5">
           {emoji && <span className="text-2xl leading-none">{emoji}</span>}
           {Icon && <Icon className="h-6 w-6 shrink-0 text-muted" />}
-          <h1 className="truncate text-[1.7rem] font-bold leading-tight tracking-tight text-ink">{title}</h1>
+          <h1 className="truncate text-[1.85rem] font-bold leading-tight tracking-tight text-ink">{title}</h1>
         </div>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
@@ -46,3 +46,10 @@ export function Section({
     </section>
   )
 }
+
+// Stagger entrance for card feeds: spread onto each item's wrapper div.
+// Delay caps at item 8 so long feeds don't crawl in.
+export const rise = (i: number) => ({
+  className: 'animate-rise',
+  style: { animationDelay: `${Math.min(i, 8) * 40}ms` },
+})
