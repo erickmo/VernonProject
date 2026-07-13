@@ -9,7 +9,7 @@ import ProjectItem from '@web/pages/ProjectItem'
 // zClass="z-40": sit below AppShell's z-50 full-screen overlays so Focus/⌘K/quick-create open ON TOP of the drawer, not behind it.
 export default function TodoDrawer({ onClose }: { onClose: () => void }) {
   return (
-    <Drawer open onClose={onClose} title="Todo details" widthClass="max-w-2xl" closeOnEscape={false} zClass="z-40">
+    <Drawer open onClose={onClose} title="Todo details" widthClass="w-full sm:w-1/2 max-w-none" closeOnEscape={false} zClass="z-40">
       <ProjectItem />
     </Drawer>
   )
