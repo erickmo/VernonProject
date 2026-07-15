@@ -18,6 +18,7 @@ class ProjectTodo(Document):
 		self.validate_start_date()
 		self.validate_done_todo_fields()
 		self.validate_estimated_max()
+		self.validate_estimated_min()
 		self.validate_project_admin_status_update()
 		self.calculate_total_estimated_hours()
 		self.track_phase_changes()
@@ -210,6 +211,31 @@ class ProjectTodo(Document):
 			frappe.throw(
 				f"Estimated minutes ({int(float(self.estimated))}) exceeds the maximum ({int(mx)})."
 			)
+
+	MIN_ESTIMATED_MINUTES = 5
+
+	def validate_estimated_min(self):
+		"""Estimated time is mandatory and at least MIN_ESTIMATED_MINUTES.
+
+		Enforced on user-created todos and whenever the estimate is changed. Skipped
+		for recurrence-generated occurrences (they inherit the anchor's estimate) and
+		for untouched legacy values so old sub-5 todos aren't blocked from status edits.
+		"""
+		est = float(self.estimated or 0)
+		if est >= self.MIN_ESTIMATED_MINUTES:
+			return
+		# Occurrences carry the series root in original_todo — they inherit, don't block.
+		if self.original_todo:
+			return
+		if not self.is_new():
+			old = self.get_old_doc()
+			if old and float(old.estimated or 0) == est:
+				return
+		frappe.throw(
+			_("Estimated time is required and must be at least {0} minutes.").format(
+				self.MIN_ESTIMATED_MINUTES
+			)
+		)
 
 	def validate_done_todo_fields(self):
 		"""Prevent editing assigned_to, estimated, and deadline when status is Done or Completed"""

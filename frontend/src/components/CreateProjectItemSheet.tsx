@@ -89,6 +89,11 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
       toast('error', 'Start date cannot be after the deadline')
       return
     }
+    const est = Number(estimated)
+    if (!estimated || !Number.isFinite(est) || est < 5) {
+      toast('error', 'Estimated time is required and must be at least 5 minutes')
+      return
+    }
     const fields: Record<string, unknown> = {
       to_do: toDo.trim(),
       assigned_to: assignedTo,
@@ -98,7 +103,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
       group,
       level_id: levelId,
     }
-    if (estimated) fields.estimated = Number(estimated)
+    fields.estimated = est
     if (leaderDeadline) fields.leader_deadline = leaderDeadline
     if (ownerDeadline) fields.owner_deadline = ownerDeadline
     if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
@@ -152,8 +157,8 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
               <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </label>
             <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Estimated (minutes)
-              <input type="number" min={0} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
+              Estimated (minutes)<span className="text-red-500"> *</span>
+              <input type="number" min={5} required className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
             </label>
           </div>
 
