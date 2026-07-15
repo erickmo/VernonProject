@@ -55,6 +55,8 @@ export default {
           '50%': { transform: 'translateY(-5px) rotate(12deg)' },
         },
         rise: { '0%': { opacity: '0', transform: 'translateY(6px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        // Slow light sweep across the navbar bar — restrained, ambient.
+        sheen: { '0%': { transform: 'translateX(-160%) skewX(-12deg)' }, '100%': { transform: 'translateX(320%) skewX(-12deg)' } },
       },
       animation: {
         'slide-up': 'slide-up 0.25s ease-out',
@@ -63,6 +65,7 @@ export default {
         wiggle: 'wiggle 1.4s ease-in-out infinite',
         float: 'float 3s ease-in-out infinite',
         rise: 'rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both',
+        sheen: 'sheen 7s ease-in-out infinite',
       },
     },
   },

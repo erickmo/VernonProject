@@ -4,7 +4,7 @@ import { useNotifications } from '@/hooks/useData'
 import { useAppUpdate } from '@/lib/appUpdate'
 import { NotificationSheet } from '@web/components/NotificationSheet'
 
-export function NotificationBell() {
+export function NotificationBell({ className = 'text-muted hover:bg-hover/[0.04]' }: { className?: string }) {
   const [open, setOpen] = useState(false)
   const { data } = useNotifications()
   const { updateAvailable } = useAppUpdate()
@@ -15,7 +15,7 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen(true)}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-        className="relative rounded-lg p-2 text-muted hover:bg-hover/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        className={`relative rounded-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${className}`}
       >
         <Bell className="w-5 h-5" />
         {unread > 0 && (
