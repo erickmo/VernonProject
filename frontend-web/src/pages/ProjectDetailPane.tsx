@@ -14,7 +14,7 @@ import { Drawer } from '@web/components/overlays/Drawer'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
-import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
+import { TODO_COLUMNS, todoGroupsOf, TodoProgress } from '@web/lib/todoTable'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
 import type { ProjectItem } from '@/lib/types'
@@ -148,6 +148,13 @@ export default function ProjectDetailPane() {
               )
             }
           />
+        </div>
+      )}
+
+      {/* Completion progress bar — mirrors the /w Home + Review lists */}
+      {view === 'list' && visibleItems.length > 0 && (
+        <div className="mb-4">
+          <TodoProgress items={items} />
         </div>
       )}
 

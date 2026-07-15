@@ -11,8 +11,30 @@ import { useSetTodoAllocations } from '@/hooks/useData'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { buildNext } from '@/lib/planDay'
 import { formatEstimate, todayISO } from '@/lib/format'
+import { ListProgress } from '@web/components/PlanList'
 import type { ProjectItem } from '@/lib/types'
 
+// Completion progress for a work-package's todos — done vs. total (minutes, with
+// a count fallback). Same progress bar as the /w Home + Review lists; render it
+// above the grouped todo tables. Cancelled rows are excluded from the total.
+export function TodoProgress({ items }: { items: ProjectItem[] }) {
+  const notCancelled = items.filter((t) => t.status_key !== 'cancelled')
+  const total = notCancelled.length
+  if (!total) return null
+  const doneRows = notCancelled.filter((t) => t.status_key === 'completed')
+  const minDone = doneRows.reduce((s, t) => s + (t.estimated || 0), 0)
+  const minTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
+  const pct = minTotal ? Math.round((minDone / minTotal) * 100) : Math.round((doneRows.length / total) * 100)
+  return (
+    <ListProgress
+      title="Progress"
+      note={`${doneRows.length} of ${total} done`}
+      pct={pct}
+      doneText={minDone > 0 ? `${formatEstimate(minDone)} done` : 'nothing done yet'}
+      leftText={minTotal - minDone > 0 ? `${formatEstimate(minTotal - minDone)} left` : 'all wrapped up'}
+    />
+  )
+}
 
 // ponytail: shared by the standalone ProjectDetail page and the embedded
 // workspace todos pane — stable const, defined once.

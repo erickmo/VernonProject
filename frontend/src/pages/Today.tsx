@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
+import { SwipeProjectLists } from '@/components/SwipeProjectLists'
 import { ProjectCard } from '@/components/ProjectCard'
 import { Avatar, EmptyState, FilterChips, FullScreenLoader } from '@/components/ui'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
@@ -352,15 +353,19 @@ export default function Today() {
 
   // Shared list renderer: cards, or a contextual empty state. Applies the
   // free-text search (todo text + project) so every axis is searchable at once.
-  const renderList = (list: ProjectItem[], emptyTitle: string) => {
+  const renderList = (list: ProjectItem[], emptyTitle: string, swipe = true) => {
     const q = query.trim().toLowerCase()
     const shown = list.filter((t) => matchProjectItem(t, query))
     return shown.length ? (
-      <div className="mt-3 flex flex-col gap-3">
-        {shown.map((t) => (
-          <TodoCard key={t.name} todo={t} />
-        ))}
-      </div>
+      swipe ? (
+        <SwipeProjectLists items={shown} />
+      ) : (
+        <div className="mt-3 flex flex-col gap-3">
+          {shown.map((t) => (
+            <TodoCard key={t.name} todo={t} />
+          ))}
+        </div>
+      )
     ) : q ? (
       <EmptyState icon={SearchX} title={`No matches for "${query.trim()}"`} subtitle="Try a different search." />
     ) : activeTodos.length || waitingTodos.length ? (
@@ -719,7 +724,7 @@ export default function Today() {
                     {axis === 'waiting' && (
                       <>
                         {searchBox}
-                        {renderList(waitingTodos, 'Nothing waiting')}
+                        {renderList(waitingTodos, 'Nothing waiting', false)}
                       </>
                     )}
                   </div>

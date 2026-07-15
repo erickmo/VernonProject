@@ -3,6 +3,7 @@ import { ShieldCheck, SearchX, CheckSquare, Square, Check, X } from 'lucide-reac
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
+import { BulkProgressModal } from '@/components/BulkProgressModal'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useDashboard, useBulkProcess } from '@/hooks/useData'
@@ -18,14 +19,14 @@ export default function Review() {
   const [sheet, setSheet] = useState(false)
 
   const proc = useBulkProcess()
-  const busy = proc.busy
-  const pct = proc.progress ? (proc.progress.done / proc.progress.total) * 100 : 0
   const toast = useToast()
   const confirm = useConfirm()
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [rejectOpen, setRejectOpen] = useState(false)
   const [reason, setReason] = useState('')
+  // Frozen progress dialog: set at run start, holds result until user clicks Done.
+  const [bulk, setBulk] = useState<{ mode: 'approve' | 'reject'; result: { ok: number; failed: number } | null } | null>(null)
 
   const review = (data?.review ?? []).slice().sort(byModifiedDesc)
 
@@ -86,11 +87,12 @@ export default function Review() {
       confirmLabel: 'Approve',
     })
     if (!ok) return
+    setBulk({ mode: 'approve', result: null })
     try {
       const res = await proc.run(ids, 'approve')
-      toast('success', res.failed ? `Approved ${res.ok} · ${res.failed} failed` : `Approved ${res.ok}`)
-      exitSelect()
+      setBulk({ mode: 'approve', result: res })
     } catch (e) {
+      setBulk(null)
       toast('error', (e as Error).message)
     }
   }
@@ -99,15 +101,21 @@ export default function Review() {
     const ids = [...selected]
     const r = reason.trim()
     if (!ids.length || !r) return
+    setRejectOpen(false)
+    setBulk({ mode: 'reject', result: null })
     try {
       const res = await proc.run(ids, 'reject', r)
-      toast('success', res.failed ? `Rejected ${res.ok} · ${res.failed} failed` : `Rejected ${res.ok}`)
-      setRejectOpen(false)
       setReason('')
-      exitSelect()
+      setBulk({ mode: 'reject', result: res })
     } catch (e) {
+      setBulk(null)
       toast('error', (e as Error).message)
     }
+  }
+
+  const closeBulk = () => {
+    setBulk(null)
+    exitSelect()
   }
 
   return (
@@ -224,48 +232,30 @@ export default function Review() {
       {selectMode && selected.size > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+4.75rem)] pt-3 bg-gradient-to-t from-paper via-paper/95 to-transparent dark:from-slate-950 dark:via-slate-950/95">
           <div className="mx-auto max-w-lg rounded-2xl border border-paper-edge bg-paper-card p-2 shadow-card dark:border-slate-700 dark:bg-slate-800">
-            {busy && proc.progress ? (
-              <div className="px-1 py-1.5">
-                <div className="flex items-center justify-between text-sm font-semibold text-stone-600 dark:text-slate-300">
-                  <span>Processing…</span>
-                  <span>{proc.progress.done} / {proc.progress.total}</span>
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
-                  <div
-                    className="h-full rounded-full bg-brand-600 transition-[width] duration-200"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="pl-2 text-sm font-semibold text-stone-600 dark:text-slate-300">{selected.size} selected</span>
-                <button
-                  onClick={() => setRejectOpen(true)}
-                  className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-rose-300 dark:border-rose-500/40 px-3 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 active:bg-rose-50 dark:active:bg-rose-500/10"
-                >
-                  <X className="h-4 w-4" />
-                  Reject
-                </button>
-                <button
-                  onClick={runBulk}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm active:bg-brand-700"
-                >
-                  <Check className="h-4 w-4" />
-                  Approve
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="pl-2 text-sm font-semibold text-stone-600 dark:text-slate-300">{selected.size} selected</span>
+              <button
+                onClick={() => setRejectOpen(true)}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-rose-300 dark:border-rose-500/40 px-3 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 active:bg-rose-50 dark:active:bg-rose-500/10"
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </button>
+              <button
+                onClick={runBulk}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm active:bg-brand-700"
+              >
+                <Check className="h-4 w-4" />
+                Approve
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {rejectOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center px-6">
-          <div
-            className="absolute inset-0 bg-slate-900/40 animate-fade-in"
-            onClick={() => !busy && setRejectOpen(false)}
-          />
+          <div className="absolute inset-0 bg-slate-900/40 animate-fade-in" onClick={() => setRejectOpen(false)} />
           <div className="relative w-full max-w-sm animate-slide-up rounded-3xl bg-white dark:bg-slate-800 p-5 shadow-2xl">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">
               Reject {selected.size} task{selected.size > 1 ? 's' : ''}?
@@ -278,43 +268,36 @@ export default function Review() {
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               autoFocus
-              disabled={busy}
               placeholder="Why are these rejected?"
-              className="mt-3 w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-600 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-rose-400 disabled:opacity-60"
+              className="mt-3 w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-600 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-rose-400"
             />
-            {busy && proc.progress && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  <span>Processing…</span>
-                  <span>{proc.progress.done} / {proc.progress.total}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                  <div
-                    className="h-full rounded-full bg-rose-500 transition-[width] duration-200"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            )}
             <div className="mt-4 flex gap-2">
               <button
-                onClick={() => !busy && setRejectOpen(false)}
-                disabled={busy}
-                className="flex-1 rounded-2xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-600 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-600 disabled:opacity-60"
+                onClick={() => setRejectOpen(false)}
+                className="flex-1 rounded-2xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-600 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-600"
               >
                 Cancel
               </button>
               <button
                 onClick={runBulkReject}
-                disabled={busy || !reason.trim()}
+                disabled={!reason.trim()}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-rose-600 py-3 font-semibold text-white shadow-sm active:bg-rose-700 disabled:opacity-60"
               >
-                {busy ? 'Rejecting…' : (<>Reject <X className="h-4 w-4" /></>)}
+                Reject <X className="h-4 w-4" />
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <BulkProgressModal
+        open={!!bulk}
+        verb={bulk?.mode === 'reject' ? 'Rejecting' : 'Approving'}
+        accent={bulk?.mode === 'reject' ? 'rose' : 'brand'}
+        progress={proc.progress}
+        result={bulk?.result ?? null}
+        onDone={closeBulk}
+      />
     </TabScreen>
   )
 }

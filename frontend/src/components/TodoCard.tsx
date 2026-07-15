@@ -66,7 +66,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
     <button
       onClick={() => navigate(`/project-item/${encodeURIComponent(todo.name)}`)}
       className={clsx(
-        'group w-full rounded-2xl border-l-4 p-4 text-left shadow-card transition active:scale-[0.99]',
+        'group w-full min-w-0 max-w-full rounded-2xl border-l-4 p-4 text-left shadow-card transition active:scale-[0.99]',
         focusActive
           ? 'border-amber-500 bg-gradient-to-br from-amber-200 to-amber-100 ring-1 ring-amber-300 dark:border-amber-500/70 dark:from-amber-500/25 dark:to-amber-500/10 dark:ring-amber-500/40'
           : clsx('bg-paper-card dark:bg-slate-800', todo.is_overdue ? 'border-rose-400' : meta.ring),

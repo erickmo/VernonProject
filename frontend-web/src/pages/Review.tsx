@@ -4,14 +4,17 @@ import { TodoCard } from '@/components/TodoCard'
 import { EmptyState, Spinner, Segmented } from '@/components/ui'
 import { FilterButton, activeFilterCount, type FilterValue } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { BulkProgressModal } from '@/components/BulkProgressModal'
 import { useDashboard, useBulkProcess } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { buildOptions } from '@/lib/filters'
 import { byModifiedDesc } from '@/lib/format'
 import { Popover } from '@web/components/overlays/Popover'
+import { ListProgress } from '@web/components/PlanList'
 import { Page, PageHeader, rise } from '@web/components/Page'
-import { CardList } from '@web/components/Card'
+import { ThreeColProjectList } from '@web/components/ProjectColumns'
+import { usePersistentState } from '@web/lib/usePersistentState'
 import { Sheet } from '@web/components/Sheet'
 
 const REL_TABS: { value: 'all' | 'owned' | 'led'; label: string }[] = [
@@ -28,14 +31,18 @@ export default function Review() {
   const [filterOpen, setFilterOpen] = useState(false)
 
   const proc = useBulkProcess()
-  const busy = proc.busy
-  const pct = proc.progress ? (proc.progress.done / proc.progress.total) * 100 : 0
   const toast = useToast()
   const confirm = useConfirm()
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [rejectOpen, setRejectOpen] = useState(false)
   const [reason, setReason] = useState('')
+  // Frozen progress dialog: set at run start, holds result until user clicks Done.
+  const [bulk, setBulk] = useState<{ mode: 'approve' | 'reject'; result: { ok: number; failed: number } | null } | null>(null)
+  const [proj1, setProj1] = usePersistentState('review.proj1') // column 1 filter ('' = all)
+  const [proj2, setProj2] = usePersistentState('review.proj2') // review focused in column 2
+  const [proj3, setProj3] = usePersistentState('review.proj3') // review focused in column 3
+  const [proj4, setProj4] = usePersistentState('review.proj4') // review focused in column 4 (xl only)
 
   const all = dash.data?.review ?? []
 
@@ -101,17 +108,17 @@ export default function Review() {
       confirmLabel: 'Approve',
     })
     if (!ok) return
+    setBulk({ mode: 'approve', result: null })
     try {
       const res = await proc.run(ids, 'approve')
-      toast('success', res.failed ? `Approved ${res.ok} · ${res.failed} failed` : `Approved ${res.ok}`)
-      exitSelect()
+      setBulk({ mode: 'approve', result: res })
     } catch (e) {
+      setBulk(null)
       toast('error', (e as Error).message)
     }
   }
 
   const closeReject = () => {
-    if (busy) return
     setRejectOpen(false)
     setReason('')
   }
@@ -120,15 +127,21 @@ export default function Review() {
     const ids = [...selected]
     const r = reason.trim()
     if (!ids.length || !r) return
+    setRejectOpen(false)
+    setBulk({ mode: 'reject', result: null })
     try {
       const res = await proc.run(ids, 'reject', r)
-      toast('success', res.failed ? `Rejected ${res.ok} · ${res.failed} failed` : `Rejected ${res.ok}`)
-      setRejectOpen(false)
       setReason('')
-      exitSelect()
+      setBulk({ mode: 'reject', result: res })
     } catch (e) {
+      setBulk(null)
       toast('error', (e as Error).message)
     }
+  }
+
+  const closeBulk = () => {
+    setBulk(null)
+    exitSelect()
   }
 
   if (dash.isLoading) {
@@ -175,27 +188,22 @@ export default function Review() {
               {allSelected ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4" />}
               {allSelected ? 'Clear all' : `Select all (${advanceable.length})`}
             </button>
-            {selected.size > 0 &&
-              (busy ? (
-                <span className="ml-auto text-sm font-semibold text-muted">
-                  Processing… {proc.progress?.done} / {proc.progress?.total}
-                </span>
-              ) : (
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    onClick={() => setRejectOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-500/40 px-3 py-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                  >
-                    <X className="w-4 h-4" /> Reject {selected.size}
-                  </button>
-                  <button
-                    onClick={runBulk}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
-                  >
-                    <Check className="w-4 h-4" /> Approve {selected.size}
-                  </button>
-                </div>
-              ))}
+            {selected.size > 0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setRejectOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-500/40 px-3 py-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                >
+                  <X className="w-4 h-4" /> Reject {selected.size}
+                </button>
+                <button
+                  onClick={runBulk}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+                >
+                  <Check className="w-4 h-4" /> Approve {selected.size}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="relative mb-3 flex items-center">
@@ -227,9 +235,30 @@ export default function Review() {
           </div>
         ))}
 
+      {visible.length > 0 && (
+        <div className="mb-3">
+          <ListProgress
+            title="Review queue"
+            note={`${advanceable.length} of ${visible.length} ready`}
+            pct={visible.length ? Math.round((advanceable.length / visible.length) * 100) : 0}
+            doneText={`${advanceable.length} ready to advance`}
+            leftText={visible.length - advanceable.length > 0 ? `${visible.length - advanceable.length} waiting on others` : 'all yours to action'}
+          />
+        </div>
+      )}
+
       {visible.length > 0 ? (
-        <CardList>
-          {visible.map((t, i) =>
+        <ThreeColProjectList
+          items={visible}
+          proj1={proj1}
+          setProj1={setProj1}
+          proj2={proj2}
+          setProj2={setProj2}
+          proj3={proj3}
+          setProj3={setProj3}
+          proj4={proj4}
+          setProj4={setProj4}
+          renderCard={(t, i) =>
             selectMode && t.can_advance ? (
               <label key={t.name} className="flex items-center gap-2.5">
                 <input
@@ -250,9 +279,9 @@ export default function Review() {
               <div key={t.name} {...rise(i)}>
                 <TodoCard todo={t} showAssignee />
               </div>
-            ),
-          )}
-        </CardList>
+            )
+          }
+        />
       ) : all.length > 0 ? (
         <EmptyState
           icon={SearchX}
@@ -281,38 +310,34 @@ export default function Review() {
           onChange={(e) => setReason(e.target.value)}
           rows={3}
           autoFocus
-          disabled={busy}
           placeholder="Why are these rejected?"
-          className="mt-3 w-full resize-none rounded-xl border border-line bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-rose-400 disabled:opacity-60"
+          className="mt-3 w-full resize-none rounded-xl border border-line bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-rose-400"
         />
-        {busy && proc.progress && (
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-muted">
-              <span>Processing…</span>
-              <span>{proc.progress.done} / {proc.progress.total}</span>
-            </div>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-line">
-              <div className="h-full rounded-full bg-rose-500 transition-[width] duration-200" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        )}
         <div className="mt-4 flex gap-2">
           <button
             onClick={closeReject}
-            disabled={busy}
-            className="flex-1 rounded-xl border border-line py-2.5 text-sm font-semibold text-muted hover:text-ink disabled:opacity-60"
+            className="flex-1 rounded-xl border border-line py-2.5 text-sm font-semibold text-muted hover:text-ink"
           >
             Cancel
           </button>
           <button
             onClick={runBulkReject}
-            disabled={busy || !reason.trim()}
+            disabled={!reason.trim()}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
           >
-            {busy ? 'Rejecting…' : (<>Reject <X className="h-4 w-4" /></>)}
+            Reject <X className="h-4 w-4" />
           </button>
         </div>
       </Sheet>
+
+      <BulkProgressModal
+        open={!!bulk}
+        verb={bulk?.mode === 'reject' ? 'Rejecting' : 'Approving'}
+        accent={bulk?.mode === 'reject' ? 'rose' : 'brand'}
+        progress={proc.progress}
+        result={bulk?.result ?? null}
+        onDone={closeBulk}
+      />
     </Page>
   )
 }

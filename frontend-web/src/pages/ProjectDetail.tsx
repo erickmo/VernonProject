@@ -20,7 +20,7 @@ import { Page, PageHeader, Section } from '@web/components/Page'
 import { PropertyRow, Property } from '@web/components/Property'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
-import { TODO_COLUMNS, todoGroupsOf } from '@web/lib/todoTable'
+import { TODO_COLUMNS, todoGroupsOf, TodoProgress } from '@web/lib/todoTable'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
 import type { ProjectItem } from '@/lib/types'
@@ -241,6 +241,7 @@ export default function ProjectDetail() {
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr,40%]">
           {/* Left: grouped tables */}
           <div className="min-w-0 space-y-5">
+            {visibleItems.length > 0 && <TodoProgress items={items} />}
             {items.length === 0 ? (
               <EmptyState icon={ListChecks} title="No todos in this detail" />
             ) : visibleItems.length === 0 ? (
