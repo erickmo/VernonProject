@@ -196,7 +196,7 @@ export default function ProjectDetailPane() {
 
       {/* Selected todo — slide-over. closeOnEscape=false: ProjectItem hosts its
           own nested dialogs/confirms; Escape there must not tear down this drawer. */}
-      <Drawer open={!!itemName} onClose={() => nav(base)} title="Todo" widthClass="max-w-3xl" scrim="bg-black/30" closeOnEscape={false}>
+      <Drawer open={!!itemName} onClose={() => nav(base)} title="Todo" widthClass="w-full sm:w-1/2 max-w-none" scrim="bg-black/30" closeOnEscape={false}>
         <Outlet />
       </Drawer>
 

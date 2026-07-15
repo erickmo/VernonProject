@@ -197,8 +197,8 @@ export function Segmented<T extends string>({
             disabled={o.disabled}
             onClick={() => !o.disabled && onChange(o.value)}
             className={clsx(
-              'flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-              scroll ? 'shrink-0 whitespace-nowrap' : 'flex-1',
+              'flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+              scroll ? 'shrink-0' : 'flex-1',
               o.disabled && 'opacity-40 cursor-not-allowed',
               active ? 'bg-paper-card dark:bg-slate-700 text-stone-800 dark:text-slate-50 shadow-sm' : 'text-stone-500 dark:text-slate-400',
             )}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Megaphone, Tag, ShoppingCart, KeyRound, ImagePlus, X, Phone } from 'lucide-react'
+import { Megaphone, Tag, ShoppingCart, KeyRound, ImagePlus, X, Phone, Star } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Button, Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
@@ -9,10 +9,11 @@ import { useSaveAd, useAd } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
 import type { AdPayload, AdType } from '@/lib/types'
 
+// One field look across the whole ad flow — app-standard inset, uniform text-sm.
 const cls =
-  'w-full rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15'
+  'w-full rounded-xl border border-line bg-paper-line/40 px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-500 focus:bg-surface focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-800/60'
 const shell =
-  'flex items-center gap-2 rounded-xl border border-line bg-hover/[0.04] px-3 py-2.5 transition focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/15'
+  'flex items-center gap-2 rounded-xl border border-line bg-paper-line/40 px-3 py-2.5 transition focus-within:border-brand-500 focus-within:bg-surface focus-within:ring-4 focus-within:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-800/60'
 
 // Type cards reuse the board's per-type hues so form and list read as one system.
 const TYPES = [
@@ -92,15 +93,18 @@ export default function PapanIklanForm() {
         )}</Field>
 
         <Field label="Judul" required>{(id) => (
-          <input id={id} className={cls} placeholder="cth. iPhone 13 Pro 256GB" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <>
+            <input id={id} maxLength={80} className={cls} placeholder="cth. iPhone 13 Pro 256GB" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+            <div className="mt-1 text-right text-[11px] tabular-nums text-muted">{form.title.length}/80</div>
+          </>
         )}</Field>
 
         {/* Price — hero */}
         <Field label="Harga (Rp)">{(id) => (
           <>
             <div className={shell}>
-              <span className="text-base font-semibold text-muted">Rp</span>
-              <input id={id} type="number" placeholder="0" className="w-full bg-transparent text-xl font-semibold tabular-nums text-ink outline-none placeholder:text-muted" value={form.price || ''} onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) || 0 }))} />
+              <span className="text-sm font-semibold text-muted">Rp</span>
+              <input id={id} type="number" placeholder="0" className="w-full bg-transparent text-sm font-semibold tabular-nums text-ink outline-none placeholder:text-muted" value={form.price || ''} onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) || 0 }))} />
             </div>
             {form.ad_type === 'Rent' ? (
               <div className="mt-2 flex gap-2">
@@ -126,7 +130,10 @@ export default function PapanIklanForm() {
         )}</Field>
 
         <Field label="Deskripsi">{(id) => (
-          <textarea id={id} className={`${cls} resize-none`} rows={5} placeholder="Kondisi, kelengkapan, alasan jual…" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          <>
+            <textarea id={id} maxLength={1000} className={`${cls} resize-none`} rows={5} placeholder="Kondisi, kelengkapan, alasan jual…" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            <div className="mt-1 text-right text-[11px] tabular-nums text-muted">{form.description.length}/1000</div>
+          </>
         )}</Field>
 
         {/* Photos — first = cover */}
@@ -134,9 +141,22 @@ export default function PapanIklanForm() {
           <>
             <div className="flex flex-wrap gap-2.5">
               {form.photos.map((s, i) => (
-                <div key={s} className="relative h-24 w-24 overflow-hidden rounded-xl border border-line">
+                <div key={s} className="group relative h-24 w-24 overflow-hidden rounded-xl border border-line">
                   <img src={s} alt="" className="h-full w-full object-cover" />
-                  {i === 0 && <span className="absolute left-1.5 top-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Sampul</span>}
+                  {i === 0 ? (
+                    <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                      <Star className="h-2.5 w-2.5 fill-current" /> Sampul
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      title="Jadikan sampul"
+                      onClick={() => setForm((f) => { const p = [...f.photos]; const [x] = p.splice(i, 1); return { ...f, photos: [x, ...p] } })}
+                      className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/60 py-1 text-[9px] font-semibold text-white opacity-0 transition group-hover:opacity-100"
+                    >
+                      <Star className="h-2.5 w-2.5" /> Jadikan sampul
+                    </button>
+                  )}
                   <button type="button" onClick={() => setForm((f) => ({ ...f, photos: f.photos.filter((p) => p !== s) }))} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white"><X className="h-3 w-3" /></button>
                 </div>
               ))}
@@ -151,7 +171,7 @@ export default function PapanIklanForm() {
           </>
         )}</Field>
 
-        <div className="flex justify-end gap-2 border-t border-line pt-4">
+        <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-line bg-surface/90 py-3 backdrop-blur supports-[backdrop-filter]:bg-surface/70">
           <Button variant="ghost" onClick={() => navigate(-1)}>Batal</Button>
           <Button variant="primary" onClick={onSave} disabled={save.isPending || uploading}>
             {save.isPending ? <Spinner className="h-4 w-4" /> : null}

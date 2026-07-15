@@ -76,11 +76,14 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         <div className="min-w-0 flex-1">
           {showProject && (
             <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-slate-500">
+              {todo.is_recurring && (
+                <Repeat className="mr-1 inline h-3 w-3 align-[-1px] text-violet-500" aria-label="Recurring" />
+              )}
               {todo.brand ? `${todo.brand} · ` : ''}
               {todo.project_name} · {todo.project_detail_title}
             </p>
           )}
-          <p className="line-clamp-2 font-semibold leading-snug text-stone-800 dark:text-slate-100">{todo.to_do}</p>
+          <p className="line-clamp-2 break-words font-semibold leading-snug text-stone-800 dark:text-slate-100">{todo.to_do}</p>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
             <span
@@ -108,7 +111,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
                 Waiting
               </Pill>
             )}
-            {todo.is_recurring && (
+            {todo.is_recurring && !showProject && (
               <span className="inline-flex items-center gap-0.5 text-violet-500" title="Recurring">
                 <Repeat className="h-3.5 w-3.5" />
               </span>

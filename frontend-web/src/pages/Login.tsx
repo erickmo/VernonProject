@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, FolderKanban, Loader2, Fingerprint } from 'lucide-react'
+import { Eye, EyeOff, FolderKanban, Loader2, Fingerprint, Mail, Lock } from 'lucide-react'
 import { login } from '@/lib/api'
 import { parseFrappeError } from '@/lib/format'
 import { loginWithPasskey, platformAuthenticatorAvailable, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
@@ -41,37 +41,69 @@ export default function Login() {
     }
   }
 
+  const fieldCls =
+    'w-full rounded-xl border border-line bg-paper-line/40 py-2.5 pl-10 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-800/60'
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-600 to-brand-800 p-4">
-      <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-surface shadow-xl p-8 space-y-5">
-        <div className="flex items-center gap-2 text-brand-600 font-bold text-xl">
-          <FolderKanban className="w-7 h-7" /> Vernon
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-4">
+      {/* Depth — soft glow orbs over the brand gradient */}
+      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-16 h-80 w-80 rounded-full bg-[#e879c7]/30 blur-3xl" />
+
+      <form
+        onSubmit={submit}
+        className="relative w-full max-w-md animate-rise space-y-5 rounded-3xl bg-surface p-8 shadow-2xl ring-1 ring-black/5 sm:p-9 dark:ring-white/10"
+      >
+        {/* Brand mark + welcome */}
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-[#e879c7] text-white shadow-lg shadow-brand-600/30">
+            <FolderKanban className="h-7 w-7" />
+          </div>
+          <h1 className="mt-4 font-display text-2xl font-semibold text-ink">Welcome back</h1>
+          <p className="mt-1 text-sm text-muted">
+            Sign in to <span className="font-semibold text-brand-600 dark:text-brand-400">Vernon</span>
+          </p>
         </div>
-        {err && <div className="rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-300 text-sm px-3 py-2">{err}</div>}
-        <div className="space-y-1">
-          <label htmlFor="login-email" className="text-sm font-medium">Email</label>
-          <input
-            id="login-email"
-            type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2"
-          />
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="login-pwd" className="text-sm font-medium">Password</label>
+
+        {err && (
+          <div className="rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">
+            {err}
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label htmlFor="login-email" className="text-sm font-medium text-ink">Email</label>
           <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              id="login-email"
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus required
+              placeholder="you@company.com"
+              className={`${fieldCls} pr-3`}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="login-pwd" className="text-sm font-medium text-ink">Password</label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               id="login-pwd"
               type={show ? 'text' : 'password'} value={pwd} onChange={(e) => setPwd(e.target.value)} required
-              className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 pr-10"
+              placeholder="••••••••"
+              className={`${fieldCls} pr-10`}
             />
-            <button type="button" aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted">
-              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <button type="button" aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show} onClick={() => setShow((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition hover:text-ink">
+              {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
-        <button type="submit" disabled={busy} className="w-full rounded-xl bg-brand-600 text-white py-2.5 font-medium flex items-center justify-center gap-2 transition active:scale-[0.97] disabled:opacity-60">
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />} Sign in
+
+        <button type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:-translate-y-0.5 hover:bg-brand-700 active:scale-[0.98] disabled:opacity-60 disabled:hover:translate-y-0">
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Sign in
         </button>
+
         {pkAvailable && (
           <>
             <div className="flex items-center gap-3 text-xs font-medium text-muted">
@@ -83,14 +115,15 @@ export default function Login() {
               type="button"
               onClick={passkeySignIn}
               disabled={pkBusy || busy}
-              className="w-full rounded-xl border border-line dark:border-slate-700 py-2.5 font-medium flex items-center justify-center gap-2 transition active:scale-[0.97] disabled:opacity-60 hover:bg-hover/[0.04]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-line py-2.5 text-sm font-semibold text-ink transition hover:bg-paper-line/50 active:scale-[0.98] disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800/60"
             >
-              {pkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4 text-brand-600" />}
+              {pkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4 text-brand-600 dark:text-brand-400" />}
               Sign in with fingerprint
             </button>
           </>
         )}
-        <a href="/login#forgot?redirect-to=/w" className="block text-center text-sm text-brand-600">Forgot password?</a>
+
+        <a href="/login#forgot?redirect-to=/w" className="block text-center text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400">Forgot password?</a>
       </form>
     </div>
   )

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
+import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
@@ -34,15 +35,54 @@ function isDetailCompleted(w: ProjectDetailSummary) {
   return w.total > 0 && w.done === w.total
 }
 
+// Status tint — matches the mobile ProjectCard mapping so a project reads the
+// same colour wherever it appears.
+const STATUS_TINT: Record<string, string> = {
+  Ongoing: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  Inbox: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  Closed: 'bg-paper-line text-stone-500 dark:bg-slate-700 dark:text-slate-400',
+}
+
+// Stronger accent for the thin strip atop the hero (bg-*-50 tints are too faint there).
+const STATUS_BAR: Record<string, string> = {
+  Ongoing: 'bg-emerald-400',
+  Inbox: 'bg-sky-400',
+  Closed: 'bg-slate-300 dark:bg-slate-600',
+}
+
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span className={clsx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold', STATUS_TINT[status] ?? STATUS_TINT.Closed)}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+      {status}
+    </span>
+  )
+}
+
+// Compact metric block for the project hero.
+function MiniStat({ label, value, accent }: { label: string; value: ReactNode; accent?: 'rose' }) {
+  return (
+    <div className="rounded-xl bg-canvas px-3 py-2 text-center">
+      <div className={clsx('font-display text-lg font-semibold tabular-nums leading-none', accent === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-ink')}>
+        {value}
+      </div>
+      <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
+    </div>
+  )
+}
+
 // Shown in the right pane when no work-package is selected: project comments.
 export function ProjectIndexPane() {
   const { name = '' } = useParams()
   const id = safeDecode(name)
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <MousePointerClick className="h-4 w-4 shrink-0 opacity-60" />
-        Select a detail on the left to see its todos.
+    <div className="space-y-5">
+      <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-surface/50 px-6 py-10 text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+          <MousePointerClick className="h-5 w-5" />
+        </span>
+        <p className="text-sm font-medium text-ink">Pick a detail</p>
+        <p className="text-xs text-muted">Select a work-package on the left to see its todos.</p>
       </div>
       <CommentThread referenceDoctype="Project" referenceName={id} />
     </div>
@@ -101,10 +141,17 @@ export default function Project() {
   const p = project.data
   const perms = permFlags(p, boot.data)
   const canAutoApprove = !!boot.data?.settings?.show_auto_approve
+  // Owner/leader avatars live on their team rows (matched by user email) so the
+  // meta chips render each person's real gamified avatar, not a name-seeded one.
+  const ownerMember = p.team.find((m) => m.user === p.project_owner)
+  const leaderMember = p.team.find((m) => m.user === p.project_leader)
 
-  const filteredDetails = p.project_details.filter((w) =>
-    detailFilter === 'all' ? true : detailFilter === 'completed' ? isDetailCompleted(w) : !isDetailCompleted(w),
-  )
+  const filteredDetails = p.project_details
+    .filter((w) =>
+      detailFilter === 'all' ? true : detailFilter === 'completed' ? isDetailCompleted(w) : !isDetailCompleted(w),
+    )
+    // Finished details sink to the bottom (stable sort keeps original order within each group).
+    .sort((a, b) => Number(isDetailCompleted(a)) - Number(isDetailCompleted(b)))
 
   const completedCount = p.project_details.filter(isDetailCompleted).length
   const totalTasks = p.project_details.reduce((s, w) => s + w.total, 0)
@@ -192,147 +239,88 @@ export default function Project() {
 
   return (
     <div className="w-full">
-      {/* Slim project header */}
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">{p.project_name}</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted">
-            <ProgressBar value={progress} className="w-40" />
-            <span className="whitespace-nowrap text-xs font-medium">
-              {progress}% · {doneTasks}/{totalTasks} todos
-              {overdue > 0 && <span className="ml-1.5 text-rose-600 dark:text-rose-400">{overdue} overdue</span>}
-            </span>
-            {p.bonus_amount > 0 && (
-              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                <Gift className="h-3.5 w-3.5" /> {formatReward(p.reward_type, rewardNet(p.reward_type, p.bonus_amount, p.discount))}
-              </span>
-            )}
-          </div>
-        </div>
-        {(perms.can_edit || perms.can_delete) && (
-          <div className="flex items-center gap-2">
-            {perms.can_edit && (
-              <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </Button>
-            )}
-            {perms.can_edit && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setPostpone({ type: 'Project', name: p.name, label: p.project_name, anchor: p.deadline ?? '' })}
-              >
-                <CalendarClock className="h-4 w-4" /> Postpone
-              </Button>
-            )}
-            {perms.can_delete && (
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={p.project_details.length > 0}
-                title={p.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
-                onClick={doDelete}
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Inner split: work-packages (left) · project meta + selected detail's todos (right) */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,24rem)_1fr]">
-        {/* LEFT: details list / gantt */}
-        <section className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Details</h2>
-            <div className="flex items-center gap-2">
-              <div className="flex rounded-full bg-canvas p-0.5">
-                <button
-                  onClick={() => setView('list')}
-                  aria-pressed={view === 'list'}
-                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
-                >
-                  <List className="h-3.5 w-3.5" /> List
-                </button>
-                <button
-                  onClick={() => setView('gantt')}
-                  aria-pressed={view === 'gantt'}
-                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
-                >
-                  <BarChart3 className="h-3.5 w-3.5" /> Gantt
-                </button>
+      {/* Project hero */}
+      <div className="mb-6 overflow-hidden rounded-3xl bg-surface shadow-card">
+        <div className={clsx('h-1.5', STATUS_BAR[p.status] ?? STATUS_BAR.Closed)} />
+        <div className="flex flex-col gap-5 p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill status={p.status} />
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                  <Tag className="h-3 w-3" /> {p.brand}
+                </span>
+                {p.bonus_amount > 0 && (
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                    <Gift className="h-3.5 w-3.5" /> {formatReward(p.reward_type, rewardNet(p.reward_type, p.bonus_amount, p.discount))}
+                  </span>
+                )}
               </div>
-              {perms.can_edit && (
-                <button
-                  onClick={() => setDetailFormOpen(true)}
-                  className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Detail
-                </button>
-              )}
+              <h1 className="mt-2.5 truncate font-display text-3xl font-semibold tracking-tight text-ink">{p.project_name}</h1>
+            </div>
+            {(perms.can_edit || perms.can_delete) && (
+              <div className="flex items-center gap-2">
+                {perms.can_edit && (
+                  <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+                    <Pencil className="h-4 w-4" /> Edit
+                  </Button>
+                )}
+                {perms.can_edit && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPostpone({ type: 'Project', name: p.name, label: p.project_name, anchor: p.deadline ?? '' })}
+                  >
+                    <CalendarClock className="h-4 w-4" /> Postpone
+                  </Button>
+                )}
+                {perms.can_delete && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={p.project_details.length > 0}
+                    title={p.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
+                    onClick={doDelete}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Progress + at-a-glance metrics */}
+          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-2xl font-semibold tabular-nums text-ink">{progress}%</span>
+                <span className="text-xs font-medium text-muted">complete · {doneTasks}/{totalTasks} todos</span>
+              </div>
+              <ProgressBar value={progress} className="mt-2" />
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:flex">
+              <MiniStat label="Todos" value={`${doneTasks}/${totalTasks}`} />
+              <MiniStat label="Overdue" value={overdue} accent={overdue > 0 ? 'rose' : undefined} />
+              <MiniStat label="Time" value={formatEstimateRatio(minutesDone, minutesTotal)} />
             </div>
           </div>
+        </div>
+      </div>
 
-          {view === 'gantt' ? (
-            gantt.isError ? (
-              <ErrorState onRetry={() => gantt.refetch()} />
-            ) : gantt.isLoading ? (
-              <div className="rounded-2xl bg-surface p-8 text-center text-sm text-muted shadow-card">
-                Loading timeline…
-              </div>
-            ) : (
-              <GanttChart
-                groups={gantt.data ?? []}
-                title={p.project_name}
-                onBarClick={(tid) => nav(`/project-item/${encodeURIComponent(tid)}`)}
-              />
-            )
-          ) : (
-            <>
-              {p.project_details.length > 0 && (
-                <div className="flex gap-1.5">
-                  {([
-                    ['all', `All ${p.project_details.length}`],
-                    ['open', `Open ${p.project_details.length - completedCount}`],
-                    ['completed', `Completed ${completedCount}`],
-                  ] as const).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setDetailFilter(key)}
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${detailFilter === key ? 'bg-brand-600 text-white' : 'bg-canvas text-muted dark:text-slate-400 hover:bg-hover/[0.04]'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <DataTable
-                rows={filteredDetails}
-                columns={detailColumns}
-                getKey={(r) => r.name}
-                activeKey={detailName}
-                onRowClick={(r) => nav(`/project/${encodeURIComponent(id)}/detail/${encodeURIComponent(r.name)}`)}
-                empty={
-                  <EmptyState
-                    icon={Layers}
-                    title={p.project_details.length === 0 ? 'No details yet' : 'No matching details'}
-                  />
-                }
-              />
-            </>
-          )}
-        </section>
-
-        {/* RIGHT: project meta atop, then the selected detail's todos (or comments) */}
+      {/* 3-col workspace: rail (col1, in ProjectsWorkspace) · project meta + details
+          list (col2) · selected detail's todos (col3). */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,26rem)_1fr]">
+        {/* COL 2: project meta (top) → details list → group photo */}
         <section className="min-w-0 space-y-5">
+          {/* --- Project meta --- */}
+          <div className="rounded-2xl bg-surface p-4 shadow-card">
           <PropertyRow>
             <Property label="Owner" icon={Users}>
-              <EntityChip avatarName={p.owner_name} label={p.owner_name} />
+              <EntityChip avatarName={p.owner_name} image={ownerMember?.image ?? undefined} config={ownerMember?.avatar_config} label={p.owner_name} />
             </Property>
             {p.leader_name && p.leader_name !== p.owner_name && (
               <Property label="Leader" icon={Users}>
-                <EntityChip avatarName={p.leader_name} label={p.leader_name} />
+                <EntityChip avatarName={p.leader_name} image={leaderMember?.image ?? undefined} config={leaderMember?.avatar_config} label={p.leader_name} />
               </Property>
             )}
             {p.start_date && (
@@ -349,6 +337,7 @@ export default function Project() {
               <EntityChip icon={Tag} label={p.brand} />
             </Property>
           </PropertyRow>
+          </div>
 
           {p.can_set_auto_approve && canAutoApprove && (
             <div className="max-w-sm">
@@ -405,6 +394,7 @@ export default function Project() {
                       <EntityChip
                         avatarName={m.name}
                         image={m.image ?? undefined}
+                        config={m.avatar_config}
                         label={role ? `${m.name} (${role})` : m.name}
                       />
                     </button>
@@ -414,17 +404,100 @@ export default function Project() {
             </Section>
           )}
 
-          {/* Selected detail's todos, or project comments when nothing selected */}
-          <div className="border-t border-line pt-5">
-            <Outlet />
+          {/* --- Details list / gantt (pick a detail → its todos fill col 3) --- */}
+          <div className="space-y-3 border-t border-line pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Details</h2>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-full bg-canvas p-0.5">
+                  <button
+                    onClick={() => setView('list')}
+                    aria-pressed={view === 'list'}
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'list' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+                  >
+                    <List className="h-3.5 w-3.5" /> List
+                  </button>
+                  <button
+                    onClick={() => setView('gantt')}
+                    aria-pressed={view === 'gantt'}
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'gantt' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" /> Gantt
+                  </button>
+                </div>
+                {perms.can_edit && (
+                  <button
+                    onClick={() => setDetailFormOpen(true)}
+                    className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Detail
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {view === 'gantt' ? (
+              gantt.isError ? (
+                <ErrorState onRetry={() => gantt.refetch()} />
+              ) : gantt.isLoading ? (
+                <div className="rounded-2xl bg-surface p-8 text-center text-sm text-muted shadow-card">
+                  Loading timeline…
+                </div>
+              ) : (
+                <GanttChart
+                  groups={gantt.data ?? []}
+                  title={p.project_name}
+                  onBarClick={(tid) => nav(`/project-item/${encodeURIComponent(tid)}`)}
+                />
+              )
+            ) : (
+              <>
+                {p.project_details.length > 0 && (
+                  <div className="flex gap-1.5">
+                    {([
+                      ['all', `All ${p.project_details.length}`],
+                      ['open', `Open ${p.project_details.length - completedCount}`],
+                      ['completed', `Completed ${completedCount}`],
+                    ] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setDetailFilter(key)}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${detailFilter === key ? 'bg-brand-600 text-white' : 'bg-canvas text-muted dark:text-slate-400 hover:bg-hover/[0.04]'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <DataTable
+                  rows={filteredDetails}
+                  columns={detailColumns}
+                  getKey={(r) => r.name}
+                  activeKey={detailName}
+                  rowClassName={(r) => (isDetailCompleted(r) ? 'bg-canvas dark:bg-slate-800/40' : undefined)}
+                  onRowClick={(r) => nav(`/project/${encodeURIComponent(id)}/detail/${encodeURIComponent(r.name)}`)}
+                  empty={
+                    <EmptyState
+                      icon={Layers}
+                      title={p.project_details.length === 0 ? 'No details yet' : 'No matching details'}
+                    />
+                  }
+                />
+              </>
+            )}
           </div>
 
-          {/* Group photo last — decorative + tall, so it never buries the todos */}
+          {/* Group photo last — decorative + tall */}
           {p.team.length > 0 && (
             <Section title={<span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Group Photo</span>}>
               <ProjectGroupPhoto team={p.team} />
             </Section>
           )}
+        </section>
+
+        {/* COL 3: selected detail's todos (or project comments when none selected) */}
+        <section className="min-w-0">
+          <Outlet />
         </section>
       </div>
 

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import clsx from 'clsx'
 import { Megaphone, MessageCircle, Trash2, CheckCircle2, RotateCcw, ShieldX, Ban } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { Button, Field } from '@web/components/ui'
+import { DatePicker } from '@web/components/DatePicker'
 import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -16,7 +18,15 @@ function price(a: AdDetail) {
   return a.rate_period ? `${rp} ${a.rate_period}` : rp
 }
 const waLink = (c: string) => `https://wa.me/${c.replace(/[^0-9]/g, '')}`
-const fieldCls = 'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
+// Match the ad form's field look so create/view/edit read as one system.
+const fieldCls =
+  'w-full rounded-xl border border-line bg-paper-line/40 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand-500 focus:bg-surface focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-800/60'
+const TYPE_LABEL: Record<AdDetail['ad_type'], string> = { Sell: 'Jual', Buy: 'Beli', Rent: 'Sewa' }
+const TYPE_TINT: Record<AdDetail['ad_type'], string> = {
+  Sell: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200',
+  Buy: 'bg-sky-100 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200',
+  Rent: 'bg-violet-100 text-violet-700 dark:bg-violet-500/25 dark:text-violet-200',
+}
 
 export default function PapanIklanDetail() {
   const navigate = useNavigate()
@@ -32,6 +42,7 @@ export default function PapanIklanDetail() {
   const [banUntil, setBanUntil] = useState('')
   const [banReason, setBanReason] = useState('')
   const [banOpen, setBanOpen] = useState(false)
+  const [activePhoto, setActivePhoto] = useState(0)
 
   if (isLoading) return <Page><div className="flex justify-center py-20"><Spinner /></div></Page>
   if (!ad) return <Page><PageHeader icon={Megaphone} title="Iklan tidak ditemukan" /><p className="text-muted">Iklan ini mungkin sudah dihapus. <button onClick={() => navigate('/papan-iklan')} className="text-brand-600 underline">Kembali ke Papan Iklan</button></p></Page>
@@ -69,14 +80,49 @@ export default function PapanIklanDetail() {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           {ad.photos.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto">
-              {ad.photos.map((s) => <img key={s} src={s} alt="" className="h-64 w-80 shrink-0 rounded-2xl object-cover" />)}
+            <div className="space-y-2">
+              <div className="overflow-hidden rounded-2xl bg-paper-line shadow-card dark:bg-slate-800">
+                <img src={ad.photos[Math.min(activePhoto, ad.photos.length - 1)]} alt={ad.title} className="h-72 w-full object-cover sm:h-96" />
+              </div>
+              {ad.photos.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {ad.photos.map((s, i) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setActivePhoto(i)}
+                      aria-label={`Foto ${i + 1}`}
+                      className={clsx(
+                        'h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-2 transition',
+                        i === activePhoto ? 'ring-brand-500' : 'ring-transparent opacity-60 hover:opacity-100',
+                      )}
+                    >
+                      <img src={s} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-          <p className="text-lg font-semibold text-brand-600">{price(ad)}</p>
-          <p className="text-xs text-muted">oleh {ad.author_name}</p>
-          {ad.description && <div className="prose prose-sm max-w-none text-ink" dangerouslySetInnerHTML={{ __html: ad.description }} />}
-          <div className="border-t border-line pt-4"><CommentThread referenceDoctype="Papan Iklan" referenceName={name} /></div>
+          <div className="space-y-3 rounded-2xl bg-surface p-4 shadow-card sm:p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${TYPE_TINT[ad.ad_type]}`}>{TYPE_LABEL[ad.ad_type]}</span>
+              {ad.status === 'Fulfilled' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
+                </span>
+              )}
+            </div>
+            <p className="font-display text-2xl font-bold text-brand-600 dark:text-brand-400">{price(ad)}</p>
+            <div className="flex items-center gap-2 text-sm text-muted">
+              {ad.author_image
+                ? <img src={ad.author_image} alt="" className="h-6 w-6 rounded-full object-cover" />
+                : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-paper-line text-[11px] font-semibold text-muted dark:bg-slate-800">{ad.author_name.slice(0, 1)}</span>}
+              oleh {ad.author_name}
+            </div>
+            {ad.description && <div className="prose prose-sm max-w-none border-t border-line pt-3 text-ink" dangerouslySetInnerHTML={{ __html: ad.description }} />}
+          </div>
+          <div className="rounded-2xl bg-surface p-4 shadow-card sm:p-5"><CommentThread referenceDoctype="Papan Iklan" referenceName={name} /></div>
         </div>
 
         <div className="space-y-3">
@@ -105,7 +151,7 @@ export default function PapanIklanDetail() {
               <Button variant="danger" className="w-full" onClick={() => setBanOpen((v) => !v)}><Ban className="h-4 w-4" /> Ban pengguna</Button>
               {banOpen && (
                 <div className="space-y-2">
-                  <Field label="Sampai tanggal">{(id) => <input id={id} type="date" className={fieldCls} value={banUntil} onChange={(e) => setBanUntil(e.target.value)} />}</Field>
+                  <Field label="Sampai tanggal">{(id) => <DatePicker id={id} className={fieldCls} value={banUntil} onChange={(v) => setBanUntil(v)} />}</Field>
                   <Field label="Alasan">{(id) => <textarea id={id} className={fieldCls} rows={2} value={banReason} onChange={(e) => setBanReason(e.target.value)} />}</Field>
                   <Button variant="danger" className="w-full" onClick={submitBan} disabled={ban.isPending}>Konfirmasi ban</Button>
                 </div>

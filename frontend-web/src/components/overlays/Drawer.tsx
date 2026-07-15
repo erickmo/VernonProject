@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useModalA11y } from '@web/lib/useModalA11y'
 
@@ -36,7 +37,10 @@ export function Drawer({
     </>
   )
 
-  return (
+  // Portal to <body> so `fixed` is viewport-relative even when an ancestor has a
+  // transform (e.g. Page's animate-rise leaves transform:translateY(0) via
+  // fill-mode:both, which would otherwise cap the drawer's height to that box).
+  return createPortal(
     <div className={`fixed inset-0 ${zClass}`}>
       <div className={`absolute inset-0 animate-fade-in ${scrim}`} onClick={onClose} />
       <div
@@ -59,6 +63,7 @@ export function Drawer({
           body
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -6,7 +6,7 @@
   color-scheme: light;
   /* Warm paper palette — exact match to mobile (/m): #FAF7F0 canvas, #FFFDF8
      card surface, #3A2F28 ink, #EAE3D5 edge line. */
-  --canvas: 250 247 240;   /* #FAF7F0 warm cream */
+  --canvas: 243 242 239;   /* #F3F2EF light warm gray (greige) */
   --surface: 255 253 248;  /* #FFFDF8 card lifts off the canvas */
   --ink: 58 47 40;         /* #3A2F28 warm ink */
   --muted: 110 109 106;    /* AA on the warm canvas (~4.95:1) */
@@ -35,8 +35,20 @@ html.dark {
     transition: color .15s ease, background-color .15s ease, border-color .15s ease,
       box-shadow .15s ease, transform .15s ease;
   }
+  /* Keyboard focus is always clearly visible. :focus-visible fires only for
+     keyboard / assistive tech — mouse users never see it — so every soft-pop
+     tile, chip, lens button and link that relied on the default outline now
+     gets one consistent brand ring. */
+  :focus-visible {
+    outline: 2px solid rgb(99 102 241);   /* brand-500 */
+    outline-offset: 2px;
+  }
 }
 html, body, #root { height: 100%; }
+/* Kill the top rubber-band bounce so the sticky navbar stays glued to the top
+   edge on overscroll. Must sit on <html> (the document scroller in standards
+   mode) — on <body> Chrome/Edge/FF ignore it and the header lifts off. */
+html { overscroll-behavior: none; }
 body {
   margin: 0;
   /* Warm cream canvas + faint warm dot grain for the tactile paper feel (matches /m). */
@@ -46,7 +58,6 @@ body {
   color: rgb(var(--ink));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overscroll-behavior-y: none;
 }
 /* Dark canvas is solid slate — no paper grain. */
 html.dark body {
@@ -99,5 +110,19 @@ html.dark .prose-notes { color: #cbd5e1; } /* slate-300 */
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Respect the OS "reduce motion" setting: neutralize the dashboard's rise
+   stagger, hover lifts and card transitions, but keep looping loaders
+   (animate-spin) turning so "loading" still reads. Mouse/keyboard behaviour
+   is unchanged — only the animation is dropped. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [class*='animate-']:not(.animate-spin) {
+    animation: none !important;
   }
 }

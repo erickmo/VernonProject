@@ -20,7 +20,7 @@ export type Column<T> = {
 }
 
 export function DataTable<T>({
-  rows, columns, getKey, empty, onRowClick, activeKey,
+  rows, columns, getKey, empty, onRowClick, activeKey, rowClassName,
 }: {
   rows: T[]
   columns: Column<T>[]
@@ -28,6 +28,7 @@ export function DataTable<T>({
   empty?: ReactNode
   onRowClick?: (row: T) => void
   activeKey?: string
+  rowClassName?: (row: T) => string | undefined   // opt-in per-row tint (e.g. completed rows)
 }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null)
 
@@ -87,7 +88,8 @@ export function DataTable<T>({
                 className={clsx(
                   'border-b border-line last:border-0',
                   onRowClick && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] hover:shadow-[inset_2px_0_0_#6366f1]',
-                  activeKey === k && 'bg-brand-50 dark:bg-brand-500/10',
+                  rowClassName?.(row),
+                  activeKey === k && 'bg-brand-50 dark:bg-brand-500/10',   // selection wins over row tint
                 )}
               >
                 {columns.map((c) => (

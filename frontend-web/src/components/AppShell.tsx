@@ -12,14 +12,9 @@ import { QuickCreate } from '@web/components/QuickCreate'
 import { FocusHost } from '@web/components/FocusHost'
 import UpdateBanner from '@web/components/UpdateBanner'
 
-// Content-type width: workspaces full-bleed, table/grid-heavy routes wide,
-// feeds stay at the readable 6xl cap. Route-based because most pages don't
-// render <Page> — the shell is the only place that always wraps content.
-function mainWidth(path: string): string {
-  if (path.startsWith('/project/') || path === '/projects') return ''
-  if (path === '/' || path === '/review' || path === '/reports' ||
-      path.startsWith('/reports/') || path.startsWith('/report/')) return 'max-w-7xl'
-  return 'max-w-6xl'
+// Every page is full-bleed (per request). The shell no longer caps width.
+function mainWidth(_path: string): string {
+  return ''
 }
 
 export function AppShell() {

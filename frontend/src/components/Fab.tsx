@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, X, StickyNote, Compass, Megaphone, Timer } from 'lucide-react'
 import { useFocusTimers } from '@/hooks/useFocusTimer'
 import { useFocusOverlay } from '@/lib/focusUI'
@@ -23,6 +23,13 @@ export function Fab() {
 
   const focusCount = useFocusTimers().timers.length
   const overlayOpen = useFocusOverlay().open
+
+  // Hide on detail pages that carry a bottom comment composer, so the FAB does
+  // not sit over the send button. Matches the routes that render CommentThread.
+  const { pathname } = useLocation()
+  const onCommentPage =
+    /^\/(project|project-detail|project-item)\/[^/]+$/.test(pathname) ||
+    /^\/papan-iklan\/(?!new$|bans$)[^/]+$/.test(pathname)
 
   const newNote = () => navigate('/notes/new')
 
@@ -81,8 +88,9 @@ export function Fab() {
     clear()
   }
 
-  // Hidden while the full-screen focus overlay is up (mirrors the old mini-bar).
-  if (overlayOpen) return null
+  // Hidden while the full-screen focus overlay is up (mirrors the old mini-bar),
+  // or on comment-composer detail pages (see onCommentPage above).
+  if (overlayOpen || onCommentPage) return null
 
   return (
     <>
