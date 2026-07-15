@@ -4,7 +4,7 @@ import {
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
-  Banknote, Activity as ActivityIcon, Sparkles,
+  Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -37,6 +37,8 @@ const WORK: NavLeaf[] = [
   { to: '/feedback', label: 'Feedback', sub: 'Send · admins triage', icon: MessageSquarePlus, match: '/feedback' },
   { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
   { to: '/attendance/my-approvals', label: 'Leave/WFH input', sub: 'Give input as a leader', icon: Inbox },
+  { to: '/attendance/request', label: 'Request leave', sub: 'Cuti / WFH', icon: CalendarPlus },
+  { to: '/attendance/my-requests', label: 'My leave/WFH', sub: 'Your requests & status', icon: FileText },
   { to: '/learn', label: 'Learn', sub: 'Courses & progress', icon: BookOpen, match: '/learn' },
 ]
 

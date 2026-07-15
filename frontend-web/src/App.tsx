@@ -76,6 +76,8 @@ import Exceptions from '@web/pages/Exceptions'
 import HolidayLists from '@web/pages/HolidayLists'
 import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import ExceptionApprovals from '@web/pages/ExceptionApprovals'
+import RequestException from '@web/pages/RequestException'
+import MyExceptions from '@web/pages/MyExceptions'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
 import Bookings from '@web/pages/Bookings'
@@ -286,6 +288,8 @@ export default function App() {
           <Route path="/events/manage/:name" element={<EventForm />} />
           <Route path="/my-registrations" element={<MyRegistrations />} />
           <Route path="/attendance/my-approvals" element={<ExceptionApprovals />} />
+          <Route path="/attendance/request" element={<RequestException />} />
+          <Route path="/attendance/my-requests" element={<MyExceptions />} />
           {canHrApprove(b) && <Route path="/attendance/exceptions" element={<Exceptions />} />}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/me/info" element={<MyInfo />} />
