@@ -275,7 +275,10 @@ class ProjectTodo(Document):
 	def _compute_earned(self):
 		"""Return (assignee_earned, leader_earned, mentor_earned, late_days, early_days).
 
-		Uses phase_completed_at (fallback completed_at, then now) vs deadline.
+		Lateness clocks at hand-off — when the assignee moved the todo to Done
+		(done_started_at) — NOT at approval (phase_completed_at). A slow leader
+		review must never penalize the assignee or the leader. Fallbacks cover
+		todos that never recorded a Done timestamp. Compared vs deadline.
 		Weights are percentages. No flooring; negatives allowed.
 		"""
 		grp = frappe.get_doc("Group", self.group) if self.group else None
@@ -283,7 +286,7 @@ class ProjectTodo(Document):
 		if not grp:
 			return 0.0, 0.0, 0.0, 0, 0
 
-		completed = self.phase_completed_at or self.completed_at or now_datetime()
+		completed = self.done_started_at or self.phase_completed_at or self.completed_at or now_datetime()
 		completed_date = getdate(completed)
 		deadline = getdate(self.deadline) if self.deadline else completed_date
 		delta = (completed_date - deadline).days

@@ -76,13 +76,16 @@ def update_status(todo_id):
 			else:
 				return {"status": "error", "message": f"You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}, Project Leader {project_leader} atau Assigned To {todo.assigned_to})."}
 		elif todo.status == "🟠 Done":
-			if user in [project_leader, project_owner]:
+			# Leader gate: only the Project Leader may approve here. The Owner
+			# may approve only when they are also the leader. Owner-fallback when
+			# no leader is set (legacy rows) so the todo can't get stuck.
+			if user == project_leader or (not project_leader and user == project_owner):
 				# Update status to 'Approved'
 				todo.status = "🔷 Checked By PL"
 				todo.tested_at = frappe.utils.now()
 				todo.tested_by = user
 			else:
-				return {"status": "error", "message": f"You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}, Project Leader {project_leader})."}
+				return {"status": "error", "message": f"You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Leader {project_leader})."}
 		elif todo.status == "🔷 Checked By PL":
 			if user in [project_owner]:
 				# Update status to 'Approved'

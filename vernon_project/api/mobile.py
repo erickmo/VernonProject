@@ -132,7 +132,10 @@ def _can_advance(status_key, project, user, assigned_to):
 	if status_key == "planned":
 		return user in (owner, leader, assigned_to)
 	if status_key == "done":
-		return user in (owner, leader)
+		# Leader gate: only the Project Leader clears it. The Owner may approve
+		# here only when they are also the leader. Owner-fallback when no leader
+		# is set (legacy rows) so the todo can't get stuck.
+		return user == leader or (not leader and user == owner)
 	if status_key == "checked":
 		return user == owner
 	return False

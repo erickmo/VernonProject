@@ -531,6 +531,12 @@ export default function GroupForm() {
             <p className="rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-ink dark:bg-slate-800/85 dark:text-slate-300">
               leader = assignee × (late ? leader_late_weight% : leader_weight%)
             </p>
+            <p className="mt-2 rounded-lg border border-emerald-300/60 bg-emerald-50/80 px-2 py-1.5 text-[11px] text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+              <b>Late is measured at hand-off.</b> The clock stops when the assignee moves the
+              todo to <b>🟠 Done</b>, compared to the deadline — not when the leader approves
+              it. So a slow leader review never pushes the assignee or the leader into the late
+              bracket: work finished on time stays on time.
+            </p>
           </div>
         </BentoTile>
 
