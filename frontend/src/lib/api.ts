@@ -526,12 +526,22 @@ export const mobileApi = {
       exception_type,
       reason,
     }),
-  approveException: (exception_id: string) =>
-    api.post<{ status: string; message?: string; approval_status?: string }>(A + 'approve_exception', { exception_id }),
-  rejectException: (exception_id: string, reason: string) =>
-    api.post<{ status: string; message?: string; approval_status?: string }>(A + 'reject_exception', { exception_id, reason }),
+  approveException: (exception_id: string, as_hr = false) =>
+    api.post<{ status: string; message?: string; approval_status?: string }>(A + 'approve_exception', {
+      exception_id,
+      as_hr: as_hr ? 1 : 0,
+    }),
+  rejectException: (exception_id: string, reason: string, as_hr = false) =>
+    api.post<{ status: string; message?: string; approval_status?: string }>(A + 'reject_exception', {
+      exception_id,
+      reason,
+      as_hr: as_hr ? 1 : 0,
+    }),
   pendingExceptionApprovals: () =>
     api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'pending_exception_approvals'),
+  hrPendingExceptions: () =>
+    api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'hr_pending_exceptions'),
+  myLeaders: () => api.get<{ status: string; leaders: string[] }>(A + 'my_leaders'),
   myExceptions: (limit = 30) =>
     api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'my_exceptions', { limit }),
   attendanceReport: (filters: {

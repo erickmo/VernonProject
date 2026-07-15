@@ -17,6 +17,7 @@ import type { NotificationType } from '@/lib/types'
 const ROUTES = {
   exceptionApprovals: '/attendance/approvals',
   myExceptions: '/attendance/my-requests',
+  hrExceptions: '/attendance/manage/exceptions',
 }
 
 function TabChip({

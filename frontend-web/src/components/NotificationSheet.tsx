@@ -16,9 +16,8 @@ import { Button, Skeleton, ErrorState } from '@web/components/ui'
 
 const ROUTES = {
   exceptionApprovals: '/attendance/my-approvals',
-  // /attendance/exceptions is the admin screen; web has no requester-side list,
-  // so a cuti verdict has nowhere better to land than home.
-  myExceptions: '/',
+  myExceptions: '/attendance/my-requests',
+  hrExceptions: '/attendance/exceptions',
 }
 
 function TabChip({

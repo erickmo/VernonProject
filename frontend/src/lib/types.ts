@@ -1017,6 +1017,8 @@ export type ExceptionDecision = 'Pending' | 'Approved' | 'Rejected'
 export type ExceptionApprover = {
   approver: string
   decision: ExceptionDecision
+  /** Set only when the leader objected. */
+  reason?: string
 }
 
 export type AttendanceExceptionRow = {
@@ -1025,11 +1027,15 @@ export type AttendanceExceptionRow = {
   exception_type: 'WFH' | 'Leave'
   from_date: string
   to_date: string
+  /** Mirrors hr_decision. HR is the final approver; leader votes are advisory. */
   status: ExceptionDecision
   reason?: string
   approvers: ExceptionApprover[]
   approved_count: number
   total: number
+  hr_decision: ExceptionDecision
+  hr_by?: string
+  hr_reason?: string
 }
 
 // ---- Papan Iklan (classified ads) ----

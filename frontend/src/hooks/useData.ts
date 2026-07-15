@@ -114,6 +114,8 @@ export const keys = {
   equipmentList: ['equipment-list'] as const,
   equipmentItem: (n: string) => ['equipment-item', n] as const,
   pendingExceptionApprovals: ['pendingExceptionApprovals'] as const,
+  hrPendingExceptions: ['hrPendingExceptions'] as const,
+  myLeaders: ['myLeaders'] as const,
   myExceptions: ['myExceptions'] as const,
   employeeProfile: (user: string) => ['employee-profile', user] as const,
   dailyVerse: ['daily-verse'] as const,
@@ -799,18 +801,29 @@ export function canManageBadges(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
 
-// ponytail: System Manager only for v1. Add an 'Attendance Manager' role + check here if delegation is needed.
+// Stations, schedules, holidays, profiles and the daily report. Deliberately
+// NOT widened to HR Manager: the report's backend gate is System Manager only
+// (api/attendance.py _require_attendance_admin), so HR would get a screen that
+// 403s. HR gets canHrApprove instead.
 export function canManageAttendance(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
 
+/** Who may cast the final verdict on a cuti / WFH request. Mirrors _is_hr(). */
+export function canHrApprove(boot: Boot | undefined): boolean {
+  return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('HR Manager'))
+}
+
 // The Vernon roles assignable from the mobile user-management screen.
+// Must stay a subset of VERNON_ROLES in api/mobile.py — update_user silently
+// drops anything outside that tuple.
 export const VERNON_ROLE_OPTIONS = [
   { value: 'Project Owner', label: 'Owner' },
   { value: 'Project Leader', label: 'Leader' },
   { value: 'Project Admin', label: 'Admin' },
   { value: 'Project Team', label: 'Team' },
   { value: 'Points Granter', label: 'Points Granter' },
+  { value: 'HR Manager', label: 'HR' },
 ]
 
 // Member-type marking on a user. '' = external/unset. Must match MEMBER_TYPES in mobile.py.
@@ -1609,7 +1622,17 @@ export function useRequestException() {
       if (res.status !== 'ok') throw new Error(res.message || 'Request failed')
       return res
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: keys.myAttendance }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.myAttendance })
+      qc.invalidateQueries({ queryKey: keys.myExceptions })
+    },
+  })
+}
+
+export function useMyLeaders() {
+  return useQuery({
+    queryKey: keys.myLeaders,
+    queryFn: async () => (await mobileApi.myLeaders()).leaders,
   })
 }
 
@@ -1620,6 +1643,13 @@ export function usePendingExceptionApprovals() {
   })
 }
 
+export function useHrPendingExceptions() {
+  return useQuery({
+    queryKey: keys.hrPendingExceptions,
+    queryFn: async () => (await mobileApi.hrPendingExceptions()).rows,
+  })
+}
+
 export function useMyExceptions() {
   return useQuery({
     queryKey: keys.myExceptions,
@@ -1627,33 +1657,33 @@ export function useMyExceptions() {
   })
 }
 
+function invalidateExceptions(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: keys.pendingExceptionApprovals })
+  qc.invalidateQueries({ queryKey: keys.hrPendingExceptions })
+  qc.invalidateQueries({ queryKey: keys.myExceptions })
+}
+
 export function useApproveException() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (name: string) => {
-      const res = await mobileApi.approveException(name)
+    mutationFn: async (vars: { name: string; as_hr?: boolean }) => {
+      const res = await mobileApi.approveException(vars.name, vars.as_hr)
       if (res.status !== 'ok') throw new Error(res.message || 'Failed')
       return res
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.pendingExceptionApprovals })
-      qc.invalidateQueries({ queryKey: keys.myExceptions })
-    },
+    onSettled: () => invalidateExceptions(qc),
   })
 }
 
 export function useRejectException() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (vars: { name: string; reason: string }) => {
-      const res = await mobileApi.rejectException(vars.name, vars.reason)
+    mutationFn: async (vars: { name: string; reason: string; as_hr?: boolean }) => {
+      const res = await mobileApi.rejectException(vars.name, vars.reason, vars.as_hr)
       if (res.status !== 'ok') throw new Error(res.message || 'Failed')
       return res
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.pendingExceptionApprovals })
-      qc.invalidateQueries({ queryKey: keys.myExceptions })
-    },
+    onSettled: () => invalidateExceptions(qc),
   })
 }
 

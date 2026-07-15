@@ -32,12 +32,14 @@ export const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   Learning: GraduationCap,
 }
 
-/** The two destinations whose path differs between /m and /w. */
+/** The destinations whose path differs between /m and /w. */
 export interface DeepLinkRoutes {
-  /** A leader's "cuti waiting on you" queue. */
+  /** A leader's "cuti waiting on your input" queue. Advisory since HR became final. */
   exceptionApprovals: string
   /** The requester's own cuti list. Web has no such screen yet — pass '/'. */
   myExceptions: string
+  /** HR's inbox — the only screen that can actually decide a cuti. */
+  hrExceptions: string
 }
 
 /**
@@ -74,6 +76,8 @@ export function deepLink(n: AppNotification, routes: DeepLinkRoutes): string {
     case 'Wallet':
     case 'Daily Attendance':
       return '/wallet'
+    case 'Attendance Exception HR':
+      return routes.hrExceptions
     case 'Attendance Exception Approval':
       return routes.exceptionApprovals
     case 'Attendance Exception':
