@@ -562,6 +562,7 @@ export interface IncomeManageData {
 export interface WalletLogEntry {
   kind: 'credit' | 'debit'
   amount: number
+  category?: string
   title: string
   subtitle: string | null
   status: string | null

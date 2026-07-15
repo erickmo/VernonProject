@@ -2730,6 +2730,21 @@ def _credit_reason(role, source, late_days, early_days, group):
 	return " · ".join(bits) or None
 
 
+# Discrete category slug per points-log row → drives the icon/color in the web
+# ledger. Role wins for todo credits (task/leader/mentor/attended), then the
+# non-todo source; everything else defaults to "task".
+_ROLE_CAT = {"Assignee": "task", "Leader": "leader", "Mentor": "mentor", "Participant": "attended"}
+_SOURCE_CAT = {
+	"Meeting": "meeting", "Attendance": "attendance", "Learning": "learning",
+	"Achievement": "achievement", "Daily": "daily", "Recognition": "recognition",
+	"Feedback": "feedback", "Mentoring": "mentoring", "Reward": "reward",
+}
+
+
+def _credit_category(role, source):
+	return _ROLE_CAT.get(role) or _SOURCE_CAT.get(source) or "task"
+
+
 @frappe.whitelist()
 def get_wallet_log():
 	"""Unified credit/debit timeline (latest 100), newest first, with a running
@@ -2748,6 +2763,22 @@ def get_wallet_log():
 		filters={"user": user},
 		fields=["point_cost", "reward_name", "status", "redeemed_on as date"],
 		order_by="redeemed_on desc",
+		limit=100,
+	)
+	# Point purchases — avatar cosmetics bought with points (free defaults have cost 0).
+	unlocks = frappe.get_all(
+		"Avatar Unlock",
+		filters={"user": user, "cost": [">", 0]},
+		fields=["style", "slot", "option_value", "cost", "unlocked_on as date"],
+		order_by="unlocked_on desc",
+		limit=100,
+	)
+	# Event tickets paid with points.
+	event_spends = frappe.get_all(
+		"Vernon Event Registration",
+		filters={"user": user, "method": "Points", "status": ["!=", "Cancelled"]},
+		fields=["event", "amount", "status", "registered_on as date"],
+		order_by="registered_on desc",
 		limit=100,
 	)
 
@@ -2769,6 +2800,15 @@ def get_wallet_log():
 		):
 			gift_names[r["name"]] = r["full_name"]
 
+	# Resolve event titles (event is a hash-named link) in one query.
+	event_ids = [e["event"] for e in event_spends if e.get("event")]
+	event_titles = {}
+	if event_ids:
+		for r in frappe.get_all(
+			"Vernon Event", filters={"name": ["in", event_ids]}, fields=["name", "title"]
+		):
+			event_titles[r["name"]] = r["title"]
+
 	rows = []
 	for c in credits:
 		src = c.get("source")
@@ -2779,6 +2819,7 @@ def get_wallet_log():
 				{
 					"kind": "debit" if amt < 0 else "credit",
 					"amount": amt,
+					"category": "gift_out" if amt < 0 else "gift_in",
 					"title": "Gift sent" if amt < 0 else "Gift received",
 					"subtitle": (f"to {counterpart}" if amt < 0 else f"from {counterpart}"),
 					"status": None,
@@ -2792,6 +2833,7 @@ def get_wallet_log():
 			{
 				"kind": "credit",
 				"amount": amt,
+				"category": "grant" if is_grant else _credit_category(c.get("role"), src),
 				"title": "Points granted" if is_grant else (subj.get(c.get("todo")) or "Points earned"),
 				"subtitle": (c.get("note") or "Granted") if is_grant else _credit_reason(
 					c.get("role"), src, c.get("late_days"), c.get("early_days"), c.get("group")
@@ -2806,11 +2848,40 @@ def get_wallet_log():
 			{
 				"kind": "debit",
 				"amount": -float(d["point_cost"] or 0),
+				"category": "marketplace",
 				"title": d.get("reward_name") or "Redemption",
 				"subtitle": "Marketplace",
 				"status": d.get("status"),
 				"date": str(d["date"]) if d.get("date") else None,
 				"date_human": _humanize_datetime(d.get("date")),
+			}
+		)
+	for u in unlocks:
+		# option_value is the asset name for _asset rows; otherwise it's the variant value.
+		label = u.get("option_value") or ((u.get("slot") or "").replace("_", " ").title()) or "Item"
+		rows.append(
+			{
+				"kind": "debit",
+				"amount": -float(u["cost"] or 0),
+				"category": "avatar",
+				"title": label,
+				"subtitle": "Avatar",
+				"status": None,
+				"date": str(u["date"]) if u.get("date") else None,
+				"date_human": _humanize_datetime(u.get("date")),
+			}
+		)
+	for ev in event_spends:
+		rows.append(
+			{
+				"kind": "debit",
+				"amount": -float(ev["amount"] or 0),
+				"category": "event",
+				"title": event_titles.get(ev.get("event")) or "Event",
+				"subtitle": "Event",
+				"status": ev.get("status"),
+				"date": str(ev["date"]) if ev.get("date") else None,
+				"date_human": _humanize_datetime(ev.get("date")),
 			}
 		)
 
