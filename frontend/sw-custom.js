@@ -5,7 +5,7 @@
 
 // v10: bumped to evict a poisoned 0-byte bundle entry a CDN edge cached during a
 // same-hash rebuild; the old cache is dropped on activate so assets re-fetch fresh.
-const ASSET_CACHE = 'vernon-assets-v10'
+const ASSET_CACHE = 'vernon-assets-v11'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
@@ -80,14 +80,27 @@ async function navigationHandler(req) {
 }
 
 // --- Web Push -------------------------------------------------------------
+// ponytail: mirrors deepLink() in frontend/src/lib/notifications.ts, which is the
+// source of truth — change both. This file is copied verbatim by copy-html.mjs
+// rather than bundled, so it cannot import the shared module. Wire the SW through
+// the bundler if this ever drifts in anger.
 function deepLinkFor(data) {
   const d = (data && data.reference_doctype) || ''
   const n = (data && data.reference_name) || ''
-  if (d === 'Project Todo' && n) return '/m/project-item/' + encodeURIComponent(n)
-  if (d === 'Project Detail' && n) return '/m/project-detail/' + encodeURIComponent(n)
-  if (d === 'Project' && n) return '/m/project/' + encodeURIComponent(n)
-  if (d === 'Wallet') return '/m/wallet'
+  const e = encodeURIComponent(n)
+  if (d === 'Project Todo' && n) return '/m/project-item/' + e
+  if (d === 'Project Detail' && n) return '/m/project-detail/' + e
+  if (d === 'Project' && n) return '/m/project/' + e
+  if (d === 'Papan Iklan') return n ? '/m/papan-iklan/' + e : '/m/papan-iklan'
+  if (d === 'Papan Iklan Ban') return '/m/papan-iklan'
+  if (d === 'Course') return n ? '/m/learn/' + e : '/m/learn'
+  if (d === 'Company Feedback') return '/m/feedback-inbox'
+  if (d === 'Meeting') return '/m/meetings'
+  if (d === 'Team Wall') return '/m/team-wall'
   if (d === 'Reward Redemption') return '/m/marketplace'
+  if (d === 'Wallet' || d === 'Daily Attendance') return '/m/wallet'
+  if (d === 'Attendance Exception Approval') return '/m/attendance/approvals'
+  if (d === 'Attendance Exception') return '/m/attendance/my-requests'
   return '/m'
 }
 
