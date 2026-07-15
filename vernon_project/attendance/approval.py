@@ -1,24 +1,13 @@
 # Copyright (c) 2026, Vernon and contributors
 # For license information, please see license.txt
 #
-# Pure approval logic for Attendance Exception multi-leader gate. No frappe /
-# DB imports here on purpose — keeps it unit-testable via `python approval.py`.
-
-
-def derive_status(decisions):
-	"""Overall exception status from a list of per-leader decision strings.
-
-	Unanimity both ways (matches spec): all approve -> Approved, all reject ->
-	Rejected, empty set -> Approved (auto-approve, no leaders), anything mixed
-	or still pending -> Pending.
-	"""
-	if not decisions:
-		return "Approved"
-	if all(d == "Approved" for d in decisions):
-		return "Approved"
-	if all(d == "Rejected" for d in decisions):
-		return "Rejected"
-	return "Pending"
+# Pure approval logic for Attendance Exception. No frappe / DB imports here on
+# purpose — keeps it unit-testable via `python approval.py`.
+#
+# There is no derive_status(): since 2026-07-15 HR is the final approver, and
+# `status` is a straight mirror of `hr_decision` (same Select options), so the
+# whole derivation is one assignment in api/attendance.py. Leader decisions are
+# advisory and gate nothing.
 
 
 def distinct_leaders(leaders, employee):
@@ -31,12 +20,6 @@ def distinct_leaders(leaders, employee):
 
 
 if __name__ == "__main__":
-	assert derive_status([]) == "Approved"
-	assert derive_status(["Approved", "Approved"]) == "Approved"
-	assert derive_status(["Rejected", "Rejected"]) == "Rejected"
-	assert derive_status(["Approved", "Rejected"]) == "Pending"
-	assert derive_status(["Approved", "Pending"]) == "Pending"
-	assert derive_status(["Rejected", "Pending"]) == "Pending"
 	assert distinct_leaders(["a", "a", "b", None, ""], "z") == ["a", "b"]
 	assert distinct_leaders(["a", "z", "b"], "z") == ["a", "b"]  # self excluded
 	assert distinct_leaders([], "z") == []

@@ -9,7 +9,7 @@ from frappe.utils import cint, getdate, now_datetime, nowdate
 
 from vernon_project.attendance import qr
 from vernon_project.attendance.engine import recompute_daily
-from vernon_project.attendance.approval import derive_status, distinct_leaders
+from vernon_project.attendance.approval import distinct_leaders
 
 
 @frappe.whitelist(allow_guest=True)
@@ -156,6 +156,41 @@ def _leaders_for_employee(employee):
 	return distinct_leaders([p.project_leader for p in projects], employee)
 
 
+def _is_hr(user):
+	roles = frappe.get_roles(user)
+	return "HR Manager" in roles or "System Manager" in roles
+
+
+def _hr_users():
+	"""Who to notify about a new request.
+
+	HR Manager holders, falling back to System Managers when nobody holds the
+	role yet — otherwise a site that deploys before granting it notifies nobody
+	and wedges every request at Pending with no visible cause.
+	"""
+	users = [
+		r.parent for r in frappe.get_all(
+			"Has Role",
+			filters={"parenttype": "User", "role": "HR Manager"},
+			fields=["parent"],
+		)
+	]
+	if not users:
+		users = [
+			r.parent for r in frappe.get_all(
+				"Has Role",
+				filters={"parenttype": "User", "role": "System Manager"},
+				fields=["parent"],
+			)
+		]
+	enabled = frappe.get_all(
+		"User",
+		filters={"name": ["in", users], "enabled": 1},
+		fields=["name"],
+	) if users else []
+	return sorted({u.name for u in enabled})
+
+
 def _exc_label(doc):
 	return "Cuti" if doc.exception_type == "Leave" else "WFH"
 
@@ -167,12 +202,30 @@ def _notify_leaders_new_request(doc, leaders):
 		_notify(
 			leader,
 			"Approval",
-			_("{0} request needs your approval").format(label),
+			# Advisory since 2026-07-15: HR decides. Wording says "input", not
+			# "approval", so a leader does not think the cuti waits on them.
+			_("{0} request needs your input").format(label),
 			_("{0} requested {1}: {2} → {3}").format(doc.employee, label, doc.from_date, doc.to_date),
 			# Pseudo-doctype (cf. "Wallet"): the leader's approval queue and the
 			# requester's own list are different screens, and the real doctype is
 			# identical for both. Tag the audience here so the apps can route it.
 			"Attendance Exception Approval",
+			doc.name,
+			doc.employee,
+		)
+
+
+def _notify_hr_new_request(doc):
+	from vernon_project.api.mobile import _notify
+	label = _exc_label(doc)
+	for hr in _hr_users():
+		_notify(
+			hr,
+			"Approval",
+			_("{0} request needs HR approval").format(label),
+			_("{0} requested {1}: {2} → {3}").format(doc.employee, label, doc.from_date, doc.to_date),
+			# Third audience, third pseudo-doctype -> routes to the HR inbox.
+			"Attendance Exception HR",
 			doc.name,
 			doc.employee,
 		)
@@ -193,6 +246,17 @@ def _notify_employee_decision(doc, status, reason=None, actor=None):
 
 
 @frappe.whitelist()
+def my_leaders():
+	"""The leaders who will review the caller's next request. Preview only —
+	request_exception re-snapshots at insert time and that snapshot is the one
+	that counts."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please log in"), frappe.PermissionError)
+	return {"status": "ok", "leaders": _leaders_for_employee(user)}
+
+
+@frappe.whitelist()
 def request_exception(from_date, to_date, exception_type, reason=None):
 	user = frappe.session.user
 	if user == "Guest":
@@ -203,7 +267,6 @@ def request_exception(from_date, to_date, exception_type, reason=None):
 		return {"status": "error", "message": _("To Date cannot be before From Date.")}
 	leaders = _leaders_for_employee(user)
 	approvers = [{"approver": leader, "decision": "Pending"} for leader in leaders]
-	approval_status = "Approved" if not approvers else "Pending"
 	doc = frappe.get_doc({
 		"doctype": "Attendance Exception",
 		"employee": user,
@@ -211,57 +274,63 @@ def request_exception(from_date, to_date, exception_type, reason=None):
 		"to_date": to_date,
 		"exception_type": exception_type,
 		"reason": reason,
-		"status": approval_status,
+		# Always Pending now: HR is the final approver, so a leaderless request
+		# waits for HR like any other (the old empty-approvers auto-approve is
+		# gone with derive_status).
+		"status": "Pending",
+		"hr_decision": "Pending",
 		"approvers": approvers,
 	}).insert(ignore_permissions=True)
 	if leaders:
 		_notify_leaders_new_request(doc, leaders)
-	return {"status": "ok", "name": doc.name, "approval_status": approval_status}
+	_notify_hr_new_request(doc)
+	return {"status": "ok", "name": doc.name, "approval_status": "Pending"}
 
 
-def _vote_exception(exception_id, decision, reason):
+def _vote_exception(exception_id, decision, reason, as_hr=False):
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
 	doc = frappe.get_doc("Attendance Exception", exception_id)
-	is_admin = "System Manager" in frappe.get_roles(user)
-	row = next((r for r in doc.approvers if r.approver == user), None)
-	if row is None and not is_admin:
-		return {"status": "error", "message": _("You are not an approver for this request.")}
 
-	if row is None:
-		# Admin override: force every row + parent status, so a later recompute
-		# stays consistent (deadlock / no-leader escape hatch).
-		for r in doc.approvers:
-			r.decision = decision
-			r.decided_at = now_datetime()
-			if decision == "Rejected":
-				r.reason = reason
+	if as_hr:
+		if not _is_hr(user):
+			return {"status": "error", "message": _("Only HR can decide this request.")}
+		doc.hr_decision = decision
+		doc.hr_by = user
+		doc.hr_decided_at = now_datetime()
+		doc.hr_reason = reason if decision == "Rejected" else None
+		# status is a straight mirror of hr_decision — same Select options.
 		doc.status = decision
 	else:
+		row = next((r for r in doc.approvers if r.approver == user), None)
+		if row is None:
+			return {"status": "error", "message": _("You are not an approver for this request.")}
+		if doc.hr_decision != "Pending":
+			return {"status": "error", "message": _("HR has already decided this request.")}
 		row.decision = decision
 		row.decided_at = now_datetime()
 		row.reason = reason if decision == "Rejected" else None
-		doc.status = derive_status([r.decision for r in doc.approvers])
+		# Advisory only: a leader vote never moves doc.status.
 
 	doc.approver = user
 	doc.save(ignore_permissions=True)  # on_update -> exception_changed recomputes the day
-	if doc.status in ("Approved", "Rejected"):
+	if as_hr and doc.status in ("Approved", "Rejected"):
 		_notify_employee_decision(doc, doc.status, reason, actor=user)
 	return {"status": "ok", "approval_status": doc.status}
 
 
 @frappe.whitelist()
-def approve_exception(exception_id):
-	return _vote_exception(exception_id, "Approved", None)
+def approve_exception(exception_id, as_hr=0):
+	return _vote_exception(exception_id, "Approved", None, as_hr=cint(as_hr) == 1)
 
 
 @frappe.whitelist()
-def reject_exception(exception_id, reason=None):
+def reject_exception(exception_id, reason=None, as_hr=0):
 	reason = (reason or "").strip()
 	if not reason:
 		return {"status": "error", "message": _("Alasan penolakan wajib diisi.")}
-	return _vote_exception(exception_id, "Rejected", reason)
+	return _vote_exception(exception_id, "Rejected", reason, as_hr=cint(as_hr) == 1)
 
 
 def _shape_exception_rows(names):
@@ -270,23 +339,50 @@ def _shape_exception_rows(names):
 	excs = frappe.get_all(
 		"Attendance Exception",
 		filters={"name": ["in", names]},
-		fields=["name", "employee", "exception_type", "from_date", "to_date", "status", "reason"],
+		fields=[
+			"name", "employee", "exception_type", "from_date", "to_date",
+			"status", "reason", "hr_decision", "hr_by", "hr_reason",
+		],
 		order_by="from_date desc",
 	)
 	appr = frappe.get_all(
 		"Attendance Exception Approver",
 		filters={"parent": ["in", names]},
-		fields=["parent", "approver", "decision"],
+		fields=["parent", "approver", "decision", "reason"],
 	)
 	by_parent = {}
 	for a in appr:
-		by_parent.setdefault(a.parent, []).append({"approver": a.approver, "decision": a.decision})
+		by_parent.setdefault(a.parent, []).append({
+			"approver": a.approver,
+			"decision": a.decision,
+			"reason": a.reason,
+		})
 	for e in excs:
 		rows = by_parent.get(e["name"], [])
 		e["approvers"] = rows
 		e["approved_count"] = sum(1 for r in rows if r["decision"] == "Approved")
 		e["total"] = len(rows)
 	return excs
+
+
+@frappe.whitelist()
+def hr_pending_exceptions():
+	"""Every request still awaiting an HR verdict, with the leaders' advisory
+	votes attached so HR can read them on the card."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please log in"), frappe.PermissionError)
+	if not _is_hr(user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	names = [
+		r.name for r in frappe.get_all(
+			"Attendance Exception",
+			filters={"hr_decision": "Pending"},
+			fields=["name"],
+			limit_page_length=0,
+		)
+	]
+	return {"status": "ok", "rows": _shape_exception_rows(names)}
 
 
 @frappe.whitelist()
