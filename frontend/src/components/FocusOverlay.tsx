@@ -30,7 +30,7 @@ import { useFocusOverlay, closeFocusOverlay } from '@/lib/focusUI'
 // leaves the timer running (the mini-bar stays); Stop ends the timer.
 export default function FocusOverlay() {
   const { open, taskId } = useFocusOverlay()
-  const { timer, elapsedMs, remainingMs, fraction, hasEstimate, pause, resume, reset, stop } =
+  const { timer, elapsedMs, remainingMs, fraction, hasEstimate, pause, resume, reset, stop, note, setNote } =
     useFocusTimer(taskId ?? '')
   const meta = timer?.meta
   const navigate = useNavigate()
@@ -224,6 +224,9 @@ export default function FocusOverlay() {
         </button>
       )}
 
+      {/* Permanent per-task note — survives Stop, syncs across devices */}
+      <NoteField note={note} onNote={setNote} />
+
       {/* Ambient sound */}
       <div className="mt-10 flex w-full max-w-xs flex-col items-center gap-3">
         <button
@@ -255,6 +258,33 @@ export default function FocusOverlay() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// Note textarea: controlled draft that adopts remote (other-device) edits only
+// while unfocused, so a live incoming sync never clobbers what you're typing.
+function NoteField({ note, onNote }: { note: string; onNote: (v: string) => void }) {
+  const [draft, setDraft] = useState(note)
+  const [focused, setFocused] = useState(false)
+  useEffect(() => {
+    if (!focused && note !== draft) setDraft(note)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note, focused])
+  return (
+    <div className="mt-8 w-full max-w-xs">
+      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
+        Note
+      </label>
+      <textarea
+        value={draft}
+        onChange={(e) => { setDraft(e.target.value); onNote(e.target.value) }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        rows={3}
+        placeholder="Jot a note for this task — it stays after you stop."
+        className="w-full resize-y rounded-2xl border border-paper-edge bg-paper-card px-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:border-brand-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+      />
     </div>
   )
 }

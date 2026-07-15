@@ -38,6 +38,8 @@ export function FocusOverlay({
   onOpenTodo,
   advanceLabel,
   onAdvance,
+  note,
+  onNote,
 }: {
   title: string
   meta?: FocusMeta
@@ -53,6 +55,8 @@ export function FocusOverlay({
   onOpenTodo?: () => void
   advanceLabel?: string // e.g. "Mark Done" / "Approve (Leader)"; undefined → hidden
   onAdvance?: () => void
+  note?: string // permanent per-task note (synced across devices)
+  onNote?: (v: string) => void
 }) {
   const over = !stopwatch && displayMs < 0
   const R = 130
@@ -74,6 +78,13 @@ export function FocusOverlay({
   }, [volume])
   // Stop sound when leaving focus mode entirely.
   useEffect(() => () => ambient.stop(), [])
+
+  // Escape closes the overlay (timer keeps running, same as the X button).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const patch = (p: Partial<typeof prefs>) =>
     setPrefs((prev) => {
@@ -226,6 +237,9 @@ export function FocusOverlay({
         </button>
       )}
 
+      {/* Permanent per-task note — survives Stop, syncs across devices */}
+      {onNote && <NoteField note={note ?? ''} onNote={onNote} />}
+
       {/* Ambient sound */}
       <div className="mt-10 flex w-full max-w-xs flex-col items-center gap-3">
         <button
@@ -257,6 +271,31 @@ export function FocusOverlay({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// Note textarea: controlled draft that adopts remote (other-device) edits only
+// while unfocused, so a live incoming sync never clobbers what you're typing.
+function NoteField({ note, onNote }: { note: string; onNote: (v: string) => void }) {
+  const [draft, setDraft] = useState(note)
+  const [focused, setFocused] = useState(false)
+  useEffect(() => {
+    if (!focused && note !== draft) setDraft(note)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note, focused])
+  return (
+    <div className="mt-8 w-full max-w-xs">
+      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">Note</label>
+      <textarea
+        value={draft}
+        onChange={(e) => { setDraft(e.target.value); onNote(e.target.value) }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        rows={3}
+        placeholder="Jot a note for this task — it stays after you stop."
+        className="w-full resize-y rounded-2xl border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-brand-400 focus:outline-none dark:bg-slate-800 dark:text-slate-100"
+      />
     </div>
   )
 }

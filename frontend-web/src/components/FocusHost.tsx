@@ -32,6 +32,8 @@ export function FocusHost() {
         closeFocusOverlay()
       }}
       onClose={closeFocusOverlay}
+      note={focus.note}
+      onNote={focus.setNote}
       onOpenTodo={() => {
         closeFocusOverlay()
         navigate(`/project-item/${encodeURIComponent(name)}`)

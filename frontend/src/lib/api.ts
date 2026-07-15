@@ -1003,3 +1003,32 @@ export const resource = {
   remove: (doctype: string, name: string) =>
     resourceRequest<{ name?: string }>(`${enc(doctype)}/${enc(name)}`, { method: 'DELETE' }),
 }
+
+// --- Focus timer sync (backend-persisted, cross-device) -------------------
+const FOCUS = 'vernon_project.api.focus.'
+
+export type FocusRow = {
+  taskId: string
+  taskTitle: string
+  estimatedMs: number
+  status: 'idle' | 'running' | 'paused'
+  startedAt: number
+  elapsedBeforeMs: number
+  note: string
+  meta: import('./focusUI').FocusMeta | null
+}
+
+export const focusApi = {
+  list: () => api.get<FocusRow[]>(FOCUS + 'list_focus'),
+  save: (r: {
+    task: string
+    task_title: string
+    estimated_ms: number
+    status: 'idle' | 'running' | 'paused'
+    started_at_ms: number
+    elapsed_before_ms: number
+    meta?: unknown
+  }) => api.post<FocusRow>(FOCUS + 'save_timer', r),
+  setNote: (task: string, note: string) => api.post<FocusRow>(FOCUS + 'set_note', { task, note }),
+  stop: (task: string) => api.post<{ ok: boolean }>(FOCUS + 'stop_timer', { task }),
+}
