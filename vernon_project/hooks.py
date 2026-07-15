@@ -30,13 +30,12 @@ app_include_js = "/assets/vernon_project/js/desk_navbar.js"
 
 # Website
 # -------
-# The static HTML documentation lives in apps/vernon_project/docs and is exposed
-# under public/ via a symlink (public/docs -> ../../docs), so nginx serves it as
-# static files at /assets/vernon_project/docs/. This redirect gives it a clean
-# entry point at /docs. (Also added as a Website Route Redirect in Website
-# Settings so it is live without a worker restart.)
+# The docs in apps/vernon_project/docs are NOT served from public/. A symlink
+# (public/docs -> ../../docs) used to expose them at /assets/vernon_project/docs/,
+# but nginx serves /assets as static files, so Frappe auth never runs on that path
+# and the whole docs tree — including docs/superpowers/ internal design specs — was
+# world-readable. Symlink and redirect both removed. Read the docs from the repo.
 website_redirects = [
-	{"source": r"/docs/?", "target": "/assets/vernon_project/docs/index.html"},
 	# Desktop app moved /web -> /w; keep old links working (preserve sub-path).
 	{"source": r"/web/(.*)", "target": r"/w/\1"},
 	{"source": r"/web/?$", "target": "/w"},
