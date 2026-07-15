@@ -50,7 +50,7 @@ export function focusedFirst(list: ProjectItem[], focused: Set<string>): Project
 
 // Auto-fill today's plan toward the daily minimum. Base = every today-deadline
 // task; if the running total (already-planned-today + base) is under `minMinutes`,
-// pull OVERDUE tasks (oldest deadline first) then FUTURE tasks (nearest deadline
+// pull OVERDUE tasks (oldest deadline first) then FUTURE tasks (farthest deadline
 // first) until the minimum is met or candidates run out. Whole tasks only — the
 // last add may overshoot; no partial splitting. Waiting tasks are never auto-filled;
 // null-deadline tasks are excluded from the future pool (the rule is deadline-driven).
@@ -71,7 +71,7 @@ export function autoFillPlan(
   const dueToday = active(buckets.due_today)
   const overdue = active(buckets.overdue).slice().sort(byDeadlineAsc) // oldest first
   const upcoming = active(buckets.upcoming)
-  const future = upcoming.filter((t) => t.deadline).slice().sort(byDeadlineAsc) // nearest first
+  const future = upcoming.filter((t) => t.deadline).slice().sort(byDeadlineAsc).reverse() // farthest first
 
   // base: today-deadline tasks not yet planned today (always written)
   const base = dueToday.filter((t) => !plannedToday(t))

@@ -111,8 +111,8 @@ assert.deepEqual(
       999,
     ),
   ),
-  ['oOld', 'oNew', 'uNear', 'uFar'],
-  'overdue oldest-first, then future nearest-first',
+  ['oOld', 'oNew', 'uFar', 'uNear'],
+  'overdue oldest-first, then future farthest-first',
 )
 
 // is_waiting excluded; null-deadline upcoming excluded from future pool
