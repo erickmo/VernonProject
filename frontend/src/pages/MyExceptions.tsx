@@ -9,6 +9,12 @@ const badge: Record<string, string> = {
   Pending: 'bg-amber-100 text-amber-700',
 }
 
+const dot: Record<string, string> = {
+  Approved: 'bg-emerald-500',
+  Rejected: 'bg-rose-500',
+  Pending: 'bg-amber-400',
+}
+
 export default function MyExceptions() {
   const { data: rows, isLoading } = useMyExceptions()
 
@@ -37,9 +43,28 @@ export default function MyExceptions() {
                 {e.from_date} → {e.to_date}
                 {e.reason ? ` · ${e.reason}` : ''}
               </p>
-              {e.total > 0 && (
-                <p className="mt-1 text-xs font-medium text-stone-500">{e.approved_count}/{e.total} leaders approved</p>
-              )}
+
+              <div className="mt-3 flex flex-col gap-1.5 border-t border-paper-edge pt-2.5 dark:border-slate-700">
+                {e.approvers.length > 0 ? (
+                  e.approvers.map((a) => (
+                    <div key={a.approver} className="flex items-start gap-2 text-xs">
+                      <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dot[a.decision] || dot.Pending}`} />
+                      <span className="text-stone-600 dark:text-slate-300">{a.approver}</span>
+                      <span className="ml-auto shrink-0 text-stone-400">
+                        {a.decision === 'Rejected' ? 'Objected' : a.decision === 'Approved' ? 'Supports' : 'No input yet'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-stone-400">No project leaders — straight to HR.</p>
+                )}
+                <div className="flex items-start gap-2 text-xs">
+                  <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dot[e.hr_decision] || dot.Pending}`} />
+                  <span className="font-semibold text-stone-700 dark:text-slate-200">HR (final)</span>
+                  <span className="ml-auto shrink-0 text-stone-400">{e.hr_decision}</span>
+                </div>
+                {e.hr_reason && <p className="pl-3.5 text-xs text-rose-600">{e.hr_reason}</p>}
+              </div>
             </div>
           ))}
         </div>
