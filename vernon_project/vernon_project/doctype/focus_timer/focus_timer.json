@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-07-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "task",
+  "task_title",
+  "status",
+  "estimated_ms",
+  "started_at_ms",
+  "elapsed_before_ms",
+  "note",
+  "meta"
+ ],
+ "fields": [
+  {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "task", "fieldtype": "Link", "label": "Task", "options": "Project Todo", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "task_title", "fieldtype": "Data", "label": "Task Title"},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "idle\nrunning\npaused", "default": "idle", "in_list_view": 1},
+  {"fieldname": "estimated_ms", "fieldtype": "Float", "label": "Estimated ms", "default": "0"},
+  {"fieldname": "started_at_ms", "fieldtype": "Float", "label": "Started At (epoch ms)", "precision": "0"},
+  {"fieldname": "elapsed_before_ms", "fieldtype": "Float", "label": "Elapsed Before ms", "default": "0"},
+  {"fieldname": "note", "fieldtype": "Long Text", "label": "Note"},
+  {"fieldname": "meta", "fieldtype": "Long Text", "label": "Meta (JSON)"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-07-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Focus Timer",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
