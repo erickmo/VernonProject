@@ -2698,6 +2698,8 @@ def say_thanks(to_user):
 		"Kudos",
 		f"{me} said thanks 🙏",
 		"Thanks for the kudos this week!",
+		# No subject doc to point at — the team wall is where appreciation lives.
+		reference_doctype="Team Wall",
 		actor=user,
 	)
 	return {"status": "ok"}

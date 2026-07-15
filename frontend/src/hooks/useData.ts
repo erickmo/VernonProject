@@ -1298,7 +1298,12 @@ export function useAppReleases(platform?: string) {
 export function useMarkRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (name: string) => mobileApi.markNotificationRead(name),
+    // ponytail: one request per name, since a collapsed row marks all its
+    // members read. Add a batch endpoint if groups ever get big.
+    mutationFn: (names: string | string[]) =>
+      Promise.all(
+        (Array.isArray(names) ? names : [names]).map((n) => mobileApi.markNotificationRead(n)),
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
   })
 }

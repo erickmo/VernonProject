@@ -1,51 +1,48 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, ClipboardList, MessageCircle, AtSign, Coins, Gift, Hand, MessageSquareText, AlarmClock, Heart, CalendarClock, Sparkles } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Bell, CheckCheck, Sparkles } from 'lucide-react'
 import { DetailScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useData'
 import { useAppUpdate } from '@/lib/appUpdate'
-import type { AppNotification, NotificationType } from '@/lib/types'
+import {
+  TYPE_ICON,
+  deepLink,
+  groupNotifications,
+  typeTabs,
+  type NotificationGroup,
+} from '@/lib/notifications'
+import type { NotificationType } from '@/lib/types'
 
-const TYPE_ICON: Record<NotificationType, LucideIcon> = {
-  Assignment: ClipboardList,
-  Approval: CheckCheck,
-  Comment: MessageCircle,
-  Mention: AtSign,
-  Points: Coins,
-  Redemption: Gift,
-  Kudos: Hand,
-  Feedback: MessageSquareText,
-  Deadline: AlarmClock,
-  Encouragement: Heart,
-  Attendance: CalendarClock,
+const ROUTES = {
+  exceptionApprovals: '/attendance/approvals',
+  myExceptions: '/attendance/my-requests',
 }
 
-const TYPE_LABEL: Record<NotificationType, string> = {
-  Assignment: 'Assignment',
-  Approval: 'Approval',
-  Comment: 'Comment',
-  Mention: 'Mention',
-  Points: 'Points',
-  Redemption: 'Redemption',
-  Kudos: 'Kudos',
-  Feedback: 'Feedback',
-  Deadline: 'Deadline',
-  Encouragement: 'Encouragement',
-  Attendance: 'Attendance',
-}
-
-function deepLink(n: AppNotification): string {
-  const d = n.reference_doctype || ''
-  const name = n.reference_name || ''
-  if (d === 'Project Todo' && name) return `/project-item/${encodeURIComponent(name)}`
-  if (d === 'Project Detail' && name) return `/project-detail/${encodeURIComponent(name)}`
-  if (d === 'Project' && name) return `/project/${encodeURIComponent(name)}`
-  if (d === 'Wallet') return '/wallet'
-  if (d === 'Reward Redemption') return '/marketplace'
-  // Attendance heads-up: the penalty shows in the wallet ledger.
-  if (d === 'Daily Attendance') return '/wallet'
-  return '/'
+function TabChip({
+  label,
+  active,
+  unread,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  unread: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold active:scale-95 ${
+        active
+          ? 'bg-brand-500 text-white'
+          : 'bg-paper-line text-stone-500 dark:bg-slate-700 dark:text-slate-300'
+      }`}
+    >
+      {label}
+      {unread > 0 && <span className={active ? 'ml-1 text-white/80' : 'ml-1 text-brand-500'}>{unread}</span>}
+    </button>
+  )
 }
 
 export default function NotificationsScreen() {
@@ -54,11 +51,17 @@ export default function NotificationsScreen() {
   const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
-  const items = data?.items ?? []
+  const [tab, setTab] = useState<NotificationType | null>(null)
 
-  const open = (n: AppNotification) => {
-    if (!n.is_read) markRead.mutate(n.name)
-    navigate(deepLink(n))
+  const groups = useMemo(() => groupNotifications(data?.items ?? []), [data?.items])
+  const tabs = useMemo(() => typeTabs(groups), [groups])
+  // A filtered-to-empty tab would strand the user, so fall back to All.
+  const active = tab && tabs.some((t) => t.type === tab) ? tab : null
+  const items = active ? groups.filter((g) => g.head.type === active) : groups
+
+  const open = (g: NotificationGroup) => {
+    if (g.unread) markRead.mutate(g.names)
+    navigate(deepLink(g.head, ROUTES))
   }
 
   const markAllButton = (
@@ -77,6 +80,27 @@ export default function NotificationsScreen() {
         <FullScreenLoader label="Loading notifications…" />
       ) : (
         <PullToRefresh onRefresh={refetch}>
+          {tabs.length > 1 && (
+            <div className="-mx-4 mb-1 flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Counts collapsed groups, so it agrees with the sibling chips and
+                  the list. The bell badge keeps the true global count. */}
+              <TabChip
+                label="All"
+                active={!active}
+                onClick={() => setTab(null)}
+                unread={groups.filter((g) => g.unread).length}
+              />
+              {tabs.map((t) => (
+                <TabChip
+                  key={t.type}
+                  label={t.type}
+                  active={active === t.type}
+                  onClick={() => setTab(t.type)}
+                  unread={t.unread}
+                />
+              ))}
+            </div>
+          )}
           {items.length === 0 && !updateAvailable ? (
             <EmptyState icon={Bell} title="No notifications yet" />
           ) : (
@@ -105,17 +129,18 @@ export default function NotificationsScreen() {
                   </button>
                 </li>
               )}
-              {items.map((n) => {
+              {items.map((g) => {
+                const n = g.head
                 const Icon = TYPE_ICON[n.type] ?? Bell
                 return (
-                  <li key={n.name}>
+                  <li key={g.key}>
                     <button
-                      onClick={() => open(n)}
+                      onClick={() => open(g)}
                       className="flex w-full items-start gap-3 px-1 py-3 text-left active:bg-paper-line dark:active:bg-slate-700/50"
                     >
                       <span
                         className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                          n.is_read ? 'bg-transparent' : 'bg-brand-500'
+                          g.unread ? 'bg-brand-500' : 'bg-transparent'
                         }`}
                       />
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-line text-stone-500 dark:bg-slate-700 dark:text-slate-300">
@@ -123,7 +148,7 @@ export default function NotificationsScreen() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">
-                          {TYPE_LABEL[n.type] ?? n.type}
+                          {n.type}
                         </span>
                         <span className="block text-sm font-semibold text-stone-800 dark:text-slate-50">
                           {n.title}
@@ -137,6 +162,11 @@ export default function NotificationsScreen() {
                           {n.at_human}
                         </span>
                       </span>
+                      {g.count > 1 && (
+                        <span className="mt-1 shrink-0 rounded-full bg-paper-line px-2 py-0.5 text-[11px] font-semibold text-stone-500 dark:bg-slate-700 dark:text-slate-300">
+                          {g.count}
+                        </span>
+                      )}
                     </button>
                   </li>
                 )

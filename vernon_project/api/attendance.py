@@ -169,7 +169,10 @@ def _notify_leaders_new_request(doc, leaders):
 			"Approval",
 			_("{0} request needs your approval").format(label),
 			_("{0} requested {1}: {2} → {3}").format(doc.employee, label, doc.from_date, doc.to_date),
-			"Attendance Exception",
+			# Pseudo-doctype (cf. "Wallet"): the leader's approval queue and the
+			# requester's own list are different screens, and the real doctype is
+			# identical for both. Tag the audience here so the apps can route it.
+			"Attendance Exception Approval",
 			doc.name,
 			doc.employee,
 		)

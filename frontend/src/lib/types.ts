@@ -32,6 +32,8 @@ export type NotificationType =
   | 'Deadline'
   | 'Encouragement'
   | 'Attendance'
+  | 'Billboard'
+  | 'Learning'
 
 export interface AppNotification {
   name: string
