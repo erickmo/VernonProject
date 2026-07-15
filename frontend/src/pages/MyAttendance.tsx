@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { QrCode, CalendarPlus, ClipboardCheck, FileText } from 'lucide-react'
+import { QrCode, CalendarPlus, ClipboardCheck, FileText, Inbox } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
-import { useMyAttendance } from '@/hooks/useData'
+import { useMyAttendance, useBoot, canHrApprove } from '@/hooks/useData'
 
 const STATUS_TONE: Record<string, string> = {
   Present: 'text-emerald-700 bg-emerald-50',
@@ -19,6 +19,7 @@ const STATUS_TONE: Record<string, string> = {
 export default function MyAttendance() {
   const navigate = useNavigate()
   const { data, isLoading } = useMyAttendance()
+  const { data: boot } = useBoot()
   const rows = data?.rows ?? []
 
   return (
@@ -48,6 +49,17 @@ export default function MyAttendance() {
         >
           <FileText className="h-5 w-5" /> My requests
         </button>
+        {/* HR's own way in. The /attendance/manage hub is System-Manager-gated,
+            so without this an HR Manager could only reach the inbox from a
+            notification — unreachable once that notification is read. */}
+        {canHrApprove(boot) && (
+          <button
+            onClick={() => navigate('/attendance/manage/exceptions')}
+            className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
+          >
+            <Inbox className="h-5 w-5" /> HR · Leave / WFH
+          </button>
+        )}
       </div>
 
       {isLoading ? (

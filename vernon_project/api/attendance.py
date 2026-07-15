@@ -161,34 +161,39 @@ def _is_hr(user):
 	return "HR Manager" in roles or "System Manager" in roles
 
 
-def _hr_users():
-	"""Who to notify about a new request.
-
-	HR Manager holders, falling back to System Managers when nobody holds the
-	role yet — otherwise a site that deploys before granting it notifies nobody
-	and wedges every request at Pending with no visible cause.
-	"""
+def _enabled_holders(role):
+	"""Enabled users holding `role`. Disabled accounts keep their Has Role rows,
+	so the enabled filter has to run before any emptiness test — see _hr_users."""
 	users = [
 		r.parent for r in frappe.get_all(
 			"Has Role",
-			filters={"parenttype": "User", "role": "HR Manager"},
+			filters={"parenttype": "User", "role": role},
 			fields=["parent"],
 		)
 	]
 	if not users:
-		users = [
-			r.parent for r in frappe.get_all(
-				"Has Role",
-				filters={"parenttype": "User", "role": "System Manager"},
-				fields=["parent"],
-			)
-		]
-	enabled = frappe.get_all(
-		"User",
-		filters={"name": ["in", users], "enabled": 1},
-		fields=["name"],
-	) if users else []
-	return sorted({u.name for u in enabled})
+		return []
+	return sorted({
+		u.name for u in frappe.get_all(
+			"User",
+			filters={"name": ["in", users], "enabled": 1},
+			fields=["name"],
+		)
+	})
+
+
+def _hr_users():
+	"""Who to notify about a new request.
+
+	Enabled HR Manager holders, falling back to enabled System Managers when
+	nobody holds the role — otherwise a site that deploys before granting it
+	notifies nobody and wedges every request at Pending with no visible cause.
+
+	The fallback keys off the ENABLED set, not the raw Has Role rows: a departed
+	HR person's disabled account keeps its role row, which would otherwise look
+	like "HR exists", skip the fallback, and silently notify no one.
+	"""
+	return _enabled_holders("HR Manager") or _enabled_holders("System Manager")
 
 
 def _exc_label(doc):

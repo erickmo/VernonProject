@@ -36,7 +36,7 @@ export const TYPE_ICON: Record<NotificationType, LucideIcon> = {
 export interface DeepLinkRoutes {
   /** A leader's "cuti waiting on your input" queue. Advisory since HR became final. */
   exceptionApprovals: string
-  /** The requester's own cuti list. Web has no such screen yet — pass '/'. */
+  /** The requester's own cuti list. Both apps have one since 2026-07-15. */
   myExceptions: string
   /** HR's inbox — the only screen that can actually decide a cuti. */
   hrExceptions: string

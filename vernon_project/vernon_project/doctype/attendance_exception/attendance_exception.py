@@ -21,10 +21,12 @@ class AttendanceException(Document):
 		# Only gate a Leave that is (becoming) Approved.
 		if self.status != "Approved" or self.exception_type != "Leave":
 			return
-		# System Manager override bypasses quota — preserves the deadlock/no-leader
-		# escape hatch in api/attendance.py _vote_exception (admin branch).
-		if "System Manager" in frappe.get_roles(frappe.session.user):
-			return
+		# No System Manager bypass. It used to exist to preserve the deadlock /
+		# no-leader escape hatch in _vote_exception's admin branch — but HR is the
+		# final approver now, that branch is gone, and _hr_users() falls back to
+		# System Managers, so the bypass would have made quota gate nothing at all
+		# on the normal path. To allow an over-quota leave, raise the employee's
+		# annual_leave_quota — that leaves an honest record; a silent override didn't.
 		quota = effective_quota(self.employee)
 		for (year, start, end) in year_slices(self.from_date, self.to_date):
 			req = working_days(self.employee, start, end)
