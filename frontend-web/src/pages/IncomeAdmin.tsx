@@ -8,6 +8,7 @@ import { DataTable } from '@web/components/DataTable'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Sheet } from '@web/components/Sheet'
 import { Button } from '@web/components/ui'
+import { DatePicker } from '@web/components/DatePicker'
 import {
   useBoot,
   canManageIncome,
@@ -284,11 +285,11 @@ export default function IncomeAdmin() {
             <div className="flex gap-2">
               <label className="flex-1 text-xs font-medium text-muted">
                 Start
-                <input type="date" className={`${inputCls} mt-1`} value={draft.period_start} onChange={(e) => setDraft({ ...draft, period_start: e.target.value })} />
+                <DatePicker className={`${inputCls} mt-1`} value={draft.period_start} onChange={(v) => setDraft({ ...draft, period_start: v })} />
               </label>
               <label className="flex-1 text-xs font-medium text-muted">
                 End (optional)
-                <input type="date" className={`${inputCls} mt-1`} value={draft.period_end} onChange={(e) => setDraft({ ...draft, period_end: e.target.value })} />
+                <DatePicker className={`${inputCls} mt-1`} value={draft.period_end} onChange={(v) => setDraft({ ...draft, period_end: v })} />
               </label>
             </div>
             <div className="flex gap-2">

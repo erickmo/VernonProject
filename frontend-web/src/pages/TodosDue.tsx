@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/format'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable, type Column } from '@web/components/DataTable'
+import { DatePicker } from '@web/components/DatePicker'
 
 type Row = NonNullable<ReturnType<typeof useTodosDue>['data']>['rows'][number]
 
@@ -128,7 +129,7 @@ export default function TodosDue() {
         <BentoTile span="full" tone="plain">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Due by
-              <input type="date" className={inputCls} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
+              <DatePicker className={inputCls} value={dueBy} onChange={(v) => setDueBy(v)} />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Project
               <SearchableSelect

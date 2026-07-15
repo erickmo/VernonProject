@@ -4,6 +4,7 @@ import { BookOpen, Plus, Trash2, ChevronLeft, Users, FileText } from 'lucide-rea
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { ErrorState, Button, Field } from '@web/components/ui'
+import { DatePicker } from '@web/components/DatePicker'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
@@ -857,12 +858,11 @@ export default function LmsAdmin() {
               </Field>
               <Field label="Due date (optional)">
                 {(id) => (
-                  <input
+                  <DatePicker
                     id={id}
-                    type="date"
                     className={field}
                     value={assignDue}
-                    onChange={(e) => setAssignDue(e.target.value)}
+                    onChange={(v) => setAssignDue(v)}
                   />
                 )}
               </Field>

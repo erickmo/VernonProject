@@ -9,6 +9,7 @@ import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { EntityChip } from '@web/components/EntityChip'
+import { DatePicker } from '@web/components/DatePicker'
 import { SearchableSelect } from '@/components/SearchableSelect'
 
 type Profile = { name: string; user: string; brand: string; enrolled_from: string; active: number }
@@ -170,7 +171,7 @@ export default function AttendanceProfiles() {
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
               Enrolled from
-              <input type="date" className={inputCls} value={enrolledFrom} onChange={(e) => setEnrolledFrom(e.target.value)} />
+              <DatePicker className={inputCls} value={enrolledFrom} onChange={(v) => setEnrolledFrom(v)} />
             </label>
             <button
               onClick={enroll}

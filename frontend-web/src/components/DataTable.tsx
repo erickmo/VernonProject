@@ -7,6 +7,7 @@ import { useReject } from '@/components/RejectProvider'
 import { useUpdateTodo, useFormOptions } from '@/hooks/useData'
 import { STATUS } from '@/lib/status'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { DatePicker } from '@web/components/DatePicker'
 import type { ProjectItem } from '@/lib/types'
 
 export type Column<T> = {
@@ -154,12 +155,12 @@ export function EditableAssigneeCell({ todo }: { todo: ProjectItem }) {
 export function EditableDateCell({ todo, field = 'deadline' }: { todo: ProjectItem; field?: 'deadline' | 'start_date' }) {
   const update = useUpdateTodo(todo.name)
   return (
-    <input
-      type="date"
-      defaultValue={(todo[field] as string | null) ?? ''}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => update.mutate({ [field]: e.target.value })}
-      className="rounded border border-line bg-transparent px-1.5 py-0.5 text-sm"
-    />
+    <span onClick={(e) => e.stopPropagation()}>
+      <DatePicker
+        value={(todo[field] as string | null) ?? ''}
+        onChange={(v) => update.mutate({ [field]: v })}
+        className="rounded border border-line bg-transparent px-1.5 py-0.5 text-sm"
+      />
+    </span>
   )
 }

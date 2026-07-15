@@ -7,6 +7,7 @@ import { useBoot, canManageAttendance, useAttendanceReport } from '@/hooks/useDa
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
+import { DatePicker } from '@web/components/DatePicker'
 
 const STATUSES = ['', 'Present', 'Late', 'EarlyLeave', 'Late+EarlyLeave', 'Absent', 'Excused-WFH', 'Excused-Leave', 'Holiday', 'OffDay']
 
@@ -76,10 +77,10 @@ export default function AttendanceReport() {
         <BentoTile span="full" tone="plain">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">From
-              <input type="date" className={inputCls} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <DatePicker className={inputCls} value={fromDate} onChange={(v) => setFromDate(v)} />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">To
-              <input type="date" className={inputCls} value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              <DatePicker className={inputCls} value={toDate} onChange={(v) => setToDate(v)} />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Employee
               <input className={inputCls} placeholder="user id (optional)" value={employee} onChange={(e) => setEmployee(e.target.value)} />

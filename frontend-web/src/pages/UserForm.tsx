@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
+import { DatePicker } from '@web/components/DatePicker'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -502,18 +503,18 @@ export default function UserForm() {
               </Field>
               <Field label="Date joined">
                 {(id) => (
-                  <input id={id} type="date" value={dateJoined} onChange={(e) => { setDateJoined(e.target.value); setDirty(true) }} className={field} />
+                  <DatePicker id={id} value={dateJoined} onChange={(v) => { setDateJoined(v); setDirty(true) }} className={field} />
                 )}
               </Field>
               <div />
               <Field label="Contract start">
                 {(id) => (
-                  <input id={id} type="date" value={contractStart} onChange={(e) => { setContractStart(e.target.value); setDirty(true) }} className={field} />
+                  <DatePicker id={id} value={contractStart} onChange={(v) => { setContractStart(v); setDirty(true) }} className={field} />
                 )}
               </Field>
               <Field label="Contract end">
                 {(id) => (
-                  <input id={id} type="date" value={contractEnd} onChange={(e) => { setContractEnd(e.target.value); setDirty(true) }} className={field} />
+                  <DatePicker id={id} value={contractEnd} onChange={(v) => { setContractEnd(v); setDirty(true) }} className={field} />
                 )}
               </Field>
               {/* ponytail: attach_contract omitted — no generic private uploader exists; add when uploadPrivateFile helper is built */}

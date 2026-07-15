@@ -7,6 +7,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { Spinner } from '@/components/ui'
 import { Page, PageHeader } from '@web/components/Page'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { DatePicker } from '@web/components/DatePicker'
 import type { EmployeeChildEducation, EmployeeChildSkill, EmployeeChildTraining } from '@/lib/types'
 
 const field =
@@ -121,7 +122,7 @@ export default function MyInfo() {
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-ink">
               <span className="flex items-center gap-1 text-muted"><CalendarDays className="h-3.5 w-3.5" /> Birthdate</span>
-              <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} className={field} />
+              <DatePicker value={birthdate} onChange={(v) => setBirthdate(v)} className={field} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-ink sm:col-span-2">
               <span className="text-muted">Bio</span>

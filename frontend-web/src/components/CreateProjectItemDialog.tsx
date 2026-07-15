@@ -8,6 +8,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Drawer } from '@web/components/overlays/Drawer'
+import { DatePicker } from '@web/components/DatePicker'
 import { computeTodoPoints } from '@/lib/points'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 
@@ -178,24 +179,24 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
 
         <label className="text-sm font-medium text-muted">
           Start date<span className="text-red-500"> *</span>
-          <input type="date" className={field + ' mt-1'} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <DatePicker className={field + ' mt-1'} value={startDate} onChange={(v) => setStartDate(v)} />
         </label>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm font-medium text-muted">
             Deadline<span className="text-red-500"> *</span>
-            <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            <DatePicker className={field + ' mt-1'} value={deadline} onChange={(v) => setDeadline(v)} />
           </label>
           <label className="text-sm font-medium text-muted">
-            Estimated (minutes)
-            <input type="number" min={0} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
+            Estimated (minutes)<span className="text-red-500"> *</span>
+            <input type="number" min={5} required className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
           </label>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm font-medium text-muted">
             Leader approval by
-            <input type="date" className={field + ' mt-1'} value={leaderDeadline} onChange={(e) => setLeaderDeadline(e.target.value)} />
+            <DatePicker className={field + ' mt-1'} value={leaderDeadline} onChange={(v) => setLeaderDeadline(v)} />
           </label>
           <label className="text-sm font-medium text-muted">
             Est. for approval (min)
@@ -206,7 +207,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm font-medium text-muted">
             Owner approval by
-            <input type="date" className={field + ' mt-1'} value={ownerDeadline} onChange={(e) => setOwnerDeadline(e.target.value)} />
+            <DatePicker className={field + ' mt-1'} value={ownerDeadline} onChange={(v) => setOwnerDeadline(v)} />
           </label>
           <label className="text-sm font-medium text-muted">
             Est. for owner approval (min)
@@ -303,7 +304,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
             </label>
             <label className="text-sm font-medium text-muted">
               Until
-              <input type="date" className={field + ' mt-1'} value={until} onChange={(e) => setUntil(e.target.value)} />
+              <DatePicker className={field + ' mt-1'} value={until} onChange={(v) => setUntil(v)} />
             </label>
           </div>
         )}

@@ -6,6 +6,7 @@ import { useBoot, useLogbook, useWebsiteSettings, useUsers } from '@/hooks/useDa
 import { downloadLogbookPdf, groupPlanByProject, dayTotals, resolveLogoDataUrl } from '@/lib/logbookPdf'
 import { formatDate } from '@/lib/format'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import { DatePicker } from '@web/components/DatePicker'
 import { Page, PageHeader } from '@web/components/Page'
 import type { LogbookCompletedItem } from '@/lib/types'
 
@@ -86,10 +87,10 @@ export default function Logbook() {
         <BentoTile span="full" tone="plain">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">From
-              <input type="date" className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DatePicker className={inputCls} value={from} onChange={(v) => setFrom(v)} />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">To
-              <input type="date" className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
+              <DatePicker className={inputCls} value={to} onChange={(v) => setTo(v)} />
             </label>
             {isManager && (
               <div className="flex w-48 flex-col gap-1 text-xs font-semibold text-muted">

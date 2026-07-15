@@ -67,6 +67,7 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
+import { DatePicker } from '@web/components/DatePicker'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
 import type { ProjectItemDetail, StatusKey, TodoFile } from '@/lib/types'
 
@@ -424,10 +425,9 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
             className="flex flex-col gap-2 rounded-xl border border-line bg-hover/[0.04] p-2"
           >
             <div className="flex items-center gap-2">
-              <input
-                type="date"
+              <DatePicker
                 value={r.date}
-                onChange={(e) => setRow(i, { date: e.target.value })}
+                onChange={(v) => setRow(i, { date: v })}
                 className={field + ' min-w-0 flex-1'}
               />
               <input
@@ -546,10 +546,9 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
                 className="flex flex-col gap-2 rounded-xl border border-line bg-hover/[0.04] p-2"
               >
                 <div className="flex items-center gap-2">
-                  <input
-                    type="date"
+                  <DatePicker
                     value={r.date}
-                    onChange={(e) => setRow(i, { date: e.target.value })}
+                    onChange={(v) => setRow(i, { date: v })}
                     className={field + ' min-w-0 flex-1'}
                   />
                   <input
@@ -773,11 +772,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
-        <input
-          type="date"
+        <DatePicker
           value={startDate}
           disabled={locked}
-          onChange={(e) => setStartDate(e.target.value)}
+          onChange={(v) => setStartDate(v)}
           className={fieldCls}
         />
       </div>
@@ -785,11 +783,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <div className="mb-3 flex gap-3">
         <div className="flex-1">
           <label className="mb-1 block text-xs font-medium text-muted">Deadline</label>
-          <input
-            type="date"
+          <DatePicker
             value={deadline}
             disabled={locked}
-            onChange={(e) => setDeadline(e.target.value)}
+            onChange={(v) => setDeadline(v)}
             className={fieldCls}
           />
         </div>
@@ -826,10 +823,9 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
                 <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted">
                   Deadline
                 </span>
-                <input
-                  type="date"
+                <DatePicker
                   value={p.date}
-                  onChange={(e) => p.setDate(e.target.value)}
+                  onChange={(v) => p.setDate(v)}
                   className={clsx(fieldCls, 'min-w-0')}
                 />
               </div>
@@ -881,7 +877,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
               <label className="mb-1 block text-xs font-medium text-muted">
                 Until (optional)
               </label>
-              <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className={fieldCls} />
+              <DatePicker value={until} onChange={(v) => setUntil(v)} className={fieldCls} />
             </div>
           </div>
         )}

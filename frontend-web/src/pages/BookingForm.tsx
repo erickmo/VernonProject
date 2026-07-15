@@ -4,6 +4,7 @@ import { ArrowLeft, Check } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Field } from '@web/components/ui'
+import { DateTimePicker } from '@web/components/DatePicker'
 import { useCreateBooking, useRooms, useEquipment, useCheckAvailability } from '@/hooks/useData'
 import type { Conflict } from '@/lib/types'
 
@@ -88,24 +89,22 @@ export default function BookingForm() {
 
         <Field label="Start" required>
           {(id) => (
-            <input
+            <DateTimePicker
               id={id}
-              type="datetime-local"
               className={field}
               value={start}
-              onChange={(e) => setStart(e.target.value)}
+              onChange={(v) => setStart(v)}
             />
           )}
         </Field>
 
         <Field label="End" required>
           {(id) => (
-            <input
+            <DateTimePicker
               id={id}
-              type="datetime-local"
               className={field}
               value={end}
-              onChange={(e) => setEnd(e.target.value)}
+              onChange={(v) => setEnd(v)}
             />
           )}
         </Field>

@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { ErrorState, Field } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { DateTimePicker } from '@web/components/DatePicker'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
@@ -215,24 +216,22 @@ export default function EventForm() {
 
               <Field label="Start" required>
                 {(id) => (
-                  <input
+                  <DateTimePicker
                     id={id}
-                    type="datetime-local"
                     className={field}
                     value={form.start_datetime}
-                    onChange={(e) => setForm((f) => ({ ...f, start_datetime: e.target.value }))}
+                    onChange={(v) => setForm((f) => ({ ...f, start_datetime: v }))}
                   />
                 )}
               </Field>
 
               <Field label="End">
                 {(id) => (
-                  <input
+                  <DateTimePicker
                     id={id}
-                    type="datetime-local"
                     className={field}
                     value={form.end_datetime ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, end_datetime: e.target.value }))}
+                    onChange={(v) => setForm((f) => ({ ...f, end_datetime: v }))}
                   />
                 )}
               </Field>

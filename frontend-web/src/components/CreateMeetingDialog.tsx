@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Dialog } from '@web/components/overlays/Dialog'
+import { DatePicker } from '@web/components/DatePicker'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { GroupLevelPicker, emptyGroupLevel, type GroupLevel } from '@/components/GroupLevelPicker'
 import { useCreateMeeting, useMeetingInvitableUsers } from '@/hooks/useData'
@@ -72,7 +73,7 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
       <div className="flex flex-col gap-3">
         <input className={field} placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <div className="flex gap-3">
-          <input className={field + ' flex-1'} type="date" aria-label="Meeting date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DatePicker className={field + ' flex-1'} aria-label="Meeting date" value={date} onChange={(v) => setDate(v)} />
           <input className={field + ' w-32'} type="time" aria-label="Meeting time" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <input className={field} type="number" placeholder="Estimated minutes" value={estimated} onChange={(e) => setEstimated(e.target.value)} />

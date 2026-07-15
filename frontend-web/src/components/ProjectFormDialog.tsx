@@ -6,6 +6,7 @@ import { useToast } from '@/components/Toast'
 import { parseFrappeError } from '@/lib/format'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { Button } from '@web/components/ui'
+import { DatePicker } from '@web/components/DatePicker'
 import type { ProjectFull, ProjectInput } from '@/lib/types'
 
 const STATUS_OPTS = [
@@ -224,10 +225,9 @@ export function ProjectFormDialog({
           <span className="text-sm font-medium text-muted">
             Start<span className="text-red-500"> *</span>
           </span>
-          <input
-            type="date"
+          <DatePicker
             value={f.start_date}
-            onChange={(e) => set('start_date', e.target.value)}
+            onChange={(v) => set('start_date', v)}
             className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>
@@ -237,10 +237,9 @@ export function ProjectFormDialog({
           <span className="text-sm font-medium text-muted">
             Deadline<span className="text-red-500"> *</span>
           </span>
-          <input
-            type="date"
+          <DatePicker
             value={f.deadline}
-            onChange={(e) => set('deadline', e.target.value)}
+            onChange={(v) => set('deadline', v)}
             className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>

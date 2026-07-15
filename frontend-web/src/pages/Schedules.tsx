@@ -7,6 +7,7 @@ import { useBoot, canManageAttendance } from '@/hooks/useData'
 import { resource } from '@/lib/api'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { DatePicker } from '@web/components/DatePicker'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
 type Tpl = { name: string; shift_name: string; start_time: string; end_time: string }
@@ -110,8 +111,8 @@ export default function Schedules() {
               allowClear
             />
             <div className="flex gap-2">
-              <input type="date" className={inputCls} value={asgForm.effective_from} onChange={(e) => setAsgForm({ ...asgForm, effective_from: e.target.value })} />
-              <input type="date" className={inputCls} value={asgForm.effective_to} onChange={(e) => setAsgForm({ ...asgForm, effective_to: e.target.value })} />
+              <DatePicker className={inputCls} value={asgForm.effective_from} onChange={(v) => setAsgForm({ ...asgForm, effective_from: v })} />
+              <DatePicker className={inputCls} value={asgForm.effective_to} onChange={(v) => setAsgForm({ ...asgForm, effective_to: v })} />
             </div>
             <div className="flex flex-wrap gap-1">
               {DAYS.map((d) => (

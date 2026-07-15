@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Dialog } from '@web/components/overlays/Dialog'
 import { Button } from '@web/components/ui'
+import { DatePicker } from '@web/components/DatePicker'
 import { usePostpone, useProjectDetail } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 
@@ -95,10 +96,9 @@ export function PostponeDialog({
       <div className="space-y-3">
         <label className="block space-y-1">
           <span className="text-sm font-medium text-muted">New deadline</span>
-          <input
-            type="date"
+          <DatePicker
             value={picked}
-            onChange={(e) => setPicked(e.target.value)}
+            onChange={(v) => setPicked(v)}
             className={INPUT_CLS}
           />
         </label>
