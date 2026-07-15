@@ -19,7 +19,7 @@ export default function ExceptionApprovals() {
     if (!rejecting || !reason.trim()) return
     try {
       await reject.mutateAsync({ name: rejecting, reason: reason.trim() })
-      toast('success', 'Rejected')
+      toast('success', 'Objection sent')
       setRejecting(null)
       setReason('')
     } catch (e) {
@@ -29,37 +29,37 @@ export default function ExceptionApprovals() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">My approvals · Leave / WFH</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">My input · Leave / WFH</h1>
       <BentoGrid>
         <BentoTile span="full" tone="plain">
           {isLoading ? (
             <div className="flex justify-center py-12"><Spinner /></div>
           ) : !rows || rows.length === 0 ? (
-            <EmptyState icon={Check} title="All clear" subtitle="Nothing awaiting your approval." />
+            <EmptyState icon={Check} title="All clear" subtitle="Nothing awaiting your input." />
           ) : (
             <CardList>
               {rows.map((e) => (
                 <Card
                   key={e.name}
                   title={`${e.employee} · ${e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}`}
-                  meta={<span>{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''} · {e.approved_count}/{e.total} approved</span>}
+                  meta={<span>{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''} · {e.approved_count}/{e.total} leaders support · HR decides</span>}
                   footer={
                     <>
                       <button
-                        onClick={() => approve.mutate(e.name, {
-                          onSuccess: () => toast('success', 'Approved'),
+                        onClick={() => approve.mutate({ name: e.name }, {
+                          onSuccess: () => toast('success', 'Input sent'),
                           onError: (err) => toast('error', (err as Error).message),
                         })}
                         disabled={approve.isPending}
                         className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700 active:scale-[0.99] transition disabled:opacity-50"
                       >
-                        <Check className="h-4 w-4" /> Approve
+                        <Check className="h-4 w-4" /> Support
                       </button>
                       <button
                         onClick={() => { setRejecting(e.name); setReason('') }}
                         className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-rose-600 py-2 text-sm font-semibold text-white hover:bg-rose-700 active:scale-[0.99] transition"
                       >
-                        <X className="h-4 w-4" /> Reject
+                        <X className="h-4 w-4" /> Object
                       </button>
                     </>
                   }
@@ -84,7 +84,7 @@ export default function ExceptionApprovals() {
             disabled={reject.isPending || !reason.trim()}
             className="rounded-xl bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white active:scale-[0.99] transition disabled:opacity-50"
           >
-            Confirm reject
+            Send objection
           </button>
         </div>
       </Sheet>

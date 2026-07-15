@@ -9,7 +9,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import {
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
-  canManageAttendance, canManageResources,
+  canManageAttendance, canHrApprove, canManageResources,
   canModerateAds, canManageLms, canManageIncome, canManageCompanies,
 } from '@/hooks/useData'
 
@@ -36,7 +36,7 @@ const WORK: NavLeaf[] = [
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },
   { to: '/feedback', label: 'Feedback', sub: 'Send · admins triage', icon: MessageSquarePlus, match: '/feedback' },
   { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
-  { to: '/attendance/my-approvals', label: 'Approvals', sub: 'Leave/WFH to approve', icon: Inbox },
+  { to: '/attendance/my-approvals', label: 'Leave/WFH input', sub: 'Give input as a leader', icon: Inbox },
   { to: '/learn', label: 'Learn', sub: 'Courses & progress', icon: BookOpen, match: '/learn' },
 ]
 
@@ -92,10 +92,13 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     { to: '/attendance-report', label: 'Attendance', sub: 'Daily report', icon: QrCode },
     { to: '/attendance/schedules', label: 'Schedules', sub: 'Shift schedules', icon: CalendarDays },
     { to: '/attendance/stations', label: 'Stations', sub: 'Scan kiosks', icon: Monitor },
-    { to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'Exceptions', icon: Inbox },
     { to: '/attendance/holidays', label: 'Holidays', sub: 'Holiday lists', icon: CalendarDays },
     { to: '/attendance/profiles', label: 'Enrolled', sub: 'Enrolled members', icon: UserCheck },
   ] : []
+  // HR gets the cuti inbox without the rest of attendance admin.
+  if (canHrApprove(b)) {
+    att.unshift({ to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'HR final approval', icon: Inbox })
+  }
   if (att.length) groups.push({ id: 'attendance', label: 'Attendance', leaves: att })
 
   return groups

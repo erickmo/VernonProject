@@ -10,6 +10,7 @@ import {
   canManageMarketplace,
   canGrantPoints,
   canManageAttendance,
+  canHrApprove,
   canManageResources,
   canModerateAds,
   canManageLms,
@@ -273,7 +274,6 @@ export default function App() {
               <Route path="/attendance-report" element={<AttendanceReport />} />
               <Route path="/attendance/stations" element={<Stations />} />
               <Route path="/attendance/schedules" element={<Schedules />} />
-              <Route path="/attendance/exceptions" element={<Exceptions />} />
               <Route path="/attendance/holidays" element={<HolidayLists />} />
               <Route path="/attendance/profiles" element={<AttendanceProfiles />} />
             </>
@@ -286,6 +286,7 @@ export default function App() {
           <Route path="/events/manage/:name" element={<EventForm />} />
           <Route path="/my-registrations" element={<MyRegistrations />} />
           <Route path="/attendance/my-approvals" element={<ExceptionApprovals />} />
+          {canHrApprove(b) && <Route path="/attendance/exceptions" element={<Exceptions />} />}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/me/info" element={<MyInfo />} />
           <Route path="/income" element={<Income />} />
