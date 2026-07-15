@@ -29,3 +29,4 @@ vernon_project.patches.v1_0.backfill_employee_profile
 vernon_project.patches.v1_0.move_reward_to_project
 vernon_project.patches.v1_0.add_lms_manager_role
 vernon_project.patches.v1_0.create_partner_role
+vernon_project.patches.v1_0.add_hr_manager_role

@@ -19,7 +19,7 @@ from vernon_project.attendance.leave_quota import effective_quota, prior_taken, 
 # Must match the option strings stored in `tabProject Todo`.`status` exactly
 # (note the U+FE0F variation selector after the white-circle in "Planned").
 # --------------------------------------------------------------------------------
-VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team", "Points Granter")
+VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team", "Points Granter", "HR Manager")
 PROTECTED_USERS = ("Guest", "Administrator")
 # Member-type marking on User (custom_member_type). "" = external/unset.
 MEMBER_TYPES = ("", "Internal Team", "Intern")
