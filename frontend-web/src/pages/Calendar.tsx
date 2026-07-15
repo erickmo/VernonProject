@@ -1,21 +1,27 @@
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock } from 'lucide-react'
+import { Page, PageHeader } from '@web/components/Page'
+import { Button } from '@web/components/ui'
 import { CalendarView } from '@/components/CalendarView'
 
 export default function Calendar() {
   const navigate = useNavigate()
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Calendar</h1>
-        <button
-          onClick={() => navigate('/meetings')}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-50 dark:bg-brand-500/15 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-[0.99]"
-        >
-          <CalendarClock className="h-4 w-4" /> Meetings
-        </button>
+    <Page>
+      <PageHeader
+        icon={CalendarClock}
+        title="Calendar"
+        subtitle="Tasks, meetings, bookings and deadlines in one view"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => navigate('/meetings')}>
+            <CalendarClock className="h-4 w-4" /> Meetings
+          </Button>
+        }
+      />
+      {/* Frame the (shared) calendar grid in a soft-pop surface so it reads as one intentional panel */}
+      <div className="rounded-2xl bg-surface p-3 shadow-card sm:p-5">
+        <CalendarView fluid />
       </div>
-      <CalendarView fluid />
-    </div>
+    </Page>
   )
 }
