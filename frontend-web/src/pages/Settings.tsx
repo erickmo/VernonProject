@@ -37,6 +37,9 @@ export default function Settings() {
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const bannerFileRef = useRef<HTMLInputElement>(null)
   const pickForIdx = useRef<number | null>(null)
+  const [appLogo, setAppLogo] = useState<string>('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const logoFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!loaded) return
@@ -50,6 +53,7 @@ export default function Settings() {
     setEarlyRate(String(loaded.early_leave_penalty_per_minute))
     setAbsencePenalty(String(loaded.absence_penalty))
     setBanners(loaded.home_banners ?? [])
+    setAppLogo(loaded.app_logo ?? '')
   }, [loaded])
 
   const isManager = boot ? canManageGroups(boot) : null
@@ -82,6 +86,7 @@ export default function Settings() {
   const doSave = () => {
     save.mutate(
       {
+        app_logo: appLogo,
         max_estimated_minutes: n(maxEstimatedMinutes),
         under_occupied_tolerance_minutes: n(toleranceMinutes),
         min_minutes_monday: n(minByWeekday[0]),
@@ -124,6 +129,21 @@ export default function Settings() {
     pickForIdx.current = null
     if (bannerFileRef.current) bannerFileRef.current.value = ''
   }
+  const onPickLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (f) {
+      setUploadingLogo(true)
+      try {
+        setAppLogo(await uploadBannerImage(f))
+      } catch (err) {
+        toast('error', err instanceof Error ? err.message : 'Upload failed')
+      } finally {
+        setUploadingLogo(false)
+      }
+    }
+    if (logoFileRef.current) logoFileRef.current.value = ''
+  }
+
   const addBanner = () => setBanners((bs) => [...bs, { image: '', link: '', is_active: 1 }])
   const removeBanner = (i: number) => setBanners((bs) => bs.filter((_, k) => k !== i))
   const patchBanner = (i: number, patch: Partial<HomeBanner>) =>
@@ -143,6 +163,43 @@ export default function Settings() {
       </h1>
 
       <BentoGrid>
+        <BentoTile span="full" tone="tint" accent="brand" title="Branding">
+          <p className="mt-1 text-xs text-muted">
+            Logo shown in the web top navbar (replaces the “Vernon” wordmark). Wide/landscape PNG with a transparent
+            background looks best; it’s scaled to ~32px tall.
+          </p>
+          <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickLogo} />
+          <div className="mt-3 flex items-center gap-4">
+            <div className="flex h-16 w-44 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-canvas px-3">
+              {uploadingLogo ? (
+                <Spinner className="h-5 w-5" />
+              ) : appLogo ? (
+                <img src={appLogo} alt="App logo" className="max-h-10 max-w-full object-contain" />
+              ) : (
+                <span className="font-display text-lg font-bold text-ink">Vernon</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => logoFileRef.current?.click()}
+                className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-hover/[0.04]"
+              >
+                <ImagePlus className="h-4 w-4" /> {appLogo ? 'Replace logo' : 'Upload logo'}
+              </button>
+              {appLogo && (
+                <button
+                  type="button"
+                  onClick={() => setAppLogo('')}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-rose-500 hover:text-rose-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove (use wordmark)
+                </button>
+              )}
+            </div>
+          </div>
+        </BentoTile>
+
         <BentoTile span="sm" tone="tint" accent="amber" title="Estimate Limits">
           <div className="mt-3 space-y-4">
             <Field label="Max estimated minutes (0 = no limit)">

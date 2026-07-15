@@ -731,6 +731,7 @@ def bootstrap():
 		"employee": employee,
 		"settings": {
 			"show_auto_approve": int(frappe.db.get_single_value("Vernon Settings", "show_auto_approve") or 0),
+			"app_logo": frappe.db.get_single_value("Vernon Settings", "app_logo") or None,
 		},
 		"leave": _leave_balance(user),
 	}
@@ -2320,6 +2321,7 @@ def get_app_settings():
 		return frappe.db.get_single_value("Vernon Settings", field)
 
 	return {
+		"app_logo": g("app_logo") or "",
 		"max_estimated_minutes": int(g("max_estimated_minutes") or 0),
 		"under_occupied_tolerance_minutes": int(g("under_occupied_tolerance_minutes") or 0),
 		"min_minutes_monday": int(g("min_minutes_monday") or 0),
@@ -2389,6 +2391,7 @@ def upload_banner_image():
 
 @frappe.whitelist()
 def save_app_settings(
+	app_logo=None,
 	max_estimated_minutes=None,
 	under_occupied_tolerance_minutes=None,
 	min_minutes_monday=None,
@@ -2411,6 +2414,8 @@ def save_app_settings(
 
 	settings = frappe.get_single("Vernon Settings")
 	# Each field is optional; only the ones provided in the request are updated.
+	if app_logo is not None:
+		settings.set("app_logo", (app_logo or "").strip() or None)
 	int_fields = {
 		"max_estimated_minutes": max_estimated_minutes,
 		"under_occupied_tolerance_minutes": under_occupied_tolerance_minutes,

@@ -3,8 +3,15 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "default_annual_leave_quota", "show_auto_approve", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
+ "field_order": ["branding_section", "app_logo", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "default_annual_leave_quota", "show_auto_approve", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
+  {"fieldname": "branding_section", "fieldtype": "Section Break", "label": "Branding"},
+  {
+   "fieldname": "app_logo",
+   "fieldtype": "Attach Image",
+   "label": "App Logo",
+   "description": "Logo shown in the web top navbar (replaces the default wordmark). Wide/landscape PNG or SVG with transparent background works best."
+  },
   {
    "fieldname": "max_estimated_minutes",
    "fieldtype": "Int",

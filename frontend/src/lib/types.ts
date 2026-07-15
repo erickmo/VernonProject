@@ -16,7 +16,7 @@ export interface Boot {
   badge?: Badge | null
   vapid_public_key?: string | null
   employee?: EmployeeSoft | null
-  settings?: { show_auto_approve?: 0 | 1 }
+  settings?: { show_auto_approve?: 0 | 1; app_logo?: string | null }
   leave?: LeaveBalance | null
 }
 
@@ -722,6 +722,7 @@ export interface AssignmentOverload {
 }
 
 export interface AppSettings {
+  app_logo: string
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
   min_minutes_monday: number
