@@ -99,6 +99,11 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       toast('error', 'Start date cannot be after the deadline')
       return
     }
+    const est = Number(estimated)
+    if (!estimated || !Number.isFinite(est) || est < 5) {
+      toast('error', 'Estimated time is required and must be at least 5 minutes')
+      return
+    }
     const fields: Record<string, unknown> = {
       to_do: toDo.trim(),
       assigned_to: assignedTo,
@@ -108,7 +113,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       group,
       level_id: levelId,
     }
-    if (estimated) fields.estimated = Number(estimated)
+    fields.estimated = est
     if (leaderDeadline) fields.leader_deadline = leaderDeadline
     if (ownerDeadline) fields.owner_deadline = ownerDeadline
     if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
