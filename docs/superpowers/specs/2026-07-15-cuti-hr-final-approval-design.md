@@ -82,6 +82,7 @@ Without it, every already-Approved cuti derives back to `Pending` on its next sa
 ### Roles and gating
 
 - Patch creates role `HR Manager`, `desk_access: 0`. Precedent: `patches/v1_0/add_lms_manager_role.py`.
+- `HR Manager` joins `VERNON_ROLES` (`api/mobile.py:22`) and `VERNON_ROLE_OPTIONS` (`hooks/useData.ts:808`). That tuple is the allowlist `update_user` syncs against — `_clean_roles` (`:2040`) drops anything outside it, so a role missing from it cannot be granted from the app at all, only from a bench console.
 - `_is_hr(user)` → `"HR Manager" in roles or "System Manager" in roles`. Admins keep the override they have today; it now flows through the HR path instead of a separate branch.
 - `_hr_users()` → users holding `HR Manager`; **falls back to `System Manager` holders when that set is empty**. Without the fallback, a site that has not granted the role yet notifies nobody and wedges every request in Pending with no visible cause.
 - The System-Manager-forces-every-approver-row override branch (`api/attendance.py:229-237`) is **deleted**. It exists only to break leader deadlock, and leader deadlock no longer exists.
@@ -105,7 +106,7 @@ Authorization stays manual + `ignore_permissions=True`, matching the existing co
 
 All use type `"Approval"` — an invalid `type` makes `_notify` swallow the insert and the notification vanishes silently (see `vernon-notify-type-gotcha`).
 
-- `_notify_hr_new_request(doc)` — **new.** One per `_hr_users()`: "Cuti request needs approval / {employee} requested Cuti: {from} → {to}".
+- `_notify_hr_new_request(doc)` — **new.** One per `_hr_users()`: "Cuti request needs HR approval / {employee} requested Cuti: {from} → {to}". Its `reference_doctype` is the pseudo-doctype `"Attendance Exception HR"`, a third audience tag alongside the existing `"Attendance Exception Approval"` (leader queue) and `"Attendance Exception"` (requester's list). `deepLink` (`lib/notifications.ts:48`) routes on that field, so without its own tag HR's notification lands on home. `DeepLinkRoutes` gains `hrExceptions`, filled per app: `/attendance/manage/exceptions` on `/m`, `/attendance/exceptions` on `/w`.
 - `_notify_leaders_new_request` — reworded. "…needs your approval" → "…needs your input", since a leader vote no longer decides anything.
 - `_notify_employee_decision` — unchanged mechanics, now fires only on the HR decision.
 
