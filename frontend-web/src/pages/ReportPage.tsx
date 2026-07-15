@@ -7,10 +7,14 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Download,
   Filter,
   Inbox,
   Info,
+  X,
 } from 'lucide-react'
+import { buildCsv, downloadCsv } from '@web/lib/reportCsv'
+import { numAlign, formatReportNumber, columnTotals } from '@web/lib/reportFormat'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { useBoot, useReport, useReportOptions } from '@/hooks/useData'
@@ -26,6 +30,10 @@ function cell(value: unknown, fieldtype: string): string {
   const s = String(value)
   if (s === '') return '' // keep pivot grids clean
   if (/date/i.test(fieldtype)) return formatDate(s.slice(0, 10))
+  if (numAlign(fieldtype) && s.trim() !== '') {
+    const n = Number(value)
+    if (!Number.isNaN(n)) return formatReportNumber(n, fieldtype)
+  }
   if (s.includes('<')) return stripHtml(s)
   return s
 }
@@ -167,6 +175,25 @@ export default function ReportPage() {
 
   const visibleRows = sortedRows.slice(0, visible)
 
+  // Export the FULL sorted result set (not just the revealed page) as CSV,
+  // formatting cells the same way the grid renders them.
+  const onExport = () => {
+    if (!data || !data.rows.length) return
+    const csv = buildCsv(data.columns, sortedRows, (v, ft) => {
+      if (v == null) return ''
+      const s = String(v)
+      if (s === '') return ''
+      if (/date/i.test(ft)) return formatDate(s.slice(0, 10))
+      if (s.includes('<')) return stripHtml(s)
+      return s
+    })
+    downloadCsv(def?.title ?? 'report', csv)
+  }
+
+  // Column totals for money/count columns, across the full result set.
+  const totals = useMemo(() => (data ? columnTotals(data.columns, data.rows) : {}), [data])
+  const hasTotals = Object.keys(totals).length > 0
+
   // Toggle sort for a column: asc → desc → none.
   const toggleSort = (field: string) =>
     setSort((cur) => {
@@ -194,6 +221,38 @@ export default function ReportPage() {
   const projects = options?.projects ?? []
   const users = options?.users ?? []
 
+  // Human-readable chips for each active filter, each removable in one click —
+  // surfaces what's filtering the report without opening the popover.
+  const filterChips: { key: string; text: string; onRemove: () => void }[] = def.controls.flatMap((c) => {
+    const v = filters[c.key]
+    if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) return []
+    if (c.type === 'daterange') {
+      const p = DATE_PRESETS.find((dp) => dp.value === preset)
+      const text = p ? p.label : Array.isArray(v) ? `${(v as string[])[0]} → ${(v as string[])[1]}` : ''
+      return [{ key: c.key, text: `${c.label}: ${text}`, onRemove: () => { setVal(c.key, ''); setPreset('') } }]
+    }
+    if (c.type === 'project' || c.type === 'person') {
+      const opt = (c.type === 'project' ? projects : users).find((o) => o.value === v)
+      return [{ key: c.key, text: `${c.label}: ${String(opt?.label ?? v)}`, onRemove: () => setVal(c.key, '') }]
+    }
+    if (c.type === 'status') {
+      const set = statusSets[c.statusSet!] || []
+      if (c.multi && Array.isArray(v)) {
+        const sel = v as string[]
+        return sel.map((sv) => ({
+          key: `${c.key}:${sv}`,
+          text: set.find((o) => o.value === sv)?.label ?? String(sv),
+          onRemove: () => {
+            const next = sel.filter((x) => x !== sv)
+            setVal(c.key, next.length ? next : '')
+          },
+        }))
+      }
+      return [{ key: c.key, text: `${c.label}: ${set.find((o) => o.value === v)?.label ?? String(v)}`, onRemove: () => setVal(c.key, '') }]
+    }
+    return []
+  })
+
   return (
     <div className="space-y-5">
       <BentoGrid>
@@ -211,7 +270,18 @@ export default function ReportPage() {
               <h1 className="text-2xl font-bold">{def.title}</h1>
               {isFetching && data ? <Spinner className="h-4 w-4 text-brand-500" /> : null}
             </div>
-            <div className="relative">
+            <div className="flex items-center gap-2">
+              {data && data.rows.length > 0 && (
+                <button
+                  onClick={onExport}
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-canvas/60 px-3 py-2 text-sm font-medium transition active:scale-[0.97] hover:bg-canvas"
+                  title="Download as CSV"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+              )}
+              <div className="relative">
               <span ref={filterRef}>
                 <button
                   onClick={() => setFilterOpen((o) => !o)}
@@ -344,8 +414,38 @@ export default function ReportPage() {
                 </div>
               </Popover>
             </div>
+            </div>
           </div>
         </BentoTile>
+
+        {/* Active-filter chips — removable, so current filters are visible without the popover */}
+        {filterChips.length > 0 && (
+          <BentoTile span="full" tone="plain">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Filters</span>
+              {filterChips.map((chip) => (
+                <button
+                  key={chip.key}
+                  onClick={chip.onRemove}
+                  title="Remove filter"
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas px-3 py-1 text-xs font-medium text-ink transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-500/15 dark:hover:text-rose-300"
+                >
+                  {chip.text}
+                  <X className="h-3 w-3 opacity-60 transition group-hover:opacity-100" />
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  setFilters({})
+                  setPreset('')
+                }}
+                className="ml-1 text-xs font-semibold text-brand-600 transition hover:text-brand-700"
+              >
+                Clear all
+              </button>
+            </div>
+          </BentoTile>
+        )}
 
         {/* Summary stat tiles — shown once data is loaded */}
         {data && data.rows.length > 0 && (
@@ -427,7 +527,8 @@ export default function ReportPage() {
                               type="button"
                               onClick={() => toggleSort(col.fieldname)}
                               className={clsx(
-                                'flex w-full items-center gap-1 px-4 py-2.5 text-left uppercase tracking-wide outline-none transition-colors',
+                                'flex w-full items-center gap-1 px-4 py-2.5 uppercase tracking-wide outline-none transition-colors',
+                                numAlign(col.fieldtype) ? 'justify-end text-right' : 'text-left',
                                 'hover:text-ink',
                                 'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset',
                                 active && 'text-ink',
@@ -469,6 +570,7 @@ export default function ReportPage() {
                                 ci === 0 &&
                                   'sticky left-0 z-10 max-w-[260px] truncate bg-surface font-medium',
                                 ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
+                                ci !== 0 && numAlign(col.fieldtype) && 'text-right tabular-nums',
                               )}
                             >
                               {cell(row[col.fieldname], col.fieldtype)}
@@ -478,6 +580,28 @@ export default function ReportPage() {
                       )
                     })}
                   </tbody>
+                  {hasTotals && (
+                    <tfoot>
+                      <tr className="border-t-2 border-line bg-surface text-sm font-semibold text-ink">
+                        {data.columns.map((col, ci) => (
+                          <td
+                            key={col.fieldname + 'tot' + ci}
+                            className={clsx(
+                              'whitespace-nowrap px-4 py-2.5',
+                              ci === 0 && 'sticky left-0 z-10 bg-surface',
+                              ci !== 0 && numAlign(col.fieldtype) && 'text-right tabular-nums',
+                            )}
+                          >
+                            {ci === 0
+                              ? 'Total'
+                              : col.fieldname in totals
+                                ? cell(totals[col.fieldname], col.fieldtype)
+                                : ''}
+                          </td>
+                        ))}
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
               {visibleRows.length < data.rows.length && (
