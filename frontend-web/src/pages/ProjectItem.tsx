@@ -374,36 +374,34 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
   const setRow = (i: number, patch: Partial<AllocRow>) =>
     setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)))
 
-  const onSave = () => {
-    // allocation_date is required on each row — don't silently drop rows with
-    // minutes but no date.
-    if (rows.some((r) => !r.date && Number(r.minutes) > 0)) {
-      toast('error', 'Add a date to every allocation row')
-      return
-    }
-    // Daily split must add up to the task estimate (planning consistency).
-    if (data.estimated > 0 && total !== data.estimated) {
-      const diff = data.estimated - total
-      toast(
-        'error',
-        diff > 0
-          ? `${diff}m short of the ${data.estimated}m estimate`
-          : `${-diff}m over the ${data.estimated}m estimate`,
-      )
-      return
-    }
+  // A plan is savable only when every row with minutes has a date and (if the
+  // task is estimated) the daily split adds up to the estimate. Autosave stays
+  // silent while invalid — the total/estimate chip already flags the mismatch.
+  const valid =
+    !rows.some((r) => !r.date && Number(r.minutes) > 0) &&
+    (data.estimated <= 0 || total === data.estimated)
+
+  // Autosave: debounce edits, then persist a valid, changed plan. No success
+  // toast — saving is ambient, not an explicit action.
+  const lastSaved = useRef(JSON.stringify(rows.filter((r) => r.date)))
+  useEffect(() => {
+    if (!valid) return
     const clean = rows.filter((r) => r.date)
-    save.mutate(clean, {
-      onSuccess: () => toast('success', 'Allocations saved'),
-      onError: (e) => toast('error', (e as Error).message),
-    })
-  }
+    const snap = JSON.stringify(clean)
+    if (snap === lastSaved.current) return
+    const t = setTimeout(() => {
+      lastSaved.current = snap
+      save.mutate(clean, { onError: (e) => toast('error', (e as Error).message) })
+    }, 800)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, valid])
 
   return (
     <div className="mt-4 rounded-xl bg-surface p-4 border border-line">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
-          <CalendarRange className="h-4 w-4" /> Split across days
+          <CalendarRange className="h-4 w-4" /> My plan
         </p>
         <span
           className={
@@ -465,9 +463,15 @@ function AllocationCard({ data }: { data: ProjectItemDetail }) {
         <Button variant="secondary" onClick={addRow}>
           <Plus className="h-4 w-4" /> Add day
         </Button>
-        <Button variant="primary" onClick={onSave} disabled={save.isPending}>
-          {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Save split
-        </Button>
+        <span className="ml-auto flex items-center gap-1 text-xs text-muted">
+          {save.isPending ? (
+            <><Spinner className="h-3.5 w-3.5" /> Saving…</>
+          ) : !valid && rows.length > 0 ? (
+            <span className="text-rose-600 dark:text-rose-400">Won't autosave until the split matches the estimate</span>
+          ) : (
+            <><Check className="h-3.5 w-3.5 text-emerald-500" /> Autosaves</>
+          )}
+        </span>
       </div>
     </div>
   )
@@ -717,7 +721,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   }
 
   const fieldCls =
-    'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
+    'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
 
   return (
     <div className="rounded-2xl bg-surface p-4 border border-line">
@@ -962,6 +966,9 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </p>
       )}
 
+      {/* My plan — assignee-editable day split (moved here from the detail view) */}
+      {data.is_mine && <AllocationCard data={data} />}
+
       {/* Assigned plan (leader/SM-editable) */}
       {data.can_edit_assigned && <AssignedAllocationCard data={data} />}
 
@@ -1180,6 +1187,18 @@ const [followOpen, setFollowOpen] = useState(false)
               )}
             </Button>
 
+            {/* Waiting toggle — park a planned todo or resume it (beside Focus) */}
+            {canWait &&
+              (data.is_waiting ? (
+                <Button variant="secondary" size="sm" onClick={onResume} disabled={setWaiting.isPending}>
+                  <Play className="h-4 w-4" /> Resume
+                </Button>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={() => setShowWaiting(true)}>
+                  <Pause className="h-4 w-4" /> Mark waiting
+                </Button>
+              ))}
+
             {data.can_edit && (
               <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="h-4 w-4" /> Edit
@@ -1360,22 +1379,7 @@ const [followOpen, setFollowOpen] = useState(false)
               )}
             </div>
 
-            {/* Waiting toggle — park a planned todo or resume it */}
-            {canWait && (
-              <div>
-                {data.is_waiting ? (
-                  <Button variant="secondary" onClick={onResume} disabled={setWaiting.isPending}>
-                    <Play className="h-4 w-4" /> Resume
-                  </Button>
-                ) : (
-                  <Button variant="secondary" onClick={() => setShowWaiting(true)}>
-                    <Pause className="h-4 w-4" /> Mark waiting
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Day allocations — editable for assignee, read-only for others */}
+            {/* My plan — editable day split for the assignee, read-only for others */}
             {data.is_mine ? (
               <AllocationCard data={data} />
             ) : (
