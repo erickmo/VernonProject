@@ -19,7 +19,6 @@ Cuti/WFH (`Attendance Exception`) is currently gated by a **unanimous vote of ev
 
 ## Non-goals
 
-- Web (`/w`) apply form and my-requests page. Neither exists today; cuti is applied for on mobile (`/m`) only. Out of scope.
 - Multi-stage HR (e.g. HR clerk → HR head). One HR decision is final.
 - Notifying HR when the last leader votes. HR can act at any time, so the "leaders are done" moment carries no obligation.
 - Leave-quota logic. Unchanged — `_check_leave_quota` fires on `validate` when `status == "Approved"`, which now happens at the HR step instead of the last leader's.
@@ -128,6 +127,13 @@ Both apps share one hook/type/api layer: `frontend/src/` is aliased `@` from `fr
 - `pages/AttendanceExceptionsScreen.tsx` — becomes the HR inbox. Off `resource.list('Attendance Exception', {filters: {status: 'Pending'}})` onto `useHrPendingExceptions()`; renders each request's leader votes; a real reject-reason prompt replaces the hardcoded `'Rejected by admin'`; calls with `as_hr=1`.
 
 **Web** (`/w`): the same two changes to `pages/ExceptionApprovals.tsx` (wording) and `pages/Exceptions.tsx` (HR inbox), in `@web` chrome.
+
+**Web parity — new pages.** Web has never had an apply form or a my-requests list; cuti could only be filed from `/m`. Both are added so the flow works identically on either app:
+
+- `frontend-web/src/pages/RequestException.tsx` at `/attendance/request` — same four submitted fields and the same leader-preview card, in `@web` chrome (`BentoGrid`/`BentoTile`/`Card`, `text-ink`/`text-muted`/`border-line`). Dates use the shared `DatePicker` (`@web/components/DatePicker`), never a native `<input type="date">` — `vernon-web-datepicker-convention`. The Leave/WFH selector stays a two-button segmented control, not a dropdown, so `vernon-searchable-select-convention` does not apply.
+- `frontend-web/src/pages/MyExceptions.tsx` at `/attendance/my-requests` — the same per-leader decision list and HR verdict row.
+- Both routes are ungated (every employee may file cuti), with nav leaves in the ungated `WORK` group of `lib/nav.ts`.
+- `NotificationSheet`'s `ROUTES.myExceptions` changes from `'/'` to `'/attendance/my-requests'`. Its current value is a documented workaround for the page not existing; a cuti verdict on web has landed on home until now.
 
 Route paths are unchanged. Gating gains one function in `hooks/useData.ts`:
 

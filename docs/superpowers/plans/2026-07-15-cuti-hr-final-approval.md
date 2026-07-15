@@ -44,7 +44,9 @@
 | `frontend-web/src/pages/ExceptionApprovals.tsx` | advisory wording | 8 |
 | `frontend-web/src/pages/Exceptions.tsx` | web HR inbox | 8 |
 | `frontend-web/src/App.tsx` | web HR inbox route moves under `canHrApprove` | 8 |
-| `frontend-web/src/lib/nav.ts` | HR inbox nav leaf splits out of the attendance-admin group | 8 |
+| `frontend-web/src/lib/nav.ts` | HR inbox nav leaf splits out of the attendance-admin group; apply + my-requests leaves | 8, 9 |
+| `frontend-web/src/pages/RequestException.tsx` | **create** — web apply form (web has never had one) | 9 |
+| `frontend-web/src/pages/MyExceptions.tsx` | **create** — web my-requests list | 9 |
 
 ---
 
@@ -800,12 +802,12 @@ with:
 ```ts
 const ROUTES = {
   exceptionApprovals: '/attendance/my-approvals',
-  // web has no requester-side list, so a cuti verdict has nowhere better to
-  // land than home.
-  myExceptions: '/',
+  myExceptions: '/attendance/my-requests',
   hrExceptions: '/attendance/exceptions',
 }
 ```
+
+The old value was `'/'` with a comment explaining that web had no requester-side list. Task 9 builds that page, so the workaround goes away with the comment. Between this task and Task 9 the route does not exist yet and falls through to web's catch-all redirect — harmless, and closed before deploy.
 
 - [ ] **Step 5: Add the HR gate and make the role assignable**
 
@@ -1721,13 +1723,289 @@ git commit -m "feat(cuti,/w): advisory leader inbox + HR inbox with leader input
 
 ---
 
-### Task 9: Build, deploy, verify live
+### Task 9: Web parity — apply form + my-requests page
+
+**Files:**
+- Create: `frontend-web/src/pages/RequestException.tsx`
+- Create: `frontend-web/src/pages/MyExceptions.tsx`
+- Modify: `frontend-web/src/App.tsx` (imports + 2 routes)
+- Modify: `frontend-web/src/lib/nav.ts` (2 leaves in `WORK`)
+
+**Interfaces:**
+- Consumes: `useRequestException`, `useMyLeaders`, `useMyExceptions` (Task 5); `DatePicker` from `@web/components/DatePicker`.
+- Produces: routes `/attendance/request` and `/attendance/my-requests` on web — the latter is what Task 5 already pointed `NotificationSheet`'s `ROUTES.myExceptions` at.
+
+Web has never had either page: cuti could only be filed from `/m`. These are the `@web`-chrome twins of the mobile pages from Task 6.
+
+**Web conventions that differ from mobile — do not paste mobile's markup:**
+- Colour tokens are `text-ink` / `text-muted` / `border-line`, **not** `text-stone-*` / `border-slate-*`.
+- Every date input uses the shared `DatePicker` (`@web/components/DatePicker`), **never** a native `<input type="date">` (`vernon-web-datepicker-convention`). Its props are `{ value: string; onChange: (v: string) => void; min?; max?; placeholder? }` — `onChange` receives the **value**, not an event.
+- Layout primitives are `BentoGrid`/`BentoTile`/`Card`/`CardList` from `@web/components/*`.
+- The Leave/WFH selector is a two-button segmented control, not a dropdown, so `vernon-searchable-select-convention` does not apply here.
+
+- [ ] **Step 1: Create the web apply form**
+
+Create `frontend-web/src/pages/RequestException.tsx`:
+
+```tsx
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Check, Users } from 'lucide-react'
+import { Spinner } from '@/components/ui'
+import { useToast } from '@/components/Toast'
+import { useRequestException, useMyLeaders } from '@/hooks/useData'
+import { BentoGrid, BentoTile } from '@web/components/bento'
+import { DatePicker } from '@web/components/DatePicker'
+
+export default function RequestException() {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const req = useRequestException()
+  const { data: leaders, isLoading: leadersLoading } = useMyLeaders()
+  const [type, setType] = useState<'WFH' | 'Leave'>('Leave')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [reason, setReason] = useState('')
+
+  const submit = async () => {
+    if (!from || !to) {
+      toast('error', 'Pick both dates')
+      return
+    }
+    try {
+      await req.mutateAsync({ from_date: from, to_date: to, exception_type: type, reason })
+      toast('success', 'Request submitted')
+      navigate('/attendance/my-requests')
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Request leave / WFH</h1>
+      <BentoGrid>
+        <BentoTile span="full" tone="plain">
+          <div className="flex max-w-xl flex-col gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-muted">Type</label>
+              <div className="flex gap-2">
+                {(['Leave', 'WFH'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className={`flex-1 rounded-xl border py-2 text-sm font-semibold transition ${
+                      type === t ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line text-muted'
+                    }`}
+                  >
+                    {t === 'Leave' ? 'Cuti' : 'WFH'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted">From</label>
+                <DatePicker value={from} onChange={setFrom} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted">To</label>
+                <DatePicker value={to} onChange={setTo} min={from || undefined} />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-muted">Reason</label>
+              <textarea
+                className="w-full min-h-[90px] resize-y rounded-xl border border-line px-3 py-2 text-sm text-ink"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-line p-3">
+              <p className="text-xs font-semibold text-muted">Who reviews this</p>
+              {leadersLoading ? (
+                <div className="py-2"><Spinner className="h-4 w-4" /></div>
+              ) : leaders && leaders.length > 0 ? (
+                <>
+                  <ul className="mt-1.5 flex flex-col gap-1">
+                    {leaders.map((l) => (
+                      <li key={l} className="flex items-center gap-1.5 text-sm text-ink">
+                        <Users className="h-3.5 w-3.5 shrink-0 text-muted" /> {l}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-muted">
+                    Your project leaders give input. HR gives the final approval.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-muted">No project leaders — this goes straight to HR.</p>
+              )}
+            </div>
+
+            <button
+              onClick={submit}
+              disabled={req.isPending}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5 font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-50"
+            >
+              {req.isPending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />} Submit request
+            </button>
+          </div>
+        </BentoTile>
+      </BentoGrid>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 2: Create the web my-requests page**
+
+Create `frontend-web/src/pages/MyExceptions.tsx`:
+
+```tsx
+import { FileText, CalendarPlus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Spinner, EmptyState } from '@/components/ui'
+import { useMyExceptions } from '@/hooks/useData'
+import { BentoGrid, BentoTile } from '@web/components/bento'
+import { Card, CardList } from '@web/components/Card'
+
+const badge: Record<string, string> = {
+  Approved: 'bg-emerald-100 text-emerald-700',
+  Rejected: 'bg-rose-100 text-rose-700',
+  Pending: 'bg-amber-100 text-amber-700',
+}
+
+const dot: Record<string, string> = {
+  Approved: 'bg-emerald-500',
+  Rejected: 'bg-rose-500',
+  Pending: 'bg-amber-400',
+}
+
+export default function MyExceptions() {
+  const { data: rows, isLoading } = useMyExceptions()
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">My leave / WFH</h1>
+        <Link
+          to="/attendance/request"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition"
+        >
+          <CalendarPlus className="h-4 w-4" /> Request
+        </Link>
+      </div>
+      <BentoGrid>
+        <BentoTile span="full" tone="plain">
+          {isLoading ? (
+            <div className="flex justify-center py-12"><Spinner /></div>
+          ) : !rows || rows.length === 0 ? (
+            <EmptyState icon={FileText} title="No requests yet" subtitle="Your leave / WFH requests show here." />
+          ) : (
+            <CardList>
+              {rows.map((e) => (
+                <Card
+                  key={e.name}
+                  title={
+                    <span className="flex items-center gap-2">
+                      {e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge[e.status] || badge.Pending}`}>
+                        {e.status}
+                      </span>
+                    </span>
+                  }
+                  meta={
+                    <div className="flex flex-col gap-1">
+                      <span>{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''}</span>
+                      {e.approvers.length > 0 ? (
+                        e.approvers.map((a) => (
+                          <span key={a.approver} className="flex items-center gap-1.5 text-xs">
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot[a.decision] || dot.Pending}`} />
+                            {a.approver} ·{' '}
+                            {a.decision === 'Rejected' ? 'Objected' : a.decision === 'Approved' ? 'Supports' : 'No input yet'}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs">No project leaders — straight to HR.</span>
+                      )}
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot[e.hr_decision] || dot.Pending}`} />
+                        HR (final) · {e.hr_decision}
+                      </span>
+                      {e.hr_reason && <span className="text-xs text-rose-600">{e.hr_reason}</span>}
+                    </div>
+                  }
+                />
+              ))}
+            </CardList>
+          )}
+        </BentoTile>
+      </BentoGrid>
+    </div>
+  )
+}
+```
+
+If `Card`'s `title` prop is typed `string` rather than `ReactNode`, do not widen the component — instead pass `title={`${e.exception_type === 'Leave' ? 'Cuti' : 'WFH'} · ${e.status}`}` and drop the badge span. Check `frontend-web/src/components/Card.tsx` before writing.
+
+- [ ] **Step 3: Register both routes**
+
+In `frontend-web/src/App.tsx`, add the two imports alongside the existing page imports:
+
+```tsx
+import RequestException from './pages/RequestException'
+import MyExceptions from './pages/MyExceptions'
+```
+
+and add both routes next to the existing ungated `/attendance/my-approvals` route (~line 288):
+
+```tsx
+          <Route path="/attendance/request" element={<RequestException />} />
+          <Route path="/attendance/my-requests" element={<MyExceptions />} />
+```
+
+Ungated on purpose: every employee may file cuti.
+
+- [ ] **Step 4: Add both nav leaves**
+
+In `frontend-web/src/lib/nav.ts`, add to the `WORK` array, directly after the `/attendance/my-approvals` leaf:
+
+```ts
+  { to: '/attendance/request', label: 'Request leave', sub: 'Cuti / WFH', icon: CalendarPlus },
+  { to: '/attendance/my-requests', label: 'My leave/WFH', sub: 'Your requests & status', icon: FileText },
+```
+
+Add `CalendarPlus` and `FileText` to this file's `lucide-react` import if they are not already there.
+
+- [ ] **Step 5: Typecheck both frontends**
+
+Run:
+```bash
+cd /home/frappe/frappe-bench/apps/vernon_project/frontend && npx tsc --noEmit && cd ../frontend-web && npx tsc --noEmit && echo "BOTH CLEAN"
+```
+Expected: `BOTH CLEAN`
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add frontend-web/src/pages/RequestException.tsx frontend-web/src/pages/MyExceptions.tsx frontend-web/src/App.tsx frontend-web/src/lib/nav.ts
+git commit -m "feat(cuti,/w): apply form + my-requests page (web parity with /m)"
+```
+
+---
+
+### Task 10: Build, deploy, verify live
 
 **Files:**
 - No source changes. Build outputs only.
 
 **Interfaces:**
-- Consumes: Tasks 1-8.
+- Consumes: Tasks 1-9.
 - Produces: the running feature.
 
 - [ ] **Step 1: Build both frontends**
@@ -1767,14 +2045,14 @@ Expected: the granted HR users, not the System Manager fallback list.
 
 There is no test DB (`vernon-live-site-codefirst`), so this is the real verification. On project.vernon.id, walk it:
 
-1. As a normal employee on `/m`, open `/attendance/request`. **Expect:** the "Who reviews this" card lists exactly the `project_leader` of each Ongoing project you are a `Project Team` member of, minus yourself. Cross-check against the DB if unsure.
+1. As a normal employee on `/m`, open `/attendance/request`. **Expect:** the "Who reviews this" card lists exactly the `project_leader` of each Ongoing project you are a `Project Team` member of, minus yourself. Cross-check against the DB if unsure. **Repeat on `/w`** at `/attendance/request` — same leader list, `DatePicker` popovers (not native date inputs), reachable from the Work nav.
 2. Submit a Leave request. **Expect:** each listed leader gets a notification titled "Cuti request needs your input"; every HR user gets "Cuti request needs HR approval"; the requester gets nothing.
 3. As HR, open the notification. **Expect:** it lands on the HR inbox (`/attendance/manage/exceptions` on `/m`, `/attendance/exceptions` on `/w`), not home — that is the `"Attendance Exception HR"` pseudo-doctype routing.
 4. As a leader, Support the request. **Expect:** the request stays `Pending`, the employee is **not** notified, and the row still shows in the HR inbox with that leader marked "Supports".
 5. As HR, Approve. **Expect:** status flips to `Approved`, the employee gets "Cuti approved", and the attendance day for that date becomes `Excused-Leave` in the daily report.
 6. As the leader again, try to vote on the now-approved request. **Expect:** error "HR has already decided this request." (It should have already dropped out of the leader inbox — reach it from the stale notification.)
 7. File a request as an employee with **no** Ongoing-project leaders. **Expect:** the form says "No project leaders — this goes straight to HR", the request lands `Pending` (not auto-approved, which is the deliberate behaviour change), and HR is notified.
-8. As HR, Reject one with a reason. **Expect:** the employee's notification body ends with `— <reason>`, and `/attendance/my-requests` shows the HR row red with the reason under it.
+8. As HR, Reject one with a reason. **Expect:** the employee's notification body ends with `— <reason>`, and `/attendance/my-requests` shows the HR row red with the reason under it — **on both `/m` and `/w`**. On `/w`, clicking that notification must land on `/attendance/my-requests`, not home (the old `ROUTES.myExceptions: '/'` workaround is gone).
 
 - [ ] **Step 6: Commit the build output**
 
