@@ -89,7 +89,8 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   ]
   if (admin.length) groups.push({ id: 'admin', label: 'Admin', leaves: admin })
 
-  // attendance — all routes under one canManageAttendance gate
+  // attendance — admin surfaces under canManageAttendance; the HR cuti inbox is
+  // unshifted below under canHrApprove, so HR gets it without the rest.
   const att: NavLeaf[] = canManageAttendance(b) ? [
     { to: '/attendance-report', label: 'Attendance', sub: 'Daily report', icon: QrCode },
     { to: '/attendance/schedules', label: 'Schedules', sub: 'Shift schedules', icon: CalendarDays },

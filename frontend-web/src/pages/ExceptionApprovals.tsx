@@ -70,7 +70,7 @@ export default function ExceptionApprovals() {
         </BentoTile>
       </BentoGrid>
 
-      <Sheet open={!!rejecting} onClose={() => setRejecting(null)} title="Reason for rejection" size="sm">
+      <Sheet open={!!rejecting} onClose={() => setRejecting(null)} title="Reason for objecting" size="sm">
         <textarea
           className="w-full min-h-[90px] resize-y rounded-xl border border-line px-3 py-2 text-sm text-ink"
           value={reason}
