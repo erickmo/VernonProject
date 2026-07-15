@@ -85,7 +85,7 @@ import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms } from './hooks/useData'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms, canHrApprove } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -255,13 +255,15 @@ export default function App() {
         <Route path="/attendance/request" element={<RequestException />} />
         <Route path="/attendance/approvals" element={<ExceptionApprovals />} />
         <Route path="/attendance/my-requests" element={<MyExceptions />} />
+        {canHrApprove(boot) && (
+          <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
+        )}
         {canManageAttendance(boot) && (
           <>
             <Route path="/attendance/manage" element={<AttendanceAdminScreen />} />
             <Route path="/attendance/manage/enrolled" element={<AttendanceProfilesScreen />} />
             <Route path="/attendance/manage/schedules" element={<AttendanceSchedulesScreen />} />
             <Route path="/attendance/manage/stations" element={<AttendanceStationsScreen />} />
-            <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
             <Route path="/attendance/manage/holidays" element={<AttendanceHolidaysScreen />} />
             <Route path="/attendance/manage/report" element={<AttendanceReportAdminScreen />} />
           </>

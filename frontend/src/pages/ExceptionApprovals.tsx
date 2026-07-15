@@ -18,8 +18,8 @@ export default function ExceptionApprovals() {
 
   const doApprove = async (name: string) => {
     try {
-      await approve.mutateAsync(name)
-      toast('success', 'Approved')
+      await approve.mutateAsync({ name })
+      toast('success', 'Input sent')
     } catch (e) {
       toast('error', (e as Error).message)
     }
@@ -33,7 +33,7 @@ export default function ExceptionApprovals() {
     }
     try {
       await reject.mutateAsync({ name: rejecting, reason: reason.trim() })
-      toast('success', 'Rejected')
+      toast('success', 'Objection sent')
       setRejecting(null)
       setReason('')
     } catch (e) {
@@ -42,11 +42,11 @@ export default function ExceptionApprovals() {
   }
 
   return (
-    <DetailScreen title="Approvals · Leave / WFH">
+    <DetailScreen title="Input · Leave / WFH">
       {isLoading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : !rows || rows.length === 0 ? (
-        <EmptyState icon={Check} title="All clear" subtitle="Nothing awaiting your approval." />
+        <EmptyState icon={Check} title="All clear" subtitle="Nothing awaiting your input." />
       ) : (
         <div className="flex flex-col gap-3">
           {rows.map((e) => (
@@ -62,7 +62,7 @@ export default function ExceptionApprovals() {
                 {e.reason ? ` · ${e.reason}` : ''}
               </p>
               <p className="mt-1 text-xs font-medium text-stone-500">
-                {e.approved_count}/{e.total} approved
+                {e.approved_count}/{e.total} leaders support · HR decides
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -70,13 +70,13 @@ export default function ExceptionApprovals() {
                   disabled={approve.isPending}
                   className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white active:scale-95 disabled:opacity-50"
                 >
-                  <Check className="h-4 w-4" /> Approve
+                  <Check className="h-4 w-4" /> Support
                 </button>
                 <button
                   onClick={() => { setRejecting(e.name); setReason('') }}
                   className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white active:scale-95"
                 >
-                  <X className="h-4 w-4" /> Reject
+                  <X className="h-4 w-4" /> Object
                 </button>
               </div>
             </div>
@@ -90,7 +90,7 @@ export default function ExceptionApprovals() {
             className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-800"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <p className="mb-2 font-semibold text-stone-800 dark:text-slate-100">Reason for rejection</p>
+            <p className="mb-2 font-semibold text-stone-800 dark:text-slate-100">Reason for objecting</p>
             <textarea
               className={field + ' min-h-[90px] resize-y'}
               value={reason}
@@ -109,7 +109,7 @@ export default function ExceptionApprovals() {
                 disabled={reject.isPending}
                 className="rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
-                Confirm reject
+                Send objection
               </button>
             </div>
           </div>
