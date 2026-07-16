@@ -737,6 +737,10 @@ class ProjectTodo(Document):
 			# Allocation rows are per-todo, not per-user: the moment someone else owns
 			# this todo, the previous assignee's plan is dead data, and leaving it would
 			# silently hand the new assignee the old one's minutes.
+			# `assigned_allocation` (the sibling child table) is deliberately NOT cleared
+			# here: it is the leader's authoritative split of the estimate across dates —
+			# a property of the work — whereas `allocations` is the assignee's own personal
+			# day-plan. Reassigning changes who does the work, not how the leader split it.
 			self.set("allocations", [])
 
 		today = nowdate()

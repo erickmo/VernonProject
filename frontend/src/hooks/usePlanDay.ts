@@ -17,14 +17,16 @@ export function usePlanDay(candidates: ProjectItem[]) {
   const today = todayISO()
 
   // A today-deadline todo is pinned to today's plan server-side and cannot be
-  // removed, so every edit path clamps to its floor rather than offering a zero
-  // the server would hand straight back. One clamp in setMin covers the minus
-  // button, the preset chips, "Use est." and a typed 0 — they all route here.
+  // removed, so every edit path applies its floor — setMin clamps immediately for
+  // the minus button, the preset chips and "Use est."; free typing (setMinRaw) is
+  // clamped on blur and again as a save-time backstop, so a controlled input never
+  // fights the caret mid-keystroke (see PlanRow).
   //
-  // Only the user's explicit edits are state; the effective minutes are derived, so a
-  // todo entering `candidates` after mount (a refetch, or the sheet opening before the
-  // dashboard resolves) still gets its floor and its saved allocation rather than a
-  // phantom 0 that Save would write back as a dropped row.
+  // Only the user's explicit edits are state; the effective minutes (`mins`) are
+  // derived, not mount-only state, so a todo entering `candidates` after mount (a
+  // refetch, or the sheet opening before the dashboard resolves) still gets its
+  // floor and its saved allocation rather than a phantom 0 that Save would write
+  // back as a dropped row.
   const [overrides, setOverrides] = useState<Record<string, number>>({})
   const floors = useMemo(
     () => Object.fromEntries(candidates.map((t) => [t.name, planFloor(t, today)])),
@@ -35,7 +37,7 @@ export function usePlanDay(candidates: ProjectItem[]) {
       Object.fromEntries(
         candidates.map((t) => [
           t.name,
-          Math.max(floors[t.name] || 0, overrides[t.name] ?? (t.today_allocation || 0)),
+          overrides[t.name] ?? Math.max(floors[t.name] || 0, t.today_allocation || 0),
         ]),
       ),
     [candidates, floors, overrides],
@@ -43,7 +45,14 @@ export function usePlanDay(candidates: ProjectItem[]) {
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const setMin = (id: string, v: number) => setOverrides((m) => ({ ...m, [id]: Math.max(0, Math.round(v)) }))
+  // Discrete controls (± buttons, preset chips, "Use est.") clamp to the floor at once.
+  const setMin = (id: string, v: number) =>
+    setOverrides((m) => ({ ...m, [id]: Math.max(floors[id] || 0, Math.round(v)) }))
+  // Free typing must NOT clamp per keystroke: the input is controlled, so rewriting the
+  // value mid-word makes the next digit append to the clamped number — typing 90 over a
+  // 60-floor row yields 600. The row's floor is re-applied on blur and again on save.
+  const setMinRaw = (id: string, v: number) =>
+    setOverrides((m) => ({ ...m, [id]: Math.max(0, Math.round(v)) }))
   const useEstimate = (t: ProjectItem) => setMin(t.name, t.estimated > 0 ? t.estimated : 30)
 
   const visible = useMemo(
@@ -58,7 +67,12 @@ export function usePlanDay(candidates: ProjectItem[]) {
     setSaving(true)
     try {
       await Promise.all(
-        touched.map((t) => mobileApi.setTodoAllocations(t.name, buildNext(t.allocations ?? [], today, mins[t.name] || 0))),
+        touched.map((t) =>
+          mobileApi.setTodoAllocations(
+            t.name,
+            buildNext(t.allocations ?? [], today, Math.max(floors[t.name] || 0, mins[t.name] || 0)),
+          ),
+        ),
       )
       qc.invalidateQueries({ queryKey: keys.dashboard })
       for (const t of touched) qc.invalidateQueries({ queryKey: keys.projectItem(t.name) })
@@ -71,7 +85,7 @@ export function usePlanDay(candidates: ProjectItem[]) {
     }
   }
 
-  return { mins, setMin, useEstimate, query, setQuery, visible, total, saving, save, floors }
+  return { mins, setMin, setMinRaw, useEstimate, query, setQuery, visible, total, saving, save, floors }
 }
 
 // Silent auto-plan. Mounted on both dashboards, so it fires on load AND every
@@ -82,9 +96,11 @@ export function usePlanDay(candidates: ProjectItem[]) {
 // (oldest first) then future (nearest first). The only differences from the
 // button are: no toast, and seenRef idempotency.
 // ponytail: idempotent per todo/day/session via seenRef — honors in-session manual
-// removal (a task the user clears from today is not re-added this session), re-plans
-// across reloads and at day rollover. Ceiling: a big backlog fires N parallel writes
-// on first load (no batch API — add one if it drags).
+// removal for overdue/future top-up tasks (a task the user clears from today is not
+// re-added this session). Does NOT hold for today-deadline todos: those are pinned
+// server-side (_ensure_today_allocation) and come straight back on that todo's next
+// save regardless of seenRef. Re-plans across reloads and at day rollover. Ceiling: a
+// big backlog fires N parallel writes on first load (no batch API — add one if it drags).
 export function useAutoPlanToday(buckets: {
   due_today?: ProjectItem[]
   overdue?: ProjectItem[]

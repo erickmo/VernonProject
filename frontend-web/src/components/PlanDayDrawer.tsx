@@ -79,7 +79,7 @@ export function PlanDayDrawer({
       ) : (
         <ul className="flex flex-col gap-2.5">
           {plan.visible.map((t) => (
-            <PlanRow key={t.name} todo={t} minutes={plan.mins[t.name] || 0} floor={plan.floors[t.name] || 0} onSet={plan.setMin} onUseEstimate={plan.useEstimate} />
+            <PlanRow key={t.name} todo={t} minutes={plan.mins[t.name] || 0} floor={plan.floors[t.name] || 0} onSet={plan.setMin} onSetRaw={plan.setMinRaw} onUseEstimate={plan.useEstimate} />
           ))}
         </ul>
       )}

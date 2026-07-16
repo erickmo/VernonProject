@@ -112,7 +112,10 @@ below the estimate and never reach zero.
 
 The server rule is deliberately more lenient than the UI floor (server refills only at zero; the UI
 forbids anything under est). Each does its own job: the server guarantees **presence**, the UI
-prevents a confusing bounce-back. An API-direct call setting 5m is left alone by both — acceptable.
+prevents a confusing bounce-back. An API-direct call setting 5m is left alone by the server (5 > 0,
+so `_ensure_today_minutes` returns `None`) but not by the UI: `mins` derives as `max(60, 5) = 60`,
+`touchedDiff` marks the row touched, and the next Save of anything in the sheet rewrites 5 → 60 even
+though the user never touched that row. Intended, not a bug.
 
 ### Checks
 

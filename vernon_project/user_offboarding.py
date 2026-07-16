@@ -50,6 +50,13 @@ def transfer_open_todos_on_disable(doc, method=None):
 		# Recurrence still follows: next-occurrence generation reads assigned_to
 		# fresh from the DB, so future occurrences inherit the new target.
 		frappe.db.set_value("Project Todo", t.name, "assigned_to", target)
+		# The bypass above also skips _ensure_today_allocation's reassign wipe (it
+		# only runs in validate()), so repeat it here: allocation rows are the
+		# outgoing assignee's personal day-plan, meaningless once someone else owns
+		# the todo — and left in place they get misattributed to `target`, since
+		# api/report.py (daily_estimated_time, logbook) reads allocations via the
+		# todo's CURRENT assigned_to.
+		frappe.db.delete("Project Todo Allocation", {"parent": t.name, "parenttype": "Project Todo"})
 		moved += 1
 
 	if orphans:

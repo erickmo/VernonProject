@@ -11,12 +11,14 @@ export function PlanRow({
   minutes,
   floor,
   onSet,
+  onSetRaw,
   onUseEstimate,
 }: {
   todo: ProjectItem
   minutes: number
   floor: number
   onSet: (id: string, v: number) => void
+  onSetRaw: (id: string, v: number) => void
   onUseEstimate: (t: ProjectItem) => void
 }) {
   return (
@@ -54,9 +56,10 @@ export function PlanRow({
         <input
           type="number"
           inputMode="numeric"
-          min={0}
+          min={floor}
           value={minutes || 0}
-          onChange={(e) => onSet(todo.name, Number(e.target.value) || 0)}
+          onChange={(e) => onSetRaw(todo.name, Number(e.target.value) || 0)}
+          onBlur={() => onSet(todo.name, minutes)}
           aria-label="Planned minutes"
           className="w-16 shrink-0 rounded-lg border border-paper-edge bg-paper-card px-1 py-1 text-center text-sm font-bold tabular-nums text-stone-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
