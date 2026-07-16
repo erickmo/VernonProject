@@ -164,16 +164,18 @@ def check_request(employee, leave_type_name, from_date, to_date, has_proof):
 			frappe.throw(_("{0} maksimal {1} hari per pengajuan.").format(t.leave_name, t.day_limit))
 		return
 	# Annual Quota
-	requested = 0
-	for (y, s, e) in year_slices(from_date, to_date):
-		requested += working_days(employee, s, e)
 	# Ceiling: default-annual type honours the per-employee override + prior balance.
 	year = getdate(from_date).year
+	requested = sum(
+		working_days(employee, s, e)
+		for (y, s, e) in year_slices(from_date, to_date)
+		if y == year
+	)
 	if t.is_default_annual:
 		ceiling = effective_quota(employee)
 		used = used_days(employee, year, leave_type=t.name)
 		if year == getdate(nowdate()).year:
-			ceiling += 0  # prior_taken is added to `used`, not ceiling
+			# prior_taken is added to `used`, not ceiling
 			used += prior_taken(employee)
 	else:
 		ceiling = int(t.day_limit or 0)
