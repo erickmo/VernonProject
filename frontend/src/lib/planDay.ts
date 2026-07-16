@@ -92,3 +92,14 @@ export function autoFillPlan(
   }
   return result
 }
+
+// The minutes a row may not go below in plan-my-day. A todo whose deadline is
+// today is pinned to today's plan by the server (ProjectTodo._ensure_today_allocation)
+// and cannot be removed, so the UI must not offer a zero it will hand straight back.
+// The floor is the whole estimate, not 1m: splitting a today-deadline task across
+// days would put the remainder past its own deadline. `today` is passed in to keep
+// this pure. 0 = free (no floor).
+export function planFloor(t: ProjectItem, today: string): number {
+  if (t.is_waiting || !t.deadline || t.deadline !== today) return 0
+  return t.estimated > 0 ? t.estimated : 30
+}

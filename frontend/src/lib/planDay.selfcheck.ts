@@ -1,7 +1,7 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert'
 import type { ProjectItem } from './types'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext } from './planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor } from './planDay'
 import { byAllocationAsc } from './format'
 
 // Minimal ProjectItem factory — only the fields these pure fns read.
@@ -57,6 +57,15 @@ const sorted = [
   item({ name: 'small', today_allocation: 15, estimated: 0 }),
 ].sort(byAllocationAsc)
 assert.deepEqual(sorted.map((t) => t.name), ['small', 'big'], 'fewest minutes first')
+
+// planFloor: a today-deadline todo is pinned to today's plan at (at least) its estimate.
+const TODAY = '2026-07-16'
+assert.equal(planFloor(item({ deadline: TODAY, estimated: 60 }), TODAY), 60, 'due today → floor = estimate')
+assert.equal(planFloor(item({ deadline: TODAY, estimated: 0 }), TODAY), 30, 'due today, no estimate → floor = 30')
+assert.equal(planFloor(item({ deadline: TODAY, estimated: 60, is_waiting: true }), TODAY), 0, 'waiting → no floor')
+assert.equal(planFloor(item({ deadline: '2026-07-17', estimated: 60 }), TODAY), 0, 'future deadline → no floor')
+assert.equal(planFloor(item({ deadline: '2026-07-15', estimated: 60 }), TODAY), 0, 'overdue → no floor')
+assert.equal(planFloor(item({ deadline: null, estimated: 60 }), TODAY), 0, 'no deadline → no floor')
 
 // autoFillPlan
 const names = (picks: { todo: ProjectItem }[]) => picks.map((p) => p.todo.name)
