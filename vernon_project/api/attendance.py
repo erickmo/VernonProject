@@ -304,6 +304,8 @@ def save_leave_type(name=None, **fields):
 	for f in _LEAVE_TYPE_FIELDS:
 		if f in fields and fields[f] is not None:
 			doc.set(f, fields[f])
+	if int(doc.is_default_annual or 0) == 1 and int(doc.enabled or 0) == 0:
+		return {"status": "error", "message": _("Kategori cuti tahunan default tidak dapat dinonaktifkan.")}
 	doc.save(ignore_permissions=True)
 	# At most one default-annual type — dedupe AFTER save so doc.name is final.
 	if int(doc.is_default_annual or 0) == 1:
@@ -421,7 +423,7 @@ def _shape_exception_rows(names):
 		filters={"name": ["in", names]},
 		fields=[
 			"name", "employee", "exception_type", "from_date", "to_date",
-			"status", "reason", "leave_type", "hr_decision", "hr_by", "hr_reason",
+			"status", "reason", "leave_type", "proof", "hr_decision", "hr_by", "hr_reason",
 		],
 		order_by="from_date desc",
 	)
