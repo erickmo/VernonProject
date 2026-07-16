@@ -4,7 +4,7 @@ import { mobileApi } from '@/lib/api'
 import { keys } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { todayISO, formatEstimate } from '@/lib/format'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext } from '@/lib/planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor } from '@/lib/planDay'
 import { usePreviousShiftShortfall } from '@/hooks/useData'
 import type { ProjectItem } from '@/lib/types'
 
@@ -16,13 +16,24 @@ export function usePlanDay(candidates: ProjectItem[]) {
   const toast = useToast()
   const today = todayISO()
 
+  // A today-deadline todo is pinned to today's plan server-side and cannot be
+  // removed, so every edit path clamps to its floor rather than offering a zero
+  // the server would hand straight back. One clamp in setMin covers the minus
+  // button, the preset chips, "Use est." and a typed 0 — they all route here.
+  const floors = useMemo(
+    () => Object.fromEntries(candidates.map((t) => [t.name, planFloor(t, today)])),
+    [candidates, today],
+  )
   const [mins, setMins] = useState<Record<string, number>>(() =>
-    Object.fromEntries(candidates.map((t) => [t.name, t.today_allocation || 0])),
+    Object.fromEntries(
+      candidates.map((t) => [t.name, Math.max(planFloor(t, today), t.today_allocation || 0)]),
+    ),
   )
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const setMin = (id: string, v: number) => setMins((m) => ({ ...m, [id]: Math.max(0, Math.round(v)) }))
+  const setMin = (id: string, v: number) =>
+    setMins((m) => ({ ...m, [id]: Math.max(floors[id] || 0, Math.round(v)) }))
   const useEstimate = (t: ProjectItem) => setMin(t.name, t.estimated > 0 ? t.estimated : 30)
 
   const visible = useMemo(
@@ -50,7 +61,7 @@ export function usePlanDay(candidates: ProjectItem[]) {
     }
   }
 
-  return { mins, setMin, useEstimate, query, setQuery, visible, total, saving, save }
+  return { mins, setMin, useEstimate, query, setQuery, visible, total, saving, save, floors }
 }
 
 // Silent auto-plan. Mounted on both dashboards, so it fires on load AND every

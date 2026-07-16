@@ -9,11 +9,13 @@ const CHIPS = [15, 30, 60]
 export function PlanRow({
   todo,
   minutes,
+  floor,
   onSet,
   onUseEstimate,
 }: {
   todo: ProjectItem
   minutes: number
+  floor: number
   onSet: (id: string, v: number) => void
   onUseEstimate: (t: ProjectItem) => void
 }) {
@@ -26,6 +28,11 @@ export function PlanRow({
             {todo.project_name}
             {todo.estimated > 0 ? ` · est ${formatEstimate(todo.estimated)}` : ''}
           </p>
+          {floor > 0 && (
+            <p className="mt-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400">
+              Deadline hari ini — wajib di rencana
+            </p>
+          )}
         </div>
         {todo.estimated > 0 && (
           <button
