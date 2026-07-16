@@ -519,13 +519,23 @@ export const mobileApi = {
         penalty_points: number
       }[]
     }>(A + 'my_attendance', { limit }),
-  requestException: (from_date: string, to_date: string, exception_type: 'WFH' | 'Leave', reason?: string) =>
+  requestException: (from_date: string, to_date: string, exception_type: 'WFH' | 'Leave', reason?: string, leave_type?: string, proof?: string) =>
     api.post<{ status: string; message?: string; name?: string }>(A + 'request_exception', {
       from_date,
       to_date,
       exception_type,
       reason,
+      leave_type,
+      proof,
     }),
+  listLeaveTypes: () =>
+    api.get<{ status: string; types: import('./types').LeaveType[] }>(A + 'list_leave_types'),
+  adminListLeaveTypes: () =>
+    api.get<{ status: string; types: import('./types').LeaveType[] }>(A + 'admin_list_leave_types'),
+  saveLeaveType: (payload: Partial<import('./types').LeaveType> & { name?: string }) =>
+    api.post<{ status: string; name?: string; message?: string }>(A + 'save_leave_type', payload),
+  deleteLeaveType: (name: string) =>
+    api.post<{ status: string; message?: string }>(A + 'delete_leave_type', { name }),
   approveException: (exception_id: string, as_hr = false) =>
     api.post<{ status: string; message?: string; approval_status?: string }>(A + 'approve_exception', {
       exception_id,

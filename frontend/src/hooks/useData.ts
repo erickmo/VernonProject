@@ -56,6 +56,7 @@ import type {
   LmsManagedCourse,
   LmsReportRow,
   LmsCompleteResult,
+  LeaveType,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -1617,8 +1618,8 @@ export function useScanAttendance() {
 export function useRequestException() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (vars: { from_date: string; to_date: string; exception_type: 'WFH' | 'Leave'; reason?: string }) => {
-      const res = await mobileApi.requestException(vars.from_date, vars.to_date, vars.exception_type, vars.reason)
+    mutationFn: async (vars: { from_date: string; to_date: string; exception_type: 'WFH' | 'Leave'; reason?: string; leave_type?: string; proof?: string }) => {
+      const res = await mobileApi.requestException(vars.from_date, vars.to_date, vars.exception_type, vars.reason, vars.leave_type, vars.proof)
       if (res.status !== 'ok') throw new Error(res.message || 'Request failed')
       return res
     },
@@ -1633,6 +1634,42 @@ export function useMyLeaders() {
   return useQuery({
     queryKey: keys.myLeaders,
     queryFn: async () => (await mobileApi.myLeaders()).leaders,
+  })
+}
+
+export function useLeaveTypes() {
+  return useQuery({
+    queryKey: ['leave-types'],
+    queryFn: async () => (await mobileApi.listLeaveTypes()).types,
+  })
+}
+
+export function useAdminLeaveTypes() {
+  return useQuery({
+    queryKey: ['admin-leave-types'],
+    queryFn: async () => (await mobileApi.adminListLeaveTypes()).types,
+  })
+}
+
+export function useSaveLeaveType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Partial<LeaveType> & { name?: string }) => mobileApi.saveLeaveType(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-leave-types'] })
+      qc.invalidateQueries({ queryKey: ['leave-types'] })
+    },
+  })
+}
+
+export function useDeleteLeaveType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => mobileApi.deleteLeaveType(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-leave-types'] })
+      qc.invalidateQueries({ queryKey: ['leave-types'] })
+    },
   })
 }
 

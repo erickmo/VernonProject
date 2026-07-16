@@ -996,6 +996,7 @@ export type EmployeeSoft = {
   emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
   education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
   religion?: string; verse_enabled?: 0 | 1;
+  gender?: 'Male' | 'Female';
 }
 
 export type DailyVerse = { reference: string; text: string } | null
@@ -1036,6 +1037,20 @@ export type AttendanceExceptionRow = {
   hr_decision: ExceptionDecision
   hr_by?: string
   hr_reason?: string
+  leave_type?: string
+}
+
+export type LeaveType = {
+  name: string
+  leave_name: string
+  limit_kind: 'Annual Quota' | 'Per Event' | 'Documented'
+  day_limit: number
+  gender: 'Any' | 'Male' | 'Female'
+  requires_proof: 0 | 1
+  paid: 0 | 1
+  is_default_annual: 0 | 1
+  description?: string
+  sort_order: number
 }
 
 // ---- Papan Iklan (classified ads) ----
