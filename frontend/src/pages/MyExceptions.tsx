@@ -33,7 +33,7 @@ export default function MyExceptions() {
             >
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-stone-800 dark:text-slate-100">
-                  {e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}
+                  {e.leave_type || (e.exception_type === 'Leave' ? 'Cuti' : 'WFH')}
                 </p>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge[e.status] || badge.Pending}`}>
                   {e.status}

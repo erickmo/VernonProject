@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -35,11 +35,18 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ]
 
+const GENDER_OPTIONS: { value: 'Male' | 'Female'; label: string }[] = [
+  { value: 'Male', label: 'Laki-laki' },
+  { value: 'Female', label: 'Perempuan' },
+]
+
 export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: () => void }) {
   const { data: boot, isLoading } = useBoot()
   const { data: catalog } = useAvatarCatalog()
   const { data: gami } = useGamification()
   const claimDaily = useClaimDaily()
+  const saveProfile = useSaveMyProfile()
+  const gender = boot?.employee?.gender ?? 'Male'
   const qc = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
@@ -365,6 +372,18 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               Appearance
             </p>
             <Segmented options={THEME_OPTIONS} value={theme} onChange={handleThemeChange} />
+          </div>
+
+          {/* Gender */}
+          <div className="mt-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-3.5 shadow-card">
+            <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+              Gender
+            </p>
+            <Segmented
+              options={GENDER_OPTIONS}
+              value={gender}
+              onChange={(v: 'Male' | 'Female') => saveProfile.mutate({ gender: v })}
+            />
           </div>
 
           <PasskeyCard />
