@@ -342,8 +342,8 @@ git commit -m "build(web): adaptive-canvas bundle (includes pending assign-overl
 - [ ] **Step 3: Purge Cloudflare + verify bundle**
 
 ```bash
-curl -s -X POST "https://api.cloudflare.com/client/v4/zones/bd13d791fab46ac955b9b068edefc049/purge_cache" \
-  -H "Authorization: Bearer $(cat ~/.cf_token)" -H "Content-Type: application/json" \
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/<cloudflare-zone-id>/purge_cache" \
+  -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" \
   --data '{"purge_everything":true}'
 ```
 

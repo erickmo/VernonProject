@@ -34,7 +34,8 @@ app_include_js = "/assets/vernon_project/js/desk_navbar.js"
 # (public/docs -> ../../docs) used to expose them at /assets/vernon_project/docs/,
 # but nginx serves /assets as static files, so Frappe auth never runs on that path
 # and the whole docs tree — including docs/superpowers/ internal design specs — was
-# world-readable. Symlink and redirect both removed. Read the docs from the repo.
+# world-readable. Symlink and redirect both removed; www/docs.py now serves /docs
+# to logged-in users only. Do not re-add a symlink or anything under public/.
 website_redirects = [
 	# Desktop app moved /web -> /w; keep old links working (preserve sub-path).
 	{"source": r"/web/(.*)", "target": r"/w/\1"},
@@ -48,7 +49,15 @@ website_redirects = [
 website_route_rules = [
 	{"from_route": "/m/<path:app_path>", "to_route": "m"},
 	{"from_route": "/w/<path:app_path>", "to_route": "w"},
+	# Login-gated docs. Unlike /m and /w there is no www/docs.html: TemplatePage needs a
+	# Jinja template and cannot emit raw .css/.js/.md bytes, so the DocsPage renderer below
+	# serves the files. This rule only parks the sub-path in form_dict.app_path.
+	{"from_route": "/docs/<path:app_path>", "to_route": "docs"},
 ]
+
+# Custom renderers are tried before frappe's built-ins, so DocsPage owns /docs and can
+# enforce the Guest check that /assets never could. See www/docs.py.
+page_renderer = ["vernon_project.www.docs.DocsPage"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/vernon_project/css/vernon_project.css"

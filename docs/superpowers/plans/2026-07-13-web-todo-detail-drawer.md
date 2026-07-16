@@ -212,8 +212,8 @@ git commit -m "build(web): todo detail drawer bundle"
 - [ ] **Step 3: Purge Cloudflare + verify bundle non-zero**
 
 ```bash
-curl -s -X POST "https://api.cloudflare.com/client/v4/zones/bd13d791fab46ac955b9b068edefc049/purge_cache" \
-  -H "Authorization: Bearer $(cat ~/.cf_token)" -H "Content-Type: application/json" \
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/<cloudflare-zone-id>/purge_cache" \
+  -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" \
   --data '{"purge_everything":true}'
 ```
 Expected: `"success":true`. Then confirm the live JS bundle referenced by

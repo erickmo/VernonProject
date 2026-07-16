@@ -1,0 +1,117 @@
+<!doctype html>
+<!-- Bahasa is the failure state: data-lang is "id" in the source, so JS-off and
+     mid-load both render Indonesian. English is only ever reachable via the toggle. -->
+<html lang="id" data-lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VernonProject</title>
+  <!-- No Google Fonts, no CDN, no runtime network. styles.css uses system-ui/ui-monospace. -->
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="index">
+
+<!-- Nav is injected by app.js from one array. The old site hand-copied its nav
+     markup into every page; that duplication is what actually rotted. Never
+     write the links here — add them to NAV in app.js instead. -->
+<header data-vp-nav></header>
+
+<main class="content">
+
+  <h1 class="page-title">VernonProject</h1>
+  <p class="page-lead">
+    <span lang="id">Dokumentasi yang dirender dari kode: setiap angka di halaman ini dihitung
+      oleh generator, lengkap dengan glob yang menghasilkannya. Tidak ada angka yang diketik tangan.</span>
+    <span lang="en">Documentation rendered from the code: every number on this page is counted by
+      the generator and ships with the glob that produced it. No number here is typed by hand.</span>
+  </p>
+
+  <div class="hero__cta">
+    <!-- Deep link, never a mirror: release notes live in App Release rows and are the
+         release surface. Restating them here would rot on the next release.
+         ponytail: absolute path — correct wherever /docs and /m share an origin, dead
+         from file://. Fine: the release feed needs the app (and a login) anyway. -->
+    <a class="btn btn--primary" href="/m/whats-new">
+      <span lang="id">Apa yang baru</span><span lang="en">What's new</span>
+    </a>
+  </div>
+
+  <h2>
+    <span lang="id">Jelajahi</span><span lang="en">Explore</span>
+  </h2>
+  <!-- The hub is the router; there is no sidebar.
+       ponytail: cards, not tiles. In this design a tile span encodes real mass from
+       generated data — a hand-picked span on a hand-written tile would be a span that
+       means nothing, diluting the only signal the mosaic sends. Upgrade path: if these
+       ever earn a measured size, move them into the bento and let the generator span them.
+       Links keep the .html: file:// needs the real filename, the www controller resolves
+       both, and Cloudflare strips the extension with a 301. -->
+  <div class="card-grid cols-3">
+    <a class="card" href="system.html">
+      <h3 class="card__title"><span lang="id">Sistem</span><span lang="en">System</span></h3>
+      <p class="card__desc">
+        <span lang="id">Referensi lengkap: DocType, ERD, endpoint, wiring, laporan, dan cakupan
+          dokumentasi — seluruhnya dirender dari kode.</span>
+        <span lang="en">The full reference: DocTypes, ERD, endpoints, wiring, reports and doc
+          coverage — all rendered from the code.</span>
+      </p>
+      <span class="card__arrow"><span lang="id">Buka referensi &rarr;</span><span lang="en">Open the reference &rarr;</span></span>
+    </a>
+
+    <a class="card" href="development.html">
+      <h3 class="card__title"><span lang="id">Pengembangan</span><span lang="en">Development</span></h3>
+      <p class="card__desc">
+        <span lang="id">Alasan di balik keputusan teknis, siklus hidup todo, dan indeks catatan
+          desain — hal yang tidak bisa dibaca ulang dari kode.</span>
+        <span lang="en">The why behind the technical decisions, the todo lifecycle, and the design
+          log index — the part you cannot read back out of the code.</span>
+      </p>
+      <span class="card__arrow"><span lang="id">Baca alasannya &rarr;</span><span lang="en">Read the why &rarr;</span></span>
+    </a>
+
+    <a class="card" href="user.html">
+      <h3 class="card__title"><span lang="id">Pengguna</span><span lang="en">User</span></h3>
+      <p class="card__desc">
+        <span lang="id">Panduan tugas sehari-hari: ajukan cuti, scan absensi, tukar poin, dan
+          kerjakan todo.</span>
+        <span lang="en">Everyday task recipes: request leave, scan attendance, redeem points, and
+          work a todo.</span>
+      </p>
+      <span class="card__arrow"><span lang="id">Lihat panduan &rarr;</span><span lang="en">See the recipes &rarr;</span></span>
+    </a>
+  </div>
+
+  <h2>
+    <span lang="id">Angka</span><span lang="en">By the numbers</span>
+  </h2>
+  <p>
+    <span lang="id">Setiap angka membawa glob asalnya. Angka telanjang tidak bisa dibantah —
+      pembaca tidak tahu apa yang dihitung, jadi tidak ada yang bisa menangkapnya saat salah.</span>
+    <span lang="en">Every number carries the glob it came from. A bare integer is unfalsifiable —
+      no reader can tell what it counts, so no reader can catch it when it goes wrong.</span>
+  </p>
+  <!-- app.js builds the .bento inside this host; it stays classless on purpose. -->
+  <div data-vp-render="stats"></div>
+
+  <h2>
+    <span lang="id">Klaster</span><span lang="en">Clusters</span>
+  </h2>
+  <p>
+    <span lang="id">Ke-<span data-vp="counts.doctypes.n"></span> DocType dikelompokkan ke dalam
+      <span data-vp="counts.clusters.n"></span> klaster. Ukuran tiap kotak mengikuti bobot
+      sebenarnya — jumlah field dan besar controller — bukan selera tata letak. Kotak yang
+      sama besar adalah kebohongan tentang di mana kerumitan berada, ditulis dalam CSS.</span>
+    <span lang="en">The <span data-vp="counts.doctypes.n"></span> DocTypes group into
+      <span data-vp="counts.clusters.n"></span> clusters. Each tile is sized by real mass — field
+      count and controller bytes — not by layout taste. Equal tiles would be a lie about where the
+      complexity lives, told in CSS.</span>
+  </p>
+  <div data-vp-render="clusters"></div>
+
+</main>
+
+<!-- data.js defines window.VP and must load first; app.js reads it. -->
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

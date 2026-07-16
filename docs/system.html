@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- Reference tier. Zero prose, zero hand-written facts, zero typed integers.
+     Every number on this page arrives via [data-vp] or a renderer, out of
+     docs/assets/data.js. If you are about to type a digit here, you are about
+     to reintroduce "14 DocTypes".
+     Identifiers (fieldname, Datetime, get_app_releases, hooks.py) are never
+     translated — translating them breaks grep, which is the point of a
+     reference. That is why this page carries almost no bilingual surface. -->
+<html lang="id" data-lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistem · VernonProject</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="system">
+
+<header data-vp-nav></header>
+
+<div class="layout">
+  <main class="content">
+
+    <h1 class="page-title"><span lang="id">Sistem</span><span lang="en">System</span></h1>
+
+    <!-- ===================================================== DocTypes -->
+    <h2 id="doctypes"><span lang="id">DocType &amp; field</span><span lang="en">DocTypes &amp; fields</span></h2>
+    <div class="tile__glob">
+      <span data-vp="counts.doctypes.n"></span> DocType ·
+      <span lang="id">dari </span><span lang="en">from </span><span data-vp="counts.doctypes.from"></span>
+    </div>
+    <div class="tile__glob">
+      <span data-vp="counts.fields.n"></span> field ·
+      <span lang="id">dari </span><span lang="en">from </span><span data-vp="counts.fields.from"></span>
+    </div>
+    <input type="search" data-vp-filter="doctypes" placeholder="filter…" aria-label="filter">
+    <div data-vp-render="doctypes"></div>
+
+    <!-- ===================================================== ERD -->
+    <!-- No count here on purpose: window.VP.counts has no {n, from} for links,
+         and an integer with no glob attached is exactly the unfalsifiable thing
+         the constitution bans. The table is its own count. -->
+    <h2 id="erd"><span lang="id">Relasi antar DocType (fieldtype Link)</span><span lang="en">DocType relations (fieldtype Link)</span></h2>
+    <div data-vp-render="erd"></div>
+
+    <!-- ===================================================== API -->
+    <h2 id="api"><span lang="id">Endpoint (whitelist)</span><span lang="en">Endpoints (whitelist)</span></h2>
+    <div class="tile__glob">
+      <span data-vp="counts.endpoints.n"></span> endpoint ·
+      <span lang="id">dari </span><span lang="en">from </span><span data-vp="counts.endpoints.from"></span>
+    </div>
+    <div class="tile__glob">
+      <span data-vp="counts.modules.n"></span> <span lang="id">modul</span><span lang="en">modules</span> ·
+      <span lang="id">dari </span><span lang="en">from </span><span data-vp="counts.modules.from"></span>
+    </div>
+    <input type="search" data-vp-filter="api" placeholder="filter…" aria-label="filter">
+    <div data-vp-render="api"></div>
+
+    <!-- ===================================================== Wiring -->
+    <h2 id="wiring"><span lang="id">Perkabelan (hooks.py)</span><span lang="en">Wiring (hooks.py)</span></h2>
+    <div data-vp-render="wiring"></div>
+
+    <!-- ===================================================== Reports -->
+    <h2 id="reports"><span lang="id">Laporan</span><span lang="en">Reports</span></h2>
+    <div class="tile__glob">
+      <span data-vp="counts.reports.n"></span> <span lang="id">laporan</span><span lang="en">reports</span> ·
+      <span lang="id">dari </span><span lang="en">from </span><span data-vp="counts.reports.from"></span>
+    </div>
+    <div data-vp-render="reports"></div>
+
+    <!-- ===================================================== Coverage -->
+    <h2 id="coverage"><span lang="id">Cakupan dokumentasi</span><span lang="en">Documentation coverage</span></h2>
+    <p>
+      <span lang="id">Situs ini melaporkan bug terhadap kodenya sendiri: daftar pekerjaan, bukan aib. Deskripsi ditulis di <code>description</code> pada DocType JSON dan di docstring endpoint — satu suntingan, dua permukaan.</span>
+      <span lang="en">This is the docs site filing a bug against its own code: a backlog, not an embarrassment. Descriptions belong in the DocType JSON <code>description</code> and in endpoint docstrings — one edit, two surfaces.</span>
+    </p>
+    <div data-vp-render="coverage"></div>
+
+  </main>
+  <aside class="toc" id="toc"></aside>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

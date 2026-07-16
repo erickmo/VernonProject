@@ -2026,7 +2026,7 @@ Expected: migrate completes, restart returns without error.
 
 - [ ] **Step 3: Purge the Cloudflare asset cache**
 
-`/assets` is cached for a year behind Cloudflare and a stale/poisoned bundle shows a blank app. Purge per `vernon-cloudflare-asset-cache` (token at `~/.cf_token`, zone `bd13d791fab46ac955b9b068edefc049`), and bump the service-worker `ASSET_CACHE` version if the SW file is part of this build.
+`/assets` is cached for a year behind Cloudflare and a stale/poisoned bundle shows a blank app. Purge per `vernon-cloudflare-asset-cache` (token at `<cf-token-path>`, zone `<cloudflare-zone-id>`), and bump the service-worker `ASSET_CACHE` version if the SW file is part of this build.
 
 - [ ] **Step 4: Grant the role**
 

@@ -1,0 +1,408 @@
+<!doctype html>
+<!-- Explanation tier: the only prose on this site that cannot be recovered from the
+     code, and therefore the only prose that earns its keep. Everything a reader could
+     get by reading a file belongs on system.html, generated.
+
+     Two hard rules for anyone editing this page:
+       1. NEVER type a digit that describes the app. Counts interpolate:
+          <span data-vp="counts.doctypes.n"></span>. A hand-typed integer here is how
+          "14 DocTypes" survived 31 days on the site this one replaced.
+       2. Identifiers (Project Todo, no_store_spa_shell, generate_next, Point Ledger)
+          are named FREELY — a rename breaks the code first, so an identifier cannot
+          rot silently the way a number can. Ban the typing of counts, not the mention
+          of names.
+
+     Design rationale only. No deploy steps, no bench commands, no infrastructure ids.
+     Those live where the agent actually reads them; an HTML copy is a second truth
+     competing with the only truth that works. -->
+<html lang="id" data-lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pengembangan · VernonProject</title>
+  <!-- No Google Fonts, no CDN, no runtime network. styles.css uses system-ui/ui-monospace. -->
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="development">
+
+<header data-vp-nav></header>
+
+<div class="layout">
+  <main class="content">
+
+    <h1 class="page-title"><span lang="id">Pengembangan</span><span lang="en">Development</span></h1>
+    <p class="page-lead">
+      <span lang="id">Alasan, bukan referensi. Setiap catatan di bawah menjawab pertanyaan yang
+        tidak bisa dijawab dengan membaca kodenya: kenapa dibangun begitu, dan apa yang rusak
+        kalau diubah. Daftar DocType, endpoint, dan wiring ada di halaman Sistem — dirender dari
+        kode, bukan diketik.</span>
+      <span lang="en">Rationale, not reference. Every note below answers the question the code
+        cannot answer for itself: why it is built this way, and what breaks if you change it.
+        The DocType, endpoint and wiring listings live on the System page — rendered from the
+        code, never typed.</span>
+    </p>
+
+    <h2 id="why"><span lang="id">Kenapa begini</span><span lang="en">Why it is built this way</span></h2>
+
+    <!-- ============================================================ 1 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa /w sengaja tidak punya service worker</span><span lang="en">Why /w deliberately has no service worker</span></h3>
+      <p>
+        <span lang="id">Hanya <code>/m</code> yang mendaftarkan service worker (<code>vernon_sw.js</code>,
+          scope <code>/m</code>): <code>/m</code> adalah PWA yang bisa dipasang — punya manifest, ikon,
+          shell offline, dan push. <code>/w</code> tidak mendaftarkan apa pun, dan tidak ada file service
+          worker kedua di repo ini.</span>
+        <span lang="en"><code>/m</code> is the only app that registers a service worker
+          (<code>vernon_sw.js</code>, scope <code>/m</code>): it is the installable PWA — manifest, icons,
+          offline shell, push. <code>/w</code> registers nothing, and no second service worker file exists
+          in this repo.</span>
+      </p>
+      <p>
+        <span lang="id">Itu bukan pekerjaan yang belum sempat dikerjakan. <code>/w</code> adalah aplikasi
+          desktop di dalam tab yang memang selalu online; satu-satunya yang akan ditambahkan service worker
+          di situ adalah lapisan cache di depan shell — persis benda yang catatan berikutnya ada untuk
+          dimatikan.</span>
+        <span lang="en">That is not an unfinished task. <code>/w</code> is a desktop app in a tab that is
+          online by definition; the only thing a service worker would add there is a cache layer in front of
+          the shell — precisely the thing the next note exists to switch off.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 2 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa <code>no_store_spa_shell</code> ada</span><span lang="en">Why <code>no_store_spa_shell</code> exists</span></h3>
+      <p>
+        <span lang="id">Shell <code>/m</code> dan <code>/w</code> menunjuk file JS/CSS yang namanya
+          mengandung hash isi. Setiap build menerbitkan hash baru <em>dan menghapus</em> yang lama. Frappe
+          menyajikan HTML shell tanpa header <code>Cache-Control</code>, jadi browser boleh menyimpannya
+          secara heuristik — dan shell lama yang tersimpan itu menunjuk ke JS yang sudah tidak ada di disk.
+          Hasilnya: sesudah deploy aplikasi jadi layar putih, tanpa pesan error, dan hanya pulih setelah
+          refresh manual.</span>
+        <span lang="en">The <code>/m</code> and <code>/w</code> shells reference JS/CSS by content-hashed
+          filename. Every build emits fresh hashes <em>and deletes</em> the old files. Frappe serves the
+          shell HTML with no <code>Cache-Control</code> header, so a browser is free to cache it
+          heuristically — and a cached OLD shell points at JS that no longer exists on disk. The result:
+          after a deploy the app white-screens, with no error, and only recovers on a manual refresh.</span>
+      </p>
+      <p>
+        <span lang="id">Jebakannya: <code>no_cache=1</code> di controller www hanya mematikan cache halaman
+          redis di sisi server — ia tidak mengirim header cache HTTP sama sekali. Karena itu hook
+          <code>after_request</code> menandai <em>hanya</em> HTML shell sebagai <code>no-store</code>; aset
+          ber-hash di <code>/assets</code> tetap immutable dan boleh di-cache lama. Yang berubah kecil,
+          yang besar tetap cepat.</span>
+        <span lang="en">The trap: <code>no_cache=1</code> in the www controllers only disables Frappe's
+          server-side redis page cache — it emits no HTTP caching header at all. So an
+          <code>after_request</code> hook marks <em>only</em> the shell HTML <code>no-store</code>; the
+          hashed assets under <code>/assets</code> stay immutable and long-cacheable. The tiny thing
+          revalidates, the big things stay fast.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 3 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa keterlambatan dihitung saat Done, bukan saat disetujui</span><span lang="en">Why lateness clocks at Done, not at approval</span></h3>
+      <p>
+        <span lang="id">Perhitungan poin membandingkan deadline dengan saat assignee menyerahkan
+          pekerjaan — waktu todo dipindahkan ke Done — bukan saat leader menyetujuinya. Alasannya satu
+          kalimat: <strong>review yang lambat tidak boleh menghukum orang yang sudah selesai tepat
+          waktu.</strong> Kalau jam berjalan sampai persetujuan, denda keterlambatan assignee ditentukan
+          oleh kalender orang lain.</span>
+        <span lang="en">The point calculation compares the deadline against the moment the assignee handed
+          the work off — when the todo moved to Done — not the moment a leader approved it. The reason is
+          one sentence: <strong>a slow review must never penalize someone who finished on time.</strong>
+          If the clock ran to approval, the assignee's late penalty would be set by someone else's
+          calendar.</span>
+      </p>
+      <p>
+        <span lang="id">Persetujuan tetap menentukan <em>kapan</em> poin muncul — poin baru dicetak di
+          Completed — tapi tidak pernah menentukan <em>berapa</em>. Todo lama yang tidak pernah mencatat
+          timestamp Done punya rantai fallback, jadi tidak ada todo yang kehilangan perhitungan.</span>
+        <span lang="en">Approval still decides <em>when</em> the points appear — they only mint at
+          Completed — but never <em>how many</em>. Older todos that never recorded a Done timestamp fall
+          back through a chain, so no todo loses its calculation.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 4 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa status Inbox sengaja status biasa, bukan mode</span><span lang="en">Why Project.status "Inbox" is deliberately a normal status</span></h3>
+      <p>
+        <span lang="id">Inbox adalah salah satu opsi biasa di <code>Project.status</code>, sederajat dengan
+          Ongoing dan Closed. Ia sengaja <em>bukan</em> flag terpisah dan bukan mode aplikasi: karena cuma
+          label biasa, proyek Inbox tetap bisa dijadwalkan, dicari, difilter, dan diberi todo tanpa satu
+          baris kode khusus.</span>
+        <span lang="en">Inbox is an ordinary option on <code>Project.status</code>, a peer of Ongoing and
+          Closed. It is deliberately <em>not</em> a separate flag and not an app mode: because it is just a
+          label, an Inbox project stays schedulable, searchable, filterable and todo-able without a single
+          line of special-case code.</span>
+      </p>
+      <p>
+        <span lang="id">Kuncinya: Inbox bukan Closed, tapi juga bukan Ongoing. Penentuan leader untuk
+          persetujuan cuti mencocokkan <code>Ongoing</code> secara persis, jadi proyek Inbox terkecualikan
+          dengan sendirinya — tanpa daftar pengecualian yang harus diingat orang saat menambah status
+          baru.</span>
+        <span lang="en">The point: Inbox is not Closed, but it is not Ongoing either. Leader derivation for
+          leave approval exact-matches <code>Ongoing</code>, so Inbox projects exclude themselves — with no
+          exclusion list for anyone to remember when a new status lands.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 5 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa skor, level, dan badge semuanya diturunkan dari Point Ledger</span><span lang="en">Why score, level and badge all derive from Point Ledger</span></h3>
+      <p>
+        <span lang="id">Tidak ada penghitung yang disimpan di mana pun. Skor seumur hidup adalah
+          penjumlahan baris Point Ledger milik user. "Jumlah todo selesai" adalah hitungan baris Point
+          Ledger bersumber Todo dengan peran Assignee — bukan hitungan dokumen Project Todo. Poin badge
+          adalah penjumlahan yang sama dengan sumber hadiah/hibah dikeluarkan. Semuanya kueri, bukan
+          field.</span>
+        <span lang="en">Nothing is stored as a counter. Lifetime score is the sum of a user's Point Ledger
+          rows. "Todos completed" is a count of Point Ledger rows with source Todo and role Assignee — not
+          a count of Project Todo documents. Badge points are the same sum with the reward/grant sources
+          excluded. All of it is a query, not a field.</span>
+      </p>
+      <p>
+        <span lang="id">Konsekuensinya yang penting: tidak ada tally kedua yang bisa berselisih dengan yang
+          pertama. Batalkan penyelesaian sebuah todo dan barisnya dicabut — skor turun sendiri, tanpa ada
+          yang perlu "menghitung ulang". Dan reset bersih berarti menghapus baris ledger; tidak ada tempat
+          lain yang diam-diam memberi poin kembali.</span>
+        <span lang="en">The consequence that matters: there is no second tally that can disagree with the
+          first. Un-complete a todo and its rows are pulled — the score falls out on its own, with nothing
+          to "recalculate". And a clean reset means deleting ledger rows; nothing else quietly re-grants
+          them.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 6 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa <code>@</code> dibagi dua aplikasi sementara <code>@web</code> tidak</span><span lang="en">Why <code>@</code> is shared across both apps while <code>@web</code> is not</span></h3>
+      <p>
+        <span lang="id">Ada dua frontend: yang mobile melayani <code>/m</code>, yang web melayani
+          <code>/w</code>. Di build mobile, <code>@</code> menunjuk ke <code>src</code> miliknya sendiri.
+          Di build web, <code>@</code> menunjuk <em>ke src milik mobile</em>, dan <code>@web</code> menunjuk
+          ke src web. Jadi alias itu bukan gaya penulisan — ia adalah batas kepemilikan.</span>
+        <span lang="en">There are two frontends: the mobile one serves <code>/m</code>, the web one serves
+          <code>/w</code>. In the mobile build, <code>@</code> points at its own <code>src</code>. In the
+          web build, <code>@</code> points <em>at the mobile app's src</em>, and <code>@web</code> points at
+          the web src. The alias is not a style choice — it is an ownership boundary.</span>
+      </p>
+      <p>
+        <span lang="id">Praktisnya: menyunting tipe atau hook di bawah <code>@</code> mengubah
+          <strong>kedua</strong> aplikasi sekaligus, dan bisa merusak build yang tidak sedang kamu buka.
+          <code>@web</code> aman — hanya web. Ada jebakan kedua yang sudah terpasang penangkalnya: file
+          bersama menarik dependensi dari <code>node_modules</code> milik mobile, sehingga tanpa
+          <code>dedupe</code> ada dua salinan pustaka singleton (provider di salinan satu, hook membaca
+          salinan dua). Jangan lepas dedupe itu.</span>
+        <span lang="en">In practice: editing a type or hook under <code>@</code> changes <strong>both</strong>
+          apps at once, and can break the build you do not have open. <code>@web</code> is safe — web only.
+          A second trap already has its guard in place: shared files resolve bare dependencies from the
+          mobile app's <code>node_modules</code>, so without <code>dedupe</code> you get two copies of
+          singleton libraries (the provider in one copy, hooks reading the other). Do not remove that
+          dedupe.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 7 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa todo berulang punya dua jalur</span><span lang="en">Why recurring todos have two paths</span></h3>
+      <p>
+        <span lang="id">Kejadian berikutnya bisa lahir dari dua tempat. Pertama: saat sebuah todo berulang
+          mencapai Completed, controller-nya langsung mengantrikan penerus — supaya orang tidak perlu
+          menunggu sampai besok untuk melihat pekerjaan berikutnya. Kedua: sebuah job harian menggulirkan
+          setiap seri aktif ketika tanggalnya tiba — supaya seri yang <em>tidak pernah</em> diselesaikan
+          tetap berjalan.</span>
+        <span lang="en">The next occurrence can be born in two places. First: when a recurring todo reaches
+          Completed, its controller queues the successor immediately — so nobody waits until tomorrow to see
+          their next piece of work. Second: a daily job rolls every active series forward once its date
+          arrives — so a series that is <em>never</em> completed still runs.</span>
+      </p>
+      <p>
+        <span lang="id">Keduanya memanggil <code>generate_next</code> yang sama, hanya beda satu flag:
+          jalur on-complete memaksa, jalur scheduler hanya jalan kalau tanggalnya sudah tiba, sehingga
+          kejadian masa depan tidak dibuat lebih awal. Keduanya mengunci akar seri lalu memeriksa duplikat,
+          jadi dua jalur itu tidak bisa saling menerbitkan kembar. <strong>Ini yang perlu diingat:</strong>
+          kejadian baru dibangun di satu tempat, dan field wajib yang baru harus ditangani di situ — kalau
+          tidak, scheduler akan gagal diam-diam dan seri berhenti tanpa ada yang sadar.</span>
+        <span lang="en">Both call the same <code>generate_next</code>, differing by one flag: the on-complete
+          path forces, the scheduler path only fires once the date has arrived, so a still-open future
+          occurrence is never pre-generated. Both lock the series root and then check for duplicates, so the
+          two paths cannot race each other into twins. <strong>The thing to remember:</strong> the new
+          occurrence is built in exactly one place, and any new required field has to be handled there — or
+          the scheduler fails silently and the series just stops, with nobody noticing.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 8 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa path DocType bersarang tiga kali</span><span lang="en">Why DocType paths are triple-nested</span></h3>
+      <p>
+        <span lang="id">Sebuah DocType hidup di <code>vernon_project/vernon_project/doctype/project_todo/</code>:
+          aplikasi, lalu modul, lalu <code>doctype</code>, lalu namanya. Nama yang berulang itu bukan salah
+          ketik — yang luar adalah paket aplikasi, yang dalam adalah modul Frappe. Semua DocType di sini ada
+          di satu modul yang sama.</span>
+        <span lang="en">A DocType lives at <code>vernon_project/vernon_project/doctype/project_todo/</code>:
+          app, then module, then <code>doctype</code>, then its own name. The repeated name is not a typo —
+          the outer one is the app package, the inner one is the Frappe module. Every DocType here sits in
+          that same single module.</span>
+      </p>
+      <p>
+        <span lang="id">Efek sampingnya nyata bagi siapa pun yang menghitung: satu modul untuk semuanya
+          berarti pengelompokan klaster di halaman Beranda tidak ada di data mana pun — ia dipetakan tangan
+          di dalam generator, di sebelah assert yang menolak DocType yang belum dipetakan. Dan menghitung
+          <em>direktori</em> selalu berbohong: ada <code>__init__.py</code> dan <code>__pycache__</code>
+          yang ikut terjaring. Yang benar adalah membaca file JSON-nya dan menyaring apa isinya — persis
+          yang dilakukan generator.</span>
+        <span lang="en">The side effects are real for anyone counting: one module for everything means the
+          cluster grouping on the Home page exists in no data at all — it is hand-mapped inside the
+          generator, beside an assert that rejects any unmapped DocType. And counting <em>directories</em>
+          always lies: <code>__init__.py</code> and <code>__pycache__</code> get caught in the net. The
+          honest way is to read the JSON files and filter on what is inside them — which is exactly what the
+          generator does.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ 9 -->
+    <div class="note">
+      <h3><span lang="id">Kenapa situs ini tidak punya spanduk "terakhir diperbarui"</span><span lang="en">Why this site has no "last updated" banner</span></h3>
+      <p>
+        <span lang="id">Situs dokumentasi sebelumnya mati karena manusia mengetik fakta yang sudah diketahui
+          kode, dan angka telanjang tidak bisa dibantah: pembaca tidak tahu apa yang dihitung, jadi tidak
+          ada yang bisa menangkapnya saat salah. Karena itu satu aturan: <strong>kalau kode tahu, manusia
+          tidak boleh mengetiknya — dan setiap angka tampil bersama glob yang menghasilkannya.</strong>
+          Halaman Sistem seluruhnya dirender dari generator; halaman ini hanya berisi alasan, karena alasan
+          adalah satu-satunya hal yang tidak bisa dibaca ulang dari kode.</span>
+        <span lang="en">The previous docs site died because humans typed facts the code already knew, and a
+          bare integer is unfalsifiable: no reader can tell what it counts, so no reader can catch it when it
+          goes wrong. Hence one rule: <strong>if the code knows it, no human may type it — and every count
+          ships with the glob that produced it.</strong> The System page is rendered entirely by the
+          generator; this page carries only rationale, because rationale is the one thing you cannot read
+          back out of the code.</span>
+      </p>
+      <p>
+        <span lang="id">Spanduk kesegaran sengaja tidak ada. Spanduk yang menyala di saat yang salah akan
+          jadi hiasan dinding dalam dua bulan, dan tidak ada yang membacanya lagi justru ketika ia benar.
+          Gantinya: jalankan ulang generator dan lihat apakah git melaporkan perubahan — kalau ada, situs
+          ini tertinggal. Batas jujurnya: kalau tidak ada yang menjalankan generator, tier referensi basi
+          secara diam-diam. Itu pertukaran yang disengaja, karena dengan nol fakta ketikan tangan, dokumen
+          basi jadi <em>tidak lengkap</em>, bukan <em>salah</em>.</span>
+        <span lang="en">There is deliberately no freshness banner. A banner that fires at the wrong moment is
+          wallpaper by month two, and nobody reads it precisely when it is right. Instead: re-run the
+          generator and see whether git reports a change — if it does, this site is behind. The honest
+          ceiling: if nobody runs the generator, the reference tier goes stale silently. That is a deliberate
+          trade, because with zero hand-typed facts stale docs are <em>incomplete</em>, not
+          <em>wrong</em>.</span>
+      </p>
+    </div>
+
+    <!-- ============================================================ lifecycle -->
+    <h2 id="lifecycle"><span lang="id">Siklus hidup Project Todo</span><span lang="en">The Project Todo lifecycle</span></h2>
+    <p>
+      <span lang="id">Ini satu-satunya alur kerja yang layak diberi prosa panjang, karena inilah
+        aplikasinya. Project Todo adalah DocType terbesar di repo ini — paling banyak field, controller
+        paling gemuk, lebih berat dari beberapa klaster lain digabung. Ukuran persisnya ada di halaman
+        Sistem dan di mosaik klaster halaman Beranda, dihitung generator; di sini yang penting bukan
+        angkanya, melainkan bentuk alurnya.</span>
+      <span lang="en">This is the one workflow that earns real prose, because it <em>is</em> the app. Project
+        Todo is the largest DocType in this repo — the most fields, the fattest controller, heavier than
+        several other clusters combined. The exact sizes are on the System page and in the cluster mosaic on
+        Home, counted by the generator; what matters here is not the number but the shape of the flow.</span>
+    </p>
+
+    <!-- Reusing the existing .flow / .flow__node--* classes and the --planned/--done/
+         --checked/--completed tokens that styles.css already defines. The stage names
+         are copied from the Select options, emoji included, so grepping the doctype JSON
+         finds this page. The arrows ARE the stage count: no integer to type, and nothing
+         to correct if a stage is ever added. -->
+    <div class="flow">
+      <div class="flow__node flow__node--planned">
+        <div class="flow__emoji">⚪️</div>
+        <div class="flow__name">Planned</div>
+        <div class="flow__who"><span lang="id">pekerjaan sudah ada, belum dikerjakan</span><span lang="en">the work exists, untouched</span></div>
+      </div>
+      <div class="flow__arrow" aria-hidden="true">→</div>
+      <div class="flow__node flow__node--done">
+        <div class="flow__emoji">🟠</div>
+        <div class="flow__name">Done</div>
+        <div class="flow__who"><span lang="id">assignee menyerahkan — jam keterlambatan berhenti di sini</span><span lang="en">assignee hands off — the lateness clock stops here</span></div>
+      </div>
+      <div class="flow__arrow" aria-hidden="true">→</div>
+      <div class="flow__node flow__node--checked">
+        <div class="flow__emoji">🔷</div>
+        <div class="flow__name">Checked By PL</div>
+        <div class="flow__who"><span lang="id">leader sudah meninjau</span><span lang="en">the leader has reviewed</span></div>
+      </div>
+      <div class="flow__arrow" aria-hidden="true">→</div>
+      <div class="flow__node flow__node--completed">
+        <div class="flow__emoji">✅</div>
+        <div class="flow__name">Completed</div>
+        <div class="flow__who"><span lang="id">disetujui — poin dicetak di sini</span><span lang="en">approved — points mint here</span></div>
+      </div>
+    </div>
+
+    <p>
+      <span lang="id">Dua tahap itu terpisah karena mereka menjawab dua pertanyaan berbeda.
+        <strong>Done</strong> menjawab "kapan pekerjaannya selesai" dan dijawab oleh assignee.
+        <strong>Completed</strong> menjawab "apakah pekerjaannya diterima" dan dijawab oleh orang lain.
+        Menggabungkan keduanya akan memaksa satu timestamp menjawab dua pertanyaan — dan begitu itu terjadi,
+        kecepatan review orang lain mulai mengubah nilai poin assignee.</span>
+      <span lang="en">Those two stages are separate because they answer two different questions.
+        <strong>Done</strong> answers "when was the work finished" and is answered by the assignee.
+        <strong>Completed</strong> answers "was the work accepted" and is answered by someone else. Merging
+        them would force one timestamp to answer both — and the moment it does, someone else's review speed
+        starts changing the assignee's points.</span>
+    </p>
+    <p>
+      <span lang="id">Completed adalah satu-satunya tahap yang mencetak poin, dan itu yang membuat sisanya
+        aman. Menandai Done tidak memberi apa-apa; menolak sebuah todo mengembalikannya ke Planned dan tidak
+        ada yang perlu ditarik kembali, karena belum ada yang diberikan. Sebaliknya, membatalkan status
+        Completed akan mencabut baris ledger yang tadi dicetak — jadi angka gamifikasi tidak pernah
+        menyimpan hutang dari todo yang sudah tidak selesai lagi.</span>
+      <span lang="en">Completed is the only stage that mints points, and that is what makes the rest safe.
+        Marking Done grants nothing; rejecting a todo sends it back to Planned with nothing to claw back,
+        because nothing was ever granted. Going the other way, un-completing pulls the ledger rows it minted
+        — so the gamification numbers never carry a debt from a todo that is no longer finished.</span>
+    </p>
+    <p>
+      <span lang="id">Cancelled ada, tapi ia bukan tahap kelima: itu jalan keluar, bukan kemajuan. Sebuah
+        todo bisa dibatalkan tanpa pernah lewat Done, dan tidak ada yang dicetak untuknya. Sementara itu
+        Completed adalah pemicu yang juga mengantrikan kejadian berulang berikutnya — jadi satu perpindahan
+        status itu mencetak poin, menutup pekerjaan, dan melahirkan yang berikutnya sekaligus.</span>
+      <span lang="en">Cancelled exists, but it is not a fifth stage: it is an exit, not progress. A todo can
+        be cancelled without ever passing through Done, and nothing mints for it. Meanwhile Completed is also
+        the trigger that queues the next recurring occurrence — so that one status move mints the points,
+        closes the work, and gives birth to the next one, all at once.</span>
+    </p>
+
+    <!-- ============================================================ log -->
+    <h2 id="log"><span lang="id">Catatan desain</span><span lang="en">Design log</span></h2>
+    <p>
+      <span lang="id">Setiap spesifikasi dan rencana yang pernah ditulis, terbaru di atas, ditautkan bukan
+        diringkas: baris bertanggal dalam bentuk lampau tidak bisa basi, sedangkan ringkasan adalah salinan
+        yang perlahan berselisih dengan aslinya. Rencana diberi label
+        <strong>skrip eksekusi — checkbox bukan status</strong>: itu instruksi kerja untuk agen, bukan bilah
+        kemajuan, dan membacanya sebagai status akan menampilkan fitur yang sudah lama hidup seolah belum
+        selesai.</span>
+      <span lang="en">Every spec and plan ever written, newest first, linked rather than summarized: a dated
+        past-tense row cannot rot, while a summary is a copy that slowly disagrees with its original. Plans
+        carry the label <strong>execution script — checkboxes are not status</strong>: they are working
+        instructions for an agent, not a progress bar, and reading them as status would show features that
+        have been live for weeks as unfinished.</span>
+    </p>
+    <div class="tile__glob">
+      <span data-vp="counts.devlogs.n"></span> <span lang="id">catatan</span><span lang="en">entries</span> ·
+      <span data-vp="counts.specs.n"></span> <span lang="id">spesifikasi</span><span lang="en">specs</span> ·
+      <span data-vp="counts.plans.n"></span> <span lang="id">rencana</span><span lang="en">plans</span> ·
+      <span lang="id">dari </span><span lang="en">from </span><span data-vp="counts.devlogs.from"></span>
+    </div>
+    <input type="search" data-vp-filter="log" placeholder="filter…" aria-label="filter">
+    <div data-vp-render="log"></div>
+
+  </main>
+  <aside class="toc" id="toc"></aside>
+</div>
+
+<!-- data.js defines window.VP and must load first; app.js reads it. -->
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

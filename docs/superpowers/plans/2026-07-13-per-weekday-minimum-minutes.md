@@ -670,7 +670,7 @@ Bump the service-worker `ASSET_CACHE` version and purge Cloudflare for `project.
 
 ```bash
 cd /home/frappe/frappe-bench/apps/vernon_project && bench --site project.vernon.id clear-website-cache
-# Purge Cloudflare assets (token in ~/.cf_token, zone bd13d791fab46ac955b9b068edefc049) — see cloudflare-asset-cache convention.
+# Purge Cloudflare assets (token in <cf-token-path>, zone <cloudflare-zone-id>) — see cloudflare-asset-cache convention.
 ```
 
 - [ ] **Step 4: Verify the three behaviors as a real user**

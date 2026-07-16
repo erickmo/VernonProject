@@ -1,0 +1,293 @@
+<!doctype html>
+<!-- Bahasa is the failure state: data-lang is "id" in the source, so JS-off and
+     mid-load both render Indonesian. English is only ever reachable via the toggle. -->
+<html lang="id" data-lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pengguna &middot; VernonProject</title>
+  <!-- No Google Fonts, no CDN, no runtime network. styles.css uses system-ui/ui-monospace. -->
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="user">
+
+<!-- Nav is injected by app.js from one array. Never write the links here. -->
+<header data-vp-nav></header>
+
+<!-- ===========================================================================
+     THE RULE THAT KEEPS THIS PAGE ALIVE
+     ===========================================================================
+     Describe what the USER does. Never what the SYSTEM does in response.
+
+     "isi tanggal -> kirim -> tunggu keputusan" survived the 2026-07-15
+     leader-unanimity -> HR-final approval change untouched. "Leader anda akan
+     menyetujui" would have died in 24 hours. Every step below is an action a
+     human performs with a thumb; not one is a promise about what happens next.
+
+     Consequences of that rule, all deliberate:
+       - No approver chain, no who-approves-what. It changed once already.
+       - No point formula. It is base_rate x est_minutes x difficulty%, and the
+         group taxonomy went 78 -> 27 in June. A formula is the trap; refuse it.
+       - No field tables, no DocType names, no endpoint names. Wrong tier —
+         those live in system.html, where a generator owns them.
+       - No counts. Nothing here is worth a digit, so this page interpolates
+         no [data-vp] and types no integer about the app.
+
+     FOUR recipes is the CEILING, not a starting point. Do not add a fifth.
+     This is the only tier with no generator behind it, so every line is a line
+     a human must re-verify by hand. It ships honestly short BY DESIGN: four
+     recipes that are true beat twelve that used to be.
+
+     Labels quoted below were read from frontend/src on 2026-07-15 (lib/actions.ts
+     is the home tile grid, BottomNav the tabs; MyAttendance / RequestException /
+     MarketplaceScreen + RewardDetailSheet + RedeemSheet / ProjectItemScreen own
+     the rest). Quote the screen the READER IS ON: the same control is labelled
+     "Focus" on the list card and "Focus mode" on the todo detail screen, and only
+     one of those is reachable from where the step leaves them. If a label changes,
+     the quote here is the thing that rots — re-read the source, do not guess.
+     =========================================================================== -->
+
+<main class="content">
+
+  <h1 class="page-title">
+    <span lang="id">Panduan Pengguna</span><span lang="en">User guide</span>
+  </h1>
+  <p class="page-lead">
+    <span lang="id">Empat pekerjaan yang paling sering Anda lakukan di aplikasi Vernon, satu per satu,
+      dari awal sampai selesai. Tidak ada istilah teknis di halaman ini.</span>
+    <span lang="en">The four things you do most often in the Vernon app, one at a time, start to
+      finish. No technical terms on this page.</span>
+  </p>
+
+  <!-- Deep link, never a mirror: release notes live in App Release rows and are the
+       release surface. Restating them here would rot on the next release.
+       ponytail: absolute path — correct wherever /docs and /m share an origin, dead
+       from file://. Fine: the release feed needs the app (and a login) anyway. -->
+  <div class="hero__cta">
+    <a class="btn btn--primary" href="/m/whats-new">
+      <span lang="id">Apa yang baru di aplikasi</span><span lang="en">What's new in the app</span>
+    </a>
+  </div>
+
+  <p>
+    <span lang="id">Langkah di bawah mengikuti aplikasi ponsel. Tulisan
+      <strong>di dalam tanda kutip</strong> adalah teks yang benar-benar tampil di layar — masih
+      berbahasa Inggris, jadi kami kutip apa adanya supaya mudah Anda cari.</span>
+    <span lang="en">The steps below follow the phone app. Text <strong>inside quotes</strong> is what
+      actually appears on screen — the app's own labels are still in English, so they are quoted
+      verbatim to keep them findable.</span>
+  </p>
+
+  <h2>
+    <span lang="id">Panduan</span><span lang="en">Recipes</span>
+  </h2>
+
+  <!-- 1 ---------------------------------------------------------------- cuti -->
+  <div class="recipe">
+    <h3>
+      <span lang="id">Ajukan cuti</span><span lang="en">Request leave</span>
+    </h3>
+    <ol>
+      <li>
+        <span lang="id">Buka aplikasi, lalu buka tab <strong>"Me"</strong>.</span>
+        <span lang="en">Open the app, then go to the <strong>"Me"</strong> tab.</span>
+      </li>
+      <li>
+        <span lang="id">Pilih <strong>"Attendance"</strong>.</span>
+        <span lang="en">Choose <strong>"Attendance"</strong>.</span>
+      </li>
+      <li>
+        <span lang="id">Tekan <strong>"Request leave"</strong>.</span>
+        <span lang="en">Tap <strong>"Request leave"</strong>.</span>
+      </li>
+      <li>
+        <span lang="id">Pilih jenisnya: <strong>"Leave"</strong> untuk cuti, atau <strong>"WFH"</strong>
+          untuk kerja dari rumah.</span>
+        <span lang="en">Pick the type: <strong>"Leave"</strong>, or <strong>"WFH"</strong> to work from
+          home.</span>
+      </li>
+      <li>
+        <span lang="id">Isi tanggal mulai di <strong>"From"</strong> dan tanggal selesai di
+          <strong>"To"</strong>.</span>
+        <span lang="en">Fill the start date in <strong>"From"</strong> and the end date in
+          <strong>"To"</strong>.</span>
+      </li>
+      <li>
+        <span lang="id">Tulis alasan Anda di <strong>"Reason"</strong>.</span>
+        <span lang="en">Write your reason in <strong>"Reason"</strong>.</span>
+      </li>
+      <li>
+        <span lang="id">Tekan <strong>"Submit request"</strong>, lalu tunggu keputusannya.</span>
+        <span lang="en">Tap <strong>"Submit request"</strong>, then wait for the decision.</span>
+      </li>
+      <li>
+        <span lang="id">Mau tahu sudah sampai mana? Buka <strong>"My requests"</strong> di layar
+          <strong>"Attendance"</strong> kapan saja.</span>
+        <span lang="en">Want to know where it stands? Open <strong>"My requests"</strong> on the
+          <strong>"Attendance"</strong> screen any time.</span>
+      </li>
+    </ol>
+  </div>
+
+  <!-- 2 ---------------------------------------------------------------- absensi -->
+  <div class="recipe">
+    <h3>
+      <span lang="id">Scan absensi</span><span lang="en">Scan attendance</span>
+    </h3>
+    <ol>
+      <li>
+        <span lang="id">Di halaman depan aplikasi, tekan kotak <strong>"Check-in"</strong>. (Bisa juga
+          lewat tab <strong>"Me"</strong> &rarr; <strong>"Attendance"</strong> &rarr;
+          <strong>"Scan"</strong>.)</span>
+        <span lang="en">On the app's home screen, tap the <strong>"Check-in"</strong> tile. (You can also
+          go to the <strong>"Me"</strong> tab &rarr; <strong>"Attendance"</strong> &rarr;
+          <strong>"Scan"</strong>.)</span>
+      </li>
+      <li>
+        <span lang="id">Izinkan aplikasi memakai kamera bila diminta.</span>
+        <span lang="en">Allow the app to use the camera if it asks.</span>
+      </li>
+      <li>
+        <span lang="id">Arahkan kamera ke kode QR di stasiun absensi.</span>
+        <span lang="en">Point the camera at the QR code on the attendance station.</span>
+      </li>
+      <li>
+        <span lang="id">Tahan sebentar sampai hasilnya muncul di layar, lalu baca hasilnya.</span>
+        <span lang="en">Hold steady until the result appears on screen, then read it.</span>
+      </li>
+      <li>
+        <span lang="id">Lakukan hal yang sama saat pulang.</span>
+        <span lang="en">Do the same again when you leave.</span>
+      </li>
+      <li>
+        <span lang="id">Riwayat hari-hari Anda ada di tab <strong>"Me"</strong> &rarr;
+          <strong>"Attendance"</strong>.</span>
+        <span lang="en">Your day-by-day history lives in the <strong>"Me"</strong> tab &rarr;
+          <strong>"Attendance"</strong>.</span>
+      </li>
+    </ol>
+  </div>
+
+  <!-- 3 ---------------------------------------------------------------- poin -->
+  <div class="recipe">
+    <h3>
+      <span lang="id">Tukar poin</span><span lang="en">Redeem points</span>
+    </h3>
+    <ol>
+      <li>
+        <span lang="id">Di halaman depan aplikasi, tekan kotak <strong>"Rewards"</strong>.</span>
+        <span lang="en">On the app's home screen, tap the <strong>"Rewards"</strong> tile.</span>
+      </li>
+      <li>
+        <span lang="id">Telusuri hadiah yang tersedia.</span>
+        <span lang="en">Browse the available rewards.</span>
+      </li>
+      <li>
+        <!-- The card itself is an inert <div>; only the "View" button opens the detail sheet,
+             and that sheet is the ONLY place the reward's description is ever rendered —
+             before redeeming, never after. So the reading happens here or nowhere. -->
+        <span lang="id">Tekan <strong>"View"</strong> pada hadiah yang Anda inginkan, lalu baca
+          keterangannya di halaman itu — termasuk cara mengambil hadiahnya, kalau dicantumkan. Baca
+          sebelum Anda menukar.</span>
+        <span lang="en">Tap <strong>"View"</strong> on the reward you want, then read its details there —
+          including how to collect it, if that is spelled out. Read it before you redeem.</span>
+      </li>
+      <li>
+        <span lang="id">Tekan <strong>"Redeem"</strong>, lalu tekan <strong>"Redeem"</strong> sekali lagi
+          untuk mengonfirmasi — memang dua kali. Ingin batal? Tekan <strong>"Cancel"</strong>.</span>
+        <span lang="en">Tap <strong>"Redeem"</strong>, then tap <strong>"Redeem"</strong> once more to
+          confirm — yes, twice. Changed your mind? Tap <strong>"Cancel"</strong>.</span>
+      </li>
+    </ol>
+  </div>
+
+  <!-- 4 ---------------------------------------------------------------- todo -->
+  <div class="recipe">
+    <h3>
+      <span lang="id">Kerjakan todo</span><span lang="en">Work a todo</span>
+    </h3>
+    <ol>
+      <li>
+        <span lang="id">Buka tab <strong>"Today"</strong> untuk pekerjaan hari ini, atau kotak
+          <strong>"Projects"</strong> untuk semuanya.</span>
+        <span lang="en">Open the <strong>"Today"</strong> tab for today's work, or the
+          <strong>"Projects"</strong> tile for everything.</span>
+      </li>
+      <li>
+        <span lang="id">Tekan sebuah todo untuk membukanya dan membaca detailnya.</span>
+        <span lang="en">Tap a todo to open it and read the details.</span>
+      </li>
+      <li>
+        <!-- "Focus mode" is the detail screen's label. The list card says plain "Focus" — but
+             step 2 already sent the reader off that card, so quoting it here would be a label
+             they cannot find. Quote the screen the reader is standing on. -->
+        <span lang="id">Kalau ingin menghitung waktu kerja Anda, tekan <strong>"Focus mode"</strong>
+          sebelum mulai. Ini pilihan, bukan keharusan.</span>
+        <span lang="en">If you want your working time counted, tap <strong>"Focus mode"</strong> before
+          you start. This is optional.</span>
+      </li>
+      <li>
+        <span lang="id">Kerjakan pekerjaannya.</span>
+        <span lang="en">Do the work.</span>
+      </li>
+      <li>
+        <!-- The advance button is labelled by the server (next_status_label), so naming
+             the label here would be typing a fact the app already renders — and the
+             lifecycle it names has changed before. Point at the button; quote nothing. -->
+        <span lang="id">Setelah selesai, tekan tombol aksi di layar todo tersebut. Tulisan di tombol itu
+          selalu menyebutkan langkah berikutnya — ikuti saja apa yang tertulis.</span>
+        <span lang="en">When you are done, tap the action button on that todo's screen. The button always
+          spells out the next step — just follow what it says.</span>
+      </li>
+      <li>
+        <span lang="id">Konfirmasi saat diminta. Kalau masih ada langkah lanjutan, tombolnya berganti
+          tulisan sendiri.</span>
+        <span lang="en">Confirm when asked. If there is a further step, the button relabels itself.</span>
+      </li>
+    </ol>
+  </div>
+
+  <h2>
+    <span lang="id">Tidak ada di sini</span><span lang="en">Not on this page</span>
+  </h2>
+
+  <!-- Saying "we refuse" out loud, in the reader's language, is what stops the fifth
+       recipe from being added by the next kind person who gets asked the question. -->
+  <div class="note">
+    <h3>
+      <span lang="id">Cara poin dihitung</span><span lang="en">How points are calculated</span>
+    </h3>
+    <p>
+      <span lang="id">Sengaja tidak dijelaskan di sini. Rumusnya ikut berubah setiap kali jenis pekerjaan
+        atau bobotnya diatur ulang, jadi penjelasan di halaman ini akan menyesatkan lebih cepat daripada
+        bisa diperbaiki. Angka yang benar selalu ada di aplikasi: buka <strong>"Achievements"</strong>
+        untuk melihat perolehan Anda, atau tanyakan ke tim Anda kalau ada yang terasa keliru.</span>
+      <span lang="en">Deliberately not explained here. The formula shifts whenever work types or their
+        weights are re-tuned, so an explanation on this page would mislead faster than it could be
+        corrected. The real numbers are always in the app: open <strong>"Achievements"</strong> to see
+        what you have earned, or ask your team if something looks wrong.</span>
+    </p>
+  </div>
+
+  <div class="note">
+    <h3>
+      <span lang="id">Siapa yang menyetujui</span><span lang="en">Who approves what</span>
+    </h3>
+    <p>
+      <span lang="id">Juga tidak dijelaskan di sini — alurnya pernah berubah, dan akan berubah lagi.
+        Aplikasi selalu menampilkan siapa yang menangani pengajuan Anda di layar pengajuan itu sendiri,
+        dan status terbarunya ada di <strong>"My requests"</strong>. Layar itu yang benar; halaman ini
+        hanya menua.</span>
+      <span lang="en">Also not explained here — the flow has changed once and will change again. The app
+        shows who is handling your request on the request screen itself, and the current status lives in
+        <strong>"My requests"</strong>. That screen is right; this page only ages.</span>
+    </p>
+  </div>
+
+</main>
+
+<!-- data.js defines window.VP and must load first; app.js reads it. -->
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,6 +1,13 @@
 /* ============================================================================
    Vernon Project — Documentation design system
-   Self-contained, no build step, offline-friendly. Theme via [data-theme].
+   Self-contained, no build step, offline-friendly, zero network. Light only.
+   Language via [data-lang] on <html>: "id" (default) | "en".
+
+   ponytail: the [data-theme="dark"] blocks below are dead — the toggle now
+   writes data-lang, so nothing ever sets data-theme. Left in place: an
+   unreachable selector costs nothing and never needs updating. To revive dark
+   mode, add a second attribute (data-theme) to the toggle in app.js; the
+   tokens are already here and correct.
    ============================================================================ */
 
 :root {
@@ -21,7 +28,6 @@
   --bg: #f7f8fb;
   --bg-elev: #ffffff;
   --bg-sunken: #eef1f7;
-  --sidebar-bg: #ffffff;
   --code-bg: #0f1525;
   --code-bg-inline: #eef1f7;
 
@@ -43,14 +49,19 @@
   --radius-sm: 8px;
   --radius-lg: 18px;
 
-  --sidebar-w: 290px;
   --toc-w: 230px;
   --topbar-h: 60px;
   --maxw: 1480px;
 
-  --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
-  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/* ------------------------------------------------------------- Language */
+/* Untagged text has no [lang] and is therefore never hidden: a forgotten
+   translation shows twice, never disappears. */
+html[data-lang="en"] [lang="id"] { display: none; }
+html[data-lang="id"] [lang="en"] { display: none; }
 
 [data-theme="dark"] {
   --brand: #8b7dff;
@@ -153,31 +164,17 @@ img { max-width: 100%; }
 .sun { display: none; }
 .moon { display: block; }
 
-.hamburger { display: none; }
-
 /* ----------------------------------------------------------------- Layout */
 .layout {
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--toc-w);
+  grid-template-columns: minmax(0, 1fr) var(--toc-w);
   max-width: var(--maxw);
   margin: 0 auto;
   align-items: start;
 }
 
-/* ----------------------------------------------------------------- Sidebar */
-.sidebar {
-  position: sticky; top: var(--topbar-h);
-  height: calc(100vh - var(--topbar-h));
-  overflow-y: auto;
-  padding: 22px 14px 60px 22px;
-  border-right: 1px solid var(--border);
-  background: var(--sidebar-bg);
-}
-.nav-group { margin-bottom: 22px; }
-.nav-group__title {
-  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
-  color: var(--text-faint); padding: 0 12px; margin-bottom: 8px;
-}
+/* ------------------------------------------------------------- Nav links */
+/* Injected into <header data-vp-nav> by app.js; no sidebar — the hub routes. */
 .nav-link {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 12px; border-radius: 9px;
@@ -209,7 +206,14 @@ img { max-width: 100%; }
   font-size: 1.16rem; color: var(--heading); font-weight: 650; margin: 32px 0 12px;
   scroll-margin-top: calc(var(--topbar-h) + 16px);
 }
-.content h4 { font-size: 1rem; color: var(--heading); font-weight: 650; margin: 22px 0 8px; }
+/* ponytail: h4 is where the api renderer puts module paths
+   (vernon_project.vernon_project.doctype.project_todo.project_todo — 522px, and a UA never
+   breaks on "."). Without this, system.html forces the document to 544px on a 390px phone.
+   Same reason as code:not(pre code); "anywhere" because only it shrinks min-content too. */
+.content h4 {
+  font-size: 1rem; color: var(--heading); font-weight: 650; margin: 22px 0 8px;
+  overflow-wrap: anywhere;
+}
 .content p { margin: 0 0 16px; color: var(--text); }
 .content ul, .content ol { margin: 0 0 18px; padding-left: 22px; }
 .content li { margin: 6px 0; }
@@ -228,46 +232,20 @@ code:not(pre code) {
   font-family: var(--mono); font-size: 0.86em;
   background: var(--code-bg-inline); color: var(--brand-700);
   padding: 0.12em 0.42em; border-radius: 6px; border: 1px solid var(--border);
-  white-space: nowrap;
+  /* ponytail: this is a Python-app reference site, so inline code is mostly long
+     slash/dot identifier paths with no break opportunity a UA will take (`.` is
+     never one; `/` only sometimes). nowrap made them unbreakable and pushed the
+     document past the viewport at 390px. `anywhere` (not `break-word`) because
+     only `anywhere` also shrinks min-content, so grid/flex ancestors — .bento
+     tiles, .deflist rows — size to the column instead of to the identifier. */
+  overflow-wrap: anywhere;
 }
 [data-theme="dark"] code:not(pre code) { color: #c3b9ff; }
 
 /* ----------------------------------------------------------------- Code block */
-.code {
-  position: relative; margin: 0 0 22px;
-  background: var(--code-bg); border-radius: var(--radius);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-sm); overflow: hidden;
-}
-.code__head {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.025);
-}
-.code__dot { width: 11px; height: 11px; border-radius: 50%; }
-.code__lang { margin-left: auto; font-family: var(--mono); font-size: 11px; color: #8893ad; text-transform: uppercase; letter-spacing: .06em; }
-.code pre { margin: 0; padding: 16px 18px; overflow-x: auto; }
-.code code {
-  font-family: var(--mono); font-size: 13px; line-height: 1.7;
-  color: #d7e0f5; background: none; border: none; padding: 0; white-space: pre;
-}
-.copybtn {
-  position: absolute; top: 8px; right: 10px;
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-  color: #aeb8d0; border-radius: 7px; padding: 4px 9px; font-size: 11.5px; cursor: pointer;
-  font-family: var(--sans); transition: background .14s, color .14s; opacity: 0;
-}
-.code:hover .copybtn { opacity: 1; }
-.copybtn:hover { background: rgba(255,255,255,0.13); color: #fff; }
-.copybtn.copied { color: #7ee2a8; border-color: rgba(126,226,168,.4); }
-
-/* token coloring (applied by app.js) */
-.tok-key { color: #ff9ecb; }
-.tok-str { color: #9ee6a1; }
-.tok-com { color: #5f6b85; font-style: italic; }
-.tok-num { color: #ffcf8f; }
-.tok-fn  { color: #82c7ff; }
-.tok-dec { color: #c3b3ff; }
+/* ponytail: the .code / .copybtn / .tok-* rules lived here and are gone with the
+   highlighter that used them (see the revival note in app.js). No page ships a code
+   block; these styled nothing. --code-bg-inline below is still live for inline <code>. */
 
 /* ----------------------------------------------------------------- Callouts */
 .callout {
@@ -385,6 +363,55 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); box-shadow: v
 .stat__num { font-size: 1.9rem; font-weight: 800; color: var(--heading); letter-spacing: -0.02em; line-height: 1; }
 .stat__label { font-size: 12.5px; color: var(--text-faint); margin-top: 7px; font-weight: 550; }
 
+/* ----------------------------------------------------------------- Bento (index only) */
+.bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(132px, auto); gap: 16px; margin: 0 0 36px; }
+.tile {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow-sm);
+}
+a.tile { color: inherit; transition: transform .16s, box-shadow .16s, border-color .16s; }
+a.tile:hover { text-decoration: none; transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--border-strong); }
+.tile--1x1 { grid-column: span 1; grid-row: span 1; }
+.tile--2x1 { grid-column: span 2; grid-row: span 1; }
+.tile--1x2 { grid-column: span 1; grid-row: span 2; }
+.tile--2x2 { grid-column: span 2; grid-row: span 2; }
+.tile__num { font-size: 2.1rem; font-weight: 800; color: var(--heading); letter-spacing: -0.02em; line-height: 1; }
+.tile__glob { font-family: var(--mono); font-size: 11px; color: var(--text-faint); line-height: 1.5; overflow-wrap: anywhere; }
+
+/* ----------------------------------------------------------------- Dense reference table (system) */
+.doc-table { overflow-x: auto; margin: 0 0 24px; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.doc-table table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg-elev); }
+.doc-table th {
+  text-align: left; font-weight: 650; color: var(--text-soft); background: var(--bg-sunken);
+  padding: 7px 10px; white-space: nowrap; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+}
+.doc-table td { padding: 5px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table tbody tr:hover { background: var(--bg-sunken); }
+.doc-table code { white-space: nowrap; }
+
+/* ----------------------------------------------------------------- "Why" note (development) */
+.note {
+  margin: 0 0 18px; padding: 15px 18px;
+  border: 1px solid var(--border); border-left: 3px solid var(--brand);
+  border-radius: var(--radius); background: var(--bg-elev); box-shadow: var(--shadow-sm);
+}
+.note > :last-child { margin-bottom: 0; }
+.note h3 { margin: 0 0 6px !important; font-size: 1rem; }
+
+/* ----------------------------------------------------------------- Task recipe (user) */
+.recipe {
+  margin: 0 0 20px; padding: 18px 22px 18px 24px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev); box-shadow: var(--shadow-sm);
+}
+.recipe h3 { margin: 0 0 10px !important; }
+.recipe ol { margin: 0; padding-left: 20px; }
+.recipe li { margin: 7px 0; padding-left: 4px; }
+.recipe li::marker { color: var(--brand-600); font-weight: 700; }
+
 /* ----------------------------------------------------------------- Status workflow diagram */
 .flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 6px 0 26px; }
 .flow__node {
@@ -464,26 +491,22 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); box-shadow: v
 .search-box__foot { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-faint); }
 .search-box__foot span { display: inline-flex; align-items: center; gap: 5px; }
 
-/* ----------------------------------------------------------------- Backdrop for mobile sidebar */
-.scrim { position: fixed; inset: 0; background: rgba(13,17,27,.45); z-index: 40; display: none; }
-.scrim.open { display: block; }
-
 /* ----------------------------------------------------------------- Responsive */
 @media (max-width: 1180px) {
-  .layout { grid-template-columns: var(--sidebar-w) minmax(0,1fr); }
   .toc { display: none; }
+  .layout { grid-template-columns: minmax(0,1fr); }
   .content { padding: 34px 40px 100px; }
+  .bento { grid-template-columns: repeat(2, 1fr); }
+  .tile--2x1, .tile--2x2 { grid-column: span 2; }
 }
 @media (max-width: 920px) {
-  :root { --sidebar-w: 280px; }
-  .hamburger { display: grid; }
-  .layout { grid-template-columns: minmax(0,1fr); }
-  .sidebar {
-    position: fixed; top: var(--topbar-h); left: 0; z-index: 45;
-    width: var(--sidebar-w); transform: translateX(-105%); transition: transform .22s ease;
-    box-shadow: var(--shadow-lg);
-  }
-  .sidebar.open { transform: translateX(0); }
+  /* ponytail: min-content of the row is ~677px (brand + 4 unbreakable nav words
+     + the 38px langToggle); below ~700px it cannot fit, so let it wrap onto a
+     second line instead of shoving #langToggle — the only route to English —
+     off-canvas. --topbar-h only feeds sticky/scroll offsets, so a taller bar
+     just under-shoots anchors slightly. */
+  .topbar { flex-wrap: wrap; height: auto; padding: 8px 14px; }
+  .topbar__spacer { display: none; }
   .content { padding: 28px 22px 90px; }
   .searchbtn { min-width: 0; width: 38px; padding: 0; justify-content: center; }
   .searchbtn .stxt, .searchbtn .kbd { display: none; }
@@ -495,6 +518,10 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); box-shadow: v
   .deflist__row { grid-template-columns: 1fr; gap: 3px; }
   .page-title { font-size: 1.9rem; }
 }
+@media (max-width: 640px) {
+  .bento { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .tile--1x1, .tile--2x1, .tile--1x2, .tile--2x2 { grid-column: span 1; grid-row: span 1; }
+}
 @media (max-width: 460px) {
   .stat-row { grid-template-columns: 1fr; }
   .flow__arrow { transform: rotate(90deg); }
@@ -503,7 +530,7 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); box-shadow: v
 
 /* Print */
 @media print {
-  .topbar, .sidebar, .toc, .pager, .scrim, .search-overlay { display: none !important; }
+  .topbar, .toc, .pager { display: none !important; }
   .layout { grid-template-columns: 1fr; }
   .content { padding: 0; }
   a { color: inherit; }

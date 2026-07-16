@@ -17,7 +17,7 @@
 - **No `alert()`/`confirm()`/`prompt()`** — use the new `Sheet` or an existing dialog. (Project convention.)
 - **Dark mode:** mobile components hardcode `dark:bg-slate-*`; web tokens map dark to slate. Keep both working — check light and dark.
 - **Verification per task** (no test DB — one LIVE site): run `cd frontend-web && npx tsc --noEmit` (no type errors) **and** `npm run build` (succeeds), then **browser-check** the described observable state. Automated tests are deferred to the final phase.
-- **Deploy per phase (not per task):** `cd frontend-web && npm run build`. Because `project.vernon.id` is behind Cloudflare with `/assets` cached 1yr, after a deploy purge Cloudflare (`~/.cf_token`, zone `bd13d791fab46ac955b9b068edefc049`) and bump the SW asset-cache version if the bundle looks stale/blank. Restart the bench only if a Python file changed (none here): `sudo /usr/local/bin/tj-restart`.
+- **Deploy per phase (not per task):** `cd frontend-web && npm run build`. Because `project.vernon.id` is behind Cloudflare with `/assets` cached 1yr, after a deploy purge Cloudflare (`<cf-token-path>`, zone `<cloudflare-zone-id>`) and bump the SW asset-cache version if the bundle looks stale/blank. Restart the bench only if a Python file changed (none here): `sudo /usr/local/bin/tj-restart`.
 - **Git:** the user works in parallel on this branch — `git add` only the files you created/modified for the task, never `git add -A`. Re-check `git status` before each commit.
 
 ---
