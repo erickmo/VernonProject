@@ -262,7 +262,26 @@ def my_leaders():
 
 
 @frappe.whitelist()
-def request_exception(from_date, to_date, exception_type, reason=None):
+def list_leave_types():
+	"""Enabled leave categories the caller may pick, filtered by their gender."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please log in"), frappe.PermissionError)
+	emp_gender = frappe.db.get_value("Employee Profile", {"user": user}, "gender")
+	rows = frappe.get_all(
+		"Leave Type",
+		filters={"enabled": 1},
+		fields=["name", "leave_name", "limit_kind", "day_limit", "gender",
+		        "requires_proof", "paid", "is_default_annual", "description", "sort_order"],
+		order_by="sort_order asc",
+	)
+	# Keep Any + the caller's own gender; drop the other gender's types.
+	rows = [r for r in rows if r.gender == "Any" or (emp_gender and r.gender == emp_gender)]
+	return {"status": "ok", "types": rows}
+
+
+@frappe.whitelist()
+def request_exception(from_date, to_date, exception_type, reason=None, leave_type=None, proof=None):
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
@@ -270,6 +289,15 @@ def request_exception(from_date, to_date, exception_type, reason=None):
 		return {"status": "error", "message": _("Invalid type.")}
 	if getdate(to_date) < getdate(from_date):
 		return {"status": "error", "message": _("To Date cannot be before From Date.")}
+	if exception_type == "Leave":
+		if not leave_type:
+			return {"status": "error", "message": _("Pilih kategori cuti.")}
+		# Authoritative gate — raises frappe.ValidationError (Bahasa) on violation.
+		from vernon_project.attendance.leave_quota import check_request
+		check_request(user, leave_type, from_date, to_date, has_proof=bool(proof))
+	else:
+		leave_type = None
+		proof = None
 	leaders = _leaders_for_employee(user)
 	approvers = [{"approver": leader, "decision": "Pending"} for leader in leaders]
 	doc = frappe.get_doc({
@@ -278,6 +306,8 @@ def request_exception(from_date, to_date, exception_type, reason=None):
 		"from_date": from_date,
 		"to_date": to_date,
 		"exception_type": exception_type,
+		"leave_type": leave_type,
+		"proof": proof,
 		"reason": reason,
 		# Always Pending now: HR is the final approver, so a leaderless request
 		# waits for HR like any other (the old empty-approvers auto-approve is
@@ -346,7 +376,7 @@ def _shape_exception_rows(names):
 		filters={"name": ["in", names]},
 		fields=[
 			"name", "employee", "exception_type", "from_date", "to_date",
-			"status", "reason", "hr_decision", "hr_by", "hr_reason",
+			"status", "reason", "leave_type", "hr_decision", "hr_by", "hr_reason",
 		],
 		order_by="from_date desc",
 	)
