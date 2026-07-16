@@ -193,7 +193,12 @@ filter input; render functions.
 2. The 4 pages on the existing `styles.css` / `app.js`.
 3. `vernon_project/www/docs.py` + route rule; `tj-restart`; verify Guest → 403, logged-in → 200.
 4. One line in `CLAUDE.md` beside the What's New rule.
-5. App Release row — `/docs` returning is user-visible.
+5. ~~App Release row~~ — **wrong, corrected 2026-07-16.** CLAUDE.md exempts docs from What's New by
+   name ("Skip it only for work no user can see: refactors, **docs**, tests, build tooling"), and
+   nothing in `/m` or `/w` links to `/docs`, so no user can see it. No release row.
+   Open question for the user: `user.html` is written for non-technical staff but is currently
+   unreachable unless someone types the URL. If it should be linked from the app, *that* is a
+   user-visible change and would need a release row.
 
 ## Honest ceiling
 
