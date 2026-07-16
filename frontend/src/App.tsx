@@ -66,6 +66,7 @@ import AttendanceProfilesScreen from './pages/AttendanceProfilesScreen'
 import AttendanceSchedulesScreen from './pages/AttendanceSchedulesScreen'
 import AttendanceStationsScreen from './pages/AttendanceStationsScreen'
 import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
+import LeaveTypesAdmin from './pages/LeaveTypesAdmin'
 import ExceptionApprovals from './pages/ExceptionApprovals'
 import MyExceptions from './pages/MyExceptions'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
@@ -256,7 +257,10 @@ export default function App() {
         <Route path="/attendance/approvals" element={<ExceptionApprovals />} />
         <Route path="/attendance/my-requests" element={<MyExceptions />} />
         {canHrApprove(boot) && (
-          <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
+          <>
+            <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
+            <Route path="/attendance/manage/leave-types" element={<LeaveTypesAdmin />} />
+          </>
         )}
         {canManageAttendance(boot) && (
           <>

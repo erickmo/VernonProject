@@ -1043,6 +1043,7 @@ export type AttendanceExceptionRow = {
 export type LeaveType = {
   name: string
   leave_name: string
+  enabled: 0 | 1
   limit_kind: 'Annual Quota' | 'Per Event' | 'Documented'
   day_limit: number
   gender: 'Any' | 'Male' | 'Female'
