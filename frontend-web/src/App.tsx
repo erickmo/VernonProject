@@ -73,6 +73,7 @@ import Logbook from '@web/pages/Logbook'
 import Stations from '@web/pages/Stations'
 import Schedules from '@web/pages/Schedules'
 import Exceptions from '@web/pages/Exceptions'
+import LeaveTypesAdmin from '@web/pages/LeaveTypesAdmin'
 import HolidayLists from '@web/pages/HolidayLists'
 import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import ExceptionApprovals from '@web/pages/ExceptionApprovals'
@@ -291,6 +292,7 @@ export default function App() {
           <Route path="/attendance/request" element={<RequestException />} />
           <Route path="/attendance/my-requests" element={<MyExceptions />} />
           {canHrApprove(b) && <Route path="/attendance/exceptions" element={<Exceptions />} />}
+          {canHrApprove(b) && <Route path="/attendance/leave-types" element={<LeaveTypesAdmin />} />}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/me/info" element={<MyInfo />} />
           <Route path="/income" element={<Income />} />

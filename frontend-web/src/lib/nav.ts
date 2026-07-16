@@ -100,6 +100,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   ] : []
   // HR gets the cuti inbox without the rest of attendance admin.
   if (canHrApprove(b)) {
+    att.unshift({ to: '/attendance/leave-types', label: 'Leave Types', sub: 'Kategori & batas cuti', icon: CalendarDays })
     att.unshift({ to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'HR final approval', icon: Inbox })
   }
   if (att.length) groups.push({ id: 'attendance', label: 'Attendance', leaves: att })
