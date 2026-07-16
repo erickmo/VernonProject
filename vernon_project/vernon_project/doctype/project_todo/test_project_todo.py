@@ -25,6 +25,56 @@ def _ensure_test_group():
 	return "Test Group Recurring", "TESTLVL1"
 
 
+class TestEnsureTodayMinutes(unittest.TestCase):
+	"""Pure decision test for the today-deadline auto-plan rule. No DB."""
+
+	def setUp(self):
+		self.today = "2026-07-16"
+		self.base = dict(
+			status="⚪️ Planned",
+			is_waiting=0,
+			assigned_to="test_user@example.com",
+			deadline="2026-07-16",
+			today=self.today,
+			estimated=60,
+			current_today_minutes=0,
+		)
+
+	def _run(self, **over):
+		from vernon_project.vernon_project.doctype.project_todo.project_todo import (
+			_ensure_today_minutes,
+		)
+
+		return _ensure_today_minutes(**{**self.base, **over})
+
+	def test_due_today_unplanned_gets_the_estimate(self):
+		self.assertEqual(self._run(), 60)
+
+	def test_zero_estimate_falls_back_to_30(self):
+		self.assertEqual(self._run(estimated=0), 30)
+
+	def test_existing_positive_row_is_left_alone(self):
+		self.assertIsNone(self._run(current_today_minutes=90))
+
+	def test_zeroed_row_is_refilled(self):
+		self.assertEqual(self._run(current_today_minutes=0), 60)
+
+	def test_other_deadline_is_ignored(self):
+		self.assertIsNone(self._run(deadline="2026-07-17"))
+		self.assertIsNone(self._run(deadline="2026-07-15"))
+		self.assertIsNone(self._run(deadline=None))
+
+	def test_waiting_is_ignored(self):
+		self.assertIsNone(self._run(is_waiting=1))
+
+	def test_non_planned_status_is_ignored(self):
+		self.assertIsNone(self._run(status="✅ Completed"))
+		self.assertIsNone(self._run(status="🟠 Done"))
+
+	def test_unassigned_is_ignored(self):
+		self.assertIsNone(self._run(assigned_to=None))
+
+
 class TestProjectTodo(unittest.TestCase):
 	"""Test cases for Project Todo DocType"""
 

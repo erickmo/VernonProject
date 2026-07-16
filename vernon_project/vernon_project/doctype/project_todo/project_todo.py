@@ -8,6 +8,34 @@ from frappe.utils import add_days, add_months, getdate, nowdate, now_datetime, g
 from datetime import datetime
 
 
+# The one Planned status string, shared by the controller. `api/mobile.py` keeps
+# its own copy (STATUS_PLANNED) — importing it here would be a circular import.
+PLANNED = "⚪️ Planned"
+
+
+def _ensure_today_minutes(
+	status, is_waiting, assigned_to, deadline, today, estimated, current_today_minutes
+):
+	"""Minutes today's allocation row must hold, or None to leave the plan alone.
+
+	A todo whose deadline is today belongs in its assignee's plan for today, always
+	— it is written server-side so the plan is right whether or not the assignee
+	ever opens the app. Ensure, not overwrite: a row already holding minutes is a
+	deliberate choice and is never restated. Only a missing or zeroed row is filled,
+	which is what makes the todo unremovable from today without stomping an edit.
+
+	Pure: every input is passed in, so this is testable without the live DB.
+	"""
+	if not assigned_to or is_waiting or status != PLANNED:
+		return None
+	if not deadline or getdate(deadline) != getdate(today):
+		return None
+	if (current_today_minutes or 0) > 0:
+		return None
+	# Mirrors est() in frontend/src/lib/planDay.ts — an unestimated task plans as 30m.
+	return int(estimated or 0) or 30
+
+
 class ProjectTodo(Document):
 
 	def validate(self):
@@ -25,6 +53,7 @@ class ProjectTodo(Document):
 		self.track_waiting()
 		self.validate_block_links()
 		self.validate_recurrence_rule()
+		self._ensure_today_allocation()
 
 	def validate_block_links(self):
 		"""A task can't block or depend on itself; drop duplicate rows."""
@@ -428,7 +457,6 @@ class ProjectTodo(Document):
 			) or {}
 
 			# Done By PL? -> awaiting Leader. Checked By PL -> awaiting Owner.
-			PLANNED = "⚪️ Planned"
 			DONE = "\U0001f7e0 Done"
 			CHECKED = "\U0001f537 Checked By PL"
 			COMPLETED = "✅ Completed"
@@ -694,6 +722,43 @@ class ProjectTodo(Document):
 				frappe.throw(_("Day of month must be between 1 and 31."))
 		if self.recurring_frequency == "Monthly" and self.recurring_monthly_mode == "Nth Weekday" and len(idxs) != 1:
 			frappe.throw(_("Nth-weekday recurrence needs exactly one weekday."))
+
+	def _ensure_today_allocation(self):
+		"""Put a today-deadline todo into its assignee's day-plan, server-side.
+
+		Runs on every save, so it also catches a future todo being pulled back to
+		today and both recurrence paths (create_next_occurrence and the tasks.py
+		scheduler) — every write reaches validate. `allocations` is a child table on
+		this doc, so the row rides the save already in flight: no extra write, no
+		recursion.
+		"""
+		old = self.get_doc_before_save()
+		if old and old.assigned_to != self.assigned_to:
+			# Allocation rows are per-todo, not per-user: the moment someone else owns
+			# this todo, the previous assignee's plan is dead data, and leaving it would
+			# silently hand the new assignee the old one's minutes.
+			self.set("allocations", [])
+
+		today = nowdate()
+		row = next(
+			(r for r in self.allocations if getdate(r.allocation_date) == getdate(today)),
+			None,
+		)
+		minutes = _ensure_today_minutes(
+			status=self.status,
+			is_waiting=self.is_waiting,
+			assigned_to=self.assigned_to,
+			deadline=self.deadline,
+			today=today,
+			estimated=self.estimated,
+			current_today_minutes=(row.estimated_minutes if row else 0),
+		)
+		if minutes is None:
+			return
+		if row:
+			row.estimated_minutes = minutes
+		else:
+			self.append("allocations", {"allocation_date": today, "estimated_minutes": minutes, "note": ""})
 
 
 _ROLL = ("name, project_detail, to_do, assigned_to, start_date, deadline, leader_deadline, "
