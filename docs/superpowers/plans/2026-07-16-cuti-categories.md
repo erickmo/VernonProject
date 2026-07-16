@@ -495,13 +495,15 @@ def request_exception(from_date, to_date, exception_type, reason=None, leave_typ
 
 - [ ] **Step 2: Add `list_leave_types`**
 
-Add near `my_leaders`:
+Add near `my_leaders`. Filters by the caller's gender server-side (authoritative — the backend knows the user's gender), so the frontend picker renders the returned list directly with no client-side gender logic. A gender-gated type is hidden until the user sets their gender; `check_request` still blocks any mismatch defensively.
 ```python
 @frappe.whitelist()
 def list_leave_types():
-	"""Enabled leave categories for the request picker. Any logged-in user."""
-	if frappe.session.user == "Guest":
+	"""Enabled leave categories the caller may pick, filtered by their gender."""
+	user = frappe.session.user
+	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
+	emp_gender = frappe.db.get_value("Employee Profile", {"user": user}, "gender")
 	rows = frappe.get_all(
 		"Leave Type",
 		filters={"enabled": 1},
@@ -509,6 +511,8 @@ def list_leave_types():
 		        "requires_proof", "paid", "is_default_annual", "description", "sort_order"],
 		order_by="sort_order asc",
 	)
+	# Keep Any + the caller's own gender; drop the other gender's types.
+	rows = [r for r in rows if r.gender == "Any" or (emp_gender and r.gender == emp_gender)]
 	return {"status": "ok", "types": rows}
 ```
 
@@ -516,16 +520,15 @@ def list_leave_types():
 
 In `_shape_exception_rows`, add `"leave_type"` to the `fields=[...]` list of the `frappe.get_all("Attendance Exception", ...)` call.
 
-- [ ] **Step 4: Restart + verify**
+- [ ] **Step 4: Verify via console (NO restart — console loads current code in a one-off process; live workers stay on old code until the gated Task 12 deploy)**
 ```bash
-sudo /usr/local/bin/tj-restart
 cd /home/frappe/frappe-bench && bench --site project.vernon.id console <<'EOF'
 import frappe
 frappe.set_user("Administrator")
 print(frappe.call("vernon_project.api.attendance.list_leave_types")["types"][0])
 EOF
 ```
-Expected: first type dict printed (Cuti Tahunan, Annual Quota).
+Expected: first type dict printed (Cuti Tahunan, Annual Quota). Do NOT run `request_exception` for a *valid* leave here — it inserts a real row and notifies HR; only the blocked-path test in Task 12 is safe (it throws before insert).
 
 - [ ] **Step 5: Commit**
 ```bash
@@ -598,9 +601,8 @@ def delete_leave_type(name):
 - In `get_my_profile` (the function returning `data` with `full_name`/`phone`/`birthdate`), the doc `as_dict()` already includes `gender` since it's a profile field — confirm it's returned; if the return whitelists specific fields, add `data["gender"] = ep.gender`.
 - In `update_my_profile` (~line 5345): add `gender=None` to the signature and include `"gender"` in the loop that sets personal fields (the `for f in (...)` block near line 5369), or add an explicit `if gender is not None: doc.set("gender", gender)`.
 
-- [ ] **Step 3: Restart + verify**
+- [ ] **Step 3: Verify via console (NO restart — see Task 5 Step 4)**
 ```bash
-sudo /usr/local/bin/tj-restart
 cd /home/frappe/frappe-bench && bench --site project.vernon.id console <<'EOF'
 import frappe
 frappe.set_user("Administrator")
@@ -647,33 +649,56 @@ export type LeaveType = {
 }
 ```
 
-- [ ] **Step 2: Extend the request-exception payload type**
+Also add `leave_type` to the exception row type so MyExceptions can render it. Find `AttendanceExceptionRow` in `types.ts` and add `leave_type?: string`.
 
-Find the existing `useRequestException` mutation payload (in `useData.ts`) and add optional `leave_type?: string` and `proof?: string` to the mutate args, forwarding them to the `request_exception` call.
+Also add `gender` to the self-editable soft profile type so the profile screen can edit it — find `EmployeeSoft` in `types.ts` (the user recently added `focus_mode?: FocusMode` to it) and add `gender?: 'Male' | 'Female'`.
 
-- [ ] **Step 3: Add hooks**
+**CODEBASE PATTERN (authoritative — the plan's earlier `api.call` sketch was wrong):** attendance endpoints are typed methods on the `mobileApi` object in `frontend/src/lib/api.ts` using the `A` prefix (`A = 'vernon_project.api.attendance.'`), e.g. `requestException`/`myLeaders` at api.ts:522/544. Hooks in `useData.ts` call `mobileApi.X(...)`. Follow that — do NOT use `api.call`.
 
-In `useData.ts` (follow the existing `useQuery`/`useMutation` + `api.call` patterns already in this file):
+- [ ] **Step 2: Add methods to `mobileApi` (api.ts) + extend `requestException`**
+
+In `frontend/src/lib/api.ts`, in the `mobileApi` object next to `requestException`/`myLeaders`:
+```typescript
+  listLeaveTypes: () =>
+    api.get<{ status: string; types: import('./types').LeaveType[] }>(A + 'list_leave_types'),
+  adminListLeaveTypes: () =>
+    api.get<{ status: string; types: import('./types').LeaveType[] }>(A + 'admin_list_leave_types'),
+  saveLeaveType: (payload: Partial<import('./types').LeaveType> & { name?: string }) =>
+    api.post<{ status: string; name?: string; message?: string }>(A + 'save_leave_type', payload),
+  deleteLeaveType: (name: string) =>
+    api.post<{ status: string; message?: string }>(A + 'delete_leave_type', { name }),
+```
+And extend the existing `requestException` to carry the two new optional args:
+```typescript
+  requestException: (from_date: string, to_date: string, exception_type: 'WFH' | 'Leave', reason?: string, leave_type?: string, proof?: string) =>
+    api.post<{ status: string; message?: string; name?: string }>(A + 'request_exception', {
+      from_date, to_date, exception_type, reason, leave_type, proof,
+    }),
+```
+Also forward `gender` in the existing `updateMyProfile` method (api.ts ~577) so the profile screen can save it — the user just added `focus_mode` there; add `gender` to that same posted payload object.
+
+- [ ] **Step 3: Add hooks + extend `useRequestException` (useData.ts)**
+
+Extend the existing `useRequestException` mutation vars to `{ from_date; to_date; exception_type: 'WFH'|'Leave'; reason?; leave_type?; proof? }` and pass `vars.leave_type, vars.proof` into `mobileApi.requestException(...)`. Add:
 ```typescript
 export function useLeaveTypes() {
   return useQuery({
     queryKey: ['leave-types'],
-    queryFn: async () => (await api.call('vernon_project.api.attendance.list_leave_types')).types as LeaveType[],
+    queryFn: async () => (await mobileApi.listLeaveTypes()).types,
   })
 }
 
 export function useAdminLeaveTypes() {
   return useQuery({
     queryKey: ['admin-leave-types'],
-    queryFn: async () => (await api.call('vernon_project.api.attendance.admin_list_leave_types')).types as LeaveType[],
+    queryFn: async () => (await mobileApi.adminListLeaveTypes()).types,
   })
 }
 
 export function useSaveLeaveType() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: Partial<LeaveType> & { name?: string }) =>
-      api.call('vernon_project.api.attendance.save_leave_type', payload),
+    mutationFn: (payload: Partial<LeaveType> & { name?: string }) => mobileApi.saveLeaveType(payload),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leave-types'] }); qc.invalidateQueries({ queryKey: ['leave-types'] }) },
   })
 }
@@ -681,12 +706,12 @@ export function useSaveLeaveType() {
 export function useDeleteLeaveType() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (name: string) => api.call('vernon_project.api.attendance.delete_leave_type', { name }),
+    mutationFn: (name: string) => mobileApi.deleteLeaveType(name),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leave-types'] }); qc.invalidateQueries({ queryKey: ['leave-types'] }) },
   })
 }
 ```
-(Match the exact `api.call` signature used elsewhere in this file — some codebases pass args as a second object, confirm against a neighboring hook.)
+Import `LeaveType` from `@/lib/types` if `useData.ts` doesn't already. (`useMyProfile` is the current-user profile hook already used by `Profile.tsx` — reuse whatever that file imports; if the hook has a different name, use that.)
 
 - [ ] **Step 4: Typecheck both apps**
 ```bash
@@ -721,7 +746,7 @@ import { Check, Users } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
-import { useRequestException, useMyLeaders, useLeaveTypes, useMyProfile } from '@/hooks/useData'
+import { useRequestException, useMyLeaders, useLeaveTypes } from '@/hooks/useData'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100'
@@ -732,7 +757,6 @@ export default function RequestException() {
   const req = useRequestException()
   const { data: leaders, isLoading: leadersLoading } = useMyLeaders()
   const { data: types } = useLeaveTypes()
-  const { data: me } = useMyProfile()
   const [type, setType] = useState<'WFH' | 'Leave'>('Leave')
   const [leaveType, setLeaveType] = useState('')
   const [from, setFrom] = useState('')
@@ -740,11 +764,8 @@ export default function RequestException() {
   const [reason, setReason] = useState('')
   const [proof, setProof] = useState('')
 
-  const gender = (me as any)?.gender as string | undefined
-  const selectable = useMemo(
-    () => (types || []).filter((t) => t.gender === 'Any' || t.gender === gender || !gender),
-    [types, gender],
-  )
+  // list_leave_types already filters by the caller's gender server-side.
+  const selectable = types || []
   const chosen = selectable.find((t) => t.name === leaveType)
 
   const hint = useMemo(() => {
@@ -861,17 +882,17 @@ In `frontend/src/pages/MyExceptions.tsx`, where each row renders its type (curre
 
 - [ ] **Step 3: Add a gender field to the mobile profile edit**
 
-In `frontend/src/pages/Profile.tsx`, in the personal-info edit section, add a gender picker (two buttons Male/Female or a `SearchableSelect` with options Laki-laki/Perempuan → values `Male`/`Female`) bound to the profile's `gender`, saved via the existing self-profile update mutation (add `gender` to its payload).
+The user just added a `focus_mode` self-edit to `frontend/src/pages/Profile.tsx` (Select on Employee Profile, saved via `useSaveMyProfile`/`updateMyProfile`) — **gender is the same kind of field; mirror that pattern exactly.** Read how `focus_mode` is read (current value) and written in Profile.tsx, then add a gender picker (Laki-laki/Perempuan → values `Male`/`Female`) the same way, saving `{ gender }` through the same self-profile mutation. The `EmployeeSoft` type + api.ts `updateMyProfile` payload were already extended in Task 7 — do not re-edit them here.
 
-- [ ] **Step 4: Typecheck + build**
+- [ ] **Step 4: Typecheck only (no build — deploy is Task 12)**
 ```bash
-cd /home/frappe/frappe-bench/apps/vernon_project/frontend && npx tsc --noEmit && npm run build
+cd /home/frappe/frappe-bench/apps/vernon_project/frontend && npx tsc --noEmit
 ```
-Expected: no errors; bundle emitted to `../vernon_project/public/frontend/assets`.
+Expected: no errors. **Do NOT run `npm run build`** — it writes into the live-served `public/` and would deploy all current working-tree WIP. The one deploy build happens in Task 12.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (source only, never bundles)**
 ```bash
-git add frontend/src/pages/RequestException.tsx frontend/src/pages/MyExceptions.tsx frontend/src/pages/Profile.tsx vernon_project/public/frontend
+git add frontend/src/pages/RequestException.tsx frontend/src/pages/MyExceptions.tsx frontend/src/pages/Profile.tsx
 git commit -m "feat(cuti): mobile category picker + gender profile field"
 ```
 
@@ -901,7 +922,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, Users } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
-import { useRequestException, useMyLeaders, useLeaveTypes, useMyProfile } from '@/hooks/useData'
+import { useRequestException, useMyLeaders, useLeaveTypes } from '@/hooks/useData'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { DatePicker } from '@web/components/DatePicker'
 import { SearchableSelect } from '@web/components/SearchableSelect'
@@ -912,7 +933,6 @@ export default function RequestException() {
   const req = useRequestException()
   const { data: leaders, isLoading: leadersLoading } = useMyLeaders()
   const { data: types } = useLeaveTypes()
-  const { data: me } = useMyProfile()
   const [type, setType] = useState<'WFH' | 'Leave'>('Leave')
   const [leaveType, setLeaveType] = useState('')
   const [from, setFrom] = useState('')
@@ -920,11 +940,8 @@ export default function RequestException() {
   const [reason, setReason] = useState('')
   const [proof, setProof] = useState('')
 
-  const gender = (me as any)?.gender as string | undefined
-  const selectable = useMemo(
-    () => (types || []).filter((t) => t.gender === 'Any' || t.gender === gender || !gender),
-    [types, gender],
-  )
+  // list_leave_types already filters by the caller's gender server-side.
+  const selectable = types || []
   const chosen = selectable.find((t) => t.name === leaveType)
   const hint = useMemo(() => {
     if (!chosen) return ''
@@ -1040,15 +1057,15 @@ export default function RequestException() {
 
 - [ ] **Step 3: Gender field in the web profile edit** — same as Task 8 Step 3, using web `SearchableSelect`.
 
-- [ ] **Step 4: Typecheck + build**
+- [ ] **Step 4: Typecheck only (no build — deploy is Task 12)**
 ```bash
-cd /home/frappe/frappe-bench/apps/vernon_project/frontend-web && npx tsc --noEmit && npm run build
+cd /home/frappe/frappe-bench/apps/vernon_project/frontend-web && npx tsc --noEmit
 ```
-Expected: no errors; bundle emitted to `../vernon_project/public/frontend_web/assets`.
+Expected: no errors. **Do NOT run `npm run build`** (see Task 8 Step 4).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (source only, never bundles)**
 ```bash
-git add frontend-web/src/pages/RequestException.tsx frontend-web/src/pages/MyExceptions.tsx vernon_project/public/frontend_web
+git add frontend-web/src/pages/RequestException.tsx frontend-web/src/pages/MyExceptions.tsx frontend-web/src/pages/Profile.tsx
 git commit -m "feat(cuti): web category picker + gender profile field"
 ```
 
@@ -1176,10 +1193,12 @@ In `frontend/src/App.tsx`, import `LeaveTypesAdmin` and add a route `<Route path
 
 In the mobile admin/More menu builder, add a "Kategori Cuti" entry pointing to `/attendance/leave-types`, shown when `canHrApprove(boot)` — mirror how the HR cuti inbox (`/attendance/exceptions`) entry is gated.
 
-- [ ] **Step 4: Typecheck + build + commit**
+- [ ] **Step 4: Typecheck only + commit (no build)**
 ```bash
-cd /home/frappe/frappe-bench/apps/vernon_project/frontend && npx tsc --noEmit && npm run build
-git add frontend/src/pages/LeaveTypesAdmin.tsx frontend/src/App.tsx frontend/src/hooks/useData.ts vernon_project/public/frontend
+cd /home/frappe/frappe-bench/apps/vernon_project/frontend && npx tsc --noEmit
+# git add ONLY the files you actually changed (LeaveTypesAdmin.tsx, App.tsx, and the
+# mobile nav-menu file you edited). Never `npm run build`, never add public/ bundles.
+git add frontend/src/pages/LeaveTypesAdmin.tsx frontend/src/App.tsx <mobile-nav-file-you-edited>
 git commit -m "feat(cuti): mobile leave-types admin screen"
 ```
 
@@ -1273,12 +1292,13 @@ export default function LeaveTypesAdmin() {
 - `frontend-web/src/App.tsx`: import + `<Route path="/attendance/leave-types" element={<LeaveTypesAdmin />} />`.
 - `frontend-web/src/lib/nav.ts`: in the attendance group, add `{ to: '/attendance/leave-types', label: 'Leave Types', sub: 'Cuti categories & limits', icon: CalendarDays }` inside the `if (canHrApprove(b)) { ... }` block (next to the exceptions inbox `unshift`), so HR sees it.
 
-- [ ] **Step 3: Typecheck + build + commit**
+- [ ] **Step 3: Typecheck only + commit (no build)**
 ```bash
-cd /home/frappe/frappe-bench/apps/vernon_project/frontend-web && npx tsc --noEmit && npm run build
-git add frontend-web/src/pages/LeaveTypesAdmin.tsx frontend-web/src/App.tsx frontend-web/src/lib/nav.ts vernon_project/public/frontend_web
+cd /home/frappe/frappe-bench/apps/vernon_project/frontend-web && npx tsc --noEmit
+git add frontend-web/src/pages/LeaveTypesAdmin.tsx frontend-web/src/App.tsx frontend-web/src/lib/nav.ts
 git commit -m "feat(cuti): web leave-types admin screen"
 ```
+Never `npm run build`; never add `public/` bundles.
 
 ---
 
