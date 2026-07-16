@@ -46,7 +46,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const { data: gami } = useGamification()
   const claimDaily = useClaimDaily()
   const saveProfile = useSaveMyProfile()
-  const gender = boot?.employee?.gender ?? 'Male'
+  const gender = boot?.employee?.gender as 'Male' | 'Female' | undefined
   const qc = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
@@ -379,11 +379,26 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
               Gender
             </p>
-            <Segmented
-              options={GENDER_OPTIONS}
-              value={gender}
-              onChange={(v: 'Male' | 'Female') => saveProfile.mutate({ gender: v })}
-            />
+            <div className="flex gap-2">
+              {GENDER_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => saveProfile.mutate({ gender: o.value })}
+                  className={`flex-1 rounded-xl border py-2 text-sm font-semibold ${
+                    gender === o.value
+                      ? 'border-brand-600 bg-brand-50 text-brand-700'
+                      : 'border-slate-200 bg-white text-slate-500 dark:bg-slate-800 dark:border-slate-700'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {!gender && (
+              <p className="mt-2 text-xs text-stone-400">
+                Pilih jenis kelamin untuk mengakses kategori cuti khusus.
+              </p>
+            )}
           </div>
 
           <PasskeyCard />
