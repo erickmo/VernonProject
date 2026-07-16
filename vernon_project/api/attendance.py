@@ -280,6 +280,51 @@ def list_leave_types():
 	return {"status": "ok", "types": rows}
 
 
+_LEAVE_TYPE_FIELDS = ("leave_name", "enabled", "limit_kind", "day_limit", "gender",
+                      "requires_proof", "paid", "is_default_annual", "description", "sort_order")
+
+
+@frappe.whitelist()
+def admin_list_leave_types():
+	if not _is_hr(frappe.session.user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	rows = frappe.get_all("Leave Type", fields=["name", *_LEAVE_TYPE_FIELDS], order_by="sort_order asc")
+	return {"status": "ok", "types": rows}
+
+
+@frappe.whitelist()
+def save_leave_type(name=None, **fields):
+	if not _is_hr(frappe.session.user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	if fields.get("limit_kind") and fields["limit_kind"] not in ("Annual Quota", "Per Event", "Documented"):
+		frappe.throw(_("Invalid limit kind."))
+	if fields.get("gender") and fields["gender"] not in ("Any", "Male", "Female"):
+		frappe.throw(_("Invalid gender."))
+	doc = frappe.get_doc("Leave Type", name) if name else frappe.new_doc("Leave Type")
+	for f in _LEAVE_TYPE_FIELDS:
+		if f in fields and fields[f] is not None:
+			doc.set(f, fields[f])
+	doc.save(ignore_permissions=True)
+	# At most one default-annual type — dedupe AFTER save so doc.name is final.
+	if int(doc.is_default_annual or 0) == 1:
+		frappe.db.sql("UPDATE `tabLeave Type` SET is_default_annual = 0 WHERE name != %s", (doc.name,))
+	frappe.db.commit()
+	return {"status": "ok", "name": doc.name}
+
+
+@frappe.whitelist()
+def delete_leave_type(name):
+	if not _is_hr(frappe.session.user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	if frappe.db.get_value("Leave Type", name, "is_default_annual"):
+		return {"status": "error", "message": _("Kategori cuti tahunan default tidak dapat dihapus.")}
+	if frappe.db.exists("Attendance Exception", {"leave_type": name}):
+		return {"status": "error", "message": _("Kategori dipakai pengajuan yang ada; nonaktifkan saja.")}
+	frappe.delete_doc("Leave Type", name, ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok"}
+
+
 @frappe.whitelist()
 def request_exception(from_date, to_date, exception_type, reason=None, leave_type=None, proof=None):
 	user = frappe.session.user

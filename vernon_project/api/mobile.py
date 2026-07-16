@@ -27,7 +27,7 @@ MEMBER_TYPES = ("", "Internal Team", "Intern")
 # Employee Profile self-editable soft fields (mobile /m). Legal/contract/quota are NOT here.
 EMPLOYEE_SOFT_FIELDS = (
 	"home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
-	"religion", "verse_enabled",
+	"religion", "verse_enabled", "gender",
 )
 EMPLOYEE_SOFT_CHILDREN = {
 	"education": ("level", "institution", "major", "year"),
@@ -5343,7 +5343,7 @@ def update_my_profile(
 	home_address=None, emergency_contact_name=None,
 	emergency_contact_phone=None, emergency_contact_relation=None,
 	education=None, skills=None, trainings=None,
-	religion=None, verse_enabled=None,
+	religion=None, verse_enabled=None, gender=None,
 ):
 	"""Self-service: caller edits ONLY their own soft fields. Legal/contract/quota unreachable here."""
 	user = frappe.session.user
@@ -5370,6 +5370,8 @@ def update_my_profile(
 		doc.set("religion", religion)
 	if verse_enabled is not None:
 		doc.set("verse_enabled", int(verse_enabled))
+	if gender in ("Male", "Female"):
+		doc.set("gender", gender)
 
 	def _rows(raw):
 		return json.loads(raw) if isinstance(raw, str) else (raw or [])
