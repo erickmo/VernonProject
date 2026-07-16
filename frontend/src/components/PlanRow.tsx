@@ -5,7 +5,9 @@ import type { ProjectItem } from '@/lib/types'
 const CHIPS = [15, 30, 60]
 
 // One candidate row in the plan-my-day drawer. Shared by the mobile sheet and
-// the web drawer — all minute edits route through onSet (clamped upstream).
+// the web drawer. The buttons and chips edit through onSet, which clamps to the
+// row's floor upstream; the text input edits through onSetRaw and is clamped on
+// blur instead, since clamping a controlled input mid-word corrupts the digits.
 export function PlanRow({
   todo,
   minutes,
