@@ -51,6 +51,7 @@ CLUSTERS = {
         "Attendance Exception", "Attendance Exception Approver", "Attendance Holiday",
         "Attendance Holiday List", "Attendance Profile", "Attendance Scan",
         "Attendance Station", "Daily Attendance", "Shift Assignment", "Shift Template",
+        "Leave Type",
     }),
     "lms": ("Pembelajaran", "Learning", "1x1", {
         "Course", "Course Enrollment", "Course Lesson", "Course Lesson File",
