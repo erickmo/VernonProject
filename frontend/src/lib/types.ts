@@ -1038,6 +1038,7 @@ export type AttendanceExceptionRow = {
   hr_by?: string
   hr_reason?: string
   leave_type?: string
+  proof?: string
 }
 
 export type LeaveType = {

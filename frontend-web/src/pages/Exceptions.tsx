@@ -66,10 +66,20 @@ export default function Exceptions() {
               {rows.map((e) => (
                 <Card
                   key={e.name}
-                  title={`${e.employee} · ${e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}`}
+                  title={`${e.employee} · ${e.exception_type === 'Leave' ? (e.leave_type || 'Cuti') : 'WFH'}`}
                   meta={
                     <div className="flex flex-col gap-1">
                       <span>{e.from_date} → {e.to_date}{e.reason ? ` · ${e.reason}` : ''}</span>
+                      {e.proof && (
+                        <a
+                          href={e.proof}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-medium text-brand-600 underline"
+                        >
+                          Lihat lampiran
+                        </a>
+                      )}
                       {e.approvers.length > 0 ? (
                         e.approvers.map((a) => (
                           <span key={a.approver} className="flex items-center gap-1.5 text-xs">

@@ -71,12 +71,22 @@ export default function AttendanceExceptionsScreen() {
               className="rounded-2xl border border-paper-edge bg-paper-card p-4 shadow-card dark:border-slate-700 dark:bg-slate-800"
             >
               <p className="font-semibold text-stone-800 dark:text-slate-100">
-                {e.employee} · {e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}
+                {e.employee} · {e.exception_type === 'Leave' ? (e.leave_type || 'Cuti') : 'WFH'}
               </p>
               <p className="mt-0.5 text-xs text-stone-400">
                 {e.from_date} → {e.to_date}
                 {e.reason ? ` · ${e.reason}` : ''}
               </p>
+              {e.proof && (
+                <a
+                  href={e.proof}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-block text-xs font-medium text-brand-600 underline"
+                >
+                  Lihat lampiran
+                </a>
+              )}
 
               <div className="mt-3 flex flex-col gap-1.5 border-t border-paper-edge pt-2.5 dark:border-slate-700">
                 <p className="text-xs font-semibold text-stone-500">Leader input</p>
