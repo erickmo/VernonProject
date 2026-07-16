@@ -7,7 +7,7 @@ import {
   type Column,
 } from '@web/components/DataTable'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
-import { useSetTodoAllocations } from '@/hooks/useData'
+import { useSetTodoAllocations, useFocusMode } from '@/hooks/useData'
 import { openFocusOverlay } from '@/lib/focusUI'
 import { buildNext } from '@/lib/planDay'
 import { formatEstimate, todayISO } from '@/lib/format'
@@ -96,6 +96,7 @@ export const TODO_COLUMNS: Column<ProjectItem>[] = [
 function TodoActionsCell({ todo }: { todo: ProjectItem }) {
   const focus = useFocusTimer(todo.name)
   const focusActive = focus.timer != null
+  const focusMode = useFocusMode()
   const setAlloc = useSetTodoAllocations(todo.name)
   const planned = todo.today_allocation > 0
 
@@ -124,7 +125,7 @@ function TodoActionsCell({ todo }: { todo: ProjectItem }) {
       </button>
       <button
         type="button"
-        title={focusActive ? 'Open focus timer' : 'Start focus timer'}
+        title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Focus timer running') : 'Start focus timer'}
         onClick={(e) => {
           e.stopPropagation()
           if (!focusActive)
@@ -134,7 +135,8 @@ function TodoActionsCell({ todo }: { todo: ProjectItem }) {
               overdue: todo.is_overdue,
               estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
             })
-          openFocusOverlay(todo.name)
+          // inline mode: run the timer on the card only, never open the overlay.
+          if (focusMode === 'fullscreen') openFocusOverlay(todo.name)
         }}
         className={clsx(
           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition active:scale-95',

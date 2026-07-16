@@ -28,6 +28,7 @@ import { Page, rise } from '@web/components/Page'
 import { Button, ErrorState, Skeleton } from '@web/components/ui'
 import { CardList } from '@web/components/Card'
 import { PlanDayDrawer } from '@web/components/PlanDayDrawer'
+import { AutoPlanProgress } from '@/components/AutoPlanProgress'
 import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
 import { QuickCreate } from '@web/components/QuickCreate'
 import { DatePicker } from '@web/components/DatePicker'
@@ -955,6 +956,7 @@ export default function Home() {
       </div>
 
       {planOpen && <PlanDayDrawer open onClose={() => setPlanOpen(false)} candidates={planCandidates} />}
+      <AutoPlanProgress open={autoFill.saving} summary={autoFill.summary} />
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
       <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} />
     </Page>

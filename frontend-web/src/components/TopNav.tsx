@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Search, Plus, Coins, Sun, Moon, Monitor, LogOut, User, Grid3x3 } from 'lucide-react'
+import { Search, Plus, Coins, Sun, Moon, Monitor, LogOut, User, Grid3x3, Maximize2, Timer } from 'lucide-react'
 import clsx from 'clsx'
-import { useBoot, useWallet, useDashboard } from '@/hooks/useData'
+import { useBoot, useWallet, useDashboard, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { Avatar } from '@/components/ui'
 import { logout } from '@/lib/api'
 import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
 import { formatNumber } from '@/lib/format'
-import type { AvatarConfig } from '@/lib/types'
+import type { AvatarConfig, FocusMode } from '@/lib/types'
 import { useModalA11y } from '@web/lib/useModalA11y'
 import { NotificationBell } from '@web/components/NotificationBell'
 import { NAV_PRIMARY } from '@web/lib/nav'
@@ -16,6 +16,11 @@ const THEMES: { value: Theme; icon: typeof Sun; label: string }[] = [
   { value: 'light', icon: Sun, label: 'Light' },
   { value: 'dark', icon: Moon, label: 'Dark' },
   { value: 'system', icon: Monitor, label: 'System' },
+]
+
+const FOCUS_MODES: { value: FocusMode; icon: typeof Sun; label: string }[] = [
+  { value: 'fullscreen', icon: Maximize2, label: 'Full screen' },
+  { value: 'inline', icon: Timer, label: 'Timer only' },
 ]
 
 // Top tab bar (mobile-flow shell). Primary navigation lives here as a
@@ -125,6 +130,8 @@ function AvatarMenu({
 }: { name: string; image?: string; config?: AvatarConfig | null; theme: Theme; pickTheme: (t: Theme) => void; onLogout: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useModalA11y(open, () => setOpen(false))
+  const focusMode = useFocusMode()
+  const saveProfile = useSaveMyProfile()
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} aria-label="Account" aria-haspopup="menu" aria-expanded={open}
@@ -144,6 +151,15 @@ function AvatarMenu({
               <button key={value} onClick={() => pickTheme(value)} title={label} aria-pressed={theme === value}
                 className={`flex-1 rounded-md py-1.5 ${theme === value ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15' : 'text-muted hover:bg-hover/[0.04]'}`}>
                 <Icon className="mx-auto h-4 w-4" />
+              </button>
+            ))}
+          </div>
+          <div className="px-2 pb-0.5 text-[11px] font-medium text-muted">Focus</div>
+          <div className="mb-1.5 flex items-center gap-1">
+            {FOCUS_MODES.map(({ value, icon: Icon, label }) => (
+              <button key={value} onClick={() => saveProfile.mutate({ focus_mode: value })} title={label} aria-pressed={focusMode === value}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium ${focusMode === value ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15' : 'text-muted hover:bg-hover/[0.04]'}`}>
+                <Icon className="h-3.5 w-3.5" /> {label}
               </button>
             ))}
           </div>

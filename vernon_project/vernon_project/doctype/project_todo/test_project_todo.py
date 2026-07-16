@@ -1136,6 +1136,31 @@ class TestProjectTodoFiles(FrappeTestCase):
 		self.assertTrue(frappe.db.exists("File", foreign.name), "foreign file must not be deleted")
 		frappe.delete_doc("File", foreign.name, force=True, ignore_permissions=True)
 
+	def test_download_streams_content_for_reader(self):
+		"""A user who can read the todo gets the file bytes back as a download —
+		the Cloudflare-safe path for .html attachments."""
+		from vernon_project.api.project_todo import _attach_file_to_todo, download_todo_file
+		row = _attach_file_to_todo(self.todo.name, "report.html", b"<h1>hi</h1>")
+		frappe.set_user(self.assignee)
+		try:
+			frappe.local.response = frappe._dict()
+			download_todo_file(self.todo.name, row["name"])
+			self.assertEqual(frappe.local.response.type, "download")
+			self.assertEqual(frappe.local.response.filecontent, b"<h1>hi</h1>")
+			self.assertEqual(frappe.local.response.filename, "report.html")
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_download_rejects_file_not_attached_to_this_todo(self):
+		"""Cross-doc guard: a caller can't pull a File attached elsewhere by name."""
+		from frappe.utils.file_manager import save_file
+		from vernon_project.api.project_todo import download_todo_file
+		foreign = save_file("foreign.html", b"secret", "Project Detail", self.project_detail.name, is_private=1)
+		with self.assertRaises(frappe.ValidationError):
+			download_todo_file(self.todo.name, foreign.name)
+		self.assertTrue(frappe.db.exists("File", foreign.name), "foreign file must survive")
+		frappe.delete_doc("File", foreign.name, force=True, ignore_permissions=True)
+
 
 def run_tests():
 	"""Helper function to run all tests"""

@@ -32,11 +32,30 @@ function Cards({ todos }: { todos: ProjectItem[] }) {
 
 const FOCUS_PANES = [0, 1, 2] // 3 project-focus panes after the "All" pane
 
-// ponytail: module slot so the active pane + picks survive SPA navigation
-// away/back (component unmounts on route change). Single Home instance, so one
-// global is fine; lift to a store if this ever mounts twice. Lost on full
-// reload — swap to sessionStorage if that matters.
-const persist = { idx: 0, picks: ['', '', ''] as string[] }
+// Active pane + picks, mirrored to localStorage so they survive both a route
+// change and a full reload — the pick is the user's place in their work, losing
+// it on every refresh is the whole complaint. Same idea as web Home's
+// usePersistentState, JSON'd because this is a pane index plus three picks.
+// ponytail: one row for the whole carousel; single Home instance, so a module
+// slot mirroring storage is enough — lift to a store if this ever mounts twice.
+const KEY = 'home.swipeProjects'
+type Persisted = { idx: number; picks: string[] }
+const blank = (): Persisted => ({ idx: 0, picks: ['', '', ''] })
+
+function load(): Persisted {
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY) || '')
+    if (v && typeof v.idx === 'number') {
+      // Rebuild the tuple positionally — a short/garbled array must not shrink it.
+      return { idx: v.idx, picks: FOCUS_PANES.map((i) => String(v.picks?.[i] ?? '')) }
+    }
+  } catch {
+    /* absent, corrupt, or private mode — fall back to a clean slate */
+  }
+  return blank()
+}
+
+const persist = load()
 
 // Mobile mirror of web's ThreeColProjectList: a horizontal swipe carousel.
 // Pane 0 = the full list; panes 1-3 = each a project you pick, so you can work
@@ -50,10 +69,15 @@ export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
   const [idx, setIdx] = useState(persist.idx)
   const [picks, setPicks] = useState(persist.picks) // focus panes 1-3
 
-  // Mirror state into the module slot so a remount restores it.
+  // Mirror state out so a remount (route change) or a reload restores it.
   useEffect(() => {
     persist.idx = idx
     persist.picks = picks
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ idx, picks }))
+    } catch {
+      /* private mode / quota — non-fatal, just don't persist */
+    }
   }, [idx, picks])
 
   // Restore scroll onto the saved pane once the track exists (items may load
@@ -82,8 +106,11 @@ export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
 
   return (
     <div className="relative mt-3">
-      {/* Active-pane control: "All" is just a label; focus panes get a picker. */}
-      <div className="mb-3 min-h-[2.75rem]">
+      {/* Active-pane control: "All" is just a label; focus panes get a picker.
+          Sticks below the page header so the focused project stays on screen
+          while its todos scroll. --tab-hdr is TabScreen's measured header height;
+          the fallback only matters for the first paint. */}
+      <div className="sticky top-[var(--tab-hdr,5.75rem)] z-10 -mx-4 mb-3 min-h-[2.75rem] bg-paper/95 px-4 py-1.5 backdrop-blur-sm dark:bg-slate-900">
         {idx === 0 ? (
           <div className="flex items-center gap-2 px-1 py-2 text-sm font-semibold text-stone-500 dark:text-slate-400">
             All todos · {items.length}

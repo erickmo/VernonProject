@@ -67,16 +67,3 @@ export function useAppUpdate() {
   }, [])
   return { ...useSyncExternalStore(subscribe, getSnapshot), applyUpdate }
 }
-
-// True exactly once after the build id changes (not on a fresh install where
-// there is no prior record). Drives a "what's new / updated" prompt.
-export function consumeJustUpdated(): boolean {
-  try {
-    const prev = localStorage.getItem('vernon-last-build')
-    const cur = __BUILD_ID__
-    if (prev !== cur) localStorage.setItem('vernon-last-build', cur)
-    return prev != null && prev !== cur
-  } catch {
-    return false // private mode / storage disabled
-  }
-}

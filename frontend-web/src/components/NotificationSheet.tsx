@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck, Sparkles } from 'lucide-react'
-import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useData'
+import { useNotificationFeed, useMarkRead, useMarkAllRead } from '@/hooks/useData'
 import { useAppUpdate } from '@/lib/appUpdate'
 import {
   TYPE_ICON,
@@ -46,19 +46,27 @@ function TabChip({
 
 export function NotificationSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 
-  const { data, isLoading, isError, refetch } = useNotifications()
+  const {
+    items: rows,
+    unread,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useNotificationFeed(open)
   const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
   const navigate = useNavigate()
   const [tab, setTab] = useState<NotificationType | null>(null)
 
-  const groups = useMemo(() => groupNotifications(data?.items ?? []), [data?.items])
+  const groups = useMemo(() => groupNotifications(rows), [rows])
   const tabs = useMemo(() => typeTabs(groups), [groups])
   // A filtered-to-empty tab would strand the user, so fall back to All.
   const active = tab && tabs.some((t) => t.type === tab) ? tab : null
   const items = active ? groups.filter((g) => g.head.type === active) : groups
-  const unread = data?.unread ?? 0
 
   function openItem(g: NotificationGroup) {
     if (g.unread) markRead.mutate(g.names)
@@ -177,6 +185,17 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
                 </li>
               )
             })}
+            {hasNextPage && (
+              <li>
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="w-full px-5 py-3 text-center text-sm font-semibold text-brand-500 hover:bg-hover/[0.04] disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? 'Loading…' : 'Load older notifications'}
+                </button>
+              </li>
+            )}
           </ul>
         </>
       )}

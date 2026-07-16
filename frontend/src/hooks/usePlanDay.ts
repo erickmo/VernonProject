@@ -132,12 +132,17 @@ export function useAutoPlanToday(buckets: {
 // Settings.min_daily_estimated_minutes, read via the shortfall endpoint). Writes
 // est-minutes to today's allocation for the picked tasks; never rewrites tasks
 // already planned today. Reversible in the Plan-my-day drawer/sheet.
+export type AutoPlanSummary = { tasks: number; minutes: number; deadlines: number }
+
 export function useAutoFillPlan() {
   const qc = useQueryClient()
   const toast = useToast()
   const today = todayISO()
   const shortfall = usePreviousShiftShortfall()
   const [saving, setSaving] = useState(false)
+  // What the in-flight run is planning, so the progress modal can name it while
+  // the writes land. Set before saving, cleared when the run settles.
+  const [summary, setSummary] = useState<AutoPlanSummary | null>(null)
 
   const run = async (buckets: { due_today: ProjectItem[]; overdue: ProjectItem[]; upcoming: ProjectItem[] }) => {
     const min = shortfall.data?.today_minimum ?? 0
@@ -146,6 +151,12 @@ export function useAutoFillPlan() {
       toast('success', "You're already at today's target")
       return
     }
+    const minutes = picks.reduce((s, p) => s + p.minutes, 0)
+    // Deadline-driven picks: tasks whose deadline is today (same test the rest of
+    // the app uses for "due today" — see planFloor). The others are top-ups toward
+    // the daily minimum.
+    const deadlines = picks.filter((p) => p.todo.deadline === today).length
+    setSummary({ tasks: picks.length, minutes, deadlines })
     setSaving(true)
     try {
       await Promise.all(
@@ -153,14 +164,18 @@ export function useAutoFillPlan() {
       )
       qc.invalidateQueries({ queryKey: keys.dashboard })
       for (const p of picks) qc.invalidateQueries({ queryKey: keys.projectItem(p.todo.name) })
-      const added = picks.reduce((s, p) => s + p.minutes, 0)
-      toast('success', `Auto-planned ${picks.length} task${picks.length === 1 ? '' : 's'} · ${formatEstimate(added)} added`)
+      toast(
+        'success',
+        `Auto-planned ${picks.length} task${picks.length === 1 ? '' : 's'} · ${formatEstimate(minutes)} added` +
+          (deadlines ? ` · ${deadlines} due today` : ''),
+      )
     } catch (e) {
       toast('error', (e as Error).message || 'Could not auto-plan')
     } finally {
       setSaving(false)
+      setSummary(null)
     }
   }
 
-  return { run, saving }
+  return { run, saving, summary }
 }

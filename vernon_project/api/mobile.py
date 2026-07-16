@@ -27,7 +27,7 @@ MEMBER_TYPES = ("", "Internal Team", "Intern")
 # Employee Profile self-editable soft fields (mobile /m). Legal/contract/quota are NOT here.
 EMPLOYEE_SOFT_FIELDS = (
 	"home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
-	"religion", "verse_enabled", "gender",
+	"religion", "verse_enabled", "focus_mode", "gender",
 )
 EMPLOYEE_SOFT_CHILDREN = {
 	"education": ("level", "institution", "major", "year"),
@@ -287,12 +287,13 @@ def _notify(recipient, type, title, body, reference_doctype=None, reference_name
 
 
 @frappe.whitelist()
-def get_notifications(limit=30):
-	"""Newest-first notifications for the session user + unread count."""
+def get_notifications(limit=30, start=0):
+	"""One newest-first page of the session user's notifications + unread count."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
-	limit = frappe.utils.cint(limit) or 30
+	limit = min(frappe.utils.cint(limit) or 30, 200)
+	start = max(frappe.utils.cint(start), 0)
 	rows = frappe.get_all(
 		"Vernon Notification",
 		filters={"recipient": user},
@@ -301,6 +302,7 @@ def get_notifications(limit=30):
 			"reference_name", "actor", "is_read", "creation",
 		],
 		order_by="creation desc",
+		limit_start=start,
 		limit_page_length=limit,
 	)
 	actor_map = _user_name_map({r["actor"] for r in rows})
@@ -321,7 +323,9 @@ def get_notifications(limit=30):
 		for r in rows
 	]
 	unread = frappe.db.count("Vernon Notification", {"recipient": user, "is_read": 0})
-	return {"items": items, "unread": unread}
+	# ponytail: a full page means "probably more" — one extra empty fetch at an
+	# exact multiple beats a COUNT(*) on every page.
+	return {"items": items, "unread": unread, "has_more": len(rows) == limit}
 
 
 @frappe.whitelist()
@@ -621,6 +625,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"point": row.get("point") or 0,
 		"assignee_earned": row.get("assignee_earned") or 0,
 		"leader_earned": row.get("leader_earned") or 0,
+		"notes": row.get("notes") or "",
 	}
 	# Day allocations (assignee's per-day plan; not scored). alloc_map avoids N+1
 	# in list contexts; for a single todo fetch directly when no map is supplied.
@@ -637,7 +642,6 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 	out["allocated_total"] = sum((a["minutes"] or 0) for a in allocs)
 	out["today_allocation"] = today_alloc
 	if include_notes:
-		out["notes"] = row.get("notes") or ""
 		out["timeline"] = [
 			t
 			for t in [
@@ -5343,7 +5347,7 @@ def update_my_profile(
 	home_address=None, emergency_contact_name=None,
 	emergency_contact_phone=None, emergency_contact_relation=None,
 	education=None, skills=None, trainings=None,
-	religion=None, verse_enabled=None, gender=None,
+	religion=None, verse_enabled=None, focus_mode=None, gender=None,
 ):
 	"""Self-service: caller edits ONLY their own soft fields. Legal/contract/quota unreachable here."""
 	user = frappe.session.user
@@ -5370,6 +5374,8 @@ def update_my_profile(
 		doc.set("religion", religion)
 	if verse_enabled is not None:
 		doc.set("verse_enabled", int(verse_enabled))
+	if focus_mode in ("fullscreen", "inline"):
+		doc.set("focus_mode", focus_mode)
 	if gender in ("Male", "Female"):
 		doc.set("gender", gender)
 

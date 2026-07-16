@@ -62,7 +62,7 @@ export default function MyExceptions() {
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs">No project leaders — straight to HR.</span>
+                        <span className="text-xs">Straight to HR.</span>
                       )}
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
                         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot[e.hr_decision] || dot.Pending}`} />

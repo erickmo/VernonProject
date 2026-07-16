@@ -102,7 +102,7 @@ export default function AttendanceExceptionsScreen() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-stone-400">No project leaders.</p>
+                  <p className="text-xs text-stone-400">No leader input.</p>
                 )}
               </div>
 

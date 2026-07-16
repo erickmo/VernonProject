@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck, Sparkles } from 'lucide-react'
 import { DetailScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
-import { useNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useData'
+import { useNotificationFeed, useMarkRead, useMarkAllRead } from '@/hooks/useData'
 import { useAppUpdate } from '@/lib/appUpdate'
 import {
   TYPE_ICON,
@@ -48,13 +48,14 @@ function TabChip({
 
 export default function NotificationsScreen() {
   const navigate = useNavigate()
-  const { data, isLoading, refetch } = useNotifications()
+  const feed = useNotificationFeed()
+  const { items: rows, unread, isLoading, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = feed
   const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
   const [tab, setTab] = useState<NotificationType | null>(null)
 
-  const groups = useMemo(() => groupNotifications(data?.items ?? []), [data?.items])
+  const groups = useMemo(() => groupNotifications(rows), [rows])
   const tabs = useMemo(() => typeTabs(groups), [groups])
   // A filtered-to-empty tab would strand the user, so fall back to All.
   const active = tab && tabs.some((t) => t.type === tab) ? tab : null
@@ -68,7 +69,7 @@ export default function NotificationsScreen() {
   const markAllButton = (
     <button
       onClick={() => markAll.mutate()}
-      disabled={markAll.isPending || (data?.unread ?? 0) === 0}
+      disabled={markAll.isPending || unread === 0}
       className="inline-flex items-center gap-1 rounded-full bg-paper-line px-3 py-1.5 text-xs font-semibold text-stone-500 active:scale-95 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-200"
     >
       <CheckCheck className="h-3.5 w-3.5" /> Mark all read
@@ -77,7 +78,7 @@ export default function NotificationsScreen() {
 
   return (
     <DetailScreen title="Notifications" right={items.length > 0 ? markAllButton : undefined}>
-      {isLoading && !data ? (
+      {isLoading ? (
         <FullScreenLoader label="Loading notifications…" />
       ) : (
         <PullToRefresh onRefresh={refetch}>
@@ -172,6 +173,17 @@ export default function NotificationsScreen() {
                   </li>
                 )
               })}
+              {hasNextPage && (
+                <li>
+                  <button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="w-full py-3 text-center text-sm font-semibold text-brand-500 active:scale-95 disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? 'Loading…' : 'Load older notifications'}
+                  </button>
+                </li>
+              )}
             </ul>
           )}
         </PullToRefresh>

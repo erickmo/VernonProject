@@ -31,6 +31,7 @@ import {
   Layers,
   Target,
   Timer,
+  StickyNote,
   X,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
@@ -38,9 +39,10 @@ import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
+import { todoFileHref } from '@/lib/api'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatClock, formatEstimate, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot } from '@/hooks/useData'
+import { formatClock, formatEstimate, dateSub, stripHtml, todayISO } from '@/lib/format'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
 import { computeTodoPoints } from '@/lib/points'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -50,6 +52,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
+import { FocusNoteSheet } from '@/components/FocusNoteSheet'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
 import type { ProjectItemDetail, TodoFile } from '@/lib/types'
@@ -605,7 +608,7 @@ function Files({ todoId, files, canEdit }: { todoId: string; files: TodoFile[]; 
         >
           <FileText className="h-4 w-4 shrink-0 text-slate-400" />
           <a
-            href={f.file_url}
+            href={todoFileHref(todoId, f)}
             target="_blank"
             rel="noreferrer"
             className="min-w-0 flex-1 truncate text-sm text-brand-600 hover:underline dark:text-brand-400"
@@ -993,10 +996,12 @@ export default function ProjectItemScreen() {
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [showWaiting, setShowWaiting] = useState(false)
+  const [showFocusNote, setShowFocusNote] = useState(false)
   const [dupOpen, setDupOpen] = useState(false)
 const [followOpen, setFollowOpen] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer(id)
+  const focusMode = useFocusMode()
 
   if (isLoading && !data) {
     return (
@@ -1157,7 +1162,8 @@ const [followOpen, setFollowOpen] = useState(false)
               .join(' · ')
           : undefined,
       })
-    openFocusOverlay(data.name)
+    // inline mode: the timer shows inline on this screen; the FAB opens the overlay.
+    if (focusMode === 'fullscreen') openFocusOverlay(data.name)
   }
   // Active overtime only matters with a real estimate; a no-estimate timer just
   // counts up and never goes "over".
@@ -1225,6 +1231,7 @@ const [followOpen, setFollowOpen] = useState(false)
               icon={CalendarDays}
               label="Start date"
               value={data.start_date_human || '—'}
+              sub={dateSub(data.start_date)}
             />
 
             <StatTile
@@ -1232,7 +1239,7 @@ const [followOpen, setFollowOpen] = useState(false)
               label="Deadline"
               tone={data.is_overdue ? 'danger' : 'default'}
               value={data.deadline_human || '—'}
-              sub={data.is_overdue ? 'Overdue' : undefined}
+              sub={dateSub(data.deadline, data.is_overdue && 'Overdue')}
             />
 
             <StatTile
@@ -1269,7 +1276,7 @@ const [followOpen, setFollowOpen] = useState(false)
                 label="Leader approval"
                 tone={data.leader_appr_overdue ? 'danger' : 'default'}
                 value={data.leader_deadline_human || '—'}
-                sub={data.leader_appr_overdue ? 'Overdue' : undefined}
+                sub={dateSub(data.leader_deadline, data.leader_appr_overdue && 'Overdue')}
               />
             )}
 
@@ -1279,7 +1286,7 @@ const [followOpen, setFollowOpen] = useState(false)
                 label="Owner approval"
                 tone={data.owner_appr_overdue ? 'danger' : 'default'}
                 value={data.owner_deadline_human || '—'}
-                sub={data.owner_appr_overdue ? 'Overdue' : undefined}
+                sub={dateSub(data.owner_deadline, data.owner_appr_overdue && 'Overdue')}
               />
             )}
 
@@ -1325,7 +1332,9 @@ const [followOpen, setFollowOpen] = useState(false)
             <Timer className="h-4 w-4" />
             {focusActive ? (
               <>
-                {focus.timer?.status === 'paused' ? 'Resume focus' : 'Open focus'}
+                {focusMode === 'inline'
+                  ? focus.timer?.status === 'paused' ? 'Paused' : 'Focusing'
+                  : focus.timer?.status === 'paused' ? 'Resume focus' : 'Open focus'}
                 <span className="font-mono tabular-nums">
                   {focusOver ? '+' : ''}
                   {formatClock(focusValueMs)}
@@ -1335,6 +1344,20 @@ const [followOpen, setFollowOpen] = useState(false)
               'Focus mode'
             )}
           </button>
+
+          <button
+            onClick={() => setShowFocusNote(true)}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800 py-2.5 text-sm font-semibold text-stone-700 dark:text-slate-200 ring-1 ring-stone-200 dark:ring-slate-600 active:bg-stone-50"
+          >
+            <StickyNote className="h-4 w-4 text-brand-600" />
+            {focus.note ? 'Edit focus note' : 'Add focus note'}
+          </button>
+          {focus.note && (
+            <p className="mt-1.5 flex items-start gap-1.5 px-1 text-xs text-stone-500 dark:text-slate-400">
+              <StickyNote className="mt-0.5 h-3 w-3 shrink-0 text-brand-500" />
+              <span className="whitespace-pre-wrap">{focus.note}</span>
+            </p>
+          )}
         </div>
 
       {/* My day plan: editable for assignee, read-only for others */}
@@ -1566,6 +1589,8 @@ const [followOpen, setFollowOpen] = useState(false)
       )}
 
       <CommentThread referenceDoctype="Project Todo" referenceName={id} />
+
+      <FocusNoteSheet open={showFocusNote} onClose={() => setShowFocusNote(false)} todoId={id} title={data.to_do} />
 
       {showWaiting && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center">

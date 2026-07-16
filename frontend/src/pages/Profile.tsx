@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -12,6 +12,7 @@ import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
 import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 import { type Theme, getStoredTheme, setTheme } from '@/lib/theme'
+import type { FocusMode } from '@/lib/types'
 import { pushSupported, subscribeToPush, unsubscribeFromPush, getPushSubscription } from '@/lib/push'
 
 function useOnline() {
@@ -35,6 +36,11 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ]
 
+const FOCUS_OPTIONS: { value: FocusMode; label: string }[] = [
+  { value: 'fullscreen', label: 'Full screen' },
+  { value: 'inline', label: 'Timer only' },
+]
+
 const GENDER_OPTIONS: { value: 'Male' | 'Female'; label: string }[] = [
   { value: 'Male', label: 'Laki-laki' },
   { value: 'Female', label: 'Perempuan' },
@@ -45,6 +51,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
   const { data: catalog } = useAvatarCatalog()
   const { data: gami } = useGamification()
   const claimDaily = useClaimDaily()
+  const focusMode = useFocusMode()
   const saveProfile = useSaveMyProfile()
   const gender = boot?.employee?.gender as 'Male' | 'Female' | undefined
   const qc = useQueryClient()
@@ -372,6 +379,23 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               Appearance
             </p>
             <Segmented options={THEME_OPTIONS} value={theme} onChange={handleThemeChange} />
+          </div>
+
+          {/* Focus mode */}
+          <div className="mt-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-3.5 shadow-card">
+            <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+              Focus
+            </p>
+            <Segmented
+              options={FOCUS_OPTIONS}
+              value={focusMode}
+              onChange={(v: FocusMode) => saveProfile.mutate({ focus_mode: v })}
+            />
+            <p className="mt-2 text-xs text-stone-500 dark:text-slate-400">
+              {focusMode === 'inline'
+                ? 'Tapping Focus just starts the timer on the task — no full-screen.'
+                : 'Tapping Focus opens the full-screen focus screen.'}
+            </p>
           </div>
 
           {/* Gender */}

@@ -9,7 +9,7 @@ from frappe.utils import cint, getdate, now_datetime, nowdate
 
 from vernon_project.attendance import qr
 from vernon_project.attendance.engine import recompute_daily
-from vernon_project.attendance.approval import distinct_leaders
+from vernon_project.attendance.approval import leaders_for_projects
 
 
 @frappe.whitelist(allow_guest=True)
@@ -143,7 +143,10 @@ def attendance_report(from_date, to_date, employee=None, brand=None, status=None
 
 def _leaders_for_employee(employee):
 	"""Distinct project_leaders of every Ongoing project the employee is a
-	team member of, excluding the employee themselves. Snapshot for a request."""
+	team member of, excluding the employee themselves. Snapshot for a request.
+
+	Empty when the employee owns any of those projects — an owner outranks the
+	leaders, so their request goes straight to HR (see leaders_for_projects)."""
 	team_rows = frappe.get_all("Project Team", filters={"user": employee}, fields=["parent"])
 	project_names = list({r.parent for r in team_rows})
 	if not project_names:
@@ -151,9 +154,9 @@ def _leaders_for_employee(employee):
 	projects = frappe.get_all(
 		"Project",
 		filters={"name": ["in", project_names], "status": "Ongoing"},
-		fields=["project_leader"],
+		fields=["project_owner", "project_leader"],
 	)
-	return distinct_leaders([p.project_leader for p in projects], employee)
+	return leaders_for_projects([(p.project_owner, p.project_leader) for p in projects], employee)
 
 
 def _is_hr(user):

@@ -65,6 +65,13 @@ export function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// Sub-line for a tile whose value is a relative label ("Today", "in 3 days") — spells out the
+// date the label hides, optionally behind a flag like "Overdue".
+export function dateSub(iso: string | null | undefined, flag?: string | false | null): string | undefined {
+  if (!iso) return undefined
+  return [flag || null, formatDate(iso)].filter(Boolean).join(' · ')
+}
+
 // Local calendar date as YYYY-MM-DD — matches Frappe Date fields + <input type="date">.
 export function todayISO(): string {
   const d = new Date()

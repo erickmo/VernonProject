@@ -28,6 +28,7 @@ import {
   Repeat,
   RotateCcw,
   Save,
+  StickyNote,
   Target,
   Timer,
   Trash2,
@@ -48,11 +49,13 @@ import {
   useDeleteTodoFile,
   useSetAutoApprove,
   useBoot,
+  useFocusMode,
 } from '@/hooks/useData'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatClock, formatEstimate, formatDate, formatNumber, stripHtml, todayISO } from '@/lib/format'
+import { formatClock, formatEstimate, formatDate, dateSub, formatNumber, stripHtml, todayISO } from '@/lib/format'
 import { computeTodoPoints } from '@/lib/points'
+import { todoFileHref } from '@/lib/api'
 import { Avatar, Spinner } from '@/components/ui'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -66,6 +69,7 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { FocusNoteDialog } from '@web/components/FocusNoteDialog'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { DatePicker } from '@web/components/DatePicker'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
@@ -314,7 +318,7 @@ function Files({ todoId, files, canEdit }: { todoId: string; files: TodoFile[]; 
         >
           <FileText className="h-4 w-4 shrink-0 text-muted" />
           <a
-            href={f.file_url}
+            href={todoFileHref(todoId, f)}
             target="_blank"
             rel="noreferrer"
             className="min-w-0 flex-1 truncate text-sm text-brand-600 hover:underline dark:text-brand-400"
@@ -1012,8 +1016,10 @@ export default function ProjectItem() {
   const [showCancel, setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [showWaiting, setShowWaiting] = useState(false)
+  const [showFocusNote, setShowFocusNote] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer(todoName)
+  const focusMode = useFocusMode()
   const [dupOpen, setDupOpen] = useState(false)
 const [followOpen, setFollowOpen] = useState(false)
 
@@ -1143,7 +1149,8 @@ const [followOpen, setFollowOpen] = useState(false)
               .join(' · ')
           : undefined,
       })
-    openFocusOverlay(data.name)
+    // inline mode: the timer shows inline on this screen; the dock opens the overlay.
+    if (focusMode === 'fullscreen') openFocusOverlay(data.name)
   }
   const focusOver = focusActive && focus.hasEstimate && focus.remainingMs < 0
   const focusValueMs = focusActive ? (focus.hasEstimate ? focus.remainingMs : focus.elapsedMs) : 0
@@ -1179,7 +1186,9 @@ const [followOpen, setFollowOpen] = useState(false)
               <Timer className="h-4 w-4" />
               {focusActive ? (
                 <>
-                  {focus.timer?.status === 'paused' ? 'Resume' : 'Focus'}
+                  {focusMode === 'inline'
+                    ? focus.timer?.status === 'paused' ? 'Paused' : 'Focusing'
+                    : focus.timer?.status === 'paused' ? 'Resume' : 'Focus'}
                   <span className="font-mono tabular-nums">{focusOver ? '+' : ''}{formatClock(focusValueMs)}</span>
                 </>
               ) : (
@@ -1208,6 +1217,7 @@ const [followOpen, setFollowOpen] = useState(false)
             <OverflowMenu
               size="sm"
               items={[
+                { label: focus.note ? 'Edit focus note' : 'Add focus note', icon: StickyNote, onClick: () => setShowFocusNote(true) },
                 ...(data.can_edit
                   ? [
                       { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
@@ -1316,6 +1326,7 @@ const [followOpen, setFollowOpen] = useState(false)
                 icon={CalendarDays}
                 label="Start date"
                 value={data.start_date_human || formatDate(data.start_date) || '—'}
+                sub={dateSub(data.start_date)}
               />
 
               <StatTile
@@ -1323,7 +1334,7 @@ const [followOpen, setFollowOpen] = useState(false)
                 label="Deadline"
                 tone={data.is_overdue ? 'danger' : 'default'}
                 value={data.deadline_human || formatDate(data.deadline) || '—'}
-                sub={data.is_overdue ? 'Overdue' : undefined}
+                sub={dateSub(data.deadline, data.is_overdue && 'Overdue')}
               />
 
               <StatTile
@@ -1360,7 +1371,7 @@ const [followOpen, setFollowOpen] = useState(false)
                   label="Leader approval"
                   tone={data.leader_appr_overdue ? 'danger' : 'default'}
                   value={data.leader_deadline_human || '—'}
-                  sub={data.leader_appr_overdue ? 'Overdue' : undefined}
+                  sub={dateSub(data.leader_deadline, data.leader_appr_overdue && 'Overdue')}
                 />
               )}
 
@@ -1370,7 +1381,7 @@ const [followOpen, setFollowOpen] = useState(false)
                   label="Owner approval"
                   tone={data.owner_appr_overdue ? 'danger' : 'default'}
                   value={data.owner_deadline_human || '—'}
-                  sub={data.owner_appr_overdue ? 'Overdue' : undefined}
+                  sub={dateSub(data.owner_deadline, data.owner_appr_overdue && 'Overdue')}
                 />
               )}
 
@@ -1604,6 +1615,8 @@ const [followOpen, setFollowOpen] = useState(false)
 
             {/* Comments */}
             <CommentThread referenceDoctype="Project Todo" referenceName={todoName} />
+
+      <FocusNoteDialog open={showFocusNote} onClose={() => setShowFocusNote(false)} todoId={todoName} title={data.to_do} />
           </BentoTile>
         </BentoGrid>
       )}

@@ -402,3 +402,25 @@ def delete_todo_file(todo_id, file_name):
 	frappe.db.commit()
 	return {"status": "ok"}
 
+
+@frappe.whitelist()
+def download_todo_file(todo_id, file_name):
+	"""Stream a todo's private attachment through this API path instead of the raw
+	/private/files/<name> link. Cloudflare runs a site-wide strip-.html redirect
+	that rewrites /private/files/*.html → /private/files/* (path mangled), so
+	Frappe can't resolve the file and returns 403. Here the extension rides in the
+	query string, which Cloudflare leaves alone. Gated on todo read (same audience
+	as list_todo_files) and verifies the File really belongs to THIS todo so a
+	caller can't pull an unrelated file by name."""
+	if not frappe.has_permission("Project Todo", "read", doc=todo_id):
+		frappe.throw("You are not allowed to read this todo.", frappe.PermissionError)
+	ref = frappe.db.get_value(
+		"File", file_name, ["attached_to_doctype", "attached_to_name"], as_dict=True
+	)
+	if not ref or ref.attached_to_doctype != "Project Todo" or ref.attached_to_name != todo_id:
+		frappe.throw("File is not attached to this todo.")
+	f = frappe.get_doc("File", file_name)
+	frappe.local.response.filename = f.file_name
+	frappe.local.response.filecontent = f.get_content()
+	frappe.local.response.type = "download"
+

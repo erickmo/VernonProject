@@ -1,22 +1,20 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, X } from 'lucide-react'
-import { useAppUpdate, consumeJustUpdated } from '@/lib/appUpdate'
+import { useAppUpdate } from '@/lib/appUpdate'
+import { useAppReleases } from '@/hooks/useData'
 import { Button, IconButton } from '@web/components/ui'
 
 // Global toast shown when a newer build is live. Renders null unless an update
 // is pending, so it's safe to mount once in the shell.
 export default function UpdateBanner() {
-  const { updateAvailable, latestVersion, applyUpdate } = useAppUpdate()
+  const { updateAvailable, applyUpdate } = useAppUpdate()
+  // Real user-facing version from What's New, not version.json's pkg.version
+  // (frozen at "0.0.0").
+  const { data: releases } = useAppReleases('Web')
+  const shownVersion = releases?.[0]?.version
   const navigate = useNavigate()
-  const location = useLocation()
   const [dismissed, setDismissed] = useState(false)
-
-  // Right after an update lands, jump the user to the changelog once.
-  useEffect(() => {
-    if (consumeJustUpdated() && location.pathname !== '/whats-new') navigate('/whats-new')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   if (!updateAvailable || dismissed) return null
 
@@ -28,7 +26,7 @@ export default function UpdateBanner() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-ink">
-            Update available{latestVersion ? ` (${latestVersion})` : ''}
+            Update available{shownVersion ? ` (${shownVersion})` : ''}
           </p>
           <p className="mt-0.5 text-xs text-muted">A newer version is ready to load.</p>
           <div className="mt-3 flex items-center gap-2">

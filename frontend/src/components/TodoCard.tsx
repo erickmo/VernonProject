@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
@@ -8,7 +8,7 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
-import { useSetTodoAllocations } from '@/hooks/useData'
+import { useSetTodoAllocations, useFocusMode } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import type { ProjectItem } from '@/lib/types'
 
@@ -30,6 +30,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   // imperative store start that doesn't subscribe.
   const focus = useFocusTimer(todo.name)
   const focusActive = focus.timer != null
+  const focusMode = useFocusMode()
 
   const startFocus = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -40,7 +41,8 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         overdue: todo.is_overdue,
         estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
       })
-    openFocusOverlay(todo.name)
+    // inline mode: run the timer on the card only, never open the overlay.
+    if (focusMode === 'fullscreen') openFocusOverlay(todo.name)
   }
 
   const onAdvance = (e: React.MouseEvent) => {
@@ -85,12 +87,25 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
           )}
           <p className="line-clamp-2 break-words font-semibold leading-snug text-stone-800 dark:text-slate-100">{todo.to_do}</p>
 
+          {todo.notes && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-stone-500 dark:text-slate-400">
+              <StickyNote className="h-3 w-3 shrink-0 text-amber-500" />
+              <span className="truncate">{todo.notes}</span>
+            </p>
+          )}
+          {focus.note && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500 dark:text-slate-400">
+              <Timer className="h-3 w-3 shrink-0 text-brand-500" />
+              <span className="truncate">{focus.note}</span>
+            </p>
+          )}
+
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
             <span
               role="button"
               tabIndex={0}
               onClick={startFocus}
-              title={focusActive ? 'Open focus timer' : 'Start focus timer'}
+              title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Focus timer running') : 'Start focus timer'}
               className={clsx(
                 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95',
                 focusActive

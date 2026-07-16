@@ -52,6 +52,7 @@ export interface AppNotification {
 export interface NotificationsResponse {
   items: AppNotification[]
   unread: number
+  has_more: boolean
 }
 
 export interface AppRelease {
@@ -147,6 +148,7 @@ export interface ProjectItem {
   is_mine: boolean
   is_owner: boolean
   is_leader: boolean
+  notes: string
 }
 
 export interface TodoFile {
@@ -996,8 +998,11 @@ export type EmployeeSoft = {
   emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
   education?: EmployeeChildEducation[]; skills?: EmployeeChildSkill[]; trainings?: EmployeeChildTraining[];
   religion?: string; verse_enabled?: 0 | 1;
+  focus_mode?: FocusMode;
   gender?: 'Male' | 'Female';
 }
+
+export type FocusMode = 'fullscreen' | 'inline'
 
 export type DailyVerse = { reference: string; text: string } | null
 

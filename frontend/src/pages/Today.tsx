@@ -42,6 +42,7 @@ import type { AvatarConfig } from '@/lib/types'
 import { NotesButton } from '@/components/NotesButton'
 import { RecapCard } from '@/components/RecapCard'
 import { PlanDaySheet } from '@/components/PlanDaySheet'
+import { AutoPlanProgress } from '@/components/AutoPlanProgress'
 import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
@@ -778,6 +779,7 @@ export default function Today() {
       />
 
       {planOpen && <PlanDaySheet todos={planCandidates} onClose={() => setPlanOpen(false)} />}
+      <AutoPlanProgress open={autoFill.saving} summary={autoFill.summary} />
       <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} />
     </TabScreen>
   )

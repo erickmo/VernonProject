@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Search } from 'lucide-react'
 import clsx from 'clsx'
@@ -18,9 +18,24 @@ export function TabScreen({
   children: React.ReactNode
 }) {
   const [searchOpen, setSearchOpen] = useState(false)
+
+  // Publish the header's real height (safe-area padding included) so page content
+  // can stick just below it — see SwipeProjectLists. Measured, not hardcoded: the
+  // height moves with the subtitle, the notch and the font.
+  const hdr = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    const el = hdr.current
+    if (!el) return
+    const ro = new ResizeObserver(() =>
+      document.documentElement.style.setProperty('--tab-hdr', `${el.offsetHeight}px`),
+    )
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
-      <header className="sticky top-0 z-20 bg-paper/95 dark:bg-slate-900 backdrop-blur-sm px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
+      <header ref={hdr} className="sticky top-0 z-20 bg-paper/95 dark:bg-slate-900 backdrop-blur-sm px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <div className="flex items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-[1.7rem] font-semibold tracking-tight text-stone-800 dark:text-slate-50">{title}</h1>

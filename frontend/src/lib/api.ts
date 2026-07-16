@@ -331,8 +331,8 @@ export const mobileApi = {
     api.get<import('./types').PreviousShiftShortfall>(R + 'my_previous_shift_shortfall'),
   assignmentOverloadCheck: (user: string, date: string, added_minutes: number) =>
     api.get<import('./types').AssignmentOverload>(R + 'assignment_overload_check', { user, date, added_minutes }),
-  getNotifications: (limit = 30) =>
-    api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit }),
+  getNotifications: (limit = 30, start = 0) =>
+    api.get<import('./types').NotificationsResponse>(M + 'get_notifications', { limit, start }),
   getAppReleases: (platform?: string) =>
     api.get<AppRelease[]>('vernon_project.api.app_release.get_app_releases', platform ? { platform } : {}),
   markNotificationRead: (name: string) =>
@@ -744,6 +744,22 @@ export async function uploadTodoFile(todoId: string, file: File): Promise<TodoFi
   }
   const out = data?.message ?? data
   return out as TodoFile
+}
+
+// Link for a todo attachment. Cloudflare's site-wide strip-.html redirect
+// mangles /private/files/*.html (→ Frappe 403), so route only .html/.htm through
+// the API method where the extension sits in the query string; every other type
+// keeps the direct private link (images/pdf open inline in a new tab).
+export function todoFileHref(
+  todoId: string,
+  f: { name: string; file_url: string; file_name?: string },
+): string {
+  if (/\.html?$/i.test(f.file_name || f.file_url)) {
+    return `${METHOD}vernon_project.api.project_todo.download_todo_file?todo_id=${encodeURIComponent(
+      todoId,
+    )}&file_name=${encodeURIComponent(f.name)}`
+  }
+  return f.file_url
 }
 
 const PI = 'vernon_project.api.papan_iklan.'

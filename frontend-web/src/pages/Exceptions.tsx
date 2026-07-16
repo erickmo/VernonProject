@@ -90,7 +90,7 @@ export default function Exceptions() {
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs">No project leaders.</span>
+                        <span className="text-xs">No leader input.</span>
                       )}
                     </div>
                   }

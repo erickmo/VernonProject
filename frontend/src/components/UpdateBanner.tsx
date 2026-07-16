@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sparkles, X } from 'lucide-react'
-import { useAppUpdate, consumeJustUpdated } from '@/lib/appUpdate'
+import { useAppUpdate } from '@/lib/appUpdate'
+import { useAppReleases } from '@/hooks/useData'
 
 export default function UpdateBanner() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { updateAvailable, latestVersion, applyUpdate } = useAppUpdate()
+  const { updateAvailable, applyUpdate } = useAppUpdate()
+  // Show the real user-facing version from What's New, not version.json's
+  // pkg.version (which never bumps and always read "1.0.0").
+  const { data: releases } = useAppReleases('Mobile')
+  const shownVersion = releases?.[0]?.version
   const [dismissed, setDismissed] = useState(false)
-
-  // Jump straight to the changelog the first render after a fresh update lands.
-  useEffect(() => {
-    if (consumeJustUpdated() && location.pathname !== '/whats-new') navigate('/whats-new')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   if (!updateAvailable || dismissed) return null
 
@@ -26,7 +24,7 @@ export default function UpdateBanner() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-stone-800 dark:text-slate-50">Update available</p>
           <p className="text-xs text-stone-400 dark:text-slate-500">
-            {latestVersion ? `Version ${latestVersion} is ready` : 'A newer version is ready'}
+            {shownVersion ? `Version ${shownVersion} is ready` : 'A newer version is ready'}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">

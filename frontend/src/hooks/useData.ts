@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -91,6 +92,7 @@ export const keys = {
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
   giftRecipients: ['gift-recipients'] as const,
   notifications: ['notifications'] as const,
+  notificationFeed: ['notification-feed'] as const,
   personalNotes: ['personalNotes'] as const,
   meetings: ['meetings'] as const,
   meeting: (n: string) => ['meeting', n] as const,
@@ -151,6 +153,13 @@ export function useDailyVerse() {
 
 export const useBoot = () =>
   useQuery({ queryKey: keys.boot, queryFn: () => mobileApi.bootstrap() as Promise<Boot>, retry: false })
+
+// Per-user focus preference (backend-persisted on Employee Profile, so it
+// follows the user across /m and /w). Drives whether a todo's Focus chip opens
+// the full-screen overlay or just runs the timer on the card. Defaults to
+// 'fullscreen' — the behaviour before this setting existed.
+export const useFocusMode = (): import('@/lib/types').FocusMode =>
+  useBoot().data?.employee?.focus_mode ?? 'fullscreen'
 
 export const useDashboard = () =>
   useQuery({ queryKey: keys.dashboard, queryFn: () => mobileApi.dashboard() as Promise<Dashboard> })
@@ -1292,13 +1301,38 @@ export function useAssignmentOverload(user: string, date: string, addedMinutes: 
   })
 }
 
+/** Badge-only: the poll every bell mounts, so it fetches the count and no feed. */
 export function useNotifications() {
   return useQuery({
     queryKey: keys.notifications,
-    queryFn: () => mobileApi.getNotifications(30),
+    queryFn: () => mobileApi.getNotifications(1),
     refetchInterval: 30_000,
     refetchIntervalInBackground: true,
   })
+}
+
+export const NOTIFICATION_PAGE_SIZE = 150
+
+/**
+ * The list itself: first page is the newest 150, "load more" walks back.
+ * `enabled` matters — /w keeps the sheet mounted while shut, and 150 rows are
+ * not worth fetching for a drawer nobody opened.
+ */
+export function useNotificationFeed(enabled = true) {
+  const q = useInfiniteQuery({
+    queryKey: keys.notificationFeed,
+    queryFn: ({ pageParam }) => mobileApi.getNotifications(NOTIFICATION_PAGE_SIZE, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) =>
+      last.has_more ? pages.length * NOTIFICATION_PAGE_SIZE : undefined,
+    enabled,
+  })
+  return {
+    ...q,
+    items: q.data?.pages.flatMap((p) => p.items) ?? [],
+    // Every page carries a fresh global count; the newest one is the truthful one.
+    unread: q.data?.pages[0]?.unread ?? 0,
+  }
 }
 
 export function useAppReleases(platform?: string) {
@@ -1318,7 +1352,7 @@ export function useMarkRead() {
       Promise.all(
         (Array.isArray(names) ? names : [names]).map((n) => mobileApi.markNotificationRead(n)),
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
+    onSuccess: () => invalidateNotifications(qc),
   })
 }
 
@@ -1326,8 +1360,14 @@ export function useMarkAllRead() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => mobileApi.markAllRead(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.notifications }),
+    onSuccess: () => invalidateNotifications(qc),
   })
+}
+
+/** The badge and the feed are separate queries of the same rows — refresh both. */
+function invalidateNotifications(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: keys.notifications })
+  qc.invalidateQueries({ queryKey: keys.notificationFeed })
 }
 
 export function useDataHealth() {
