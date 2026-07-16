@@ -52,7 +52,9 @@ Task order is server → shared pure fn → UI → ship. Each task ends green an
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `vernon_project/vernon_project/doctype/project_todo/test_project_todo.py` (top-level, after the existing `TestProjectTodo` class — this is a **pure** class, it must not touch the DB and must not subclass `FrappeTestCase`):
+Insert into `vernon_project/vernon_project/doctype/project_todo/test_project_todo.py` **immediately before `class TestProjectTodo` (line 28)**, after the `_ensure_test_group()` helper. This is a **pure** class: it must not touch the DB and must not subclass `FrappeTestCase`.
+
+Placement is deliberate and not negotiable: the **tail** of this file (line 1087+) holds the user's uncommitted WIP. Appending at the end would interleave with it and make the commit unstageable without sweeping their work in. Insert at the top; leave the tail untouched.
 
 ```python
 class TestEnsureTodayMinutes(unittest.TestCase):
@@ -107,12 +109,16 @@ class TestEnsureTodayMinutes(unittest.TestCase):
 
 - [ ] **Step 2: Run the test to verify it fails**
 
+Do **not** use `bench run-tests`: it would point Frappe's test runner at the only live site, whose DB-integration classes in this same module write real records. Load and run **only** the pure class via a `bench console` heredoc — no runner setup, no `before_tests` hooks, no DB writes. Keep it loop-free and one statement per line (a multi-line statement piped to `bench console` silently mis-parses):
+
 ```bash
-cd /home/frappe/frappe-bench && bench --site project.vernon.id run-tests \
-  --module vernon_project.vernon_project.doctype.project_todo.test_project_todo \
-  --test TestEnsureTodayMinutes
+cd /home/frappe/frappe-bench && bench --site project.vernon.id console <<'EOF'
+import unittest
+from vernon_project.vernon_project.doctype.project_todo.test_project_todo import TestEnsureTodayMinutes
+print("PASS" if unittest.TextTestRunner(verbosity=2).run(unittest.TestLoader().loadTestsFromTestCase(TestEnsureTodayMinutes)).wasSuccessful() else "FAIL")
+EOF
 ```
-Expected: FAIL — `ImportError: cannot import name '_ensure_today_minutes'`.
+Expected: FAIL — `ImportError: cannot import name '_ensure_today_minutes'` raised from the test's own import.
 
 - [ ] **Step 3: Write the minimal implementation**
 
@@ -214,11 +220,13 @@ Then de-duplicate: inside `_notify_status_change`, delete the local `PLANNED = "
 - [ ] **Step 4: Run the test to verify it passes**
 
 ```bash
-cd /home/frappe/frappe-bench && bench --site project.vernon.id run-tests \
-  --module vernon_project.vernon_project.doctype.project_todo.test_project_todo \
-  --test TestEnsureTodayMinutes
+cd /home/frappe/frappe-bench && bench --site project.vernon.id console <<'EOF'
+import unittest
+from vernon_project.vernon_project.doctype.project_todo.test_project_todo import TestEnsureTodayMinutes
+print("PASS" if unittest.TextTestRunner(verbosity=2).run(unittest.TestLoader().loadTestsFromTestCase(TestEnsureTodayMinutes)).wasSuccessful() else "FAIL")
+EOF
 ```
-Expected: PASS, 8 tests, `OK`.
+Expected: `Ran 8 tests`, `OK`, and `PASS`.
 
 - [ ] **Step 5: Confirm the constant hoist didn't break the notify path**
 
@@ -234,15 +242,13 @@ sudo /usr/local/bin/tj-restart
 ```
 Expected: exits 0. (Python change → restart required; standing approval, do not ask.)
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Hand off — do NOT commit**
 
-Check `git diff vernon_project/vernon_project/doctype/project_todo/test_project_todo.py` first — that file was already dirty before this work started. Stage only if the pre-existing hunks are meant to ship; otherwise ask.
+**The implementer must not run `git add` or `git commit` for this task.** `test_project_todo.py` carries the user's uncommitted WIP (the `download_todo_file` tests at line 1087+). `git add <file>` stages the whole file and would sweep their work into this commit — that exact instruction caused a documented incident on the previous project and needed a soft-reset to undo.
 
-```bash
-git add vernon_project/vernon_project/doctype/project_todo/project_todo.py \
-        vernon_project/vernon_project/doctype/project_todo/test_project_todo.py
-git commit -m "feat(plan): write today-deadline todos into the assignee's plan server-side"
-```
+Leave both files edited in the worktree and report DONE. The controller stages this commit itself, using exact-blob staging: reconstruct each file's intended content from its `HEAD` blob plus this task's block only, `git hash-object -w` it, and `git update-index --cacheinfo` it — which leaves the worktree (and the user's WIP) completely untouched. `project_todo.py` is clean at HEAD and can be staged normally.
+
+Verification before the commit lands (controller runs this): `git diff --cached --stat` must show `project_todo.py` and `test_project_todo.py` only, and the `test_project_todo.py` insertion count must equal this task's block — **not** block + 25. If it shows 25 extra lines, the user's WIP leaked; stop and redo.
 
 ---
 
