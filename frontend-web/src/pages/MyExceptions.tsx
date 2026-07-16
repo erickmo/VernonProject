@@ -44,7 +44,7 @@ export default function MyExceptions() {
                   key={e.name}
                   title={
                     <span className="flex items-center gap-2">
-                      {e.exception_type === 'Leave' ? 'Cuti' : 'WFH'}
+                      {e.leave_type || (e.exception_type === 'Leave' ? 'Cuti' : 'WFH')}
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge[e.status] || badge.Pending}`}>
                         {e.status}
                       </span>

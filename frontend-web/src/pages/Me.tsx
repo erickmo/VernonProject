@@ -127,6 +127,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
 
         <PasskeyTile />
         <VerseSettingsTile />
+        <GenderTile />
       </BentoGrid>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
@@ -431,6 +432,43 @@ function VerseSettingsTile() {
           <p className="text-xs text-muted">Belum tersedia untuk agama ini.</p>
         ) : null}
       </div>
+    </BentoTile>
+  )
+}
+
+const GENDER_OPTIONS: { value: 'Male' | 'Female'; label: string }[] = [
+  { value: 'Male', label: 'Laki-laki' },
+  { value: 'Female', label: 'Perempuan' },
+]
+
+function GenderTile() {
+  const { data: boot } = useBoot()
+  const save = useSaveMyProfile()
+  const gender = boot?.employee?.gender as 'Male' | 'Female' | undefined
+
+  return (
+    <BentoTile span="md" tone="tint" accent="sky" title="Jenis Kelamin" icon={User}>
+      <div className="mt-1 flex gap-2">
+        {GENDER_OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => save.mutate({ gender: o.value })}
+            className={`flex-1 rounded-xl border py-2 text-sm font-semibold transition ${
+              gender === o.value
+                ? 'border-brand-600 bg-brand-50 text-brand-700'
+                : 'border-line text-muted'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {!gender && (
+        <p className="mt-2 text-xs text-muted">
+          Pilih jenis kelamin untuk mengakses kategori cuti khusus.
+        </p>
+      )}
     </BentoTile>
   )
 }
