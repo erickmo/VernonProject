@@ -20,20 +20,30 @@ export function usePlanDay(candidates: ProjectItem[]) {
   // removed, so every edit path clamps to its floor rather than offering a zero
   // the server would hand straight back. One clamp in setMin covers the minus
   // button, the preset chips, "Use est." and a typed 0 — they all route here.
+  //
+  // Only the user's explicit edits are state; the effective minutes are derived, so a
+  // todo entering `candidates` after mount (a refetch, or the sheet opening before the
+  // dashboard resolves) still gets its floor and its saved allocation rather than a
+  // phantom 0 that Save would write back as a dropped row.
+  const [overrides, setOverrides] = useState<Record<string, number>>({})
   const floors = useMemo(
     () => Object.fromEntries(candidates.map((t) => [t.name, planFloor(t, today)])),
     [candidates, today],
   )
-  const [mins, setMins] = useState<Record<string, number>>(() =>
-    Object.fromEntries(
-      candidates.map((t) => [t.name, Math.max(planFloor(t, today), t.today_allocation || 0)]),
-    ),
+  const mins = useMemo(
+    () =>
+      Object.fromEntries(
+        candidates.map((t) => [
+          t.name,
+          Math.max(floors[t.name] || 0, overrides[t.name] ?? (t.today_allocation || 0)),
+        ]),
+      ),
+    [candidates, floors, overrides],
   )
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const setMin = (id: string, v: number) =>
-    setMins((m) => ({ ...m, [id]: Math.max(floors[id] || 0, Math.round(v)) }))
+  const setMin = (id: string, v: number) => setOverrides((m) => ({ ...m, [id]: Math.max(0, Math.round(v)) }))
   const useEstimate = (t: ProjectItem) => setMin(t.name, t.estimated > 0 ? t.estimated : 30)
 
   const visible = useMemo(
