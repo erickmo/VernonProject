@@ -5577,6 +5577,10 @@ def delete_project(project):
 	for doctype in ("Project Detail", "Meeting", "Glossary"):
 		for name in frappe.get_all(doctype, filters={"project": project}, pluck="name"):
 			frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
+	# blocked_by is a Project->Project link; force=True skips its LinkExists guard,
+	# so clear stale block refs from other projects before removing this one.
+	for blocked in frappe.get_all("Project", filters={"blocked_by": project}, pluck="name"):
+		frappe.db.set_value("Project", blocked, "blocked_by", None, update_modified=False)
 	# _require_project_manager already authorized (owner/leader/admin/SM); Project.on_trash
 	# is owner-only and its "has details" backstop is moot since we cascaded details above.
 	frappe.delete_doc("Project", project, ignore_permissions=True, force=True, ignore_on_trash=True)

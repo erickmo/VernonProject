@@ -732,3 +732,27 @@ class TestDeleteProjectAndDetail(unittest.TestCase):
 		r = get_project_detail(self.detail.name)
 		self.assertIn("can_delete", r)
 		self.assertTrue(r["can_delete"])  # Administrator is owner/leader + SM
+
+	def test_delete_project_clears_blocked_by_on_other_projects(self):
+		from vernon_project.api.mobile import delete_project
+		blocker = frappe.get_doc({
+			"doctype": "Project", "project_name": "Del Blocker", "brand": self.project.brand,
+			"project_owner": "Administrator", "project_leader": "Administrator", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		other = frappe.get_doc({
+			"doctype": "Project", "project_name": "Del Blocked", "brand": self.project.brand,
+			"project_owner": "Administrator", "project_leader": "Administrator", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30), "blocked_by": blocker.name,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		try:
+			delete_project(blocker.name)
+			self.assertFalse(frappe.db.exists("Project", blocker.name))
+			self.assertIsNone(frappe.db.get_value("Project", other.name, "blocked_by"))
+		finally:
+			if frappe.db.exists("Project", other.name):
+				frappe.delete_doc("Project", other.name, force=True, ignore_permissions=True)
+			if frappe.db.exists("Project", blocker.name):
+				frappe.delete_doc("Project", blocker.name, force=True, ignore_permissions=True)
+			frappe.db.commit()
