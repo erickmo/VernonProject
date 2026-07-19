@@ -156,8 +156,8 @@ export default function ProjectScreen() {
           )}
           {flags.can_delete && (
             <button
-              disabled={data.project_details.length > 0}
-              title={data.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
+              disabled={data.project_details.some((d) => d.total > 0)}
+              title={data.project_details.some((d) => d.total > 0) ? 'Remove all todos before deleting this project' : undefined}
               onClick={async () => {
                 if (!(await confirm({ title: 'Delete this project?', confirmLabel: 'Delete', destructive: true })))
                   return
@@ -348,36 +348,42 @@ export default function ProjectScreen() {
                 <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-slate-100">{w.title}</p>
-                  {flags.can_edit ? (
+                  {(flags.can_edit || flags.can_delete) ? (
                     <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setPostpone({ type: 'Project Detail', name: w.name, label: w.title, anchor: '' }) }}
-                        className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
-                      >
-                        <CalendarClock className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditDetail(w.name) }}
-                        className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        disabled={w.total > 0}
-                        title={w.total > 0 ? 'Remove all todos before deleting this detail' : undefined}
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          if (w.total > 0) return
-                          if (!(await confirm({ title: 'Delete this detail?', message: `"${w.title}" will be removed.`, confirmLabel: 'Delete', destructive: true }))) return
-                          delDetail.mutate(w.name, {
-                            onSuccess: () => toast('success', 'Project detail deleted'),
-                            onError: (err) => toast('error', (err as Error).message),
-                          })
-                        }}
-                        className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15 disabled:cursor-not-allowed disabled:text-slate-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {flags.can_edit && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setPostpone({ type: 'Project Detail', name: w.name, label: w.title, anchor: '' }) }}
+                          className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
+                        >
+                          <CalendarClock className="h-4 w-4" />
+                        </button>
+                      )}
+                      {flags.can_edit && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditDetail(w.name) }}
+                          className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {flags.can_delete && (
+                        <button
+                          disabled={w.total > 0}
+                          title={w.total > 0 ? 'Remove all todos before deleting this detail' : undefined}
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (w.total > 0) return
+                            if (!(await confirm({ title: 'Delete this detail?', message: `"${w.title}" will be removed.`, confirmLabel: 'Delete', destructive: true }))) return
+                            delDetail.mutate(w.name, {
+                              onSuccess: () => toast('success', 'Project detail deleted'),
+                              onError: (err) => toast('error', (err as Error).message),
+                            })
+                          }}
+                          className="rounded-lg p-1.5 text-rose-600 active:bg-rose-50 dark:active:bg-rose-500/15 disabled:cursor-not-allowed disabled:text-slate-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 dark:text-slate-600" />
