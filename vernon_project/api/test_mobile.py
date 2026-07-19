@@ -619,6 +619,61 @@ class TestMobileDeleteUser(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
+class TestUserPointsLog(unittest.TestCase):
+	"""Transparent earned-points log: any logged-in user reads any user's earned
+	credits (Grant + Gift excluded); Guest and missing users are rejected."""
+
+	def setUp(self):
+		self.target = "uplog_target@example.com"
+		self.viewer = "uplog_viewer@example.com"  # plain user, no admin roles
+		for email, fn in ((self.target, "Target"), (self.viewer, "Viewer")):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
+					"send_welcome_email": 0}).insert(ignore_permissions=True)
+		# Ledger: two earned (Todo), one Grant, one Gift — all for the target.
+		self._ledger = []
+		for src, amt in (("Todo", 10), ("Todo", 5), ("Grant", 100), ("Gift", 50)):
+			d = frappe.get_doc({"doctype": "Point Ledger", "user": self.target,
+				"source": src, "points_earned": amt, "credited_on": frappe.utils.now_datetime()}
+			).insert(ignore_permissions=True)
+			self._ledger.append(d.name)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for n in self._ledger:
+			if frappe.db.exists("Point Ledger", n):
+				frappe.delete_doc("Point Ledger", n, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_any_user_reads_earned_log_without_grant_or_gift(self):
+		from vernon_project.api.mobile import get_user_points_log
+		frappe.set_user(self.viewer)
+		try:
+			out = get_user_points_log(self.target)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(out["user"], self.target)
+		# Only the two Todo credits (10 + 5); Grant/Gift excluded.
+		self.assertEqual(len(out["rows"]), 2)
+		self.assertEqual(out["total_earned"], 15)
+		self.assertTrue(all(r["kind"] == "credit" for r in out["rows"]))
+
+	def test_guest_rejected(self):
+		from vernon_project.api.mobile import get_user_points_log
+		frappe.set_user("Guest")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				get_user_points_log(self.target)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_missing_user_rejected(self):
+		from vernon_project.api.mobile import get_user_points_log
+		with self.assertRaises(frappe.DoesNotExistError):
+			get_user_points_log("nobody@example.com")
+
+
 class TestDeleteProjectAndDetail(unittest.TestCase):
 	def setUp(self):
 		from vernon_project.api.mobile import delete_project_detail
@@ -756,3 +811,178 @@ class TestDeleteProjectAndDetail(unittest.TestCase):
 			if frappe.db.exists("Project", blocker.name):
 				frappe.delete_doc("Project", blocker.name, force=True, ignore_permissions=True)
 			frappe.db.commit()
+
+
+class TestMoveProjectDetail(unittest.TestCase):
+	def setUp(self):
+		from vernon_project.api.mobile import move_project_detail, list_move_destinations
+		self.move_project_detail = move_project_detail
+		self.list_move_destinations = list_move_destinations
+		# Reuse any existing Brand: Project.brand is mandatory and Brand now requires
+		# a company, so we don't fabricate one.
+		self.brand = frappe.get_all("Brand", pluck="name", limit=1)[0]
+		# owner of both projects (non System Manager), a dest team member, an
+		# assignee who is on nobody's team, and a total stranger.
+		for email in ("mv_owner@example.com", "mv_member@example.com",
+				"mv_outsider@example.com", "mv_stranger@example.com"):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email,
+					"first_name": email.split("@")[0], "send_welcome_email": 0}).insert(ignore_permissions=True)
+		# Project.validate_lead_roles gates owner/leader on these roles.
+		for email in ("mv_owner@example.com", "mv_stranger@example.com"):
+			frappe.get_doc("User", email).add_roles("Project Owner", "Project Leader")
+		self.source = frappe.get_doc({
+			"doctype": "Project", "project_name": "Move Source",
+			"brand": self.brand, "project_owner": "mv_owner@example.com",
+			"project_leader": "mv_owner@example.com", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		self.dest = frappe.get_doc({
+			"doctype": "Project", "project_name": "Move Dest",
+			"brand": self.brand, "project_owner": "mv_owner@example.com",
+			"project_leader": "mv_owner@example.com", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "mv_member@example.com"}],
+		}).insert(ignore_permissions=True)
+		self.grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Move Grouping",
+			"project": self.source.name}).insert(ignore_permissions=True).name
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.source.name, "title": "Move Detail",
+			"grouping": self.grouping, "glossaries": [{"glossary": self.grouping}],
+			"project_deadline": add_days(nowdate(), 30), "estimated": 10,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Project Todo", {"project_detail": self.detail.name})
+		for p in (self.source.name, self.dest.name):
+			frappe.db.delete("Point Ledger", {"project": p})
+		if frappe.db.exists("Project Detail", self.detail.name):
+			frappe.delete_doc("Project Detail", self.detail.name, force=True, ignore_permissions=True)
+		if frappe.db.exists("Glossary", self.grouping):
+			frappe.delete_doc("Glossary", self.grouping, force=True, ignore_permissions=True)
+		for p in (self.source.name, self.dest.name):
+			if frappe.db.exists("Project", p):
+				frappe.delete_doc("Project", p, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def _add_todo(self, assigned_to):
+		# ignore_validate bypasses validate_assigned_to_team_member so we can pin an
+		# arbitrary assignee (the move's own membership check is what's under test).
+		t = frappe.get_doc({"doctype": "Project Todo", "project": self.source.name,
+			"project_detail": self.detail.name, "to_do": "task", "assigned_to": assigned_to,
+			"status": "⚪️ Planned"})
+		t.flags.ignore_validate = True
+		t.insert(ignore_permissions=True, ignore_mandatory=True)
+		frappe.db.commit()
+		return t.name
+
+	def test_non_owner_denied(self):
+		frappe.set_user("mv_stranger@example.com")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				self.move_project_detail(self.detail.name, self.dest.name)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_owner_of_source_but_not_dest_denied(self):
+		dest2 = frappe.get_doc({
+			"doctype": "Project", "project_name": "Move Dest Foreign",
+			"brand": self.brand, "project_owner": "mv_stranger@example.com",
+			"project_leader": "mv_stranger@example.com", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		frappe.set_user("mv_owner@example.com")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				self.move_project_detail(self.detail.name, dest2.name)
+		finally:
+			frappe.set_user("Administrator")
+			frappe.delete_doc("Project", dest2.name, force=True, ignore_permissions=True)
+			frappe.db.commit()
+
+	def test_blocked_when_assignee_not_on_dest_team(self):
+		todo = self._add_todo("mv_outsider@example.com")
+		pl = frappe.get_doc({"doctype": "Point Ledger", "user": "mv_outsider@example.com",
+			"project": self.source.name, "todo": todo, "point": 5})
+		pl.flags.ignore_validate = True
+		pl.insert(ignore_permissions=True, ignore_mandatory=True)
+		frappe.db.commit()
+		frappe.set_user("mv_owner@example.com")
+		try:
+			r = self.move_project_detail(self.detail.name, self.dest.name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertFalse(r["ok"])
+		self.assertEqual(len(r["blocked"]), 1)
+		self.assertEqual(r["blocked"][0]["user"], "mv_outsider@example.com")
+		self.assertEqual(r["blocked"][0]["todo"], todo)
+		# No writes: detail, todo and point history all still on the source project.
+		self.assertEqual(frappe.db.get_value("Project Detail", self.detail.name, "project"), self.source.name)
+		self.assertEqual(frappe.db.get_value("Project Todo", todo, "project"), self.source.name)
+		self.assertEqual(frappe.db.get_value("Point Ledger", pl.name, "project"), self.source.name)
+
+	def test_success_moves_detail_todos_and_points(self):
+		# Assignees: dest owner (== leader) and a dest team member -> all valid.
+		t1 = self._add_todo("mv_owner@example.com")
+		t2 = self._add_todo("mv_member@example.com")
+		pl = frappe.get_doc({"doctype": "Point Ledger", "user": "mv_member@example.com",
+			"project": self.source.name, "todo": t2, "point": 5})
+		pl.flags.ignore_validate = True
+		pl.insert(ignore_permissions=True, ignore_mandatory=True)
+		frappe.db.commit()
+		frappe.set_user("mv_owner@example.com")
+		try:
+			r = self.move_project_detail(self.detail.name, self.dest.name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertTrue(r["ok"])
+		self.assertEqual(r["moved_todos"], 2)
+		moved = frappe.get_doc("Project Detail", self.detail.name)
+		self.assertEqual(moved.project, self.dest.name)
+		self.assertIsNone(moved.grouping)
+		self.assertEqual(len(moved.glossaries), 0)
+		self.assertEqual(frappe.db.get_value("Project Todo", t1, "project"), self.dest.name)
+		self.assertEqual(frappe.db.get_value("Project Todo", t2, "project"), self.dest.name)
+		self.assertEqual(frappe.db.get_value("Point Ledger", pl.name, "project"), self.dest.name)
+
+	def test_unassigned_todo_never_blocks(self):
+		self._add_todo(None)
+		frappe.set_user("mv_owner@example.com")
+		try:
+			r = self.move_project_detail(self.detail.name, self.dest.name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertTrue(r["ok"])
+		self.assertEqual(frappe.db.get_value("Project Detail", self.detail.name, "project"), self.dest.name)
+
+	def test_list_destinations_excludes_source_and_foreign_and_closed(self):
+		# A project owned by someone else, and a Closed project the owner owns:
+		# neither may appear for the non-System-Manager owner.
+		foreign = frappe.get_doc({
+			"doctype": "Project", "project_name": "Move Dest Not Mine",
+			"brand": self.brand, "project_owner": "mv_stranger@example.com",
+			"project_leader": "mv_stranger@example.com", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		closed = frappe.get_doc({
+			"doctype": "Project", "project_name": "Move Dest Closed",
+			"brand": self.brand, "project_owner": "mv_owner@example.com",
+			"project_leader": "mv_owner@example.com", "status": "Closed",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		frappe.set_user("mv_owner@example.com")
+		try:
+			names = {p["name"] for p in self.list_move_destinations(self.detail.name)}
+		finally:
+			frappe.set_user("Administrator")
+			for p in (foreign.name, closed.name):
+				frappe.delete_doc("Project", p, force=True, ignore_permissions=True)
+			frappe.db.commit()
+		self.assertIn(self.dest.name, names)
+		self.assertNotIn(self.source.name, names)
+		self.assertNotIn(foreign.name, names)
+		self.assertNotIn(closed.name, names)

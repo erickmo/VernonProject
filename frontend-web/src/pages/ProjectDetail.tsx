@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import {
-  ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3,
+  ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3, FolderInput,
 } from 'lucide-react'
 import { useProjectDetail, useDeleteProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
@@ -15,12 +15,13 @@ import { useToast } from '@/components/Toast'
 import CommentThread from '@/components/CommentThread'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
+import { MoveProjectDetailDialog } from '@web/components/MoveProjectDetailDialog'
 import { PostponeDialog } from '@web/components/PostponeDialog'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { PropertyRow, Property } from '@web/components/Property'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
-import { TODO_COLUMNS, todoGroupsOf, TodoProgress } from '@web/lib/todoTable'
+import { TODO_COLUMNS, todoGroupsOf, TodoProgress, useTodoRowContextMenu } from '@web/lib/todoTable'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
 import type { ProjectItem } from '@/lib/types'
@@ -34,6 +35,7 @@ export default function ProjectDetail() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [moveOpen, setMoveOpen] = useState(false)
   const [postponeOpen, setPostponeOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
@@ -43,6 +45,7 @@ export default function ProjectDetail() {
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
+  const onRowContextMenu = useTodoRowContextMenu()
   const canAutoApprove = !!boot?.settings?.show_auto_approve
   const itemSelected = !!itemName
 
@@ -116,6 +119,9 @@ export default function ProjectDetail() {
       : []),
     ...(d.can_edit
       ? [{ label: 'Postpone', icon: CalendarClock, onClick: () => setPostponeOpen(true) }]
+      : []),
+    ...(d.can_edit
+      ? [{ label: 'Pindahkan ke proyek lain', icon: FolderInput, onClick: () => setMoveOpen(true) }]
       : []),
     ...(d.can_delete
       ? [{ label: 'Delete', icon: Trash2, danger: true, disabled: items.length > 0, onClick: handleDelete }]
@@ -258,6 +264,7 @@ export default function ProjectDetail() {
                     columns={todoColumns}
                     getKey={(r) => r.name}
                     activeKey={itemName}
+                    onRowContextMenu={onRowContextMenu}
                     onRowClick={(r) =>
                       nav(
                         `/project-detail/${encodeURIComponent(d.name)}/item/${encodeURIComponent(r.name)}`,
@@ -303,6 +310,11 @@ export default function ProjectDetail() {
         onClose={() => setEditOpen(false)}
         project={d.project}
         detail={d.name}
+      />
+      <MoveProjectDetailDialog
+        open={moveOpen}
+        onClose={() => setMoveOpen(false)}
+        detail={{ name: d.name, title: d.title, project: d.project }}
       />
       <PostponeDialog
         open={postponeOpen}

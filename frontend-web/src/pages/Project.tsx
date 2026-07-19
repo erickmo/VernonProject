@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { useParams, useNavigate, Outlet } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Outlet } from 'react-router-dom'
 import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy, FolderInput,
 } from 'lucide-react'
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
@@ -17,6 +17,7 @@ import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet }
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
 import { PostponeDialog } from '@web/components/PostponeDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
+import { MoveProjectDetailDialog } from '@web/components/MoveProjectDetailDialog'
 import { TeamWorkloadDrawer } from '@web/components/TeamWorkloadDrawer'
 import { TeamManagerDrawer } from '@web/components/TeamManagerDrawer'
 import { Section } from '@web/components/Page'
@@ -25,6 +26,7 @@ import { DataTable, type Column } from '@web/components/DataTable'
 import { EntityChip } from '@web/components/EntityChip'
 import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
+import { ProjectMeetings } from '@web/components/ProjectMeetings'
 import type { TeamMember, ProjectDetailSummary } from '@/lib/types'
 
 type View = 'list' | 'gantt'
@@ -93,6 +95,7 @@ export default function Project() {
   const { name = '', detailName } = useParams()
   const id = safeDecode(name)
   const nav = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const project = useProject(id)
   const boot = useBoot()
   const del = useDeleteProject()
@@ -107,6 +110,7 @@ export default function Project() {
   const [editOpen, setEditOpen] = useState(false)
   const [detailFormOpen, setDetailFormOpen] = useState(false)
   const [editDetail, setEditDetail] = useState<string | null>(null)
+  const [moveDetail, setMoveDetail] = useState<{ name: string; title: string } | null>(null)
   const [teamOpen, setTeamOpen] = useState(false)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
   const [postpone, setPostpone] = useState<
@@ -122,10 +126,21 @@ export default function Project() {
     setEditOpen(false)
     setDetailFormOpen(false)
     setEditDetail(null)
+    setMoveDetail(null)
     setTeamOpen(false)
     setWorkloadMember(null)
     setPostpone(null)
   }, [id])
+
+  // Deep-link intents (from a context menu): open the matching form once, then
+  // strip the query so refresh/back doesn't re-trigger.
+  useEffect(() => {
+    const editDetailName = searchParams.get('editDetail')
+    if (searchParams.get('edit')) setEditOpen(true)
+    else if (editDetailName) setEditDetail(editDetailName)
+    else return
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (project.isLoading) {
     return (
@@ -246,6 +261,7 @@ export default function Project() {
               ...(perms.can_edit ? [
                 { label: 'Edit', icon: Pencil, onClick: () => setEditDetail(r.name) },
                 { label: 'Postpone', icon: CalendarClock, onClick: () => setPostpone({ type: 'Project Detail', name: r.name, label: r.title, anchor: '' }) },
+                { label: 'Pindahkan ke proyek lain', icon: FolderInput, onClick: () => setMoveDetail({ name: r.name, title: r.title }) },
               ] : []),
               ...(perms.can_delete ? [
                 { divider: true },
@@ -430,6 +446,11 @@ export default function Project() {
             </Section>
           )}
 
+          {/* --- Meetings (project-scoped): Upcoming / Past tabs --- */}
+          <div className="border-t border-line pt-5">
+            <ProjectMeetings project={p.name} canManage={perms.can_edit} />
+          </div>
+
           {/* --- Details list / gantt (pick a detail → its todos fill col 3) --- */}
           <div className="space-y-3 border-t border-line pt-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -546,6 +567,13 @@ export default function Project() {
         project={p.name}
         detail={editDetail ?? undefined}
       />
+      {moveDetail && (
+        <MoveProjectDetailDialog
+          open
+          onClose={() => setMoveDetail(null)}
+          detail={{ name: moveDetail.name, title: moveDetail.title, project: p.name }}
+        />
+      )}
       <TeamWorkloadDrawer
         open={!!workloadMember}
         onClose={() => setWorkloadMember(null)}

@@ -1,17 +1,19 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, FolderInput, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
 import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
 import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
+import { MoveProjectDetailSheet } from '@/components/MoveProjectDetailSheet'
 import { PostponeSheet } from '@/components/PostponeSheet'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { TeamManagerSheet } from '@/components/TeamManagerSheet'
 import { MemberWorkloadSheet } from '@/components/MemberWorkloadSheet'
 import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
+import { ProjectMeetings } from '@/components/ProjectMeetings'
 import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -24,6 +26,7 @@ export default function ProjectScreen() {
   const { name = '' } = useParams()
   const id = decodeURIComponent(name)
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { data, isLoading } = useProject(id)
   const { data: boot } = useBoot()
   const toast = useToast()
@@ -36,6 +39,7 @@ export default function ProjectScreen() {
   const [wiOpen, setWiOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [editDetail, setEditDetail] = useState<string | null>(null)
+  const [moveDetail, setMoveDetail] = useState<null | { name: string; title: string }>(null)
   const [postpone, setPostpone] = useState<{ type: 'Project' | 'Project Detail'; name: string; label: string; anchor: string } | null>(null)
   const [itemFor, setItemFor] = useState<string | null>(null)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
@@ -45,6 +49,16 @@ export default function ProjectScreen() {
   // Quick-add targets a single detail; load it so the create form can offer
   // the Blocked-by / Blocking pickers (siblings) like the detail-page add does.
   const { data: itemDetailData } = useProjectDetail(itemFor ?? '')
+
+  // Deep-link intents (from a context menu): open the matching form once, then
+  // strip the query so refresh/back doesn't re-trigger.
+  useEffect(() => {
+    const editDetailName = searchParams.get('editDetail')
+    if (searchParams.get('edit')) setEditOpen(true)
+    else if (editDetailName) setEditDetail(editDetailName)
+    else return
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (isLoading && !data) {
     return (
@@ -262,6 +276,9 @@ export default function ProjectScreen() {
         </section>
       )}
 
+      {/* Meetings */}
+      <ProjectMeetings project={data.name} canManage={flags.can_edit} />
+
       {/* Details */}
       <section className="mt-5">
         <div className="mb-2 flex items-center justify-between px-1">
@@ -366,6 +383,15 @@ export default function ProjectScreen() {
                           <Pencil className="h-4 w-4" />
                         </button>
                       )}
+                      {flags.can_edit && (
+                        <button
+                          title="Pindahkan ke proyek lain"
+                          onClick={(e) => { e.stopPropagation(); setMoveDetail({ name: w.name, title: w.title }) }}
+                          className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
+                        >
+                          <FolderInput className="h-4 w-4" />
+                        </button>
+                      )}
                       {flags.can_delete && (
                         <button
                           disabled={w.total > 0}
@@ -430,6 +456,9 @@ export default function ProjectScreen() {
         onClose={() => setEditDetail(null)}
         projectDetailName={editDetail ?? ''}
       />
+      {moveDetail && (
+        <MoveProjectDetailSheet open onClose={() => setMoveDetail(null)} detail={moveDetail} />
+      )}
       {postpone && (
         <PostponeSheet
           open={!!postpone}

@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, UserLeaderRef, LedUser, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, VotedSuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, VotedSuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser } from './types'
 
 const METHOD = '/api/method/'
 
@@ -217,6 +217,13 @@ export const mobileApi = {
     api.post<{ ok: boolean }>(M + 'delete_project', { project }),
   deleteProjectDetail: (project_detail: string) =>
     api.post<{ ok: boolean }>(M + 'delete_project_detail', { project_detail }),
+  moveDestinations: (project_detail: string) =>
+    api.post<{ name: string; project_name: string }[]>(M + 'list_move_destinations', { project_detail }),
+  moveProjectDetail: (project_detail: string, destination_project: string) =>
+    api.post<{ ok: boolean; moved_todos?: number; blocked?: { user: string; to_do: string; todo: string }[] }>(
+      M + 'move_project_detail',
+      { project_detail, destination_project },
+    ),
   createUser: (payload: {
     email: string
     full_name: string
@@ -272,6 +279,8 @@ export const mobileApi = {
     api.post(M + 'run_report', { report, filters: JSON.stringify(filters) }),
   getWallet: () => api.get(M + 'get_wallet'),
   getWalletLog: () => api.get(M + 'get_wallet_log'),
+  getUserPointsLog: (user: string, limit = 100) =>
+    api.get<import('./types').UserPointsLog>(M + 'get_user_points_log', { user, limit }),
   getWeeklyRecap: (weekOffset = 0) => api.get(M + 'get_weekly_recap', { week_offset: weekOffset }),
   sayThanks: (toUser: string) =>
     api.post<{ status: string; message?: string }>(M + 'say_thanks', { to_user: toUser }),
@@ -614,17 +623,16 @@ export const mobileApi = {
     api.get<import('./types').LogbookResponse>('vernon_project.api.report.logbook', { from_date, to_date, ...(user ? { user } : {}) }),
   websiteBranding: () =>
     api.get<{ app_name?: string; app_logo?: string }>('frappe.client.get_value', { doctype: 'Website Settings', fieldname: JSON.stringify(['app_name', 'app_logo']) }),
-  getUserLeaders: (user: string) =>
-    api.get<UserLeaderRef[]>(LN + 'get_user_leaders', { user }),
-  listLedUsers: () => api.get<LedUser[]>(LN + 'list_led_users'),
-  addUserNote: (args: { user: string; body: string; note_date?: string | null; shared_with_user?: 0 | 1 }) =>
+  addUserNote: (args: { user: string; body: string; note_date?: string | null; shared_with_user?: 0 | 1; project?: string }) =>
     api.post<LeaderNote>(LN + 'add_user_note', {
       user: args.user,
       body: args.body,
       ...(args.note_date ? { note_date: args.note_date } : {}),
       ...(args.shared_with_user ? { shared_with_user: args.shared_with_user } : {}),
+      ...(args.project ? { project: args.project } : {}),
     }),
-  listUserNotes: (user: string) => api.get<UserNotesView>(LN + 'list_user_notes', { user }),
+  listUserNotes: (user: string, project?: string) =>
+    api.get<UserNotesView>(LN + 'list_user_notes', { user, ...(project ? { project } : {}) }),
   deleteUserNote: (name: string) => api.post<{ name: string }>(LN + 'delete_user_note', { name }),
   listSuperpowers: () => api.get<SuperpowerCatalogItem[]>(SP + 'list_superpowers'),
   listVotableUsers: () => api.get<VotableUser[]>(SP + 'list_votable_users'),

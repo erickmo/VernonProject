@@ -2905,6 +2905,77 @@ def get_wallet_log():
 	return rows
 
 
+# Grant + Gift are points GIVEN to a user, not earned; the transparent leaderboard
+# log shows only what a user earned through their own activity.
+_EARNED_EXCLUDE = ("Grant", "Gift")
+
+
+def _earned_credit_rows(user, limit=100):
+	"""Point Ledger credits a user EARNED (source not in Grant/Gift), newest first.
+	Same row shape/labels as the wallet's earned rows so the public points log and
+	the private wallet render identically. No balance, no spends."""
+	credits = frappe.get_all(
+		"Point Ledger",
+		filters={"user": user, "source": ["not in", _EARNED_EXCLUDE]},
+		fields=["points_earned as amount", "todo", "group", "role", "source", "note",
+			"credited_on as date", "late_days", "early_days"],
+		order_by="credited_on desc",
+		limit=limit,
+	)
+	todo_ids = [c["todo"] for c in credits if c.get("todo")]
+	subj = {}
+	if todo_ids:
+		for r in frappe.get_all("Project Todo", filters={"name": ["in", todo_ids]}, fields=["name", "to_do"]):
+			subj[r["name"]] = r["to_do"]
+	rows = []
+	for c in credits:
+		amt = float(c["amount"] or 0)
+		rows.append({
+			"kind": "credit",
+			"amount": amt,
+			"category": _credit_category(c.get("role"), c.get("source")),
+			"title": subj.get(c.get("todo")) or "Points earned",
+			"subtitle": _credit_reason(c.get("role"), c.get("source"),
+				c.get("late_days"), c.get("early_days"), c.get("group")),
+			"status": None,
+			"date": str(c["date"]) if c.get("date") else None,
+			"date_human": _humanize_datetime(c.get("date")),
+		})
+	return rows
+
+
+@frappe.whitelist()
+def get_user_points_log(user, limit=100):
+	"""Transparent earned-points log for any user — opened by tapping a leaderboard
+	row. Login required (no Guest); no admin gate. Earned credits only (Grant/Gift
+	excluded), read-only: no spends, no balance, no mutation. Returns the target's
+	name/avatar for the header so the view is self-sufficient on a deep link."""
+	if frappe.session.user == "Guest":
+		frappe.throw("Login required.", frappe.PermissionError)
+	if not frappe.db.exists("User", user):
+		frappe.throw("User not found.", frappe.DoesNotExistError)
+	try:
+		limit = max(1, min(int(limit), 500))
+	except (TypeError, ValueError):
+		limit = 100
+
+	rows = _earned_credit_rows(user, limit)
+	total = frappe.db.sql(
+		"""SELECT COALESCE(SUM(points_earned), 0) FROM `tabPoint Ledger`
+		   WHERE user = %(u)s AND source NOT IN %(ex)s""",
+		{"u": user, "ex": _EARNED_EXCLUDE},
+	)[0][0]
+	info = frappe.db.get_value("User", user, ["full_name", "user_image"], as_dict=True) or {}
+	return {
+		"user": user,
+		"full_name": info.get("full_name") or user,
+		"image": info.get("user_image"),
+		"avatar_config": _avatar_config_map([user]).get(user),
+		"total_earned": round(float(total or 0), 2),
+		"rows": rows,
+	}
+
+
 # --------------------------------------------------------------------------------
 # Leaderboard — rank users by points EARNED in a period, optionally by brand.
 # Spending never lowers rank (we sum Point Ledger only, not redemptions).
@@ -5555,6 +5626,73 @@ def delete_project_detail(project_detail):
 	frappe.delete_doc("Project Detail", project_detail, ignore_permissions=True)
 	frappe.db.commit()
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def list_move_destinations(project_detail):
+	"""Projects a Project Detail could be moved into: everything not Closed except
+	its current project. A System Manager sees all; anyone else only projects they
+	own. Returns [{name, project_name}, ...] ordered by project_name."""
+	source = frappe.db.get_value("Project Detail", project_detail, "project")
+	user = frappe.session.user
+	is_sm = "System Manager" in frappe.get_roles(user)
+	filters = {"name": ["!=", source], "status": ["!=", "Closed"]}
+	if not is_sm:
+		filters["project_owner"] = user
+	return frappe.get_all(
+		"Project", filters=filters, fields=["name", "project_name"], order_by="project_name asc"
+	)
+
+
+@frappe.whitelist()
+def move_project_detail(project_detail, destination_project):
+	"""Move a Project Detail (with its todos and their point history) into another
+	project. Gated to a user who owns BOTH projects (or a System Manager). If any
+	todo is assigned to someone who is not on the destination team the move is
+	refused with {"ok": False, "blocked": [...]} and NO writes happen, so the
+	caller can reassign or add those members first. On success the detail's
+	grouping and glossaries (which belong to the old project) are cleared."""
+	detail = frappe.get_doc("Project Detail", project_detail)
+	source = detail.project
+	if not frappe.db.exists("Project", destination_project):
+		frappe.throw("Destination project not found")
+	if destination_project == source:
+		frappe.throw("Detail is already in that project")
+
+	user = frappe.session.user
+	if "System Manager" not in frappe.get_roles(user):
+		src_owner = frappe.db.get_value("Project", source, "project_owner")
+		dst_owner = frappe.db.get_value("Project", destination_project, "project_owner")
+		if user != src_owner or user != dst_owner:
+			frappe.throw("Only the owner of both projects can move this detail.", frappe.PermissionError)
+
+	children = frappe.get_all(
+		"Project Todo", filters={"project_detail": project_detail},
+		fields=["name", "assigned_to", "to_do"],
+	)
+	dst = frappe.get_doc("Project", destination_project)
+	members = {dst.project_owner, dst.project_leader} | {r.user for r in dst.team_members}
+	members.discard(None)
+	members.discard("")
+	blocked = [
+		{"user": c.assigned_to, "to_do": c.to_do, "todo": c.name}
+		for c in children
+		if c.assigned_to and c.assigned_to not in members
+	]
+	if blocked:
+		return {"ok": False, "blocked": blocked}
+
+	# grouping/glossaries point at the source project's Glossary rows; clearing
+	# them lets validate() pass under the destination project.
+	detail.project = destination_project
+	detail.grouping = None
+	detail.glossaries = []
+	detail.save(ignore_permissions=True)
+	for c in children:
+		frappe.db.set_value("Project Todo", c.name, "project", destination_project, update_modified=False)
+		frappe.db.set_value("Point Ledger", {"todo": c.name}, "project", destination_project)
+	frappe.db.commit()
+	return {"ok": True, "moved_todos": len(children)}
 
 
 @frappe.whitelist()

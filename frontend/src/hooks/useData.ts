@@ -82,6 +82,7 @@ export const keys = {
   users: ['users'] as const,
   wallet: ['wallet'] as const,
   walletLog: ['wallet-log'] as const,
+  userPointsLog: (user: string) => ['user-points-log', user] as const,
   leaderboard: (period: string, brand: string | null) =>
     ['leaderboard', period, brand ?? ''] as const,
   marketplace: ['marketplace'] as const,
@@ -135,9 +136,7 @@ export const keys = {
   logbook: (from_date: string, to_date: string, user?: string) =>
     ['logbook', from_date, to_date, user ?? ''] as const,
   websiteSettings: ['website-settings'] as const,
-  userNotes: (user: string) => ['user-notes', user] as const,
-  userLeaders: (user: string) => ['user-leaders', user] as const,
-  ledUsers: ['led-users'] as const,
+  userNotes: (user: string, project?: string) => ['user-notes', user, project ?? null] as const,
   superpowers: ['superpowers'] as const,
   votableUsers: ['votable-users'] as const,
   userSuperpowers: (user: string) => ['user-superpowers', user] as const,
@@ -673,6 +672,26 @@ export function useDeleteProjectDetail() {
   })
 }
 
+export function useMoveDestinations(project_detail: string) {
+  return useQuery({
+    queryKey: ['move-destinations', project_detail],
+    queryFn: () => mobileApi.moveDestinations(project_detail),
+    enabled: !!project_detail,
+  })
+}
+
+export function useMoveProjectDetail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { project_detail: string; destination_project: string }) =>
+      mobileApi.moveProjectDetail(vars.project_detail, vars.destination_project),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
 export function useGroups(project: string, enabled = true) {
   return useQuery({
     queryKey: ['groups', project],
@@ -1049,6 +1068,14 @@ export const useWallet = () =>
 
 export const useWalletLog = () =>
   useQuery({ queryKey: keys.walletLog, queryFn: () => mobileApi.getWalletLog() as Promise<WalletLogEntry[]> })
+
+// Transparent earned-points log for any user (opened from the leaderboard).
+export const useUserPointsLog = (user?: string) =>
+  useQuery({
+    queryKey: keys.userPointsLog(user ?? ''),
+    queryFn: () => mobileApi.getUserPointsLog(user!),
+    enabled: !!user,
+  })
 
 export interface WeeklyRecap {
   week_offset: number
@@ -2244,29 +2271,22 @@ export function useWebsiteSettings() {
 
 // ---- Leaders & Notes (person→person supervision + observations) ----
 
-export const useUserNotes = (user: string) =>
+// project set ⇒ notes scoped to that project (member overlay); omit ⇒ all
+// notes about the user (profile aggregate).
+export const useUserNotes = (user: string, project?: string) =>
   useQuery({
-    queryKey: keys.userNotes(user),
-    queryFn: () => mobileApi.listUserNotes(user),
+    queryKey: keys.userNotes(user, project),
+    queryFn: () => mobileApi.listUserNotes(user, project),
     enabled: !!user,
   })
-
-export const useUserLeaders = (user: string) =>
-  useQuery({
-    queryKey: keys.userLeaders(user),
-    queryFn: () => mobileApi.getUserLeaders(user),
-    enabled: !!user,
-  })
-
-export const useLedUsers = () =>
-  useQuery({ queryKey: keys.ledUsers, queryFn: () => mobileApi.listLedUsers() })
 
 export function useAddUserNote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (args: { user: string; body: string; note_date?: string | null; shared_with_user?: 0 | 1 }) =>
+    mutationFn: (args: { user: string; body: string; note_date?: string | null; shared_with_user?: 0 | 1; project?: string }) =>
       mobileApi.addUserNote(args),
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userNotes(v.user) }),
+    // Invalidate every project-scoped variant for this user (prefix match).
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['user-notes', v.user] }),
   })
 }
 
@@ -2274,7 +2294,7 @@ export function useDeleteUserNote() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (args: { name: string; user: string }) => mobileApi.deleteUserNote(args.name),
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userNotes(v.user) }),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['user-notes', v.user] }),
   })
 }
 
