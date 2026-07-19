@@ -354,6 +354,7 @@ export interface ProjectDetail {
   team: { user: string; name: string; image: string | null; avatar_config?: AvatarConfig | null }[]
   grouping: string
   can_edit: boolean
+  can_delete: boolean
   groupings: string[]
   glossaries: string[]
   glossary_options: { name: string; glossary: string }[]

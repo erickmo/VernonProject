@@ -563,9 +563,10 @@ export function permFlags(project: ProjectFull, boot: Boot | undefined) {
   const isSM = !!boot?.roles.includes('System Manager')
   const isOwner = !!me && me === project.project_owner
   const isLeader = !!me && me === project.project_leader
+  const isAdmin = !!me && me === project.project_admin
   return {
     can_edit: isSM || isOwner || isLeader,
-    can_delete: isSM || isOwner,
+    can_delete: isSM || isOwner || isLeader || isAdmin,
     can_reassign: isSM || isOwner,
   }
 }
@@ -620,7 +621,7 @@ export function useUpdateProject(project: string) {
 export function useDeleteProject() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (project: string) => resource.remove('Project', project),
+    mutationFn: (project: string) => mobileApi.deleteProject(project),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: keys.dashboard })
@@ -664,7 +665,7 @@ export function useUpdateProjectDetail(name: string) {
 export function useDeleteProjectDetail() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (name: string) => resource.remove('Project Detail', name),
+    mutationFn: (name: string) => mobileApi.deleteProjectDetail(name),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.dashboard })

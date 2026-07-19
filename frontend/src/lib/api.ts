@@ -213,6 +213,10 @@ export const mobileApi = {
   listUsers: () => api.get<{ users: import('./types').ManagedUser[] }>(M + 'list_users'),
   duplicateProject: (project: string) =>
     api.post<{ name: string; project_name: string }>(M + 'duplicate_project', { project }),
+  deleteProject: (project: string) =>
+    api.post<{ ok: boolean }>(M + 'delete_project', { project }),
+  deleteProjectDetail: (project_detail: string) =>
+    api.post<{ ok: boolean }>(M + 'delete_project_detail', { project_detail }),
   createUser: (payload: {
     email: string
     full_name: string
