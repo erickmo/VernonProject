@@ -676,3 +676,53 @@ class TestDeleteProjectAndDetail(unittest.TestCase):
 			self.delete_project_detail(self.detail.name)
 		frappe.set_user("Administrator")
 		self.assertTrue(frappe.db.exists("Project Detail", self.detail.name))
+
+	def test_delete_project_blocked_when_todo_exists(self):
+		from vernon_project.api.mobile import delete_project
+		self._add_todo()
+		with self.assertRaises(frappe.ValidationError):
+			delete_project(self.project.name)
+		self.assertTrue(frappe.db.exists("Project", self.project.name))
+
+	def test_delete_project_blocked_when_point_ledger_exists(self):
+		from vernon_project.api.mobile import delete_project
+		pl = frappe.get_doc({"doctype": "Point Ledger", "user": "Administrator",
+			"project": self.project.name, "point": 5})
+		pl.flags.ignore_validate = True
+		pl.insert(ignore_permissions=True, ignore_mandatory=True)
+		frappe.db.commit()
+		try:
+			with self.assertRaises(frappe.ValidationError):
+				delete_project(self.project.name)
+			self.assertTrue(frappe.db.exists("Project", self.project.name))
+		finally:
+			frappe.delete_doc("Point Ledger", pl.name, force=True, ignore_permissions=True)
+			frappe.db.commit()
+
+	def test_delete_project_cascades_detail_glossary_meeting(self):
+		from vernon_project.api.mobile import delete_project
+		meeting = frappe.get_doc({"doctype": "Meeting", "project": self.project.name,
+			"title": "Del Meeting", "meeting_date": nowdate()})
+		meeting.flags.ignore_validate = True
+		meeting.insert(ignore_permissions=True, ignore_mandatory=True)
+		frappe.db.commit()
+		detail_name, grouping_name, meeting_name = self.detail.name, self.grouping, meeting.name
+		delete_project(self.project.name)
+		self.assertFalse(frappe.db.exists("Project", self.project.name))
+		self.assertFalse(frappe.db.exists("Project Detail", detail_name))
+		self.assertFalse(frappe.db.exists("Glossary", grouping_name))
+		self.assertFalse(frappe.db.exists("Meeting", meeting_name))
+
+	def test_delete_project_allowed_for_leader_non_owner(self):
+		from vernon_project.api.mobile import delete_project
+		if not frappe.db.exists("User", "del_leader@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "del_leader@example.com",
+				"first_name": "Del Leader", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		frappe.db.set_value("Project", self.project.name, "project_leader", "del_leader@example.com")
+		frappe.db.commit()
+		frappe.set_user("del_leader@example.com")
+		try:
+			delete_project(self.project.name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertFalse(frappe.db.exists("Project", self.project.name))

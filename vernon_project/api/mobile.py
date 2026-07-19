@@ -5554,3 +5554,30 @@ def delete_project_detail(project_detail):
 	frappe.delete_doc("Project Detail", project_detail, ignore_permissions=True)
 	frappe.db.commit()
 	return {"ok": True}
+
+
+@frappe.whitelist()
+def delete_project(project):
+	"""Delete a Project that has no Project Todo, cascading its details (with
+	their child glossaries), meetings and glossary groups. Blocked if any Point
+	Ledger row references it — point history is never destroyed. Gated to the
+	project's owner/leader/admin (or a System Manager)."""
+	doc = frappe.get_doc("Project", project)
+	_require_project_manager(doc)
+
+	n_todos = frappe.db.count("Project Todo", {"project": project})
+	if n_todos:
+		frappe.throw(f"Cannot delete: {n_todos} todo(s) still belong to this project. Remove them first.")
+	n_points = frappe.db.count("Point Ledger", {"project": project})
+	if n_points:
+		frappe.throw(f"Cannot delete: {n_points} point-history record(s) reference this project.")
+
+	# Order matters: details link their grouping Glossary, so details go first.
+	for doctype in ("Project Detail", "Meeting", "Glossary"):
+		for name in frappe.get_all(doctype, filters={"project": project}, pluck="name"):
+			frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
+	# _require_project_manager already authorized (owner/leader/admin/SM); Project.on_trash
+	# is owner-only and its "has details" backstop is moot since we cascaded details above.
+	frappe.delete_doc("Project", project, ignore_permissions=True, force=True, ignore_on_trash=True)
+	frappe.db.commit()
+	return {"ok": True}
