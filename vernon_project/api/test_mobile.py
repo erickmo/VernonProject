@@ -617,3 +617,62 @@ class TestMobileDeleteUser(unittest.TestCase):
 				delete_user(self.user)
 		finally:
 			frappe.set_user("Administrator")
+
+
+class TestDeleteProjectAndDetail(unittest.TestCase):
+	def setUp(self):
+		from vernon_project.api.mobile import delete_project_detail
+		self.delete_project_detail = delete_project_detail
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
+		# A non-manager user for the permission test.
+		if not frappe.db.exists("User", "del_outsider@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "del_outsider@example.com",
+				"first_name": "Del Outsider", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Delete Test Project",
+			"brand": "Test Customer", "project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		})
+		self.project.insert(ignore_permissions=True)
+		self.grouping = frappe.get_doc({"doctype": "Glossary", "glossary": "Delete Grouping",
+			"project": self.project.name}).insert(ignore_permissions=True).name
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "Delete Detail",
+			"grouping": self.grouping, "project_deadline": add_days(nowdate(), 30), "estimated": 10,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Project Todo", {"project": self.project.name})
+		for dt, name in (("Project Detail", self.detail.name), ("Glossary", self.grouping),
+				("Project", self.project.name)):
+			if frappe.db.exists(dt, name):
+				frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def _add_todo(self):
+		t = frappe.get_doc({"doctype": "Project Todo", "project": self.project.name,
+			"project_detail": self.detail.name, "to_do": "blocker", "status": "⚪️ Planned"})
+		t.flags.ignore_validate = True
+		t.insert(ignore_permissions=True, ignore_mandatory=True)
+		frappe.db.commit()
+		return t.name
+
+	def test_delete_detail_blocked_when_todo_exists(self):
+		self._add_todo()
+		with self.assertRaises(frappe.ValidationError):
+			self.delete_project_detail(self.detail.name)
+		self.assertTrue(frappe.db.exists("Project Detail", self.detail.name))
+
+	def test_delete_detail_succeeds_when_empty(self):
+		self.delete_project_detail(self.detail.name)
+		self.assertFalse(frappe.db.exists("Project Detail", self.detail.name))
+
+	def test_delete_detail_permission_denied_for_outsider(self):
+		frappe.set_user("del_outsider@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			self.delete_project_detail(self.detail.name)
+		frappe.set_user("Administrator")
+		self.assertTrue(frappe.db.exists("Project Detail", self.detail.name))

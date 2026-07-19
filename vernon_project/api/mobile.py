@@ -5526,3 +5526,31 @@ def duplicate_project(project):
 
 	frappe.db.commit()
 	return {"name": new.name, "project_name": new.project_name}
+
+
+def _require_project_manager(project_doc):
+	"""Delete gate: owner / leader / admin of the project, or a System Manager."""
+	user = frappe.session.user
+	if "System Manager" in frappe.get_roles(user):
+		return
+	managers = {
+		project_doc.get("project_owner"),
+		project_doc.get("project_leader"),
+		project_doc.get("project_admin"),
+	}
+	if user not in managers:
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+@frappe.whitelist()
+def delete_project_detail(project_detail):
+	"""Delete a Project Detail that has no Project Todo. Its child glossary rows
+	cascade with it. Gated to the parent project's owner/leader/admin (or SM)."""
+	doc = frappe.get_doc("Project Detail", project_detail)
+	_require_project_manager(frappe.get_doc("Project", doc.project))
+	n = frappe.db.count("Project Todo", {"project_detail": project_detail})
+	if n:
+		frappe.throw(f"Cannot delete: {n} todo(s) still belong to this detail. Remove them first.")
+	frappe.delete_doc("Project Detail", project_detail, ignore_permissions=True)
+	frappe.db.commit()
+	return {"ok": True}
