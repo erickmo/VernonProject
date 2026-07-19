@@ -5,7 +5,8 @@
 
 // v10: bumped to evict a poisoned 0-byte bundle entry a CDN edge cached during a
 // same-hash rebuild; the old cache is dropped on activate so assets re-fetch fresh.
-const ASSET_CACHE = 'vernon-assets-v11'
+// v12: force installed /m clients off the stale shell after the move-detail deploy.
+const ASSET_CACHE = 'vernon-assets-v12'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
