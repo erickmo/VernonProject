@@ -234,7 +234,7 @@ export default function Project() {
         </div>
       ),
     },
-    ...(perms.can_edit ? [{
+    ...((perms.can_edit || perms.can_delete) ? [{
       key: 'actions',
       header: '',
       width: 'w-10',
@@ -243,10 +243,14 @@ export default function Project() {
           <OverflowMenu
             size="sm"
             items={[
-              { label: 'Edit', icon: Pencil, onClick: () => setEditDetail(r.name) },
-              { label: 'Postpone', icon: CalendarClock, onClick: () => setPostpone({ type: 'Project Detail', name: r.name, label: r.title, anchor: '' }) },
-              { divider: true },
-              { label: 'Delete', icon: Trash2, danger: true, disabled: r.total > 0, onClick: () => doDeleteDetail(r) },
+              ...(perms.can_edit ? [
+                { label: 'Edit', icon: Pencil, onClick: () => setEditDetail(r.name) },
+                { label: 'Postpone', icon: CalendarClock, onClick: () => setPostpone({ type: 'Project Detail', name: r.name, label: r.title, anchor: '' }) },
+              ] : []),
+              ...(perms.can_delete ? [
+                { divider: true },
+                { label: 'Delete', icon: Trash2, danger: true, disabled: r.total > 0, onClick: () => doDeleteDetail(r) },
+              ] : []),
             ]}
           />
         </span>
@@ -300,8 +304,8 @@ export default function Project() {
                   <Button
                     variant="danger"
                     size="sm"
-                    disabled={p.project_details.length > 0}
-                    title={p.project_details.length > 0 ? 'Remove all details before deleting this project' : undefined}
+                    disabled={p.project_details.some((w) => w.total > 0)}
+                    title={p.project_details.some((w) => w.total > 0) ? 'Remove all todos before deleting this project' : undefined}
                     onClick={doDelete}
                   >
                     <Trash2 className="h-4 w-4" /> Delete

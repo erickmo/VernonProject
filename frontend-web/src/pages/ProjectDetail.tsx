@@ -99,13 +99,14 @@ export default function ProjectDetail() {
   const handleDelete = async () => {
     const ok = await confirm({
       title: 'Delete project detail?',
-      message: `"${d.title}" and all its todos will be permanently removed.`,
+      message: `"${d.title}" will be removed.`,
       confirmLabel: 'Delete',
       destructive: true,
     })
     if (!ok) return
     deleteMutation.mutate(d.name, {
       onSuccess: () => nav(`/project/${encodeURIComponent(d.project)}`),
+      onError: (e) => toast('error', (e as Error).message),
     })
   }
 
@@ -116,8 +117,8 @@ export default function ProjectDetail() {
     ...(d.can_edit
       ? [{ label: 'Postpone', icon: CalendarClock, onClick: () => setPostponeOpen(true) }]
       : []),
-    ...(d.can_edit
-      ? [{ label: 'Delete', icon: Trash2, danger: true, onClick: handleDelete }]
+    ...(d.can_delete
+      ? [{ label: 'Delete', icon: Trash2, danger: true, disabled: items.length > 0, onClick: handleDelete }]
       : []),
   ]
 
