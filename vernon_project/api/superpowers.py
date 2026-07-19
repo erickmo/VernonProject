@@ -15,6 +15,9 @@
 
 import frappe
 from frappe.utils import cint, flt, now_datetime, add_days, getdate, nowdate
+# The gamified DiceBear avatar (config) wins over the uploaded photo everywhere
+# in the app — reuse mobile's batch resolver so superpower avatars match.
+from vernon_project.api.mobile import _avatar_config_map
 
 # Mirrors mobile.py STATUS_COMPLETED (the completed Project Todo status).
 _STATUS_COMPLETED = "✅ Completed"
@@ -375,6 +378,7 @@ def get_user_superpowers(user):
 		"user": user,
 		"user_name": meta.get("full_name") or user,
 		"user_image": meta.get("user_image"),
+		"avatar_config": _avatar_config_map([user]).get(user),
 		"mine": mine,
 		"voted": voted,
 		"performance": _perf_scores(user),
@@ -464,10 +468,12 @@ def list_votable_users():
 	counts = {}
 	for r in frappe.get_all("Superpower Vote", filters={"voter": session}, fields=["ratee"]):
 		counts[r["ratee"]] = counts.get(r["ratee"], 0) + 1
+	avatars = _avatar_config_map([u["name"] for u in users])
 	return [{
 		"user": u["name"],
 		"user_name": u["full_name"] or u["name"],
 		"user_image": u["user_image"],
+		"avatar_config": avatars.get(u["name"]),
 		"voted": u["name"] in counts,
 		"vote_count": counts.get(u["name"], 0),
 	} for u in users]

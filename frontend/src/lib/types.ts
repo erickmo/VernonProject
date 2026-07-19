@@ -1248,6 +1248,7 @@ export interface UserSuperpowersView {
   user: string
   user_name: string
   user_image: string | null
+  avatar_config?: AvatarConfig | null
   mine: MySuperpower[]
   voted: VotedSuperpower[]
   performance: PerfSuperpower[]
@@ -1271,6 +1272,7 @@ export interface VotableUser {
   user: string
   user_name: string
   user_image: string | null
+  avatar_config?: AvatarConfig | null
   voted: boolean
   vote_count: number
 }

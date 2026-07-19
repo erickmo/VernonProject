@@ -177,7 +177,7 @@ export default function Superpowers() {
         <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="shrink-0 rounded-full ring-4 ring-white/25">
-            <Avatar name={displayName} image={v?.user_image ?? undefined} size={72} />
+            <Avatar name={displayName} image={v?.user_image ?? undefined} config={v?.avatar_config} size={72} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-xs font-medium uppercase tracking-wide text-white/70">Superpowers</div>
@@ -357,7 +357,7 @@ export default function Superpowers() {
                 onClick={() => navigate(`/superpowers/${encodeURIComponent(p.user)}?tab=voted`)}
                 className="flex w-full items-center gap-3 rounded-2xl bg-surface p-3 text-left shadow-card transition hover:bg-hover/[0.04]"
               >
-                <Avatar name={p.user_name || p.user} image={p.user_image ?? undefined} size={40} />
+                <Avatar name={p.user_name || p.user} image={p.user_image ?? undefined} config={p.avatar_config} size={40} />
                 <span className="min-w-0 flex-1 truncate font-semibold text-ink">{p.user_name || p.user}</span>
                 {p.voted && (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">

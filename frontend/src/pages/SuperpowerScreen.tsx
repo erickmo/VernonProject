@@ -514,7 +514,7 @@ export default function SuperpowerScreen() {
                   onClick={() => navigate(`/superpowers/${u.user}?tab=voted`)}
                   className="flex w-full items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-3 text-left shadow-card transition active:scale-[0.99]"
                 >
-                  <Avatar name={u.user_name} image={u.user_image} size={40} />
+                  <Avatar name={u.user_name} image={u.user_image} config={u.avatar_config} size={40} />
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold text-stone-700 dark:text-slate-200">
                     {u.user_name}
                   </p>
