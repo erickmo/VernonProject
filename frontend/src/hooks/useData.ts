@@ -139,6 +139,7 @@ export const keys = {
   userLeaders: (user: string) => ['user-leaders', user] as const,
   ledUsers: ['led-users'] as const,
   superpowers: ['superpowers'] as const,
+  votableUsers: ['votable-users'] as const,
   userSuperpowers: (user: string) => ['user-superpowers', user] as const,
   superpowerSettings: ['superpower-settings'] as const,
 }
@@ -2280,6 +2281,9 @@ export function useDeleteUserNote() {
 
 export const useSuperpowers = () =>
   useQuery({ queryKey: keys.superpowers, queryFn: () => mobileApi.listSuperpowers() })
+
+export const useVotableUsers = () =>
+  useQuery({ queryKey: keys.votableUsers, queryFn: () => mobileApi.listVotableUsers() })
 
 export const useUserSuperpowers = (user: string) =>
   useQuery({

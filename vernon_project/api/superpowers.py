@@ -449,6 +449,31 @@ def cast_vote(ratee, superpower, score):
 
 
 @frappe.whitelist()
+def list_votable_users():
+	"""Any logged-in user. All active users to rate (excluding self), each flagged
+	with whether the caller has already voted them — the 'voted' marker + count."""
+	session = frappe.session.user
+	if session == "Guest":
+		frappe.throw("Login required.", frappe.PermissionError)
+	users = frappe.get_all(
+		"User",
+		filters={"enabled": 1, "name": ["not in", ["Guest", "Administrator", session]]},
+		fields=["name", "full_name", "user_image"],
+		order_by="full_name asc",
+	)
+	counts = {}
+	for r in frappe.get_all("Superpower Vote", filters={"voter": session}, fields=["ratee"]):
+		counts[r["ratee"]] = counts.get(r["ratee"], 0) + 1
+	return [{
+		"user": u["name"],
+		"user_name": u["full_name"] or u["name"],
+		"user_image": u["user_image"],
+		"voted": u["name"] in counts,
+		"vote_count": counts.get(u["name"], 0),
+	} for u in users]
+
+
+@frappe.whitelist()
 def remove_vote(ratee, superpower):
 	"""The voter deletes their own vote for that (ratee, superpower)."""
 	_require_login()

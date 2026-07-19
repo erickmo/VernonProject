@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, UserLeaderRef, LedUser, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, VotedSuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, UserLeaderRef, LedUser, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, VotedSuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser } from './types'
 
 const METHOD = '/api/method/'
 
@@ -623,6 +623,7 @@ export const mobileApi = {
   listUserNotes: (user: string) => api.get<UserNotesView>(LN + 'list_user_notes', { user }),
   deleteUserNote: (name: string) => api.post<{ name: string }>(LN + 'delete_user_note', { name }),
   listSuperpowers: () => api.get<SuperpowerCatalogItem[]>(SP + 'list_superpowers'),
+  listVotableUsers: () => api.get<VotableUser[]>(SP + 'list_votable_users'),
   getUserSuperpowers: (user: string) =>
     api.get<UserSuperpowersView>(SP + 'get_user_superpowers', { user }),
   setMySuperpowers: (user: string, superpowers: string[]) =>

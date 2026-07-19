@@ -1265,3 +1265,12 @@ export interface SuperpowerSettings {
   finisher_target: number
   levels: SuperpowerLevel[]
 }
+
+// A user you can rate, with whether you've already voted them (the marker).
+export interface VotableUser {
+  user: string
+  user_name: string
+  user_image: string | null
+  voted: boolean
+  vote_count: number
+}

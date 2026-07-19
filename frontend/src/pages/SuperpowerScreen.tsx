@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { Sparkles, Star, Zap, Trash2, Trophy } from 'lucide-react'
+import { Sparkles, Star, Zap, Trash2, Trophy, Check } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
+import { Avatar, EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { useToast } from '@/components/Toast'
 import {
@@ -11,10 +11,13 @@ import {
   useUserSuperpowers,
   useSuperpowers,
   useSetMySuperpowers,
+  useVotableUsers,
   useCastVote,
   useRemoveVote,
 } from '@/hooks/useData'
 import type { PerfSuperpower, SuperpowerLevel, VotedSuperpower } from '@/lib/types'
+
+type TabKey = 'mine' | 'voted' | 'others' | 'perf'
 
 // Robust icon: catalog/level icons may be an emoji OR a lucide name. We only
 // render the glyph when it's clearly an emoji (any non-latin1 char); a bare
@@ -198,6 +201,72 @@ function PerfCard({ item }: { item: PerfSuperpower }) {
   )
 }
 
+// A self-claimed trait, rendered Kinerja-style. Score/level come from the peer
+// vote (if any); unvoted traits show an empty bar + "Belum dinilai".
+function MineRow({
+  name,
+  icon,
+  color,
+  voted,
+  canEdit,
+  disabled,
+  onRemove,
+}: {
+  name: string
+  icon?: string
+  color?: string
+  voted?: VotedSuperpower
+  canEdit: boolean
+  disabled: boolean
+  onRemove: () => void
+}) {
+  const score = voted?.weighted ?? 0
+  const level = voted?.level ?? null
+  return (
+    <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
+      <div className="grid grid-cols-12 items-center gap-2">
+        <div className="col-span-1 flex justify-center">
+          <span
+            className="flex h-7 w-7 items-center justify-center rounded-full"
+            style={{ backgroundColor: `${color || '#6366f1'}22` }}
+          >
+            <SpIcon icon={icon} color={color} />
+          </span>
+        </div>
+        <div className="col-span-11">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="truncate font-semibold text-stone-700 dark:text-slate-200">{name}</span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="text-stone-400 dark:text-slate-500">
+                {voted ? `${level?.level_name ?? '—'} · ${score.toFixed(1)}` : 'Belum dinilai'}
+              </span>
+              {canEdit && (
+                <button
+                  onClick={onRemove}
+                  disabled={disabled}
+                  aria-label={`Lepas ${name}`}
+                  className="text-rose-500 dark:text-rose-400 transition active:scale-90 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.max(0, Math.min(100, score * 10))}%`,
+                backgroundColor: level?.color || color || '#6366f1',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SuperpowerScreen() {
   const { user: routeUser = '' } = useParams<{ user: string }>()
   const { data: boot } = useBoot()
@@ -205,10 +274,17 @@ export default function SuperpowerScreen() {
   const user = routeUser || boot?.user || ''
   const { data: view, isLoading } = useUserSuperpowers(user)
   const { data: catalog } = useSuperpowers()
+  const { data: votable } = useVotableUsers()
   const setMine = useSetMySuperpowers()
   const toast = useToast()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const [tab, setTab] = useState<'mine' | 'voted' | 'perf'>('mine')
+  // Deep-link support: /superpowers/:user?tab=voted opens straight on that tab.
+  const [tab, setTab] = useState<TabKey>(() => {
+    const t = searchParams.get('tab')
+    return t === 'voted' || t === 'others' || t === 'perf' || t === 'mine' ? t : 'mine'
+  })
   // Local claimed set — seeded from the server, toggled optimistically on tap.
   const [claimed, setClaimed] = useState<string[]>([])
   // Traits the viewer added from the picker but hasn't scored yet (no server row).
@@ -220,6 +296,11 @@ export default function SuperpowerScreen() {
     if (view) setClaimed(view.mine.map((m) => m.superpower))
   }, [view])
 
+  // "Nilai Rekan" only exists on your own profile; snap back if URL forced it elsewhere.
+  useEffect(() => {
+    if (tab === 'others' && boot && !isSelf) setTab('mine')
+  }, [tab, boot, isSelf])
+
   const claimedSet = useMemo(() => new Set(claimed), [claimed])
 
   // Only Voted traits are self-claimable / votable; Performance rows are excluded.
@@ -229,6 +310,20 @@ export default function SuperpowerScreen() {
   const votedByName = useMemo(
     () => new Map((view?.voted ?? []).map((v) => [v.superpower, v] as const)),
     [view],
+  )
+
+  // Metadata lookups for "mine" rows (icon/color/name), catalog first, server fallback.
+  const catByName = useMemo(() => new Map(voteableCatalog.map((c) => [c.name, c] as const)), [voteableCatalog])
+  const mineByName = useMemo(
+    () => new Map((view?.mine ?? []).map((m) => [m.superpower, m] as const)),
+    [view],
+  )
+  const mineAddOpts = useMemo(
+    () =>
+      voteableCatalog
+        .filter((c) => !claimedSet.has(c.name))
+        .map((c) => ({ value: c.name, label: c.superpower_name })),
+    [voteableCatalog, claimedSet],
   )
 
   // Pseudo-cards for picked-but-unvoted traits (drop any that landed in `voted`).
@@ -291,10 +386,10 @@ export default function SuperpowerScreen() {
     )
   }
 
-  // Editors see the whole claimable grid; viewers only see the claimed chips.
-  const chipList = view.can_edit_mine
-    ? voteableCatalog
-    : voteableCatalog.filter((c) => claimedSet.has(c.name))
+  // "Mine" rows follow the Kinerja layout, ordered by peer-vote score (unvoted last).
+  const mineIds = [...claimed].sort(
+    (a, b) => (votedByName.get(b)?.weighted ?? 0) - (votedByName.get(a)?.weighted ?? 0),
+  )
 
   return (
     <DetailScreen title={isSelf ? 'Superpower Saya' : 'Superpower'}>
@@ -330,9 +425,11 @@ export default function SuperpowerScreen() {
       </div>
 
       <Segmented
+        scroll={isSelf}
         options={[
           { value: 'mine', label: 'Superpower Saya' },
           { value: 'voted', label: 'Dinilai Rekan' },
+          ...(isSelf ? [{ value: 'others' as TabKey, label: 'Nilai Rekan' }] : []),
           { value: 'perf', label: 'Kinerja' },
         ]}
         value={tab}
@@ -341,10 +438,28 @@ export default function SuperpowerScreen() {
 
       <div className="mt-4">
         {tab === 'mine' && (
-          <>
-            {chipList.length === 0 ? (
+          <div className="space-y-3">
+            {view.can_edit_mine && (
+              <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+                  Tambah superpower
+                </p>
+                <SearchableSelect
+                  value=""
+                  onChange={(v) => v && toggleClaim(v)}
+                  options={mineAddOpts}
+                  placeholder={
+                    mineAddOpts.length ? 'Pilih superpower…' : 'Semua superpower sudah dipilih'
+                  }
+                />
+              </div>
+            )}
+
+            {claimed.length === 0 ? (
               view.can_edit_mine ? (
-                <p className="text-sm text-stone-400 dark:text-slate-500">Katalog superpower masih kosong.</p>
+                <p className="text-sm text-stone-400 dark:text-slate-500">
+                  Belum ada superpower. Pilih dari daftar di atas.
+                </p>
               ) : (
                 <EmptyState
                   icon={Sparkles}
@@ -353,47 +468,24 @@ export default function SuperpowerScreen() {
                 />
               )
             ) : (
-              <>
-                {view.can_edit_mine && (
-                  <p className="mb-3 text-xs font-medium text-stone-500 dark:text-slate-400">
-                    Ketuk untuk memilih atau melepas superpowermu.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {chipList.map((c) => {
-                    const isClaimed = claimedSet.has(c.name)
-                    const voted = isClaimed ? votedByName.get(c.name) : undefined
-                    return (
-                      <button
-                        key={c.name}
-                        disabled={!view.can_edit_mine || setMine.isPending}
-                        onClick={() => toggleClaim(c.name)}
-                        className={clsx(
-                          'flex flex-col items-start gap-1 rounded-2xl px-3 py-2 text-sm font-semibold transition',
-                          view.can_edit_mine ? 'active:scale-95 disabled:opacity-60' : 'cursor-default',
-                          isClaimed
-                            ? 'text-white shadow-card'
-                            : 'border border-dashed border-paper-edge dark:border-slate-600 text-stone-400 dark:text-slate-500',
-                        )}
-                        style={isClaimed ? { backgroundColor: c.color || '#6366f1' } : undefined}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <SpIcon icon={c.icon} color={isClaimed ? '#ffffff' : c.color} />
-                          {c.superpower_name}
-                        </span>
-                        {voted && (
-                          <span className="flex items-center gap-1.5 text-xs font-medium text-white/90">
-                            <LevelBadge level={voted.level} />
-                            {voted.weighted.toFixed(1)}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
+              mineIds.map((id) => {
+                const cat = catByName.get(id)
+                const m = mineByName.get(id)
+                return (
+                  <MineRow
+                    key={id}
+                    name={cat?.superpower_name ?? m?.name ?? id}
+                    icon={cat?.icon ?? m?.icon}
+                    color={cat?.color ?? m?.color}
+                    voted={votedByName.get(id)}
+                    canEdit={view.can_edit_mine}
+                    disabled={setMine.isPending}
+                    onRemove={() => toggleClaim(id)}
+                  />
+                )
+              })
             )}
-          </>
+          </div>
         )}
 
         {tab === 'voted' && (
@@ -424,6 +516,40 @@ export default function SuperpowerScreen() {
                 .map((item) => (
                   <VotedCard key={item.superpower} item={item} ratee={user} canVote={!isSelf} />
                 ))
+            )}
+          </div>
+        )}
+
+        {tab === 'others' && isSelf && (
+          <div className="space-y-3">
+            <p className="text-xs text-stone-400 dark:text-slate-500">
+              Ketuk untuk menilai superpower rekanmu.
+            </p>
+            {(votable ?? []).length === 0 ? (
+              <EmptyState
+                icon={Star}
+                title="Belum ada rekan"
+                subtitle="Belum ada rekan yang bisa dinilai."
+              />
+            ) : (
+              (votable ?? []).map((u) => (
+                <button
+                  key={u.user}
+                  onClick={() => navigate(`/superpowers/${u.user}?tab=voted`)}
+                  className="flex w-full items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-3 text-left shadow-card transition active:scale-[0.99]"
+                >
+                  <Avatar name={u.user_name} image={u.user_image} size={40} />
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-stone-700 dark:text-slate-200">
+                    {u.user_name}
+                  </p>
+                  {u.voted && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                      <Check className="h-3.5 w-3.5" />
+                      Sudah dinilai{u.vote_count > 0 ? ` · ${u.vote_count}` : ''}
+                    </span>
+                  )}
+                </button>
+              ))
             )}
           </div>
         )}
