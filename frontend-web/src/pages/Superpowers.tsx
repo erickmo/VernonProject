@@ -1,10 +1,10 @@
-import { useMemo, useState, type ComponentType, type CSSProperties } from 'react'
+import { useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  ArrowLeft, Sparkles, Award, Zap, X,
-  Telescope, Puzzle, TrendingUp, Megaphone, Target, Handshake, Crown,
-  MessageCircle, CheckCircle, BarChart3, Users, Shuffle, HeartHandshake,
+  ArrowLeft, Sparkles, Award, Zap, X, ChevronRight, TrendingUp, Users, CheckCircle,
+  Telescope, Puzzle, Megaphone, Target, Handshake, Crown,
+  MessageCircle, BarChart3, Shuffle, HeartHandshake,
   DollarSign, Lightbulb, Settings, BookOpen, UsersRound, Scale, Sprout, Leaf, Flame, Star,
 } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
@@ -41,6 +41,8 @@ export function SPIcon({ icon, className, color }: { icon?: string; className?: 
 export const hexBg = (color?: string) =>
   color && /^#[0-9a-f]{6}$/i.test(color) ? color + '1f' : undefined
 
+const pct = (score: number) => Math.max(0, Math.min(100, score * 10))
+
 export function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
   if (!level)
     return <span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-medium text-muted">Belum ada level</span>
@@ -51,6 +53,54 @@ export function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
     >
       <SPIcon icon={level.icon} className="h-3.5 w-3.5" /> {level.level_name}
     </span>
+  )
+}
+
+// Shared score-bar row — the one visual language across My / Voted / Kinerja.
+function ScoreRow({
+  icon, color, name, level, score, scored = true, meta, action, children, i = 0,
+}: {
+  icon?: string; color?: string; name: string
+  level: SuperpowerLevel | null; score: number; scored?: boolean
+  meta?: ReactNode; action?: ReactNode; children?: ReactNode; i?: number
+}) {
+  const bar = level?.color || color || '#6366f1'
+  return (
+    <div
+      className="animate-rise rounded-2xl border border-line bg-surface p-4 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+      style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-1 ring-line"
+          style={{ backgroundColor: hexBg(color) }}
+        >
+          <SPIcon icon={icon} color={color} className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate font-semibold text-ink">{name}</span>
+            {action}
+          </div>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-canvas">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${scored ? pct(score) : 0}%`, backgroundColor: bar }}
+              />
+            </div>
+            <span className={clsx('w-8 shrink-0 text-right text-sm font-bold tabular-nums', scored ? 'text-ink' : 'text-muted')}>
+              {scored ? score.toFixed(1) : '—'}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <LevelBadge level={level} />
+            {meta && <span className="text-xs text-muted">{meta}</span>}
+          </div>
+        </div>
+      </div>
+      {children}
+    </div>
   )
 }
 
@@ -66,8 +116,8 @@ function VotePills({ value, onPick, disabled }: { value: number | null; onPick: 
           className={clsx(
             'h-8 w-8 rounded-lg text-xs font-semibold transition disabled:opacity-50',
             value === n
-              ? 'bg-brand-600 text-white'
-              : 'border border-line bg-canvas text-muted hover:bg-hover/[0.06]',
+              ? 'bg-brand-600 text-white shadow-sm'
+              : 'border border-line bg-canvas text-muted hover:border-brand-400 hover:text-brand-600',
           )}
         >
           {n}
@@ -102,7 +152,6 @@ export default function Superpowers() {
   })
 
   const v = view.data
-
   const displayName = v?.user_name || user
 
   // "Dinilai Rekan" always lists the WHOLE votable catalog — each trait carries
@@ -120,16 +169,15 @@ export default function Superpowers() {
             category: c.category, avg: 0, count: 0, weighted: 0, level: null, my_vote: null,
           },
       )
+      .sort((a, b) => b.weighted - a.weighted || a.name.localeCompare(b.name))
   }, [v, catalog])
 
-  // Claimed chips show their peer-voted level/score; index voted rows by trait name.
   const votedByName = useMemo(() => {
     const m: Record<string, VotedSuperpower> = {}
     v?.voted.forEach((x) => { m[x.superpower] = x })
     return m
   }, [v])
 
-  // Only self-claimed/peer-voted traits are claimable as chips or votable.
   const votedCatalog = useMemo(() => catalog.filter((c) => c.kind === 'Voted'), [catalog])
 
   if (view.isLoading)
@@ -155,255 +203,262 @@ export default function Superpowers() {
     .filter((c) => !claimedIds.includes(c.name))
     .map((c) => ({ value: c.name, label: c.superpower_name }))
 
-  const tabDefs: [Tab, string][] = [
-    ['mine', 'Superpower Saya'],
-    ['voted', 'Dinilai Rekan'],
-    ...(isSelf ? ([['others', 'Nilai Rekan']] as [Tab, string][]) : []),
-    ['perf', 'Kinerja'],
+  const ratedCount = v.voted.filter((x) => x.count > 0).length
+
+  const tabDefs: [Tab, string, number][] = [
+    ['mine', 'Superpower Saya', v.mine.length],
+    ['voted', 'Dinilai Rekan', ratedCount],
+    ...(isSelf ? ([['others', 'Nilai Rekan', votable.length]] as [Tab, string, number][]) : []),
+    ['perf', 'Kinerja', v.performance.length],
+  ]
+
+  const mineSorted = [...v.mine].sort(
+    (a, b) => (votedByName[b.superpower]?.weighted ?? 0) - (votedByName[a.superpower]?.weighted ?? 0) || a.name.localeCompare(b.name),
+  )
+  const perfSorted = [...v.performance].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+
+  const stats = [
+    { label: 'Diklaim', value: v.mine.length },
+    { label: 'Dinilai', value: ratedCount },
+    { label: 'Kinerja', value: v.performance.length },
   ]
 
   return (
-    <Page className="mx-auto max-w-3xl">
+    <Page>
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="mb-3 inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700"
+        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Kembali
+        <ArrowLeft className="h-4 w-4" /> Kembali
       </button>
 
-      {/* Hero: identity + signature superpower + achievement */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-violet-600 to-brand-700 p-6 text-white shadow-card">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="shrink-0 rounded-full ring-4 ring-white/25">
-            <Avatar name={displayName} image={v?.user_image ?? undefined} config={v?.avatar_config} size={72} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium uppercase tracking-wide text-white/70">Superpowers</div>
-            <div className="truncate text-2xl font-bold leading-tight">{displayName}</div>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {v.signature && (
-                <span
-                  className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm"
-                  title={`Superpower utama · ${v.signature.level?.level_name ?? 'belum berlevel'}`}
-                >
-                  <SPIcon icon={v.signature.icon} className="h-3.5 w-3.5" />
-                  {v.signature.name}
-                  {v.signature.level && <span className="opacity-80">· {v.signature.level.level_name}</span>}
-                </span>
+      <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
+        {/* ── Identity rail (sticky on desktop) ─────────────────────────── */}
+        <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-violet-600 to-brand-700 p-6 text-white shadow-card">
+            <div className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-16 h-52 w-52 rounded-full bg-amber-300/10 blur-3xl" />
+            <div className="relative flex flex-col items-center text-center">
+              <div className="rounded-full ring-4 ring-white/25">
+                <Avatar name={displayName} image={v?.user_image ?? undefined} config={v?.avatar_config} size={92} />
+              </div>
+              <div className="mt-3 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-white/70">Superpowers</div>
+              <div className="mt-0.5 max-w-full truncate text-xl font-bold leading-tight">{displayName}</div>
+
+              {v.signature ? (
+                <div className="mt-4 w-full rounded-2xl bg-white/15 p-3 backdrop-blur-sm">
+                  <div className="text-[0.65rem] font-semibold uppercase tracking-wider text-white/70">Kekuatan utama</div>
+                  <div className="mt-1 flex items-center justify-center gap-1.5 text-sm font-bold">
+                    <SPIcon icon={v.signature.icon} className="h-4 w-4" />
+                    <span className="truncate">{v.signature.name}</span>
+                  </div>
+                  {v.signature.level && (
+                    <div className="mt-1 text-xs text-white/80">{v.signature.level.level_name} · {v.signature.weighted.toFixed(1)}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 text-xs text-white/70">Belum ada penilaian rekan.</div>
               )}
+
               {v.achievement && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-bold text-amber-950">
+                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-3 py-1 text-xs font-bold text-amber-950">
                   <Award className="h-3.5 w-3.5" /> Superpowered
                 </span>
               )}
-              {!v.signature && !v.achievement && (
-                <span className="text-xs text-white/70">Belum ada penilaian rekan.</span>
-              )}
+
+              <div className="mt-5 grid w-full grid-cols-3 gap-2">
+                {stats.map((s) => (
+                  <div key={s.label} className="rounded-xl bg-white/10 py-2">
+                    <div className="text-lg font-bold leading-none tabular-nums">{s.value}</div>
+                    <div className="mt-1 text-[0.65rem] uppercase tracking-wide text-white/70">{s.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Intro explanation */}
-      <div className="mt-4 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-muted">
-        Superpower adalah kekuatan & keahlian utamamu — dipakai untuk menentukan keterlibatanmu dalam tugas dan kontribusi tim.
-      </div>
+          <div className="rounded-2xl border border-line bg-surface p-4 text-sm leading-relaxed text-muted">
+            <span className="font-semibold text-ink">Apa itu Superpower?</span> Kekuatan & keahlian utamamu — dipakai untuk menentukan keterlibatanmu dalam tugas dan kontribusi tim.
+          </div>
+        </aside>
 
-      {/* Segmented tabs */}
-      <div className="mt-5 inline-flex rounded-xl border border-line bg-surface p-1">
-        {tabDefs.map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setTab(k)}
-            className={clsx(
-              'rounded-lg px-4 py-1.5 text-sm font-semibold transition',
-              tab === k ? 'bg-brand-600 text-white' : 'text-muted hover:text-ink',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'mine' && (
-        <div className="mt-4 space-y-3">
-          {v.can_edit_mine && (
-            <p className="text-xs text-muted">
-              Pilih superpower yang kamu klaim sendiri. Rekan menilai secara terpisah.
-            </p>
-          )}
-          {v.mine.length === 0 ? (
-            <EmptyState
-              icon={Sparkles}
-              title="Belum ada superpower"
-              subtitle={v.can_edit_mine ? 'Tambahkan superpower pertamamu di bawah.' : 'Pengguna ini belum memilih superpowernya.'}
-            />
-          ) : (
-            [...v.mine]
-              .sort((a, b) => (votedByName[b.superpower]?.weighted ?? 0) - (votedByName[a.superpower]?.weighted ?? 0) || a.name.localeCompare(b.name))
-              .map((m) => {
-                const vv = votedByName[m.superpower]
-                const scored = !!vv && vv.count > 0
-                return (
-                  <div key={m.superpower} className="rounded-2xl bg-surface p-4 shadow-card">
-                    <div className="grid grid-cols-12 items-center gap-3">
-                      <div className="col-span-1 flex justify-center">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: hexBg(m.color) }}>
-                          <SPIcon icon={m.icon} color={m.color} className="h-4 w-4" />
-                        </span>
-                      </div>
-                      <div className="col-span-11">
-                        <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className="truncate font-semibold text-ink">{m.name}</span>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className="text-muted">{scored ? `${vv.level?.level_name ?? '—'} · ${vv.weighted.toFixed(1)}` : 'Belum dinilai'}</span>
-                            {v.can_edit_mine && (
-                              <button
-                                type="button"
-                                onClick={() => saveMine(claimedIds.filter((x) => x !== m.superpower))}
-                                disabled={setMine.isPending}
-                                aria-label="Hapus superpower"
-                                className="text-muted transition hover:text-rose-600 disabled:opacity-50 dark:hover:text-rose-400"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-canvas">
-                          <div className="h-full rounded-full transition-all" style={{ width: `${scored ? Math.max(0, Math.min(100, vv.weighted * 10)) : 0}%`, backgroundColor: vv?.level?.color || m.color }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-          )}
-          {v.can_edit_mine && (
-            <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold text-ink">Tambah superpower</div>
-              <SearchableSelect
-                value=""
-                onChange={(val) => val && saveMine([...claimedIds, val])}
-                options={claimable}
-                placeholder="Pilih superpower yang kamu klaim…"
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'voted' && (
-        <div className="mt-4 space-y-4">
-          {cards.length === 0 ? (
-            <EmptyState icon={Zap} title="Belum dinilai" subtitle={isSelf ? 'Rekanmu belum memberi penilaian.' : 'Jadilah yang pertama menilai.'} />
-          ) : (
-            [...cards]
-              .sort((a, b) => b.weighted - a.weighted || a.name.localeCompare(b.name))
-              .map((c) => (
-              <div key={c.superpower} className="space-y-3 rounded-2xl bg-surface p-4 shadow-card">
-                <div className="grid grid-cols-12 items-center gap-3">
-                  <div className="col-span-1 flex justify-center">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: hexBg(c.color) }}>
-                      <SPIcon icon={c.icon} color={c.color} className="h-4 w-4" />
-                    </span>
-                  </div>
-                  <div className="col-span-11">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="truncate font-semibold text-ink">{c.name}</span>
-                      <span className="shrink-0 text-muted">{c.level?.level_name ?? '—'} · {c.weighted.toFixed(1)}</span>
-                    </div>
-                    <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-canvas">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(0, Math.min(100, c.weighted * 10))}%`, backgroundColor: c.level?.color || c.color }} />
-                    </div>
-                    <div className="mt-1 text-xs text-muted">{c.count} suara{c.count > 0 ? ` · rata-rata ${c.avg.toFixed(1)}` : ''}</div>
-                  </div>
-                </div>
-                {!isSelf && (
-                  <div className="space-y-2 border-t border-line pt-3">
-                    <div className="text-xs font-medium text-muted">Nilai kamu (0–10)</div>
-                    <VotePills value={c.my_vote} onPick={(n) => doCast(c.superpower, n)} disabled={cast.isPending} />
-                    {c.my_vote != null && (
-                      <button
-                        type="button"
-                        onClick={() => doRemove(c.superpower)}
-                        disabled={removeVote.isPending}
-                        className="text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50 dark:text-rose-400"
-                      >
-                        Hapus suara
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {tab === 'others' && isSelf && (
-        <div className="mt-4 space-y-3">
-          <p className="text-xs text-muted">Klik untuk menilai superpower rekanmu.</p>
-          {votable.length === 0 ? (
-            <EmptyState icon={Users} title="Belum ada rekan" subtitle="Belum ada rekan untuk dinilai." />
-          ) : (
-            votable.map((p) => (
+        {/* ── Main content ──────────────────────────────────────────────── */}
+        <div className="min-w-0">
+          {/* Tabs */}
+          <div className="sticky top-0 z-10 -mx-1 mb-5 flex gap-1 overflow-x-auto rounded-2xl border border-line bg-surface/80 p-1.5 backdrop-blur">
+            {tabDefs.map(([k, label, count]) => (
               <button
-                key={p.user}
+                key={k}
                 type="button"
-                onClick={() => navigate(`/superpowers/${encodeURIComponent(p.user)}?tab=voted`)}
-                className="flex w-full items-center gap-3 rounded-2xl bg-surface p-3 text-left shadow-card transition hover:bg-hover/[0.04]"
-              >
-                <Avatar name={p.user_name || p.user} image={p.user_image ?? undefined} config={p.avatar_config} size={40} />
-                <span className="min-w-0 flex-1 truncate font-semibold text-ink">{p.user_name || p.user}</span>
-                {p.voted && (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle className="h-3.5 w-3.5" /> Sudah dinilai{p.vote_count > 0 ? ` · ${p.vote_count}` : ''}
-                  </span>
+                onClick={() => setTab(k)}
+                className={clsx(
+                  'flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+                  tab === k ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:bg-hover/[0.06] hover:text-ink',
                 )}
+              >
+                {label}
+                <span className={clsx('rounded-full px-1.5 text-xs tabular-nums', tab === k ? 'bg-white/20' : 'bg-canvas text-muted')}>{count}</span>
               </button>
-            ))
-          )}
-        </div>
-      )}
+            ))}
+          </div>
 
-      {tab === 'perf' && (
-        <div className="mt-4 space-y-4">
-          <p className="text-xs text-muted">Diberikan otomatis dari aktivitasmu di aplikasi.</p>
-          {v.performance.length === 0 ? (
-            <EmptyState icon={TrendingUp} title="Belum ada kinerja" subtitle="Belum ada data aktivitas untuk dihitung." />
-          ) : (
-            <div className="space-y-3">
-              {[...v.performance]
-                .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
-                .map((p) => (
-                <div key={p.superpower} className="rounded-2xl bg-surface p-4 shadow-card">
-                  <div className="grid grid-cols-12 items-center gap-3">
-                    <div className="col-span-1 flex justify-center">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: hexBg(p.color) }}>
-                        <SPIcon icon={p.icon} color={p.color} className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <div className="col-span-11">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate font-semibold text-ink">{p.name}</span>
-                        <span className="shrink-0 text-muted">{p.level?.level_name ?? '—'} · {p.score.toFixed(1)}</span>
-                      </div>
-                      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-canvas">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(0, Math.min(100, p.score * 10))}%`, backgroundColor: p.level?.color || p.color }} />
-                      </div>
-                      <div className="mt-1 text-xs text-muted">{p.detail}</div>
-                    </div>
-                  </div>
+          {/* MINE */}
+          {tab === 'mine' && (
+            <div className="space-y-4">
+              {v.mine.length === 0 ? (
+                <EmptyState
+                  icon={Sparkles}
+                  title="Belum ada superpower"
+                  subtitle={v.can_edit_mine ? 'Tambahkan superpower pertamamu di bawah.' : 'Pengguna ini belum memilih superpowernya.'}
+                />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {mineSorted.map((m, i) => {
+                    const vv = votedByName[m.superpower]
+                    const scored = !!vv && vv.count > 0
+                    return (
+                      <ScoreRow
+                        key={m.superpower}
+                        i={i}
+                        icon={m.icon}
+                        color={m.color}
+                        name={m.name}
+                        level={vv?.level ?? null}
+                        score={vv?.weighted ?? 0}
+                        scored={scored}
+                        meta={scored ? `${vv.count} suara` : 'Belum dinilai'}
+                        action={v.can_edit_mine && (
+                          <button
+                            type="button"
+                            onClick={() => saveMine(claimedIds.filter((x) => x !== m.superpower))}
+                            disabled={setMine.isPending}
+                            aria-label="Hapus superpower"
+                            className="shrink-0 rounded-lg p-1 text-muted transition hover:bg-rose-500/10 hover:text-rose-600 disabled:opacity-50 dark:hover:text-rose-400"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      />
+                    )
+                  })}
                 </div>
-              ))}
+              )}
+              {v.can_edit_mine && (
+                <div className="rounded-2xl border border-dashed border-line bg-surface p-4">
+                  <div className="mb-1.5 text-sm font-semibold text-ink">Tambah superpower</div>
+                  <SearchableSelect
+                    value=""
+                    onChange={(val) => val && saveMine([...claimedIds, val])}
+                    options={claimable}
+                    placeholder="Pilih superpower yang kamu klaim…"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VOTED */}
+          {tab === 'voted' && (
+            cards.length === 0 ? (
+              <EmptyState icon={Zap} title="Belum ada superpower" subtitle="Katalog superpower masih kosong." />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {cards.map((c, i) => (
+                  <ScoreRow
+                    key={c.superpower}
+                    i={i}
+                    icon={c.icon}
+                    color={c.color}
+                    name={c.name}
+                    level={c.level}
+                    score={c.weighted}
+                    scored={c.count > 0}
+                    meta={c.count > 0 ? `${c.count} suara · rata-rata ${c.avg.toFixed(1)}` : 'Belum ada suara'}
+                  >
+                    {!isSelf && (
+                      <div className="mt-3 space-y-2 border-t border-line pt-3">
+                        <div className="text-xs font-medium text-muted">Nilai kamu (0–10){c.my_vote != null ? ` · ${c.my_vote}` : ''}</div>
+                        <VotePills value={c.my_vote} onPick={(n) => doCast(c.superpower, n)} disabled={cast.isPending} />
+                        {c.my_vote != null && (
+                          <button
+                            type="button"
+                            onClick={() => doRemove(c.superpower)}
+                            disabled={removeVote.isPending}
+                            className="text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50 dark:text-rose-400"
+                          >
+                            Hapus suara
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </ScoreRow>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* OTHERS — vote for peers */}
+          {tab === 'others' && isSelf && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted">Klik seorang rekan untuk menilai superpower mereka.</p>
+              {votable.length === 0 ? (
+                <EmptyState icon={Users} title="Belum ada rekan" subtitle="Belum ada rekan untuk dinilai." />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {votable.map((p, i) => (
+                    <button
+                      key={p.user}
+                      type="button"
+                      onClick={() => navigate(`/superpowers/${encodeURIComponent(p.user)}?tab=voted`)}
+                      style={{ animationDelay: `${Math.min(i, 12) * 25}ms` }}
+                      className="group animate-rise flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      <Avatar name={p.user_name || p.user} image={p.user_image ?? undefined} config={p.avatar_config} size={44} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-semibold text-ink">{p.user_name || p.user}</div>
+                        {p.voted ? (
+                          <span className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle className="h-3.5 w-3.5" /> Sudah dinilai{p.vote_count > 0 ? ` · ${p.vote_count}` : ''}
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 text-xs text-muted">Belum kamu nilai</span>
+                        )}
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PERFORMANCE */}
+          {tab === 'perf' && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted">Diberikan otomatis dari aktivitasmu di aplikasi.</p>
+              {v.performance.length === 0 ? (
+                <EmptyState icon={TrendingUp} title="Belum ada kinerja" subtitle="Belum ada data aktivitas untuk dihitung." />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {perfSorted.map((p, i) => (
+                    <ScoreRow
+                      key={p.superpower}
+                      i={i}
+                      icon={p.icon}
+                      color={p.color}
+                      name={p.name}
+                      level={p.level}
+                      score={p.score}
+                      meta={p.detail}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </Page>
   )
 }
