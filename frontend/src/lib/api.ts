@@ -640,12 +640,18 @@ export const mobileApi = {
     prior_mean: number
     confidence_k: number
     vote_points: number
+    perf_window_days: number
+    streak_target: number
+    finisher_target: number
     levels: SuperpowerLevel[]
   }) =>
     api.post<SuperpowerSettings>(SP + 'save_superpower_settings', {
       prior_mean: s.prior_mean,
       confidence_k: s.confidence_k,
       vote_points: s.vote_points,
+      perf_window_days: s.perf_window_days,
+      streak_target: s.streak_target,
+      finisher_target: s.finisher_target,
       levels: JSON.stringify(s.levels),
     }),
   saveSuperpower: (p: Partial<SuperpowerCatalogItem> & { superpower_name: string }) =>

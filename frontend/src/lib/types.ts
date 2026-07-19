@@ -1201,10 +1201,26 @@ export interface SuperpowerLevel {
 export interface SuperpowerCatalogItem {
   name: string
   superpower_name: string
+  kind: string // 'Voted' | 'Performance'
+  metric: string
   category: string
   icon: string
   color: string
   description: string
+}
+
+// Performance-earned superpower (auto-computed from app data, not votable).
+export interface PerfSuperpower {
+  superpower: string
+  name: string
+  icon: string
+  color: string
+  category: string
+  kind: string
+  metric: string
+  score: number
+  level: SuperpowerLevel | null
+  detail: string
 }
 
 export interface MySuperpower {
@@ -1234,6 +1250,7 @@ export interface UserSuperpowersView {
   user_image: string | null
   mine: MySuperpower[]
   voted: VotedSuperpower[]
+  performance: PerfSuperpower[]
   signature: VotedSuperpower | null
   achievement: boolean
   can_edit_mine: boolean
@@ -1243,5 +1260,8 @@ export interface SuperpowerSettings {
   prior_mean: number
   confidence_k: number
   vote_points: number
+  perf_window_days: number
+  streak_target: number
+  finisher_target: number
   levels: SuperpowerLevel[]
 }

@@ -432,7 +432,7 @@ export default function UserFormScreen() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
                 <Sparkles className="h-5 w-5" />
               </span>
-              <span className="flex-1">Kekuatan Super</span>
+              <span className="flex-1">Superpower</span>
               <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
             </button>
 

@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
-import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { useToast } from '@/components/Toast'
 import { Page } from '@web/components/Page'
@@ -93,7 +92,7 @@ export default function Superpowers() {
   const cast = useCastVote()
   const removeVote = useRemoveVote()
 
-  const [tab, setTab] = useState<'mine' | 'voted'>('mine')
+  const [tab, setTab] = useState<'mine' | 'voted' | 'perf'>('mine')
   const [mineSel, setMineSel] = useState<string[]>([])
   const [extra, setExtra] = useState<string[]>([]) // traits added to vote on but not yet scored
 
@@ -119,11 +118,21 @@ export default function Superpowers() {
     return [...v.voted, ...extraCards]
   }, [v, extra, catalog])
 
+  // Claimed chips show their peer-voted level/score; index voted rows by trait name.
+  const votedByName = useMemo(() => {
+    const m: Record<string, VotedSuperpower> = {}
+    v?.voted.forEach((x) => { m[x.superpower] = x })
+    return m
+  }, [v])
+
+  // Only self-claimed/peer-voted traits are claimable as chips or votable.
+  const votedCatalog = useMemo(() => catalog.filter((c) => c.kind === 'Voted'), [catalog])
+
   const addable = useMemo(() => {
     if (!v) return []
     const shown = new Set([...v.voted.map((x) => x.superpower), ...extra])
-    return catalog.filter((c) => !shown.has(c.name)).map((c) => ({ value: c.name, label: c.superpower_name }))
-  }, [v, extra, catalog])
+    return votedCatalog.filter((c) => !shown.has(c.name)).map((c) => ({ value: c.name, label: c.superpower_name }))
+  }, [v, extra, votedCatalog])
 
   if (view.isLoading)
     return <div className="flex justify-center py-20"><Spinner /></div>
@@ -145,7 +154,9 @@ export default function Superpowers() {
       onError: (e) => toast('error', e instanceof Error ? e.message : 'Gagal menghapus suara'),
     })
 
-  const catOptions = catalog.map((c) => ({ value: c.name, label: c.superpower_name }))
+  const claimed = new Set(mineSel)
+  const toggleMine = (nameKey: string) =>
+    saveMine(claimed.has(nameKey) ? mineSel.filter((x) => x !== nameKey) : [...mineSel, nameKey])
 
   return (
     <Page className="mx-auto max-w-3xl">
@@ -171,7 +182,7 @@ export default function Superpowers() {
               {v.signature && (
                 <span
                   className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm"
-                  title={`Kekuatan utama · ${v.signature.level?.level_name ?? 'belum berlevel'}`}
+                  title={`Superpower utama · ${v.signature.level?.level_name ?? 'belum berlevel'}`}
                 >
                   <SPIcon icon={v.signature.icon} className="h-3.5 w-3.5" />
                   {v.signature.name}
@@ -191,9 +202,14 @@ export default function Superpowers() {
         </div>
       </div>
 
+      {/* Intro explanation */}
+      <div className="mt-4 rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-muted">
+        Superpower adalah kekuatan & keahlian utamamu — dipakai untuk menentukan keterlibatanmu dalam tugas dan kontribusi tim.
+      </div>
+
       {/* Segmented tabs */}
       <div className="mt-5 inline-flex rounded-xl border border-line bg-surface p-1">
-        {([['mine', 'Kekuatan Saya'], ['voted', 'Dinilai Rekan']] as const).map(([k, label]) => (
+        {([['mine', 'Superpower Saya'], ['voted', 'Dinilai Rekan'], ['perf', 'Kinerja']] as const).map(([k, label]) => (
           <button
             key={k}
             type="button"
@@ -208,71 +224,93 @@ export default function Superpowers() {
         ))}
       </div>
 
-      {tab === 'mine' ? (
+      {tab === 'mine' && (
         <div className="mt-4 space-y-4">
-          {v.mine.length === 0 && !v.can_edit_mine && (
-            <EmptyState icon={Sparkles} title="Belum ada kekuatan" subtitle="Pengguna ini belum memilih kekuatannya." />
-          )}
-          {v.mine.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {v.mine.map((m) => (
-                <span
-                  key={m.superpower}
-                  style={{ color: m.color, borderColor: m.color, backgroundColor: hexBg(m.color) }}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold"
-                >
-                  <SPIcon icon={m.icon} className="h-4 w-4" /> {m.name}
-                </span>
-              ))}
-            </div>
-          )}
           {v.can_edit_mine && (
-            <div className="rounded-2xl bg-surface p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold text-ink">Pilih kekuatanmu</div>
-              <p className="mb-2 text-xs text-muted">Kekuatan yang kamu klaim sendiri. Rekan menilai secara terpisah.</p>
-              <MultiSelectSearch
-                options={catOptions}
-                value={mineSel}
-                onChange={saveMine}
-                placeholder="Tambah kekuatan…"
-                emptyText="Belum ada katalog"
-              />
-            </div>
+            <p className="text-xs text-muted">
+              Ketuk untuk memilih superpower yang kamu klaim sendiri. Rekan menilai secara terpisah.
+            </p>
           )}
+          {(() => {
+            const chips = v.can_edit_mine ? votedCatalog : votedCatalog.filter((c) => claimed.has(c.name))
+            if (chips.length === 0)
+              return (
+                <EmptyState
+                  icon={Sparkles}
+                  title="Belum ada superpower"
+                  subtitle={v.can_edit_mine ? 'Pilih superpower pertamamu.' : 'Pengguna ini belum memilih superpowernya.'}
+                />
+              )
+            return (
+              <div className="flex flex-wrap gap-2">
+                {chips.map((c) => {
+                  const on = claimed.has(c.name)
+                  const vv = votedByName[c.name]
+                  return (
+                    <button
+                      key={c.name}
+                      type="button"
+                      disabled={!v.can_edit_mine || setMine.isPending}
+                      onClick={() => toggleMine(c.name)}
+                      style={on ? { color: c.color, borderColor: c.color, backgroundColor: hexBg(c.color) } : undefined}
+                      className={clsx(
+                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold transition',
+                        on ? '' : 'border-dashed border-line text-muted opacity-70 hover:opacity-100',
+                        v.can_edit_mine ? 'disabled:opacity-50' : 'cursor-default',
+                      )}
+                    >
+                      <SPIcon icon={c.icon} className="h-4 w-4" /> {c.superpower_name}
+                      {on && vv && vv.count > 0 && (
+                        <span className="ml-1 inline-flex items-center gap-1">
+                          <LevelBadge level={vv.level} />
+                          <span className="text-xs font-bold tabular-nums">{vv.weighted.toFixed(1)}</span>
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
-      ) : (
+      )}
+
+      {tab === 'voted' && (
         <div className="mt-4 space-y-4">
           {!isSelf && (
             <div className="rounded-2xl bg-surface p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold text-ink">Nilai kekuatan lain</div>
+              <div className="mb-1 text-sm font-semibold text-ink">Nilai superpower lain</div>
               <SearchableSelect
                 value=""
                 onChange={(val) => val && setExtra((prev) => [...prev, val])}
                 options={addable}
-                placeholder="Pilih kekuatan untuk dinilai…"
+                placeholder="Pilih superpower untuk dinilai…"
               />
             </div>
           )}
           {cards.length === 0 ? (
             <EmptyState icon={Zap} title="Belum dinilai" subtitle={isSelf ? 'Rekanmu belum memberi penilaian.' : 'Jadilah yang pertama menilai.'} />
           ) : (
-            cards.map((c) => (
+            [...cards]
+              .sort((a, b) => b.weighted - a.weighted || a.name.localeCompare(b.name))
+              .map((c) => (
               <div key={c.superpower} className="space-y-3 rounded-2xl bg-surface p-4 shadow-card">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: hexBg(c.color) }}>
-                      <SPIcon icon={c.icon} color={c.color} className="h-5 w-5" />
+                <div className="grid grid-cols-12 items-center gap-3">
+                  <div className="col-span-1 flex justify-center">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: hexBg(c.color) }}>
+                      <SPIcon icon={c.icon} color={c.color} className="h-4 w-4" />
                     </span>
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold text-ink">{c.name}</div>
-                      <div className="text-xs text-muted">{c.category}</div>
-                    </div>
                   </div>
-                  <LevelBadge level={c.level} />
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold tabular-nums text-ink">{c.count > 0 ? c.avg.toFixed(1) : '—'}</span>
-                  <span className="text-xs text-muted">{c.count} suara</span>
+                  <div className="col-span-11">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate font-semibold text-ink">{c.name}</span>
+                      <span className="shrink-0 text-muted">{c.level?.level_name ?? '—'} · {c.weighted.toFixed(1)}</span>
+                    </div>
+                    <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-canvas">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(0, Math.min(100, c.weighted * 10))}%`, backgroundColor: c.level?.color || c.color }} />
+                    </div>
+                    <div className="mt-1 text-xs text-muted">{c.count} suara{c.count > 0 ? ` · rata-rata ${c.avg.toFixed(1)}` : ''}</div>
+                  </div>
                 </div>
                 {!isSelf && (
                   <div className="space-y-2 border-t border-line pt-3">
@@ -292,6 +330,41 @@ export default function Superpowers() {
                 )}
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {tab === 'perf' && (
+        <div className="mt-4 space-y-4">
+          <p className="text-xs text-muted">Diberikan otomatis dari aktivitasmu di aplikasi.</p>
+          {v.performance.length === 0 ? (
+            <EmptyState icon={TrendingUp} title="Belum ada kinerja" subtitle="Belum ada data aktivitas untuk dihitung." />
+          ) : (
+            <div className="space-y-3">
+              {[...v.performance]
+                .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+                .map((p) => (
+                <div key={p.superpower} className="rounded-2xl bg-surface p-4 shadow-card">
+                  <div className="grid grid-cols-12 items-center gap-3">
+                    <div className="col-span-1 flex justify-center">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: hexBg(p.color) }}>
+                        <SPIcon icon={p.icon} color={p.color} className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <div className="col-span-11">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate font-semibold text-ink">{p.name}</span>
+                        <span className="shrink-0 text-muted">{p.level?.level_name ?? '—'} · {p.score.toFixed(1)}</span>
+                      </div>
+                      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-canvas">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(0, Math.min(100, p.score * 10))}%`, backgroundColor: p.level?.color || p.color }} />
+                      </div>
+                      <div className="mt-1 text-xs text-muted">{p.detail}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

@@ -14,7 +14,13 @@
 # See docs/superpowers/specs/2026-07-19-superpowers-design.md.
 
 import frappe
-from frappe.utils import cint, flt, now_datetime
+from frappe.utils import cint, flt, now_datetime, add_days, getdate, nowdate
+
+# Mirrors mobile.py STATUS_COMPLETED (the completed Project Todo status).
+_STATUS_COMPLETED = "✅ Completed"
+_ATT_ONTIME = ("Present", "EarlyLeave")   # arrived on time
+_ATT_LATE = ("Late", "Late+EarlyLeave")   # arrived late
+_ATT_ACTIVE = _ATT_ONTIME + _ATT_LATE     # counts as an active/attended day
 
 
 # --- helpers -------------------------------------------------------------------
@@ -169,16 +175,132 @@ def _recognition_credit(voter, ratee, superpower):
 	}).insert(ignore_permissions=True)
 
 
+# --- performance-earned scores -------------------------------------------------
+
+
+def _score_ontime(user, start):
+	"""Punctual attendance: on-time days / attended days over the window."""
+	rows = frappe.get_all(
+		"Daily Attendance",
+		filters={"employee": user, "attendance_date": [">=", start], "status": ["in", list(_ATT_ACTIVE)]},
+		fields=["status"],
+	)
+	total = len(rows)
+	on = sum(1 for r in rows if r["status"] in _ATT_ONTIME)
+	score = (on / total * 10) if total else 0
+	return score, (f"{on}/{total} hari tepat waktu" if total else "Belum ada data absensi")
+
+
+def _score_beat_deadline(user, start):
+	"""Completed todos finished on/before their deadline over the window."""
+	rows = frappe.get_all(
+		"Project Todo",
+		filters={"assigned_to": user, "status": _STATUS_COMPLETED, "completed_at": [">=", start]},
+		fields=["completed_at", "deadline"],
+	)
+	total = len(rows)
+	on = sum(1 for r in rows if r.get("deadline") and getdate(r["completed_at"]) <= getdate(r["deadline"]))
+	score = (on / total * 10) if total else 0
+	return score, (f"{on}/{total} selesai tepat waktu" if total else "Belum ada tugas selesai")
+
+
+def _active_dates(user, start):
+	"""Set of dates the user completed a todo or attended, since `start`."""
+	dates = set()
+	for r in frappe.get_all(
+		"Project Todo",
+		filters={"assigned_to": user, "status": _STATUS_COMPLETED, "completed_at": [">=", start]},
+		fields=["completed_at"],
+	):
+		dates.add(getdate(r["completed_at"]))
+	for r in frappe.get_all(
+		"Daily Attendance",
+		filters={"employee": user, "attendance_date": [">=", start], "status": ["in", list(_ATT_ACTIVE)]},
+		fields=["attendance_date"],
+	):
+		dates.add(getdate(r["attendance_date"]))
+	return dates
+
+
+def _score_streak(user, target):
+	"""Current consecutive-day activity run ending today or yesterday."""
+	start = add_days(nowdate(), -(int(target) + 2))
+	active = _active_dates(user, start)
+	today = getdate(nowdate())
+	cur = today if today in active else (add_days(today, -1) if getdate(add_days(today, -1)) in active else None)
+	streak = 0
+	d = getdate(cur) if cur else None
+	while d and d in active:
+		streak += 1
+		d = getdate(add_days(d, -1))
+	score = min(streak, target) / target * 10 if target else 0
+	return score, f"{streak} hari beruntun"
+
+
+def _score_finisher(user, start, target):
+	"""Volume of completed todos over the window, vs a target."""
+	count = frappe.db.count(
+		"Project Todo",
+		{"assigned_to": user, "status": _STATUS_COMPLETED, "completed_at": [">=", start]},
+	)
+	score = min(count, target) / target * 10 if target else 0
+	return score, f"{count} tugas selesai"
+
+
+def _perf_scores(user):
+	"""Compute the enabled Performance superpowers for `user` (live, no scheduler)."""
+	s = _settings()
+	window = cint(s.perf_window_days) or 30
+	start = add_days(nowdate(), -window)
+	streak_target = cint(s.streak_target) or 30
+	finisher_target = cint(s.finisher_target) or 30
+	levels = _levels()
+	out = []
+	for r in frappe.get_all(
+		"Superpower",
+		filters={"enabled": 1, "kind": "Performance"},
+		fields=["name", "superpower_name", "metric", "icon", "color", "category"],
+		order_by="superpower_name asc",
+	):
+		m = r["metric"]
+		if m == "ontime":
+			score, detail = _score_ontime(user, start)
+		elif m == "beat_deadline":
+			score, detail = _score_beat_deadline(user, start)
+		elif m == "streak":
+			score, detail = _score_streak(user, streak_target)
+		elif m == "finisher":
+			score, detail = _score_finisher(user, start, finisher_target)
+		else:
+			score, detail = 0, ""
+		score = round(score, 4)
+		level = _level_for(score, levels)
+		out.append({
+			"superpower": r["name"],
+			"name": r["superpower_name"],
+			"metric": m,
+			"icon": r["icon"],
+			"color": r["color"],
+			"category": r["category"],
+			"kind": "Performance",
+			"score": score,
+			"level": {"level_name": level["level_name"], "color": level["color"], "icon": level["icon"]} if level else None,
+			"detail": detail,
+		})
+	return out
+
+
 # --- catalog -------------------------------------------------------------------
 
 
 @frappe.whitelist()
 def list_superpowers():
-	"""The enabled catalog, for pickers."""
+	"""The enabled catalog, for pickers. `kind` lets the UI show only Voted traits
+	in the self-claim grid / vote picker."""
 	return frappe.get_all(
 		"Superpower",
 		filters={"enabled": 1},
-		fields=["name", "superpower_name", "category", "icon", "color", "description"],
+		fields=["name", "superpower_name", "kind", "metric", "category", "icon", "color", "description"],
 		order_by="superpower_name asc",
 	)
 
@@ -255,6 +377,7 @@ def get_user_superpowers(user):
 		"user_image": meta.get("user_image"),
 		"mine": mine,
 		"voted": voted,
+		"performance": _perf_scores(user),
 		"signature": signature,
 		"achievement": achievement,
 		"can_edit_mine": session == user or _is_admin(),
@@ -269,7 +392,13 @@ def set_my_superpowers(user, superpowers):
 	if not (session == user or _is_admin()):
 		frappe.throw("Not permitted", frappe.PermissionError)
 	names = frappe.parse_json(superpowers) if isinstance(superpowers, str) else superpowers
-	valid = set(frappe.get_all("Superpower", filters={"enabled": 1}, pluck="name"))
+	# Only Voted-kind traits are self-claimable (Performance ones are earned).
+	# Treat a null/empty kind as Voted for rows created before the field existed.
+	valid = {
+		r["name"]
+		for r in frappe.get_all("Superpower", filters={"enabled": 1}, fields=["name", "kind"])
+		if (r["kind"] or "Voted") != "Performance"
+	}
 	clean, seen = [], set()
 	for n in (names or []):
 		n = n.strip() if isinstance(n, str) else n
@@ -299,6 +428,8 @@ def cast_vote(ratee, superpower, score):
 		frappe.throw("Score must be between 0 and 10.")
 	if not frappe.db.exists("Superpower", superpower):
 		frappe.throw("Unknown superpower.", frappe.DoesNotExistError)
+	if frappe.db.get_value("Superpower", superpower, "kind") == "Performance":
+		frappe.throw("This superpower is earned by performance and cannot be voted.")
 	existing = frappe.db.exists(
 		"Superpower Vote", {"ratee": ratee, "voter": voter, "superpower": superpower}
 	)
@@ -343,12 +474,15 @@ def get_superpower_settings():
 		"prior_mean": flt(s.prior_mean),
 		"confidence_k": cint(s.confidence_k),
 		"vote_points": cint(s.vote_points),
+		"perf_window_days": cint(s.perf_window_days) or 30,
+		"streak_target": cint(s.streak_target) or 30,
+		"finisher_target": cint(s.finisher_target) or 30,
 		"levels": _levels(),
 	}
 
 
 @frappe.whitelist()
-def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=None, levels=None):
+def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=None, perf_window_days=None, streak_target=None, finisher_target=None, levels=None):
 	"""Admin only. Update the knobs and replace the level bands."""
 	if not _is_admin():
 		frappe.throw("Not permitted", frappe.PermissionError)
@@ -359,6 +493,12 @@ def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=Non
 		s.confidence_k = cint(confidence_k)
 	if vote_points is not None:
 		s.vote_points = cint(vote_points)
+	if perf_window_days is not None:
+		s.perf_window_days = cint(perf_window_days)
+	if streak_target is not None:
+		s.streak_target = cint(streak_target)
+	if finisher_target is not None:
+		s.finisher_target = cint(finisher_target)
 	if levels is not None:
 		rows = frappe.parse_json(levels) if isinstance(levels, str) else levels
 		s.set("levels", [])

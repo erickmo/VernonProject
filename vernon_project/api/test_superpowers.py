@@ -7,12 +7,16 @@
 
 import frappe
 import unittest
-from frappe.utils import cint
+from frappe.utils import cint, add_days, nowdate
 from vernon_project.api.superpowers import (
 	cast_vote,
 	remove_vote,
 	set_my_superpowers,
 	get_user_superpowers,
+	_score_ontime,
+	_score_beat_deadline,
+	_score_finisher,
+	_STATUS_COMPLETED,
 )
 
 RATEE = "sp_ratee@example.com"
@@ -55,7 +59,10 @@ class TestSuperpowers(unittest.TestCase):
 			frappe.db.delete("Superpower Vote", {"ratee": email})
 			frappe.db.delete("Superpower Vote", {"voter": email})
 			frappe.db.delete("User Superpower", {"user": email})
-			frappe.db.delete("Point Ledger", {"user": email, "source": "Recognition"})
+			frappe.db.delete("Point Ledger", {"user": email})
+			frappe.db.delete("Point Ledger", {"granted_by": email})
+			frappe.db.delete("Daily Attendance", {"employee": email})
+			frappe.db.delete("Project Todo", {"assigned_to": email})
 		for name in self.created_sps:
 			if frappe.db.exists("Superpower", name):
 				frappe.delete_doc("Superpower", name, ignore_permissions=True, force=1)
@@ -213,3 +220,67 @@ class TestSuperpowers(unittest.TestCase):
 		cast_vote(RATEE, self.SPA, 4)  # re-vote → no extra mint
 		frappe.set_user("Administrator")
 		self.assertEqual(self._rec_count(), 1)
+
+	# --- performance-earned superpowers ---
+
+	def _attend(self, user, days_ago, status):
+		frappe.get_doc({
+			"doctype": "Daily Attendance", "employee": user,
+			"attendance_date": add_days(nowdate(), -days_ago), "status": status,
+		}).insert(ignore_permissions=True)
+
+	def _todo(self, user, completed_days_ago, deadline_days_ago):
+		t = frappe.get_doc({
+			"doctype": "Project Todo", "assigned_to": user, "status": _STATUS_COMPLETED,
+			"completed_at": add_days(nowdate(), -completed_days_ago),
+			"deadline": add_days(nowdate(), -deadline_days_ago),
+		})
+		t.flags.ignore_validate = True
+		t.insert(ignore_permissions=True, ignore_mandatory=True)
+
+	def test_ontime_score(self):
+		u = self._voter(7)
+		for d in range(1, 9):
+			self._attend(u, d, "Present")   # 8 on-time
+		for d in (9, 10):
+			self._attend(u, d, "Late")       # 2 late
+		frappe.db.commit()
+		score, _ = _score_ontime(u, add_days(nowdate(), -30))
+		self.assertEqual(round(score, 4), 8.0)  # 8/10 * 10
+
+	def test_beat_deadline_score(self):
+		u = self._voter(8)
+		self._todo(u, 5, 3)   # completed before deadline -> on-time
+		self._todo(u, 5, 4)   # on-time
+		self._todo(u, 5, 5)   # exactly on deadline -> on-time
+		self._todo(u, 3, 5)   # completed after deadline -> late
+		frappe.db.commit()
+		score, _ = _score_beat_deadline(u, add_days(nowdate(), -30))
+		self.assertEqual(round(score, 4), 7.5)  # 3/4 * 10
+
+	def test_finisher_score(self):
+		u = self._voter(9)
+		for d in range(1, 7):
+			self._todo(u, d, d)   # 6 completed todos on distinct days
+		frappe.db.commit()
+		score, _ = _score_finisher(u, add_days(nowdate(), -30), 30)
+		self.assertEqual(round(score, 4), 2.0)  # 6/30 * 10
+
+	def test_performance_not_votable_or_claimable(self):
+		perf = frappe.get_all("Superpower", filters={"kind": "Performance"}, pluck="name")
+		self.assertTrue(perf, "seed performance traits missing")
+		p = perf[0]
+		frappe.set_user(self._voter(10))
+		with self.assertRaises(frappe.ValidationError):
+			cast_vote(RATEE, p, 5)
+		frappe.set_user(RATEE)
+		set_my_superpowers(RATEE, [p, self.SPA])
+		mine = {m["superpower"] for m in get_user_superpowers(RATEE)["mine"]}
+		self.assertIn(self.SPA, mine)
+		self.assertNotIn(p, mine)  # performance trait dropped from self-claim
+		frappe.set_user("Administrator")
+
+	def test_get_user_superpowers_has_performance(self):
+		v = get_user_superpowers(RATEE)
+		metrics = {p["metric"] for p in v["performance"]}
+		self.assertTrue({"ontime", "beat_deadline", "streak", "finisher"} <= metrics)

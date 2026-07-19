@@ -5,9 +5,11 @@
  "creation": "2026-07-19 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["superpower_name", "category", "icon", "color", "description", "enabled"],
+ "field_order": ["superpower_name", "kind", "metric", "category", "icon", "color", "description", "enabled"],
  "fields": [
   {"fieldname": "superpower_name", "fieldtype": "Data", "label": "Superpower Name", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"fieldname": "kind", "fieldtype": "Select", "label": "Kind", "options": "Voted\nPerformance", "default": "Voted", "in_list_view": 1},
+  {"fieldname": "metric", "fieldtype": "Data", "label": "Performance Metric", "description": "For Performance kind: ontime | beat_deadline | streak | finisher"},
   {"fieldname": "category", "fieldtype": "Select", "label": "Category", "options": "Leadership\nSales & Growth\nStrategy\nExecution\nInterpersonal\nCraft"},
   {"fieldname": "icon", "fieldtype": "Data", "label": "Icon"},
   {"fieldname": "color", "fieldtype": "Data", "label": "Color"},

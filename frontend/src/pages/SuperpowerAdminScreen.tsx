@@ -56,6 +56,9 @@ export default function SuperpowerAdminScreen() {
   const [priorMean, setPriorMean] = useState<number | ''>('')
   const [confidenceK, setConfidenceK] = useState<number | ''>('')
   const [votePoints, setVotePoints] = useState<number | ''>('')
+  const [perfWindowDays, setPerfWindowDays] = useState<number | ''>('')
+  const [streakTarget, setStreakTarget] = useState<number | ''>('')
+  const [finisherTarget, setFinisherTarget] = useState<number | ''>('')
   const [draft, setDraft] = useState<CatalogDraft | null>(null)
 
   useEffect(() => {
@@ -64,11 +67,14 @@ export default function SuperpowerAdminScreen() {
     setPriorMean(settings.prior_mean)
     setConfidenceK(settings.confidence_k)
     setVotePoints(settings.vote_points)
+    setPerfWindowDays(settings.perf_window_days)
+    setStreakTarget(settings.streak_target)
+    setFinisherTarget(settings.finisher_target)
   }, [settings])
 
   if (!isAdmin) {
     return (
-      <DetailScreen title="Kekuatan Super">
+      <DetailScreen title="Superpower">
         <EmptyState icon={ShieldAlert} title="Tidak diizinkan" subtitle="Halaman ini hanya untuk admin." />
       </DetailScreen>
     )
@@ -83,6 +89,9 @@ export default function SuperpowerAdminScreen() {
         prior_mean: priorMean === '' ? 0 : Number(priorMean),
         confidence_k: confidenceK === '' ? 0 : Number(confidenceK),
         vote_points: votePoints === '' ? 0 : Number(votePoints),
+        perf_window_days: perfWindowDays === '' ? 0 : Number(perfWindowDays),
+        streak_target: streakTarget === '' ? 0 : Number(streakTarget),
+        finisher_target: finisherTarget === '' ? 0 : Number(finisherTarget),
         levels: levels
           .filter((l) => l.level_name.trim())
           .map((l) => ({
@@ -111,7 +120,7 @@ export default function SuperpowerAdminScreen() {
       },
       {
         onSuccess: () => {
-          toast('success', draft.name ? 'Diperbarui' : 'Kekuatan ditambahkan')
+          toast('success', draft.name ? 'Diperbarui' : 'Superpower ditambahkan')
           setDraft(null)
         },
         onError: (e) => toast('error', e instanceof Error ? e.message : 'Gagal menyimpan'),
@@ -121,7 +130,7 @@ export default function SuperpowerAdminScreen() {
 
   const doDisable = async (c: SuperpowerCatalogItem) => {
     const ok = await confirm({
-      title: 'Nonaktifkan kekuatan',
+      title: 'Nonaktifkan superpower',
       message: `Sembunyikan "${c.superpower_name}" dari daftar? Riwayat penilaian tetap tersimpan.`,
       confirmLabel: 'Nonaktifkan',
       destructive: true,
@@ -134,7 +143,7 @@ export default function SuperpowerAdminScreen() {
   }
 
   return (
-    <DetailScreen title="Kekuatan Super">
+    <DetailScreen title="Superpower">
       <Segmented
         options={[
           { value: 'settings', label: 'Level & Skor' },
@@ -237,7 +246,7 @@ export default function SuperpowerAdminScreen() {
                     />
                   </label>
                   <label className="block text-xs font-medium text-stone-500 dark:text-slate-400">
-                    Kekuatan keyakinan (K)
+                    Bobot keyakinan (K)
                     <input
                       type="number"
                       className={`${inputCls} mt-1`}
@@ -252,6 +261,41 @@ export default function SuperpowerAdminScreen() {
                       className={`${inputCls} mt-1`}
                       value={votePoints}
                       onChange={(e) => setVotePoints(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
+                  Superpower kinerja
+                </p>
+                <div className="space-y-3">
+                  <label className="block text-xs font-medium text-stone-500 dark:text-slate-400">
+                    Hari jendela kinerja
+                    <input
+                      type="number"
+                      className={`${inputCls} mt-1`}
+                      value={perfWindowDays}
+                      onChange={(e) => setPerfWindowDays(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-stone-500 dark:text-slate-400">
+                    Target streak
+                    <input
+                      type="number"
+                      className={`${inputCls} mt-1`}
+                      value={streakTarget}
+                      onChange={(e) => setStreakTarget(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-stone-500 dark:text-slate-400">
+                    Target finisher
+                    <input
+                      type="number"
+                      className={`${inputCls} mt-1`}
+                      value={finisherTarget}
+                      onChange={(e) => setFinisherTarget(e.target.value === '' ? '' : Number(e.target.value))}
                     />
                   </label>
                 </div>
@@ -274,12 +318,12 @@ export default function SuperpowerAdminScreen() {
               onClick={() => setDraft({ ...EMPTY_CATALOG })}
               className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white transition active:scale-95"
             >
-              <Plus className="h-4 w-4" /> Tambah kekuatan
+              <Plus className="h-4 w-4" /> Tambah superpower
             </button>
             {catalogLoading && !catalog ? (
               <FullScreenLoader />
             ) : (catalog ?? []).length === 0 ? (
-              <EmptyState icon={Sparkles} title="Katalog kosong" subtitle="Tambahkan kekuatan pertama." />
+              <EmptyState icon={Sparkles} title="Katalog kosong" subtitle="Tambahkan superpower pertama." />
             ) : (
               <div className="space-y-2">
                 {(catalog ?? []).map((c) => (
@@ -334,13 +378,13 @@ export default function SuperpowerAdminScreen() {
       {/* ── Catalog form sheet ─────────────────────────────────────────────── */}
       {draft && (
         <Sheet
-          title={draft.name ? 'Edit kekuatan' : 'Kekuatan baru'}
+          title={draft.name ? 'Edit superpower' : 'Superpower baru'}
           onClose={() => !saveCatalog.isPending && setDraft(null)}
         >
           <div className="space-y-3">
             <input
               className={inputCls}
-              placeholder="Nama kekuatan *"
+              placeholder="Nama superpower *"
               value={draft.superpower_name}
               onChange={(e) => setDraft({ ...draft, superpower_name: e.target.value })}
             />

@@ -66,7 +66,7 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
       { icon: Gift, title: 'Spend your points', short: 'Rewards', desc: 'Redeem points for rewards in the marketplace.', to: '/marketplace' },
       { icon: Banknote, title: 'Extra income', short: 'Income', desc: 'Claim extra-income opportunities.', to: '/income' },
       { icon: BookOpen, title: 'Learn and develop', short: 'Learn', desc: 'Browse courses and track your progress.', to: '/learn' },
-      { icon: Sparkles, title: 'Superpowers', short: 'Kekuatan', desc: 'Pilih kekuatanmu dan nilai kekuatan rekan.', to: '/superpowers' },
+      { icon: Sparkles, title: 'Superpowers', short: 'Superpower', desc: 'Pilih superpowermu dan nilai superpower rekan.', to: '/superpowers' },
     ],
   },
   {

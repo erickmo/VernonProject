@@ -3,11 +3,14 @@
  "creation": "2026-07-19 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["prior_mean", "confidence_k", "vote_points", "levels"],
+ "field_order": ["prior_mean", "confidence_k", "vote_points", "perf_window_days", "streak_target", "finisher_target", "levels"],
  "fields": [
   {"fieldname": "prior_mean", "fieldtype": "Float", "label": "Prior Mean", "default": "5"},
   {"fieldname": "confidence_k", "fieldtype": "Int", "label": "Confidence K", "default": "3"},
   {"fieldname": "vote_points", "fieldtype": "Int", "label": "Vote Points", "default": "0"},
+  {"fieldname": "perf_window_days", "fieldtype": "Int", "label": "Performance Window (days)", "default": "30"},
+  {"fieldname": "streak_target", "fieldtype": "Int", "label": "Streak Target (days)", "default": "30"},
+  {"fieldname": "finisher_target", "fieldtype": "Int", "label": "Finisher Target (todos)", "default": "30"},
   {"fieldname": "levels", "fieldtype": "Table", "label": "Levels", "options": "Superpower Level"}
  ],
  "grid_page_length": 50,

@@ -36,6 +36,9 @@ export default function SuperpowersAdmin() {
   const [priorMean, setPriorMean] = useState(5)
   const [confidenceK, setConfidenceK] = useState(3)
   const [votePoints, setVotePoints] = useState(0)
+  const [perfWindowDays, setPerfWindowDays] = useState(30)
+  const [streakTarget, setStreakTarget] = useState(30)
+  const [finisherTarget, setFinisherTarget] = useState(30)
   const [levels, setLevels] = useState<SuperpowerLevel[]>([])
   const [editing, setEditing] = useState<CatDraft | null>(null)
 
@@ -45,6 +48,9 @@ export default function SuperpowersAdmin() {
     setPriorMean(s.prior_mean)
     setConfidenceK(s.confidence_k)
     setVotePoints(s.vote_points)
+    setPerfWindowDays(s.perf_window_days)
+    setStreakTarget(s.streak_target)
+    setFinisherTarget(s.finisher_target)
     setLevels(s.levels.map((l) => ({ ...l })))
   }, [s])
 
@@ -64,7 +70,11 @@ export default function SuperpowersAdmin() {
   const submitSettings = async () => {
     if (levels.some((l) => !l.level_name.trim())) return toast('error', 'Nama level wajib diisi')
     try {
-      await saveSettings.mutateAsync({ prior_mean: priorMean, confidence_k: confidenceK, vote_points: votePoints, levels })
+      await saveSettings.mutateAsync({
+        prior_mean: priorMean, confidence_k: confidenceK, vote_points: votePoints,
+        perf_window_days: perfWindowDays, streak_target: streakTarget, finisher_target: finisherTarget,
+        levels,
+      })
       toast('success', 'Pengaturan tersimpan')
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Gagal menyimpan')
@@ -73,7 +83,7 @@ export default function SuperpowersAdmin() {
 
   const submitCat = async () => {
     if (!editing) return
-    if (!editing.superpower_name.trim()) return toast('error', 'Nama kekuatan wajib diisi')
+    if (!editing.superpower_name.trim()) return toast('error', 'Nama superpower wajib diisi')
     try {
       await saveCat.mutateAsync(editing)
       toast('success', 'Tersimpan')
@@ -86,7 +96,7 @@ export default function SuperpowersAdmin() {
   const disableCat = async (c: SuperpowerCatalogItem) => {
     const ok = await confirm({
       title: `Nonaktifkan ${c.superpower_name}?`,
-      message: 'Kekuatan disembunyikan dari pemilihan. Riwayat penilaian tetap tersimpan.',
+      message: 'Superpower disembunyikan dari pemilihan. Riwayat penilaian tetap tersimpan.',
       confirmLabel: 'Nonaktifkan',
       cancelLabel: 'Batal',
       destructive: true,
@@ -102,7 +112,7 @@ export default function SuperpowersAdmin() {
 
   return (
     <Page className="mx-auto max-w-3xl">
-      <PageHeader icon={Sparkles} title="Superpowers" subtitle="Katalog kekuatan, level, dan poin penilaian." />
+      <PageHeader icon={Sparkles} title="Superpowers" subtitle="Katalog superpower, level, dan poin penilaian." />
 
       {/* Leveling settings */}
       <section className="space-y-4 rounded-2xl bg-surface p-5 shadow-card">
@@ -122,6 +132,25 @@ export default function SuperpowersAdmin() {
             Poin per suara
             <input type="number" min={0} className={field} value={votePoints}
               onChange={(e) => setVotePoints(Number(e.target.value))} />
+          </label>
+        </div>
+
+        <h3 className="text-sm font-semibold text-ink">Kinerja (otomatis)</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+            Hari jendela kinerja
+            <input type="number" min={1} className={field} value={perfWindowDays}
+              onChange={(e) => setPerfWindowDays(Number(e.target.value))} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+            Target streak (hari)
+            <input type="number" min={1} className={field} value={streakTarget}
+              onChange={(e) => setStreakTarget(Number(e.target.value))} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+            Target finisher (tugas)
+            <input type="number" min={1} className={field} value={finisherTarget}
+              onChange={(e) => setFinisherTarget(Number(e.target.value))} />
           </label>
         </div>
 
@@ -172,7 +201,7 @@ export default function SuperpowersAdmin() {
       {/* Catalog manager */}
       <section className="mt-5 space-y-3 rounded-2xl bg-surface p-5 shadow-card">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-ink">Katalog kekuatan</h2>
+          <h2 className="font-semibold text-ink">Katalog superpower</h2>
           <Button size="sm" variant="primary"
             onClick={() => setEditing({ superpower_name: '', category: CATEGORIES[0], icon: 'star', color: '#6366f1', description: '' })}>
             <Plus className="h-4 w-4" /> Tambah
@@ -181,7 +210,7 @@ export default function SuperpowersAdmin() {
         {catalog.isLoading ? (
           <div className="flex justify-center py-8"><Spinner /></div>
         ) : (catalog.data ?? []).length === 0 ? (
-          <EmptyState icon={Sparkles} title="Belum ada kekuatan" subtitle="Tambahkan kekuatan pertama." />
+          <EmptyState icon={Sparkles} title="Belum ada superpower" subtitle="Tambahkan superpower pertama." />
         ) : (
           <div className="divide-y divide-line">
             {(catalog.data ?? []).map((c) => (
@@ -205,7 +234,7 @@ export default function SuperpowersAdmin() {
         )}
       </section>
 
-      <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.name ? 'Edit kekuatan' : 'Kekuatan baru'} size="sm">
+      <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.name ? 'Edit superpower' : 'Superpower baru'} size="sm">
         {editing && (
           <form onSubmit={(e) => { e.preventDefault(); submitCat() }} className="space-y-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
@@ -235,7 +264,7 @@ export default function SuperpowersAdmin() {
               <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: hexBg(editing.color) }}>
                 <SPIcon icon={editing.icon} color={editing.color} className="h-5 w-5" />
               </span>
-              <span className="font-medium text-ink">{editing.superpower_name || 'Kekuatan'}</span>
+              <span className="font-medium text-ink">{editing.superpower_name || 'Superpower'}</span>
             </div>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
               Deskripsi

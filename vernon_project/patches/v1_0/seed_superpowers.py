@@ -24,6 +24,15 @@ CATALOG = [
 	("Decision Making", "Leadership", "scale", "#f43f5e", "Makes the call, even under uncertainty."),
 ]
 
+# Performance-earned superpowers — auto-computed, not votable/claimable.
+# (name, metric, icon, color, description)
+PERFORMANCE = [
+	("Timekeeper", "ontime", "⏰", "#0ea5e9", "Datang tepat waktu — kehadiran yang disiplin."),
+	("Deadline Slayer", "beat_deadline", "⚡", "#ef4444", "Menuntaskan tugas sebelum atau tepat di deadline."),
+	("Iron Streak", "streak", "🔗", "#f97316", "Aktif berturut-turut tanpa putus."),
+	("Finisher", "finisher", "🏁", "#22c55e", "Banyak menuntaskan tugas dalam sebulan terakhir."),
+]
+
 # (level_name, min_score, color, icon)
 LEVELS = [
 	("Emerging", 0, "#94a3b8", "🌱"),
@@ -48,7 +57,27 @@ def execute():
 				"enabled": 1,
 			}).insert(ignore_permissions=True)
 
+	for name, metric, icon, color, description in PERFORMANCE:
+		if not frappe.db.exists("Superpower", name):
+			frappe.get_doc({
+				"doctype": "Superpower",
+				"superpower_name": name,
+				"kind": "Performance",
+				"metric": metric,
+				"category": "Execution",
+				"icon": icon,
+				"color": color,
+				"description": description,
+				"enabled": 1,
+			}).insert(ignore_permissions=True)
+
 	settings = frappe.get_single("Superpower Settings")
+	if not settings.perf_window_days:
+		settings.perf_window_days = 30
+	if not settings.streak_target:
+		settings.streak_target = 30
+	if not settings.finisher_target:
+		settings.finisher_target = 30
 	if not settings.levels:
 		for level_name, min_score, color, icon in LEVELS:
 			settings.append("levels", {
@@ -57,6 +86,6 @@ def execute():
 				"color": color,
 				"icon": icon,
 			})
-		settings.save(ignore_permissions=True)
+	settings.save(ignore_permissions=True)
 
 	frappe.db.commit()
