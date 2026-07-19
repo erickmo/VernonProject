@@ -1,49 +1,36 @@
 # Leaders & Notes — Design
 
-**Date:** 2026-07-18
-**Status:** Approved (brainstorming), pending implementation plan
+**Date:** 2026-07-18 (revised 2026-07-19: leaders derived from projects)
+**Status:** Implemented + live
 
 ## Problem
 
-We want any user to be able to have supervisors and a place to record
-observations about them:
+We want any user to have supervisors and a place to record observations:
 
-1. Each user can have **one or more leaders** (people responsible for them).
+1. A user's **leaders are derived**, not assigned: a leader is the
+   `project_leader` of any **active** (Ongoing) project the user is a team
+   member of. A user in several active projects has several leaders.
 2. A user's **leaders can add notes** about that user.
 3. A note is either tied to a **specific date** ("on 2026-07-18 …") or **global**
    (a standing note with no date).
 4. Each note has a **per-note visibility toggle**: private (leaders + admin only)
    or shared with the user the note is about.
 
-Applies to **all users**, not only interns. This is unrelated to the existing
-per–`Project Todo` `mentor` field, which is task-level point credit. "Leaders"
-here is a person→person relationship.
+Applies to **all users**. Unrelated to the per–`Project Todo` `mentor` field
+(task-level point credit).
 
 ## Non-goals (v1)
 
-- No notification to the user when a shared note is added (easy to add later).
+- No manual leader assignment — leadership follows project membership.
+- No notification to the user when a shared note is added.
 - No date ranges — `note_date` is a single date.
-- No editing of a note after creation — create + delete only (delete then re-add).
-- No threading/replies/reactions on notes.
+- No editing of a note after creation — create + delete only.
+- No threading/replies/reactions.
 
 ## Data model
 
-Two new flat (non-child) DocTypes.
-
-### `User Leader`
-The user↔leader assignment. One row per (user, leader) pair. This row is the
-**write-gate**: only a user with a matching row (or a System Manager) may add
-notes about that user.
-
-| Field    | Type        | Notes                     |
-|----------|-------------|---------------------------|
-| `user`   | Link → User | the person being led      |
-| `leader` | Link → User | the assigned leader       |
-
-- Autoname: hash. No DB unique index; the setter replaces the user's full leader
-  set atomically and dedups, so duplicate (user, leader) pairs can't arise.
-- Permissions: read/write for System Manager only (assignment is admin-driven).
-  All app access goes through whitelisted endpoints, not the desk.
+One new flat DocType. Leadership is **not** stored — it is computed from the
+existing `Project` (`project_leader`, `status`) + `Project Team` (`user`) rows.
 
 ### `Leader Note`
 A note authored by a leader about a user.
@@ -56,81 +43,67 @@ A note authored by a leader about a user.
 | `body`               | Small Text      | the note                                          |
 | `shared_with_user`   | Check (default 0)| 1 ⇒ the subject user can read this note           |
 
-- Autoname: hash. Controller is empty (no side effects).
-- Permissions: whitelisted-endpoint gated (see below); no direct desk role grants.
+- Autoname hash. Empty controller. System-Manager-only in the desk;
+  all app access is endpoint-gated.
 
 ## API — `vernon_project/api/leader_notes.py`
 
-All endpoints `@frappe.whitelist()`. Session user = `frappe.session.user`.
-Helper `_is_leader_of(user, actor)` = exists-check on `User Leader`.
-Helper `_is_admin()` = `"System Manager" in frappe.get_roles()`.
+All `@frappe.whitelist()`. Session user = `frappe.session.user`.
+`ACTIVE_STATUS = "Ongoing"`.
+Derivation helpers:
+- `_member_projects(user)` = `Project Team` rows where `user` == user (parents).
+- `_is_leader_of(user, actor)` = exists an active Project whose `project_leader`
+  is `actor` and whose team includes `user`.
+- `_leaders_of(user)` = distinct `project_leader` of the active projects `user`
+  is a team member of (self excluded).
+- `_is_admin()` = `"System Manager" in frappe.get_roles()`.
 
 | Endpoint | Args | Auth | Behavior |
 |----------|------|------|----------|
-| `set_user_leaders` | `user`, `leaders` (list of user ids) | admin only | Replaces the user's full leader set: delete existing `User Leader` rows for `user`, insert the given ones (dedup, drop blanks/self). |
-| `get_user_leaders` | `user` | admin, or a leader of `user` | Returns `[{leader, leader_name, user_image}]`. |
-| `list_led_users` | — | any user | Users the caller leads: `[{user, user_name, user_image}]`. |
-| `add_user_note` | `user`, `body`, `note_date=None`, `shared_with_user=0` | admin or leader-of-user | Insert `Leader Note` with `author = session user`. Rejects empty `body`. Returns the shaped new note. |
-| `list_user_notes` | `user` | admin/leader ⇒ all notes; the subject user ⇒ only `shared_with_user=1`; anyone else ⇒ 403 | Returns notes newest-first, each shaped with `author_name`, `is_mine`, `can_delete`. |
-| `delete_user_note` | `name` | note `author` or admin | Deletes the note. |
-
-Shaping mirrors existing mobile.py conventions (resolve `full_name`,
-`user_image` per user). Unauthorized ⇒ the app's standard error-dict / `frappe.throw`
-pattern already used in mobile.py.
+| `get_user_leaders` | `user` | the user themselves, a leader of the user, or admin | Derived `[{leader, leader_name, user_image}]`. |
+| `list_led_users` | — | any logged-in user | Distinct team members of the active projects the caller leads: `[{user, user_name, user_image}]` (self excluded). |
+| `add_user_note` | `user`, `body`, `note_date=None`, `shared_with_user=0` | admin or leader-of-user | Insert `Leader Note`, `author = session`. Empty body rejected; empty `note_date` ⇒ global. Returns the shaped note. |
+| `list_user_notes` | `user` | admin/leader ⇒ all; subject ⇒ shared-only; else 403 | Envelope `{can_add, notes[]}` newest-first. |
+| `delete_user_note` | `name` | note `author` or admin | Deletes it. |
 
 ### Authorization summary
-- **Assign leaders:** System Manager only.
-- **Write notes:** assigned leaders of that user + System Manager.
-- **Read notes:** assigned leaders + System Manager see all; the subject user sees
-  only notes flagged `shared_with_user`; everyone else denied.
+- **Who leads whom:** derived from active-project leadership (no assignment).
+- **Write notes:** the user's leaders + System Manager.
+- **Read notes:** leaders + admin see all; the subject sees only shared notes;
+  everyone else denied.
 - **Delete note:** the note's author or System Manager.
 
 ## Frontend (both `/m` and `/w`)
 
-Reuses the existing Users → user profile surface
-(`UserFormScreen.tsx` / `UserForm.tsx`, plus `Users`/`UsersScreen` list).
-Shown on **every user's** profile:
+On the user edit page (`UserFormScreen.tsx` / `UserForm.tsx`), edit mode only:
 
-1. **Leaders editor** (admin only): a `MultiSelectSearch` of users → calls
-   `set_user_leaders`. Non-admins see the leader list read-only.
-2. **Notes timeline**: two groups — **Global** (no date) and **Dated** (grouped
-   by `note_date`, newest first). Each note card: body, author name + avatar, a
-   `Shared` / `Private` badge, and a delete affordance when `can_delete`.
-3. **Add-note form** (visible to assigned leaders + admin): body textarea, an
-   optional date via the shared `DatePicker` (empty = global), and a
-   "Bagikan ke pengguna" (share-with-user) checkbox → `add_user_note`.
+1. **Leaders** — read-only chips of the derived leaders (`get_user_leaders`).
+   No editor; leadership is set by project membership elsewhere.
+2. **Notes timeline** — **Global** (no date) then **Dated** groups, newest
+   first. Each card: body, author + avatar, `Dibagikan`/`Privat` badge, delete
+   when `can_delete` (confirm via dialog).
+3. **Add-note form** (when `can_add`): body, optional date (native `<input
+   type=date>` on /m, shared `DatePicker` on /w), "Bagikan ke pengguna" toggle.
 
-A user viewing their **own** profile: read-only notes list (shared-only), no
-add form, no leaders editor.
-
-New shared types in `frontend/src/lib/types.ts`; data hooks in
-`frontend/src/hooks/useData.ts`; API wrappers in `frontend/src/lib/api.ts`
-(all under `@` = shared, consumed by both frontends per the two-frontends split).
-
-### Conventions to honor
-- No native `<select>` → `MultiSelectSearch` / `SearchableSelect`.
-- No native `<input type=date>` → shared `DatePicker`.
-- No native `alert/confirm` → dialog modal (for delete confirm).
-- Bahasa UI labels for end-user-facing text.
+Shared types/api/hooks under `@` (`frontend/src/lib`, `frontend/src/hooks`);
+per-frontend components. Conventions honored: `MultiSelectSearch` not native
+select (n/a now), shared `DatePicker` on /w, dialog not native confirm, Bahasa.
 
 ## Testing
 
-- New `vernon_project/api/test_leader_notes.py` covers:
-  - leader assignment replace semantics (add/remove/dedup/self-exclusion).
-  - `add_user_note` gate: assigned leader ✓, admin ✓, unrelated user ✗.
-  - `list_user_notes` visibility: leader sees all; subject sees shared-only;
-    stranger denied.
-  - `delete_user_note`: author ✓, other leader ✗ (non-admin), admin ✓.
-  - `note_date` empty ⇒ stored as global; present ⇒ stored as the date.
-
-Live-site caveat (per project memory): one live DB, no test DB — mirror the
-existing test approach in `test_mobile.py`.
+`vernon_project/api/test_leader_notes.py` builds real `Project` + `Project Team`
+rows and covers: `_is_leader_of` true for active-project leader, false for a
+Closed-project leader / stranger / self; derived `get_user_leaders` and
+`list_led_users`; add-note gate (leader ✓, admin ✓, stranger ✗, closed-project
+leader ✗); note visibility (leader all / subject shared-only / stranger 403);
+delete (author ✓, other leader ✗, admin ✓); `note_date` global vs dated.
+Live site, no test DB — rows self-clean; leader users get the `Project Leader`
+role (Project validation requires it).
 
 ## Deploy
 
-- New DocTypes + fields ⇒ `bench migrate`.
-- New Python endpoints ⇒ `sudo /usr/local/bin/tj-restart`.
+- New DocType ⇒ `bench migrate`.
+- Python ⇒ `sudo /usr/local/bin/tj-restart`.
 - Frontend ⇒ rebuild both bundles.
-- Ran app-shape change ⇒ `python3 scripts/gen_docs.py`, commit `data.js`
-  (add both DocTypes to the `CLUSTERS` map).
-- User-visible ⇒ add an **App Release** row (Bahasa What's New) once shipped.
+- App-shape change ⇒ `python3 scripts/gen_docs.py`, commit `data.js`.
+- User-visible ⇒ App Release row (Bahasa What's New).

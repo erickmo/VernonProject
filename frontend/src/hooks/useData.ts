@@ -135,6 +135,9 @@ export const keys = {
   logbook: (from_date: string, to_date: string, user?: string) =>
     ['logbook', from_date, to_date, user ?? ''] as const,
   websiteSettings: ['website-settings'] as const,
+  userNotes: (user: string) => ['user-notes', user] as const,
+  userLeaders: (user: string) => ['user-leaders', user] as const,
+  ledUsers: ['led-users'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -330,6 +333,16 @@ export function useSetProjectAutoApprove() {
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project-item'] })
     },
+  })
+}
+
+// Structure-clone a project (header + groupings + work items, progress reset,
+// no todos). Returns the new project name so the caller can navigate to it.
+export function useDuplicateProject() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ project }: { project: string }) => mobileApi.duplicateProject(project),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.projects }),
   })
 }
 
@@ -2221,5 +2234,41 @@ export function useWebsiteSettings() {
       return { appName: r.app_name ?? '', logoUrl: r.app_logo || null } as import('@/lib/types').WebsiteBranding
     },
     staleTime: 1000 * 60 * 60, // ponytail: 1h — branding rarely changes
+  })
+}
+
+// ---- Leaders & Notes (person→person supervision + observations) ----
+
+export const useUserNotes = (user: string) =>
+  useQuery({
+    queryKey: keys.userNotes(user),
+    queryFn: () => mobileApi.listUserNotes(user),
+    enabled: !!user,
+  })
+
+export const useUserLeaders = (user: string) =>
+  useQuery({
+    queryKey: keys.userLeaders(user),
+    queryFn: () => mobileApi.getUserLeaders(user),
+    enabled: !!user,
+  })
+
+export const useLedUsers = () =>
+  useQuery({ queryKey: keys.ledUsers, queryFn: () => mobileApi.listLedUsers() })
+
+export function useAddUserNote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { user: string; body: string; note_date?: string | null; shared_with_user?: 0 | 1 }) =>
+      mobileApi.addUserNote(args),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userNotes(v.user) }),
+  })
+}
+
+export function useDeleteUserNote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { name: string; user: string }) => mobileApi.deleteUserNote(args.name),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userNotes(v.user) }),
   })
 }

@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, UserLeaderRef, LedUser, LeaderNote, UserNotesView } from './types'
 
 const METHOD = '/api/method/'
 
@@ -81,6 +81,7 @@ const A = 'vernon_project.api.attendance.'
 const BK = 'vernon_project.api.booking.'
 const IN = 'vernon_project.api.income.'
 const R = 'vernon_project.api.report.'
+const LN = 'vernon_project.api.leader_notes.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -209,6 +210,8 @@ export const mobileApi = {
   reportOptions: () => api.get(M + 'get_report_options'),
   formOptions: () => api.get(M + 'get_form_options'),
   listUsers: () => api.get<{ users: import('./types').ManagedUser[] }>(M + 'list_users'),
+  duplicateProject: (project: string) =>
+    api.post<{ name: string; project_name: string }>(M + 'duplicate_project', { project }),
   createUser: (payload: {
     email: string
     full_name: string
@@ -606,6 +609,18 @@ export const mobileApi = {
     api.get<import('./types').LogbookResponse>('vernon_project.api.report.logbook', { from_date, to_date, ...(user ? { user } : {}) }),
   websiteBranding: () =>
     api.get<{ app_name?: string; app_logo?: string }>('frappe.client.get_value', { doctype: 'Website Settings', fieldname: JSON.stringify(['app_name', 'app_logo']) }),
+  getUserLeaders: (user: string) =>
+    api.get<UserLeaderRef[]>(LN + 'get_user_leaders', { user }),
+  listLedUsers: () => api.get<LedUser[]>(LN + 'list_led_users'),
+  addUserNote: (args: { user: string; body: string; note_date?: string | null; shared_with_user?: 0 | 1 }) =>
+    api.post<LeaderNote>(LN + 'add_user_note', {
+      user: args.user,
+      body: args.body,
+      ...(args.note_date ? { note_date: args.note_date } : {}),
+      ...(args.shared_with_user ? { shared_with_user: args.shared_with_user } : {}),
+    }),
+  listUserNotes: (user: string) => api.get<UserNotesView>(LN + 'list_user_notes', { user }),
+  deleteUserNote: (name: string) => api.post<{ name: string }>(LN + 'delete_user_note', { name }),
 }
 
 const EV = 'vernon_project.api.events.'

@@ -8,6 +8,7 @@ import { DatePicker } from '@web/components/DatePicker'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import LeaderNotesSection from '@web/components/LeaderNotesSection'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { mobileApi } from '@/lib/api'
@@ -625,6 +626,8 @@ export default function UserForm() {
           </BentoTile>
         )}
       </BentoGrid>
+
+      {isEdit && <LeaderNotesSection user={name as string} />}
     </form>
   )
 }

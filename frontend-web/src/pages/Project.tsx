@@ -4,9 +4,9 @@ import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy,
 } from 'lucide-react'
-import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove } from '@/hooks/useData'
+import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
@@ -96,6 +96,7 @@ export default function Project() {
   const project = useProject(id)
   const boot = useBoot()
   const del = useDeleteProject()
+  const dup = useDuplicateProject()
   const delDetail = useDeleteProjectDetail()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const confirm = useConfirm()
@@ -167,6 +168,22 @@ export default function Project() {
       onSuccess: () => { toast('success', 'Project deleted'); nav('/projects') },
       onError: (e) => toast('error', (e as Error).message),
     })
+  }
+
+  const doDuplicate = async () => {
+    if (!(await confirm({
+      title: 'Duplikat proyek?',
+      message: 'Work item dan pengelompokan ikut tersalin, progres direset ke nol. Todo TIDAK ikut disalin.',
+      confirmLabel: 'Duplikat',
+      cancelLabel: 'Batal',
+    }))) return
+    try {
+      const res = await dup.mutateAsync({ project: p.name })
+      toast('success', `Proyek disalin: "${res.project_name}"`)
+      nav(`/project/${encodeURIComponent(res.name)}`)
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
   }
 
   const doDeleteDetail = async (w: ProjectDetailSummary) => {
@@ -263,6 +280,11 @@ export default function Project() {
                 {perms.can_edit && (
                   <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
                     <Pencil className="h-4 w-4" /> Edit
+                  </Button>
+                )}
+                {perms.can_edit && (
+                  <Button variant="secondary" size="sm" disabled={dup.isPending} onClick={doDuplicate}>
+                    <Copy className="h-4 w-4" /> {dup.isPending ? 'Menyalin…' : 'Duplikat'}
                   </Button>
                 )}
                 {perms.can_edit && (

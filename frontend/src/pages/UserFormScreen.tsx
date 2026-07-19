@@ -6,6 +6,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { LeaderNotesSection } from '@/components/LeaderNotesSection'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import {
@@ -423,6 +424,8 @@ export default function UserFormScreen() {
                 {del.isPending ? 'Deleting…' : 'Delete user'}
               </button>
             )}
+
+            <LeaderNotesSection user={name as string} />
           </>
         )}
       </div>

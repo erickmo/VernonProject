@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, Gift, CalendarClock } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -15,7 +15,7 @@ import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
 import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, permFlags } from '@/hooks/useData'
+import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
@@ -30,6 +30,7 @@ export default function ProjectScreen() {
   const confirm = useConfirm()
   const del = useDeleteProject()
   const delDetail = useDeleteProjectDetail()
+  const dup = useDuplicateProject()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const [editOpen, setEditOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
@@ -121,6 +122,24 @@ export default function ProjectScreen() {
             <button onClick={() => setEditOpen(true)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95">
               <Pencil className="h-4 w-4" /> Edit
+            </button>
+          )}
+          {flags.can_edit && (
+            <button
+              disabled={dup.isPending}
+              onClick={async () => {
+                if (!(await confirm({
+                  title: 'Duplikat proyek?',
+                  message: 'Work item & pengelompokan ikut tersalin. Progres direset dan todo TIDAK ikut disalin.',
+                  confirmLabel: 'Duplikat',
+                }))) return
+                dup.mutate({ project: data.name }, {
+                  onSuccess: (res) => { toast('success', 'Proyek diduplikat'); navigate(`/project/${encodeURIComponent(res.name)}`) },
+                  onError: (e) => toast('error', (e as Error).message),
+                })
+              }}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95 disabled:opacity-60 disabled:active:scale-100">
+              {dup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />} Duplikat
             </button>
           )}
           {flags.can_edit && (

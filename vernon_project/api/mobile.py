@@ -5439,3 +5439,90 @@ def update_employee_profile(
 		doc.prior_leave_taken = int(prior_leave_taken or 0)
 	doc.save(ignore_permissions=True)
 	return {"status": "ok"}
+
+
+def _can_duplicate_project(project, user):
+	"""Owner, leader, admin of the project, or a System Manager."""
+	return (
+		user == project.get("project_owner")
+		or user == project.get("project_leader")
+		or user == project.get("project_admin")
+		or "System Manager" in frappe.get_roles(user)
+	)
+
+
+@frappe.whitelist()
+def duplicate_project(project):
+	"""Structure-clone a project: header + groupings (Glossary) + work items
+	(Project Detail), with progress reset and NO todos copied. The copy mirrors
+	the source's status and is named "<name> (Copy)". Cross-doctype links
+	(Detail.grouping, Detail.glossaries) are remapped to the new project's
+	glossaries. Returns {name, project_name} of the new project."""
+	src = frappe.get_doc("Project", project)
+	user = frappe.session.user
+	if not _can_duplicate_project(src, user):
+		frappe.throw(
+			"Only the project owner, leader, admin or a System Manager may duplicate this project.",
+			frappe.PermissionError,
+		)
+
+	# --- header (blocked_by intentionally dropped; total is computed) ---
+	new = frappe.get_doc({
+		"doctype": "Project",
+		"project_name": f"{src.project_name} (Copy)",
+		"brand": src.brand,
+		"project_owner": src.project_owner,
+		"project_leader": src.project_leader,
+		"project_admin": src.project_admin,
+		"start_date": src.start_date,
+		"deadline": src.deadline,
+		"goal": src.goal,
+		"status": src.status,
+		"auto_approve": src.auto_approve,
+		"reward_type": src.reward_type,
+		"bonus_amount": src.bonus_amount,
+		"discount": src.discount,
+		"team_members": [{"user": m.user} for m in src.team_members],
+	}).insert(ignore_permissions=True)
+
+	# --- groupings (Glossary): old name -> new name ---
+	gmap = {}
+	for g in frappe.get_all(
+		"Glossary",
+		filters={"project": src.name},
+		fields=["name", "glossary", "description"],
+		order_by="creation asc",
+	):
+		ng = frappe.get_doc({
+			"doctype": "Glossary",
+			"project": new.name,
+			"glossary": g.glossary,
+			"description": g.description,
+		}).insert(ignore_permissions=True)
+		gmap[g.name] = ng.name
+
+	# --- work items (Project Detail): remap links, reset progress, no todos ---
+	for dn in frappe.get_all(
+		"Project Detail", filters={"project": src.name}, pluck="name", order_by="creation asc"
+	):
+		d = frappe.get_doc("Project Detail", dn)
+		frappe.get_doc({
+			"doctype": "Project Detail",
+			"project": new.name,
+			"title": d.title,
+			"project_deadline": d.project_deadline,
+			"current_condition": d.current_condition,
+			"expected_outcome": d.expected_outcome,
+			"keterangan_di_sow": d.keterangan_di_sow,
+			"grouping": gmap.get(d.grouping),
+			"glossaries": [
+				{"glossary": gmap[row.glossary], "note": row.note}
+				for row in d.glossaries
+				if row.glossary in gmap
+			],
+			# status/rollups are derived in Project Detail.before_validate from its
+			# todos; with none copied it lands in the fresh state automatically.
+		}).insert(ignore_permissions=True)
+
+	frappe.db.commit()
+	return {"name": new.name, "project_name": new.project_name}

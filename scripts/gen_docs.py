@@ -74,6 +74,7 @@ CLUSTERS = {
     }),
     "notes": ("Catatan", "Notes", "1x1", {
         "Personal Note", "Personal Note Item", "Personal Note Share",
+        "Leader Note",
     }),
     "platform": ("Platform", "Platform", "2x1", {
         "Vernon Settings", "Vernon Notification", "Vernon Banner", "App Release",

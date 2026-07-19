@@ -1157,3 +1157,35 @@ export interface LogbookDay { date: string; plan: LogbookPlanItem[]; completed: 
 export interface LogbookSummary { planned_minutes: number; done_minutes_estimated: number; todos_planned: number; todos_done: number; on_time: number; late: number; early: number; approved: number; rejected: number; pending: number; points_earned: number; on_time_rate: number }
 export interface LogbookResponse { from_date: string; to_date: string; user: string; full_name: string; dates: string[]; days: LogbookDay[]; summary: LogbookSummary }
 export interface WebsiteBranding { appName: string; logoUrl: string | null }
+
+// ---- Leaders & Notes (person→person supervision + observations) ----
+export interface LeaderNote {
+  name: string
+  user: string
+  author: string
+  author_name: string
+  author_image: string | null
+  note_date: string | null
+  body: string
+  shared_with_user: 0 | 1
+  is_mine: boolean
+  can_delete: boolean
+  creation: string
+}
+
+export interface UserLeaderRef {
+  leader: string
+  leader_name: string
+  user_image: string | null
+}
+
+export interface LedUser {
+  user: string
+  user_name: string
+  user_image: string | null
+}
+
+export interface UserNotesView {
+  can_add: boolean
+  notes: LeaderNote[]
+}
