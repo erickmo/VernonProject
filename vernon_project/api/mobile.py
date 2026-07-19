@@ -1312,12 +1312,13 @@ def get_project_detail(project_detail, include_cancelled=0):
 	detail["project_items"] = [_shape_item_row(r, user, name_map) for r in rows]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
-	owner, leader = frappe.get_value(
-		"Project", detail["project"], ["project_owner", "project_leader"]
+	owner, leader, admin = frappe.get_value(
+		"Project", detail["project"], ["project_owner", "project_leader", "project_admin"]
 	)
 	is_sm = "System Manager" in frappe.get_roles(user)
 	detail["can_create"] = is_sm or user in (owner, leader)
 	detail["can_edit"] = is_sm or user in (owner, leader)
+	detail["can_delete"] = is_sm or user in (owner, leader, admin)
 	detail["auto_approve"] = bool(frappe.db.get_value("Project", detail["project"], "auto_approve"))
 	detail["can_set_auto_approve"] = user == owner and "Partner" in frappe.get_roles(user)
 	detail["groupings"] = frappe.get_all(

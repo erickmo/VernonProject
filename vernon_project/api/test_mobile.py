@@ -726,3 +726,9 @@ class TestDeleteProjectAndDetail(unittest.TestCase):
 		finally:
 			frappe.set_user("Administrator")
 		self.assertFalse(frappe.db.exists("Project", self.project.name))
+
+	def test_get_project_detail_exposes_can_delete(self):
+		from vernon_project.api.mobile import get_project_detail
+		r = get_project_detail(self.detail.name)
+		self.assertIn("can_delete", r)
+		self.assertTrue(r["can_delete"])  # Administrator is owner/leader + SM
