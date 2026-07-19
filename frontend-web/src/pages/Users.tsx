@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Users as UsersIcon, Search } from 'lucide-react'
+import { Plus, Users as UsersIcon, Search, Sparkles } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { Button, ErrorState } from '@web/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
@@ -135,6 +135,24 @@ export default function Users() {
             Disabled
           </span>
         ),
+    },
+    {
+      key: 'superpower',
+      header: '',
+      align: 'right',
+      render: (u) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate(`/superpowers/${encodeURIComponent(u.name)}`)
+          }}
+          className="p-1.5 text-muted hover:text-brand-600"
+          aria-label={`Superpowers ${u.full_name || u.name}`}
+          title="Superpowers"
+        >
+          <Sparkles className="h-4 w-4" />
+        </button>
+      ),
     },
   ]
 

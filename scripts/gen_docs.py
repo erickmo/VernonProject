@@ -81,6 +81,10 @@ CLUSTERS = {
         "Push Subscription", "User Passkey", "Daily Verse", "Company Feedback",
     }),
     "org": ("Organisasi", "Organization", "1x1", {"Brand", "Company"}),
+    "superpowers": ("Kekuatan Super", "Superpowers", "1x1", {
+        "Superpower", "User Superpower", "Superpower Vote",
+        "Superpower Settings", "Superpower Level",
+    }),
 }
 OF = {dt: key for key, (_, _, _, members) in CLUSTERS.items() for dt in members}
 

@@ -95,6 +95,8 @@ import PapanIklanBans from '@web/pages/PapanIklanBans'
 import Learn from '@web/pages/Learn'
 import Course from '@web/pages/Course'
 import LmsAdmin from '@web/pages/LmsAdmin'
+import Superpowers from '@web/pages/Superpowers'
+import SuperpowersAdmin from '@web/pages/SuperpowersAdmin'
 import WhatsNew from '@web/pages/WhatsNew'
 import { isTodoPath } from '@web/lib/todoDrawer'
 import TodoDrawer from '@web/components/TodoDrawer'
@@ -306,6 +308,11 @@ export default function App() {
             </>
           )}
           <Route path="/achievements" element={<Achievements />} />
+          <Route path="/superpowers" element={<Superpowers />} />
+          <Route path="/superpowers/:user" element={<Superpowers />} />
+          {canManageBadges(b) && (
+            <Route path="/superpower-admin" element={<SuperpowersAdmin />} />
+          )}
           <Route path="/avatar" element={<AvatarCustomizer />} />
           <Route path="/papan-iklan" element={<PapanIklan />} />
           <Route path="/papan-iklan/new" element={<PapanIklanForm />} />

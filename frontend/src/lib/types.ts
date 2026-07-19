@@ -1189,3 +1189,59 @@ export interface UserNotesView {
   can_add: boolean
   notes: LeaderNote[]
 }
+
+// ---- Superpowers (self-claimed + peer-voted, confidence-weighted levels) ----
+export interface SuperpowerLevel {
+  level_name: string
+  min_score: number
+  color: string
+  icon: string
+}
+
+export interface SuperpowerCatalogItem {
+  name: string
+  superpower_name: string
+  category: string
+  icon: string
+  color: string
+  description: string
+}
+
+export interface MySuperpower {
+  superpower: string
+  name: string
+  icon: string
+  color: string
+  category: string
+}
+
+export interface VotedSuperpower {
+  superpower: string
+  name: string
+  icon: string
+  color: string
+  category: string
+  avg: number
+  count: number
+  weighted: number
+  level: SuperpowerLevel | null
+  my_vote: number | null
+}
+
+export interface UserSuperpowersView {
+  user: string
+  user_name: string
+  user_image: string | null
+  mine: MySuperpower[]
+  voted: VotedSuperpower[]
+  signature: VotedSuperpower | null
+  achievement: boolean
+  can_edit_mine: boolean
+}
+
+export interface SuperpowerSettings {
+  prior_mean: number
+  confidence_k: number
+  vote_points: number
+  levels: SuperpowerLevel[]
+}

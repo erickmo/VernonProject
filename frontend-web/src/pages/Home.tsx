@@ -15,7 +15,7 @@ import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { ACTIONS } from '@/lib/actions'
+import { ACTIONS, MOBILE_ONLY } from '@/lib/actions'
 import { FilterButton, activeFilterCount, type FilterValue, type FilterDimension } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
@@ -253,7 +253,7 @@ function ShortcutGrid() {
         <Sparkles className="h-4 w-4" /> Shortcuts
       </h2>
       <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
-        {ACTIONS.map((a) => (
+        {ACTIONS.filter((a) => !MOBILE_ONLY.has(a.to.split('?')[0])).map((a) => (
           <button
             key={a.title}
             type="button"

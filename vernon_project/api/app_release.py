@@ -11,13 +11,13 @@ def get_app_releases(platform=None):
             "App Release",
             filters=[["published", "=", 1], ["platform", "in", ["Both", platform]]],
             fields=["version", "release_date", "title", "notes", "platform"],
-            order_by="release_date desc",
+            order_by="release_date desc, creation desc",
         )
     else:
         rows = frappe.get_all(
             "App Release",
             filters=filters,
             fields=["version", "release_date", "title", "notes", "platform"],
-            order_by="release_date desc",
+            order_by="release_date desc, creation desc",
         )
     return rows

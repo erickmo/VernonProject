@@ -84,6 +84,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ...(canManageIncome(b) ? [{ to: '/income-admin', label: 'Manage Extra Income', sub: 'Review claims & opportunities', icon: Banknote } as NavLeaf] : []),
     ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Resources', sub: 'Rooms & equipment', icon: Building2 } as NavLeaf] : []),
     ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
+    ...(canManageBadges(b) ? [{ to: '/superpower-admin', label: 'Superpowers', sub: 'Traits & leveling', icon: Sparkles } as NavLeaf] : []),
     ...(canModerateAds(b) ? [{ to: '/papan-iklan/bans', label: 'Iklan Bans', sub: 'Banned posters', icon: Ban } as NavLeaf] : []),
     ...(canManageLms(b) ? [{ to: '/learn-admin', label: 'Manage Learning', sub: 'Author & assign courses', icon: BookOpen } as NavLeaf] : []),
   ]

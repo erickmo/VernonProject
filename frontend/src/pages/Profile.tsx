@@ -153,6 +153,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             { icon: User, label: 'My Info', hue: 'sky', onClick: () => navigate('/me/info') },
             { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
             { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
+            { icon: Sparkles, label: 'Kekuatan Super', hue: 'violet', onClick: () => navigate(`/superpowers/${boot?.user}`) },
             { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
             ...(pushSupported()
               ? [
@@ -231,6 +232,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           rows: [
             ...(canManageBadges(boot)
               ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
+              : []),
+            ...(boot?.roles.includes('System Manager')
+              ? [{ icon: Sparkles, label: 'Kekuatan Super', hue: 'violet' as const, onClick: () => navigate('/superpower-admin') }]
               : []),
           ],
         },

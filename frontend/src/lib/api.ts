@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, UserLeaderRef, LedUser, LeaderNote, UserNotesView } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, UserLeaderRef, LedUser, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, VotedSuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel } from './types'
 
 const METHOD = '/api/method/'
 
@@ -82,6 +82,7 @@ const BK = 'vernon_project.api.booking.'
 const IN = 'vernon_project.api.income.'
 const R = 'vernon_project.api.report.'
 const LN = 'vernon_project.api.leader_notes.'
+const SP = 'vernon_project.api.superpowers.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -621,6 +622,36 @@ export const mobileApi = {
     }),
   listUserNotes: (user: string) => api.get<UserNotesView>(LN + 'list_user_notes', { user }),
   deleteUserNote: (name: string) => api.post<{ name: string }>(LN + 'delete_user_note', { name }),
+  listSuperpowers: () => api.get<SuperpowerCatalogItem[]>(SP + 'list_superpowers'),
+  getUserSuperpowers: (user: string) =>
+    api.get<UserSuperpowersView>(SP + 'get_user_superpowers', { user }),
+  setMySuperpowers: (user: string, superpowers: string[]) =>
+    api.post<MySuperpower[]>(SP + 'set_my_superpowers', {
+      user,
+      superpowers: JSON.stringify(superpowers),
+    }),
+  castVote: (ratee: string, superpower: string, score: number) =>
+    api.post<VotedSuperpower>(SP + 'cast_vote', { ratee, superpower, score }),
+  removeVote: (ratee: string, superpower: string) =>
+    api.post<{ superpower: string }>(SP + 'remove_vote', { ratee, superpower }),
+  getSuperpowerSettings: () =>
+    api.get<SuperpowerSettings>(SP + 'get_superpower_settings'),
+  saveSuperpowerSettings: (s: {
+    prior_mean: number
+    confidence_k: number
+    vote_points: number
+    levels: SuperpowerLevel[]
+  }) =>
+    api.post<SuperpowerSettings>(SP + 'save_superpower_settings', {
+      prior_mean: s.prior_mean,
+      confidence_k: s.confidence_k,
+      vote_points: s.vote_points,
+      levels: JSON.stringify(s.levels),
+    }),
+  saveSuperpower: (p: Partial<SuperpowerCatalogItem> & { superpower_name: string }) =>
+    api.post<SuperpowerCatalogItem>(SP + 'save_superpower', p as Record<string, unknown>),
+  deleteSuperpower: (name: string) =>
+    api.post<{ name: string }>(SP + 'delete_superpower', { name }),
 }
 
 const EV = 'vernon_project.api.events.'

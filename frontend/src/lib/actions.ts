@@ -1,6 +1,10 @@
 import {
   FolderKanban,
   CalendarClock,
+  CalendarDays,
+  CalendarCheck,
+  ClipboardCheck,
+  Video,
   QrCode,
   Ticket,
   Trophy,
@@ -13,6 +17,7 @@ import {
   MessageSquarePlus,
   Megaphone,
   BookOpen,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -37,6 +42,10 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
       { icon: FolderKanban, title: 'Projects & todos', short: 'Projects', desc: 'Open a project, add work items and todos.', to: '/projects' },
       { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/?plan=1' },
       { icon: QrCode, title: 'Check in with QR', short: 'Check-in', desc: 'Scan the station code to mark attendance.', to: '/scan' },
+      { icon: ClipboardCheck, title: 'My attendance', short: 'Attendance', desc: 'Review your attendance record.', to: '/attendance' },
+      { icon: CalendarDays, title: 'Calendar', short: 'Calendar', desc: 'See deadlines and events on the calendar.', to: '/calendar' },
+      { icon: Video, title: 'Meetings', short: 'Meetings', desc: 'Schedule and join meetings.', to: '/meetings' },
+      { icon: CalendarCheck, title: 'Resource bookings', short: 'Bookings', desc: 'Book rooms and equipment.', to: '/bookings' },
     ],
   },
   {
@@ -57,6 +66,7 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
       { icon: Gift, title: 'Spend your points', short: 'Rewards', desc: 'Redeem points for rewards in the marketplace.', to: '/marketplace' },
       { icon: Banknote, title: 'Extra income', short: 'Income', desc: 'Claim extra-income opportunities.', to: '/income' },
       { icon: BookOpen, title: 'Learn and develop', short: 'Learn', desc: 'Browse courses and track your progress.', to: '/learn' },
+      { icon: Sparkles, title: 'Superpowers', short: 'Kekuatan', desc: 'Pilih kekuatanmu dan nilai kekuatan rekan.', to: '/superpowers' },
     ],
   },
   {
@@ -74,3 +84,8 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
 export const ACTIONS: ActionItem[] = ACTION_GROUPS.flatMap((g) =>
   g.items.map((i) => ({ ...i, tile: g.tile })),
 )
+
+// Routes that exist only on the mobile (/m) app — the web surfaces filter these
+// out so no tile/card leads to a 404. (/income DOES exist on web, so it is not here.)
+export const MOBILE_ONLY = new Set(['/scan', '/attendance'])
+

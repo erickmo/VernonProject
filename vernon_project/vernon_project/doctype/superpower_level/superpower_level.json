@@ -1,0 +1,29 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-19 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["level_name", "min_score", "color", "icon"],
+ "fields": [
+  {"fieldname": "level_name", "fieldtype": "Data", "label": "Level Name", "in_list_view": 1, "columns": 3},
+  {"fieldname": "min_score", "fieldtype": "Float", "label": "Min Score", "in_list_view": 1, "columns": 3},
+  {"fieldname": "color", "fieldtype": "Data", "label": "Color", "in_list_view": 1, "columns": 3},
+  {"fieldname": "icon", "fieldtype": "Data", "label": "Icon", "in_list_view": 1, "columns": 2}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-19 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Superpower Level",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

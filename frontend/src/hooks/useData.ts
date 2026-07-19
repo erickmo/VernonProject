@@ -138,6 +138,9 @@ export const keys = {
   userNotes: (user: string) => ['user-notes', user] as const,
   userLeaders: (user: string) => ['user-leaders', user] as const,
   ledUsers: ['led-users'] as const,
+  superpowers: ['superpowers'] as const,
+  userSuperpowers: (user: string) => ['user-superpowers', user] as const,
+  superpowerSettings: ['superpower-settings'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -2270,5 +2273,75 @@ export function useDeleteUserNote() {
   return useMutation({
     mutationFn: (args: { name: string; user: string }) => mobileApi.deleteUserNote(args.name),
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userNotes(v.user) }),
+  })
+}
+
+// ---- Superpowers (self-claimed + peer-voted traits, admin settings) ----
+
+export const useSuperpowers = () =>
+  useQuery({ queryKey: keys.superpowers, queryFn: () => mobileApi.listSuperpowers() })
+
+export const useUserSuperpowers = (user: string) =>
+  useQuery({
+    queryKey: keys.userSuperpowers(user),
+    queryFn: () => mobileApi.getUserSuperpowers(user),
+    enabled: !!user,
+  })
+
+export const useSuperpowerSettings = () =>
+  useQuery({ queryKey: keys.superpowerSettings, queryFn: () => mobileApi.getSuperpowerSettings() })
+
+export function useSetMySuperpowers() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ user, superpowers }: { user: string; superpowers: string[] }) =>
+      mobileApi.setMySuperpowers(user, superpowers),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.user) }),
+  })
+}
+
+export function useCastVote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ratee, superpower, score }: { ratee: string; superpower: string; score: number }) =>
+      mobileApi.castVote(ratee, superpower, score),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.ratee) }),
+  })
+}
+
+export function useRemoveVote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ratee, superpower }: { ratee: string; superpower: string }) =>
+      mobileApi.removeVote(ratee, superpower),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.ratee) }),
+  })
+}
+
+export function useSaveSuperpowerSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (s: Parameters<typeof mobileApi.saveSuperpowerSettings>[0]) =>
+      mobileApi.saveSuperpowerSettings(s),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.superpowerSettings })
+      qc.invalidateQueries({ queryKey: keys.superpowers })
+    },
+  })
+}
+
+export function useSaveSuperpower() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (p: Parameters<typeof mobileApi.saveSuperpower>[0]) => mobileApi.saveSuperpower(p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.superpowers }),
+  })
+}
+
+export function useDeleteSuperpower() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => mobileApi.deleteSuperpower(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.superpowers }),
   })
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Sparkles } from 'lucide-react'
 import { Spinner } from '@/components/ui'
 import { ErrorState, Field } from '@web/components/ui'
 import { DatePicker } from '@web/components/DatePicker'
@@ -273,13 +273,24 @@ export default function UserForm() {
           </button>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">{isEdit ? 'Edit user' : 'New user'}</h1>
         </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {isEdit && (
+            <button
+              type="button"
+              onClick={() => navigate(`/superpowers/${encodeURIComponent(name as string)}`)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-hover/[0.04] transition-colors dark:border-slate-700"
+            >
+              <Sparkles className="h-4 w-4 text-brand-600" /> Superpower
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
       </div>
 
       <BentoGrid>

@@ -32,3 +32,4 @@ vernon_project.patches.v1_0.create_partner_role
 vernon_project.patches.v1_0.add_hr_manager_role
 vernon_project.patches.v1_0.backfill_exception_hr_decision
 vernon_project.patches.v1_0.seed_leave_types
+vernon_project.patches.v1_0.seed_superpowers

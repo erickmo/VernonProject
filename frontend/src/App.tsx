@@ -30,6 +30,8 @@ import UsersScreen from './pages/UsersScreen'
 import UserFormScreen from './pages/UserFormScreen'
 import WalletLogScreen from './pages/WalletLogScreen'
 import LeaderboardScreen from './pages/LeaderboardScreen'
+import SuperpowerScreen from './pages/SuperpowerScreen'
+import SuperpowerAdminScreen from './pages/SuperpowerAdminScreen'
 import TeamWallScreen from './pages/TeamWallScreen'
 import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
@@ -284,6 +286,11 @@ export default function App() {
         <Route path="/events/manage/:name/roster" element={<EventRosterScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
+        <Route path="/superpowers" element={<SuperpowerScreen />} />
+        <Route path="/superpowers/:user" element={<SuperpowerScreen />} />
+        {boot?.roles.includes('System Manager') && (
+          <Route path="/superpower-admin" element={<SuperpowerAdminScreen />} />
+        )}
         <Route path="/team-wall" element={<TeamWallScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />

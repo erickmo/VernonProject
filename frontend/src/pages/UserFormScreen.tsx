@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { User } from 'lucide-react'
+import { User, Sparkles, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { MultiSelectChips } from '@/components/MultiSelectChips'
@@ -424,6 +424,17 @@ export default function UserFormScreen() {
                 {del.isPending ? 'Deleting…' : 'Delete user'}
               </button>
             )}
+
+            <button
+              onClick={() => navigate(`/superpowers/${name}`)}
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 active:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:active:bg-slate-700/50"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <span className="flex-1">Kekuatan Super</span>
+              <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+            </button>
 
             <LeaderNotesSection user={name as string} />
           </>

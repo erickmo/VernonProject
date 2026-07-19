@@ -1,11 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { Card, CardList } from '@web/components/Card'
-import { ACTION_GROUPS } from '@/lib/actions'
+import { ACTION_GROUPS, MOBILE_ONLY } from '@/lib/actions'
 
 // Onboarding "what can I do" list, rendered from the shared mobile source of
 // truth (@/lib/actions) so it can't drift. Routes that only exist on mobile
-// (QR check-in, extra income) are filtered out so no card leads to a 404.
-const MOBILE_ONLY = new Set(['/scan', '/income'])
+// are filtered out (via the shared MOBILE_ONLY set) so no card leads to a 404.
 
 export default function Help() {
   const nav = useNavigate()

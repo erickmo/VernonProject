@@ -84,6 +84,13 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
             Achievements
           </button>
           <button
+            onClick={() => b && navigate(`/superpowers/${encodeURIComponent(b.user)}`)}
+            className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
+          >
+            <Sparkles className="w-4 h-4" />
+            Kekuatan Saya
+          </button>
+          <button
             onClick={() => setPwOpen(true)}
             className="w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-hover/[0.04] active:scale-[0.99]"
           >
