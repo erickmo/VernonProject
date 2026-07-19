@@ -100,26 +100,27 @@ export default function Superpowers() {
     const t = params.get('tab')
     return t === 'mine' || t === 'voted' || t === 'perf' || t === 'others' ? t : 'mine'
   })
-  const [extra, setExtra] = useState<string[]>([]) // traits added to vote on but not yet scored
 
   const v = view.data
 
   const displayName = v?.user_name || user
 
-  // Voted cards + any freshly-added traits the viewer hasn't scored yet.
+  // "Dinilai Rekan" always lists the WHOLE votable catalog — each trait carries
+  // its aggregate if it has votes, else a zero row so it's still ratable.
   const cards = useMemo<VotedSuperpower[]>(() => {
     if (!v) return []
-    const have = new Set(v.voted.map((x) => x.superpower))
-    const extraCards = extra
-      .filter((n) => !have.has(n))
-      .map((n) => catalog.find((c) => c.name === n))
-      .filter((c): c is NonNullable<typeof c> => !!c)
-      .map((c) => ({
-        superpower: c.name, name: c.superpower_name, icon: c.icon, color: c.color,
-        category: c.category, avg: 0, count: 0, weighted: 0, level: null, my_vote: null,
-      }))
-    return [...v.voted, ...extraCards]
-  }, [v, extra, catalog])
+    const byName: Record<string, VotedSuperpower> = {}
+    v.voted.forEach((x) => { byName[x.superpower] = x })
+    return catalog
+      .filter((c) => c.kind === 'Voted')
+      .map(
+        (c) =>
+          byName[c.name] ?? {
+            superpower: c.name, name: c.superpower_name, icon: c.icon, color: c.color,
+            category: c.category, avg: 0, count: 0, weighted: 0, level: null, my_vote: null,
+          },
+      )
+  }, [v, catalog])
 
   // Claimed chips show their peer-voted level/score; index voted rows by trait name.
   const votedByName = useMemo(() => {
@@ -130,12 +131,6 @@ export default function Superpowers() {
 
   // Only self-claimed/peer-voted traits are claimable as chips or votable.
   const votedCatalog = useMemo(() => catalog.filter((c) => c.kind === 'Voted'), [catalog])
-
-  const addable = useMemo(() => {
-    if (!v) return []
-    const shown = new Set([...v.voted.map((x) => x.superpower), ...extra])
-    return votedCatalog.filter((c) => !shown.has(c.name)).map((c) => ({ value: c.name, label: c.superpower_name }))
-  }, [v, extra, votedCatalog])
 
   if (view.isLoading)
     return <div className="flex justify-center py-20"><Spinner /></div>
@@ -303,17 +298,6 @@ export default function Superpowers() {
 
       {tab === 'voted' && (
         <div className="mt-4 space-y-4">
-          {!isSelf && (
-            <div className="rounded-2xl bg-surface p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold text-ink">Nilai superpower lain</div>
-              <SearchableSelect
-                value=""
-                onChange={(val) => val && setExtra((prev) => [...prev, val])}
-                options={addable}
-                placeholder="Pilih superpower untuk dinilai…"
-              />
-            </div>
-          )}
           {cards.length === 0 ? (
             <EmptyState icon={Zap} title="Belum dinilai" subtitle={isSelf ? 'Rekanmu belum memberi penilaian.' : 'Jadilah yang pertama menilai.'} />
           ) : (

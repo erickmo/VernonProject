@@ -287,8 +287,6 @@ export default function SuperpowerScreen() {
   })
   // Local claimed set — seeded from the server, toggled optimistically on tap.
   const [claimed, setClaimed] = useState<string[]>([])
-  // Traits the viewer added from the picker but hasn't scored yet (no server row).
-  const [extraTraits, setExtraTraits] = useState<string[]>([])
 
   const isSelf = !!boot && boot.user === user
 
@@ -306,10 +304,33 @@ export default function SuperpowerScreen() {
   // Only Voted traits are self-claimable / votable; Performance rows are excluded.
   const voteableCatalog = useMemo(() => (catalog ?? []).filter((c) => c.kind === 'Voted'), [catalog])
 
-  const votedNames = useMemo(() => new Set((view?.voted ?? []).map((v) => v.superpower)), [view])
   const votedByName = useMemo(
     () => new Map((view?.voted ?? []).map((v) => [v.superpower, v] as const)),
     [view],
+  )
+
+  // "Dinilai Rekan" always lists the WHOLE votable catalog — each trait carries
+  // its aggregate if it has votes, else a zero row so it's still ratable.
+  const votedAll = useMemo<VotedSuperpower[]>(
+    () =>
+      voteableCatalog
+        .map(
+          (c) =>
+            votedByName.get(c.name) ?? {
+              superpower: c.name,
+              name: c.superpower_name,
+              icon: c.icon,
+              color: c.color,
+              category: c.category,
+              avg: 0,
+              count: 0,
+              weighted: 0,
+              level: null,
+              my_vote: null,
+            },
+        )
+        .sort((a, b) => b.weighted - a.weighted || a.name.localeCompare(b.name)),
+    [voteableCatalog, votedByName],
   )
 
   // Metadata lookups for "mine" rows (icon/color/name), catalog first, server fallback.
@@ -324,35 +345,6 @@ export default function SuperpowerScreen() {
         .filter((c) => !claimedSet.has(c.name))
         .map((c) => ({ value: c.name, label: c.superpower_name })),
     [voteableCatalog, claimedSet],
-  )
-
-  // Pseudo-cards for picked-but-unvoted traits (drop any that landed in `voted`).
-  const extraCards = useMemo<VotedSuperpower[]>(() => {
-    return extraTraits
-      .filter((n) => !votedNames.has(n))
-      .map((n) => {
-        const c = voteableCatalog.find((x) => x.name === n)
-        return {
-          superpower: n,
-          name: c?.superpower_name ?? n,
-          icon: c?.icon ?? '',
-          color: c?.color ?? '',
-          category: c?.category ?? '',
-          avg: 0,
-          count: 0,
-          weighted: 0,
-          level: null,
-          my_vote: null,
-        }
-      })
-  }, [extraTraits, votedNames, voteableCatalog])
-
-  const addOpts = useMemo(
-    () =>
-      voteableCatalog
-        .filter((c) => !votedNames.has(c.name) && !extraTraits.includes(c.name))
-        .map((c) => ({ value: c.name, label: c.superpower_name })),
-    [voteableCatalog, votedNames, extraTraits],
   )
 
   if (isLoading && !view) {
@@ -490,32 +482,16 @@ export default function SuperpowerScreen() {
 
         {tab === 'voted' && (
           <div className="space-y-3">
-            {!isSelf && addOpts.length > 0 && (
-              <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
-                  Nilai superpower lain
-                </p>
-                <SearchableSelect
-                  value=""
-                  onChange={(v) => v && setExtraTraits((prev) => [...prev, v])}
-                  options={addOpts}
-                  placeholder="Tambah superpower untuk dinilai…"
-                />
-              </div>
-            )}
-
-            {view.voted.length === 0 && extraCards.length === 0 ? (
+            {votedAll.length === 0 ? (
               <EmptyState
                 icon={Star}
-                title="Belum ada penilaian"
-                subtitle={isSelf ? 'Rekan kerja belum menilai superpowermu.' : 'Jadilah yang pertama menilai.'}
+                title="Belum ada superpower"
+                subtitle="Katalog superpower masih kosong."
               />
             ) : (
-              [...view.voted, ...extraCards]
-                .sort((a, b) => b.weighted - a.weighted || a.name.localeCompare(b.name))
-                .map((item) => (
-                  <VotedCard key={item.superpower} item={item} ratee={user} canVote={!isSelf} />
-                ))
+              votedAll.map((item) => (
+                <VotedCard key={item.superpower} item={item} ratee={user} canVote={!isSelf} />
+              ))
             )}
           </div>
         )}
