@@ -12,7 +12,7 @@ import json
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
-from vernon_project.attendance.leave_quota import effective_quota, prior_taken, used_including_prior
+from vernon_project.attendance.leave_quota import effective_quota, prior_taken, used_including_prior, cuti_bersama_days
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -41,8 +41,9 @@ EMPLOYEE_USER_FIELDS = ("phone", "birth_date", "bio")
 def _leave_balance(user):
 	yr = getdate(nowdate()).year
 	quota = effective_quota(user)
-	used = used_including_prior(user, yr)
-	return {"quota": quota, "used": used, "remaining": quota - used, "prior": prior_taken(user)}
+	cb = cuti_bersama_days(user, yr)
+	used = used_including_prior(user, yr) + cb
+	return {"quota": quota, "used": used, "remaining": quota - used, "prior": prior_taken(user), "cuti_bersama": cb}
 
 
 def _require_system_manager():
@@ -739,6 +740,8 @@ def bootstrap():
 		"settings": {
 			"show_auto_approve": int(frappe.db.get_single_value("Vernon Settings", "show_auto_approve") or 0),
 			"app_logo": frappe.db.get_single_value("Vernon Settings", "app_logo") or None,
+			"force_superpower": int(frappe.db.get_single_value("Vernon Settings", "force_superpower_onboarding") or 0),
+			"has_superpower": 1 if frappe.db.exists("User Superpower", {"user": user}) else 0,
 		},
 		"leave": _leave_balance(user),
 	}
@@ -2341,6 +2344,7 @@ def get_app_settings():
 		"min_minutes_sunday": int(g("min_minutes_sunday") or 0),
 		"attendance_enabled": int(g("attendance_enabled") or 0),
 		"show_auto_approve": int(g("show_auto_approve") or 0),
+		"force_superpower_onboarding": int(g("force_superpower_onboarding") or 0),
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
@@ -2411,6 +2415,7 @@ def save_app_settings(
 	min_minutes_sunday=None,
 	attendance_enabled=None,
 	show_auto_approve=None,
+	force_superpower_onboarding=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
 	late_penalty_per_minute=None,
@@ -2436,6 +2441,7 @@ def save_app_settings(
 		"min_minutes_sunday": min_minutes_sunday,
 		"attendance_enabled": attendance_enabled,
 		"show_auto_approve": show_auto_approve,
+		"force_superpower_onboarding": force_superpower_onboarding,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
 	}

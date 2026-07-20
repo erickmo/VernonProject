@@ -16,7 +16,12 @@ export interface Boot {
   badge?: Badge | null
   vapid_public_key?: string | null
   employee?: EmployeeSoft | null
-  settings?: { show_auto_approve?: 0 | 1; app_logo?: string | null }
+  settings?: {
+    show_auto_approve?: 0 | 1
+    app_logo?: string | null
+    force_superpower?: 0 | 1
+    has_superpower?: 0 | 1
+  }
   leave?: LeaveBalance | null
 }
 
@@ -564,7 +569,7 @@ export interface IncomeManageData {
   claims: ManagedClaim[]
 }
 
-export interface WalletLogEntry {
+export interface PointsLogRow {
   kind: 'credit' | 'debit'
   amount: number
   category?: string
@@ -573,7 +578,21 @@ export interface WalletLogEntry {
   status: string | null
   date: string | null
   date_human: string | null
+}
+
+export interface WalletLogEntry extends PointsLogRow {
   balance: number
+}
+
+// Transparent earned-points log for any user, opened from the leaderboard.
+// Credits minus Grant/Gift — no spends, no balance.
+export interface UserPointsLog {
+  user: string
+  full_name: string
+  image: string | null
+  avatar_config?: AvatarConfig | null
+  total_earned: number
+  rows: PointsLogRow[]
 }
 
 export interface LeaderboardEntry {
@@ -740,6 +759,7 @@ export interface AppSettings {
   min_minutes_sunday: number
   attendance_enabled: number
   show_auto_approve: number
+  force_superpower_onboarding: number
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number
@@ -1163,6 +1183,8 @@ export interface WebsiteBranding { appName: string; logoUrl: string | null }
 export interface LeaderNote {
   name: string
   user: string
+  project: string | null
+  project_title: string | null
   author: string
   author_name: string
   author_image: string | null
@@ -1172,18 +1194,6 @@ export interface LeaderNote {
   is_mine: boolean
   can_delete: boolean
   creation: string
-}
-
-export interface UserLeaderRef {
-  leader: string
-  leader_name: string
-  user_image: string | null
-}
-
-export interface LedUser {
-  user: string
-  user_name: string
-  user_image: string | null
 }
 
 export interface UserNotesView {
@@ -1217,6 +1227,7 @@ export interface PerfSuperpower {
   icon: string
   color: string
   category: string
+  description?: string | null
   kind: string
   metric: string
   score: number
@@ -1230,6 +1241,7 @@ export interface MySuperpower {
   icon: string
   color: string
   category: string
+  description?: string | null
 }
 
 export interface VotedSuperpower {
@@ -1238,6 +1250,7 @@ export interface VotedSuperpower {
   icon: string
   color: string
   category: string
+  description?: string | null
   avg: number
   count: number
   weighted: number

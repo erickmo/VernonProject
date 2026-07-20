@@ -28,6 +28,7 @@ export default function Settings() {
   const [toleranceMinutes, setToleranceMinutes] = useState<string>('0')
   const [minByWeekday, setMinByWeekday] = useState<string[]>(['0', '0', '0', '0', '0', '0', '0'])
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
+  const [forceSuperpower, setForceSuperpower] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
   const [lateRate, setLateRate] = useState<string>('0')
@@ -47,6 +48,7 @@ export default function Settings() {
     setToleranceMinutes(String(loaded.under_occupied_tolerance_minutes))
     setMinByWeekday(WEEKDAY_MIN_KEYS.map((k) => String(loaded[k])))
     setAttendanceEnabled(!!loaded.attendance_enabled)
+    setForceSuperpower(!!loaded.force_superpower_onboarding)
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
     setLateRate(String(loaded.late_penalty_per_minute))
@@ -97,6 +99,7 @@ export default function Settings() {
         min_minutes_saturday: n(minByWeekday[5]),
         min_minutes_sunday: n(minByWeekday[6]),
         attendance_enabled: attendanceEnabled ? 1 : 0,
+        force_superpower_onboarding: forceSuperpower ? 1 : 0,
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
         late_penalty_per_minute: n(lateRate),
@@ -300,6 +303,24 @@ export default function Settings() {
             </div>
             <p className="text-xs text-muted">
               Points deducted per minute late / early-leave; flat for absence. 0 = no penalty.
+            </p>
+          </div>
+        </BentoTile>
+
+        <BentoTile span="md" tone="tint" accent="brand" title="Gamification">
+          <div className="mt-3 space-y-3">
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Wajib pilih Superpower</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={forceSuperpower}
+                onChange={(e) => setForceSuperpower(e.target.checked)}
+              />
+            </label>
+            <p className="text-xs text-muted">
+              Saat aktif, pengguna yang belum memilih superpower akan melihat layar wajib-pilih saat
+              membuka aplikasi dan harus memilih dulu sebelum bisa memakai aplikasi.
             </p>
           </div>
         </BentoTile>
