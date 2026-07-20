@@ -850,7 +850,19 @@ def generate_next(anchor, force=False):
     if next_date < today:  # long gap / resume: skip the missed window, don't backfill
         from .recurrence import first_on_or_after
         next_date = getdate(first_on_or_after(today, head._rule()))
-    if anchor.recurring_until and next_date > getdate(anchor.recurring_until):
+    # Skip days the assignee does not work (brand weekday = 0, holiday, or shift-off).
+    # advance_over_zero_days also owns the recurring_until bound.
+    from .recurrence import advance_over_zero_days, next_occurrence
+    from vernon_project.api.report import _resolve_min_minutes
+    rule = head._rule()
+    until = getdate(anchor.recurring_until) if anchor.recurring_until else None
+    next_date = advance_over_zero_days(
+        next_date,
+        lambda d: getdate(next_occurrence(d, rule)),
+        lambda d: _resolve_min_minutes(anchor.assigned_to, str(d)),
+        until=until,
+    )
+    if next_date is None:
         return None
     if not force and next_date > today:
         return None
