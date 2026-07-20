@@ -12,7 +12,15 @@ _FIELDS = [
 
 
 def execute():
-	vals = {f: int(frappe.db.get_single_value("Vernon Settings", f) or 0) for f in _FIELDS}
+	# Read the old globals straight from tabSingles: this patch runs post-model-sync,
+	# after Task 5 dropped the fields from Vernon Settings' meta, so get_single_value
+	# would raise "Field does not exist". The orphaned tabSingles rows survive field
+	# removal, and a raw read bypasses the meta validation.
+	stored = dict(frappe.db.sql(
+		"SELECT field, value FROM tabSingles WHERE doctype='Vernon Settings' AND field IN %(fields)s",
+		{"fields": tuple(_FIELDS)},
+	))
+	vals = {f: int(stored.get(f) or 0) for f in _FIELDS}
 	if not any(vals.values()):
 		return  # globals never configured -> Brands keep their 0 defaults
 	for name in frappe.get_all("Brand", pluck="name"):
