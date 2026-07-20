@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/format'
 import { useToast } from '@/components/Toast'
 import { CreateMeetingDialog } from '../components/CreateMeetingDialog'
 import { MarkDoneSheet } from '@/components/MarkDoneSheet'
+import { GoogleCalButton } from '@/components/GoogleCalButton'
 import type { MeetingListItem } from '@/lib/types'
 import { Spinner, EmptyState } from '@/components/ui'
 import { ErrorState, Button } from '@web/components/ui'
@@ -39,13 +40,13 @@ export function Meetings() {
     <Page>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Meetings</h1>
-        <Button variant="primary" disabled={!project} onClick={() => setDialog(true)}>
+        <Button variant="primary" onClick={() => setDialog(true)}>
           New meeting
         </Button>
       </div>
 
       <div className="mb-6 max-w-sm">
-        <SearchableSelect value={project} onChange={setProject} options={projectOptions} placeholder="Pick a project…" />
+        <SearchableSelect value={project} onChange={setProject} options={projectOptions} placeholder="Filter by project…" allowClear />
       </div>
 
       {meetings.isError ? (
@@ -53,7 +54,7 @@ export function Meetings() {
       ) : meetings.isLoading ? (
         <div className="flex justify-center py-16"><Spinner /></div>
       ) : (meetings.data?.meetings ?? []).length === 0 ? (
-        <EmptyState icon={Video} title="No meetings" subtitle={project ? 'No meetings for this project yet.' : 'Pick a project to see its meetings.'} />
+        <EmptyState icon={Video} title="No meetings" subtitle={project ? 'No meetings for this project yet.' : 'No meetings yet. Tap “New meeting” to schedule one.'} />
       ) : (
       <CardList>
         {(meetings.data?.meetings ?? []).map((m) => (
@@ -77,29 +78,32 @@ export function Meetings() {
               </>
             }
             footer={
-              m.can_mark_done
-                ? m.status === '✅ Done'
-                  ? (
-                    <button onClick={() => onReopen(m.name)} className="text-sm font-semibold text-muted active:scale-[0.99]">
-                      Reopen
-                    </button>
-                  )
-                  : (
-                    <button
-                      onClick={() => setMarkDoneMeeting(m)}
-                      className="w-full rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-[0.99]"
-                    >
-                      Mark done & award
-                    </button>
-                  )
-                : undefined
+              <>
+                <GoogleCalButton meeting={m} />
+                {m.can_mark_done && (
+                  m.status === '✅ Done'
+                    ? (
+                      <button onClick={() => onReopen(m.name)} className="text-sm font-semibold text-muted active:scale-[0.99]">
+                        Reopen
+                      </button>
+                    )
+                    : (
+                      <button
+                        onClick={() => setMarkDoneMeeting(m)}
+                        className="w-full rounded-xl bg-brand-50 dark:bg-brand-500/15 py-2.5 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-[0.99]"
+                      >
+                        Mark done & award
+                      </button>
+                    )
+                )}
+              </>
             }
           />
         ))}
       </CardList>
       )}
 
-      {project && <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} project={project} />}
+      <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} />
       <MarkDoneSheet meeting={markDoneMeeting} onClose={() => setMarkDoneMeeting(null)} />
     </Page>
   )

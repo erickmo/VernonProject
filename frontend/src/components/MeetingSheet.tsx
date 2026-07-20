@@ -12,6 +12,7 @@ import {
   useMeetingInvitableUsers,
 } from '@/hooks/useData'
 import { MarkDoneSheet } from './MarkDoneSheet'
+import { GoogleCalButton } from './GoogleCalButton'
 import { useToast } from './Toast'
 import { useConfirm } from './Confirm'
 
@@ -127,6 +128,7 @@ export function MeetingSheet({ meeting, onClose }: { meeting: MeetingListItem | 
             </dl>
 
             <div className="flex flex-col gap-2">
+              <GoogleCalButton meeting={m} className="px-1" />
               {canManage && (isDone ? (
                 <Action onClick={() => run(reopen.mutateAsync(m.name), 'Reopened')} disabled={busy} icon={RotateCcw} tone="muted">
                   Reopen (removes points)

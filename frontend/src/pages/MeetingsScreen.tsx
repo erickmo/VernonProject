@@ -6,6 +6,7 @@ import { useMeetings, useReopenMeeting } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { CreateMeetingSheet } from '@/components/CreateMeetingSheet'
 import { MarkDoneSheet } from '@/components/MarkDoneSheet'
+import { GoogleCalButton } from '@/components/GoogleCalButton'
 import type { MeetingListItem } from '@/lib/types'
 import { useToast } from '@/components/Toast'
 
@@ -34,9 +35,8 @@ export function MeetingsScreen() {
 
   const newButton = (
     <button
-      disabled={!project}
       onClick={() => setSheet(true)}
-      className="flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+      className="flex items-center gap-1 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white"
     >
       <Plus className="h-4 w-4" /> New
     </button>
@@ -49,13 +49,10 @@ export function MeetingsScreen() {
           value={project}
           onChange={setProject}
           options={projectOptions}
-          placeholder="Pick a project…"
+          placeholder="Filter by project…"
+          allowClear
         />
       </div>
-
-      {!project && (
-        <p className="text-sm text-slate-500">Select a project to see its meetings.</p>
-      )}
 
       <div className="flex flex-col gap-3">
         {(meetings.data?.meetings ?? []).map((m) => (
@@ -70,6 +67,9 @@ export function MeetingsScreen() {
               </span>
               <span>{Math.round(m.point)} pts each</span>
               {m.scheduled_at && <span>{m.scheduled_at}</span>}
+            </div>
+            <div className="mt-2">
+              <GoogleCalButton meeting={m} />
             </div>
             {m.can_mark_done && (
               <div className="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3">
@@ -94,9 +94,7 @@ export function MeetingsScreen() {
         ))}
       </div>
 
-      {project && (
-        <CreateMeetingSheet open={sheet} onClose={() => setSheet(false)} project={project} />
-      )}
+      <CreateMeetingSheet open={sheet} onClose={() => setSheet(false)} />
       <MarkDoneSheet meeting={markDoneMeeting} onClose={() => setMarkDoneMeeting(null)} />
     </TabScreen>
   )
