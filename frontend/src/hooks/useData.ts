@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query'
 import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
+import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
 import type {
   AppSettings,
   AvatarCatalog,
@@ -60,6 +61,8 @@ import type {
   LeaveType,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
+
+type BrandWeekdayPayload = Partial<Record<(typeof BRAND_WEEKDAY_KEYS)[number], number>>
 
 export const keys = {
   boot: ['boot'] as const,
@@ -897,7 +900,7 @@ export function useBrand(name: string, enabled = true) {
 export function useCreateBrand() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: { brand_name: string; company: string }) =>
+    mutationFn: (payload: { brand_name: string; company: string } & BrandWeekdayPayload) =>
       resource.create<{ name: string }>('Brand', payload as unknown as Record<string, unknown>),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.brands }),
   })
@@ -906,7 +909,7 @@ export function useCreateBrand() {
 export function useUpdateBrand() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, payload }: { name: string; payload: { company: string } }) =>
+    mutationFn: ({ name, payload }: { name: string; payload: { company?: string } & BrandWeekdayPayload }) =>
       resource.update<{ name: string }>('Brand', name, payload as unknown as Record<string, unknown>),
     onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: keys.brands })

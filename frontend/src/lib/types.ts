@@ -478,7 +478,20 @@ export interface Brand {
   name: string
   brand_name: string
   company: string
+  min_minutes_monday?: number
+  min_minutes_tuesday?: number
+  min_minutes_wednesday?: number
+  min_minutes_thursday?: number
+  min_minutes_friday?: number
+  min_minutes_saturday?: number
+  min_minutes_sunday?: number
 }
+
+// Mon..Sun payload keys for a Brand's per-weekday minimums.
+export const BRAND_WEEKDAY_KEYS = [
+  'min_minutes_monday', 'min_minutes_tuesday', 'min_minutes_wednesday', 'min_minutes_thursday',
+  'min_minutes_friday', 'min_minutes_saturday', 'min_minutes_sunday',
+] as const
 
 export interface Company {
   name: string

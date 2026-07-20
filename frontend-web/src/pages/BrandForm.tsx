@@ -10,6 +10,7 @@ import { useConfirm } from '@/components/Confirm'
 import { MergeIntoCard } from '@/components/MergeIntoCard'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { deleteErrorMessage } from '@/lib/format'
+import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
 import {
   useBrand,
   useBrands,
@@ -24,6 +25,8 @@ import {
 
 const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
+
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function BrandForm() {
   const navigate = useNavigate()
@@ -45,10 +48,12 @@ export default function BrandForm() {
   const [form, setForm] = useState<{ brand_name: string; company: string }>({ brand_name: '', company: '' })
   const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
+  const [minByWeekday, setMinByWeekday] = useState<string[]>(['0', '0', '0', '0', '0', '0', '0'])
 
   useEffect(() => {
     if (isEdit && existing) {
       setForm({ brand_name: existing.brand_name, company: existing.company })
+      setMinByWeekday(BRAND_WEEKDAY_KEYS.map((k) => String(existing[k] ?? 0)))
     }
   }, [isEdit, existing])
 
@@ -111,8 +116,10 @@ export default function BrandForm() {
       },
       onError: (e: unknown) => toast('error', (e as Error).message),
     }
-    if (isEdit) update.mutate({ name, payload: { company: form.company } }, opts)
-    else create.mutate({ brand_name: form.brand_name.trim(), company: form.company }, opts)
+    const n = (s: string) => (s === '' ? 0 : Number(s))
+    const weekdays = Object.fromEntries(BRAND_WEEKDAY_KEYS.map((k, i) => [k, n(minByWeekday[i])]))
+    if (isEdit) update.mutate({ name, payload: { company: form.company, ...weekdays } }, opts)
+    else create.mutate({ brand_name: form.brand_name.trim(), company: form.company, ...weekdays }, opts)
   }
 
   const remove = async () => {
@@ -205,6 +212,30 @@ export default function BrandForm() {
                   />
                 )}
               </Field>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold text-muted">Minimum minutes per weekday</p>
+                <p className="mb-2 text-xs text-muted">0 = this brand does not work that day (no recurring todos land there).</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {WEEKDAY_LABELS.map((lbl, i) => (
+                    <label key={lbl} className="flex items-center gap-2">
+                      <span className="w-9 shrink-0 text-xs font-medium text-muted">{lbl}</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        className={field}
+                        value={minByWeekday[i]}
+                        onChange={(e) => {
+                          setMinByWeekday((m) => m.map((v, k) => (k === i ? e.target.value : v)))
+                          setDirty(true)
+                        }}
+                        placeholder="0"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               <button
                 type="submit"
