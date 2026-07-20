@@ -1,10 +1,11 @@
 # Copyright (c) 2026, Vernon and contributors
 # Standalone (no-site) check of recurrence date math.
 # Run: cd apps/vernon_project && python -m vernon_project.vernon_project.doctype.project_todo.test_recurrence
-from datetime import date
+from datetime import date, timedelta
 
 from vernon_project.vernon_project.doctype.project_todo.recurrence import (
     Rule, next_occurrence, first_on_or_after, parse_weekdays, format_weekdays,
+    advance_over_zero_days,
 )
 
 MON, TUE, WED, THU, FRI, SAT, SUN = range(7)
@@ -95,6 +96,28 @@ def test_first_on_or_after():
     assert first_on_or_after(date(2026, 7, 7), r) == date(2026, 7, 9)  # Tue -> Thu
     rm = _r(frequency="Monthly", day_of_month=15)
     assert first_on_or_after(date(2026, 7, 20), rm) == date(2026, 8, 15)
+
+
+def test_advance_over_zero_days():
+    step = lambda d: d + timedelta(days=1)
+    # Fri/Sat = 0, everything else 120. Start Fri -> first working day is Sun? no: Sun=120 here.
+    mins = {SAT: 0, SUN: 0}  # weekday-indexed; others default 120
+    min_for = lambda d: mins.get(d.weekday(), 120)
+    # 2026-07-18 is a Saturday. Skip Sat(0), Sun(0) -> Mon 2026-07-20.
+    assert advance_over_zero_days(date(2026, 7, 18), step, min_for) == date(2026, 7, 20)
+    # Start on a working day -> returned unchanged.
+    assert advance_over_zero_days(date(2026, 7, 20), step, min_for) == date(2026, 7, 20)
+    # `until` passed before any working day -> None (series ended). Sat with until=that Sun.
+    assert advance_over_zero_days(date(2026, 7, 18), step, min_for, until=date(2026, 7, 19)) is None
+    # Degenerate: every day 0 -> keep the original start, never drop.
+    assert advance_over_zero_days(date(2026, 7, 18), step, lambda d: 0) == date(2026, 7, 18)
+    # Bound respected: only `bound` steps scanned before falling back to start.
+    seen = []
+    def counting(d):
+        seen.append(d)
+        return 0
+    advance_over_zero_days(date(2026, 7, 18), step, counting, bound=3)
+    assert len(seen) == 3
 
 
 def _run():

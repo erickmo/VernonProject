@@ -125,3 +125,25 @@ def first_on_or_after(day, rule):
                 return d
             y, m = _add_months(y, m, 1)
     return day
+
+
+def advance_over_zero_days(start, step, min_for, until=None, bound=14):
+    """Advance `start` over days whose minimum is 0, for the recurrence skip rule.
+
+    step:    date -> next candidate strictly after it (the rule's next_occurrence).
+    min_for: date -> int minimum-minutes for that date (0 = day off).
+    until:   inclusive series end, or None. bound: max candidates scanned.
+
+    Returns the first candidate with min_for(candidate) > 0; None if `until` is
+    passed before any working day (series is over); or the original `start` if no
+    working day is found within `bound` steps (degenerate all-zero config — keep the
+    date so the series is never silently dropped).
+    """
+    candidate = start
+    for _ in range(bound):
+        if until is not None and candidate > until:
+            return None
+        if min_for(candidate) > 0:
+            return candidate
+        candidate = step(candidate)
+    return start
