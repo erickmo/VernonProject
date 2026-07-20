@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Check, RotateCcw, Pencil, Users, FolderKanban, Trash2, Clock, CalendarDays, Coins } from 'lucide-react'
+import { X, Check, RotateCcw, Pencil, Users, FolderKanban, Trash2, Clock, CalendarDays, CalendarPlus, Coins } from 'lucide-react'
 import type { MeetingListItem, Opt2 } from '@/lib/types'
 import { MultiSelectSearch } from './MultiSelectSearch'
 import { GroupLevelPicker, emptyGroupLevel, type GroupLevel } from './GroupLevelPicker'
@@ -12,7 +12,8 @@ import {
   useMeetingInvitableUsers,
 } from '@/hooks/useData'
 import { MarkDoneSheet } from './MarkDoneSheet'
-import { GoogleCalButton } from './GoogleCalButton'
+import { showGoogleCal } from './GoogleCalButton'
+import { googleCalUrl } from '@/lib/googleCal'
 import { useToast } from './Toast'
 import { useConfirm } from './Confirm'
 
@@ -128,7 +129,11 @@ export function MeetingSheet({ meeting, onClose }: { meeting: MeetingListItem | 
             </dl>
 
             <div className="flex flex-col gap-2">
-              <GoogleCalButton meeting={m} className="px-1" />
+              {showGoogleCal(m) && (
+                <Action onClick={() => window.open(googleCalUrl(m)!, '_blank', 'noopener,noreferrer')} icon={CalendarPlus} tone="plain">
+                  Add to Google Calendar
+                </Action>
+              )}
               {canManage && (isDone ? (
                 <Action onClick={() => run(reopen.mutateAsync(m.name), 'Reopened')} disabled={busy} icon={RotateCcw} tone="muted">
                   Reopen (removes points)
