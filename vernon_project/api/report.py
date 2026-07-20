@@ -322,7 +322,7 @@ def _daily_minimum(is_holiday, has_assignments, chosen, global_min):
 	return 0 if has_assignments else global_min
 
 
-# Per-weekday global minimum fields on Vernon Settings, indexed by date.weekday() (Mon=0..Sun=6).
+# Per-weekday minimum fields on Brand, indexed by date.weekday() (Mon=0..Sun=6).
 WEEKDAY_MIN_FIELDS = [
 	"min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday",
 	"min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday",
@@ -331,16 +331,19 @@ WEEKDAY_MIN_FIELDS = [
 
 def _resolve_min_minutes(user, date):
 	"""Per-user daily minimum estimated minutes for one date — the auto-plan / underperformed /
-	assignment-overload floor. Global per-weekday floor (Vernon Settings min_minutes_<weekday>,
-	falling back to the flat min_daily_estimated_minutes) is the base for everyone; a covering
-	Shift Template.minimum_estimated_minutes overrides it for that user; holidays and non-shift
-	weekdays (a user who has shifts but is off this weekday) -> 0. A user with no shift setup
-	works every weekday and gets the per-weekday global."""
+	assignment-overload floor, and the recurrence skip-a-0-day gate. The base is the user's
+	Brand per-weekday minimum (Brand.min_minutes_<weekday>), which is authoritative: 0 = the
+	brand does not work that weekday. Users with no Brand (no active Attendance Profile) fall
+	back to the flat Vernon Settings min_daily_estimated_minutes. A covering Shift
+	Template.minimum_estimated_minutes overrides the base for that user; holidays and non-shift
+	weekdays (a user who has shifts but is off this weekday) -> 0."""
 	wd = getdate(date).weekday()
 	date = str(getdate(date))
-	per_weekday = int(frappe.db.get_single_value("Vernon Settings", WEEKDAY_MIN_FIELDS[wd]) or 0)
-	flat = int(frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0)
-	global_min = per_weekday if per_weekday > 0 else flat
+	brand = frappe.db.get_value("Attendance Profile", {"user": user, "active": 1}, "brand") if user else None
+	if brand:
+		base = int(frappe.db.get_value("Brand", brand, WEEKDAY_MIN_FIELDS[wd]) or 0)
+	else:
+		base = int(frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0)
 	is_holiday = date in (_holidays_by_user([user], date, date).get(user) or set())
 	assignments = frappe.get_all(
 		"Shift Assignment",
@@ -359,7 +362,7 @@ def _resolve_min_minutes(user, date):
 	if chosen_assign:
 		chosen = {"min": int(frappe.db.get_value(
 			"Shift Template", chosen_assign["shift_template"], "minimum_estimated_minutes") or 0)}
-	return _daily_minimum(is_holiday, bool(assignments), chosen, global_min)
+	return _daily_minimum(is_holiday, bool(assignments), chosen, base)
 
 
 def _pivot(rows):
