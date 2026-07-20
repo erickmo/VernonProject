@@ -331,10 +331,12 @@ WEEKDAY_MIN_FIELDS = [
 
 def _resolve_min_minutes(user, date):
 	"""Per-user daily minimum estimated minutes for one date — the auto-plan / underperformed /
-	assignment-overload floor, and the recurrence skip-a-0-day gate. The base is the user's
-	Brand per-weekday minimum (Brand.min_minutes_<weekday>), which is authoritative: 0 = the
-	brand does not work that weekday. Users with no Brand (no active Attendance Profile) fall
-	back to the flat Vernon Settings min_daily_estimated_minutes. A covering Shift
+	assignment-overload floor, and the recurrence skip-a-0-day gate. Base precedence: a user
+	WITH a Brand (active Attendance Profile) uses that Brand's per-weekday minimum
+	(Brand.min_minutes_<weekday>), authoritative — 0 = the brand does not work that weekday. A
+	user WITHOUT a Brand falls back to the global per-weekday floor (Vernon Settings
+	min_minutes_<weekday>, else the flat min_daily_estimated_minutes) — the pre-per-Brand
+	behavior, so users not yet mapped to a Brand keep their floor. A covering Shift
 	Template.minimum_estimated_minutes overrides the base for that user; holidays and non-shift
 	weekdays (a user who has shifts but is off this weekday) -> 0."""
 	wd = getdate(date).weekday()
@@ -343,7 +345,9 @@ def _resolve_min_minutes(user, date):
 	if brand:
 		base = int(frappe.db.get_value("Brand", brand, WEEKDAY_MIN_FIELDS[wd]) or 0)
 	else:
-		base = int(frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0)
+		per_weekday = int(frappe.db.get_single_value("Vernon Settings", WEEKDAY_MIN_FIELDS[wd]) or 0)
+		flat = int(frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0)
+		base = per_weekday if per_weekday > 0 else flat
 	is_holiday = date in (_holidays_by_user([user], date, date).get(user) or set())
 	assignments = frappe.get_all(
 		"Shift Assignment",
