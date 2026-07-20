@@ -6,7 +6,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "brand_name", "company", "holiday_list"
+  "brand_name", "company", "holiday_list", "weekday_minimums_section",
+  "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday",
+  "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday",
+  "min_minutes_sunday"
  ],
  "fields": [
   {
@@ -18,7 +21,16 @@
    "unique": 1
   },
   {"fieldname": "company", "fieldtype": "Link", "in_list_view": 1, "in_standard_filter": 1, "label": "Company", "options": "Company", "reqd": 1},
-  {"fieldname": "holiday_list", "fieldtype": "Link", "label": "Holiday List", "options": "Attendance Holiday List"}
+  {"fieldname": "holiday_list", "fieldtype": "Link", "label": "Holiday List", "options": "Attendance Holiday List"},
+  {"fieldname": "weekday_minimums_section", "fieldtype": "Section Break", "label": "Minimum Minutes per Weekday", "description": "Daily floor a member of this brand should plan, per weekday. Drives auto-plan, the daily-minimum banner, the assignment-overload warning, and skips recurring todos on 0 days. A member's Shift Template minimum overrides this; holidays count as 0. 0 = brand does not work that weekday."},
+  {"fieldname": "min_minutes_monday", "fieldtype": "Int", "label": "Monday", "non_negative": 1, "default": "0"},
+  {"fieldname": "min_minutes_tuesday", "fieldtype": "Int", "label": "Tuesday", "non_negative": 1, "default": "0"},
+  {"fieldname": "min_minutes_wednesday", "fieldtype": "Int", "label": "Wednesday", "non_negative": 1, "default": "0"},
+  {"fieldname": "min_minutes_thursday", "fieldtype": "Int", "label": "Thursday", "non_negative": 1, "default": "0"},
+  {"fieldname": "min_minutes_friday", "fieldtype": "Int", "label": "Friday", "non_negative": 1, "default": "0"},
+  {"fieldname": "min_minutes_saturday", "fieldtype": "Int", "label": "Saturday", "non_negative": 1, "default": "0"},
+  {"fieldname": "min_minutes_sunday", "fieldtype": "Int", "label": "Sunday", "non_negative": 1, "default": "0"},
+  {"fieldname": "default_annual_leave_quota", "fieldtype": "Int", "label": "Default Annual Leave Quota", "default": "0", "description": "0 = fall back to app default of 12 days"}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
