@@ -4,10 +4,13 @@ import type { MeetingListItem } from '@/lib/types'
 
 // One shared "Add to Google Calendar" link for every meeting surface (both frontends).
 // Renders nothing for a Done meeting (past) or one with no start time.
+export function showGoogleCal(meeting: MeetingListItem): boolean {
+  return meeting.status !== '✅ Done' && googleCalUrl(meeting) !== null
+}
+
 export function GoogleCalButton({ meeting, className = '' }: { meeting: MeetingListItem; className?: string }) {
-  if (meeting.status === '✅ Done') return null
-  const url = googleCalUrl(meeting)
-  if (!url) return null
+  if (!showGoogleCal(meeting)) return null
+  const url = googleCalUrl(meeting)!
   return (
     <a
       href={url}

@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/format'
 import { useToast } from '@/components/Toast'
 import { CreateMeetingDialog } from '../components/CreateMeetingDialog'
 import { MarkDoneSheet } from '@/components/MarkDoneSheet'
-import { GoogleCalButton } from '@/components/GoogleCalButton'
+import { GoogleCalButton, showGoogleCal } from '@/components/GoogleCalButton'
 import type { MeetingListItem } from '@/lib/types'
 import { Spinner, EmptyState } from '@/components/ui'
 import { ErrorState, Button } from '@web/components/ui'
@@ -77,7 +77,7 @@ export function Meetings() {
                 <span>{m.status}</span>
               </>
             }
-            footer={
+            footer={(showGoogleCal(m) || m.can_mark_done) ? (
               <>
                 <GoogleCalButton meeting={m} />
                 {m.can_mark_done && (
@@ -97,7 +97,7 @@ export function Meetings() {
                     )
                 )}
               </>
-            }
+            ) : undefined}
           />
         ))}
       </CardList>

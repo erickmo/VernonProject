@@ -115,9 +115,7 @@ export function ProjectMeetings({ project, canManage }: { project: string; canMa
                 </span>
                 <span>{Math.round(m.point)} pts each</span>
               </div>
-              <div className="mt-2">
-                <GoogleCalButton meeting={m} />
-              </div>
+              <GoogleCalButton meeting={m} className="mt-2" />
               {m.can_mark_done && (
                 <div className={`mt-3 border-t pt-3 ${past ? 'border-line' : 'border-white/25'}`}>
                   {m.status === '✅ Done' ? (

@@ -68,9 +68,7 @@ export function MeetingsScreen() {
               <span>{Math.round(m.point)} pts each</span>
               {m.scheduled_at && <span>{m.scheduled_at}</span>}
             </div>
-            <div className="mt-2">
-              <GoogleCalButton meeting={m} />
-            </div>
+            <GoogleCalButton meeting={m} className="mt-2" />
             {m.can_mark_done && (
               <div className="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3">
                 {m.status === '✅ Done' ? (
