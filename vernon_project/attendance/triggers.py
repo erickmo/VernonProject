@@ -6,13 +6,42 @@
 # If an assignment ever spans years, switch these to frappe.enqueue.
 
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import getdate, nowdate
 
 from vernon_project.attendance.engine import recompute_daily, recompute_range
 
 
+def _resync_cuti_for_range(employee, start, end):
+	# Working-days changed for this span, so re-sync any approved default-annual cuti
+	# overlapping it — its ledger debit is working-day-based and would otherwise go stale.
+	from vernon_project.attendance.cuti_ledger import sync_cuti
+	from vernon_project.attendance.leave_quota import default_annual_type
+
+	lt = default_annual_type()
+	if not lt:
+		return
+	names = frappe.get_all(
+		"Attendance Exception",
+		filters={
+			"employee": employee, "exception_type": "Leave", "status": "Approved",
+			"leave_type": lt, "from_date": ["<=", end], "to_date": [">=", start],
+		},
+		pluck="name",
+	)
+	for name in names:
+		sync_cuti(name)
+
+
 def shift_assignment_changed(doc, method=None):
 	recompute_range(doc.employee, doc.effective_from, doc.effective_to or nowdate())
+	# A shift change alters working_days; re-sync approved cuti over the old ∪ new span
+	# (a shrunk span drops dates the cuti still debits). Mirrors brand_changed's union.
+	old = doc.get_doc_before_save()
+	lo, hi = getdate(doc.effective_from), getdate(doc.effective_to or nowdate())
+	if old:
+		lo = min(lo, getdate(old.effective_from))
+		hi = max(hi, getdate(old.effective_to or nowdate()))
+	_resync_cuti_for_range(doc.employee, lo, hi)
 
 
 def exception_changed(doc, method=None):
