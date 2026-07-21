@@ -5,9 +5,9 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from vernon_project.attendance.cuti_ledger import remaining as ledger_remaining
 from vernon_project.attendance.leave_quota import (
-	effective_quota,
-	used_including_prior,
+	default_annual_type,
 	working_days,
 	year_slices,
 )
@@ -18,25 +18,26 @@ class AttendanceException(Document):
 		self._check_leave_quota()
 
 	def _check_leave_quota(self):
-		# Only gate a Leave that is (becoming) Approved.
+		# Only gate a default-annual-pool Leave that is (becoming) Approved. Per-Event /
+		# Documented types are ceilinged at request time (leave_quota.check_request); they
+		# have no running balance, so there is nothing to check here.
 		if self.status != "Approved" or self.exception_type != "Leave":
 			return
-		# No System Manager bypass. It used to exist to preserve the deadlock /
-		# no-leader escape hatch in _vote_exception's admin branch — but HR is the
-		# final approver now, that branch is gone, and _hr_users() falls back to
-		# System Managers, so the bypass would have made quota gate nothing at all
-		# on the normal path. To allow an over-quota leave, raise the employee's
-		# annual_leave_quota — that leaves an honest record; a silent override didn't.
-		quota = effective_quota(self.employee)
+		if not self.leave_type or self.leave_type != default_annual_type():
+			return
+		# Balance is the ledger SUM. The debit for THIS exception is minted on_update
+		# (after this save), so exclude_exception matters only on an edit of an already
+		# -approved cuti — there we must add its own stale debit back before comparing.
+		# No System Manager bypass: to allow an over-quota leave, raise the employee's
+		# annual_leave_quota (an honest record) — a silent override left none.
 		for (year, start, end) in year_slices(self.from_date, self.to_date):
 			req = working_days(self.employee, start, end)
 			if req <= 0:
 				continue
-			used = used_including_prior(self.employee, year, exclude=self.name)
-			if used + req > quota:
-				remaining = max(0, quota - used)
+			avail = ledger_remaining(self.employee, year, exclude_exception=self.name)
+			if req > avail:
 				frappe.throw(
-					_("Leave quota exceeded for {0}: {1} day(s) remaining, {2} requested.").format(
-						year, remaining, req
+					_("Kuota cuti {0} tidak cukup: sisa {1} hari, diminta {2} hari.").format(
+						year, max(0, round(avail)), req
 					)
 				)

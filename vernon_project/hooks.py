@@ -193,12 +193,16 @@ doc_events = {
 	},
 	"Attendance Exception": {
 		"on_update": "vernon_project.attendance.triggers.exception_changed",
+		"on_trash": "vernon_project.attendance.triggers.exception_trashed",
 	},
 	"Attendance Holiday List": {
 		"on_update": "vernon_project.attendance.triggers.holiday_list_changed",
 	},
 	"Brand": {
 		"on_update": "vernon_project.attendance.triggers.brand_changed",
+	},
+	"Employee Profile": {
+		"after_insert": "vernon_project.attendance.cuti_ledger.grant_on_profile_create",
 	},
 	"User": {
 		"on_update": "vernon_project.user_offboarding.transfer_open_todos_on_disable",
@@ -215,7 +219,13 @@ scheduler_events = {
 		"vernon_project.tasks.notify_comeback_nudge",
 		"vernon_project.attendance.engine.nightly_finalize",
 		"vernon_project.tasks.notify_overdue_courses",
-	]
+	],
+	# Jan 1, 01:00 — mint every employee's annual cuti Grant row for the new year.
+	"cron": {
+		"0 1 1 1 *": [
+			"vernon_project.attendance.cuti_ledger.grant_annual_cuti",
+		],
+	},
 }
 
 # Testing

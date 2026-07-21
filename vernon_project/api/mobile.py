@@ -12,7 +12,6 @@ import json
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
-from vernon_project.attendance.leave_quota import effective_quota, prior_taken, used_including_prior, cuti_bersama_days
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -39,11 +38,10 @@ EMPLOYEE_USER_FIELDS = ("phone", "birth_date", "bio")
 
 
 def _leave_balance(user):
-	yr = getdate(nowdate()).year
-	quota = effective_quota(user)
-	cb = cuti_bersama_days(user, yr)
-	used = used_including_prior(user, yr) + cb
-	return {"quota": quota, "used": used, "remaining": quota - used, "prior": prior_taken(user), "cuti_bersama": cb}
+	# Balance is the materialized Cuti Ledger SUM (grant − cuti − cuti-bersama ± adjustments).
+	from vernon_project.attendance.cuti_ledger import balance_summary
+
+	return balance_summary(user, getdate(nowdate()).year)
 
 
 def _require_system_manager():
@@ -655,12 +653,23 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 	return out
 
 
-def _shape_item_row(row, user, name_map):
+def _shape_item_row(row, user, name_map, alloc_map=None):
 	"""Lightweight project-item shape for link rows on the Project Detail screen.
 	Full detail loads via get_project_item."""
 	skey = _status_key(row["status"])
 	assignee = name_map.get(row["assigned_to"], {})
+	# Day allocations drive the "Today" quick-action on the todo table. Pass a
+	# batched alloc_map from the caller to avoid N+1; fall back to a single fetch.
+	if alloc_map is None:
+		allocs = _allocations_map([row["name"]]).get(row["name"], [])
+	else:
+		allocs = alloc_map.get(row["name"], [])
+	today = str(nowdate())
+	today_alloc = sum((a["minutes"] or 0) for a in allocs if a["date"] == today)
 	return {
+		"allocations": allocs,
+		"today_allocation": today_alloc,
+		"is_mine": row["assigned_to"] == user,
 		"name": row["name"],
 		"to_do": row["to_do"],
 		"status": row["status"],
@@ -1311,8 +1320,9 @@ def get_project_detail(project_detail, include_cancelled=0):
 	]
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
+	alloc_map = _allocations_map([r["name"] for r in rows])
 	detail["project_name"] = frappe.get_value("Project", detail["project"], "project_name")
-	detail["project_items"] = [_shape_item_row(r, user, name_map) for r in rows]
+	detail["project_items"] = [_shape_item_row(r, user, name_map, alloc_map) for r in rows]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
 	owner, leader, admin = frappe.get_value(
@@ -1443,6 +1453,10 @@ def get_project_item(project_item):
 			"recurring_day_of_month",
 			"recurring_nth",
 			"recurring_paused",
+			"recurring_exception_weekdays",
+			"recurring_exception_monthdays",
+			"recurring_exception_dates",
+			"recurring_exception_behavior",
 		],
 		as_dict=True,
 	) or {}
@@ -1517,6 +1531,10 @@ def get_project_item(project_item):
 		"paused": paused,
 		"state": (None if not is_rec else ("paused" if paused else ("ended" if ended else "active"))),
 		"next_fire": next_fire,
+		"exception_weekdays": extra.get("recurring_exception_weekdays") or "",
+		"exception_monthdays": extra.get("recurring_exception_monthdays") or "",
+		"exception_dates": frappe.parse_json(extra.get("recurring_exception_dates") or "[]"),
+		"exception_behavior": extra.get("recurring_exception_behavior") or "Skip",
 	}
 	# Missed = recurring, not completed, and a later occurrence already exists.
 	this_dl = r["deadline"]
@@ -1568,6 +1586,10 @@ def update_todo(
 	recurring_day_of_month=None,
 	recurring_nth=None,
 	recurring_paused=None,
+	recurring_exception_weekdays=None,
+	recurring_exception_monthdays=None,
+	recurring_exception_dates=None,
+	recurring_exception_behavior=None,
 ):
 	"""Edit a task's fields. Returns a clean status/message so the mobile UI can
 	show friendly feedback instead of a raw traceback."""
@@ -1654,6 +1676,10 @@ def update_todo(
 				row.recurring_monthly_mode = None
 				row.recurring_day_of_month = None
 				row.recurring_nth = None
+				row.recurring_exception_weekdays = None
+				row.recurring_exception_monthdays = None
+				row.recurring_exception_dates = None
+				row.recurring_exception_behavior = None
 				# ponytail: clear pause on series root so a previously-paused series
 				# doesn't silently come back paused if recurring is later re-enabled.
 				from vernon_project.vernon_project.doctype.project_todo.project_todo import series_root
@@ -1674,6 +1700,14 @@ def update_todo(
 				row.recurring_day_of_month = cint(recurring_day_of_month) or None
 			if recurring_nth is not None:
 				row.recurring_nth = recurring_nth or "First"
+			if recurring_exception_weekdays is not None:
+				row.recurring_exception_weekdays = recurring_exception_weekdays or ""
+			if recurring_exception_monthdays is not None:
+				row.recurring_exception_monthdays = recurring_exception_monthdays or ""
+			if recurring_exception_dates is not None:
+				row.recurring_exception_dates = recurring_exception_dates or ""
+			if recurring_exception_behavior is not None:
+				row.recurring_exception_behavior = recurring_exception_behavior or "Skip"
 			if recurring_paused is not None:
 				from vernon_project.vernon_project.doctype.project_todo.project_todo import series_root
 				_pause_root = series_root(row.name, row.original_todo)

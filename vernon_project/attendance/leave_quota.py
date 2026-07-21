@@ -55,15 +55,55 @@ def working_days(employee, start, end):
 	return n
 
 
+def _brand_for(employee):
+	"""The employee's active Attendance Profile brand, or None."""
+	import frappe
+
+	return frappe.db.get_value("Attendance Profile", {"user": employee, "active": 1}, "brand")
+
+
 def effective_quota(employee):
-	"""Per-employee override if set (non-zero), else the Vernon Settings global default."""
+	"""Employee override (non-zero) -> Brand default (non-zero) -> DEFAULT_QUOTA."""
 	import frappe
 
 	q = frappe.db.get_value("Employee Profile", {"user": employee}, "annual_leave_quota")
 	if q:
 		return int(q)
-	default = frappe.db.get_single_value("Vernon Settings", "default_annual_leave_quota")
-	return int(default or DEFAULT_QUOTA)
+	brand = _brand_for(employee)
+	if brand:
+		bq = frappe.db.get_value("Brand", brand, "default_annual_leave_quota")
+		if bq:
+			return int(bq)
+	return DEFAULT_QUOTA
+
+
+def cuti_bersama_days(employee, year):
+	"""Cuti-bersama holiday days in `year` on a weekday the employee is shift-assigned.
+
+	Cuti bersama IS the holiday, so no _is_holiday check. No brand / no holiday_list
+	-> 0 (consistent with working_days for non-attendance users).
+	"""
+	import frappe
+
+	from vernon_project.attendance.engine import _assignment_for
+
+	brand = _brand_for(employee)
+	if not brand:
+		return 0
+	holiday_list = frappe.db.get_value("Brand", brand, "holiday_list")
+	if not holiday_list:
+		return 0
+	rows = frappe.get_all(
+		"Attendance Holiday",
+		filters={
+			"parent": holiday_list,
+			"parenttype": "Attendance Holiday List",
+			"is_cuti_bersama": 1,
+			"holiday_date": ["between", [f"{year}-01-01", f"{year}-12-31"]],
+		},
+		fields=["holiday_date"],
+	)
+	return sum(1 for r in rows if _assignment_for(employee, r.holiday_date))
 
 
 def default_annual_type():
@@ -172,14 +212,21 @@ def check_request(employee, leave_type_name, from_date, to_date, has_proof):
 		if y == year
 	)
 	if t.is_default_annual:
-		ceiling = effective_quota(employee)
-		used = used_days(employee, year, leave_type=t.name)
-		if year == getdate(nowdate()).year:
-			# prior_taken is added to `used`, not ceiling
-			used += prior_taken(employee)
-	else:
-		ceiling = int(t.day_limit or 0)
-		used = used_days(employee, year, leave_type=t.name)
+		# The annual pool is now the materialized Cuti Ledger: remaining = SUM(rows),
+		# which already nets the grant, every approved cuti and cuti-bersama day. At
+		# request time nothing reserves for a pending request, so two pending requests
+		# both pass here — the over-book is caught at the second APPROVAL by the ledger
+		# gate in AttendanceException._check_leave_quota.
+		from vernon_project.attendance.cuti_ledger import remaining as ledger_remaining
+
+		avail = ledger_remaining(employee, year)
+		if requested > avail:
+			frappe.throw(_("Sisa {0} Anda {1} hari, tidak cukup untuk {2} hari.").format(
+				t.leave_name, max(0, round(avail)), requested))
+		return
+	# Non-default-annual "Annual Quota" type: its own per-type ceiling, not the pool.
+	ceiling = int(t.day_limit or 0)
+	used = used_days(employee, year, leave_type=t.name)
 	if used + requested > ceiling:
 		remaining = max(ceiling - used, 0)
 		frappe.throw(_("Sisa {0} Anda {1} hari, tidak cukup untuk {2} hari.").format(t.leave_name, remaining, requested))

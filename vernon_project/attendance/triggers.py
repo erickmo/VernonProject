@@ -17,6 +17,18 @@ def shift_assignment_changed(doc, method=None):
 
 def exception_changed(doc, method=None):
 	recompute_range(doc.employee, doc.from_date, doc.to_date)
+	# Keep the materialized cuti ledger in sync: mint/update/remove this exception's
+	# debit rows to match its current status & dates (approve, reject, cancel, edit).
+	from vernon_project.attendance.cuti_ledger import sync_cuti
+
+	sync_cuti(doc)
+
+
+def exception_trashed(doc, method=None):
+	# Exception hard-deleted: drop its ledger debit rows so no phantom debit remains.
+	from vernon_project.attendance.cuti_ledger import remove_cuti
+
+	remove_cuti(doc.name)
 
 
 def _employees_for_brand(brand):
@@ -46,6 +58,11 @@ def holiday_list_changed(doc, method=None):
 		for emp in _employees_for_brand(brand):
 			for d in dates:
 				recompute_daily(emp, d)
+	# Cuti-bersama days are materialized per employee; re-mint them from this list's
+	# current is_cuti_bersama rows (the child table fires no events of its own).
+	from vernon_project.attendance.cuti_ledger import remint_cuti_bersama_for_list
+
+	remint_cuti_bersama_for_list(doc.name)
 
 
 def brand_changed(doc, method=None):
