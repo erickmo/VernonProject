@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-07-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee", "entry_type", "leave_type", "year", "column_break_1",
+  "days", "from_date", "to_date", "exception", "section_break_1",
+  "reason", "posted_by", "posted_on"
+ ],
+ "fields": [
+  {"fieldname": "employee", "fieldtype": "Link", "label": "Employee", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "entry_type", "fieldtype": "Select", "label": "Entry Type", "options": "Grant\nCuti\nCuti Bersama\nCarry-over\nBonus\nCorrection", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "leave_type", "fieldtype": "Link", "label": "Leave Type", "options": "Leave Type"},
+  {"fieldname": "year", "fieldtype": "Int", "label": "Year", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+  {"fieldname": "days", "fieldtype": "Float", "label": "Days", "in_list_view": 1, "description": "Signed: grants/adjustments +, cuti debits −"},
+  {"fieldname": "from_date", "fieldtype": "Date", "label": "From Date"},
+  {"fieldname": "to_date", "fieldtype": "Date", "label": "To Date"},
+  {"fieldname": "exception", "fieldtype": "Link", "label": "Attendance Exception", "options": "Attendance Exception", "search_index": 1},
+  {"fieldname": "section_break_1", "fieldtype": "Section Break"},
+  {"fieldname": "reason", "fieldtype": "Small Text", "label": "Reason"},
+  {"fieldname": "posted_by", "fieldtype": "Link", "label": "Posted By", "options": "User"},
+  {"fieldname": "posted_on", "fieldtype": "Datetime", "label": "Posted On"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Cuti Ledger",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "HR Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
