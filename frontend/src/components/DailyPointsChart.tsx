@@ -65,14 +65,13 @@ export function netSeries(rows: PointsLogRow[], g: Gran, max = 50): { key: strin
     m.set(k, (m.get(k) ?? 0) + r.amount)
   }
   if (m.size === 0) return []
-  const earliest = [...m.keys()].reduce((a, b) => (a < b ? a : b))
   const latest = [...m.keys()].reduce((a, b) => (a > b ? a : b))
   const todayKey = keyOf(bucketStart(new Date(), g), g)
   const anchor = bucketStart(parseKey(latest > todayKey ? latest : todayKey), g) // include today, and any newest row
   const out: { key: string; net: number }[] = []
   for (let i = max - 1; i >= 0; i--) {
+    // always render the full window; empty periods are zero bars
     const key = keyOf(stepBack(anchor, g, i), g)
-    if (key < earliest) continue // no dead space before first-ever activity
     out.push({ key, net: m.get(key) ?? 0 })
   }
   return out
