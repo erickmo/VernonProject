@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, UserCheck, CalendarClock, Monitor, Inbox, CalendarDays, BarChart3 } from 'lucide-react'
+import { ChevronRight, UserCheck, CalendarClock, UserCog, Monitor, Inbox, CalendarDays, BarChart3 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { useBoot, canManageAttendance } from '@/hooks/useData'
 
 const ITEMS: { to: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string }[] = [
   { to: '/attendance/manage/enrolled', label: 'Enrolled employees', desc: 'Enrol people, set their brand', icon: UserCheck, accent: 'from-emerald-400 to-emerald-600' },
-  { to: '/attendance/manage/schedules', label: 'Schedules', desc: 'Shift templates + assignments', icon: CalendarClock, accent: 'from-brand-400 to-brand-600' },
+  { to: '/attendance/manage/templates', label: 'Shift templates', desc: 'Jam kerja & menit minimum per peran', icon: CalendarClock, accent: 'from-brand-400 to-brand-600' },
+  { to: '/attendance/manage/assignments', label: 'Penugasan shift', desc: 'Tugaskan karyawan ke shift', icon: UserCog, accent: 'from-indigo-400 to-indigo-600' },
   { to: '/attendance/manage/stations', label: 'Stations', desc: 'Scan points + kiosk QR', icon: Monitor, accent: 'from-sky-400 to-sky-600' },
   { to: '/attendance/manage/exceptions', label: 'Leave / WFH', desc: 'Approve requests', icon: Inbox, accent: 'from-amber-400 to-amber-600' },
   { to: '/attendance/manage/holidays', label: 'Holidays', desc: 'Per-brand holiday lists', icon: CalendarDays, accent: 'from-violet-400 to-violet-600' },

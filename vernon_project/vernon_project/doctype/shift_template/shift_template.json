@@ -5,12 +5,19 @@
  "creation": "2026-06-28 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["shift_name", "start_time", "end_time", "minimum_estimated_minutes"],
+ "field_order": ["shift_name", "start_time", "end_time", "minimum_estimated_minutes", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday"],
  "fields": [
   {"fieldname": "shift_name", "fieldtype": "Data", "label": "Shift Name", "reqd": 1, "unique": 1, "in_list_view": 1},
   {"fieldname": "start_time", "fieldtype": "Time", "label": "Start Time", "reqd": 1, "in_list_view": 1},
   {"fieldname": "end_time", "fieldtype": "Time", "label": "End Time", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "minimum_estimated_minutes", "fieldtype": "Int", "label": "Minimum Estimated Minutes", "non_negative": 1, "description": "Daily floor for days on this shift. Blank/0 = use the shift length (end−start), then the global Min Daily Estimated Minutes."}
+  {"fieldname": "minimum_estimated_minutes", "fieldtype": "Int", "label": "Minimum Estimated Minutes", "non_negative": 1, "description": "Flat daily floor, used as the fallback when the per-weekday minimum below is 0. Blank/0 = fall back to the brand/global floor."},
+  {"fieldname": "min_minutes_monday", "fieldtype": "Int", "label": "Min Minutes Monday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."},
+  {"fieldname": "min_minutes_tuesday", "fieldtype": "Int", "label": "Min Minutes Tuesday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."},
+  {"fieldname": "min_minutes_wednesday", "fieldtype": "Int", "label": "Min Minutes Wednesday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."},
+  {"fieldname": "min_minutes_thursday", "fieldtype": "Int", "label": "Min Minutes Thursday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."},
+  {"fieldname": "min_minutes_friday", "fieldtype": "Int", "label": "Min Minutes Friday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."},
+  {"fieldname": "min_minutes_saturday", "fieldtype": "Int", "label": "Min Minutes Saturday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."},
+  {"fieldname": "min_minutes_sunday", "fieldtype": "Int", "label": "Min Minutes Sunday", "non_negative": 1, "description": "0 = fall back to the flat minimum, then the brand/global floor."}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,

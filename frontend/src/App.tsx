@@ -65,7 +65,8 @@ import MyAttendance from './pages/MyAttendance'
 import RequestException from './pages/RequestException'
 import AttendanceAdminScreen from './pages/AttendanceAdminScreen'
 import AttendanceProfilesScreen from './pages/AttendanceProfilesScreen'
-import AttendanceSchedulesScreen from './pages/AttendanceSchedulesScreen'
+import AttendanceTemplatesScreen from './pages/AttendanceTemplatesScreen'
+import AttendanceAssignmentsScreen from './pages/AttendanceAssignmentsScreen'
 import AttendanceStationsScreen from './pages/AttendanceStationsScreen'
 import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
 import LeaveTypesAdmin from './pages/LeaveTypesAdmin'
@@ -268,7 +269,8 @@ export default function App() {
           <>
             <Route path="/attendance/manage" element={<AttendanceAdminScreen />} />
             <Route path="/attendance/manage/enrolled" element={<AttendanceProfilesScreen />} />
-            <Route path="/attendance/manage/schedules" element={<AttendanceSchedulesScreen />} />
+            <Route path="/attendance/manage/templates" element={<AttendanceTemplatesScreen />} />
+            <Route path="/attendance/manage/assignments" element={<AttendanceAssignmentsScreen />} />
             <Route path="/attendance/manage/stations" element={<AttendanceStationsScreen />} />
             <Route path="/attendance/manage/holidays" element={<AttendanceHolidaysScreen />} />
             <Route path="/attendance/manage/report" element={<AttendanceReportAdminScreen />} />

@@ -364,8 +364,11 @@ def _resolve_min_minutes(user, date):
 			chosen_assign = a
 	chosen = None
 	if chosen_assign:
-		chosen = {"min": int(frappe.db.get_value(
-			"Shift Template", chosen_assign["shift_template"], "minimum_estimated_minutes") or 0)}
+		tpl = frappe.db.get_value(
+			"Shift Template", chosen_assign["shift_template"],
+			[WEEKDAY_MIN_FIELDS[wd], "minimum_estimated_minutes"], as_dict=True) or {}
+		# per-weekday minimum wins; else the flat minimum; else (0) the brand/global base.
+		chosen = {"min": int(tpl.get(WEEKDAY_MIN_FIELDS[wd]) or 0) or int(tpl.get("minimum_estimated_minutes") or 0)}
 	return _daily_minimum(is_holiday, bool(assignments), chosen, base)
 
 

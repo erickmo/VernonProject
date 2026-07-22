@@ -71,7 +71,8 @@ import AvatarCustomizer from '@web/pages/AvatarCustomizer'
 import AttendanceReport from '@web/pages/AttendanceReport'
 import Logbook from '@web/pages/Logbook'
 import Stations from '@web/pages/Stations'
-import Schedules from '@web/pages/Schedules'
+import ShiftTemplates from '@web/pages/ShiftTemplates'
+import ShiftAssignments from '@web/pages/ShiftAssignments'
 import Exceptions from '@web/pages/Exceptions'
 import LeaveTypesAdmin from '@web/pages/LeaveTypesAdmin'
 import HolidayLists from '@web/pages/HolidayLists'
@@ -278,7 +279,8 @@ export default function App() {
             <>
               <Route path="/attendance-report" element={<AttendanceReport />} />
               <Route path="/attendance/stations" element={<Stations />} />
-              <Route path="/attendance/schedules" element={<Schedules />} />
+              <Route path="/attendance/templates" element={<ShiftTemplates />} />
+              <Route path="/attendance/assignments" element={<ShiftAssignments />} />
               <Route path="/attendance/holidays" element={<HolidayLists />} />
               <Route path="/attendance/profiles" element={<AttendanceProfiles />} />
             </>

@@ -94,7 +94,8 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   // unshifted below under canHrApprove, so HR gets it without the rest.
   const att: NavLeaf[] = canManageAttendance(b) ? [
     { to: '/attendance-report', label: 'Attendance', sub: 'Daily report', icon: QrCode },
-    { to: '/attendance/schedules', label: 'Schedules', sub: 'Shift schedules', icon: CalendarDays },
+    { to: '/attendance/templates', label: 'Shift templates', sub: 'Jam kerja & menit minimum', icon: CalendarDays },
+    { to: '/attendance/assignments', label: 'Penugasan shift', sub: 'Tugaskan karyawan ke shift', icon: CalendarDays },
     { to: '/attendance/stations', label: 'Stations', sub: 'Scan kiosks', icon: Monitor },
     { to: '/attendance/holidays', label: 'Holidays', sub: 'Holiday lists', icon: CalendarDays },
     { to: '/attendance/profiles', label: 'Enrolled', sub: 'Enrolled members', icon: UserCheck },
