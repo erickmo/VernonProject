@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { CheckSquare, StickyNote, FolderKanban, Compass, Megaphone } from 'lucide-react'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
@@ -7,7 +7,6 @@ import { useModalA11y } from '@web/lib/useModalA11y'
 
 export function QuickCreate({ open, onClose }: { open: boolean; onClose: () => void }) {
   const nav = useNavigate()
-  const { name } = useParams()
   const [task, setTask] = useState(false)
   const [project, setProject] = useState(false)
   const ref = useModalA11y(open, onClose)
@@ -65,13 +64,12 @@ export function QuickCreate({ open, onClose }: { open: boolean; onClose: () => v
           </div>
         </div>
       )}
-      {/* ponytail: team=[] when no project-detail context; assignee picker will be empty */}
+      {/* Global quick-add has no detail context — the dialog shows a project +
+          detail picker (the route `name` is a project id or note id, never a detail). */}
       {task && (
         <CreateProjectItemDialog
           open={task}
           onClose={() => setTask(false)}
-          projectDetail={name ?? ''}
-          team={[]}
         />
       )}
       {project && (

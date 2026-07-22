@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useFormOptions, useCreateProject, useUpdateProject, useProjects } from '@/hooks/useData'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { MultiSelectChips } from '@/components/MultiSelectChips'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { useToast } from '@/components/Toast'
 import { parseFrappeError } from '@/lib/format'
 import { Drawer } from '@web/components/overlays/Drawer'
@@ -283,10 +283,11 @@ export function ProjectFormDialog({
         {/* Team members — full width */}
         <div className="space-y-1 md:col-span-2">
           <span className="text-sm font-medium text-muted">Team</span>
-          <MultiSelectChips
+          <MultiSelectSearch
             options={users}
             value={(f.team_members ?? []).map((t) => t.user)}
             onChange={(vs) => set('team_members', vs.map((user) => ({ user })))}
+            placeholder="Add team members…"
           />
         </div>
       </div>

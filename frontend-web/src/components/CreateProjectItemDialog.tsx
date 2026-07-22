@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
-import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks/useData'
+import { useCreateProjectItem, useScoringGroups, useScoringGroup, useProjects, useProject, useProjectDetail } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { Button } from '@web/components/ui'
@@ -9,14 +9,17 @@ import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { DatePicker } from '@web/components/DatePicker'
+import { RecurrenceExceptions } from '@web/components/RecurrenceExceptions'
 import { computeTodoPoints } from '@/lib/points'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 
 interface Props {
   open: boolean
   onClose: () => void
-  projectDetail: string
-  team: { user: string; name: string }[]
+  /** Fixed detail (embedded on a project-detail page). Omit → user picks project + detail inside. */
+  projectDetail?: string
+  /** Assignee options for the fixed detail. Omit when picking — derived from the chosen detail. */
+  team?: { user: string; name: string }[]
   defaultGroup?: string | null
   /** Sibling tasks in this detail, for the blocking pickers. */
   siblings?: { name: string; to_do: string }[]
@@ -26,9 +29,25 @@ interface Props {
   onCreated?: (todoName: string) => void
 }
 
-export function CreateProjectItemDialog({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial, onCreated }: Props) {
+export function CreateProjectItemDialog({ open, onClose, projectDetail = '', team: teamProp, defaultGroup, siblings: siblingsProp = [], initial, onCreated }: Props) {
   const toast = useToast()
-  const create = useCreateProjectItem(projectDetail)
+  // No fixed detail → let the user pick a project then one of its details.
+  const pickMode = !projectDetail
+  const [pickProject, setPickProject] = useState('')
+  const [pickDetail, setPickDetail] = useState('')
+  const effectiveDetail = projectDetail || pickDetail
+  const create = useCreateProjectItem(effectiveDetail)
+
+  const projectsQ = useProjects()
+  const projectQ = useProject(pickMode ? pickProject : '')
+  const pickedDetailQ = useProjectDetail(pickMode ? pickDetail : '')
+
+  // Assignee list + blocking siblings come from props when embedded, else from
+  // the picked detail. defaultGroup prefill only applies in embedded mode.
+  const team = pickMode ? (pickedDetailQ.data?.team ?? []).map((t) => ({ user: t.user, name: t.name })) : (teamProp ?? [])
+  const siblings = pickMode
+    ? (pickedDetailQ.data?.project_items ?? []).map((t) => ({ name: t.name, to_do: t.to_do }))
+    : siblingsProp
 
   const [toDo, setToDo] = useState(initial?.toDo ?? '')
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? '')
@@ -43,6 +62,10 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   const [isRecurring, setIsRecurring] = useState(initial?.isRecurring ?? false)
   const [frequency, setFrequency] = useState(initial?.frequency ?? 'Daily')
   const [until, setUntil] = useState(initial?.until ?? '')
+  const [excWeekdays, setExcWeekdays] = useState('')
+  const [excMonthdays, setExcMonthdays] = useState('')
+  const [excDates, setExcDates] = useState<{ from: string; to: string }[]>([])
+  const [excBehavior, setExcBehavior] = useState<'Skip' | 'Shift'>('Skip')
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
   const [typeName, setTypeName] = useState(initial?.typeName ?? '')
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
@@ -77,6 +100,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
+    setExcWeekdays(''); setExcMonthdays(''); setExcDates([]); setExcBehavior('Skip')
     setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
@@ -84,6 +108,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   // dates, and group/type/level so adding several similar todos is fast.
   const resetForNext = () => {
     setToDo(''); setEstimated(''); setNotes(''); setBlockedBy([]); setBlocking([])
+    setExcWeekdays(''); setExcMonthdays(''); setExcDates([]); setExcBehavior('Skip')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     firstFieldRef.current?.focus()
   }
@@ -91,6 +116,10 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
   const close = () => { reset(); onClose() }
 
   const submit = (addAnother = false) => {
+    if (pickMode && !effectiveDetail) {
+      toast('error', 'Pick a project and a project detail')
+      return
+    }
     if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !typeName || !levelId) {
       toast('error', 'Name, assignee, start date, deadline, group, type and level are required')
       return
@@ -124,6 +153,10 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       fields.is_recurring = 1
       fields.recurring_frequency = frequency
       if (until) fields.recurring_until = until
+      fields.recurring_exception_weekdays = excWeekdays
+      fields.recurring_exception_monthdays = excMonthdays
+      fields.recurring_exception_dates = JSON.stringify(excDates)
+      fields.recurring_exception_behavior = excBehavior
     }
     create.mutate(fields, {
       onSuccess: (doc) => {
@@ -160,6 +193,29 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
       }
     >
       <div className="flex flex-col gap-4">
+        {pickMode && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium text-muted">
+              Project<span className="text-red-500"> *</span>
+              <SearchableSelect
+                value={pickProject}
+                onChange={(v) => { setPickProject(v); setPickDetail('') }}
+                options={(projectsQ.data ?? []).filter((p) => p.status !== 'Closed').map((p) => ({ value: p.name, label: p.project_name ?? p.name }))}
+                placeholder="Select a project…"
+              />
+            </label>
+            <label className="text-sm font-medium text-muted">
+              Project detail<span className="text-red-500"> *</span>
+              <SearchableSelect
+                value={pickDetail}
+                onChange={setPickDetail}
+                options={(projectQ.data?.project_details ?? []).map((d) => ({ value: d.name, label: d.title }))}
+                placeholder={pickProject ? 'Select a detail…' : 'Pick a project first…'}
+                disabled={!pickProject}
+              />
+            </label>
+          </div>
+        )}
         <label className="text-sm font-medium text-muted">
           Todo<span className="text-red-500"> *</span>
           <input
@@ -311,6 +367,18 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail, team, de
               Until
               <DatePicker className={field + ' mt-1'} value={until} onChange={(v) => setUntil(v)} />
             </label>
+            <RecurrenceExceptions
+              weekdays={excWeekdays}
+              monthdays={excMonthdays}
+              dates={excDates}
+              behavior={excBehavior}
+              onChange={(p) => {
+                if (p.weekdays !== undefined) setExcWeekdays(p.weekdays)
+                if (p.monthdays !== undefined) setExcMonthdays(p.monthdays)
+                if (p.dates !== undefined) setExcDates(p.dates)
+                if (p.behavior !== undefined) setExcBehavior(p.behavior)
+              }}
+            />
           </div>
         )}
       </div>

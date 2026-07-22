@@ -10,7 +10,7 @@
   {"fieldname": "superpower_name", "fieldtype": "Data", "label": "Superpower Name", "reqd": 1, "unique": 1, "in_list_view": 1},
   {"fieldname": "kind", "fieldtype": "Select", "label": "Kind", "options": "Voted\nPerformance", "default": "Voted", "in_list_view": 1},
   {"fieldname": "metric", "fieldtype": "Data", "label": "Performance Metric", "description": "For Performance kind: ontime | beat_deadline | streak | finisher"},
-  {"fieldname": "category", "fieldtype": "Select", "label": "Category", "options": "Leadership\nSales & Growth\nStrategy\nExecution\nInterpersonal\nCraft"},
+  {"fieldname": "category", "fieldtype": "Select", "label": "Category", "options": "Leadership\nSales & Growth\nStrategy\nExecution\nInterpersonal\nCraft\nCharacter"},
   {"fieldname": "icon", "fieldtype": "Data", "label": "Icon"},
   {"fieldname": "color", "fieldtype": "Data", "label": "Color"},
   {"fieldname": "description", "fieldtype": "Small Text", "label": "Description"},

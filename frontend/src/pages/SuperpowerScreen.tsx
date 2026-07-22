@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { Sparkles, Star, Zap, Trash2, Trophy, Check } from 'lucide-react'
+import { Sparkles, Star, Zap, Trash2, Trophy, Check, Plus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
-import { SearchableSelect } from '@/components/SearchableSelect'
+import { SPIcon as SpIcon } from '@/lib/spIcon'
+import { AddSuperpowerModal } from '@/components/AddSuperpowerModal'
+import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import {
   useBoot,
@@ -19,19 +21,6 @@ import type { PerfSuperpower, SuperpowerLevel, VotedSuperpower } from '@/lib/typ
 
 type TabKey = 'mine' | 'voted' | 'others' | 'perf'
 
-// Robust icon: catalog/level icons may be an emoji OR a lucide name. We only
-// render the glyph when it's clearly an emoji (any non-latin1 char); a bare
-// lucide word like "Zap" would look wrong, so it falls back to a colored dot.
-function SpIcon({ icon, color, className }: { icon?: string; color?: string; className?: string }) {
-  const isGlyph = !!icon && /[^ -ÿ]/.test(icon)
-  if (isGlyph) return <span className={className}>{icon}</span>
-  return (
-    <span
-      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: color || '#94a3b8' }}
-    />
-  )
-}
 
 function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
   if (!level)
@@ -45,7 +34,7 @@ function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
       className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
       style={{ backgroundColor: `${level.color}22`, color: level.color }}
     >
-      <SpIcon icon={level.icon} color={level.color} />
+      <SpIcon icon={level.icon} color={level.color} className="h-3.5 w-3.5" />
       {level.level_name}
     </span>
   )
@@ -118,7 +107,7 @@ function VotedCard({ item, ratee, canVote }: { item: VotedSuperpower; ratee: str
             className="flex h-7 w-7 items-center justify-center rounded-full"
             style={{ backgroundColor: `${item.color || '#6366f1'}22` }}
           >
-            <SpIcon icon={item.icon} color={item.color} />
+            <SpIcon icon={item.icon} color={item.color} className="h-4 w-4" />
           </span>
         </div>
         <div className="col-span-11">
@@ -128,6 +117,9 @@ function VotedCard({ item, ratee, canVote }: { item: VotedSuperpower; ratee: str
               {item.level?.level_name ?? '—'} · {item.weighted.toFixed(1)}
             </span>
           </div>
+          {item.description && (
+            <p className="mt-0.5 text-[11px] leading-snug text-stone-400 dark:text-slate-500">{item.description}</p>
+          )}
           <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
             <div
               className="h-full rounded-full transition-all"
@@ -175,7 +167,7 @@ function PerfCard({ item }: { item: PerfSuperpower }) {
             className="flex h-7 w-7 items-center justify-center rounded-full"
             style={{ backgroundColor: `${item.color || '#6366f1'}22` }}
           >
-            <SpIcon icon={item.icon} color={item.color} />
+            <SpIcon icon={item.icon} color={item.color} className="h-4 w-4" />
           </span>
         </div>
         <div className="col-span-11">
@@ -185,6 +177,9 @@ function PerfCard({ item }: { item: PerfSuperpower }) {
               {item.level?.level_name ?? '—'} · {item.score.toFixed(1)}
             </span>
           </div>
+          {item.description && (
+            <p className="mt-0.5 text-[11px] leading-snug text-stone-400 dark:text-slate-500">{item.description}</p>
+          )}
           <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
             <div
               className="h-full rounded-full transition-all"
@@ -205,6 +200,7 @@ function PerfCard({ item }: { item: PerfSuperpower }) {
 // vote (if any); unvoted traits show an empty bar + "Belum dinilai".
 function MineRow({
   name,
+  desc,
   icon,
   color,
   voted,
@@ -213,6 +209,7 @@ function MineRow({
   onRemove,
 }: {
   name: string
+  desc?: string | null
   icon?: string
   color?: string
   voted?: VotedSuperpower
@@ -230,7 +227,7 @@ function MineRow({
             className="flex h-7 w-7 items-center justify-center rounded-full"
             style={{ backgroundColor: `${color || '#6366f1'}22` }}
           >
-            <SpIcon icon={icon} color={color} />
+            <SpIcon icon={icon} color={color} className="h-4 w-4" />
           </span>
         </div>
         <div className="col-span-11">
@@ -252,6 +249,9 @@ function MineRow({
               )}
             </div>
           </div>
+          {desc && (
+            <p className="mt-0.5 text-[11px] leading-snug text-stone-400 dark:text-slate-500">{desc}</p>
+          )}
           <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
             <div
               className="h-full rounded-full transition-all"
@@ -277,8 +277,10 @@ export default function SuperpowerScreen() {
   const { data: votable } = useVotableUsers()
   const setMine = useSetMySuperpowers()
   const toast = useToast()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const [addOpen, setAddOpen] = useState(false)
 
   // Deep-link support: /superpowers/:user?tab=voted opens straight on that tab.
   const [tab, setTab] = useState<TabKey>(() => {
@@ -339,11 +341,17 @@ export default function SuperpowerScreen() {
     () => new Map((view?.mine ?? []).map((m) => [m.superpower, m] as const)),
     [view],
   )
-  const mineAddOpts = useMemo(
+  const addable = useMemo(
     () =>
       voteableCatalog
         .filter((c) => !claimedSet.has(c.name))
-        .map((c) => ({ value: c.name, label: c.superpower_name })),
+        .map((c) => ({
+          name: c.name,
+          label: c.superpower_name,
+          icon: c.icon,
+          color: c.color,
+          description: c.description,
+        })),
     [voteableCatalog, claimedSet],
   )
 
@@ -376,6 +384,19 @@ export default function SuperpowerScreen() {
         },
       },
     )
+  }
+
+  // Removing a claimed trait asks first (adding stays one-tap).
+  const removeClaim = async (name: string) => {
+    if (!view.can_edit_mine || setMine.isPending) return
+    const ok = await confirm({
+      title: 'Lepas superpower?',
+      message: `Hapus "${catByName.get(name)?.superpower_name ?? name}" dari superpower-mu?`,
+      confirmLabel: 'Lepas',
+      cancelLabel: 'Batal',
+      destructive: true,
+    })
+    if (ok) toggleClaim(name)
   }
 
   // "Mine" rows follow the Kinerja layout, ordered by peer-vote score (unvoted last).
@@ -432,19 +453,13 @@ export default function SuperpowerScreen() {
         {tab === 'mine' && (
           <div className="space-y-3">
             {view.can_edit_mine && (
-              <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-slate-400">
-                  Tambah superpower
-                </p>
-                <SearchableSelect
-                  value=""
-                  onChange={(v) => v && toggleClaim(v)}
-                  options={mineAddOpts}
-                  placeholder={
-                    mineAddOpts.length ? 'Pilih superpower…' : 'Semua superpower sudah dipilih'
-                  }
-                />
-              </div>
+              <button
+                onClick={() => setAddOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 text-sm font-semibold text-brand-600 dark:text-brand-400 shadow-card transition active:scale-[0.99]"
+              >
+                <Plus className="h-4 w-4" />
+                Tambah superpower
+              </button>
             )}
 
             {claimed.length === 0 ? (
@@ -467,12 +482,13 @@ export default function SuperpowerScreen() {
                   <MineRow
                     key={id}
                     name={cat?.superpower_name ?? m?.name ?? id}
+                    desc={cat?.description ?? m?.description}
                     icon={cat?.icon ?? m?.icon}
                     color={cat?.color ?? m?.color}
                     voted={votedByName.get(id)}
                     canEdit={view.can_edit_mine}
                     disabled={setMine.isPending}
-                    onRemove={() => toggleClaim(id)}
+                    onRemove={() => removeClaim(id)}
                   />
                 )
               })
@@ -549,6 +565,14 @@ export default function SuperpowerScreen() {
           </div>
         )}
       </div>
+
+      <AddSuperpowerModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        items={addable}
+        onAdd={(name) => toggleClaim(name)}
+        busy={setMine.isPending}
+      />
     </DetailScreen>
   )
 }

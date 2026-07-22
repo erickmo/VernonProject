@@ -4,6 +4,7 @@ import { AlertCircle, CalendarDays, ChevronRight, Layers } from 'lucide-react'
 import { useMemberWorkload } from '@/hooks/useData'
 import { Avatar, Spinner, EmptyState } from '@/components/ui'
 import { Drawer } from '@web/components/overlays/Drawer'
+import LeaderNotesSection from './LeaderNotesSection'
 import type { TeamMember } from '@/lib/types'
 
 interface Props {
@@ -103,6 +104,9 @@ export function TeamWorkloadDrawer({ open, member, project, onClose }: Props) {
           ) : (
             <EmptyState icon={Layers} title="No todos" />
           )}
+
+          {/* Notes for this member, scoped to this project — self-gates to owner/leader/admin. */}
+          <LeaderNotesSection user={member.user} project={project} />
         </div>
       )}
     </Drawer>

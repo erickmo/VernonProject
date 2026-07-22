@@ -30,7 +30,8 @@ export default function AttendanceReportAdminScreen() {
 
   const [fromDate, setFromDate] = useState(isoDaysAgo(30))
   const [toDate, setToDate] = useState(isoDaysAgo(0))
-  const [employee, setEmployee] = useState('')
+  // Seed from ?user= so the user dashboard can deep-link one person.
+  const [employee, setEmployee] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [brand, setBrand] = useState('')
   const [status, setStatus] = useState('')
   const [brands, setBrands] = useState<{ name: string }[]>([])

@@ -1,0 +1,281 @@
+{% extends "templates/vernoncorp_base.html" %}
+
+{% block content %}
+
+{# ---------- HERO ---------- #}
+<section class="relative overflow-hidden">
+  <div class="gradient-mesh pointer-events-none absolute inset-0 -z-10"></div>
+  <div class="pointer-events-none absolute -top-24 -left-24 -z-10 h-96 w-96 rounded-full bg-brand-300/30 blur-3xl animate-blob"></div>
+  <div class="pointer-events-none absolute top-32 -right-24 -z-10 h-80 w-80 rounded-full bg-rose/20 blur-3xl animate-blob" style="animation-delay:-6s"></div>
+
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 pt-16 pb-10 md:pt-24 md:pb-14 text-center">
+    <p class="reveal inline-flex items-center gap-2 rounded-full border border-paper-edge bg-paper-card/70 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-brand-700 shadow-card">
+      <span class="grid h-4 w-4 place-items-center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fb7185" class="animate-heart motion-reduce:animate-none" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.4 8.5 2 5 5.4 5c2 0 3.3 1.2 4.1 2.4C10.3 6.2 11.6 5 13.6 5 17 5 18.6 8.5 17 11.8 14.5 16.4 12 21 12 21z"/></svg>
+      </span>
+      {{ hero.eyebrow }} · {{ hero.kicker }}
+    </p>
+
+    <h1 class="reveal mx-auto mt-6 max-w-3xl font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.05] tracking-tight text-brand-900" style="--d:.06s">
+      {{ hero.h1.split(' ')[:-1] | join(' ') }}
+      <span class="relative inline-block text-brand-600">
+        {{ hero.h1.split(' ')[-1] }}
+        <svg class="ink-underline absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 220 14" fill="none" aria-hidden="true" preserveAspectRatio="none">
+          <path d="M3 8 C 60 13, 150 2, 217 7" stroke="#fb7185" stroke-width="4" stroke-linecap="round" class="animate-draw"/>
+        </svg>
+      </span>
+    </h1>
+
+    <p class="reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-brand-800/75" style="--d:.14s">{{ hero.sub }}</p>
+  </div>
+</section>
+
+{# ---------- FORM + ASIDE ---------- #}
+<section class="mx-auto max-w-6xl px-4 sm:px-6 pb-4">
+  <div class="grid gap-8 lg:grid-cols-[1.15fr_.85fr] lg:items-start">
+
+    {# ---- FORM CARD ---- #}
+    <div class="reveal relative overflow-hidden rounded-3xl border border-paper-edge bg-paper-card p-7 sm:p-9 shadow-card">
+      <div class="dotgrid pointer-events-none absolute inset-0 opacity-25"></div>
+
+      {# soft pulsing-heart happiness meter, top-right #}
+      <div class="pointer-events-none absolute right-6 top-6 hidden sm:block" aria-hidden="true">
+        <span class="grid h-11 w-11 place-items-center rounded-2xl bg-brand-50">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fb7185" class="animate-heart motion-reduce:animate-none"><path d="M12 21s-7.5-4.6-10-9.2C.4 8.5 2 5 5.4 5c2 0 3.3 1.2 4.1 2.4C10.3 6.2 11.6 5 13.6 5 17 5 18.6 8.5 17 11.8 14.5 16.4 12 21 12 21z"/></svg>
+        </span>
+      </div>
+
+      <div class="relative">
+        <h2 class="font-display text-2xl font-bold tracking-tight text-brand-900">{{ form.title }}</h2>
+        <p class="mt-2 max-w-md text-sm leading-relaxed text-brand-800/70">{{ form.subtitle }}</p>
+      </div>
+
+      {# ---- the form ---- #}
+      <form id="contact-form" class="relative mt-7 space-y-5" novalidate>
+        <input type="hidden" name="lang" value="{{ lang }}">
+
+        {# honeypot: visually hidden, off-screen, ignored by real users #}
+        <div class="absolute left-[-9999px] top-0 h-0 w-0 overflow-hidden" aria-hidden="true">
+          <label for="cf-company-website">{{ form.hp_label }}</label>
+          <input type="text" id="cf-company-website" name="company_website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div>
+          <label for="cf-name" class="block text-sm font-semibold text-brand-900">{{ form.name_label }}</label>
+          <input id="cf-name" name="name" type="text" required maxlength="140" autocomplete="name"
+                 placeholder="{{ form.name_ph }}"
+                 class="mt-2 w-full rounded-xl border border-paper-edge bg-paper px-4 py-3 text-brand-900 placeholder:text-brand-800/40 transition-colors focus:border-brand-400 focus:bg-paper-card">
+        </div>
+
+        <div>
+          <label for="cf-email" class="block text-sm font-semibold text-brand-900">{{ form.email_label }}</label>
+          <input id="cf-email" name="email" type="email" required maxlength="140" autocomplete="email"
+                 placeholder="{{ form.email_ph }}"
+                 class="mt-2 w-full rounded-xl border border-paper-edge bg-paper px-4 py-3 text-brand-900 placeholder:text-brand-800/40 transition-colors focus:border-brand-400 focus:bg-paper-card">
+        </div>
+
+        <div>
+          <label for="cf-message" class="block text-sm font-semibold text-brand-900">{{ form.message_label }}</label>
+          <textarea id="cf-message" name="message" required maxlength="4000" rows="5"
+                    placeholder="{{ form.message_ph }}"
+                    class="mt-2 w-full resize-y rounded-xl border border-paper-edge bg-paper px-4 py-3 text-brand-900 placeholder:text-brand-800/40 transition-colors focus:border-brand-400 focus:bg-paper-card"></textarea>
+        </div>
+
+        <p id="cf-error" role="alert" class="hidden rounded-xl border border-rose/40 bg-rose/10 px-4 py-3 text-sm font-medium text-brand-900"></p>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button id="cf-submit" type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-card transition-all hover:bg-brand-700 hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-60">
+            <span id="cf-submit-text">{{ form.submit }}</span>
+            <svg id="cf-submit-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 12.5 10 18 20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg id="cf-spinner" class="hidden h-[18px] w-[18px] animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </button>
+          <p class="max-w-xs text-xs leading-relaxed text-brand-800/55">{{ form.privacy }}</p>
+        </div>
+      </form>
+
+      {# ---- inline thank-you (hidden until success) ---- #}
+      <div id="contact-thanks" class="relative mt-2 hidden text-center" role="status" aria-live="polite">
+        <div class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 shadow-lift">
+          <div class="absolute h-20 w-20 rounded-full bg-rose/30 blur-md animate-heart motion-reduce:animate-none"></div>
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="#fff" class="relative animate-pop" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.4 8.5 2 5 5.4 5c2 0 3.3 1.2 4.1 2.4C10.3 6.2 11.6 5 13.6 5 17 5 18.6 8.5 17 11.8 14.5 16.4 12 21 12 21z"/></svg>
+        </div>
+        <h2 class="mt-6 font-display text-2xl font-bold tracking-tight text-brand-900">{{ form.ok_title }}</h2>
+        <p class="mx-auto mt-3 max-w-md leading-relaxed text-brand-800/75">{{ form.ok_body }}</p>
+        <button id="cf-reset" type="button" class="mt-6 inline-flex items-center gap-2 rounded-xl border border-paper-edge bg-paper-card px-5 py-2.5 text-sm font-semibold text-brand-800 transition-colors hover:bg-brand-50">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ form.ok_again }}
+        </button>
+      </div>
+    </div>
+
+    {# ---- ASIDE: contact details ---- #}
+    <aside class="reveal space-y-5" style="--d:.1s">
+      <div class="rounded-3xl border border-paper-edge bg-paper-card p-7 shadow-card">
+        <h2 class="font-display text-lg font-bold text-brand-900">{{ aside.title }}</h2>
+
+        <a href="mailto:{{ aside.email }}" class="group mt-5 flex items-start gap-3.5">
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>
+            <span class="block text-xs font-semibold uppercase tracking-wider text-brand-600">{{ aside.email_label }}</span>
+            <span class="block font-semibold text-brand-900 group-hover:text-brand-700 transition-colors">{{ aside.email }}</span>
+          </span>
+        </a>
+
+        <div class="mt-5 flex items-start gap-3.5">
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21c4-3.5 7-6.8 7-10.5A7 7 0 0 0 5 10.5C5 14.2 8 17.5 12 21z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10.5" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg>
+          </span>
+          <span>
+            <span class="block text-xs font-semibold uppercase tracking-wider text-brand-600">{{ aside.address_label }}</span>
+            <span class="block font-semibold text-brand-900">{{ aside.address }}</span>
+          </span>
+        </div>
+
+        <div class="mt-6 border-t border-paper-edge pt-5">
+          <span class="block text-xs font-semibold uppercase tracking-wider text-brand-600">{{ aside.social_label }}</span>
+          <ul class="mt-3 flex flex-wrap gap-2.5">
+            {% for s in aside.socials %}
+            <li>
+              <a href="{{ s.url }}" class="inline-flex items-center gap-2 rounded-xl border border-paper-edge bg-paper px-3 py-2 text-sm font-medium text-brand-800 transition-colors hover:bg-brand-50 hover:text-brand-700">
+                {% if s.icon == 'instagram' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor"/></svg>
+                {% elif s.icon == 'linkedin' %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M7 10v7M7 7.5v.01M11 17v-4a2 2 0 0 1 4 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                {% else %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.8"/></svg>{% endif %}
+                {{ s.handle }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+          <p class="mt-4 text-xs italic leading-relaxed text-brand-800/50">{{ aside.placeholder_note }}</p>
+        </div>
+      </div>
+
+      {# decorative CSS-only "map" block — no external embed #}
+      <div class="relative overflow-hidden rounded-3xl border border-paper-edge bg-brand-600 p-7 text-white shadow-card">
+        <div class="dotgrid pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay"></div>
+        <div class="gradient-mesh pointer-events-none absolute inset-0 opacity-40 mix-blend-screen"></div>
+        <div class="pointer-events-none absolute right-6 top-6 h-16 w-16 rounded-full border border-dashed border-white/40 animate-orbit motion-reduce:animate-none">
+          <span class="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-rose"></span>
+        </div>
+        <span class="relative inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fb7185" class="animate-heart motion-reduce:animate-none" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.4 8.5 2 5 5.4 5c2 0 3.3 1.2 4.1 2.4C10.3 6.2 11.6 5 13.6 5 17 5 18.6 8.5 17 11.8 14.5 16.4 12 21 12 21z"/></svg>
+          {{ hero.heart_label }}
+        </span>
+        <p class="relative mt-4 font-display text-xl font-bold leading-snug">{{ aside.map_label }}</p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+{# ---------- REASONS ---------- #}
+<section class="mx-auto max-w-6xl px-4 sm:px-6 py-16 md:py-20">
+  <div class="reveal max-w-2xl">
+    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{{ reasons_eyebrow }}</p>
+    <h2 class="mt-2 font-display text-3xl md:text-4xl font-bold tracking-tight text-brand-900">{{ reasons_title }}</h2>
+  </div>
+  <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    {% for r in reasons %}
+    <div class="reveal rounded-3xl border border-paper-edge bg-paper-card p-7 shadow-card transition-transform hover:-translate-y-1" style="--d:{{ loop.index0 * 0.08 }}s">
+      <span class="inline-flex rounded-2xl bg-brand-50 p-3 text-brand-600">
+        {% if r.icon == 'briefcase' %}<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        {% elif r.icon == 'help' %}<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.7-2 2-2 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+        {% else %}<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4L12 3zM18 15l.9 2.3L21 18l-2.1.7L18 21l-.9-2.3L15 18l2.1-.7L18 15z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>{% endif %}
+      </span>
+      <h3 class="mt-5 font-display text-lg font-bold text-brand-900">{{ r.t }}</h3>
+      <p class="mt-2 leading-relaxed text-brand-800/75">{{ r.d }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var form = document.getElementById('contact-form');
+    var thanks = document.getElementById('contact-thanks');
+    var errBox = document.getElementById('cf-error');
+    var btn = document.getElementById('cf-submit');
+    var btnText = document.getElementById('cf-submit-text');
+    var btnIcon = document.getElementById('cf-submit-icon');
+    var spinner = document.getElementById('cf-spinner');
+    var resetBtn = document.getElementById('cf-reset');
+    if (!form) return;
+
+    var SENDING = {{ form.sending | tojson }};
+    var SEND = {{ form.submit | tojson }};
+    var ERR_GENERIC = {{ form.err_generic | tojson }};
+
+    function setSending(on) {
+      btn.disabled = on;
+      btnText.textContent = on ? SENDING : SEND;
+      btnIcon.classList.toggle('hidden', on);
+      spinner.classList.toggle('hidden', !on);
+    }
+    function showError(msg) {
+      errBox.textContent = msg || ERR_GENERIC;
+      errBox.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      errBox.classList.add('hidden');
+
+      if (!form.reportValidity()) return;
+
+      var el = form.elements;
+      var payload = {
+        name: el.name.value.trim(),
+        email: el.email.value.trim(),
+        message: el.message.value.trim(),
+        company_website: el.company_website.value,
+        lang: el.lang.value
+      };
+
+      setSending(true);
+      fetch('/api/method/vernon_project.api.contact.submit_inquiry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Frappe-CSRF-Token': "{{ frappe.session.csrf_token }}"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+      .then(function (r) {
+        var m = r.d && r.d.message;
+        if (r.ok && m && m.ok) {
+          form.classList.add('hidden');
+          thanks.classList.remove('hidden');
+          thanks.focus && thanks.focus();
+          return;
+        }
+        // Frappe throws surface as _server_messages / exception text
+        var msg = ERR_GENERIC;
+        try {
+          if (r.d && r.d._server_messages) {
+            var arr = JSON.parse(r.d._server_messages);
+            if (arr.length) msg = JSON.parse(arr[0]).message || msg;
+          }
+        } catch (_) {}
+        showError(msg);
+      })
+      .catch(function () { showError(ERR_GENERIC); })
+      .finally(function () { setSending(false); });
+    });
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function () {
+        form.reset();
+        thanks.classList.add('hidden');
+        form.classList.remove('hidden');
+        errBox.classList.add('hidden');
+        form.elements.name.focus();
+      });
+    }
+  })();
+</script>
+{% endblock %}

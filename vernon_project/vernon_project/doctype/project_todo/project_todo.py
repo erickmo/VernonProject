@@ -1,6 +1,8 @@
 # Copyright (c) 2026, Vernon and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -441,6 +443,16 @@ class ProjectTodo(Document):
 						frappe.log_error(title="recurring generate_next on complete failed")
 			elif prev_state == "✅ Completed":
 				self._remove_ledger()
+			# Task no longer actionable → drop every user's focus timer for it, so it
+			# clears from the assignee's FAB/dock (whose per-user row a client stop by
+			# the approver can't reach). See api/focus.clear_task_timers.
+			if self.status in ("✅ Completed", "🚫 Cancelled"):
+				try:
+					from vernon_project.api.focus import clear_task_timers
+
+					clear_task_timers(self.name)
+				except Exception:
+					frappe.log_error(title="clear_task_timers on status change failed")
 			self._notify_status_change(prev_state)
 
 	def _notify_status_change(self, prev_state):
@@ -567,6 +579,14 @@ class ProjectTodo(Document):
 			self._remove_block_link(r.todo, "blocked_by")
 		for r in self.blocked_by:
 			self._remove_block_link(r.todo, "blocking")
+		# A focused todo deleted straight from Planned never hit on_change's terminal
+		# branch — clear its lingering focus timer(s) here too.
+		try:
+			from vernon_project.api.focus import clear_task_timers
+
+			clear_task_timers(self.name)
+		except Exception:
+			frappe.log_error(title="clear_task_timers on trash failed")
 
 	def after_delete(self):
 		self._recompute_parent()
@@ -709,10 +729,20 @@ class ProjectTodo(Document):
 			return None
 		return next_occurrence(getdate(from_date), self._rule())
 
+	def _exceptions(self):
+		"""Parse the 4 exception fields into an Exceptions predicate holder."""
+		from .recurrence import Exceptions, parse_weekdays, parse_monthdays, parse_ranges
+		return Exceptions(
+			weekdays=tuple(parse_weekdays(self.recurring_exception_weekdays)),
+			monthdays=tuple(parse_monthdays(self.recurring_exception_monthdays)),
+			ranges=tuple(parse_ranges(self.recurring_exception_dates)),
+			behavior=self.recurring_exception_behavior or "Skip",
+		)
+
 	def validate_recurrence_rule(self):
 		if not self.is_recurring:
 			return
-		from .recurrence import parse_weekdays, format_weekdays
+		from .recurrence import parse_weekdays, format_weekdays, parse_monthdays, parse_ranges
 		self.recurring_interval = max(1, int(self.recurring_interval or 1))
 		idxs = parse_weekdays(self.recurring_weekdays)  # raises on bad token
 		self.recurring_weekdays = format_weekdays(idxs)
@@ -722,6 +752,20 @@ class ProjectTodo(Document):
 				frappe.throw(_("Day of month must be between 1 and 31."))
 		if self.recurring_frequency == "Monthly" and self.recurring_monthly_mode == "Nth Weekday" and len(idxs) != 1:
 			frappe.throw(_("Nth-weekday recurrence needs exactly one weekday."))
+		# Exceptions: normalize each field; canonicalize the dates JSON.
+		ex_idxs = parse_weekdays(self.recurring_exception_weekdays)  # raises on bad token
+		if len(ex_idxs) >= 7:
+			frappe.throw(_("Exception weekdays cannot cover all 7 days — the series would never occur."))
+		self.recurring_exception_weekdays = format_weekdays(ex_idxs)
+		self.recurring_exception_monthdays = ",".join(
+			str(n) for n in parse_monthdays(self.recurring_exception_monthdays)
+		)
+		ranges = parse_ranges(self.recurring_exception_dates)  # raises on bad ISO date
+		self.recurring_exception_dates = (
+			json.dumps([{"from": str(a), "to": str(b)} for a, b in ranges]) if ranges else ""
+		)
+		if not self.recurring_exception_behavior:
+			self.recurring_exception_behavior = "Skip"
 
 	def _ensure_today_allocation(self):
 		"""Put a today-deadline todo into its assignee's day-plan, server-side.
@@ -768,7 +812,9 @@ class ProjectTodo(Document):
 _ROLL = ("name, project_detail, to_do, assigned_to, start_date, deadline, leader_deadline, "
          "owner_deadline, estimated, notes, `group`, level, level_id, status, is_recurring, "
          "recurring_frequency, recurring_interval, recurring_weekdays, recurring_monthly_mode, "
-         "recurring_day_of_month, recurring_nth, recurring_until, original_todo")
+         "recurring_day_of_month, recurring_nth, recurring_until, "
+         "recurring_exception_weekdays, recurring_exception_monthdays, recurring_exception_dates, "
+         "recurring_exception_behavior, recurring_anchor_date, original_todo")
 
 
 def series_root(name, original_todo):
@@ -792,7 +838,7 @@ def occurrence_exists(root, deadline):
     ))
 
 
-def build_occurrence(anchor, next_date):
+def build_occurrence(anchor, next_date, anchor_date=None):
     old_dl = getdate(anchor.deadline)
     delta = (getdate(next_date) - old_dl).days
 
@@ -822,6 +868,13 @@ def build_occurrence(anchor, next_date):
         "recurring_day_of_month": anchor.recurring_day_of_month,
         "recurring_nth": anchor.recurring_nth,
         "recurring_until": anchor.recurring_until,
+        # Exception override rides along with the series; anchor_date is the un-shifted
+        # rule date so the next occurrence computes from rhythm, not the shifted deadline.
+        "recurring_exception_weekdays": anchor.recurring_exception_weekdays,
+        "recurring_exception_monthdays": anchor.recurring_exception_monthdays,
+        "recurring_exception_dates": anchor.recurring_exception_dates,
+        "recurring_exception_behavior": anchor.recurring_exception_behavior,
+        "recurring_anchor_date": anchor_date or next_date,
         "original_todo": series_root(anchor.name, anchor.original_todo),
         "status": "⚪️ Planned",
     })
@@ -842,7 +895,9 @@ def generate_next(anchor, force=False):
     if frappe.db.get_value("Project Todo", root, "recurring_paused"):
         return None
     head = frappe.get_doc("Project Todo", anchor.name)
-    next_date = head.calculate_next_occurrence(anchor.deadline)
+    # Basis is the un-shifted rule date so a prior Shift never drifts the series rhythm.
+    basis = anchor.recurring_anchor_date or anchor.deadline
+    next_date = head.calculate_next_occurrence(basis)
     if not next_date:
         return None
     next_date = getdate(next_date)
@@ -850,18 +905,28 @@ def generate_next(anchor, force=False):
     if next_date < today:  # long gap / resume: skip the missed window, don't backfill
         from .recurrence import first_on_or_after
         next_date = getdate(first_on_or_after(today, head._rule()))
-    # Skip days the assignee does not work (brand weekday = 0, holiday, or shift-off).
-    # advance_over_zero_days also owns the recurring_until bound.
-    from .recurrence import advance_over_zero_days, next_occurrence
+    # Block days the assignee does not work (brand weekday = 0, holiday, shift-off) plus
+    # the todo's manual exceptions. advance_while_blocked also owns the recurring_until bound.
+    from .recurrence import advance_while_blocked, next_occurrence
     from vernon_project.api.report import _resolve_min_minutes
     rule = head._rule()
     until = getdate(anchor.recurring_until) if anchor.recurring_until else None
-    next_date = advance_over_zero_days(
-        next_date,
-        lambda d: getdate(next_occurrence(d, rule)),
-        lambda d: _resolve_min_minutes(anchor.assigned_to, str(d)),
-        until=until,
-    )
+    exc = head._exceptions()
+    blocked = lambda d: _resolve_min_minutes(anchor.assigned_to, str(d)) <= 0 or exc.blocks(d)
+    rule_date = next_date
+    if exc.behavior == "Shift":
+        # Move to the next open day, but keep the un-shifted rule date as the anchor so
+        # the following occurrence computes from rhythm — the series never drifts.
+        next_date = advance_while_blocked(
+            rule_date, lambda d: getdate(add_days(d, 1)), blocked, until=until
+        )
+        anchor_date = rule_date
+    else:
+        # Skip: drop the occurrence, advance to the next natural rule date.
+        next_date = advance_while_blocked(
+            rule_date, lambda d: getdate(next_occurrence(d, rule)), blocked, until=until
+        )
+        anchor_date = next_date
     if next_date is None:
         return None
     if not force and next_date > today:
@@ -870,7 +935,7 @@ def generate_next(anchor, force=False):
     frappe.db.sql("SELECT name FROM `tabProject Todo` WHERE name=%s FOR UPDATE", root)
     if occurrence_exists(root, next_date):
         return None
-    return build_occurrence(anchor, next_date)
+    return build_occurrence(anchor, next_date, anchor_date)
 
 
 # --------------------------------------------------------------------------------

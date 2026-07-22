@@ -27,7 +27,7 @@ export default function GrantPoints() {
   })
   const { data, isLoading } = q
 
-  const [selectedName, setSelectedName] = useState('')
+  const [selectedName, setSelectedName] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [amountError, setAmountError] = useState<string | undefined>()

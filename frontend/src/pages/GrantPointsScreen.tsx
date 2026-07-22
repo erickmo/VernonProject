@@ -20,7 +20,8 @@ export default function GrantPointsScreen() {
     enabled: canGrantPoints(boot),
   })
 
-  const [search, setSearch] = useState('')
+  // Seed the search from ?user= so the user dashboard can deep-link one person.
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [selected, setSelected] = useState<GrantUser | null>(null)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
@@ -34,6 +35,17 @@ export default function GrantPointsScreen() {
       (u) => u.full_name?.toLowerCase().includes(q) || u.name.toLowerCase().includes(q),
     )
   }, [users, search])
+
+  // Deep-link ?user=: pre-select the recipient once the user list loads (mirrors web GrantPoints,
+  // which derives `selected` from the seeded id). The `selected` guard + users-only dep fire once
+  // and never re-select after a successful grant (which nulls `selected` but leaves `users`).
+  useEffect(() => {
+    if (selected) return
+    const seed = new URLSearchParams(window.location.search).get('user')
+    if (!seed || !users.length) return
+    const u = users.find((x) => x.name === seed)
+    if (u) setSelected(u)
+  }, [users]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Access gate: redirect outside render (useEffect-safe pattern)
   const blocked = boot !== undefined && !canGrantPoints(boot)

@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import type { MouseEvent } from 'react'
 import { Play, Timer, Plus, Check } from 'lucide-react'
 import {
   StatusCell,
@@ -6,9 +7,10 @@ import {
   EditableDateCell,
   type Column,
 } from '@web/components/DataTable'
-import { useFocusTimer } from '@/hooks/useFocusTimer'
-import { useSetTodoAllocations, useFocusMode } from '@/hooks/useData'
-import { openFocusOverlay } from '@/lib/focusUI'
+import { useFocusPill } from '@/hooks/useFocusPill'
+import { useTodoContextMenu } from '@/hooks/useTodoMenu'
+import { useToast } from '@/components/Toast'
+import { useSetTodoAllocations } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { ListProgress } from '@web/components/PlanList'
@@ -89,19 +91,34 @@ export const TODO_COLUMNS: Column<ProjectItem>[] = [
   },
 ]
 
+// Row-level right-click → open the shared todo context menu at the cursor. Exposed
+// as a hook (not baked into TODO_COLUMNS) because useTodoContextMenu is a hook: call
+// this in the component that renders the todo DataTable and pass the result to
+// <DataTable onRowContextMenu>. Returns undefined when no menu provider is mounted,
+// so the table stays inert on screens without the menu.
+export function useTodoRowContextMenu(): ((row: ProjectItem, e: MouseEvent) => void) | undefined {
+  const menu = useTodoContextMenu()
+  if (!menu) return undefined
+  return (row, e) => {
+    e.preventDefault()
+    menu.open(row, { x: e.clientX, y: e.clientY })
+  }
+}
+
 // +Today (allocate today's minutes) + Focus (start/open the timer) for one row.
 // Reuses the exact logic from the shared mobile TodoCard so behavior matches.
-// ponytail: each cell subscribes to the 1s focus tick (via useFocusTimer); fine
+// ponytail: each cell subscribes to the 1s focus tick (via useFocusPill); fine
 // for a project's todo list, revisit if a table ever renders hundreds of rows.
 function TodoActionsCell({ todo }: { todo: ProjectItem }) {
-  const focus = useFocusTimer(todo.name)
-  const focusActive = focus.timer != null
-  const focusMode = useFocusMode()
+  const { focusActive, focusMode, onFocusPill } = useFocusPill(todo)
+  const toast = useToast()
   const setAlloc = useSetTodoAllocations(todo.name)
   const planned = todo.today_allocation > 0
 
   return (
     <span className="inline-flex items-center gap-1.5">
+      {/* Only the assignee sets the day-plan (backend enforces it too). */}
+      {todo.is_mine && (
       <button
         type="button"
         disabled={setAlloc.isPending}
@@ -110,7 +127,9 @@ function TodoActionsCell({ todo }: { todo: ProjectItem }) {
           e.stopPropagation()
           if (setAlloc.isPending) return
           const minutes = planned ? 0 : todo.estimated > 0 ? todo.estimated : 30
-          setAlloc.mutate(buildNext(todo.allocations ?? [], todayISO(), minutes))
+          setAlloc.mutate(buildNext(todo.allocations ?? [], todayISO(), minutes), {
+            onError: (err) => toast('error', (err as Error).message),
+          })
         }}
         className={clsx(
           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition active:scale-95',
@@ -123,21 +142,11 @@ function TodoActionsCell({ todo }: { todo: ProjectItem }) {
         {planned ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
         {planned ? formatEstimate(todo.today_allocation) : 'Today'}
       </button>
+      )}
       <button
         type="button"
-        title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Focus timer running') : 'Start focus timer'}
-        onClick={(e) => {
-          e.stopPropagation()
-          if (!focusActive)
-            focus.start(todo.name, todo.to_do, todo.estimated, {
-              project: todo.project_name,
-              deadlineHuman: todo.deadline_human || undefined,
-              overdue: todo.is_overdue,
-              estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
-            })
-          // inline mode: run the timer on the card only, never open the overlay.
-          if (focusMode === 'fullscreen') openFocusOverlay(todo.name)
-        }}
+        title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Stop focus timer') : 'Start focus timer'}
+        onClick={onFocusPill}
         className={clsx(
           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition active:scale-95',
           focusActive

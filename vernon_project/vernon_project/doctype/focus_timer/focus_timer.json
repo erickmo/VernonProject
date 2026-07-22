@@ -14,7 +14,7 @@
   "started_at_ms",
   "elapsed_before_ms",
   "note",
-  "meta"
+  "task_meta"
  ],
  "fields": [
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1},
@@ -25,7 +25,7 @@
   {"fieldname": "started_at_ms", "fieldtype": "Float", "label": "Started At (epoch ms)", "precision": "0"},
   {"fieldname": "elapsed_before_ms", "fieldtype": "Float", "label": "Elapsed Before ms", "default": "0"},
   {"fieldname": "note", "fieldtype": "Long Text", "label": "Note"},
-  {"fieldname": "meta", "fieldtype": "Long Text", "label": "Meta (JSON)"}
+  {"fieldname": "task_meta", "fieldtype": "Long Text", "label": "Task Meta (JSON)", "description": "Overlay display detail. NB: field is NOT named 'meta' — that collides with Frappe's Document.meta property and crashes save (AttributeError: 'str' has no get_table_fields)."}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 0,

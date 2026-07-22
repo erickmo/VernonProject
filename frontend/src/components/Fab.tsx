@@ -20,6 +20,9 @@ export function Fab() {
   const [showTip, setShowTip] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Live press feedback (brand ring, mirrors TodoCard) while the long-press to
+  // "new note" is in flight — signals the hold is registering.
+  const [pressing, setPressing] = useState(false)
 
   const focusCount = useFocusTimers().timers.length
   const overlayOpen = useFocusOverlay().open
@@ -61,9 +64,11 @@ export function Fab() {
     longFired.current = false
     armed.current = true
     clear()
+    setPressing(true)
     timer.current = setTimeout(() => {
       longFired.current = true
       armed.current = false
+      setPressing(false)
       if (showTip) dismissTip()
       newNote()
     }, LONG_MS)
@@ -71,6 +76,7 @@ export function Fab() {
 
   const onPointerUp = () => {
     clear()
+    setPressing(false)
     if (armed.current && !longFired.current) {
       armed.current = false
       if (showTip) dismissTip()
@@ -85,6 +91,7 @@ export function Fab() {
 
   const onCancel = () => {
     armed.current = false
+    setPressing(false)
     clear()
   }
 
@@ -156,7 +163,7 @@ export function Fab() {
           onPointerCancel={onCancel}
           onContextMenu={(e) => e.preventDefault()}
           style={{ touchAction: 'manipulation' }}
-          className={`flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition-all active:scale-90 ${menuOpen ? '' : 'animate-float'}`}
+          className={`flex h-14 w-14 select-none items-center justify-center rounded-full bg-brand-600 text-white shadow-card transition-all active:scale-90 ${pressing ? 'ring-4 ring-brand-300/80 dark:ring-brand-500/60' : menuOpen ? '' : 'animate-float'}`}
         >
           <Plus className={`h-7 w-7 transition-transform ${menuOpen ? 'rotate-45' : ''}`} strokeWidth={2.4} />
         </button>

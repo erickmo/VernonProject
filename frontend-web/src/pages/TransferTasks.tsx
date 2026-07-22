@@ -30,7 +30,8 @@ export default function TransferTasks() {
     enabled: canManageUsers(boot),
   })
 
-  const [fromName, setFromName] = useState('')
+  // Seed from ?user= so the user dashboard can deep-link "reassign this person's tasks".
+  const [fromName, setFromName] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [toName, setToName] = useState('')
   const [projectName, setProjectName] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)

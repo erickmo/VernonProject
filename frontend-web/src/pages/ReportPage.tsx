@@ -19,6 +19,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { useBoot, useReport, useReportOptions } from '@/hooks/useData'
 import type { Opt } from '@/hooks/useData'
+import { useReportRowMenu } from '@/hooks/useReportRowMenu'
 import { reportByName, DATE_PRESETS } from '@/lib/reports'
 import type { StatusSet } from '@/lib/reports'
 import { formatDate, stripHtml } from '@/lib/format'
@@ -111,6 +112,7 @@ export default function ReportPage() {
   })
 
   const { data, isFetching, error } = useReport(reportName, filters, !!def && ready)
+  const openRowMenu = useReportRowMenu()
 
   const setVal = (key: string, value: unknown) =>
     setFilters((f) => {
@@ -502,7 +504,7 @@ export default function ReportPage() {
                 </p>
                 {data.rows.some((r) => r.todo_id) ? (
                   <span className="text-xs text-muted">
-                    Click a row to open the task
+                    Click a row to open · right-click for actions
                   </span>
                 ) : null}
               </div>
@@ -556,6 +558,14 @@ export default function ReportPage() {
                           onClick={
                             todoId
                               ? () => navigate(`/project-item/${encodeURIComponent(todoId)}`)
+                              : undefined
+                          }
+                          onContextMenu={
+                            todoId && openRowMenu
+                              ? (e) => {
+                                  e.preventDefault()
+                                  openRowMenu(todoId, { x: e.clientX, y: e.clientY })
+                                }
                               : undefined
                           }
                           className={clsx(

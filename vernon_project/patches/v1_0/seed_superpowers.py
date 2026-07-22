@@ -1,36 +1,38 @@
 import frappe
 
 # (name, category, icon, color, description) — icon = lucide name, color = hex chip.
+# description = short Bahasa explanation (end-user surface).
 CATALOG = [
-	("Visionary", "Strategy", "telescope", "#6366f1", "Sees where things are headed and paints the future."),
-	("Problem Solving", "Execution", "puzzle", "#0ea5e9", "Untangles hard problems into workable answers."),
-	("Sales", "Sales & Growth", "trending-up", "#22c55e", "Turns conversations into closed deals."),
-	("Marketing", "Sales & Growth", "megaphone", "#f97316", "Gets the right message to the right people."),
-	("Strategic Thinking", "Strategy", "target", "#8b5cf6", "Plans several moves ahead toward the goal."),
-	("Negotiation", "Sales & Growth", "handshake", "#14b8a6", "Finds deals where both sides win."),
-	("Leadership", "Leadership", "crown", "#f59e0b", "Rallies people around a shared direction."),
-	("Communication", "Interpersonal", "message-circle", "#3b82f6", "Explains ideas so everyone gets them."),
-	("Execution & Ownership", "Execution", "check-circle", "#10b981", "Owns the outcome and gets it done."),
-	("Creativity", "Craft", "sparkles", "#ec4899", "Brings fresh, original ideas to the table."),
-	("Analytical Thinking", "Strategy", "bar-chart-3", "#0891b2", "Reads the data and draws sharp conclusions."),
-	("Coaching & Mentoring", "Leadership", "users", "#a855f7", "Grows the people around them."),
-	("Adaptability", "Interpersonal", "shuffle", "#06b6d4", "Stays effective when the plan changes."),
-	("Customer Focus", "Sales & Growth", "heart-handshake", "#ef4444", "Keeps the customer at the center of every call."),
-	("Financial Acumen", "Strategy", "dollar-sign", "#65a30d", "Understands the numbers behind decisions."),
-	("Product Sense", "Craft", "lightbulb", "#eab308", "Knows what to build and why it matters."),
-	("Operational Excellence", "Execution", "settings", "#64748b", "Makes the machine run smoothly and reliably."),
-	("Storytelling", "Craft", "book-open", "#d946ef", "Makes ideas stick with a great narrative."),
-	("Teamwork", "Interpersonal", "users-round", "#2563eb", "Lifts the whole team, not just themselves."),
-	("Decision Making", "Leadership", "scale", "#f43f5e", "Makes the call, even under uncertainty."),
+	("Visionary", "Strategy", "telescope", "#6366f1", "Melihat arah masa depan dan menggambarkannya dengan jelas."),
+	("Problem Solving", "Execution", "puzzle", "#0ea5e9", "Mengurai masalah rumit menjadi solusi yang bisa dijalankan."),
+	("Sales", "Sales & Growth", "trending-up", "#22c55e", "Mengubah obrolan menjadi kesepakatan yang closing."),
+	("Marketing", "Sales & Growth", "megaphone", "#f97316", "Menyampaikan pesan yang tepat ke orang yang tepat."),
+	("Strategic Thinking", "Strategy", "target", "#8b5cf6", "Merancang beberapa langkah ke depan menuju tujuan."),
+	("Negotiation", "Sales & Growth", "handshake", "#14b8a6", "Mencari kesepakatan yang menguntungkan kedua pihak."),
+	("Leadership", "Leadership", "crown", "#f59e0b", "Menggerakkan orang menuju arah yang sama."),
+	("Communication", "Interpersonal", "message-circle", "#3b82f6", "Menjelaskan ide sampai semua orang paham."),
+	("Execution & Ownership", "Execution", "check-circle", "#10b981", "Bertanggung jawab penuh dan menuntaskan pekerjaan."),
+	("Creativity", "Craft", "sparkles", "#ec4899", "Menghadirkan ide segar dan orisinal."),
+	("Analytical Thinking", "Strategy", "bar-chart-3", "#0891b2", "Membaca data dan menarik kesimpulan yang tajam."),
+	("Coaching & Mentoring", "Leadership", "users", "#a855f7", "Menumbuhkan dan membimbing orang di sekitarnya."),
+	("Adaptability", "Interpersonal", "shuffle", "#06b6d4", "Tetap efektif saat rencana berubah."),
+	("Customer Focus", "Sales & Growth", "heart-handshake", "#ef4444", "Menjadikan pelanggan pusat dari setiap keputusan."),
+	("Financial Acumen", "Strategy", "dollar-sign", "#65a30d", "Memahami angka di balik setiap keputusan."),
+	("Product Sense", "Craft", "lightbulb", "#eab308", "Tahu apa yang harus dibangun dan alasannya."),
+	("Operational Excellence", "Execution", "settings", "#64748b", "Membuat operasional berjalan mulus dan andal."),
+	("Storytelling", "Craft", "book-open", "#d946ef", "Membuat ide membekas lewat cerita yang menarik."),
+	("Teamwork", "Interpersonal", "users-round", "#2563eb", "Mengangkat seluruh tim, bukan hanya diri sendiri."),
+	("Decision Making", "Leadership", "scale", "#f43f5e", "Berani mengambil keputusan meski penuh ketidakpastian."),
 ]
 
 # Performance-earned superpowers — auto-computed, not votable/claimable.
+# icon = kebab-case lucide name (resolved by @/lib/spIcon), no emoji.
 # (name, metric, icon, color, description)
 PERFORMANCE = [
-	("Timekeeper", "ontime", "⏰", "#0ea5e9", "Datang tepat waktu — kehadiran yang disiplin."),
-	("Deadline Slayer", "beat_deadline", "⚡", "#ef4444", "Menuntaskan tugas sebelum atau tepat di deadline."),
-	("Iron Streak", "streak", "🔗", "#f97316", "Aktif berturut-turut tanpa putus."),
-	("Finisher", "finisher", "🏁", "#22c55e", "Banyak menuntaskan tugas dalam sebulan terakhir."),
+	("Timekeeper", "ontime", "clock", "#0ea5e9", "Datang tepat waktu — kehadiran yang disiplin."),
+	("Deadline Slayer", "beat_deadline", "zap", "#ef4444", "Menuntaskan tugas sebelum atau tepat di deadline."),
+	("Iron Streak", "streak", "flame", "#f97316", "Aktif berturut-turut tanpa putus."),
+	("Finisher", "finisher", "flag", "#22c55e", "Banyak menuntaskan tugas dalam sebulan terakhir."),
 ]
 
 # (level_name, min_score, color, icon)

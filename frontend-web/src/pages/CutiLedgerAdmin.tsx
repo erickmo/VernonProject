@@ -34,7 +34,8 @@ export default function CutiLedgerAdmin() {
   const confirm = useConfirm()
   const { data: users } = useUsers()
 
-  const [employee, setEmployee] = useState('')
+  // Seed from ?user= so the user dashboard can deep-link one person.
+  const [employee, setEmployee] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [year, setYear] = useState(YEAR)
   const [entryType, setEntryType] = useState<CutiLedgerEntryType>('Bonus')
   const [days, setDays] = useState('')

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, FolderKanban, Loader2, Fingerprint, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, FolderKanban, Loader2, Fingerprint, Mail, Lock, Heart } from 'lucide-react'
 import { login } from '@/lib/api'
+import { VERNON_VALUES, VERNON_STAKEHOLDERS } from '@/lib/values'
 import { parseFrappeError } from '@/lib/format'
 import { loginWithPasskey, platformAuthenticatorAvailable, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 
@@ -45,10 +46,26 @@ export default function Login() {
     'w-full rounded-xl border border-line bg-paper-line/40 py-2.5 pl-10 text-sm text-ink placeholder:text-muted transition focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-800/60'
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 p-4">
       {/* Depth — soft glow orbs over the brand gradient */}
       <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -right-16 h-80 w-80 rounded-full bg-[#e879c7]/30 blur-3xl" />
+
+      {/* VernonCorp values — the main message */}
+      <div className="relative w-full max-w-md animate-rise text-center text-white">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 text-rose-500 shadow-lg">
+          <Heart className="h-6 w-6" fill="currentColor" />
+        </div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">We&apos;re in the business of</p>
+        <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Making people happy</h1>
+        <p className="mt-4 text-xs font-semibold text-white/75">Who needs to be happy</p>
+        <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+          {VERNON_STAKEHOLDERS.map((s) => (
+            <span key={s} className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">{s}</span>
+          ))}
+        </div>
+        <p className="mt-4 text-sm font-semibold text-white/90">{VERNON_VALUES.slice(1).join('  ·  ')}</p>
+      </div>
 
       <form
         onSubmit={submit}

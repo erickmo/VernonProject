@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
+  "project",
   "author",
   "note_date",
   "body",
@@ -22,6 +23,13 @@
    "label": "User",
    "options": "User",
    "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Project",
+   "options": "Project"
   },
   {
    "fieldname": "author",

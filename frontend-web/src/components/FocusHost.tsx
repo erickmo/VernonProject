@@ -45,8 +45,10 @@ export function FocusHost() {
         todo?.next_status_label
           ? () =>
               advanceConfirm(name, todo.next_status_label!, todo.to_do, () => {
-                focus.stop() // end this task's focus timer …
-                closeFocusOverlay() // … and exit focus mode
+                // Exit fullscreen, but DON'T stop the timer here — advancing to a
+                // non-terminal review stage leaves the todo open, so it must stay in
+                // focus. AdvanceProvider stops it iff the advance actually completes.
+                closeFocusOverlay()
               })
           : undefined
       }

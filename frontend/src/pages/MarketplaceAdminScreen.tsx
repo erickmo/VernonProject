@@ -19,7 +19,8 @@ type RStatus = 'pending' | 'fulfilled' | 'all'
 export default function MarketplaceAdminScreen() {
   const navigate = useNavigate()
   const { data: boot, isLoading: bootLoading } = useBoot()
-  const [tab, setTab] = useState<Tab>('rewards')
+  // Deep-link ?user=: open straight to that person's redemption (spend) history.
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(window.location.search).get('user') ? 'redemptions' : 'rewards'))
 
   const blocked = !boot ? false : !canManageMarketplace(boot)
   useEffect(() => {
@@ -108,6 +109,9 @@ function RedemptionsList() {
   const [status, setStatus] = useState<RStatus>('pending')
   const { data: rows, isLoading } = useRedemptionsAdmin(status)
   const fulfill = useFulfillRedemption()
+  // Deep-link ?user=: show only this person's redemptions.
+  const seedUser = new URLSearchParams(window.location.search).get('user') ?? ''
+  const shown = (rows ?? []).filter((r) => !seedUser || r.user === seedUser)
 
   const markFulfilled = (name: string) =>
     fulfill.mutate(name, {
@@ -129,11 +133,11 @@ function RedemptionsList() {
       <div className="mt-3">
         {isLoading ? (
           <Spinner className="mx-auto h-5 w-5 text-slate-400" />
-        ) : !(rows ?? []).length ? (
+        ) : !shown.length ? (
           <EmptyState icon={Gift} title="Nothing here" />
         ) : (
           <div className="flex flex-col gap-2">
-            {(rows ?? []).map((r) => (
+            {shown.map((r) => (
               <div key={r.name} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">

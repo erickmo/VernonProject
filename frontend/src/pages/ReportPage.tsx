@@ -6,7 +6,9 @@ import { DetailScreen } from '@/components/Layout'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, FullScreenLoader, Spinner } from '@/components/ui'
 import { useBoot, useReport, useReportOptions } from '@/hooks/useData'
-import type { Opt } from '@/hooks/useData'
+import type { Opt, ReportResult } from '@/hooks/useData'
+import { useReportRowMenu } from '@/hooks/useReportRowMenu'
+import { useHoldFeedback } from '@/hooks/useHoldFeedback'
 import { reportByName, DATE_PRESETS } from '@/lib/reports'
 import type { StatusSet } from '@/lib/reports'
 import { formatDate, stripHtml } from '@/lib/format'
@@ -20,11 +22,73 @@ function cell(value: unknown, fieldtype: string): string {
   return s
 }
 
+// One report row. Tap opens the task; long-press (touch) or right-click opens the
+// shared todo context menu — mirrors the todo cards elsewhere. Extracted so the
+// per-row useHoldFeedback hook is legal (one hook instance per row).
+function ReportRow({
+  row,
+  columns,
+  openRowMenu,
+}: {
+  row: ReportResult['rows'][number]
+  columns: ReportResult['columns']
+  openRowMenu: ((id: string, at: { x: number; y: number }) => void) | null
+}) {
+  const navigate = useNavigate()
+  const todoId = row.todo_id as string | undefined
+  const armed = !!(todoId && openRowMenu)
+  const hold = useHoldFeedback((pt) => {
+    if (todoId && openRowMenu) openRowMenu(todoId, pt)
+  })
+
+  return (
+    <tr
+      onClick={
+        todoId
+          ? () => {
+              if (hold.longFired.current) {
+                hold.longFired.current = false
+                return
+              }
+              navigate(`/project-item/${encodeURIComponent(todoId)}`)
+            }
+          : undefined
+      }
+      onContextMenu={
+        armed
+          ? (e) => {
+              e.preventDefault()
+              openRowMenu!(todoId!, { x: e.clientX, y: e.clientY })
+            }
+          : undefined
+      }
+      {...(armed ? hold.bind : {})}
+      className={clsx(
+        'border-b border-slate-50 dark:border-slate-800 last:border-0',
+        todoId && 'cursor-pointer transition active:bg-brand-50 dark:active:bg-brand-500/15',
+        hold.holding && 'bg-brand-50 dark:bg-brand-500/15',
+      )}
+    >
+      {columns.map((col, ci) => (
+        <td
+          key={col.fieldname + ci}
+          className={clsx(
+            'whitespace-nowrap px-3 py-2.5 text-slate-700 dark:text-slate-200',
+            ci === 0 && 'sticky left-0 z-10 max-w-[180px] truncate bg-white dark:bg-slate-800 font-medium',
+            ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
+          )}
+        >
+          {cell(row[col.fieldname], col.fieldtype)}
+        </td>
+      ))}
+    </tr>
+  )
+}
+
 export default function ReportPage() {
   const { name = '' } = useParams()
   const reportName = decodeURIComponent(name)
   const def = reportByName(reportName)
-  const navigate = useNavigate()
   const { data: boot } = useBoot()
   const { data: options } = useReportOptions()
   const [filters, setFilters] = useState<Record<string, unknown>>({})
@@ -73,6 +137,7 @@ export default function ReportPage() {
   })
 
   const { data, isFetching, error } = useReport(reportName, filters, !!def && ready)
+  const openRowMenu = useReportRowMenu()
 
   const setVal = (key: string, value: unknown) =>
     setFilters((f) => {
@@ -258,7 +323,7 @@ export default function ReportPage() {
               {isFetching ? (
                 <Spinner className="h-4 w-4 text-brand-500" />
               ) : data.rows.some((r) => r.todo_id) ? (
-                <span className="text-xs text-slate-400 dark:text-slate-500">Tap a row to open the task</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">Tap to open · hold for actions</span>
               ) : null}
             </div>
             <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-sm">
@@ -279,33 +344,9 @@ export default function ReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.rows.map((row, ri) => {
-                    const todoId = row.todo_id as string | undefined
-                    return (
-                      <tr
-                        key={ri}
-                        onClick={todoId ? () => navigate(`/project-item/${encodeURIComponent(todoId)}`) : undefined}
-                        className={clsx(
-                          'border-b border-slate-50 dark:border-slate-800 last:border-0',
-                          todoId && 'cursor-pointer transition active:bg-brand-50 dark:active:bg-brand-500/15',
-                        )}
-                      >
-                        {data.columns.map((col, ci) => (
-                          <td
-                            key={col.fieldname + ci}
-                            className={clsx(
-                              'whitespace-nowrap px-3 py-2.5 text-slate-700 dark:text-slate-200',
-                              ci === 0 &&
-                                'sticky left-0 z-10 max-w-[180px] truncate bg-white dark:bg-slate-800 font-medium',
-                              ci === 0 && todoId && 'text-brand-700 dark:text-brand-300',
-                            )}
-                          >
-                            {cell(row[col.fieldname], col.fieldtype)}
-                          </td>
-                        ))}
-                      </tr>
-                    )
-                  })}
+                  {data.rows.map((row, ri) => (
+                    <ReportRow key={ri} row={row} columns={data.columns} openRowMenu={openRowMenu} />
+                  ))}
                 </tbody>
               </table>
             </div>

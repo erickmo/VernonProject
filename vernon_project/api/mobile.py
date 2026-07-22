@@ -3261,6 +3261,38 @@ def upload_reward_image():
 
 
 @frappe.whitelist()
+def upload_business_unit_image():
+	"""Save an uploaded business unit image as a public File and return its URL.
+	The form then stores the URL on the business unit's `image` field like any
+	other field.
+
+	Only raster image types are accepted: the file is served public, so SVG/HTML
+	(stored-XSS vectors) and other content are rejected by extension and MIME."""
+	if not frappe.has_permission("Business Unit", "create"):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	import os
+	from frappe.utils.file_manager import save_file
+
+	f = frappe.request.files.get("file")
+	if not f:
+		frappe.throw("No file uploaded")
+
+	ext = os.path.splitext(f.filename or "")[1].lower()
+	if ext not in ALLOWED_IMAGE_EXT:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+	mimetype = (getattr(f, "mimetype", "") or "").lower()
+	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+
+	content = f.stream.read()
+	if len(content) > MAX_IMAGE_BYTES:
+		frappe.throw("Image too large (max 5 MB).")
+
+	saved = save_file(f.filename, content, None, None, is_private=0)
+	return {"file_url": saved.file_url}
+
+
+@frappe.whitelist()
 def upload_comment_image(reference_doctype=None, reference_name=None):
 	"""Save an uploaded comment image as a public File and return its URL. The
 	caller (CommentThread) then inlines the URL as an <img src="/files/..."> in

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.classList.add('js')</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ page_title }}</title>
+  <meta name="description" content="{{ meta_description }}">
+  <link rel="canonical" href="{{ page_canonical }}">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="icon" type="image/svg+xml" href="/assets/vernon_project/frontend/favicon.svg">
+
+  <!-- Open Graph -->
+  <meta property="og:site_name" content="VernonCorp">
+  <meta property="og:type" content="{{ og_type or 'website' }}">
+  <meta property="og:title" content="{{ og_title or page_title }}">
+  <meta property="og:description" content="{{ og_description or meta_description }}">
+  <meta property="og:url" content="{{ page_canonical }}">
+  <meta property="og:locale" content="{{ 'id_ID' if lang == 'id' else 'en_US' }}">
+  <meta property="og:image" content="{{ site_url }}/assets/vernon_project/frontend/favicon.svg">
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ og_title or page_title }}">
+  <meta name="twitter:description" content="{{ og_description or meta_description }}">
+  <meta name="twitter:image" content="{{ site_url }}/assets/vernon_project/frontend/favicon.svg">
+
+  <!-- hreflang -->
+  {%- for h in hreflang %}
+  <link rel="alternate" hreflang="{{ h.lang }}" href="{{ h.href }}">
+  {%- endfor %}
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- JSON-LD: site-wide org + website -->
+  <script type="application/ld+json">{{ org_jsonld | tojson }}</script>
+  {%- for ld in (page_jsonld or []) %}
+  <script type="application/ld+json">{{ ld | tojson }}</script>
+  {%- endfor %}
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',
+              500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81',
+            },
+            paper: { DEFAULT:'#FAF7F0', card:'#FFFDF8', edge:'#EAE3D5', line:'#F1E9DD' },
+            rose:  { DEFAULT:'#fb7185' },
+            amber2:{ DEFAULT:'#f5a524' },
+            teal2: { DEFAULT:'#12b6a0' },
+          },
+          fontFamily: {
+            display: ['"Familjen Grotesk"','ui-sans-serif','sans-serif'],
+            sans: ['Figtree','ui-sans-serif','sans-serif'],
+          },
+          boxShadow: {
+            card: '0 2px 10px -2px rgb(120 80 40 / 0.08), 0 1px 2px 0 rgb(120 80 40 / 0.05)',
+            lift: '0 20px 45px -18px rgb(67 56 202 / 0.28), 0 4px 12px -4px rgb(120 80 40 / 0.10)',
+          },
+          keyframes: {
+            float: { '0%,100%':{transform:'translateY(0)'}, '50%':{transform:'translateY(-10px)'} },
+            blob:  { '0%,100%':{transform:'translate(0,0) scale(1)'}, '33%':{transform:'translate(24px,-18px) scale(1.08)'}, '66%':{transform:'translate(-18px,14px) scale(0.94)'} },
+            pop:   { '0%':{transform:'scale(.85)',opacity:'0'}, '60%':{transform:'scale(1.04)'}, '100%':{transform:'scale(1)',opacity:'1'} },
+            orbit: { 'from':{transform:'rotate(0deg)'}, 'to':{transform:'rotate(360deg)'} },
+            heart: { '0%,100%':{transform:'scale(1)'}, '25%':{transform:'scale(1.14)'}, '40%':{transform:'scale(0.98)'}, '60%':{transform:'scale(1.08)'} },
+            draw:  { 'from':{'stroke-dashoffset':'400'}, 'to':{'stroke-dashoffset':'0'} },
+          },
+          animation: {
+            float: 'float 6s ease-in-out infinite',
+            blob:  'blob 18s ease-in-out infinite',
+            pop:   'pop .5s cubic-bezier(.22,1,.36,1) both',
+            orbit: 'orbit 40s linear infinite',
+            heart: 'heart 1.8s ease-in-out infinite',
+            draw:  'draw 1.4s ease-out forwards',
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body { background:#FAF7F0; color:#312e81; font-family:'Figtree',sans-serif; -webkit-font-smoothing:antialiased; }
+    h1,h2,h3,h4,.font-display { font-family:'Familjen Grotesk',sans-serif; }
+
+    /* subtle paper grain over everything */
+    body::before {
+      content:''; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.5;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    }
+    .gradient-mesh {
+      background:
+        radial-gradient(42rem 32rem at 12% 8%, rgba(129,140,248,.30), transparent 60%),
+        radial-gradient(38rem 30rem at 88% 4%, rgba(251,113,133,.20), transparent 60%),
+        radial-gradient(46rem 36rem at 70% 92%, rgba(18,182,160,.16), transparent 62%);
+    }
+    .dotgrid {
+      background-image:radial-gradient(rgba(67,56,202,.14) 1.1px, transparent 1.1px);
+      background-size:22px 22px;
+    }
+    .ink-underline path { stroke-dasharray:400; }
+
+    /* Hidden state is JS-only: without JS (disabled or broken) the `js` class is never
+       added, so .reveal stays visible instead of leaving a blank body. */
+    html.js .reveal { opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s cubic-bezier(.22,1,.36,1); transition-delay:var(--d,0s); }
+    html.js .reveal.in { opacity:1; transform:none; }
+
+    a:focus-visible, button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+      outline:none; box-shadow:0 0 0 3px #FAF7F0, 0 0 0 5px #6366f1; border-radius:.65rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior:auto; }
+      *, *::before, *::after { animation:none !important; transition:none !important; }
+      .reveal { opacity:1 !important; transform:none !important; }
+    }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+
+<body class="relative min-h-screen antialiased">
+
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-3 focus:left-3 focus:px-4 focus:py-2 focus:rounded-xl focus:bg-brand-600 focus:text-white focus:shadow-lift">
+    {{ 'Lewati ke konten utama' if lang == 'id' else 'Skip to main content' }}
+  </a>
+
+  <!-- NAV -->
+  <header id="nav" class="sticky top-0 z-50 transition-all duration-300 bg-paper/80 backdrop-blur-md border-b border-transparent">
+    <nav class="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center gap-4" aria-label="Primary">
+      <a href="/{{ '?lang=en' if lang == 'en' else '' }}" class="flex items-center gap-2.5 shrink-0 group">
+        <span class="grid place-items-center w-9 h-9 rounded-xl bg-brand-600 text-white shadow-card group-hover:animate-pop">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 5.5 L12 19 L20 5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="8.5" r="1.7" fill="#fb7185"/>
+          </svg>
+        </span>
+        <span class="font-display font-bold text-lg tracking-tight text-brand-900">{{ nav.brand_name }}</span>
+      </a>
+
+      <div class="hidden md:flex items-center gap-1 ml-2">
+        {%- for l in nav.links %}
+        <a href="{{ l.url }}{{ '?lang=en' if lang == 'en' else '' }}" class="px-3 py-2 rounded-lg text-sm font-medium text-brand-800/80 hover:text-brand-900 hover:bg-brand-50 transition-colors">{{ l.title }}</a>
+        {%- endfor %}
+      </div>
+
+      <div class="ml-auto flex items-center gap-2">
+        <a href="{{ lang_toggle.url }}" class="hidden sm:inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold text-brand-700 border border-paper-edge hover:bg-brand-50 transition-colors" aria-label="{{ 'Ganti bahasa' if lang == 'id' else 'Switch language' }}">
+          {{ lang_toggle.label }}
+        </a>
+        <a href="{{ nav.secondary.url }}" class="hidden sm:inline-flex items-center px-3.5 py-2 rounded-xl text-sm font-medium text-brand-800 hover:bg-brand-50 transition-colors">{{ nav.secondary.label }}</a>
+        <a href="{{ nav.cta.url }}{{ '?lang=en' if lang == 'en' else '' }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 hover:shadow-lift transition-all">
+          {{ nav.cta.label }}
+        </a>
+        <button id="menu-btn" type="button" class="md:hidden grid place-items-center w-10 h-10 rounded-xl text-brand-800 hover:bg-brand-50 transition-colors" aria-label="{{ 'Buka menu' if lang == 'id' else 'Open menu' }}" aria-expanded="false" aria-controls="mobile-menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- mobile menu -->
+    <div id="mobile-menu" class="md:hidden hidden border-t border-paper-edge bg-paper-card/95 backdrop-blur">
+      <div class="mx-auto max-w-6xl px-4 py-3 flex flex-col gap-1">
+        {%- for l in nav.links %}
+        <a href="{{ l.url }}{{ '?lang=en' if lang == 'en' else '' }}" class="px-3 py-2.5 rounded-lg text-base font-medium text-brand-800 hover:bg-brand-50">{{ l.title }}</a>
+        {%- endfor %}
+        <a href="{{ nav.secondary.url }}" class="px-3 py-2.5 rounded-lg text-base font-medium text-brand-800 hover:bg-brand-50">{{ nav.secondary.label }}</a>
+        <a href="{{ lang_toggle.url }}" class="px-3 py-2.5 rounded-lg text-base font-medium text-brand-700 hover:bg-brand-50">{{ 'Bahasa: English' if lang == 'id' else 'Language: Bahasa Indonesia' }}</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="relative z-10">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="relative z-10 mt-24 border-t border-paper-edge bg-paper-card/70">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 py-14">
+      <div class="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="grid place-items-center w-9 h-9 rounded-xl bg-brand-600 text-white shadow-card">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 5.5 L12 19 L20 5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="8.5" r="1.7" fill="#fb7185"/>
+              </svg>
+            </span>
+            <span class="font-display font-bold text-lg text-brand-900">{{ nav.brand_name }}</span>
+          </div>
+          <p class="mt-4 max-w-xs text-sm leading-relaxed text-brand-800/70">{{ footer.tagline }}</p>
+          <p class="mt-5 inline-flex items-center gap-2 text-sm font-medium text-brand-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fb7185" class="animate-heart" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.4 8.5 2 5 5.4 5c2 0 3.3 1.2 4.1 2.4C10.3 6.2 11.6 5 13.6 5 17 5 18.6 8.5 17 11.8 14.5 16.4 12 21 12 21z"/></svg>
+            {{ 'Membuat orang bahagia' if lang == 'id' else 'Making people happy' }}
+          </p>
+        </div>
+
+        {%- for col in footer.columns %}
+        <div>
+          <h2 class="font-display font-semibold text-sm text-brand-900">{{ col.title }}</h2>
+          <ul class="mt-4 space-y-2.5">
+            {%- for l in col.links %}
+            <li><a href="{{ l.url }}{{ '?lang=en' if lang == 'en' else '' }}" class="text-sm text-brand-800/70 hover:text-brand-700 transition-colors">{{ l.title }}</a></li>
+            {%- endfor %}
+          </ul>
+        </div>
+        {%- endfor %}
+      </div>
+
+      <div class="mt-12 pt-6 border-t border-paper-edge flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <p class="text-sm text-brand-800/60">{{ footer.copyright }} · {{ nav.tagline }}</p>
+        <ul class="flex items-center gap-5">
+          {%- for l in footer.legal %}
+          <li><a href="{{ l.url }}{{ '?lang=en' if lang == 'en' else '' }}" class="text-xs text-brand-800/60 hover:text-brand-700">{{ l.title }}</a></li>
+          {%- endfor %}
+          <li><a href="{{ lang_toggle.url }}" class="text-xs font-semibold text-brand-700 hover:text-brand-900">{{ lang_toggle.label }}</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // (1) reveal on scroll
+      var reveals = document.querySelectorAll('.reveal');
+      if (reduce || !('IntersectionObserver' in window)) {
+        reveals.forEach(function (el) { el.classList.add('in'); });
+      } else {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+        reveals.forEach(function (el) { io.observe(el); });
+      }
+
+      // (2) count-up for [data-count]
+      function countUp(el) {
+        var target = parseFloat(el.getAttribute('data-count')) || 0;
+        var suffix = el.getAttribute('data-suffix') || '';
+        if (reduce) { el.textContent = target.toLocaleString('id-ID') + suffix; return; }
+        var start = null, dur = 1600;
+        function step(ts) {
+          if (!start) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(target * eased).toLocaleString('id-ID') + suffix;
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+      var counters = document.querySelectorAll('[data-count]');
+      if ('IntersectionObserver' in window) {
+        var cio = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) { countUp(e.target); cio.unobserve(e.target); } });
+        }, { threshold: 0.6 });
+        counters.forEach(function (el) { cio.observe(el); });
+      } else {
+        counters.forEach(countUp);
+      }
+
+      // (3) nav shadow on scroll
+      var nav = document.getElementById('nav');
+      function onScroll() {
+        if (window.scrollY > 8) { nav.classList.add('shadow-card','border-paper-edge','bg-paper/90'); }
+        else { nav.classList.remove('shadow-card','border-paper-edge','bg-paper/90'); }
+      }
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+
+      // (4) mobile menu toggle
+      var btn = document.getElementById('menu-btn');
+      var menu = document.getElementById('mobile-menu');
+      if (btn && menu) {
+        btn.addEventListener('click', function () {
+          var open = menu.classList.toggle('hidden') === false;
+          btn.setAttribute('aria-expanded', String(open));
+        });
+        menu.querySelectorAll('a').forEach(function (a) {
+          a.addEventListener('click', function () { menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); });
+        });
+      }
+    })();
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

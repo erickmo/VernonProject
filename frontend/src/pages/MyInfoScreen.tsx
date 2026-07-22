@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Phone, MapPin, CalendarDays, Award, BookOpen, ClipboardList, Trash2, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Phone, MapPin, CalendarDays, Award, BookOpen, ClipboardList, Trash2, Plus, ChevronRight } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -16,6 +17,7 @@ const RELIGIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
 
 export default function MyInfoScreen() {
+  const navigate = useNavigate()
   const { data: boot } = useBoot()
   const employee = boot?.employee
   const leave = boot?.leave
@@ -83,15 +85,21 @@ export default function MyInfoScreen() {
       }
     >
       <div className="flex flex-col">
-      {/* Leave balance — read-only chip */}
+      {/* Leave balance — tap to open the full Riwayat Cuti statement */}
       {leave && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl bg-sky-50 dark:bg-sky-500/15 px-3 py-2">
+        <button
+          onClick={() => navigate('/cuti-ledger')}
+          className="mb-4 flex w-full items-center gap-2 rounded-xl bg-sky-50 dark:bg-sky-500/15 px-3 py-2 text-left active:scale-[0.99]"
+        >
           <CalendarDays className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
           <span className="text-sm font-semibold text-sky-700 dark:text-sky-300">
             {leave.remaining} / {leave.quota} days leave
           </span>
           <span className="text-xs text-sky-500 dark:text-sky-400">{leave.used} used</span>
-        </div>
+          <span className="ml-auto flex items-center gap-0.5 text-xs font-medium text-sky-600 dark:text-sky-400">
+            Lihat riwayat <ChevronRight className="h-3.5 w-3.5" />
+          </span>
+        </button>
       )}
 
       {/* Personal */}

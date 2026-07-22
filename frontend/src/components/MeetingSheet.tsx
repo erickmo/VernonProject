@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, Check, RotateCcw, Pencil, Users, FolderKanban, Trash2, Clock, CalendarDays, CalendarPlus, Coins } from 'lucide-react'
 import type { MeetingListItem, Opt2 } from '@/lib/types'
@@ -24,7 +25,8 @@ const field =
 // Slide-up detail for a single meeting + its management actions. Reused wherever
 // a meeting row is tapped (currently the calendar day sheet). Every action that
 // mutates the meeting closes the sheet so the caller's refreshed list shows.
-export function MeetingSheet({ meeting, onClose }: { meeting: MeetingListItem | null; onClose: () => void }) {
+// variant: 'sheet' = mobile bottom-sheet (default); 'modal' = centered dialog (/w).
+export function MeetingSheet({ meeting, onClose, variant = 'sheet' }: { meeting: MeetingListItem | null; onClose: () => void; variant?: 'sheet' | 'modal' }) {
   const navigate = useNavigate()
   const toast = useToast()
   const confirm = useConfirm()
@@ -99,11 +101,25 @@ export function MeetingSheet({ meeting, onClose }: { meeting: MeetingListItem | 
 
   const options: Opt2[] = (invitable.data?.users ?? []).map((u) => ({ value: u.user, label: u.full_name || u.user }))
 
-  return (
+  // Portal to <body>: on /w this renders inside Page, whose animate-rise leaves
+  // transform:translateY(0) (fill-mode:both) — a containing block that would pin
+  // this `fixed` overlay to the Page box instead of the viewport.
+  return createPortal(
    <>
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={onClose}>
+    <div
+      className={
+        variant === 'modal'
+          ? 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40'
+          : 'fixed inset-0 z-[60] flex flex-col justify-end bg-black/40'
+      }
+      onClick={onClose}
+    >
       <div
-        className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5 pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+        className={
+          variant === 'modal'
+            ? 'max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white dark:bg-slate-800 p-5 shadow-2xl'
+            : 'max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 p-5 pb-[calc(env(safe-area-inset-bottom)+1rem)]'
+        }
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -188,7 +204,8 @@ export function MeetingSheet({ meeting, onClose }: { meeting: MeetingListItem | 
       </div>
     </div>
     <MarkDoneSheet meeting={markDoneOpen ? m : null} onClose={() => setMarkDoneOpen(false)} onDone={onClose} />
-   </>
+   </>,
+   document.body,
   )
 }
 

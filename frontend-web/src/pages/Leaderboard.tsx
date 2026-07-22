@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Trophy } from 'lucide-react'
 import { Avatar, EmptyState, Spinner, Segmented } from '@/components/ui'
 import { useBoot, useLeaderboard } from '@/hooks/useData'
@@ -25,6 +26,7 @@ const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : ran
 
 export default function Leaderboard() {
   const { data: boot } = useBoot()
+  const navigate = useNavigate()
   const [period, setPeriod] = useState<LeaderboardPeriod>('monthly')
   const [dimension, setDimension] = useState<LeaderboardDimension>('productivity')
   const [brand, setBrand] = useState<string>('')
@@ -160,6 +162,9 @@ export default function Leaderboard() {
                 columns={leaderCols}
                 getKey={(e) => e.user}
                 activeKey={boot?.user}
+                onRowClick={(e) =>
+                  navigate(e.user === boot?.user ? '/wallet' : `/points-log/${encodeURIComponent(e.user)}`)
+                }
               />
             </div>
           </BentoTile>

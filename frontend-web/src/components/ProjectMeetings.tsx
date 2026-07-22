@@ -139,7 +139,7 @@ export function ProjectMeetings({ project, canManage }: { project: string; canMa
       )}
 
       {canManage && <CreateMeetingDialog open={dialog} onClose={() => setDialog(false)} project={project} />}
-      <MeetingSheet meeting={edit} onClose={() => setEdit(null)} />
+      <MeetingSheet meeting={edit} onClose={() => setEdit(null)} variant="modal" />
       <MarkDoneSheet meeting={markDone} onClose={() => setMarkDone(null)} />
     </Section>
   )

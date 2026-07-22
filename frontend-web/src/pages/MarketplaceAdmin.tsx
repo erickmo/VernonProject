@@ -23,7 +23,8 @@ type RStatus = 'pending' | 'fulfilled' | 'all'
 export default function MarketplaceAdmin() {
   const navigate = useNavigate()
   const { data: boot, isLoading: bootLoading } = useBoot()
-  const [tab, setTab] = useState<Tab>('rewards')
+  // Deep-link ?user=: open straight to that person's redemption (spend) history.
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(window.location.search).get('user') ? 'redemptions' : 'rewards'))
 
   const blocked = !boot ? false : !canManageMarketplace(boot)
   useEffect(() => {
@@ -164,6 +165,9 @@ function RedemptionsTable() {
   const { data: rows, isLoading } = q
   const fulfill = useFulfillRedemption()
   const [fulfillingName, setFulfillingName] = useState<string | null>(null)
+  // Deep-link ?user=: show only this person's redemptions.
+  const seedUser = new URLSearchParams(window.location.search).get('user') ?? ''
+  const shownRows = (rows ?? []).filter((r) => !seedUser || r.user === seedUser)
 
   const markFulfilled = async (name: string) => {
     const ok = await confirm({
@@ -198,7 +202,7 @@ function RedemptionsTable() {
         <ErrorState onRetry={() => q.refetch()} />
       ) : (
         <DataTable
-          rows={rows ?? []}
+          rows={shownRows}
           columns={[
             {
               key: 'reward',

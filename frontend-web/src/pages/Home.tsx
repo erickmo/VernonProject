@@ -4,8 +4,10 @@ import clsx from 'clsx'
 import {
   Sparkles, Plus, Gift, ShieldCheck, CheckCheck, CalendarClock,
   FolderKanban, Flame, QrCode, BookOpen, Pause, Search, X, Clock, CalendarDays,
-  SearchX, AlertTriangle, Users, Wand2, User, KeyRound, Flag, ChevronRight,
+  SearchX, AlertTriangle, Users, Wand2, User, KeyRound, Flag, ChevronRight, Heart,
 } from 'lucide-react'
+import { valueOfDay } from '@/lib/values'
+import { ValuesWelcome } from '@web/components/ValuesWelcome'
 import {
   useBoot, useDashboard, useProjects, useWallet, useGamification, useMyAttendance,
   useMeetings, useWeeklyRecap, useClaimDaily, useDailyVerse, useHomeBanners,
@@ -15,7 +17,8 @@ import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { ACTIONS, MOBILE_ONLY } from '@/lib/actions'
+import { ACTIONS, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
+import { useHoldFeedback } from '@/hooks/useHoldFeedback'
 import { FilterButton, activeFilterCount, type FilterValue, type FilterDimension } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
@@ -246,7 +249,6 @@ const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
 // Shortcut tiles — mobile QuickActions parity from the shared ACTIONS list, but a
 // web-styled wrapping grid (no mobile -mx-4 horizontal scroll).
 function ShortcutGrid() {
-  const navigate = useNavigate()
   return (
     <div className="rounded-2xl bg-surface p-4 shadow-card sm:p-5">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
@@ -254,20 +256,40 @@ function ShortcutGrid() {
       </h2>
       <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
         {ACTIONS.filter((a) => !MOBILE_ONLY.has(a.to.split('?')[0])).map((a) => (
-          <button
-            key={a.title}
-            type="button"
-            onClick={() => navigate(a.to)}
-            className="flex flex-col items-center gap-1.5 transition active:scale-95"
-          >
-            <span className={clsx('flex h-12 w-12 items-center justify-center rounded-2xl shadow-card', a.tile)}>
-              <a.icon className="h-5 w-5" strokeWidth={2} />
-            </span>
-            <span className="w-full truncate text-center text-xs font-semibold text-muted">{a.short}</span>
-          </button>
+          <ShortcutTile key={a.title} action={a} />
         ))}
       </div>
     </div>
+  )
+}
+
+// Tap navigates; long-press (touch) plays a press-in + pop and swallows the
+// trailing click, matching the mobile QuickActions tiles.
+function ShortcutTile({ action: a }: { action: ActionItem }) {
+  const navigate = useNavigate()
+  const hold = useHoldFeedback()
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (hold.longFired.current) { hold.longFired.current = false; return }
+        navigate(a.to)
+      }}
+      {...hold.bind}
+      className="flex flex-col items-center gap-1.5 transition active:scale-95"
+    >
+      <span
+        style={{ transform: hold.holding ? 'scale(0.9)' : hold.fired ? 'scale(1.12)' : undefined }}
+        className={clsx(
+          'relative flex h-12 w-12 items-center justify-center rounded-2xl shadow-card transition-transform',
+          a.tile,
+          hold.holding && 'ring-2 ring-white/80',
+        )}
+      >
+        <a.icon className="h-5 w-5" strokeWidth={2} />
+      </span>
+      <span className="w-full truncate text-center text-xs font-semibold text-muted">{a.short}</span>
+    </button>
   )
 }
 
@@ -577,6 +599,7 @@ export default function Home() {
 
   return (
     <Page className="space-y-6">
+      <ValuesWelcome />
       {/* Hero — command-center greeting; today's demands surface as tappable focal chips */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-50 via-surface to-surface p-5 shadow-card dark:from-brand-500/10 dark:via-slate-900 dark:to-slate-900 sm:p-6">
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl dark:bg-brand-500/20" />
@@ -588,6 +611,10 @@ export default function Home() {
               {needCount === 0
                 ? `You're all caught up${daily?.streak ? ` — 🔥 ${daily.streak}-day streak` : ''}.${counts.upcoming > 0 ? '' : ' Enjoy the clear plate.'}`
                 : `${needCount} thing${needCount === 1 ? '' : 's'} need you today.`}
+            </p>
+            {/* VernonCorp value of the day — quiet reminder of why we're here. */}
+            <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-600/80 dark:text-brand-400/80">
+              <Heart className="h-3 w-3 shrink-0" fill="currentColor" /> {valueOfDay()}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
@@ -958,7 +985,7 @@ export default function Home() {
       {planOpen && <PlanDayDrawer open onClose={() => setPlanOpen(false)} candidates={planCandidates} />}
       <AutoPlanProgress open={autoFill.saving} summary={autoFill.summary} />
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
-      <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} />
+      <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} variant="modal" />
     </Page>
   )
 }

@@ -13,7 +13,7 @@ export function upcomingMeetings(all: MeetingListItem[], limit = 5): MeetingList
 }
 
 // "Today 14:00" for today, "Mon 14 Jul · 14:00" otherwise.
-function slot(scheduled_at: string): string {
+export function slot(scheduled_at: string): string {
   const date = scheduled_at.slice(0, 10)
   const time = scheduled_at.slice(11, 16)
   if (date === todayISO()) return `Today ${time}`

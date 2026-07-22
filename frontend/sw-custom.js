@@ -6,7 +6,10 @@
 // v10: bumped to evict a poisoned 0-byte bundle entry a CDN edge cached during a
 // same-hash rebuild; the old cache is dropped on activate so assets re-fetch fresh.
 // v12: force installed /m clients off the stale shell after the move-detail deploy.
-const ASSET_CACHE = 'vernon-assets-v12'
+// v13: flush stale shell so the focus-timer FAB fix (completed todos no longer linger) lands.
+// v14: flush stale /m shell for the Cuti Bersama holiday sync + per-Brand quota + Settings cards.
+// v17: flush shell after moving per-Brand leave/holiday settings onto the brand form.
+const ASSET_CACHE = 'vernon-assets-v17'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {

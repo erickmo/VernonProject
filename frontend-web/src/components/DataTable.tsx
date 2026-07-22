@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { ChevronDown, ChevronUp, Inbox } from 'lucide-react'
 import { EmptyState } from '@/components/ui'
@@ -20,13 +20,14 @@ export type Column<T> = {
 }
 
 export function DataTable<T>({
-  rows, columns, getKey, empty, onRowClick, activeKey, rowClassName,
+  rows, columns, getKey, empty, onRowClick, onRowContextMenu, activeKey, rowClassName,
 }: {
   rows: T[]
   columns: Column<T>[]
   getKey: (row: T) => string
   empty?: ReactNode
   onRowClick?: (row: T) => void
+  onRowContextMenu?: (row: T, e: MouseEvent) => void   // opt-in per-row right-click (e.g. context menu)
   activeKey?: string
   rowClassName?: (row: T) => string | undefined   // opt-in per-row tint (e.g. completed rows)
 }) {
@@ -85,6 +86,7 @@ export function DataTable<T>({
               <tr
                 key={k}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onContextMenu={onRowContextMenu ? (e) => onRowContextMenu(row, e) : undefined}
                 className={clsx(
                   'border-b border-line last:border-0',
                   onRowClick && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] hover:shadow-[inset_2px_0_0_#6366f1]',

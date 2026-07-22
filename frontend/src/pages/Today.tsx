@@ -29,7 +29,10 @@ import {
   Search,
   X,
   AlertTriangle,
+  Heart,
 } from 'lucide-react'
+import { valueOfDay } from '@/lib/values'
+import { ValuesWelcome } from '@/components/ValuesWelcome'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { TodoCard } from '@/components/TodoCard'
 import { SwipeProjectLists } from '@/components/SwipeProjectLists'
@@ -493,6 +496,7 @@ export default function Today() {
 
   return (
     <TabScreen title="Home" subtitle={`${greeting()}, ${firstName}`} right={right}>
+      <ValuesWelcome />
       {isLoading && !data ? (
         <FullScreenLoader label="Loading your work…" />
       ) : (
@@ -501,6 +505,12 @@ export default function Today() {
             <>
               {/* Managed promo banners — full-bleed strip, flush to the top. */}
               <BannerCarousel slides={banners ?? []} />
+
+              {/* VernonCorp value of the day — quiet reminder of why we're here. */}
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-center">
+                <Heart className="h-3 w-3 shrink-0 text-brand-400" fill="currentColor" />
+                <span className="text-xs font-medium text-stone-400 dark:text-slate-500">{valueOfDay()}</span>
+              </div>
 
               {/* DANGER: last shift day fell below the daily-minimum minutes setting. */}
               {shortfall?.under && (

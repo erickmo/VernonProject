@@ -118,17 +118,17 @@ function syncSave(t: FocusTimer) {
     .catch((e) => console.warn('[focus] save failed', e))
 }
 
-// `syncedIds` = taskIds the backend has confirmed at least once. It lets a
-// hydrate tell "stopped on another device" (was synced, now absent → drop) from
-// "not persisted yet" (never synced → KEEP + re-push). Without this, an empty or
-// lagging backend list would wipe a live local timer on refresh — the bug this
-// fixes. Merge logic lives in `@/lib/focusMerge` (pure, unit-checked).
+// `syncedIds` = taskIds the backend has confirmed active at least once. It lets a
+// hydrate tell "stopped/completed elsewhere" (was synced, now absent → drop) from
+// "not persisted yet" (never synced → KEEP + re-push). Reset per page load, so on a
+// cold load it's the timer's AGE (see mergeTimers) that guards a fresh in-flight
+// save from being dropped. Merge logic lives in `@/lib/focusMerge` (pure, checked).
 let syncedIds = new Set<string>()
 
 // Merge the backend's rows into the local store (cross-device source of truth,
 // but never destructive to an un-synced local timer — see `mergeTimers`).
 function applyRows(rows: FocusRow[]) {
-  const { timers, resave, synced } = mergeTimers(current, syncedIds, rows)
+  const { timers, resave, synced } = mergeTimers(current, syncedIds, rows, Date.now())
   syncedIds = synced
   setTimers(timers)
   resave.forEach(syncSave)

@@ -1,14 +1,10 @@
 import { useState } from 'react'
-import { UsersRound, StickyNote, Trash2, Share2, Lock, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { StickyNote, Trash2, Share2, Lock, Plus, FolderKanban } from 'lucide-react'
 import { Avatar } from '@/components/ui'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
-import {
-  useUserNotes,
-  useUserLeaders,
-  useAddUserNote,
-  useDeleteUserNote,
-} from '@/hooks/useData'
+import { useUserNotes, useAddUserNote, useDeleteUserNote } from '@/hooks/useData'
 import type { LeaderNote } from '@/lib/types'
 
 const card =
@@ -26,14 +22,19 @@ function fmtDate(d: string) {
   })
 }
 
-export function LeaderNotesSection({ user }: { user: string }) {
-  const { data: view } = useUserNotes(user)
+// `project` set (member overlay) ⇒ notes scoped to it + add-form tags new notes
+// with it. Omitted (user profile) ⇒ all notes about the user, read-only, each
+// showing a link to its project.
+export function LeaderNotesSection({ user, project }: { user: string; project?: string }) {
+  const { data: view } = useUserNotes(user, project)
   if (!view) return null
 
   const notes = view.notes
+  const canAdd = !!project && view.can_add
   // Nothing to show and nothing to add → render nothing at all.
-  if (!view.can_add && notes.length === 0) return null
+  if (!canAdd && notes.length === 0) return null
 
+  const showProject = !project // project chip only useful on the cross-project profile view
   const global = notes.filter((n) => !n.note_date)
   const dated = notes.filter((n) => n.note_date)
   const byDate = new Map<string, LeaderNote[]>()
@@ -47,9 +48,6 @@ export function LeaderNotesSection({ user }: { user: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <LeadersReadonly user={user} />
-
-
       <div className={card}>
         <p className={heading}>
           <StickyNote className="h-3.5 w-3.5" /> Catatan
@@ -62,7 +60,7 @@ export function LeaderNotesSection({ user }: { user: string }) {
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Catatan Umum</p>
                 {global.map((n) => (
-                  <NoteCard key={n.name} note={n} user={user} />
+                  <NoteCard key={n.name} note={n} user={user} showProject={showProject} />
                 ))}
               </div>
             )}
@@ -70,7 +68,7 @@ export function LeaderNotesSection({ user }: { user: string }) {
               <div key={k} className="flex flex-col gap-2">
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{fmtDate(k)}</p>
                 {byDate.get(k)!.map((n) => (
-                  <NoteCard key={n.name} note={n} user={user} />
+                  <NoteCard key={n.name} note={n} user={user} showProject={showProject} />
                 ))}
               </div>
             ))}
@@ -78,12 +76,25 @@ export function LeaderNotesSection({ user }: { user: string }) {
         )}
       </div>
 
-      {view.can_add && <AddNoteForm user={user} />}
+      {canAdd && <AddNoteForm user={user} project={project!} />}
     </div>
   )
 }
 
-function NoteCard({ note, user }: { note: LeaderNote; user: string }) {
+function ProjectChip({ note }: { note: LeaderNote }) {
+  const navigate = useNavigate()
+  if (!note.project) return null
+  return (
+    <button
+      onClick={() => navigate(`/project/${encodeURIComponent(note.project as string)}`)}
+      className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 active:scale-95 dark:bg-brand-500/15 dark:text-brand-300"
+    >
+      <FolderKanban className="h-3 w-3" /> {note.project_title || note.project}
+    </button>
+  )
+}
+
+function NoteCard({ note, user, showProject }: { note: LeaderNote; user: string; showProject: boolean }) {
   const confirm = useConfirm()
   const toast = useToast()
   const del = useDeleteUserNote()
@@ -108,6 +119,11 @@ function NoteCard({ note, user }: { note: LeaderNote; user: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-paper p-3 dark:border-slate-700 dark:bg-slate-900">
       <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-100">{note.body}</p>
+      {showProject && note.project && (
+        <div className="mt-2">
+          <ProjectChip note={note} />
+        </div>
+      )}
       <div className="mt-2 flex items-center gap-2">
         <Avatar name={note.author_name} image={note.author_image} size={22} />
         <span className="flex-1 truncate text-xs text-slate-500 dark:text-slate-400">{note.author_name}</span>
@@ -135,7 +151,7 @@ function NoteCard({ note, user }: { note: LeaderNote; user: string }) {
   )
 }
 
-function AddNoteForm({ user }: { user: string }) {
+function AddNoteForm({ user, project }: { user: string; project: string }) {
   const toast = useToast()
   const add = useAddUserNote()
   const [body, setBody] = useState('')
@@ -146,7 +162,7 @@ function AddNoteForm({ user }: { user: string }) {
     const b = body.trim()
     if (!b) return
     add.mutate(
-      { user, body: b, note_date: date || null, shared_with_user: shared ? 1 : 0 },
+      { user, project, body: b, note_date: date || null, shared_with_user: shared ? 1 : 0 },
       {
         onSuccess: () => {
           setBody('')
@@ -197,30 +213,6 @@ function AddNoteForm({ user }: { user: string }) {
         >
           {add.isPending ? 'Menyimpan…' : 'Tambah Catatan'}
         </button>
-      </div>
-    </div>
-  )
-}
-
-// Read-only list of who leads this user — derived from active-project leadership.
-function LeadersReadonly({ user }: { user: string }) {
-  const { data: leaders } = useUserLeaders(user)
-  if (!leaders || leaders.length === 0) return null
-  return (
-    <div className={card}>
-      <p className={heading}>
-        <UsersRound className="h-3.5 w-3.5" /> Pemimpin
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {leaders.map((l) => (
-          <span
-            key={l.leader}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <Avatar name={l.leader_name} image={l.user_image} size={20} />
-            {l.leader_name}
-          </span>
-        ))}
       </div>
     </div>
   )

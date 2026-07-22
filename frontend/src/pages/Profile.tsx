@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageBusinessUnits, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -246,6 +246,9 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               : []),
             ...(canManageBrands(boot)
               ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
+              : []),
+            ...(canManageBusinessUnits(boot)
+              ? [{ icon: Boxes, label: 'Manage Business Units', hue: 'indigo' as const, onClick: () => navigate('/business-units') }]
               : []),
           ],
         },

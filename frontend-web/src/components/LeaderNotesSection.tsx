@@ -1,37 +1,30 @@
 import { useState } from 'react'
-import { Users, NotebookPen, Trash2, Share2, Lock, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { NotebookPen, Trash2, Share2, Lock, Plus, FolderKanban } from 'lucide-react'
 import { Avatar, Spinner } from '@/components/ui'
 import { DatePicker } from '@web/components/DatePicker'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { formatDate } from '@/lib/format'
 import type { LeaderNote } from '@/lib/types'
-import {
-  useUserNotes,
-  useUserLeaders,
-  useAddUserNote,
-  useDeleteUserNote,
-} from '@/hooks/useData'
+import { useUserNotes, useAddUserNote, useDeleteUserNote } from '@/hooks/useData'
 
-// Person→person supervision. A user's leaders are DERIVED: the project_leader
-// of every active (Ongoing) project the user is a team member of. Those leaders
-// (and admins) record a timeline of dated-or-global notes about the user.
-// Rendered on the /w user edit page. Contract: api/leader_notes.py.
+// Observation notes about a user. `project` set (project member overlay) ⇒ notes
+// scoped to that project and new notes are tagged with it. Omitted (user edit
+// page) ⇒ all notes about the user, read-only, each linking to its project.
+// Only a project's owner/leader (or admin) may add. Contract: api/leader_notes.py.
 
 const card = 'rounded-2xl bg-surface p-4 shadow-card'
 const field =
   'mt-1 w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
-export default function LeaderNotesSection({ user }: { user: string }) {
+export default function LeaderNotesSection({ user, project }: { user: string; project?: string }) {
   const confirm = useConfirm()
   const toast = useToast()
 
-  const view = useUserNotes(user)
-  const canAdd = !!view.data?.can_add
-
-  // Only fetch derived leaders once we know the viewer may see this user (the
-  // notes view loaded without a 403); a stranger never gets here.
-  const leadersQ = useUserLeaders(view.data ? user : '')
+  const view = useUserNotes(user, project)
+  const canAdd = !!project && !!view.data?.can_add
+  const showProject = !project // link chip only useful on the cross-project profile view
 
   const addNote = useAddUserNote()
   const delNote = useDeleteUserNote()
@@ -42,10 +35,11 @@ export default function LeaderNotesSection({ user }: { user: string }) {
 
   async function onAdd() {
     const b = body.trim()
-    if (!b) return
+    if (!b || !project) return
     try {
       await addNote.mutateAsync({
         user,
+        project,
         body: b,
         note_date: noteDate || null,
         shared_with_user: shared ? 1 : 0,
@@ -88,7 +82,6 @@ export default function LeaderNotesSection({ user }: { user: string }) {
   // Nothing to add and nothing shared → don't render an empty block.
   if (!canAdd && notes.length === 0) return null
 
-  const leaders = leadersQ.data ?? []
   const globalNotes = notes.filter((n) => !n.note_date)
   const datedKeys = [...new Set(notes.filter((n) => n.note_date).map((n) => n.note_date as string))].sort(
     (a, b) => b.localeCompare(a),
@@ -96,27 +89,6 @@ export default function LeaderNotesSection({ user }: { user: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Leaders — derived from active-project leadership, read-only. */}
-      {leaders.length > 0 && (
-        <section className={card}>
-          <div className="mb-3 flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted" />
-            <h2 className="font-semibold text-ink">Pemimpin</h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {leaders.map((l) => (
-              <span
-                key={l.leader}
-                className="inline-flex items-center gap-2 rounded-full border border-line bg-hover/[0.04] py-1 pl-1 pr-3 text-sm text-ink"
-              >
-                <Avatar name={l.leader_name} image={l.user_image} size={24} />
-                <span className="truncate">{l.leader_name}</span>
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Notes timeline. */}
       <section className={card}>
         <div className="mb-3 flex items-center gap-2">
@@ -129,7 +101,7 @@ export default function LeaderNotesSection({ user }: { user: string }) {
         ) : (
           <div className="space-y-5">
             {globalNotes.length > 0 && (
-              <NoteGroup label="Catatan Umum" items={globalNotes} onDelete={onDelete} pending={delNote.isPending} />
+              <NoteGroup label="Catatan Umum" items={globalNotes} onDelete={onDelete} pending={delNote.isPending} showProject={showProject} />
             )}
             {datedKeys.map((d) => (
               <NoteGroup
@@ -138,13 +110,14 @@ export default function LeaderNotesSection({ user }: { user: string }) {
                 items={notes.filter((n) => n.note_date === d)}
                 onDelete={onDelete}
                 pending={delNote.isPending}
+                showProject={showProject}
               />
             ))}
           </div>
         )}
       </section>
 
-      {/* Add-note form — leaders + admin only. */}
+      {/* Add-note form — project owner/leader + admin only, project context required. */}
       {canAdd && (
         <section className={card}>
           <div className="mb-3 flex items-center gap-2">
@@ -194,16 +167,32 @@ export default function LeaderNotesSection({ user }: { user: string }) {
   )
 }
 
+function ProjectChip({ note }: { note: LeaderNote }) {
+  const navigate = useNavigate()
+  if (!note.project) return null
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/project/${encodeURIComponent(note.project as string)}`)}
+      className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[0.7rem] font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300"
+    >
+      <FolderKanban className="h-3 w-3" /> {note.project_title || note.project}
+    </button>
+  )
+}
+
 function NoteGroup({
   label,
   items,
   onDelete,
   pending,
+  showProject,
 }: {
   label: string
   items: LeaderNote[]
   onDelete: (n: LeaderNote) => void
   pending: boolean
+  showProject: boolean
 }) {
   return (
     <div>
@@ -212,6 +201,11 @@ function NoteGroup({
         {items.map((n) => (
           <div key={n.name} className="rounded-xl border border-line bg-hover/[0.03] p-3">
             <p className="whitespace-pre-wrap text-sm text-ink">{n.body}</p>
+            {showProject && n.project && (
+              <div className="mt-2">
+                <ProjectChip note={n} />
+              </div>
+            )}
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <Avatar name={n.author_name} image={n.author_image} size={24} />

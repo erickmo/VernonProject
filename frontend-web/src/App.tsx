@@ -16,6 +16,7 @@ import {
   canManageLms,
   canManageIncome,
   canManageCompanies,
+  canManageBusinessUnits,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -38,14 +39,18 @@ import Income from '@web/pages/Income'
 import IncomeAdmin from '@web/pages/IncomeAdmin'
 import Companies from '@web/pages/Companies'
 import CompanyForm from '@web/pages/CompanyForm'
+import BusinessUnits from '@web/pages/BusinessUnits'
+import BusinessUnitForm from '@web/pages/BusinessUnitForm'
 import Activity from '@web/pages/Activity'
 import Leaderboard from '@web/pages/Leaderboard'
 import TeamWall from '@web/pages/TeamWall'
 import Marketplace from '@web/pages/Marketplace'
 import WalletLog from '@web/pages/WalletLog'
+import UserPointsLog from '@web/pages/UserPointsLog'
 import GiftPoints from '@web/pages/GiftPoints'
 import Users from '@web/pages/Users'
 import UserForm from '@web/pages/UserForm'
+import UserDashboard from '@web/pages/UserDashboard'
 import Groups from '@web/pages/Groups'
 import GroupForm from '@web/pages/GroupForm'
 import Brands from '@web/pages/Brands'
@@ -66,6 +71,7 @@ import RewardForm from '@web/pages/RewardForm'
 import GrantPoints from '@web/pages/GrantPoints'
 import TransferTasks from '@web/pages/TransferTasks'
 import Onboarding from '@web/pages/Onboarding'
+import SuperpowerGate from '@/components/SuperpowerGate'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
 import AttendanceReport from '@web/pages/AttendanceReport'
@@ -80,6 +86,8 @@ import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import ExceptionApprovals from '@web/pages/ExceptionApprovals'
 import RequestException from '@web/pages/RequestException'
 import MyExceptions from '@web/pages/MyExceptions'
+import CutiLedger from '@web/pages/CutiLedger'
+import CutiLedgerAdmin from '@web/pages/CutiLedgerAdmin'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
 import Bookings from '@web/pages/Bookings'
@@ -101,6 +109,7 @@ import SuperpowersAdmin from '@web/pages/SuperpowersAdmin'
 import WhatsNew from '@web/pages/WhatsNew'
 import { isTodoPath } from '@web/lib/todoDrawer'
 import TodoDrawer from '@web/components/TodoDrawer'
+import { TodoContextMenuProvider } from '@web/components/TodoContextMenuProvider'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 
@@ -176,9 +185,15 @@ export default function App() {
 
   const b = boot.data
 
+  const sp = b?.settings
+  // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
+  const superpowerBlocked =
+    !!(sp?.force_superpower && !sp?.has_superpower) && !location.pathname.startsWith('/superpowers')
+
   return (
-    <>
+    <TodoContextMenuProvider>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
+      {superpowerBlocked && <SuperpowerGate onGo={() => navigate('/superpowers')} />}
       <Routes location={background}>
         <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>
@@ -220,13 +235,15 @@ export default function App() {
           <Route path="/team-wall" element={<TeamWall />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/wallet" element={<WalletLog />} />
+          <Route path="/points-log/:user" element={<UserPointsLog />} />
           <Route path="/gift-points" element={<GiftPoints />} />
           {/* Admin (gated) */}
           {canManageUsers(b) && (
             <>
               <Route path="/users" element={<Users />} />
               <Route path="/users/new" element={<UserForm />} />
-              <Route path="/users/:name" element={<UserForm />} />
+              <Route path="/users/:name" element={<UserDashboard />} />
+              <Route path="/users/:name/edit" element={<UserForm />} />
               <Route path="/feedback-inbox" element={<FeedbackInbox />} />
               <Route path="/transfer-tasks" element={<TransferTasks />} />
             </>
@@ -295,8 +312,10 @@ export default function App() {
           <Route path="/attendance/my-approvals" element={<ExceptionApprovals />} />
           <Route path="/attendance/request" element={<RequestException />} />
           <Route path="/attendance/my-requests" element={<MyExceptions />} />
+          <Route path="/attendance/cuti" element={<CutiLedger />} />
           {canHrApprove(b) && <Route path="/attendance/exceptions" element={<Exceptions />} />}
           {canHrApprove(b) && <Route path="/attendance/leave-types" element={<LeaveTypesAdmin />} />}
+          {canHrApprove(b) && <Route path="/attendance/cuti-admin" element={<CutiLedgerAdmin />} />}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/me/info" element={<MyInfo />} />
           <Route path="/income" element={<Income />} />
@@ -307,6 +326,13 @@ export default function App() {
               <Route path="/companies" element={<Companies />} />
               <Route path="/companies/new" element={<CompanyForm />} />
               <Route path="/companies/:name" element={<CompanyForm />} />
+            </>
+          )}
+          {canManageBusinessUnits(b) && (
+            <>
+              <Route path="/business-units" element={<BusinessUnits />} />
+              <Route path="/business-units/new" element={<BusinessUnitForm />} />
+              <Route path="/business-units/:name" element={<BusinessUnitForm />} />
             </>
           )}
           <Route path="/achievements" element={<Achievements />} />
@@ -333,6 +359,6 @@ export default function App() {
           <Route path="/project-item/:name" element={<TodoDrawer onClose={closeDrawer} />} />
         </Routes>
       )}
-    </>
+    </TodoContextMenuProvider>
   )
 }

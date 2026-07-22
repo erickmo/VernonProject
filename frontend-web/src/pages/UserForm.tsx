@@ -81,6 +81,7 @@ export default function UserForm() {
   const [contractEnd, setContractEnd] = useState('')
   const [annualLeaveQuota, setAnnualLeaveQuota] = useState<number | ''>('')
   const [priorLeaveTaken, setPriorLeaveTaken] = useState<number | ''>('')
+  const [reminting, setReminting] = useState(false)
 
   useEffect(() => {
     if (!name) return
@@ -161,6 +162,27 @@ export default function UserForm() {
       navigate('/users', { replace: true })
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  // Re-mint the annual Grant row for the current year from the saved quota.
+  // Save any quota edit first — re-mint reads the stored profile, not the form.
+  async function onRemint() {
+    const ok = await confirm({
+      title: 'Re-mint kuota cuti?',
+      message: `Hitung ulang kuota cuti ${name} tahun ini dari kuota di profil. Simpan perubahan kuota lebih dulu bila ada.`,
+      confirmLabel: 'Re-mint',
+    })
+    if (!ok) return
+    setReminting(true)
+    try {
+      const res = await mobileApi.remintCutiGrant(name as string, new Date().getFullYear())
+      setLeaveBalance(res.summary)
+      toast('success', 'Kuota diperbarui')
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Gagal re-mint kuota')
+    } finally {
+      setReminting(false)
     }
   }
 
@@ -574,6 +596,14 @@ export default function UserForm() {
                   )}
                 </div>
               )}
+              <button
+                type="button"
+                onClick={onRemint}
+                disabled={reminting}
+                className="w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink hover:bg-hover/[0.04] disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+              >
+                {reminting ? 'Menghitung…' : 'Re-mint kuota'}
+              </button>
             </div>
           </BentoTile>
         )}

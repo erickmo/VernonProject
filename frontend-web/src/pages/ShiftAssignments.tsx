@@ -27,8 +27,11 @@ export default function ShiftAssignments() {
   const [help, setHelp] = useState(false)
   const [tpls, setTpls] = useState<{ name: string; shift_name: string }[]>([])
   const [asgs, setAsgs] = useState<Asg[] | null>(null)
+  // Deep-link ?user=: prefill the create-form employee + filter the list to that person.
+  const seedUser = new URLSearchParams(window.location.search).get('user') ?? ''
+  const shownAsgs = seedUser && asgs ? asgs.filter((a) => a.employee === seedUser) : asgs
   const [asgForm, setAsgForm] = useState<{ employee: string; shift_template: string; effective_from: string; effective_to: string; days: Record<string, boolean> }>(
-    { employee: '', shift_template: '', effective_from: '', effective_to: '', days: {} },
+    () => ({ employee: new URLSearchParams(window.location.search).get('user') ?? '', shift_template: '', effective_from: '', effective_to: '', days: {} }),
   )
   const [savingAsg, setSavingAsg] = useState(false)
   const [editingAsg, setEditingAsg] = useState<string | null>(null)
@@ -154,9 +157,9 @@ export default function ShiftAssignments() {
               )}
             </div>
           </div>
-          {asgs === null ? <Spinner /> : asgs.length === 0 ? <EmptyState icon={Plus} title="No assignments" subtitle="Assign a shift to an employee." /> : (
+          {shownAsgs === null ? <Spinner /> : shownAsgs.length === 0 ? <EmptyState icon={Plus} title="No assignments" subtitle="Assign a shift to an employee." /> : (
             <ul className="divide-y divide-line dark:divide-slate-800 text-sm">
-              {asgs.map((a) => (
+              {shownAsgs.map((a) => (
                 <li key={a.name} className="flex items-center justify-between gap-2 py-2">
                   <span className="min-w-0 flex-1 truncate">{a.employee} · {a.shift_template} · from {a.effective_from}{a.effective_to ? ` to ${a.effective_to}` : ''}</span>
                   {confirmDel === a.name ? (

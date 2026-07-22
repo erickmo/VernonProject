@@ -22,7 +22,8 @@ function isoDaysAgo(n: number): string {
 export default function LogbookScreen() {
   const [from, setFrom] = useState(isoDaysAgo(7))
   const [to, setTo] = useState(isoDaysAgo(0))
-  const [user, setUser] = useState('')
+  // Seed from ?user= so the user dashboard can deep-link one person's activity.
+  const [user, setUser] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [users, setUsers] = useState<ManagedUser[]>([])
 
   const { data: boot } = useBoot()

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { FolderKanban } from 'lucide-react'
 import { useBoot } from './hooks/useData'
 import { ApiError } from './lib/api'
 import { Spinner } from './components/ui'
 import { useConfirm } from './components/Confirm'
+import { TodoContextMenuProvider } from './components/TodoContextMenuProvider'
 import { pushSupported, subscribeToPush } from './lib/push'
 import Login from './pages/Login'
 import Today from './pages/Today'
@@ -19,6 +20,7 @@ import ProjectItemScreen from './pages/ProjectItemScreen'
 import Profile from './pages/Profile'
 import MyInfoScreen from '@/pages/MyInfoScreen'
 import Onboarding from './pages/Onboarding'
+import SuperpowerGate from './components/SuperpowerGate'
 import GroupsScreen from './pages/GroupsScreen'
 import DataHealthScreen from './pages/DataHealthScreen'
 import GroupFormScreen from './pages/GroupFormScreen'
@@ -26,10 +28,14 @@ import BrandsScreen from './pages/BrandsScreen'
 import BrandFormScreen from './pages/BrandFormScreen'
 import CompaniesScreen from './pages/CompaniesScreen'
 import CompanyFormScreen from './pages/CompanyFormScreen'
+import BusinessUnitsScreen from './pages/BusinessUnitsScreen'
+import BusinessUnitFormScreen from './pages/BusinessUnitFormScreen'
 import UsersScreen from './pages/UsersScreen'
 import UserFormScreen from './pages/UserFormScreen'
+import UserDashboardScreen from './pages/UserDashboardScreen'
 import WalletLogScreen from './pages/WalletLogScreen'
 import LeaderboardScreen from './pages/LeaderboardScreen'
+import UserPointsLogScreen from './pages/UserPointsLogScreen'
 import SuperpowerScreen from './pages/SuperpowerScreen'
 import SuperpowerAdminScreen from './pages/SuperpowerAdminScreen'
 import TeamWallScreen from './pages/TeamWallScreen'
@@ -72,6 +78,8 @@ import AttendanceExceptionsScreen from './pages/AttendanceExceptionsScreen'
 import LeaveTypesAdmin from './pages/LeaveTypesAdmin'
 import ExceptionApprovals from './pages/ExceptionApprovals'
 import MyExceptions from './pages/MyExceptions'
+import CutiLedgerScreen from './pages/CutiLedgerScreen'
+import CutiLedgerAdminScreen from './pages/CutiLedgerAdminScreen'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
@@ -112,6 +120,12 @@ function LegacyRedirect({ to }: { to: string }) {
 
 export default function App() {
   const { data: boot, isLoading, error } = useBoot()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const sp = boot?.settings
+  // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
+  const superpowerBlocked =
+    !!(sp?.force_superpower && !sp?.has_superpower) && !location.pathname.startsWith('/superpowers')
   const [showOnboarding, setShowOnboarding] = useState(false)
   const confirm = useConfirm()
 
@@ -156,8 +170,9 @@ export default function App() {
   if (!boot && error) return <Login />
 
   return (
-    <>
+    <TodoContextMenuProvider>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
+      {superpowerBlocked && <SuperpowerGate onGo={() => navigate('/superpowers')} />}
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />
@@ -193,6 +208,9 @@ export default function App() {
             <Route path="/companies" element={<CompaniesScreen />} />
             <Route path="/companies/new" element={<CompanyFormScreen />} />
             <Route path="/companies/:name" element={<CompanyFormScreen />} />
+            <Route path="/business-units" element={<BusinessUnitsScreen />} />
+            <Route path="/business-units/new" element={<BusinessUnitFormScreen />} />
+            <Route path="/business-units/:name" element={<BusinessUnitFormScreen />} />
           </>
         )}
         {canManageResources(boot) && (
@@ -209,7 +227,8 @@ export default function App() {
           <>
             <Route path="/users" element={<UsersScreen />} />
             <Route path="/users/new" element={<UserFormScreen />} />
-            <Route path="/users/:name" element={<UserFormScreen />} />
+            <Route path="/users/:name" element={<UserDashboardScreen />} />
+            <Route path="/users/:name/edit" element={<UserFormScreen />} />
             <Route path="/transfer-tasks" element={<TransferTasksScreen />} />
             <Route path="/feedback-inbox" element={<FeedbackInboxScreen />} />
           </>
@@ -259,10 +278,12 @@ export default function App() {
         <Route path="/attendance/request" element={<RequestException />} />
         <Route path="/attendance/approvals" element={<ExceptionApprovals />} />
         <Route path="/attendance/my-requests" element={<MyExceptions />} />
+        <Route path="/cuti-ledger" element={<CutiLedgerScreen />} />
         {canHrApprove(boot) && (
           <>
             <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
             <Route path="/attendance/manage/leave-types" element={<LeaveTypesAdmin />} />
+            <Route path="/cuti-ledger-admin" element={<CutiLedgerAdminScreen />} />
           </>
         )}
         {canManageAttendance(boot) && (
@@ -288,6 +309,7 @@ export default function App() {
         <Route path="/events/manage/:name/roster" element={<EventRosterScreen />} />
         <Route path="/wallet" element={<WalletLogScreen />} />
         <Route path="/leaderboard" element={<LeaderboardScreen />} />
+        <Route path="/u/:user/points" element={<UserPointsLogScreen />} />
         <Route path="/superpowers" element={<SuperpowerScreen />} />
         <Route path="/superpowers/:user" element={<SuperpowerScreen />} />
         {boot?.roles.includes('System Manager') && (
@@ -299,6 +321,6 @@ export default function App() {
         <Route path="/me/info" element={<MyInfoScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </TodoContextMenuProvider>
   )
 }

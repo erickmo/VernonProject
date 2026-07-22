@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { TodoCard } from '@/components/TodoCard'
@@ -57,17 +57,33 @@ function load(): Persisted {
 
 const persist = load()
 
+const PANES = FOCUS_PANES.length + 1 // "All" + 3 focus panes
+
 // Mobile mirror of web's ThreeColProjectList: a horizontal swipe carousel.
 // Pane 0 = the full list; panes 1-3 = each a project you pick, so you can work
-// one project at a time. Snap + dots idiom copied from BannerCarousel.
+// one project at a time. Dots idiom copied from BannerCarousel.
 //
-// Pickers live ABOVE the scroll track, not inside it: SearchableSelect's dropdown
-// is absolute-positioned, and a scroll-snap track (overflow-x:auto forces
-// overflow-y:auto) would clip it. The header shows the active pane's picker.
+// Swipe is a JS transform track (touchAction:'pan-y') with a direction lock +
+// distance threshold, NOT native scroll-snap: snap-mandatory grabbed diagonal
+// and flick gestures during a vertical scroll, jumping panes by accident. Now a
+// gesture only counts once it's clearly horizontal (|dx|>|dy|) AND past a
+// distance threshold — vertical scrolls and taps leave the pane alone.
+//
+// Pickers live ABOVE the track, not inside it: SearchableSelect's dropdown is
+// absolute-positioned and an overflow-x container would clip it. The header
+// shows the active pane's picker.
 export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
-  const trackRef = useRef<HTMLDivElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
   const [idx, setIdx] = useState(persist.idx)
   const [picks, setPicks] = useState(persist.picks) // focus panes 1-3
+
+  // Live horizontal drag: axis lock (undecided until the gesture commits to one
+  // axis) + finger-follow offset in px. Refs, not state, for the per-move path.
+  const startX = useRef(0)
+  const startY = useRef(0)
+  const axis = useRef<'h' | 'v' | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [drag, setDrag] = useState(0)
 
   // Mirror state out so a remount (route change) or a reload restores it.
   useEffect(() => {
@@ -80,17 +96,6 @@ export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
     }
   }, [idx, picks])
 
-  // Restore scroll onto the saved pane once the track exists (items may load
-  // async, so re-check each render until done — guarded, so it runs once).
-  const restored = useRef(false)
-  useLayoutEffect(() => {
-    const el = trackRef.current
-    if (el && !restored.current) {
-      restored.current = true
-      if (persist.idx) el.scrollLeft = persist.idx * el.clientWidth
-    }
-  })
-
   const groups = groupByProject(items)
   // One project → focus panes are pointless; just show the flat list.
   if (groups.length < 2) return <Cards todos={items} />
@@ -99,9 +104,37 @@ export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
   const setPick = (i: number, v: string) => setPicks((p) => p.map((x, k) => (k === i ? v : x)))
   const paneTodos = (i: number) => groups.find((g) => g.key === picks[i])?.todos
 
-  const onScroll = () => {
-    const el = trackRef.current
-    if (el) setIdx(Math.round(el.scrollLeft / el.clientWidth))
+  const DEADZONE = 8 // px before we decide the axis — lets taps stay taps
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    axis.current = null
+  }
+  const onTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - startX.current
+    const dy = e.touches[0].clientY - startY.current
+    if (axis.current === null) {
+      if (Math.abs(dx) < DEADZONE && Math.abs(dy) < DEADZONE) return
+      // Direction lock: whichever axis moved more wins for the rest of the gesture.
+      axis.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+      if (axis.current === 'h') setDragging(true)
+    }
+    if (axis.current !== 'h') return
+    // Rubber-band the two edges so the track resists past the ends.
+    const atEdge = (idx === 0 && dx > 0) || (idx === PANES - 1 && dx < 0)
+    setDrag(atEdge ? dx * 0.35 : dx)
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (axis.current === 'h') {
+      const dx = e.changedTouches[0].clientX - startX.current
+      const w = wrapRef.current?.clientWidth ?? 1
+      const THRESH = Math.max(56, w * 0.25) // clear, firm swipe: 25% of width or 56px
+      if (dx <= -THRESH && idx < PANES - 1) setIdx(idx + 1)
+      else if (dx >= THRESH && idx > 0) setIdx(idx - 1)
+    }
+    setDrag(0)
+    setDragging(false)
+    axis.current = null
   }
 
   return (
@@ -141,31 +174,37 @@ export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
         </span>
       </div>
 
-      {/* Swipe track — lists only (no clipped dropdowns here). */}
-      <div
-        ref={trackRef}
-        onScroll={onScroll}
-        // ponytail: track height = tallest pane, so an empty focus pane leaves
-        // whitespace below. Fine; revisit if users complain.
-        className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        <div className="w-full shrink-0 snap-center">
-          <Cards todos={items} />
+      {/* Swipe track — JS transform, not native scroll. touchAction:'pan-y' hands
+          vertical gestures to the page (so list scroll & pull-to-refresh still
+          work) and leaves horizontal to our threshold'd handler. */}
+      <div ref={wrapRef} className="overflow-hidden" style={{ touchAction: 'pan-y' }}>
+        <div
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          // ponytail: track height = tallest pane, so an empty focus pane leaves
+          // whitespace below. Fine; revisit if users complain.
+          className={clsx('flex', !dragging && 'transition-transform duration-300 ease-out')}
+          style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}
+        >
+          <div className="w-full shrink-0">
+            <Cards todos={items} />
+          </div>
+          {FOCUS_PANES.map((i) => {
+            const todos = paneTodos(i)
+            return (
+              <div key={i} className="w-full shrink-0">
+                {todos ? (
+                  <Cards todos={todos} />
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-paper-edge p-8 text-center text-sm text-stone-400 dark:border-slate-700 dark:text-slate-500">
+                    Pick a project above to focus this pane.
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
-        {FOCUS_PANES.map((i) => {
-          const todos = paneTodos(i)
-          return (
-            <div key={i} className="w-full shrink-0 snap-center">
-              {todos ? (
-                <Cards todos={todos} />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-paper-edge p-8 text-center text-sm text-stone-400 dark:border-slate-700 dark:text-slate-500">
-                  Pick a project above to focus this pane.
-                </div>
-              )}
-            </div>
-          )
-        })}
       </div>
     </div>
   )

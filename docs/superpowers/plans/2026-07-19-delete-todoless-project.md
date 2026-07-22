@@ -166,12 +166,14 @@ Add these methods to `TestDeleteProjectAndDetail`:
 
 ```python
 	def test_delete_project_blocked_when_todo_exists(self):
+		from vernon_project.api.mobile import delete_project
 		self._add_todo()
 		with self.assertRaises(frappe.ValidationError):
-			self.delete_project(self.project.name)
+			delete_project(self.project.name)
 		self.assertTrue(frappe.db.exists("Project", self.project.name))
 
 	def test_delete_project_blocked_when_point_ledger_exists(self):
+		from vernon_project.api.mobile import delete_project
 		pl = frappe.get_doc({"doctype": "Point Ledger", "user": "Administrator",
 			"project": self.project.name, "points": 5})
 		pl.flags.ignore_validate = True
@@ -179,20 +181,21 @@ Add these methods to `TestDeleteProjectAndDetail`:
 		frappe.db.commit()
 		try:
 			with self.assertRaises(frappe.ValidationError):
-				self.delete_project(self.project.name)
+				delete_project(self.project.name)
 			self.assertTrue(frappe.db.exists("Project", self.project.name))
 		finally:
 			frappe.delete_doc("Point Ledger", pl.name, force=True, ignore_permissions=True)
 			frappe.db.commit()
 
 	def test_delete_project_cascades_detail_glossary_meeting(self):
+		from vernon_project.api.mobile import delete_project
 		meeting = frappe.get_doc({"doctype": "Meeting", "project": self.project.name,
 			"title": "Del Meeting", "meeting_date": nowdate()})
 		meeting.flags.ignore_validate = True
 		meeting.insert(ignore_permissions=True, ignore_mandatory=True)
 		frappe.db.commit()
 		detail_name, grouping_name, meeting_name = self.detail.name, self.grouping, meeting.name
-		self.delete_project(self.project.name)
+		delete_project(self.project.name)
 		self.assertFalse(frappe.db.exists("Project", self.project.name))
 		self.assertFalse(frappe.db.exists("Project Detail", detail_name))
 		self.assertFalse(frappe.db.exists("Glossary", grouping_name))
@@ -231,9 +234,34 @@ def delete_project(project):
 	for doctype in ("Project Detail", "Meeting", "Glossary"):
 		for name in frappe.get_all(doctype, filters={"project": project}, pluck="name"):
 			frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
-	frappe.delete_doc("Project", project, ignore_permissions=True, force=True)
+	# blocked_by is a Project->Project link; force=True skips its LinkExists guard,
+	# so clear stale block refs from other projects before removing this one.
+	for blocked in frappe.get_all("Project", filters={"blocked_by": project}, pluck="name"):
+		frappe.db.set_value("Project", blocked, "blocked_by", None, update_modified=False)
+	# ignore_on_trash: Project.on_trash is owner-only + blocks-on-details; we've
+	# already authorized via _require_project_manager (owner/leader/admin/SM) and
+	# cascaded the details, so bypass it. Only on the final Project delete.
+	frappe.delete_doc("Project", project, ignore_permissions=True, force=True, ignore_on_trash=True)
 	frappe.db.commit()
 	return {"ok": True}
+```
+
+Note `"point": 5` (singular — the Point Ledger field) in the point-ledger test, and a positive-path leader test proves the `ignore_on_trash` gate works for a non-owner:
+
+```python
+	def test_delete_project_allowed_for_leader_non_owner(self):
+		from vernon_project.api.mobile import delete_project
+		if not frappe.db.exists("User", "del_leader@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "del_leader@example.com",
+				"first_name": "Del Leader", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		frappe.db.set_value("Project", self.project.name, "project_leader", "del_leader@example.com")
+		frappe.db.commit()
+		frappe.set_user("del_leader@example.com")
+		try:
+			delete_project(self.project.name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertFalse(frappe.db.exists("Project", self.project.name))
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**

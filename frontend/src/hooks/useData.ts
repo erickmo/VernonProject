@@ -13,6 +13,7 @@ import type {
   AvatarCatalog,
   Boot,
   Brand,
+  BusinessUnit,
   Company,
   Comment,
   Dashboard,
@@ -82,6 +83,8 @@ export const keys = {
   brand: (n: string) => ['brand', n] as const,
   companies: ['companies'] as const,
   company: (n: string) => ['company', n] as const,
+  businessUnits: ['business-units'] as const,
+  businessUnit: (n: string) => ['business-unit', n] as const,
   users: ['users'] as const,
   wallet: ['wallet'] as const,
   walletLog: ['wallet-log'] as const,
@@ -233,13 +236,17 @@ export function useAdvanceStatus() {
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: keys.dashboard })
-      qc.invalidateQueries({ queryKey: keys.projects })
-      qc.invalidateQueries({ queryKey: ['project'] })
-      qc.invalidateQueries({ queryKey: ['project-detail'] })
-      qc.invalidateQueries({ queryKey: ['project-item'] })
-    },
+    // Return the invalidation promise so the mutation stays `isPending` until the
+    // refetch lands — the AdvanceProvider spinner then covers the whole op and the
+    // card is fresh before the dialog closes (no stale "stuck" window after confirm).
+    onSettled: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: keys.dashboard }),
+        qc.invalidateQueries({ queryKey: keys.projects }),
+        qc.invalidateQueries({ queryKey: ['project'] }),
+        qc.invalidateQueries({ queryKey: ['project-detail'] }),
+        qc.invalidateQueries({ queryKey: ['project-item'] }),
+      ]),
   })
 }
 
@@ -494,6 +501,9 @@ export function useSetTodoAllocations(todoId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
       qc.invalidateQueries({ queryKey: keys.dashboard })
+      // Project Detail / workspace todo tables render today_allocation too — refetch
+      // so the "Today" toggle turns green there, not only on the dashboard.
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
     },
   })
 }
@@ -843,6 +853,9 @@ export function canManageBrands(boot: Boot | undefined): boolean {
 // Companies share Brand's management roles — a brand belongs to a company.
 export const canManageCompanies = canManageBrands
 
+// Business Units share the same management roles.
+export const canManageBusinessUnits = canManageBrands
+
 export function canManageUsers(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
@@ -979,6 +992,58 @@ export function useMergeCompany() {
       qc.invalidateQueries({ queryKey: keys.companies })
       qc.invalidateQueries({ queryKey: keys.brands })
     },
+  })
+}
+
+export function useBusinessUnits() {
+  return useQuery({
+    queryKey: keys.businessUnits,
+    queryFn: () =>
+      resource.list<BusinessUnit[]>('Business Unit', {
+        fields: ['name', 'business_unit_name', 'company', 'description', 'image'],
+        limit: 0,
+      }),
+  })
+}
+
+export function useBusinessUnit(name: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.businessUnit(name),
+    queryFn: () => resource.get<BusinessUnit>('Business Unit', name),
+    enabled: !!name && enabled,
+  })
+}
+
+export function useCreateBusinessUnit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: {
+      business_unit_name: string
+      company: string | null
+      description: string | null
+      image: string | null
+    }) => resource.create<{ name: string }>('Business Unit', payload as unknown as Record<string, unknown>),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.businessUnits }),
+  })
+}
+
+export function useUpdateBusinessUnit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, payload }: { name: string; payload: { company: string | null; description: string | null; image: string | null } }) =>
+      resource.update<{ name: string }>('Business Unit', name, payload as unknown as Record<string, unknown>),
+    onSettled: (_d, _e, vars) => {
+      qc.invalidateQueries({ queryKey: keys.businessUnits })
+      qc.invalidateQueries({ queryKey: keys.businessUnit(vars.name) })
+    },
+  })
+}
+
+export function useDeleteBusinessUnit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => resource.remove('Business Unit', name),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.businessUnits }),
   })
 }
 
@@ -2324,7 +2389,11 @@ export function useSetMySuperpowers() {
   return useMutation({
     mutationFn: ({ user, superpowers }: { user: string; superpowers: string[] }) =>
       mobileApi.setMySuperpowers(user, superpowers),
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.user) }),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.user) })
+      // Refresh boot so has_superpower flips and the onboarding gate closes.
+      qc.invalidateQueries({ queryKey: keys.boot })
+    },
   })
 }
 

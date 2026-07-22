@@ -485,6 +485,8 @@ export interface Brand {
   min_minutes_friday?: number
   min_minutes_saturday?: number
   min_minutes_sunday?: number
+  holiday_list?: string
+  default_annual_leave_quota?: number
 }
 
 // Mon..Sun payload keys for a Brand's per-weekday minimums.
@@ -496,6 +498,14 @@ export const BRAND_WEEKDAY_KEYS = [
 export interface Company {
   name: string
   company_name: string
+}
+
+export interface BusinessUnit {
+  name: string
+  business_unit_name: string
+  company: string | null
+  description: string | null
+  image: string | null
 }
 
 export interface ManagedUser {
@@ -1040,7 +1050,32 @@ export type FocusMode = 'fullscreen' | 'inline'
 
 export type DailyVerse = { reference: string; text: string } | null
 
-export type LeaveBalance = { quota: number; used: number; remaining: number; prior?: number }
+export type LeaveBalance = { quota: number; used: number; remaining: number; prior?: number; cuti_bersama?: number }
+
+export type CutiLedgerEntryType = 'Grant' | 'Cuti' | 'Cuti Bersama' | 'Carry-over' | 'Bonus' | 'Correction'
+
+// One materialized Cuti Ledger row + its running balance (from api.cuti_ledger.statement).
+export type CutiLedgerRow = {
+  name: string
+  entry_type: CutiLedgerEntryType
+  leave_type: string | null
+  days: number
+  from_date: string | null
+  to_date: string | null
+  exception: string | null
+  reason: string | null
+  posted_by: string | null
+  posted_on: string | null
+  balance: number
+}
+
+export type CutiLedgerResponse = {
+  status: string
+  employee: string
+  year: number
+  rows: CutiLedgerRow[]
+  summary: LeaveBalance
+}
 
 // Admin view adds the sensitive fields:
 export type EmployeeProfileAdmin = EmployeeSoft & {

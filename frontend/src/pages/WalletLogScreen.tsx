@@ -2,6 +2,7 @@
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
+import DailyPointsChart, { dailyNetSeries } from '@/components/DailyPointsChart'
 import { useWallet, useWalletLog } from '@/hooks/useData'
 
 const fmt = (n: number) =>
@@ -24,6 +25,13 @@ export default function WalletLogScreen() {
           </p>
         </div>
       </div>
+
+      {log && dailyNetSeries(log).length >= 2 && (
+        <div className="mb-4 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm text-slate-600 dark:text-slate-300">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Progress</p>
+          <DailyPointsChart rows={log} />
+        </div>
+      )}
 
       {isLoading && !log ? (
         <FullScreenLoader />

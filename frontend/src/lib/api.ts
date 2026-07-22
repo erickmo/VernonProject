@@ -553,6 +553,8 @@ export const mobileApi = {
     api.post<{ status: string; name?: string; message?: string }>(A + 'save_leave_type', payload),
   deleteLeaveType: (name: string) =>
     api.post<{ status: string; message?: string }>(A + 'delete_leave_type', { name }),
+  syncHolidays: (list_name: string, year: number) =>
+    api.post<{ status: string; added: number; updated: number; message?: string }>(A + 'sync_holidays', { list_name, year }),
   approveException: (exception_id: string, as_hr = false) =>
     api.post<{ status: string; message?: string; approval_status?: string }>(A + 'approve_exception', {
       exception_id,
@@ -571,6 +573,25 @@ export const mobileApi = {
   myLeaders: () => api.get<{ status: string; leaders: string[] }>(A + 'my_leaders'),
   myExceptions: (limit = 30) =>
     api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'my_exceptions', { limit }),
+  // Cuti Ledger — materialized leave statement + HR adjustments.
+  getCutiLedger: (employee?: string, year?: number) =>
+    api.get<import('./types').CutiLedgerResponse>('vernon_project.api.cuti_ledger.get_cuti_ledger', {
+      ...(employee ? { employee } : {}),
+      ...(year ? { year } : {}),
+    }),
+  postCutiAdjustment: (employee: string, entry_type: import('./types').CutiLedgerEntryType, days: number, year: number, reason: string) =>
+    api.post<{ status: string; name: string; summary: import('./types').LeaveBalance }>('vernon_project.api.cuti_ledger.post_cuti_adjustment', {
+      employee,
+      entry_type,
+      days,
+      year,
+      reason,
+    }),
+  remintCutiGrant: (employee: string, year: number) =>
+    api.post<{ status: string; summary: import('./types').LeaveBalance }>('vernon_project.api.cuti_ledger.remint_grant', {
+      employee,
+      year,
+    }),
   attendanceReport: (filters: {
     from_date: string
     to_date: string
@@ -706,6 +727,31 @@ export async function uploadRewardImage(file: File): Promise<string> {
   const fd = new FormData()
   fd.append('file', file)
   const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_reward_image', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out.file_url as string
+}
+
+// Multipart upload of a Business Unit image. Gated server-side on create perm.
+export async function uploadBusinessUnitImage(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_business_unit_image', {
     method: 'POST',
     headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
     body: fd,

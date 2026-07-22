@@ -2,20 +2,24 @@ import { useState } from 'react'
 import { Dialog } from '@web/components/overlays/Dialog'
 import { DatePicker } from '@web/components/DatePicker'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { GroupLevelPicker, emptyGroupLevel, type GroupLevel } from '@/components/GroupLevelPicker'
-import { useCreateMeeting, useMeetingInvitableUsers } from '@/hooks/useData'
+import { useCreateMeeting, useMeetingInvitableUsers, useProjects } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 
 interface Props {
   open: boolean
   onClose: () => void
-  project: string
+  /** Fixed project (embedded on a project page). Omit → user picks inside. */
+  project?: string
 }
 
 export function CreateMeetingDialog({ open, onClose, project }: Props) {
   const toast = useToast()
   const create = useCreateMeeting()
-  const invitable = useMeetingInvitableUsers(project)
+  const [proj, setProj] = useState(project ?? '')
+  const invitable = useMeetingInvitableUsers(proj)
+  const projects = useProjects()
 
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
@@ -26,6 +30,7 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
   const [gl, setGl] = useState<GroupLevel>(emptyGroupLevel)
 
   const close = () => {
+    setProj(project ?? '')
     setTitle('')
     setDate('')
     setTime('')
@@ -37,12 +42,16 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
   }
 
   const submit = () => {
+    if (!proj) {
+      toast('error', 'Pick a project')
+      return
+    }
     if (!title.trim()) {
       toast('error', 'Title is required')
       return
     }
     const fields: Record<string, unknown> = {
-      project,
+      project: proj,
       title: title.trim(),
       participants: JSON.stringify(participants),
     }
@@ -67,10 +76,17 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
     value: u.user,
     label: u.full_name || u.user,
   }))
+  // meetings can only be scheduled for unclosed (Ongoing) projects
+  const projectOptions = (projects.data ?? [])
+    .filter((p) => p.status !== 'Closed')
+    .map((p) => ({ value: p.name, label: p.project_name ?? p.name }))
 
   return (
     <Dialog open={open} onClose={close} title="New meeting">
       <div className="flex flex-col gap-3">
+        {!project && (
+          <SearchableSelect value={proj} onChange={setProj} options={projectOptions} placeholder="Pick a project…" />
+        )}
         <input className={field} placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <div className="flex gap-3">
           <DatePicker className={field + ' flex-1'} aria-label="Meeting date" value={date} onChange={(v) => setDate(v)} />

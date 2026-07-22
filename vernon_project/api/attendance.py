@@ -331,6 +331,70 @@ def delete_leave_type(name):
 
 
 @frappe.whitelist()
+def sync_holidays(list_name, year):
+	"""Auto-pull Indonesian public holidays (incl. cuti bersama) for `year` from Google's
+	public Indonesian holiday calendar (ICS) into Attendance Holiday List `list_name`.
+	Cuti bersama rows are flagged by name ("Cuti Bersama ..."). Upsert by date; manual
+	rows are kept. The id.indonesian feed is Bahasa-named — the en. one omits cuti bersama."""
+	if not _is_hr(frappe.session.user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+	import re
+	import requests
+
+	yr = int(year)
+	url = ("https://calendar.google.com/calendar/ical/"
+	       "id.indonesian%23holiday%40group.v.calendar.google.com/public/basic.ics")
+	try:
+		resp = requests.get(url, timeout=15)
+		resp.raise_for_status()
+	except Exception:
+		frappe.throw(_("Gagal mengambil data libur. Coba lagi."))
+
+	# Parse VEVENTs: pair each all-day DTSTART (YYYYMMDD) with its SUMMARY, keep target year.
+	items = []
+	for block in resp.text.split("BEGIN:VEVENT")[1:]:
+		m_d = re.search(r"DTSTART[^:]*:(\d{8})", block)
+		m_s = re.search(r"SUMMARY:(.+)", block)
+		if not (m_d and m_s):
+			continue
+		d = m_d.group(1)
+		if int(d[:4]) != yr:
+			continue
+		name = m_s.group(1).strip().rstrip("\r").replace("\\,", ",").replace("\\;", ";")
+		items.append((f"{d[:4]}-{d[4:6]}-{d[6:8]}", name))
+
+	if not items:
+		frappe.throw(_("Data libur untuk tahun {0} belum tersedia.").format(yr))
+
+	doc = frappe.get_doc("Attendance Holiday List", list_name)
+	existing = {}
+	for row in doc.holidays:
+		if row.holiday_date:
+			existing[str(getdate(row.holiday_date))] = row
+
+	seen = set()
+	n_added = n_updated = 0
+	for key, name in items:
+		if key in seen:
+			continue  # feed can repeat a date across blocks; take the first
+		seen.add(key)
+		is_cb = 1 if "cuti bersama" in name.lower() else 0
+		row = existing.get(key)
+		if row:
+			row.description = name
+			row.is_cuti_bersama = is_cb
+			n_updated += 1
+		else:
+			doc.append("holidays", {"holiday_date": key, "description": name, "is_cuti_bersama": is_cb})
+			n_added += 1
+
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"status": "ok", "added": n_added, "updated": n_updated}
+
+
+@frappe.whitelist()
 def request_exception(from_date, to_date, exception_type, reason=None, leave_type=None, proof=None):
 	user = frappe.session.user
 	if user == "Guest":

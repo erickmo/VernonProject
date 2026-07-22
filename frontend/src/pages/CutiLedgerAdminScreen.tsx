@@ -34,7 +34,8 @@ export default function CutiLedgerAdminScreen() {
   const confirm = useConfirm()
   const qc = useQueryClient()
 
-  const [employee, setEmployee] = useState('')
+  // Seed from ?user= so the user dashboard can deep-link one person.
+  const [employee, setEmployee] = useState(() => new URLSearchParams(window.location.search).get('user') ?? '')
   const [year, setYear] = useState(new Date().getFullYear())
   const [entryType, setEntryType] = useState<CutiLedgerEntryType>('Correction')
   const [days, setDays] = useState('')

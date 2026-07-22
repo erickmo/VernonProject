@@ -44,7 +44,8 @@ export default function Logbook() {
 
   const [from, setFrom] = useState(isoDaysAgo(7))
   const [to, setTo] = useState(isoDaysAgo(0))
-  const [user, setUser] = useState<string | undefined>(undefined)
+  // Seed from ?user= so the user dashboard can deep-link one person's activity.
+  const [user, setUser] = useState<string | undefined>(() => new URLSearchParams(window.location.search).get('user') || undefined)
 
   const { data: users } = useUsers()
   const { data, isLoading } = useLogbook(from, to, user, !!from && !!to)

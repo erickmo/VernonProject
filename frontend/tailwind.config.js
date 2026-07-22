@@ -42,6 +42,7 @@ export default {
           '100%': { transform: 'translateY(0)' },
         },
         'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        'slide-in-right': { '0%': { transform: 'translateX(100%)' }, '100%': { transform: 'translateX(0)' } },
         // Micro-celebration pop for the progress number at 100%.
         pop: {
           '0%': { transform: 'scale(0.8)', opacity: '0' },
@@ -61,6 +62,7 @@ export default {
       animation: {
         'slide-up': 'slide-up 0.25s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
+        'slide-in-right': 'slide-in-right 0.25s ease-out',
         pop: 'pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
         wiggle: 'wiggle 1.4s ease-in-out infinite',
         float: 'float 3s ease-in-out infinite',

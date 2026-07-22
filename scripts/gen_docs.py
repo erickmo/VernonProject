@@ -80,7 +80,7 @@ CLUSTERS = {
         "Vernon Settings", "Vernon Notification", "Vernon Banner", "App Release",
         "Push Subscription", "User Passkey", "Daily Verse", "Company Feedback",
     }),
-    "org": ("Organisasi", "Organization", "1x1", {"Brand", "Company"}),
+    "org": ("Organisasi", "Organization", "1x1", {"Brand", "Company", "Business Unit"}),
     "superpowers": ("Kekuatan Super", "Superpowers", "1x1", {
         "Superpower", "User Superpower", "Superpower Vote",
         "Superpower Settings", "Superpower Level",

@@ -50,9 +50,9 @@ def _ping():
 
 def _shape(r):
 	meta = None
-	if r.get("meta"):
+	if r.get("task_meta"):
 		try:
-			meta = json.loads(r["meta"])
+			meta = json.loads(r["task_meta"])
 		except (ValueError, TypeError):
 			meta = None
 	return {
@@ -81,7 +81,7 @@ def list_focus():
 			"started_at_ms",
 			"elapsed_before_ms",
 			"note",
-			"meta",
+			"task_meta",
 		],
 	)
 	return [_shape(r) for r in rows]
@@ -97,7 +97,10 @@ def save_timer(task, task_title=None, estimated_ms=0, status="running", started_
 	doc.started_at_ms = frappe.utils.flt(started_at_ms)
 	doc.elapsed_before_ms = frappe.utils.flt(elapsed_before_ms)
 	if meta is not None:
-		doc.meta = meta if isinstance(meta, str) else json.dumps(meta)
+		# Field is `task_meta`, NOT `meta`: a field named `meta` shadows Frappe's
+		# Document.meta property, so doc.save() crashes with
+		# "AttributeError: 'str' object has no attribute 'get_table_fields'".
+		doc.task_meta = meta if isinstance(meta, str) else json.dumps(meta)
 	doc.save(ignore_permissions=True)
 	_ping()
 	return _shape(doc.as_dict())
@@ -115,13 +118,8 @@ def set_note(task, note=""):
 	return _shape(doc.as_dict())
 
 
-@frappe.whitelist()
-def stop_timer(task):
-	"""End the timer. Keep the row iff it carries a note (idle), else delete it."""
-	name = _find(task)
-	if not name:
-		return {"ok": True}
-	doc = frappe.get_doc(DOCTYPE, name)
+def _end_row(doc):
+	"""Idle a noted row (keep the permanent note), else delete it."""
 	if (doc.note or "").strip():
 		doc.status = "idle"
 		doc.started_at_ms = 0
@@ -129,6 +127,30 @@ def stop_timer(task):
 		doc.estimated_ms = 0
 		doc.save(ignore_permissions=True)
 	else:
-		frappe.delete_doc(DOCTYPE, name, ignore_permissions=True)
+		frappe.delete_doc(DOCTYPE, doc.name, ignore_permissions=True)
+
+
+@frappe.whitelist()
+def stop_timer(task):
+	"""End the timer. Keep the row iff it carries a note (idle), else delete it."""
+	name = _find(task)
+	if not name:
+		return {"ok": True}
+	_end_row(frappe.get_doc(DOCTYPE, name))
 	_ping()
 	return {"ok": True}
+
+
+def clear_task_timers(task):
+	"""End EVERY user's active timer for a task — called when the task is completed,
+	cancelled or deleted. Focus rows are per-user (the assignee who focused it), but
+	the status change is made by whoever approves (often a different user), so a
+	client-side stop can't reach the assignee's row; this does, server-side. Pings
+	each affected user so their devices drop it. Idle note-rows are left untouched."""
+	rows = frappe.get_all(
+		DOCTYPE, filters={"task": task, "status": ["in", ("running", "paused")]}, pluck="name"
+	)
+	for name in rows:
+		doc = frappe.get_doc(DOCTYPE, name)
+		_end_row(doc)
+		frappe.publish_realtime("focus_sync", {"user": doc.user}, user=doc.user, after_commit=True)

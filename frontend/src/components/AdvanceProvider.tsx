@@ -43,10 +43,15 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     try {
       const res = await advance.mutateAsync(state.todoId)
-      // Done → drop its focus timer (clears the /m FAB badge + /w dock, both
-      // derive from the shared store). Any where the todo is marked done routes
-      // through here, so this covers the card, list, detail and overlay alike.
-      if (res.status_key === 'completed') stopTimer(state.todoId)
+      // Any advance (Mark Done → the approvals) means the todo is no longer being
+      // actively worked, so drop its focus timer. One call clears every surface —
+      // /m FAB + dock + card pills, /w dock — since all derive from the shared
+      // store; focusApi.stop then removes the backend row so the user's OTHER
+      // devices drop it too on their next sync. No-op when there's no timer (e.g.
+      // an approver advancing someone else's todo). The only transitions are
+      // planned→done→checked→completed (focus starts via the pill, never an
+      // advance), so this never fires on a "start".
+      stopTimer(state.todoId)
       state.onAdvanced?.()
       if (res.can_advance && res.next_status_label) {
         // chain: relabel and keep the dialog open for the next step

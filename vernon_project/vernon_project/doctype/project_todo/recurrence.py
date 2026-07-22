@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import calendar
+import json
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -28,6 +29,65 @@ def parse_weekdays(csv):
 
 def format_weekdays(idxs):
     return ",".join(_CODES[i] for i in sorted(set(idxs)))
+
+
+def parse_monthdays(csv):
+    """CSV of month-days -> sorted unique list[int], each 1..31. Raises ValueError
+    on a non-integer token or an out-of-range day."""
+    if not csv:
+        return []
+    out = set()
+    for tok in str(csv).split(","):
+        t = tok.strip()
+        if not t:
+            continue
+        n = int(t)  # raises ValueError on non-int
+        if n < 1 or n > 31:
+            raise ValueError(f"Month day out of range: {n}")
+        out.add(n)
+    return sorted(out)
+
+
+def _as_date(v):
+    return v if isinstance(v, date) else date.fromisoformat(str(v)[:10])
+
+
+def parse_ranges(value):
+    """value: JSON string OR list of {"from","to"}. -> list[(date, date)].
+    Single date (missing/blank "to") -> (d, d). Blank rows skipped. from > to swapped."""
+    if not value:
+        return []
+    if isinstance(value, str):
+        value = json.loads(value)
+    out = []
+    for row in value or []:
+        if not row:
+            continue
+        frm = row.get("from")
+        to = row.get("to")
+        if not frm:
+            continue
+        a = _as_date(frm)
+        b = _as_date(to) if to else a
+        if a > b:
+            a, b = b, a
+        out.append((a, b))
+    return out
+
+
+@dataclass
+class Exceptions:
+    weekdays: tuple = ()     # ISO idx (Mon=0)
+    monthdays: tuple = ()    # 1..31
+    ranges: tuple = ()       # ((date, date), ...)
+    behavior: str = "Skip"   # Skip | Shift
+
+    def blocks(self, d):
+        if d.weekday() in self.weekdays:
+            return True
+        if d.day in self.monthdays:
+            return True
+        return any(a <= d <= b for a, b in self.ranges)
 
 
 @dataclass
@@ -127,23 +187,28 @@ def first_on_or_after(day, rule):
     return day
 
 
-def advance_over_zero_days(start, step, min_for, until=None, bound=14):
-    """Advance `start` over days whose minimum is 0, for the recurrence skip rule.
+def advance_while_blocked(start, step, blocked, until=None, bound=40):
+    """Advance `start` over blocked days, for the recurrence skip/shift rule.
 
-    step:    date -> next candidate strictly after it (the rule's next_occurrence).
-    min_for: date -> int minimum-minutes for that date (0 = day off).
+    step:    date -> next candidate (Skip: rule's next_occurrence; Shift: +1 day).
+    blocked: date -> bool (True = this date can't host an occurrence).
     until:   inclusive series end, or None. bound: max candidates scanned.
 
-    Returns the first candidate with min_for(candidate) > 0; None if `until` is
-    passed before any working day (series is over); or the original `start` if no
-    working day is found within `bound` steps (degenerate all-zero config — keep the
-    date so the series is never silently dropped).
+    Returns the first candidate that is NOT blocked; None if `until` is passed before
+    any open day (series is over); or the original `start` if every candidate within
+    `bound` steps is blocked (degenerate config — keep the date so the series is never
+    silently dropped). bound=40 so a multi-week vacation range survives Shift stepping.
     """
     candidate = start
     for _ in range(bound):
         if until is not None and candidate > until:
             return None
-        if min_for(candidate) > 0:
+        if not blocked(candidate):
             return candidate
         candidate = step(candidate)
     return start
+
+
+def advance_over_zero_days(start, step, min_for, until=None, bound=40):
+    """Back-compat wrapper: block days whose minimum-minutes is <= 0."""
+    return advance_while_blocked(start, step, lambda d: min_for(d) <= 0, until, bound)

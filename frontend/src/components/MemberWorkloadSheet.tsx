@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { X, AlertCircle, CalendarDays, ChevronRight, Layers } from 'lucide-react'
 import { useMemberWorkload } from '@/hooks/useData'
 import { Avatar, Spinner, EmptyState } from '@/components/ui'
+import { LeaderNotesSection } from './LeaderNotesSection'
 import type { TeamMember } from '@/lib/types'
 
 interface Props {
@@ -100,6 +101,11 @@ export function MemberWorkloadSheet({ open, member, project, onClose }: Props) {
         ) : (
           <EmptyState icon={Layers} title="No todos" />
         )}
+
+        {/* Leader notes for this member — self-gates to leaders/admin. */}
+        <div className="mt-5">
+          <LeaderNotesSection user={member.user} project={project} />
+        </div>
       </div>
     </div>
   )

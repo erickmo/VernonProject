@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FolderKanban, Eye, EyeOff, ArrowRight, AlertCircle, Sparkles, Hand, Star, Zap, Fingerprint } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, AlertCircle, Sparkles, Star, Zap, Fingerprint, Heart } from 'lucide-react'
 import { login } from '@/lib/api'
+import { VERNON_VALUES, VERNON_STAKEHOLDERS } from '@/lib/values'
 import { Spinner } from '@/components/ui'
 import { loginWithPasskey, platformAuthenticatorAvailable, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 
@@ -83,13 +84,22 @@ export default function Login() {
           <Zap aria-hidden fill="currentColor" className="pointer-events-none absolute left-5 bottom-8 h-5 w-5 animate-float text-sky-200" style={{ animationDelay: '1.1s' }} />
 
           <div className="relative z-10">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 text-brand-600 shadow-sm">
-              <FolderKanban className="h-7 w-7" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 text-rose-500 shadow-sm">
+              <Heart className="h-6 w-6" fill="currentColor" />
             </div>
-            <h1 className="mt-5 flex items-center font-display text-[1.9rem] font-semibold leading-[1.1]">
-              Hey there <Hand aria-hidden strokeWidth={2.25} className="ml-2 h-7 w-7 animate-wiggle text-amber-200" />
-            </h1>
-            <p className="mt-1.5 text-sm font-semibold text-white/85">Welcome back to Vernon — let&apos;s get into it.</p>
+            <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">We&apos;re in the business of</p>
+            <h1 className="mt-1 font-display text-[2.1rem] font-semibold leading-[1.05]">Making people happy</h1>
+
+            {/* Who needs to be happy */}
+            <p className="mt-4 text-xs font-semibold text-white/75">Who needs to be happy</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {VERNON_STAKEHOLDERS.map((s) => (
+                <span key={s} className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">{s}</span>
+              ))}
+            </div>
+
+            {/* Supporting values */}
+            <p className="mt-4 text-sm font-semibold text-white/90">{VERNON_VALUES.slice(1).join('  ·  ')}</p>
           </div>
         </div>
 

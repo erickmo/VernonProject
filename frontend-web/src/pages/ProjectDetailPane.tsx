@@ -14,7 +14,7 @@ import { Drawer } from '@web/components/overlays/Drawer'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
-import { TODO_COLUMNS, todoGroupsOf, TodoProgress } from '@web/lib/todoTable'
+import { TODO_COLUMNS, todoGroupsOf, TodoProgress, useTodoRowContextMenu } from '@web/lib/todoTable'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
 import type { ProjectItem } from '@/lib/types'
@@ -35,6 +35,7 @@ export default function ProjectDetailPane() {
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
+  const onRowContextMenu = useTodoRowContextMenu()
   const canAutoApprove = !!boot?.settings?.show_auto_approve
   const toast = useToast()
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
@@ -181,6 +182,7 @@ export default function ProjectDetailPane() {
                 columns={todoColumns}
                 getKey={(r) => r.name}
                 activeKey={itemName}
+                onRowContextMenu={onRowContextMenu}
                 onRowClick={(r) => nav(`${base}/item/${encodeURIComponent(r.name)}`)}
               />
             </div>

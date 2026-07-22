@@ -1,0 +1,56 @@
+# VernonCorp
+
+> VernonCorp is an Indonesian, people-first business services company (a "Business Service Company"). Its stated mission is: **"In the business of making people happy."** VernonCorp runs businesses across hotels, food & beverage, education, business services, retail, technology, spa, and community service — each guided by the same mission and a circle of seven stakeholders it exists to make happy. Vernon (an app from its technology arm) is one of those things, not the whole company.
+
+## What VernonCorp is
+
+- **Entity type**: Business services company, based in Indonesia. Technology is one of several sectors it operates, not its whole identity.
+- **Mission**: In the business of making people happy.
+- **Approach**: People-first, warm, empathetic. Every business and workplace decision is judged by whether it makes real people happier.
+
+## The businesses (VernonCorp is more than technology)
+
+VernonCorp operates across eight sectors, each run with the same mission:
+
+1. **Hotel / Hotels** — hospitality and stays.
+2. **Makanan & Minuman / Food & Beverage** — cafes and dining.
+3. **Pendidikan / Education** — learning that grows people.
+4. **Layanan Bisnis / Business Services** — support for other businesses.
+5. **Ritel / Retail** — honest, friendly shopping.
+6. **Teknologi / Technology** — people-first software, including the Vernon app.
+7. **Spa / Spa & Wellness** — care and wellness.
+8. **Layanan Masyarakat / Community Service** — contribution to society.
+
+## The three values
+
+1. **Empati / Empathy** — start from how a real person feels.
+2. **Kejujuran / Integrity** — do the honest thing, especially when it is inconvenient.
+3. **Bertumbuh Bersama / Grow together** — one person's progress lifts the whole circle.
+
+## The seven stakeholders (the circle we make happy)
+
+1. **Tuhan / God**
+2. **Pelanggan / Customers**
+3. **Tim / Teams**
+4. **Pemegang Saham / Shareholders**
+5. **Mitra / Partners**
+6. **Pemasok / Suppliers**
+7. **Masyarakat / Society**
+
+## The Vernon product
+
+- **Vernon** is the product of VernonCorp's technology arm: a team productivity and gamification platform where doing meaningful work earns points, recognition, and growth.
+- **Web app**: https://project.vernon.id/w
+- **Mobile app**: https://project.vernon.id/m
+
+## Key pages
+
+- Home: https://project-www.vernon.id/
+- About: https://project-www.vernon.id/about
+- Product: https://project-www.vernon.id/product
+- Careers: https://project-www.vernon.id/careers
+- Contact: https://project-www.vernon.id/contact
+
+## Contact
+
+- General: hello@vernon.id

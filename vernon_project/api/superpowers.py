@@ -90,6 +90,7 @@ def _shape_agg(sp, S, n, my_vote, prior_mean, K, levels, catalog):
 		"icon": meta.get("icon"),
 		"color": meta.get("color"),
 		"category": meta.get("category"),
+		"description": meta.get("description"),
 		"avg": round(S / n, 4) if n else 0,
 		"count": n,
 		"weighted": round(W, 4),
@@ -149,6 +150,7 @@ def _mine_for(user):
 			"icon": meta.get("icon"),
 			"color": meta.get("color"),
 			"category": meta.get("category"),
+			"description": meta.get("description"),
 		})
 	return out
 
@@ -262,7 +264,7 @@ def _perf_scores(user):
 	for r in frappe.get_all(
 		"Superpower",
 		filters={"enabled": 1, "kind": "Performance"},
-		fields=["name", "superpower_name", "metric", "icon", "color", "category"],
+		fields=["name", "superpower_name", "metric", "icon", "color", "category", "description"],
 		order_by="superpower_name asc",
 	):
 		m = r["metric"]
@@ -285,6 +287,7 @@ def _perf_scores(user):
 			"icon": r["icon"],
 			"color": r["color"],
 			"category": r["category"],
+			"description": r["description"],
 			"kind": "Performance",
 			"score": score,
 			"level": {"level_name": level["level_name"], "color": level["color"], "icon": level["icon"]} if level else None,
@@ -384,17 +387,19 @@ def get_user_superpowers(user):
 		"performance": _perf_scores(user),
 		"signature": signature,
 		"achievement": achievement,
-		"can_edit_mine": session == user or _is_admin(),
+		# Only the owner may edit their own self-claimed superpowers (not admins).
+		"can_edit_mine": session == user,
 	}
 
 
 @frappe.whitelist()
 def set_my_superpowers(user, superpowers):
-	"""The user themselves or an admin. Replace the user's self-claimed set with the
-	distinct, valid, enabled catalog names given (blanks/dupes/unknown dropped)."""
+	"""Only the user themselves. Replace the user's self-claimed set with the
+	distinct, valid, enabled catalog names given (blanks/dupes/unknown dropped).
+	Self-claimed superpowers are owner-only — not even admins may set them."""
 	session = frappe.session.user
-	if not (session == user or _is_admin()):
-		frappe.throw("Not permitted", frappe.PermissionError)
+	if session != user:
+		frappe.throw("You can only edit your own superpowers.", frappe.PermissionError)
 	names = frappe.parse_json(superpowers) if isinstance(superpowers, str) else superpowers
 	# Only Voted-kind traits are self-claimable (Performance ones are earned).
 	# Treat a null/empty kind as Voted for rows created before the field existed.

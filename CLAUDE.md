@@ -1,5 +1,15 @@
 # vernon_project
 
+## Always build every UI change for BOTH frontends
+
+**This app has two frontends and every user-facing UI change ships to both.** `frontend/` = mobile (`/m`),
+`frontend-web/` = web (`/w`). A feature, screen, field, button, or layout change done in one is **not done**
+until the equivalent exists in the other — same capability, each in its own platform's design system (mobile
+Soft-Pop cards; web bento tiles). Shared logic already lives in `frontend/src` (imported as `@` from web);
+put behaviour there, keep only the presentation per-frontend. When a change is genuinely one-platform (e.g. a
+mobile-only pedometer), say so explicitly — silence is treated as "forgot the other side". Rebuild both
+bundles before claiming done.
+
 ## Always regenerate the docs data after changing the app's shape
 
 **Added or removed a DocType, a whitelisted endpoint, or a hook? Run `python3 scripts/gen_docs.py`.**

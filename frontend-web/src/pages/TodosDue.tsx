@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AlarmClock, Mail, Phone, BellRing } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { useToast } from '@/components/Toast'
 import { useTodosDue, useBuzzTodo } from '@/hooks/useData'
+import { useReportRowMenu } from '@/hooks/useReportRowMenu'
 import { formatDate } from '@/lib/format'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
@@ -27,6 +29,8 @@ export default function TodosDue() {
   const { data, isFetching, error } = useTodosDue(dueBy, !!dueBy)
   const toast = useToast()
   const buzz = useBuzzTodo()
+  const navigate = useNavigate()
+  const openRowMenu = useReportRowMenu()
 
   const allRows = data?.rows ?? []
   // Distinct projects present in the current result, for the filter dropdown.
@@ -72,12 +76,12 @@ export default function TodosDue() {
           <span className="font-medium text-ink">{r.assignee_name}</span>
           <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
             {r.assignee_email && (
-              <a href={`mailto:${r.assignee_email}`} className="inline-flex items-center gap-1 text-brand-600 dark:text-brand-300">
+              <a href={`mailto:${r.assignee_email}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-brand-600 dark:text-brand-300">
                 <Mail className="h-3.5 w-3.5" /> {r.assignee_email}
               </a>
             )}
             {r.assignee_mobile && (
-              <a href={`tel:${r.assignee_mobile}`} className="inline-flex items-center gap-1 text-brand-600 dark:text-brand-300">
+              <a href={`tel:${r.assignee_mobile}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-brand-600 dark:text-brand-300">
                 <Phone className="h-3.5 w-3.5" /> {r.assignee_mobile}
               </a>
             )}
@@ -105,7 +109,7 @@ export default function TodosDue() {
         const buzzing = buzz.isPending && buzz.variables === r.todo
         return (
           <button
-            onClick={() => onBuzz(r.todo, r.assignee_name)}
+            onClick={(e) => { e.stopPropagation(); onBuzz(r.todo, r.assignee_name) }}
             disabled={buzzing}
             className="inline-flex items-center gap-1.5 rounded-xl border border-brand-600 bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-700 transition active:scale-[0.97] hover:bg-brand-100 disabled:opacity-50 dark:bg-brand-500/15 dark:text-brand-300"
           >
@@ -161,6 +165,15 @@ export default function TodosDue() {
               rows={rows}
               columns={columns}
               getKey={(r) => r.todo}
+              onRowClick={(r) => navigate(`/project-item/${encodeURIComponent(r.todo)}`)}
+              onRowContextMenu={
+                openRowMenu
+                  ? (r, e) => {
+                      e.preventDefault()
+                      openRowMenu(r.todo, { x: e.clientX, y: e.clientY })
+                    }
+                  : undefined
+              }
               empty={
                 <EmptyState
                   icon={AlarmClock}

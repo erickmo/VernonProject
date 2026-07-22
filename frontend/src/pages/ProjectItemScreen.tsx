@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -979,6 +979,7 @@ function TopMenu({ items }: { items: TopItem[] }) {
 export default function ProjectItemScreen() {
   const { name = '' } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const id = decodeURIComponent(name)
   const { data, isLoading } = useProjectItem(id)
   const { data: boot } = useBoot()
@@ -1002,6 +1003,15 @@ const [followOpen, setFollowOpen] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer(id)
   const focusMode = useFocusMode()
+
+  // Deep-link intents (from a context menu): open the matching form once, then
+  // strip the query so refresh/back doesn't re-trigger.
+  useEffect(() => {
+    if (searchParams.get('edit')) setEditing(true)
+    else if (searchParams.get('duplicate')) setDupOpen(true)
+    else return
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (isLoading && !data) {
     return (

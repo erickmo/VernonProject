@@ -30,6 +30,9 @@ export default function AttendanceAssignmentsScreen() {
 
   const [help, setHelp] = useState(false)
   const [asgs, setAsgs] = useState<Asg[] | null>(null)
+  // Deep-link ?user=: prefill the create-form employee + filter the list to that person.
+  const seedUser = new URLSearchParams(window.location.search).get('user') ?? ''
+  const shownAsgs = seedUser && asgs ? asgs.filter((a) => a.employee === seedUser) : asgs
   const [tpls, setTpls] = useState<{ name: string; shift_name: string }[]>([])
   const [asgForm, setAsgForm] = useState<{
     employee: string
@@ -37,7 +40,7 @@ export default function AttendanceAssignmentsScreen() {
     effective_from: string
     effective_to: string
     days: Record<string, boolean>
-  }>({ employee: '', shift_template: '', effective_from: '', effective_to: '', days: {} })
+  }>(() => ({ employee: new URLSearchParams(window.location.search).get('user') ?? '', shift_template: '', effective_from: '', effective_to: '', days: {} }))
   const [savingAsg, setSavingAsg] = useState(false)
   const [editingAsg, setEditingAsg] = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
@@ -200,13 +203,13 @@ export default function AttendanceAssignmentsScreen() {
               )}
             </div>
           </div>
-          {asgs === null ? (
+          {shownAsgs === null ? (
             <Spinner className="mx-auto h-5 w-5 text-slate-400" />
-          ) : asgs.length === 0 ? (
+          ) : shownAsgs.length === 0 ? (
             <EmptyState icon={Plus} title="No assignments" subtitle="Assign a shift to an employee." />
           ) : (
             <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-700">
-              {asgs.map((a) => (
+              {shownAsgs.map((a) => (
                 <li key={a.name} className="flex items-center justify-between gap-2 py-2 text-stone-700 dark:text-slate-200">
                   <span className="min-w-0 flex-1 truncate">
                     {a.employee} · {a.shift_template} · from {a.effective_from}

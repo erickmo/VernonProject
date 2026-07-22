@@ -5,12 +5,14 @@ import {
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
+  History, Scale, Boxes,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   canManageGroups, canManageBrands, canManageUsers, canManageBadges,
   canManageAttendance, canHrApprove, canManageResources,
   canModerateAds, canManageLms, canManageIncome, canManageCompanies,
+  canManageBusinessUnits,
 } from '@/hooks/useData'
 
 export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string }
@@ -39,6 +41,7 @@ const WORK: NavLeaf[] = [
   { to: '/attendance/my-approvals', label: 'Leave/WFH input', sub: 'Give input as a leader', icon: Inbox },
   { to: '/attendance/request', label: 'Request leave', sub: 'Cuti / WFH', icon: CalendarPlus },
   { to: '/attendance/my-requests', label: 'My leave/WFH', sub: 'Your requests & status', icon: FileText },
+  { to: '/attendance/cuti', label: 'Riwayat Cuti', sub: 'Saldo & histori cuti', icon: History },
   { to: '/learn', label: 'Learn', sub: 'Courses & progress', icon: BookOpen, match: '/learn' },
 ]
 
@@ -81,6 +84,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon } as NavLeaf] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', sub: 'Brand registry', icon: Tag } as NavLeaf] : []),
     ...(canManageCompanies(b) ? [{ to: '/companies', label: 'Companies', sub: 'Company registry', icon: Building2 } as NavLeaf] : []),
+    ...(canManageBusinessUnits(b) ? [{ to: '/business-units', label: 'Business Units', sub: 'Business unit registry', icon: Boxes } as NavLeaf] : []),
     ...(canManageIncome(b) ? [{ to: '/income-admin', label: 'Manage Extra Income', sub: 'Review claims & opportunities', icon: Banknote } as NavLeaf] : []),
     ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Resources', sub: 'Rooms & equipment', icon: Building2 } as NavLeaf] : []),
     ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
@@ -102,6 +106,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   ] : []
   // HR gets the cuti inbox without the rest of attendance admin.
   if (canHrApprove(b)) {
+    att.unshift({ to: '/attendance/cuti-admin', label: 'Penyesuaian Cuti', sub: 'Saldo cuti & koreksi', icon: Scale })
     att.unshift({ to: '/attendance/leave-types', label: 'Leave Types', sub: 'Kategori & batas cuti', icon: CalendarDays })
     att.unshift({ to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'HR final approval', icon: Inbox })
   }

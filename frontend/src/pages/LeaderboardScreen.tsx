@@ -1,5 +1,6 @@
 // frontend/src/pages/LeaderboardScreen.tsx
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Trophy } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -20,10 +21,11 @@ const DIMENSIONS: { value: LeaderboardDimension; label: string }[] = [
 
 const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
 
-function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
+function Row({ e, isMe, onOpen }: { e: LeaderboardEntry; isMe: boolean; onOpen: (user: string, isMe: boolean) => void }) {
   return (
     <li
-      className={`flex items-center gap-3 px-4 py-3 ${
+      onClick={() => onOpen(e.user, isMe)}
+      className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition active:bg-slate-100 dark:active:bg-slate-700/50 ${
         isMe ? 'bg-brand-50 dark:bg-brand-500/10' : ''
       }`}
     >
@@ -60,6 +62,9 @@ function Row({ e, isMe }: { e: LeaderboardEntry; isMe: boolean }) {
 
 export default function LeaderboardScreen() {
   const { data: boot } = useBoot()
+  const navigate = useNavigate()
+  const openLog = (user: string, isMe: boolean) =>
+    navigate(isMe ? '/wallet' : `/u/${encodeURIComponent(user)}/points`)
   const [period, setPeriod] = useState<LeaderboardPeriod>('monthly')
   const [dimension, setDimension] = useState<LeaderboardDimension>('productivity')
   const [brand, setBrand] = useState<string>('')
@@ -102,13 +107,13 @@ export default function LeaderboardScreen() {
         <>
           <ul className="mt-4 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
             {data.entries.map((e) => (
-              <Row key={e.user} e={e} isMe={e.user === boot?.user} />
+              <Row key={e.user} e={e} isMe={e.user === boot?.user} onOpen={openLog} />
             ))}
           </ul>
 
           {data.me && !meInTop && (
             <ul className="mt-3 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-brand-200 dark:ring-brand-500/30">
-              <Row e={data.me} isMe />
+              <Row e={data.me} isMe onOpen={openLog} />
             </ul>
           )}
         </>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import clsx from 'clsx'
 import {
@@ -69,6 +69,7 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { RecurrenceExceptions } from '@web/components/RecurrenceExceptions'
 import { FocusNoteDialog } from '@web/components/FocusNoteDialog'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { DatePicker } from '@web/components/DatePicker'
@@ -640,6 +641,16 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [recurring, setRecurring] = useState(data.recurring.is_recurring)
   const [freq, setFreq] = useState(data.recurring.frequency || 'Weekly')
   const [until, setUntil] = useState(data.recurring.until ?? '')
+  // Exception fields aren't in the shared `recurring` type yet (added on the API
+  // side by a sibling change); read them through a local view.
+  const rec = data.recurring as typeof data.recurring & {
+    exception_weekdays?: string; exception_monthdays?: string
+    exception_dates?: { from: string; to: string }[]; exception_behavior?: string
+  }
+  const [excWeekdays, setExcWeekdays] = useState(rec.exception_weekdays ?? '')
+  const [excMonthdays, setExcMonthdays] = useState(rec.exception_monthdays ?? '')
+  const [excDates, setExcDates] = useState<{ from: string; to: string }[]>(rec.exception_dates ?? [])
+  const [excBehavior, setExcBehavior] = useState<'Skip' | 'Shift'>(rec.exception_behavior === 'Shift' ? 'Shift' : 'Skip')
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
@@ -708,6 +719,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     if (recurring) {
       fields.recurring_frequency = freq
       fields.recurring_until = until || ''
+      fields.recurring_exception_weekdays = excWeekdays
+      fields.recurring_exception_monthdays = excMonthdays
+      fields.recurring_exception_dates = JSON.stringify(excDates)
+      fields.recurring_exception_behavior = excBehavior
     }
     fields.leader_deadline = leaderDeadline || ''
     fields.owner_deadline = ownerDeadline || ''
@@ -889,6 +904,22 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             </div>
           </div>
         )}
+        {recurring && (
+          <div className="mt-3">
+            <RecurrenceExceptions
+              weekdays={excWeekdays}
+              monthdays={excMonthdays}
+              dates={excDates}
+              behavior={excBehavior}
+              onChange={(p) => {
+                if (p.weekdays !== undefined) setExcWeekdays(p.weekdays)
+                if (p.monthdays !== undefined) setExcMonthdays(p.monthdays)
+                if (p.dates !== undefined) setExcDates(p.dates)
+                if (p.behavior !== undefined) setExcBehavior(p.behavior)
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <label className="mb-1 block text-xs font-medium text-muted">
@@ -1022,6 +1053,16 @@ export default function ProjectItem() {
   const focusMode = useFocusMode()
   const [dupOpen, setDupOpen] = useState(false)
 const [followOpen, setFollowOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Deep-link intents (from a context menu): open the matching form once, then
+  // strip the query so refresh/back doesn't re-trigger.
+  useEffect(() => {
+    if (searchParams.get('edit')) setEditing(true)
+    else if (searchParams.get('duplicate')) setDupOpen(true)
+    else return
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (isLoading && !data) {
     return (

@@ -60,6 +60,11 @@
       "recurring_nth",
       "recurring_paused",
       "recurring_until",
+      "recurring_exception_weekdays",
+      "recurring_exception_monthdays",
+      "recurring_exception_dates",
+      "recurring_exception_behavior",
+      "recurring_anchor_date",
       "column_break_recurring",
       "next_occurrence",
       "original_todo",
@@ -458,6 +463,39 @@
          "fieldname": "recurring_until",
          "fieldtype": "Date",
          "label": "Recurring Until"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_exception_weekdays",
+         "fieldtype": "Data",
+         "label": "Exception Weekdays (CSV MON,SUN)"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_exception_monthdays",
+         "fieldtype": "Data",
+         "label": "Exception Days of Month (CSV 1,25)"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_exception_dates",
+         "fieldtype": "Small Text",
+         "label": "Exception Dates/Ranges (JSON)"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_exception_behavior",
+         "fieldtype": "Select",
+         "label": "On Exception",
+         "options": "Skip\nShift",
+         "default": "Skip"
+      },
+      {
+         "depends_on": "eval:doc.is_recurring==1",
+         "fieldname": "recurring_anchor_date",
+         "fieldtype": "Date",
+         "label": "Recurring Anchor Date",
+         "read_only": 1
       },
       {
          "fieldname": "column_break_recurring",

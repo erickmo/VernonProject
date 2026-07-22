@@ -213,8 +213,10 @@ export default function FocusOverlay() {
         <button
           onClick={() =>
             advanceConfirm(timer.taskId, todo.next_status_label!, todo.to_do, () => {
-              stop() // end this task's focus timer …
-              closeFocusOverlay() // … and exit focus mode
+              // Exit fullscreen, but DON'T stop the timer here — advancing to a
+              // non-terminal review stage leaves the todo open, so it must stay in
+              // focus. AdvanceProvider stops it iff the advance actually completes.
+              closeFocusOverlay()
             })
           }
           className="mt-8 flex w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3 font-semibold text-white shadow-card transition active:scale-95"

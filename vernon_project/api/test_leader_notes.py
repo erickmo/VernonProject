@@ -1,17 +1,16 @@
 # Copyright (c) 2026, Vernon and Contributors
 # See license.txt
 #
-# A user's leaders are DERIVED from projects: the project_leader of every active
-# (Ongoing) project the user is a team member of. These tests build real
-# Project + Project Team rows and assert the derivation + note gates.
+# The project_owner or project_leader of any active (Ongoing) project a user is a
+# team member of (plus admins) may write notes about that user. Each note is
+# optionally tagged with the project it was written under. These tests build real
+# Project + Project Team rows and assert the gates + project scoping.
 
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
 from vernon_project.api.leader_notes import (
-	_is_leader_of,
-	get_user_leaders,
-	list_led_users,
+	_can_note,
 	add_user_note,
 	list_user_notes,
 	delete_user_note,
@@ -20,12 +19,14 @@ from vernon_project.api.leader_notes import (
 SUBJECT = "ln_subject@example.com"
 LEADER1 = "ln_leader1@example.com"       # leads an active project SUBJECT is in
 LEADER2 = "ln_leader2@example.com"       # leads another active project SUBJECT is in
+OWNER = "ln_owner@example.com"           # OWNS (not leads) an active project SUBJECT is in
 CLOSED_LEADER = "ln_closedlead@example.com"  # leads only a Closed project
 STRANGER = "ln_stranger@example.com"     # in no shared project
 USERS = (
 	(SUBJECT, "Subject"),
 	(LEADER1, "Leader One"),
 	(LEADER2, "Leader Two"),
+	(OWNER, "Owner Person"),
 	(CLOSED_LEADER, "Closed Leader"),
 	(STRANGER, "Stranger"),
 )
@@ -46,17 +47,20 @@ class TestLeaderNotes(unittest.TestCase):
 		self.brand = frappe.get_all("Brand", pluck="name", limit=1)[0]
 
 		self.projects = []
+		# LEADER1 leads, Administrator owns.
 		self.p_active1 = self._project(LEADER1, "Ongoing", [SUBJECT])
 		self.p_active2 = self._project(LEADER2, "Ongoing", [SUBJECT])
+		# OWNER owns but LEADER1 leads → exercises the owner branch of _can_note.
+		self.p_owned = self._project(LEADER1, "Ongoing", [SUBJECT], owner=OWNER)
 		self.p_closed = self._project(CLOSED_LEADER, "Closed", [SUBJECT])
 		frappe.db.commit()
 
-	def _project(self, leader, status, members):
+	def _project(self, leader, status, members, owner="Administrator"):
 		p = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": f"LN {leader} {status} {frappe.generate_hash(length=6)}",
 			"brand": self.brand,
-			"project_owner": "Administrator",
+			"project_owner": owner,
 			"project_leader": leader,
 			"status": status,
 			"start_date": nowdate(),
@@ -77,44 +81,32 @@ class TestLeaderNotes(unittest.TestCase):
 				frappe.delete_doc("User", email, ignore_permissions=True, force=1)
 		frappe.db.commit()
 
-	# --- derivation ---
+	# --- authorization (_can_note) ---
 
-	def test_is_leader_of_active_project(self):
-		self.assertTrue(_is_leader_of(SUBJECT, LEADER1))
-		self.assertTrue(_is_leader_of(SUBJECT, LEADER2))
+	def test_active_leader_can_note(self):
+		self.assertTrue(_can_note(SUBJECT, LEADER1))
+		self.assertTrue(_can_note(SUBJECT, LEADER2))
 
-	def test_closed_project_leader_is_not_a_leader(self):
-		self.assertFalse(_is_leader_of(SUBJECT, CLOSED_LEADER))
+	def test_active_owner_can_note(self):
+		# OWNER owns an active project SUBJECT is in but leads none of them.
+		self.assertTrue(_can_note(SUBJECT, OWNER))
 
-	def test_stranger_is_not_a_leader(self):
-		self.assertFalse(_is_leader_of(SUBJECT, STRANGER))
+	def test_closed_project_leader_cannot_note(self):
+		self.assertFalse(_can_note(SUBJECT, CLOSED_LEADER))
 
-	def test_not_own_leader(self):
-		# SUBJECT leads no project → not their own leader even if somehow a member
-		self.assertFalse(_is_leader_of(SUBJECT, SUBJECT))
+	def test_stranger_cannot_note(self):
+		self.assertFalse(_can_note(SUBJECT, STRANGER))
 
-	def test_get_user_leaders_is_derived(self):
-		frappe.set_user(LEADER1)
-		leaders = {row["leader"] for row in get_user_leaders(SUBJECT)}
-		self.assertEqual(leaders, {LEADER1, LEADER2})
-		self.assertNotIn(CLOSED_LEADER, leaders)
-
-	def test_list_led_users_from_active_team(self):
-		frappe.set_user(LEADER1)
-		led = {row["user"] for row in list_led_users()}
-		# SUBJECT is a team member of LEADER1's active project (the app may also
-		# auto-add the project owner to the team — we only assert SUBJECT is led).
-		self.assertIn(SUBJECT, led)
-		self.assertNotIn(LEADER1, led)  # never your own mentee
-		# closed-only leader leads nobody
-		frappe.set_user(CLOSED_LEADER)
-		self.assertEqual(list_led_users(), [])
+	def test_not_own_noter(self):
+		self.assertFalse(_can_note(SUBJECT, SUBJECT))
 
 	# --- note gates ---
 
 	def test_add_user_note_gate(self):
 		frappe.set_user(LEADER1)
 		self.assertTrue(add_user_note(SUBJECT, "leader note")["name"])
+		frappe.set_user(OWNER)
+		self.assertTrue(add_user_note(SUBJECT, "owner note")["name"])
 		frappe.set_user("Administrator")
 		self.assertTrue(add_user_note(SUBJECT, "admin note")["name"])
 		frappe.set_user(STRANGER)
@@ -130,6 +122,32 @@ class TestLeaderNotes(unittest.TestCase):
 		d = add_user_note(SUBJECT, "dated", note_date="2026-07-18")
 		self.assertIsNone(g["note_date"])
 		self.assertEqual(d["note_date"], "2026-07-18")
+
+	def test_note_project_tag(self):
+		frappe.set_user(LEADER1)
+		n = add_user_note(SUBJECT, "tagged", project=self.p_active1)
+		self.assertEqual(n["project"], self.p_active1)
+		self.assertTrue(n["project_title"])  # resolved from project_name
+		# empty/absent project ⇒ untagged
+		u = add_user_note(SUBJECT, "untagged")
+		self.assertIsNone(u["project"])
+
+	def test_add_note_bad_project_rejected(self):
+		frappe.set_user(LEADER1)
+		with self.assertRaises(frappe.DoesNotExistError):
+			add_user_note(SUBJECT, "bad", project="Nonexistent Project XYZ")
+
+	def test_list_scoped_to_project(self):
+		frappe.set_user(LEADER1)
+		add_user_note(SUBJECT, "on p1", project=self.p_active1)
+		add_user_note(SUBJECT, "on p2", project=self.p_active2)
+		add_user_note(SUBJECT, "untagged")
+		# unscoped ⇒ all three
+		self.assertEqual(len(list_user_notes(SUBJECT)["notes"]), 3)
+		# scoped ⇒ only that project's note
+		scoped = list_user_notes(SUBJECT, project=self.p_active1)["notes"]
+		self.assertEqual(len(scoped), 1)
+		self.assertEqual(scoped[0]["project"], self.p_active1)
 
 	def test_list_user_notes_visibility(self):
 		frappe.set_user(LEADER1)

@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "holiday_date",
-  "description"
+  "description",
+  "is_cuti_bersama"
  ],
  "fields": [
   {
@@ -22,6 +23,13 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Description"
+  },
+  {
+   "fieldname": "is_cuti_bersama",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Cuti Bersama",
+   "default": "0"
   }
  ],
  "grid_page_length": 50,

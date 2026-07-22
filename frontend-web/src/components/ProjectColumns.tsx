@@ -20,8 +20,9 @@ export function groupByProject(todos: ProjectItem[]): ProjectGroup[] {
 }
 
 // One by-project column: a project picker + that project's todos rendered via
-// `renderCard`. Empty pick → placeholder, unless `fallbackTodos` is given (col 1)
-// in which case empty pick shows the full list and the picker just narrows it.
+// `renderCard`. No matching group → placeholder, unless `fallbackTodos` is given
+// (col 1) in which case it shows the full list (any) — covers both an empty pick
+// and a stale persisted pick whose project has left the list; the picker narrows.
 function ProjectPickCol({
   pick, setPick, options, group, renderCard, className, fallbackTodos,
 }: {
@@ -33,7 +34,7 @@ function ProjectPickCol({
   className?: string
   fallbackTodos?: ProjectItem[]
 }) {
-  const todos = group ? group.todos : pick ? undefined : fallbackTodos
+  const todos = group ? group.todos : fallbackTodos
   return (
     <div className={`min-w-0 space-y-3${className ? ` ${className}` : ''}`}>
       <SearchableSelect value={pick} onChange={setPick} options={options} allowClear placeholder={fallbackTodos ? 'All projects' : 'Pick a project'} />

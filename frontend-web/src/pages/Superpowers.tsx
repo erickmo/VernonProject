@@ -2,14 +2,15 @@ import { useMemo, useState, type ComponentType, type CSSProperties, type ReactNo
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  ArrowLeft, Sparkles, Award, Zap, X, ChevronRight, TrendingUp, Users, CheckCircle,
+  ArrowLeft, Sparkles, Award, Zap, X, Plus, ChevronRight, TrendingUp, Users, CheckCircle,
   Telescope, Puzzle, Megaphone, Target, Handshake, Crown,
   MessageCircle, BarChart3, Shuffle, HeartHandshake,
   DollarSign, Lightbulb, Settings, BookOpen, UsersRound, Scale, Sprout, Leaf, Flame, Star,
 } from 'lucide-react'
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
-import { SearchableSelect } from '@/components/SearchableSelect'
+import { AddSuperpowerModal } from '@/components/AddSuperpowerModal'
+import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { Page } from '@web/components/Page'
 import {
@@ -18,24 +19,10 @@ import {
 } from '@/hooks/useData'
 import type { SuperpowerLevel, VotedSuperpower } from '@/lib/types'
 
-// ── Robust trait icon: seeded values are kebab-case lucide names; admins may type
-// an emoji or an unknown name. Known name → lucide component; else render the raw
-// string as text (emoji), never crash. Curated map keeps lucide tree-shakeable.
-const LUCIDE: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
-  telescope: Telescope, puzzle: Puzzle, 'trending-up': TrendingUp, megaphone: Megaphone,
-  target: Target, handshake: Handshake, crown: Crown, 'message-circle': MessageCircle,
-  'check-circle': CheckCircle, sparkles: Sparkles, 'bar-chart-3': BarChart3, users: Users,
-  shuffle: Shuffle, 'heart-handshake': HeartHandshake, 'dollar-sign': DollarSign,
-  lightbulb: Lightbulb, settings: Settings, 'book-open': BookOpen, 'users-round': UsersRound,
-  scale: Scale, sprout: Sprout, leaf: Leaf, flame: Flame, star: Star,
-}
-
-export function SPIcon({ icon, className, color }: { icon?: string; className?: string; color?: string }) {
-  const Cmp = LUCIDE[(icon || '').trim().toLowerCase()]
-  const style = color ? { color } : undefined
-  if (Cmp) return <Cmp className={className} style={style} />
-  return <span className={clsx('leading-none', className)} style={style}>{icon || '⭐'}</span>
-}
+// Shared trait/level icon resolver (lucide by name, emoji fallback) — lives in
+// @/lib/spIcon so /m and /w render identically. Re-exported for SuperpowersAdmin.
+import { SPIcon } from '@/lib/spIcon'
+export { SPIcon }
 
 // 6-digit hex → same hex at ~12% alpha for a soft chip wash. Non-hex → no wash.
 export const hexBg = (color?: string) =>
@@ -58,9 +45,9 @@ export function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
 
 // Shared score-bar row — the one visual language across My / Voted / Kinerja.
 function ScoreRow({
-  icon, color, name, level, score, scored = true, meta, action, children, i = 0,
+  icon, color, name, desc, level, score, scored = true, meta, action, children, i = 0,
 }: {
-  icon?: string; color?: string; name: string
+  icon?: string; color?: string; name: string; desc?: string | null
   level: SuperpowerLevel | null; score: number; scored?: boolean
   meta?: ReactNode; action?: ReactNode; children?: ReactNode; i?: number
 }) {
@@ -82,6 +69,7 @@ function ScoreRow({
             <span className="truncate font-semibold text-ink">{name}</span>
             {action}
           </div>
+          {desc && <p className="mt-0.5 text-xs leading-snug text-muted">{desc}</p>}
           <div className="mt-2 flex items-center gap-3">
             <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-canvas">
               <div
@@ -133,6 +121,8 @@ export default function Superpowers() {
   const { user: routeUser = '' } = useParams<{ user: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const confirm = useConfirm()
+  const [addOpen, setAddOpen] = useState(false)
   const { data: boot } = useBoot()
   // Param-less /superpowers (the home shortcut) = the current user's own screen.
   const user = routeUser || boot?.user || ''
@@ -166,7 +156,7 @@ export default function Superpowers() {
         (c) =>
           byName[c.name] ?? {
             superpower: c.name, name: c.superpower_name, icon: c.icon, color: c.color,
-            category: c.category, avg: 0, count: 0, weighted: 0, level: null, my_vote: null,
+            category: c.category, description: c.description, avg: 0, count: 0, weighted: 0, level: null, my_vote: null,
           },
       )
       .sort((a, b) => b.weighted - a.weighted || a.name.localeCompare(b.name))
@@ -199,9 +189,21 @@ export default function Superpowers() {
     })
 
   const claimedIds = v.mine.map((m) => m.superpower)
-  const claimable = votedCatalog
+  const addable = votedCatalog
     .filter((c) => !claimedIds.includes(c.name))
-    .map((c) => ({ value: c.name, label: c.superpower_name }))
+    .map((c) => ({ name: c.name, label: c.superpower_name, icon: c.icon, color: c.color, description: c.description }))
+
+  // Removing a claimed trait asks first (adding stays one-tap).
+  const removeClaim = async (superpower: string, label: string) => {
+    const ok = await confirm({
+      title: 'Lepas superpower?',
+      message: `Hapus "${label}" dari superpower-mu?`,
+      confirmLabel: 'Lepas',
+      cancelLabel: 'Batal',
+      destructive: true,
+    })
+    if (ok) saveMine(claimedIds.filter((x) => x !== superpower))
+  }
 
   const ratedCount = v.voted.filter((x) => x.count > 0).length
 
@@ -324,6 +326,7 @@ export default function Superpowers() {
                         icon={m.icon}
                         color={m.color}
                         name={m.name}
+                        desc={m.description}
                         level={vv?.level ?? null}
                         score={vv?.weighted ?? 0}
                         scored={scored}
@@ -331,7 +334,7 @@ export default function Superpowers() {
                         action={v.can_edit_mine && (
                           <button
                             type="button"
-                            onClick={() => saveMine(claimedIds.filter((x) => x !== m.superpower))}
+                            onClick={() => removeClaim(m.superpower, m.name)}
                             disabled={setMine.isPending}
                             aria-label="Hapus superpower"
                             className="shrink-0 rounded-lg p-1 text-muted transition hover:bg-rose-500/10 hover:text-rose-600 disabled:opacity-50 dark:hover:text-rose-400"
@@ -345,15 +348,14 @@ export default function Superpowers() {
                 </div>
               )}
               {v.can_edit_mine && (
-                <div className="rounded-2xl border border-dashed border-line bg-surface p-4">
-                  <div className="mb-1.5 text-sm font-semibold text-ink">Tambah superpower</div>
-                  <SearchableSelect
-                    value=""
-                    onChange={(val) => val && saveMine([...claimedIds, val])}
-                    options={claimable}
-                    placeholder="Pilih superpower yang kamu klaim…"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-surface p-4 text-sm font-semibold text-brand-600 transition hover:border-brand-400 hover:bg-brand-50/40 dark:text-brand-400"
+                >
+                  <Plus className="h-4 w-4" />
+                  Tambah superpower
+                </button>
               )}
             </div>
           )}
@@ -371,6 +373,7 @@ export default function Superpowers() {
                     icon={c.icon}
                     color={c.color}
                     name={c.name}
+                    desc={c.description}
                     level={c.level}
                     score={c.weighted}
                     scored={c.count > 0}
@@ -448,6 +451,7 @@ export default function Superpowers() {
                       icon={p.icon}
                       color={p.color}
                       name={p.name}
+                      desc={p.description}
                       level={p.level}
                       score={p.score}
                       meta={p.detail}
@@ -459,6 +463,14 @@ export default function Superpowers() {
           )}
         </div>
       </div>
+
+      <AddSuperpowerModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        items={addable}
+        onAdd={(name) => saveMine([...claimedIds, name])}
+        busy={setMine.isPending}
+      />
     </Page>
   )
 }

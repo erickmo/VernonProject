@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote } from 'lucide-react'
@@ -6,11 +7,13 @@ import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
-import { useFocusTimer } from '@/hooks/useFocusTimer'
-import { openFocusOverlay } from '@/lib/focusUI'
-import { useSetTodoAllocations, useFocusMode } from '@/hooks/useData'
+import { useFocusPill } from '@/hooks/useFocusPill'
+import { useSetTodoAllocations } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
+import { useTodoContextMenu } from '@/hooks/useTodoMenu'
 import type { ProjectItem } from '@/lib/types'
+
+const LONG_MS = 450
 
 interface Props {
   todo: ProjectItem
@@ -28,21 +31,50 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   // visible card re-renders ~1×/s while a timer runs. Fine for the Today list's
   // handful of cards; if a screen ever renders hundreds, swap this for an
   // imperative store start that doesn't subscribe.
-  const focus = useFocusTimer(todo.name)
-  const focusActive = focus.timer != null
-  const focusMode = useFocusMode()
+  const { focus, focusActive, focusMode, onFocusPill } = useFocusPill(todo)
+  const menu = useTodoContextMenu()
+  const [pressing, setPressing] = useState(false)
+  const [flash, setFlash] = useState(false)
 
-  const startFocus = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!focusActive)
-      focus.start(todo.name, todo.to_do, todo.estimated, {
-        project: todo.project_name,
-        deadlineHuman: todo.deadline_human || undefined,
-        overdue: todo.is_overdue,
-        estimateLabel: todo.estimated > 0 ? formatEstimate(todo.estimated) : undefined,
-      })
-    // inline mode: run the timer on the card only, never open the overlay.
-    if (focusMode === 'fullscreen') openFocusOverlay(todo.name)
+  // A quick bounce whenever the context menu is summoned (long-press on touch,
+  // right-click on desktop) so the trigger feels tactile. `pressing` gives live
+  // feedback while the finger is held, before the menu opens.
+  const triggerMenu = (at: { x: number; y: number }) => {
+    if (!menu) return
+    setPressing(false)
+    setFlash(true)
+    setTimeout(() => setFlash(false), 160)
+    menu.open(todo, at)
+  }
+
+  // Long-press (touch/pen) opens the same context menu as right-click. Mirrors Fab.tsx:
+  // arm a timer on down, treat early release / movement as a tap-not-hold and cancel.
+  const longFired = useRef(false)
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startPt = useRef<{ x: number; y: number } | null>(null)
+  const clearTimer = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+    pressTimer.current = null
+  }
+  const cancelPress = () => {
+    clearTimer()
+    setPressing(false)
+  }
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!menu || e.pointerType === 'mouse') return
+    const pt = { x: e.clientX, y: e.clientY }
+    startPt.current = pt
+    longFired.current = false
+    clearTimer()
+    setPressing(true)
+    pressTimer.current = setTimeout(() => {
+      longFired.current = true
+      triggerMenu(pt)
+    }, LONG_MS)
+  }
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!startPt.current) return
+    if (Math.abs(e.clientX - startPt.current.x) > 10 || Math.abs(e.clientY - startPt.current.y) > 10) cancelPress()
   }
 
   const onAdvance = (e: React.MouseEvent) => {
@@ -66,9 +98,20 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
 
   return (
     <button
-      onClick={() => navigate(`/project-item/${encodeURIComponent(todo.name)}`)}
+      onClick={() => {
+        if (longFired.current) { longFired.current = false; return }
+        navigate(`/project-item/${encodeURIComponent(todo.name)}`)
+      }}
+      onContextMenu={(e) => { if (!menu) return; e.preventDefault(); triggerMenu({ x: e.clientX, y: e.clientY }) }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
+      onPointerCancel={cancelPress}
+      style={{ transform: pressing ? 'scale(0.96)' : flash ? 'scale(1.03)' : undefined }}
       className={clsx(
         'group w-full min-w-0 max-w-full rounded-2xl border-l-4 p-4 text-left shadow-card transition active:scale-[0.99]',
+        pressing && 'ring-2 ring-brand-400/70 dark:ring-brand-500/50',
         focusActive
           ? 'border-amber-500 bg-gradient-to-br from-amber-200 to-amber-100 ring-1 ring-amber-300 dark:border-amber-500/70 dark:from-amber-500/25 dark:to-amber-500/10 dark:ring-amber-500/40'
           : clsx('bg-paper-card dark:bg-slate-800', todo.is_overdue ? 'border-rose-400' : meta.ring),
@@ -104,8 +147,8 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
             <span
               role="button"
               tabIndex={0}
-              onClick={startFocus}
-              title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Focus timer running') : 'Start focus timer'}
+              onClick={onFocusPill}
+              title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Stop focus timer') : 'Start focus timer'}
               className={clsx(
                 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95',
                 focusActive
@@ -158,7 +201,8 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
               </span>
             )}
             {/* ponytail: span role=button inside the card <button> mirrors the existing Focus/advance controls; known HTML5 nesting ceiling — fix when the card is refactored to div+role. */}
-            {!showAssignee && (
+            {/* Only the assignee sets the day-plan (backend enforces set_todo_allocations too). */}
+            {!showAssignee && todo.is_mine && (
               <span
                 role="button"
                 tabIndex={0}
