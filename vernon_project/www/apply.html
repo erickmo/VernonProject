@@ -163,9 +163,10 @@
   }
   document.addEventListener('visibilitychange', function () { if (document.hidden) violation('pindah tab/aplikasi'); });
   window.addEventListener('blur', function () { violation('kehilangan fokus'); });
+  var TAB = String(Math.random()).slice(2);
   var bc = ('BroadcastChannel' in window) ? new BroadcastChannel('vernon-apply-' + SLUG) : null;
-  if (bc) { bc.onmessage = function (e) { if (e.data && e.data.attempt !== ATTEMPT) violation('tab lain terdeteksi'); }; }
-  function announce() { if (bc) bc.postMessage({ attempt: ATTEMPT }); }
+  if (bc) { bc.onmessage = function (e) { if (e.data && e.data.tab !== TAB) violation('tab lain terdeteksi'); }; }
+  function announce() { if (bc) bc.postMessage({ tab: TAB }); }
 
   // --- build the ordered list of enabled test steps
   var TEST_DEFS = [
@@ -177,7 +178,7 @@
   ].filter(function (d) { return d.on; });
 
   // answer stores
-  var A = { questions: {}, disc: {}, personality: {}, logical: {}, ketelitian: {} };
+  var A = { questions: [], disc: {}, personality: {}, logical: {}, ketelitian: {} };
 
   // --- step machine
   var steps = ['consent', 'identity'].concat(TEST_DEFS.map(function () { return 'test'; })).concat(['review']);
@@ -232,13 +233,20 @@
     }).catch(function () { el.textContent = ''; });
   }
   function tick(remaining, el, def) {
+    var done = false;
     function render() {
       var m = Math.floor(remaining / 60), s = remaining % 60;
       el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
-      if (remaining <= 0) { clearInterval(curTimer); curTimer = null; def.collect(def, false); lockTest(); showError(T.wiz_time_up); setTimeout(next, 1200); return; }
+      if (remaining <= 0) {
+        if (done) return;
+        done = true;
+        if (curTimer) { clearInterval(curTimer); curTimer = null; }
+        def.collect(def, false); lockTest(); showError(T.wiz_time_up); setTimeout(next, 1200); return;
+      }
       remaining--;
     }
-    render(); curTimer = setInterval(render, 1000);
+    render();
+    if (!done) curTimer = setInterval(render, 1000);
   }
   function lockTest() { tpl.querySelectorAll('input,button,textarea').forEach(function (n) { if (n.getAttribute('data-test-next') === null) n.disabled = true; }); }
 

@@ -297,6 +297,9 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 
 	tests = _enabled_tests(opening)
 
+	def _timed(t):
+		return int(opening.get(TIME_FIELD[t]) or 0) > 0
+
 	def _loadjson(v, default):
 		try:
 			return json.loads(v) if isinstance(v, str) else (v if v is not None else default)
@@ -314,7 +317,7 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		lrows, ls, lm, _ = _score_answers(ri.logic_qdefs(), la)
 		for r in lrows:
 			r["test"] = "Logical"
-		if len(la) < len(ri.LOGIC_ITEMS):
+		if not _timed("logical") and len(la) < len(ri.LOGIC_ITEMS):
 			frappe.throw("Mohon jawab semua soal tes logika.")
 		rows += lrows
 		logical_score, logical_max = ls, lm
@@ -328,7 +331,7 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		krows, ks, km, _ = _score_answers(ri.ketelitian_qdefs(), ka)
 		for r in krows:
 			r["test"] = "Ketelitian"
-		if len(ka) < len(ri.KETELITIAN_ITEMS):
+		if not _timed("ketelitian") and len(ka) < len(ri.KETELITIAN_ITEMS):
 			frappe.throw("Mohon jawab semua soal tes ketelitian.")
 		rows += krows
 		ketelitian_score, ketelitian_max = ks, km
@@ -343,7 +346,7 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		da = da if isinstance(da, dict) else {}
 		def _disc_done(a):
 			return isinstance(a, dict) and a.get("most") is not None and a.get("least") is not None
-		if sum(1 for it in ri.DISC_ITEMS if _disc_done(da.get(it["id"]))) < len(ri.DISC_ITEMS):
+		if not _timed("disc") and sum(1 for it in ri.DISC_ITEMS if _disc_done(da.get(it["id"]))) < len(ri.DISC_ITEMS):
 			frappe.throw("Mohon lengkapi tes DISC.")
 		dscores, disc_type = ri.score_disc(da)
 		disc_fit = ri.fit(dscores, {
@@ -353,7 +356,7 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	if tests["personality"]:
 		pa = _loadjson(personality_answers, {})
 		pa = pa if isinstance(pa, dict) else {}
-		if len([1 for it in ri.BIGFIVE_ITEMS if pa.get(it["id"]) is not None]) < len(ri.BIGFIVE_ITEMS):
+		if not _timed("personality") and len([1 for it in ri.BIGFIVE_ITEMS if pa.get(it["id"]) is not None]) < len(ri.BIGFIVE_ITEMS):
 			frappe.throw("Mohon lengkapi tes kepribadian.")
 		pscores = ri.score_bigfive(pa)
 		personality_fit = ri.fit(pscores, {
