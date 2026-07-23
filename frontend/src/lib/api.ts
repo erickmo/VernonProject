@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, VotedSuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate } from './types'
 
 const METHOD = '/api/method/'
 
@@ -657,6 +657,8 @@ export const mobileApi = {
   deleteUserNote: (name: string) => api.post<{ name: string }>(LN + 'delete_user_note', { name }),
   listSuperpowers: () => api.get<SuperpowerCatalogItem[]>(SP + 'list_superpowers'),
   listVotableUsers: () => api.get<VotableUser[]>(SP + 'list_votable_users'),
+  getRecognitionGate: (preview?: number) =>
+    api.get<RecognitionGate>(SP + 'get_recognition_gate', preview ? { preview } : undefined),
   getUserSuperpowers: (user: string) =>
     api.get<UserSuperpowersView>(SP + 'get_user_superpowers', { user }),
   setMySuperpowers: (user: string, superpowers: string[]) =>
@@ -665,7 +667,9 @@ export const mobileApi = {
       superpowers: JSON.stringify(superpowers),
     }),
   castVote: (ratee: string, superpower: string, score: number) =>
-    api.post<VotedSuperpower>(SP + 'cast_vote', { ratee, superpower, score }),
+    // Anonymous & one-directional: server echoes only the caller's own vote, never
+    // the ratee's private aggregate.
+    api.post<{ superpower: string; my_vote: number }>(SP + 'cast_vote', { ratee, superpower, score }),
   removeVote: (ratee: string, superpower: string) =>
     api.post<{ superpower: string }>(SP + 'remove_vote', { ratee, superpower }),
   getSuperpowerSettings: () =>
@@ -674,6 +678,7 @@ export const mobileApi = {
     prior_mean: number
     confidence_k: number
     vote_points: number
+    wall_score_min: number
     perf_window_days: number
     streak_target: number
     finisher_target: number
@@ -683,6 +688,7 @@ export const mobileApi = {
       prior_mean: s.prior_mean,
       confidence_k: s.confidence_k,
       vote_points: s.vote_points,
+      wall_score_min: s.wall_score_min,
       perf_window_days: s.perf_window_days,
       streak_target: s.streak_target,
       finisher_target: s.finisher_target,
@@ -692,6 +698,10 @@ export const mobileApi = {
     api.post<SuperpowerCatalogItem>(SP + 'save_superpower', p as Record<string, unknown>),
   deleteSuperpower: (name: string) =>
     api.post<{ name: string }>(SP + 'delete_superpower', { name }),
+  getSuperpowerWall: () =>
+    api.get<import('./types').SuperpowerWallResponse>(SP + 'get_superpower_wall'),
+  getSuperpowerProgress: (user: string) =>
+    api.get<import('./types').SuperpowerProgressView>(SP + 'get_superpower_progress', { user }),
 }
 
 const EV = 'vernon_project.api.events.'
@@ -1178,4 +1188,183 @@ export const focusApi = {
   }) => api.post<FocusRow>(FOCUS + 'save_timer', r),
   setNote: (task: string, note: string) => api.post<FocusRow>(FOCUS + 'set_note', { task, note }),
   stop: (task: string) => api.post<{ ok: boolean }>(FOCUS + 'stop_timer', { task }),
+}
+
+// ---------------------------------------------------------------- recruitment
+export interface JobOpeningListItem {
+  name: string
+  slug: string
+  title: string
+  brand: string | null
+  location: string | null
+  employment_type: string
+  status: string
+  posted_on: string | null
+  closes_on: string | null
+  application_count: number
+}
+export interface JobTestQuestion {
+  question_text: string
+  qtype: string
+  options: string
+  correct_answer: string
+  points: number
+}
+export interface JobOpeningDoc {
+  name?: string
+  slug?: string
+  title: string
+  brand?: string | null
+  location?: string | null
+  employment_type?: string
+  description?: string
+  requirements?: string
+  status?: string
+  closes_on?: string | null
+  questions: JobTestQuestion[]
+  test_disc?: 0 | 1
+  test_personality?: 0 | 1
+  test_logical?: 0 | 1
+  targets?: Record<string, number>
+  // flat target fields returned by getOpening (doc.as_dict()); read on load in Task 7
+  target_d?: number; target_i?: number; target_s?: number; target_c?: number
+  target_o?: number; target_c_big?: number; target_e?: number; target_a?: number; target_n?: number
+}
+export interface JobApplicationListItem {
+  name: string
+  job_opening: string
+  job_title?: string
+  full_name: string
+  email: string
+  phone: string
+  status: string
+  score: number
+  max_score: number
+  grading_status: string
+  blacklist_flag: 0 | 1
+  submitted_on: string | null
+  interview_at: string | null
+  wa: string
+  overall_fit?: number | null
+  disc_type?: string | null
+}
+export interface JobApplicationAnswer {
+  idx: number
+  question_text: string
+  qtype: string
+  answer: string
+  is_correct: 0 | 1
+  points_awarded: number | null
+  max_points: number
+  test?: string
+}
+export interface PsychResult {
+  disc?: { answers: Record<string, { most: number; least: number }>; scores: Record<string, number>; type: string; fit: number }
+  personality?: { answers: Record<string, number>; scores: Record<string, number>; fit: number }
+}
+export interface JobApplicationDetail {
+  name: string
+  job_opening: string
+  job_title: string
+  full_name: string
+  email: string
+  phone: string
+  wa: string
+  nik_ktp: string
+  cv: string | null
+  cover_letter: string
+  applicant_user: string | null
+  status: string
+  blacklist_flag: 0 | 1
+  blacklist_reason: string
+  submitted_on: string | null
+  score: number
+  max_score: number
+  grading_status: string
+  interview_at: string | null
+  interview_notes: string
+  answers: JobApplicationAnswer[]
+  psych_result: PsychResult | null
+  disc_type: string | null
+  disc_fit: number | null
+  personality_fit: number | null
+  logical_score: number | null
+  logical_max: number | null
+  overall_fit: number | null
+  test_disc?: 0 | 1
+  test_personality?: 0 | 1
+  test_logical?: 0 | 1
+}
+export interface InterviewRow {
+  name: string
+  job_opening: string
+  job_title?: string
+  full_name: string
+  phone: string
+  status: string
+  interview_at: string
+  interview_notes: string
+  wa: string
+}
+export interface RecruitmentBlacklistRow {
+  name: string
+  nik_ktp: string
+  full_name: string
+  reason: string
+  blacklisted_by: string | null
+  blacklisted_on: string | null
+}
+
+export const APPLICATION_STATUSES = [
+  'Submitted', 'Screening', 'Interview', 'Offered', 'Hired', 'Rejected',
+] as const
+
+const REC = 'vernon_project.api.recruitment.'
+
+export const recruitmentApi = {
+  listOpenings: () => api.get<JobOpeningListItem[]>(REC + 'list_openings'),
+  getOpening: (name: string) => api.get<JobOpeningDoc>(REC + 'get_opening', { name }),
+  saveOpening: (v: JobOpeningDoc) =>
+    api.post<{ ok: boolean; name: string; slug: string }>(REC + 'save_opening', {
+      ...(v.name ? { name: v.name } : {}),
+      title: v.title,
+      brand: v.brand ?? '',
+      location: v.location ?? '',
+      employment_type: v.employment_type ?? 'Full-time',
+      description: v.description ?? '',
+      requirements: v.requirements ?? '',
+      status: v.status ?? 'Draft',
+      closes_on: v.closes_on ?? '',
+      slug: v.slug ?? '',
+      questions: JSON.stringify(v.questions ?? []),
+      test_disc: v.test_disc ? 1 : 0,
+      test_personality: v.test_personality ? 1 : 0,
+      test_logical: v.test_logical ? 1 : 0,
+      targets: JSON.stringify(v.targets ?? {}),
+    }),
+  listApplications: (job?: string, status?: string) =>
+    api.get<JobApplicationListItem[]>(REC + 'list_applications', {
+      ...(job ? { job } : {}),
+      ...(status ? { status } : {}),
+    }),
+  listInterviews: () => api.get<InterviewRow[]>(REC + 'list_interviews'),
+  getApplication: (name: string) => api.get<JobApplicationDetail>(REC + 'get_application', { name }),
+  gradeApplication: (name: string, grades: Record<string, number>) =>
+    api.post<{ ok: boolean; score: number; grading_status: string }>(REC + 'grade_application', {
+      name,
+      grades: JSON.stringify(grades),
+    }),
+  setApplicationStatus: (name: string, status: string) =>
+    api.post<{ ok: boolean }>(REC + 'set_status', { name, status }),
+  scheduleInterview: (name: string, interview_at: string, interview_notes?: string) =>
+    api.post<{ ok: boolean }>(REC + 'schedule_interview', {
+      name,
+      interview_at,
+      ...(interview_notes ? { interview_notes } : {}),
+    }),
+  listBlacklist: () => api.get<RecruitmentBlacklistRow[]>(REC + 'list_blacklist'),
+  addBlacklist: (nik_ktp: string, full_name: string, reason: string) =>
+    api.post<{ ok: boolean }>(REC + 'add_blacklist', { nik_ktp, full_name, reason }),
+  removeBlacklist: (nik_ktp: string) =>
+    api.post<{ ok: boolean }>(REC + 'remove_blacklist', { nik_ktp }),
 }
