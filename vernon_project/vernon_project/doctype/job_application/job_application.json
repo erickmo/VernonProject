@@ -11,13 +11,14 @@
   "section_break_pipe", "status", "blacklist_flag", "blacklist_reason", "submitted_on",
   "section_break_test", "score", "max_score", "grading_status", "answers",
   "psych_result", "disc_type", "disc_fit", "personality_fit", "logical_score", "logical_max", "overall_fit",
+  "attempt_id", "test_violations", "violation_detail", "test_timing", "ketelitian_score", "ketelitian_max",
   "section_break_iv", "interview_at", "interview_notes", "interview_meeting"
  ],
  "fields": [
   {"fieldname": "job_opening", "fieldtype": "Link", "label": "Job Opening", "options": "Job Opening", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1, "search_index": 1},
   {"fieldname": "full_name", "fieldtype": "Data", "label": "Full Name", "reqd": 1, "in_list_view": 1},
   {"fieldname": "column_break_a", "fieldtype": "Column Break"},
-  {"fieldname": "email", "fieldtype": "Data", "label": "Email", "reqd": 1},
+  {"fieldname": "email", "fieldtype": "Data", "label": "Email", "reqd": 1, "search_index": 1},
   {"fieldname": "phone", "fieldtype": "Data", "label": "Phone (WhatsApp)", "reqd": 1},
   {"fieldname": "applicant_user", "fieldtype": "Link", "label": "Applicant User", "options": "User", "read_only": 1},
   {"fieldname": "section_break_id", "fieldtype": "Section Break", "label": "ID (admin only)"},
@@ -44,7 +45,13 @@
   {"fieldname": "section_break_iv", "fieldtype": "Section Break", "label": "Interview"},
   {"fieldname": "interview_at", "fieldtype": "Datetime", "label": "Interview At"},
   {"fieldname": "interview_notes", "fieldtype": "Small Text", "label": "Interview Notes"},
-  {"fieldname": "interview_meeting", "fieldtype": "Link", "label": "Interview Meeting (calendar)", "options": "Meeting", "read_only": 1}
+  {"fieldname": "interview_meeting", "fieldtype": "Link", "label": "Interview Meeting (calendar)", "options": "Meeting", "read_only": 1},
+  {"fieldname": "attempt_id", "fieldtype": "Data", "label": "Attempt ID", "read_only": 1},
+  {"fieldname": "test_violations", "fieldtype": "Int", "label": "Proctor Violations", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "violation_detail", "fieldtype": "Small Text", "label": "Violation Detail", "read_only": 1},
+  {"fieldname": "test_timing", "fieldtype": "Code", "label": "Test Timing (JSON)", "options": "JSON", "read_only": 1},
+  {"fieldname": "ketelitian_score", "fieldtype": "Float", "label": "Ketelitian Score", "read_only": 1},
+  {"fieldname": "ketelitian_max", "fieldtype": "Float", "label": "Ketelitian Max", "read_only": 1}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
