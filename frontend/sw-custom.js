@@ -9,7 +9,8 @@
 // v13: flush stale shell so the focus-timer FAB fix (completed todos no longer linger) lands.
 // v14: flush stale /m shell for the Cuti Bersama holiday sync + per-Brand quota + Settings cards.
 // v17: flush shell after moving per-Brand leave/holiday settings onto the brand form.
-const ASSET_CACHE = 'vernon-assets-v17'
+// v18: flush stale shell for the interview-assessment feature (DISC/personality/logical tests + fit).
+const ASSET_CACHE = 'vernon-assets-v18'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
