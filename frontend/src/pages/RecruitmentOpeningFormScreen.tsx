@@ -49,9 +49,13 @@ export default function RecruitmentOpeningFormScreen() {
   const [testDisc, setTestDisc] = useState(false)
   const [testPersonality, setTestPersonality] = useState(false)
   const [testLogical, setTestLogical] = useState(false)
+  const [testKetelitian, setTestKetelitian] = useState(false)
   const [targets, setTargets] = useState<Record<string, number>>({
     target_d: 50, target_i: 50, target_s: 50, target_c: 50,
     target_o: 50, target_c_big: 50, target_e: 50, target_a: 50, target_n: 50,
+  })
+  const [times, setTimes] = useState<Record<string, number>>({
+    time_jobspecific: 6, time_disc: 5, time_personality: 6, time_logical: 8, time_ketelitian: 4,
   })
 
   useEffect(() => {
@@ -73,10 +77,16 @@ export default function RecruitmentOpeningFormScreen() {
         setTestDisc(!!o.test_disc)
         setTestPersonality(!!o.test_personality)
         setTestLogical(!!o.test_logical)
+        setTestKetelitian(!!o.test_ketelitian)
         setTargets({
           target_d: o.target_d ?? 50, target_i: o.target_i ?? 50, target_s: o.target_s ?? 50, target_c: o.target_c ?? 50,
           target_o: o.target_o ?? 50, target_c_big: o.target_c_big ?? 50, target_e: o.target_e ?? 50,
           target_a: o.target_a ?? 50, target_n: o.target_n ?? 50,
+        })
+        setTimes({
+          time_jobspecific: o.time_jobspecific ?? 6, time_disc: o.time_disc ?? 5,
+          time_personality: o.time_personality ?? 6, time_logical: o.time_logical ?? 8,
+          time_ketelitian: o.time_ketelitian ?? 4,
         })
       })
       .catch((e) => toast('error', (e as Error).message))
@@ -111,7 +121,9 @@ export default function RecruitmentOpeningFormScreen() {
         test_disc: testDisc ? 1 : 0,
         test_personality: testPersonality ? 1 : 0,
         test_logical: testLogical ? 1 : 0,
+        test_ketelitian: testKetelitian ? 1 : 0,
         targets,
+        times,
       })
       toast('success', 'Lowongan tersimpan')
       navigate('/recruitment/openings')
@@ -176,6 +188,7 @@ export default function RecruitmentOpeningFormScreen() {
             ['DISC', testDisc, setTestDisc],
             ['Kepribadian (Big Five)', testPersonality, setTestPersonality],
             ['Logika & pemecahan masalah', testLogical, setTestLogical],
+            ['Ketelitian', testKetelitian, setTestKetelitian],
           ] as const).map(([lbl, val, set]) => (
             <label key={lbl} className="flex items-center gap-2 py-1.5 text-sm text-slate-700 dark:text-slate-200">
               <input type="checkbox" checked={val} onChange={(e) => set(e.target.checked)} className="h-4 w-4 accent-brand-600" />
@@ -188,6 +201,17 @@ export default function RecruitmentOpeningFormScreen() {
           {testPersonality && (
             <TargetGrid label="Target Kepribadian" keys={['target_o', 'target_c_big', 'target_e', 'target_a', 'target_n']} labels={['O', 'C', 'E', 'A', 'N']} targets={targets} setTargets={setTargets} />
           )}
+          <TimeGrid
+            items={[
+              { key: 'time_jobspecific', label: 'Umum', enabled: true },
+              { key: 'time_disc', label: 'DISC', enabled: testDisc },
+              { key: 'time_personality', label: 'Kepribadian', enabled: testPersonality },
+              { key: 'time_logical', label: 'Logika', enabled: testLogical },
+              { key: 'time_ketelitian', label: 'Ketelitian', enabled: testKetelitian },
+            ]}
+            times={times}
+            setTimes={setTimes}
+          />
         </div>
 
         <div className="rounded-2xl border border-brand-200 bg-brand-50/40 p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -288,6 +312,37 @@ function TargetGrid({ label, keys, labels, targets, setTargets }: {
               onBlur={(e) => {
                 const n = Math.max(0, Math.min(100, Number(e.target.value) || 0))
                 setTargets((t) => ({ ...t, [k]: n }))
+              }}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-1 py-1 text-center text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+            />
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TimeGrid({ items, times, setTimes }: {
+  items: { key: string; label: string; enabled: boolean }[]
+  times: Record<string, number>; setTimes: (u: (t: Record<string, number>) => Record<string, number>) => void
+}) {
+  const visible = items.filter((it) => it.enabled)
+  return (
+    <div className="mt-3">
+      <p className="mb-1 text-xs font-semibold text-slate-500">Waktu per tes (menit)</p>
+      <div className="grid grid-cols-5 gap-2">
+        {visible.map((it) => (
+          <label key={it.key} className="text-center">
+            <span className="block text-xs font-bold text-slate-600 dark:text-slate-300">{it.label}</span>
+            <input
+              type="number"
+              min={0}
+              max={120}
+              value={times[it.key] ?? 0}
+              onChange={(e) => setTimes((t) => ({ ...t, [it.key]: Number(e.target.value) || 0 }))}
+              onBlur={(e) => {
+                const n = Math.max(0, Math.min(120, Number(e.target.value) || 0))
+                setTimes((t) => ({ ...t, [it.key]: n }))
               }}
               className="mt-1 w-full rounded-lg border border-slate-200 px-1 py-1 text-center text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
             />
