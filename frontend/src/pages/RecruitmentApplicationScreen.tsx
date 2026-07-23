@@ -189,7 +189,7 @@ export default function RecruitmentApplicationScreen() {
         )}
 
         {/* Assessment */}
-        {(app.psych_result || app.logical_max) && (
+        {(app.psych_result || app.logical_max || app.ketelitian_max || app.test_violations != null) && (
           <div className="flex flex-col gap-3">
             {app.overall_fit != null && (
               <div className="rounded-2xl bg-brand-600 p-4 text-white shadow-sm">
@@ -209,6 +209,23 @@ export default function RecruitmentApplicationScreen() {
               <div className={card}>
                 <span className="text-sm font-bold text-stone-800 dark:text-slate-100">Logika</span>
                 <span className="ml-2 text-sm text-slate-600 dark:text-slate-300">{app.logical_score} / {app.logical_max}</span>
+              </div>
+            )}
+            {!!app.ketelitian_max && (
+              <div className={card}>
+                <span className="text-sm font-bold text-stone-800 dark:text-slate-100">Ketelitian</span>
+                <span className="ml-2 text-sm text-slate-600 dark:text-slate-300">{app.ketelitian_score} / {app.ketelitian_max}</span>
+              </div>
+            )}
+            {app.test_violations != null && (
+              <div className={`rounded-xl border p-3 ${app.test_violations ? 'border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-950/30' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'}`}>
+                <p className="text-sm font-bold text-stone-800 dark:text-slate-100">Proctor: {app.test_violations} pelanggaran</p>
+                {!!app.violation_detail && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{app.violation_detail}</p>}
+                {app.test_timing && Object.entries(app.test_timing).some(([, v]) => v.expired) && (
+                  <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                    Waktu habis: {Object.entries(app.test_timing).filter(([, v]) => v.expired).map(([k]) => k).join(', ')}
+                  </p>
+                )}
               </div>
             )}
           </div>

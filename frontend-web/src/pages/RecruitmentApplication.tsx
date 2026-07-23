@@ -210,7 +210,7 @@ export default function RecruitmentApplication() {
           </BentoTile>
         ) : null}
 
-        {(d.psych_result || d.logical_max) ? (
+        {(d.psych_result || d.logical_max || d.ketelitian_max || d.test_violations != null) ? (
           <BentoTile span="full" tone="plain" title="Assessment">
             <div className="mt-1 flex flex-col gap-3">
               {d.overall_fit != null && (
@@ -233,6 +233,23 @@ export default function RecruitmentApplication() {
                 <div className="rounded-xl bg-hover/[0.04] px-4 py-3 text-sm">
                   <span className="font-semibold text-ink">Logika</span>
                   <span className="ml-2 text-muted">{d.logical_score} / {d.logical_max}</span>
+                </div>
+              )}
+              {!!d.ketelitian_max && (
+                <div className="rounded-xl bg-hover/[0.04] px-4 py-3 text-sm">
+                  <span className="font-semibold text-ink">Ketelitian</span>
+                  <span className="ml-2 text-muted">{d.ketelitian_score} / {d.ketelitian_max}</span>
+                </div>
+              )}
+              {d.test_violations != null && (
+                <div className={`rounded-xl px-4 py-3 text-sm ${d.test_violations ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-hover/[0.04]'}`}>
+                  <p className="font-semibold text-ink">Proctor: {d.test_violations} pelanggaran</p>
+                  {!!d.violation_detail && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{d.violation_detail}</p>}
+                  {d.test_timing && Object.entries(d.test_timing).some(([, v]) => v.expired) && (
+                    <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                      Waktu habis: {Object.entries(d.test_timing).filter(([, v]) => v.expired).map(([k]) => k).join(', ')}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
