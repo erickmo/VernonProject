@@ -93,6 +93,14 @@ LOGIC_ITEMS = [
     {"id": "l10", "text": 'Seorang karyawan memiliki jam kerja normal 8 jam per hari selama 5 hari kerja dalam seminggu. Pada minggu ini, karyawan tersebut tercatat bekerja selama total 46 jam. Berapa jam lembur yang diperoleh karyawan tersebut pada minggu itu?', "options": ['4 jam', '5 jam', '8 jam', '6 jam'], "answer": '6 jam', "points": 1},
 ]
 
+# --- Ketelitian (clerical accuracy): same/different pairs + odd-one-out. Scored correct/incorrect.
+KETELITIAN_ITEMS = [
+    {"id": "k1", "kind": "pair", "left": "4837-XK-92", "right": "4837-XK-92", "answer": "Sama", "points": 1},
+    {"id": "k2", "kind": "pair", "left": "Andi Wijaya", "right": "Andi Wjaya", "answer": "Beda", "points": 1},
+    {"id": "k3", "kind": "odd", "text": "Mana yang berbeda?", "options": ["55210", "55210", "55120", "55210"], "answer": "55120", "points": 1},
+]
+PAIR_OPTIONS = ["Sama", "Beda"]
+
 
 # ----------------------------------------------------------------- public (stripped)
 
@@ -113,6 +121,27 @@ def logic_qdefs():
     return [{"question_text": it["text"], "qtype": "Multiple Choice",
              "correct_answer": it["answer"], "points": int(it.get("points", 1))}
             for it in LOGIC_ITEMS]
+
+
+def public_ketelitian():
+    out = []
+    for it in KETELITIAN_ITEMS:
+        if it["kind"] == "pair":
+            out.append({"id": it["id"], "kind": "pair", "left": it["left"], "right": it["right"]})
+        else:
+            out.append({"id": it["id"], "kind": "odd", "text": it["text"], "options": list(it["options"])})
+    return out
+
+
+def ketelitian_qdefs():
+    """→ _score_answers question defs. Pair items use Sama/Beda options; odd items use their options."""
+    defs = []
+    for it in KETELITIAN_ITEMS:
+        opts = PAIR_OPTIONS if it["kind"] == "pair" else it["options"]
+        defs.append({"question_text": it.get("text") or f'{it.get("left")} / {it.get("right")}',
+                     "qtype": "Multiple Choice", "correct_answer": it["answer"],
+                     "points": int(it.get("points", 1))})
+    return defs
 
 
 # ----------------------------------------------------------------- scoring
@@ -221,6 +250,16 @@ def _selfcheck():
         assert sum(1 for it in BIGFIVE_ITEMS if it["trait"] == t) == 5, t
     assert len(LOGIC_ITEMS) >= 8, len(LOGIC_ITEMS)
     assert any(it["reverse"] for it in BIGFIVE_ITEMS), "need some reverse-keyed items"
+    # Ketelitian: pair answer in Sama/Beda; odd answer in its options; public strips answer.
+    for it in KETELITIAN_ITEMS:
+        if it["kind"] == "pair":
+            assert it["answer"] in PAIR_OPTIONS, it["id"]
+        else:
+            assert it["answer"] in it["options"], it["id"]
+    for it in public_ketelitian():
+        assert "answer" not in it, it["id"]
+        assert it["kind"] in ("pair", "odd")
+    assert len(ketelitian_qdefs()) == len(KETELITIAN_ITEMS)
     print("recruitment_instruments selfcheck ok")
 
 
