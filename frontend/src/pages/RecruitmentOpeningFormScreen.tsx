@@ -283,7 +283,8 @@ function TargetGrid({ label, keys, labels, targets, setTargets }: {
               type="number"
               min={0}
               max={100}
-              defaultValue={targets[k] ?? 50}
+              value={targets[k] ?? 50}
+              onChange={(e) => setTargets((t) => ({ ...t, [k]: Number(e.target.value) || 0 }))}
               onBlur={(e) => {
                 const n = Math.max(0, Math.min(100, Number(e.target.value) || 0))
                 setTargets((t) => ({ ...t, [k]: n }))
