@@ -105,19 +105,66 @@ def _score_answers(questions, answers):
 def _enabled_tests(opening):
 	return {"disc": bool(opening.get("test_disc")),
 			"personality": bool(opening.get("test_personality")),
-			"logical": bool(opening.get("test_logical"))}
+			"logical": bool(opening.get("test_logical")),
+			"ketelitian": bool(opening.get("test_ketelitian"))}
 
 
-def _overall_fit(disc_fit, personality_fit, logical_score, logical_max, enabled):
-	"""Mean of enabled contributors: disc_fit, personality_fit, logical %. None if nothing enabled."""
+def _overall_fit(disc_fit, personality_fit, scores, enabled):
+	"""Mean of enabled contributors: disc_fit, personality_fit, and % of each aptitude test."""
 	parts = []
 	if enabled["disc"] and disc_fit is not None:
 		parts.append(disc_fit)
 	if enabled["personality"] and personality_fit is not None:
 		parts.append(personality_fit)
-	if enabled["logical"] and logical_max:
-		parts.append(100.0 * logical_score / logical_max)
+	for k in ("logical", "ketelitian"):
+		if enabled.get(k):
+			s, m = scores.get(k, (0, 0))
+			if m:
+				parts.append(100.0 * s / m)
 	return round(sum(parts) / len(parts), 1) if parts else None
+
+
+TIMED_TESTS = ("jobspecific", "disc", "personality", "logical", "ketelitian")
+TIME_FIELD = {"jobspecific": "time_jobspecific", "disc": "time_disc", "personality": "time_personality",
+			  "logical": "time_logical", "ketelitian": "time_ketelitian"}
+GRACE_SEC = 15
+
+
+def _already_applied(opening_name, nik, email):
+	if nik and frappe.db.exists("Job Application", {"job_opening": opening_name, "nik_ktp": nik}):
+		return True
+	if email and frappe.db.exists("Job Application", {"job_opening": opening_name, "email": email}):
+		return True
+	return False
+
+
+def _clean_attempt(attempt_id):
+	a = re.sub(r"[^A-Za-z0-9-]", "", attempt_id or "")[:64]
+	if not a:
+		frappe.throw("Sesi tes tidak valid.")
+	return a
+
+
+def _test_timing(attempt_id, opening, enabled):
+	"""Recompute per-test elapsed from the server-stamped cache start. Never trusts the client clock."""
+	now = now_datetime().timestamp()
+	cache = frappe.cache()
+	out = {}
+	for t in TIMED_TESTS:
+		on = (t == "jobspecific" and opening.questions) or enabled.get(t)
+		if not on:
+			continue
+		limit_sec = int(opening.get(TIME_FIELD[t]) or 0) * 60
+		if not limit_sec:
+			continue
+		raw = cache.get_value(f"recruit_timer:{attempt_id}:{t}")
+		if not raw:
+			out[t] = {"elapsed": None, "limit": limit_sec, "expired": True}
+			continue
+		data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+		elapsed = round(now - float(data["start_at"]))
+		out[t] = {"elapsed": elapsed, "limit": limit_sec, "expired": elapsed > limit_sec + GRACE_SEC}
+	return out
 
 
 # ------------------------------------------------------------------- HR guard
@@ -138,6 +185,40 @@ def _require_hr():
 def list_open_jobs():
 	return frappe.get_all("Job Opening", filters={"status": "Open"}, fields=JOB_LIST_FIELDS,
 		order_by="posted_on desc, creation desc")
+
+
+@frappe.whitelist(allow_guest=True)
+@rate_limit(key="can_apply", limit=30, seconds=3600)
+def check_can_apply(job, nik_ktp=None, email=None):
+	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
+	if not name:
+		return {"ok": False, "reason": "Lowongan tidak ditemukan atau sudah ditutup."}
+	if _already_applied(name, (nik_ktp or "").strip(), (email or "").strip()):
+		return {"ok": False, "reason": "Kamu sudah pernah melamar posisi ini."}
+	return {"ok": True}
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(key="start_test", limit=120, seconds=3600)
+def start_test(attempt_id, job, test):
+	attempt_id = _clean_attempt(attempt_id)
+	if test not in TIMED_TESTS:
+		frappe.throw("Tes tidak dikenal.")
+	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
+	if not name:
+		frappe.throw("Lowongan tidak ditemukan.", frappe.DoesNotExistError)
+	limit_sec = int(frappe.db.get_value("Job Opening", name, TIME_FIELD[test]) or 0) * 60
+	key = f"recruit_timer:{attempt_id}:{test}"
+	cache = frappe.cache()
+	raw = cache.get_value(key)
+	now = now_datetime().timestamp()
+	if raw:
+		data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+		remaining = max(0, int(data["limit_sec"] - (now - float(data["start_at"]))))
+		return {"remaining_sec": remaining, "limit_sec": int(data["limit_sec"])}
+	data = {"start_at": now, "limit_sec": limit_sec}
+	cache.set_value(key, json.dumps(data), expires_in_sec=limit_sec + GRACE_SEC + 300)
+	return {"remaining_sec": limit_sec, "limit_sec": limit_sec}
 
 
 @frappe.whitelist(allow_guest=True)
@@ -163,6 +244,9 @@ def get_job(slug):
 		"disc_items": ri.public_disc() if tests["disc"] else [],
 		"bigfive_items": ri.public_bigfive() if tests["personality"] else [],
 		"logic_items": ri.public_logic() if tests["logical"] else [],
+		"test_ketelitian": 1 if tests["ketelitian"] else 0,
+		"ketelitian_items": ri.public_ketelitian() if tests["ketelitian"] else [],
+		"time_limits": {t: int(doc.get(TIME_FIELD[t]) or 0) for t in TIMED_TESTS},
 	}
 
 
@@ -170,7 +254,8 @@ def get_job(slug):
 @rate_limit(key="job_application", limit=6, seconds=3600)
 def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp=None,
 					   cover_letter=None, answers=None, company_website=None,
-					   disc_answers=None, personality_answers=None, logical_answers=None):
+					   disc_answers=None, personality_answers=None, logical_answers=None,
+					   ketelitian_answers=None, attempt_id=None, violations=None, violation_reasons=None):
 	if (company_website or "").strip():
 		return {"ok": True}  # honeypot — silently drop bots
 
@@ -192,6 +277,9 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	if not name:
 		frappe.throw("Lowongan tidak ditemukan atau sudah ditutup.", frappe.DoesNotExistError)
 	opening = frappe.get_doc("Job Opening", name)
+
+	if _already_applied(name, nik_ktp, email):
+		frappe.throw("Kamu sudah pernah melamar posisi ini.")
 
 	try:
 		submitted = json.loads(answers) if isinstance(answers, str) else (answers or [])
@@ -227,6 +315,20 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		score += ls
 		max_score += lm
 
+	ketelitian_score = ketelitian_max = 0.0
+	if tests["ketelitian"]:
+		ka = _loadjson(ketelitian_answers, [])
+		ka = ka if isinstance(ka, list) else []
+		krows, ks, km, _ = _score_answers(ri.ketelitian_qdefs(), ka)
+		for r in krows:
+			r["test"] = "Ketelitian"
+		if len(ka) < len(ri.KETELITIAN_ITEMS):
+			frappe.throw("Mohon jawab semua soal tes ketelitian.")
+		rows += krows
+		ketelitian_score, ketelitian_max = ks, km
+		score += ks
+		max_score += km
+
 	psych = {}
 	disc_type = None
 	disc_fit = personality_fit = None
@@ -253,7 +355,20 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 			"A": opening.target_a, "N": opening.target_n}, ri.BIGFIVE_TRAITS)
 		psych["personality"] = {"answers": pa, "scores": pscores, "fit": personality_fit}
 
-	overall_fit = _overall_fit(disc_fit, personality_fit, logical_score, logical_max, tests)
+	overall_fit = _overall_fit(disc_fit, personality_fit,
+							   {"logical": (logical_score, logical_max),
+								"ketelitian": (ketelitian_score, ketelitian_max)}, tests)
+
+	# timing + proctor violations — computed server-side, never trust the client clock.
+	aid = _clean_attempt(attempt_id) if attempt_id else ""
+	timing = _test_timing(aid, opening, tests) if aid else {}
+	try:
+		vcount = int(violations or 0)
+	except (TypeError, ValueError):
+		vcount = 0
+	vreasons = _loadjson(violation_reasons, [])
+	vreasons = [str(x)[:60] for x in vreasons] if isinstance(vreasons, list) else []
+	vdetail = ", ".join(sorted(set(vreasons)))[:1000]
 
 	# CV file — private, PDF/doc only (no HTML/SVG stored-XSS).
 	try:
@@ -299,6 +414,10 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		"psych_result": json.dumps(psych) if psych else None,
 		"disc_type": disc_type, "disc_fit": disc_fit, "personality_fit": personality_fit,
 		"logical_score": logical_score, "logical_max": logical_max, "overall_fit": overall_fit,
+		"attempt_id": aid,
+		"ketelitian_score": ketelitian_score, "ketelitian_max": ketelitian_max,
+		"test_timing": json.dumps(timing) if timing else None,
+		"test_violations": vcount, "violation_detail": vdetail,
 	})
 	app.insert(ignore_permissions=True)
 
@@ -342,7 +461,7 @@ def get_opening(name):
 def save_opening(name=None, title=None, brand=None, location=None, employment_type=None,
 				 description=None, requirements=None, status=None, closes_on=None,
 				 slug=None, questions=None, test_disc=None, test_personality=None,
-				 test_logical=None, targets=None):
+				 test_logical=None, targets=None, test_ketelitian=None, times=None):
 	user = _require_hr()
 	qrows = json.loads(questions) if isinstance(questions, str) else (questions or [])
 	if name:
@@ -380,10 +499,15 @@ def save_opening(name=None, title=None, brand=None, location=None, employment_ty
 	doc.test_disc = cint(test_disc)
 	doc.test_personality = cint(test_personality)
 	doc.test_logical = cint(test_logical)
+	doc.test_ketelitian = cint(test_ketelitian)
 	tg = json.loads(targets) if isinstance(targets, str) else (targets or {})
 	for f in ("target_d", "target_i", "target_s", "target_c",
 			  "target_o", "target_c_big", "target_e", "target_a", "target_n"):
 		doc.set(f, cint(tg.get(f, 50)))
+	tm = json.loads(times) if isinstance(times, str) else (times or {})
+	for f in ("time_jobspecific", "time_disc", "time_personality", "time_logical", "time_ketelitian"):
+		if tm.get(f) is not None:
+			doc.set(f, cint(tm.get(f)))
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()
 	return {"ok": True, "name": doc.name, "slug": doc.slug}
@@ -463,6 +587,10 @@ def get_application(name):
 		"test_disc": frappe.db.get_value("Job Opening", doc.job_opening, "test_disc"),
 		"test_personality": frappe.db.get_value("Job Opening", doc.job_opening, "test_personality"),
 		"test_logical": frappe.db.get_value("Job Opening", doc.job_opening, "test_logical"),
+		"ketelitian_score": doc.ketelitian_score, "ketelitian_max": doc.ketelitian_max,
+		"test_violations": doc.test_violations, "violation_detail": doc.violation_detail,
+		"test_timing": json.loads(doc.test_timing) if doc.test_timing else None,
+		"test_ketelitian": frappe.db.get_value("Job Opening", doc.job_opening, "test_ketelitian"),
 		"answers": [{"idx": i, "question_text": a.question_text, "qtype": a.qtype,
 			"answer": a.answer, "is_correct": a.is_correct, "points_awarded": a.points_awarded,
 			"max_points": a.max_points, "test": a.test} for i, a in enumerate(doc.answers)],
@@ -591,17 +719,24 @@ def _selfcheck():
 	from vernon_project.api import recruitment_instruments as ri
 	# enabled-tests helper filters correctly
 	op = frappe._dict({"test_disc": 1, "test_personality": 0, "test_logical": 1})
-	assert _enabled_tests(op) == {"disc": True, "personality": False, "logical": True}
+	assert _enabled_tests(op) == {"disc": True, "personality": False, "logical": True, "ketelitian": False}
 	# overall_fit averages only enabled contributors
-	assert _overall_fit(70.0, None, 8, 10, {"disc": True, "personality": False, "logical": True}) == 75.0
-	assert _overall_fit(None, None, 0, 0, {"disc": False, "personality": False, "logical": False}) is None
+	assert _overall_fit(70.0, None, {"logical": (8, 10)},
+		{"disc": True, "personality": False, "logical": True, "ketelitian": False}) == 75.0
+	op2 = frappe._dict({"test_disc": 0, "test_personality": 0, "test_logical": 1, "test_ketelitian": 1})
+	assert _enabled_tests(op2) == {"disc": False, "personality": False, "logical": True, "ketelitian": True}
+	# overall_fit: logical 8/10=80, ketelitian 9/10=90 → 85
+	en = {"disc": False, "personality": False, "logical": True, "ketelitian": True}
+	assert _overall_fit(None, None, {"logical": (8, 10), "ketelitian": (9, 10)}, en) == 85.0
+	assert _overall_fit(None, None, {}, {"disc": False, "personality": False, "logical": False, "ketelitian": False}) is None
 	print("recruitment selfcheck ok")
 
 
 def _leakcheck():
 	"""No scoring key escapes to the guest payload."""
 	import json as _j
-	blob = _j.dumps({"disc": ri.public_disc(), "big": ri.public_bigfive(), "logic": ri.public_logic()})
+	blob = _j.dumps({"disc": ri.public_disc(), "big": ri.public_bigfive(),
+					 "logic": ri.public_logic(), "ket": ri.public_ketelitian()})
 	for banned in ('"axis"', '"trait"', '"reverse"', '"answer"', '"correct_answer"'):
 		assert banned not in blob, banned
 	print("recruitment leakcheck ok")
