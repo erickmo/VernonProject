@@ -309,6 +309,16 @@ export const mobileApi = {
         ...(dryRun ? { dry_run: 1 } : {}),
       },
     ),
+  cloneMemberships: (fromUser: string, toUser: string, dryRun?: boolean) =>
+    api.post<{
+      to_add?: { project: string; title: string }[]
+      added?: string[]
+      skipped_existing: number
+    }>('vernon_project.api.team_membership.clone_memberships', {
+      from_user: fromUser,
+      to_user: toUser,
+      ...(dryRun ? { dry_run: 1 } : {}),
+    }),
   getTeamWall: () => api.get<import('./types').TeamWallResponse>(M + 'get_team_wall'),
   income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
   submitIncomeClaim: (opportunity: string, details: string) =>
@@ -1225,11 +1235,19 @@ export interface JobOpeningDoc {
   test_disc?: 0 | 1
   test_personality?: 0 | 1
   test_logical?: 0 | 1
+  test_ketelitian?: 0 | 1
+  time_jobspecific?: number
+  time_disc?: number
+  time_personality?: number
+  time_logical?: number
+  time_ketelitian?: number
+  times?: Record<string, number>
   targets?: Record<string, number>
   // flat target fields returned by getOpening (doc.as_dict()); read on load in Task 7
   target_d?: number; target_i?: number; target_s?: number; target_c?: number
   target_o?: number; target_c_big?: number; target_e?: number; target_a?: number; target_n?: number
 }
+export interface TestTiming { [test: string]: { elapsed: number | null; limit: number; expired: boolean } }
 export interface JobApplicationListItem {
   name: string
   job_opening: string
@@ -1247,6 +1265,7 @@ export interface JobApplicationListItem {
   wa: string
   overall_fit?: number | null
   disc_type?: string | null
+  test_violations?: number | null
 }
 export interface JobApplicationAnswer {
   idx: number
@@ -1294,6 +1313,12 @@ export interface JobApplicationDetail {
   test_disc?: 0 | 1
   test_personality?: 0 | 1
   test_logical?: 0 | 1
+  ketelitian_score: number | null
+  ketelitian_max: number | null
+  test_violations: number | null
+  violation_detail: string | null
+  test_timing: TestTiming | null
+  test_ketelitian?: 0 | 1
 }
 export interface InterviewRow {
   name: string
@@ -1340,7 +1365,9 @@ export const recruitmentApi = {
       test_disc: v.test_disc ? 1 : 0,
       test_personality: v.test_personality ? 1 : 0,
       test_logical: v.test_logical ? 1 : 0,
+      test_ketelitian: v.test_ketelitian ? 1 : 0,
       targets: JSON.stringify(v.targets ?? {}),
+      times: JSON.stringify(v.times ?? {}),
     }),
   listApplications: (job?: string, status?: string) =>
     api.get<JobApplicationListItem[]>(REC + 'list_applications', {
