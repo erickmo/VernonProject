@@ -179,7 +179,6 @@ def ketelitian_qdefs():
     """→ _score_answers question defs. Pair items use Sama/Beda options; odd items use their options."""
     defs = []
     for it in KETELITIAN_ITEMS:
-        opts = PAIR_OPTIONS if it["kind"] == "pair" else it["options"]
         defs.append({"question_text": it.get("text") or f'{it.get("left")} / {it.get("right")}',
                      "qtype": "Multiple Choice", "correct_answer": it["answer"],
                      "points": int(it.get("points", 1))})

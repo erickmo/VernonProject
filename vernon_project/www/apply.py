@@ -42,10 +42,6 @@ def get_context(context):
             job["logic_items"] = ri.public_logic() if doc.test_logical else []
             job["test_ketelitian"] = int(doc.test_ketelitian or 0)
             job["ketelitian_items"] = ri.public_ketelitian() if doc.test_ketelitian else []
-            job["time_limits"] = {
-                "jobspecific": int(doc.time_jobspecific or 0), "disc": int(doc.time_disc or 0),
-                "personality": int(doc.time_personality or 0), "logical": int(doc.time_logical or 0),
-                "ketelitian": int(doc.time_ketelitian or 0)}
     context.job = job
 
     context.page_title = ((job["title"] + " — VernonCorp") if job

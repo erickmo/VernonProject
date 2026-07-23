@@ -136,8 +136,7 @@
       "questions": job.questions, "test_disc": job.test_disc, "disc_items": job.disc_items,
       "test_personality": job.test_personality, "bigfive_items": job.bigfive_items,
       "test_logical": job.test_logical, "logic_items": job.logic_items,
-      "test_ketelitian": job.test_ketelitian, "ketelitian_items": job.ketelitian_items,
-      "time_limits": job.time_limits
+      "test_ketelitian": job.test_ketelitian, "ketelitian_items": job.ketelitian_items
     } | tojson }};
 
   // --- attempt id (persist across reload so the server timer doesn't reset)
@@ -327,7 +326,11 @@
     var name = val('f-full_name'), email = val('f-email'), phone = val('f-phone'), nik = val('f-nik_ktp');
     var cv = document.getElementById('f-cv');
     if (!name || !email || !phone || !nik || !(cv.files && cv.files[0])) { showError(T.err_generic); return; }
-    fetch('/api/method/vernon_project.api.recruitment.check_can_apply?job=' + encodeURIComponent(SLUG) + '&nik_ktp=' + encodeURIComponent(nik) + '&email=' + encodeURIComponent(email), { headers: { Accept: 'application/json' } })
+    fetch('/api/method/vernon_project.api.recruitment.check_can_apply', {
+      method: 'POST',
+      headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ job: SLUG, nik_ktp: nik, email: email })
+    })
       .then(function (r) { return r.json(); }).then(function (d) {
         var m = d.message || {}; if (!m.ok) { showError(m.reason || T.wiz_dup); return; } next();
       }).catch(function () { next(); }); // network fail → let them proceed; submit re-checks

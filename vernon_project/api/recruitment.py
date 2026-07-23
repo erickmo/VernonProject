@@ -39,7 +39,7 @@ JOB_LIST_FIELDS = ["name", "slug", "title", "brand", "location", "employment_typ
 APP_LIST_FIELDS = [
 	"name", "job_opening", "full_name", "email", "phone", "status", "score", "max_score",
 	"grading_status", "blacklist_flag", "submitted_on", "interview_at",
-	"overall_fit", "disc_type",
+	"overall_fit", "disc_type", "test_violations",
 ]
 
 
@@ -187,7 +187,7 @@ def list_open_jobs():
 		order_by="posted_on desc, creation desc")
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=True, methods=["POST"])
 @rate_limit(key="can_apply", limit=30, seconds=3600)
 def check_can_apply(job, nik_ktp=None, email=None):
 	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
@@ -252,7 +252,6 @@ def get_job(slug):
 		"logic_items": ri.public_logic() if tests["logical"] else [],
 		"test_ketelitian": 1 if tests["ketelitian"] else 0,
 		"ketelitian_items": ri.public_ketelitian() if tests["ketelitian"] else [],
-		"time_limits": {t: int(doc.get(TIME_FIELD[t]) or 0) for t in TIMED_TESTS},
 	}
 
 
