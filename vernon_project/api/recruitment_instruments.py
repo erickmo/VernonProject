@@ -12,6 +12,8 @@ items to the browser.
 Run `python3 vernon_project/api/recruitment_instruments.py` to self-check.
 """
 
+import re
+
 DISC_AXES = ("D", "I", "S", "C")
 BIGFIVE_TRAITS = ("O", "C", "E", "A", "N")
 
@@ -22,20 +24,20 @@ DISC_ITEMS = [
         {"text": "Tegas", "axis": "D"}, {"text": "Ceria", "axis": "I"},
         {"text": "Sabar", "axis": "S"}, {"text": "Teliti", "axis": "C"}]},
     {"id": "d2", "words": [
-        {"text": "Berani ambil keputusan", "axis": "D"}, {"text": "Suka bergaul", "axis": "I"},
-        {"text": "Setia mendukung", "axis": "S"}, {"text": "Cermat", "axis": "C"}]},
+        {"text": "Cermat", "axis": "C"}, {"text": "Setia mendukung", "axis": "S"},
+        {"text": "Suka bergaul", "axis": "I"}, {"text": "Berani ambil keputusan", "axis": "D"}]},
     {"id": "d3", "words": [
-        {"text": "Kompetitif", "axis": "D"}, {"text": "Antusias", "axis": "I"},
-        {"text": "Tenang", "axis": "S"}, {"text": "Analitis", "axis": "C"}]},
+        {"text": "Antusias", "axis": "I"}, {"text": "Analitis", "axis": "C"},
+        {"text": "Kompetitif", "axis": "D"}, {"text": "Tenang", "axis": "S"}]},
 ]
 
 # --- Big Five / OCEAN: Likert 1-5. `reverse` items are reverse-scored.
 BIGFIVE_ITEMS = [
-    {"id": "o1", "text": "Saya suka mencoba hal-hal baru.", "trait": "O", "reverse": False},
-    {"id": "c1", "text": "Saya selalu menyelesaikan pekerjaan tepat waktu.", "trait": "C", "reverse": False},
-    {"id": "e1", "text": "Saya merasa berenergi saat berada di keramaian.", "trait": "E", "reverse": False},
-    {"id": "a1", "text": "Saya mudah berempati pada perasaan orang lain.", "trait": "A", "reverse": False},
-    {"id": "n1", "text": "Saya jarang merasa cemas.", "trait": "N", "reverse": True},
+    {"id": "bf1", "text": "Saya suka mencoba hal-hal baru.", "trait": "O", "reverse": False},
+    {"id": "bf2", "text": "Saya selalu menyelesaikan pekerjaan tepat waktu.", "trait": "C", "reverse": False},
+    {"id": "bf3", "text": "Saya merasa berenergi saat berada di keramaian.", "trait": "E", "reverse": False},
+    {"id": "bf4", "text": "Saya mudah berempati pada perasaan orang lain.", "trait": "A", "reverse": False},
+    {"id": "bf5", "text": "Saya jarang merasa cemas.", "trait": "N", "reverse": True},
 ]
 
 # --- Logical / problem-solving: single-correct MCQ.
@@ -65,7 +67,7 @@ def public_logic():
 def logic_qdefs():
     """Reshape LOGIC_ITEMS to _score_answers question defs (all Multiple Choice)."""
     return [{"question_text": it["text"], "qtype": "Multiple Choice",
-             "correct_answer": it["answer"], "points": int(it.get("points") or 1)}
+             "correct_answer": it["answer"], "points": int(it.get("points", 1))}
             for it in LOGIC_ITEMS]
 
 
@@ -158,6 +160,12 @@ def _selfcheck():
     assert fit({"D": 80, "I": 40, "S": 20, "C": 60}, {"D": 80, "I": 40, "S": 20, "C": 60}, DISC_AXES) == 100.0
     assert fit({"D": 100, "I": 100, "S": 100, "C": 100}, {"D": 0, "I": 0, "S": 0, "C": 0}, DISC_AXES) == 0.0
     assert fit({"D": 50, "I": 50, "S": 50, "C": 50}, {}, DISC_AXES) == 100.0
+    # Big Five public ids must be opaque (no trait letter leak)
+    for it in public_bigfive():
+        assert re.fullmatch(r"bf\d+", it["id"]), it["id"]
+    # DISC word order must vary across items so position doesn't leak axis
+    orders = {tuple(w["axis"] for w in it["words"]) for it in DISC_ITEMS}
+    assert len(orders) > 1, "DISC word order must vary so position doesn't leak axis"
     print("recruitment_instruments selfcheck ok")
 
 
