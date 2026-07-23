@@ -32,150 +32,94 @@
       {% endif %}
     </header>
 
-    <!-- application form -->
-    <div id="apply-thanks" class="hidden mt-10 rounded-2xl bg-brand-50 border border-brand-200 shadow-card p-8 text-center" tabindex="-1">
-      <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.thanks_title }}</h2>
-      <p class="mt-3 text-brand-800/80">{{ t.thanks_body }}</p>
-    </div>
+    <noscript>
+      <div class="mt-8 rounded-2xl bg-rose/10 border border-rose/30 text-rose px-5 py-4 font-semibold">{{ t.nojs }}</div>
+    </noscript>
 
-    <form id="apply-form" class="mt-10 space-y-6" novalidate>
-      <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.apply_title }}</h2>
+    <!-- applicant wizard: hidden until JS reveals it, so a no-JS client never sees the form -->
+    <div id="wiz" class="hidden mt-10">
+      <div id="wiz-error" class="hidden mb-4 rounded-xl bg-rose/10 border border-rose/30 text-rose px-4 py-3 text-sm font-medium"></div>
+      <div id="wiz-violation" class="hidden mb-4 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 text-sm font-semibold"></div>
 
-      <div id="apply-error" class="hidden rounded-xl bg-rose/10 border border-rose/30 text-rose px-4 py-3 text-sm font-medium"></div>
+      <!-- step: consent -->
+      <section data-step="consent" class="wiz-step">
+        <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.wiz_consent_title }}</h2>
+        <p class="mt-3 text-brand-800/85 leading-relaxed">{{ t.wiz_rules }}</p>
+        <button type="button" id="btn-consent" class="mt-6 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">{{ t.wiz_start }}</button>
+      </section>
 
-      {# honeypot #}
-      <div class="absolute w-px h-px -m-px overflow-hidden" aria-hidden="true">
-        <input type="text" name="company_website" tabindex="-1" autocomplete="off">
-      </div>
+      <!-- step: identity + CV -->
+      <section data-step="identity" class="wiz-step hidden">
+        <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.apply_title }}</h2>
 
-      <div class="grid sm:grid-cols-2 gap-5">
-        <label class="block">
-          <span class="block text-sm font-semibold text-brand-900">{{ t.full_name }}</span>
-          <input type="text" name="full_name" required maxlength="140"
-                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
-        </label>
-        <label class="block">
-          <span class="block text-sm font-semibold text-brand-900">Email</span>
-          <input type="email" name="email" required maxlength="140"
-                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
-        </label>
-        <label class="block">
-          <span class="block text-sm font-semibold text-brand-900">{{ t.phone }}</span>
-          <input type="tel" name="phone" required maxlength="30" inputmode="tel" placeholder="0812…"
-                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
-          <span class="mt-1 block text-xs text-brand-700/70">{{ t.phone_hint }}</span>
-        </label>
-        <label class="block">
-          <span class="block text-sm font-semibold text-brand-900">{{ t.nik }}</span>
-          <input type="text" name="nik_ktp" required maxlength="30" inputmode="numeric"
-                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
-        </label>
-      </div>
-
-      <label class="block">
-        <span class="block text-sm font-semibold text-brand-900">{{ t.cv }}</span>
-        <input type="file" name="cv" required accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-               class="mt-1.5 w-full text-sm text-brand-800 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2.5 file:text-white file:font-semibold hover:file:bg-brand-700 file:cursor-pointer">
-      </label>
-
-      <label class="block">
-        <span class="block text-sm font-semibold text-brand-900">{{ t.cover }}</span>
-        <textarea name="cover_letter" rows="4" maxlength="8000"
-                  class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition"></textarea>
-      </label>
-
-      {% if job.questions %}
-      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-6">
-        <div>
-          <h3 class="font-display text-xl font-bold text-brand-900">{{ t.test_title }}</h3>
-          <p class="mt-1 text-sm text-brand-800/70">{{ t.test_lead }}</p>
+        {# honeypot #}
+        <div class="absolute w-px h-px -m-px overflow-hidden" aria-hidden="true">
+          <input type="text" id="f-company_website" tabindex="-1" autocomplete="off">
         </div>
-        {% for q in job.questions %}
-        <fieldset class="space-y-2">
-          <legend class="text-sm font-semibold text-brand-900">{{ loop.index }}. {{ q.question_text }}</legend>
-          {% if q.qtype == 'Free Text' %}
-          <textarea name="q{{ q.idx }}" rows="3" placeholder="{{ t.free_text_ph }}"
-                    class="w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition"></textarea>
-          {% else %}
-            {% set opts = q.options if q.options else (['True', 'False'] if q.qtype == 'True/False' else []) %}
-            {% for opt in opts %}
-            <label class="flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-brand-50 cursor-pointer transition-colors">
-              <input type="radio" name="q{{ q.idx }}" value="{{ opt }}" class="text-brand-600 focus:ring-brand-300">
-              <span class="text-brand-900">{{ opt }}</span>
-            </label>
-            {% endfor %}
-          {% endif %}
-        </fieldset>
-        {% endfor %}
-      </div>
-      {% endif %}
 
-      {% if job.test_disc %}
-      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-5" data-disc>
-        <div><h3 class="font-display text-xl font-bold text-brand-900">{{ t.disc_title }}</h3>
-          <p class="mt-1 text-sm text-brand-800/70">{{ t.disc_lead }}</p></div>
-        {% for it in job.disc_items %}
-        <fieldset class="space-y-2" data-disc-item="{{ it.id }}">
-          <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-xs font-semibold text-brand-700">
-            <span></span><span>{{ t.disc_most }}</span><span>{{ t.disc_least }}</span>
-          </div>
-          {% for w in it.words %}
-          <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
-            <span class="text-brand-900">{{ w }}</span>
-            <input type="radio" name="disc_most_{{ it.id }}" value="{{ loop.index0 }}" class="text-brand-600">
-            <input type="radio" name="disc_least_{{ it.id }}" value="{{ loop.index0 }}" class="text-rose-500">
-          </div>
-          {% endfor %}
-        </fieldset>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      {% if job.test_personality %}
-      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-5" data-big>
-        <div><h3 class="font-display text-xl font-bold text-brand-900">{{ t.big_title }}</h3>
-          <p class="mt-1 text-sm text-brand-800/70">{{ t.big_lead }}</p></div>
-        {% for it in job.bigfive_items %}
-        <fieldset class="space-y-1.5" data-big-item="{{ it.id }}">
-          <legend class="text-sm text-brand-900">{{ loop.index }}. {{ it.text }}</legend>
-          <div class="flex items-center justify-between gap-1 text-[11px] text-brand-700/70">
-            <span>{{ t.big_1 }}</span><span>{{ t.big_5 }}</span></div>
-          <div class="flex justify-between gap-2">
-            {% for n in [1,2,3,4,5] %}
-            <label class="flex-1 text-center rounded-lg border border-paper-edge py-2 cursor-pointer hover:bg-brand-50">
-              <input type="radio" name="big_{{ it.id }}" value="{{ n }}" class="sr-only peer">
-              <span class="peer-checked:font-bold peer-checked:text-brand-700">{{ n }}</span>
-            </label>
-            {% endfor %}
-          </div>
-        </fieldset>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      {% if job.test_logical %}
-      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-5" data-logic>
-        <div><h3 class="font-display text-xl font-bold text-brand-900">{{ t.logic_title }}</h3></div>
-        {% for it in job.logic_items %}
-        <fieldset class="space-y-2" data-logic-item="{{ it.id }}">
-          <legend class="text-sm font-semibold text-brand-900">{{ loop.index }}. {{ it.text }}</legend>
-          {% for opt in it.options %}
-          <label class="flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-brand-50 cursor-pointer">
-            <input type="radio" name="logic_{{ it.id }}" value="{{ opt }}" class="text-brand-600">
-            <span class="text-brand-900">{{ opt }}</span>
+        <div class="mt-5 grid sm:grid-cols-2 gap-5">
+          <label class="block">
+            <span class="block text-sm font-semibold text-brand-900">{{ t.full_name }}</span>
+            <input type="text" id="f-full_name" required maxlength="140"
+                   class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
           </label>
-          {% endfor %}
-        </fieldset>
-        {% endfor %}
-      </div>
-      {% endif %}
+          <label class="block">
+            <span class="block text-sm font-semibold text-brand-900">Email</span>
+            <input type="email" id="f-email" required maxlength="140"
+                   class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+          </label>
+          <label class="block">
+            <span class="block text-sm font-semibold text-brand-900">{{ t.phone }}</span>
+            <input type="tel" id="f-phone" required maxlength="30" inputmode="tel" placeholder="0812…"
+                   class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+            <span class="mt-1 block text-xs text-brand-700/70">{{ t.phone_hint }}</span>
+          </label>
+          <label class="block">
+            <span class="block text-sm font-semibold text-brand-900">{{ t.nik }}</span>
+            <input type="text" id="f-nik_ktp" required maxlength="30" inputmode="numeric"
+                   class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+          </label>
+        </div>
 
-      <button type="submit" id="apply-submit"
-              class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 hover:shadow-lift transition-all disabled:opacity-60">
-        <span id="apply-submit-text">{{ t.submit }}</span>
-        <svg id="apply-spinner" class="hidden animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-opacity=".3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-      </button>
-    </form>
+        <label class="mt-5 block">
+          <span class="block text-sm font-semibold text-brand-900">{{ t.cv }}</span>
+          <input type="file" id="f-cv" required accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                 class="mt-1.5 w-full text-sm text-brand-800 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2.5 file:text-white file:font-semibold hover:file:bg-brand-700 file:cursor-pointer">
+        </label>
+
+        <label class="mt-5 block">
+          <span class="block text-sm font-semibold text-brand-900">{{ t.cover }}</span>
+          <textarea id="f-cover_letter" rows="4" maxlength="8000"
+                    class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition"></textarea>
+        </label>
+
+        <button type="button" id="btn-identity" class="mt-6 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">{{ t.wiz_next }}</button>
+      </section>
+
+      <!-- one timed step container per enabled test, hidden; populated by JS from job data -->
+      <section data-step="test" data-test-key="" class="wiz-step hidden">
+        <div class="flex items-center justify-between">
+          <h2 class="font-display text-2xl font-bold text-brand-900" data-test-title></h2>
+          <span class="rounded-full bg-brand-100 text-brand-800 px-3 py-1 text-sm font-bold tabular-nums" data-timer>--:--</span>
+        </div>
+        <div data-test-body class="mt-5 space-y-5"></div>
+        <button type="button" data-test-next class="mt-6 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">{{ t.wiz_next }}</button>
+      </section>
+
+      <!-- step: review/submit -->
+      <section data-step="review" class="wiz-step hidden">
+        <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.wiz_review }}</h2>
+        <p class="mt-2 text-sm text-brand-800/70" id="review-summary"></p>
+        <button type="button" id="btn-submit" class="mt-6 inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 hover:shadow-lift transition-all disabled:opacity-60">
+          <span id="submit-text">{{ t.submit }}</span>
+        </button>
+      </section>
+
+      <div id="apply-thanks" class="hidden mt-4 rounded-2xl bg-brand-50 border border-brand-200 shadow-card p-8 text-center" tabindex="-1">
+        <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.thanks_title }}</h2>
+        <p class="mt-3 text-brand-800/80">{{ t.thanks_body }}</p>
+      </div>
+    </div>
     {% endif %}
   </div>
 </section>
@@ -184,108 +128,230 @@
 {% block scripts %}
 {% if job %}
 <script>
-  (function () {
-    var form = document.getElementById('apply-form');
-    var thanks = document.getElementById('apply-thanks');
-    var errBox = document.getElementById('apply-error');
-    var btn = document.getElementById('apply-submit');
-    var btnText = document.getElementById('apply-submit-text');
-    var spinner = document.getElementById('apply-spinner');
-    if (!form) return;
+(function () {
+  var SLUG = {{ job.slug | tojson }};
+  var CSRF = "{{ frappe.session.csrf_token }}";
+  var T = {{ t | tojson }};
+  var JOB = {{ {
+      "questions": job.questions, "test_disc": job.test_disc, "disc_items": job.disc_items,
+      "test_personality": job.test_personality, "bigfive_items": job.bigfive_items,
+      "test_logical": job.test_logical, "logic_items": job.logic_items,
+      "test_ketelitian": job.test_ketelitian, "ketelitian_items": job.ketelitian_items,
+      "time_limits": job.time_limits
+    } | tojson }};
 
-    var SLUG = {{ job.slug | tojson }};
-    var QUESTIONS = {{ job.questions | tojson }};
-    var DISC = {{ job.disc_items | tojson }};
-    var BIG = {{ job.bigfive_items | tojson }};
-    var LOGIC = {{ job.logic_items | tojson }};
-    var CSRF = "{{ frappe.session.csrf_token }}";
-    var T = {{ t | tojson }};
+  // --- attempt id (persist across reload so the server timer doesn't reset)
+  var AKEY = 'vernon-apply-attempt:' + SLUG;
+  var ATTEMPT = localStorage.getItem(AKEY);
+  if (!ATTEMPT) { ATTEMPT = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()); localStorage.setItem(AKEY, ATTEMPT); }
 
-    function setSending(on) {
-      btn.disabled = on;
-      btnText.textContent = on ? T.sending : T.submit;
-      spinner.classList.toggle('hidden', !on);
+  var wiz = document.getElementById('wiz');
+  var errBox = document.getElementById('wiz-error');
+  var vioBox = document.getElementById('wiz-violation');
+  wiz.classList.remove('hidden');  // JS present → reveal the wizard (no-JS never gets here)
+
+  function showError(m) { errBox.textContent = m || T.err_generic; errBox.classList.remove('hidden'); errBox.scrollIntoView({behavior:'smooth',block:'center'}); }
+  function clearError() { errBox.classList.add('hidden'); }
+
+  // --- proctor: count & flag (never block)
+  var violations = 0, reasons = {}, inTest = false, lastVio = 0;
+  function violation(reason) {
+    if (!inTest) return;
+    var now = Date.now(); if (now - lastVio < 500) return; lastVio = now;
+    violations++; reasons[reason] = 1;
+    vioBox.textContent = T.wiz_violation; vioBox.classList.remove('hidden');
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) violation('pindah tab/aplikasi'); });
+  window.addEventListener('blur', function () { violation('kehilangan fokus'); });
+  var bc = ('BroadcastChannel' in window) ? new BroadcastChannel('vernon-apply-' + SLUG) : null;
+  if (bc) { bc.onmessage = function (e) { if (e.data && e.data.attempt !== ATTEMPT) violation('tab lain terdeteksi'); }; }
+  function announce() { if (bc) bc.postMessage({ attempt: ATTEMPT }); }
+
+  // --- build the ordered list of enabled test steps
+  var TEST_DEFS = [
+    { key: 'jobspecific', on: JOB.questions && JOB.questions.length, title: T.test_title, items: JOB.questions, render: renderQuestion, collect: collectQuestion },
+    { key: 'disc', on: JOB.test_disc, title: T.disc_title, items: JOB.disc_items, render: renderDisc, collect: collectDisc },
+    { key: 'personality', on: JOB.test_personality, title: T.big_title, items: JOB.bigfive_items, render: renderBig, collect: collectBig },
+    { key: 'logical', on: JOB.test_logical, title: T.logic_title, items: JOB.logic_items, render: renderLogic, collect: collectLogic },
+    { key: 'ketelitian', on: JOB.test_ketelitian, title: T.ket_title, items: JOB.ketelitian_items, render: renderKet, collect: collectKet }
+  ].filter(function (d) { return d.on; });
+
+  // answer stores
+  var A = { questions: {}, disc: {}, personality: {}, logical: {}, ketelitian: {} };
+
+  // --- step machine
+  var steps = ['consent', 'identity'].concat(TEST_DEFS.map(function () { return 'test'; })).concat(['review']);
+  var testStepAt = {}; // step index -> TEST_DEFS index
+  (function () { var ti = 0; steps.forEach(function (s, i) { if (s === 'test') { testStepAt[i] = ti++; } }); })();
+  var cur = 0, curTimer = null;
+
+  function show(i) {
+    cur = i;
+    var secs = wiz.querySelectorAll('.wiz-step');
+    // hide all
+    for (var j = 0; j < secs.length; j++) secs[j].classList.add('hidden');
+    var kind = steps[i];
+    inTest = (kind === 'test');
+    clearError(); vioBox.classList.add('hidden');
+    if (kind === 'consent') return wiz.querySelector('[data-step="consent"]').classList.remove('hidden');
+    if (kind === 'identity') return wiz.querySelector('[data-step="identity"]').classList.remove('hidden');
+    if (kind === 'review') { buildReview(); return wiz.querySelector('[data-step="review"]').classList.remove('hidden'); }
+    // test step: reuse the single [data-step=test] template
+    enterTest(TEST_DEFS[testStepAt[i]]);
+  }
+  function next() { if (curTimer) { clearInterval(curTimer); curTimer = null; } show(cur + 1); }
+
+  // --- test step
+  var tpl = wiz.querySelector('[data-step="test"]');
+  function enterTest(def) {
+    tpl.classList.remove('hidden');
+    tpl.querySelector('[data-test-title]').textContent = def.title;
+    var body = tpl.querySelector('[data-test-body]'); body.innerHTML = '';
+    def.items.forEach(function (it, idx) { body.appendChild(def.render(it, idx)); });
+    tpl.querySelector('[data-test-next]').onclick = function () {
+      if (!def.collect(def, true)) return; // validate complete before manual advance
+      next();
+    };
+    announce();
+    startTimer(def, tpl.querySelector('[data-timer]'));
+  }
+  var prevTestKey = null;
+  function startTimer(def, el) {
+    // ALWAYS call start_test on entry (even for an untimed test) so the server can
+    // stamp the PREVIOUS test's end — that is what makes per-test server elapsed accurate.
+    var body = { attempt_id: ATTEMPT, job: SLUG, test: def.key };
+    if (prevTestKey && prevTestKey !== def.key) body.prev = prevTestKey;
+    prevTestKey = def.key;
+    fetch('/api/method/vernon_project.api.recruitment.start_test', {
+      method: 'POST', headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      var m = d.message || {};
+      if (!m.limit_sec) { el.textContent = ''; return; } // untimed
+      tick(m.remaining_sec || 0, el, def);
+    }).catch(function () { el.textContent = ''; });
+  }
+  function tick(remaining, el, def) {
+    function render() {
+      var m = Math.floor(remaining / 60), s = remaining % 60;
+      el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+      if (remaining <= 0) { clearInterval(curTimer); curTimer = null; def.collect(def, false); lockTest(); showError(T.wiz_time_up); setTimeout(next, 1200); return; }
+      remaining--;
     }
-    function showError(msg) {
-      errBox.textContent = msg || T.err_generic;
-      errBox.classList.remove('hidden');
-      errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    render(); curTimer = setInterval(render, 1000);
+  }
+  function lockTest() { tpl.querySelectorAll('input,button,textarea').forEach(function (n) { if (n.getAttribute('data-test-next') === null) n.disabled = true; }); }
+
+  // --- per-test renderers (build DOM) + collectors (write into A, return complete?)
+  function radio(name, value, label) {
+    var l = document.createElement('label'); l.className = 'flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-brand-50 cursor-pointer';
+    var i = document.createElement('input'); i.type = 'radio'; i.name = name; i.value = value; i.className = 'text-brand-600';
+    var s = document.createElement('span'); s.className = 'text-brand-900'; s.textContent = label;
+    l.appendChild(i); l.appendChild(s); return l;
+  }
+  function fieldset(legendText) { var fs = document.createElement('fieldset'); fs.className = 'space-y-2'; var lg = document.createElement('legend'); lg.className = 'text-sm font-semibold text-brand-900'; lg.textContent = legendText; fs.appendChild(lg); return fs; }
+
+  function renderQuestion(q, i) {
+    var fs = fieldset((i + 1) + '. ' + q.question_text);
+    if (q.qtype === 'Free Text') { var ta = document.createElement('textarea'); ta.rows = 3; ta.name = 'q_' + q.idx; ta.className = 'w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3'; fs.appendChild(ta); }
+    else { var opts = q.options && q.options.length ? q.options : (q.qtype === 'True/False' ? ['True', 'False'] : []); opts.forEach(function (o) { fs.appendChild(radio('q_' + q.idx, o, o)); }); }
+    return fs;
+  }
+  function collectQuestion(def, requireAll) {
+    A.questions = def.items.map(function (q) { var el = tpl.querySelector('[name="q_' + q.idx + '"]:checked') || tpl.querySelector('textarea[name="q_' + q.idx + '"]'); return el ? (el.value || '') : ''; });
+    return true; // job-specific may include optional free-text; don't hard-require
+  }
+  function renderDisc(it) {
+    var fs = fieldset(''); fs.querySelector('legend').remove();
+    var head = document.createElement('div'); head.className = 'grid grid-cols-[1fr_auto_auto] gap-2 text-xs font-semibold text-brand-700'; head.innerHTML = '<span></span><span>' + T.disc_most + '</span><span>' + T.disc_least + '</span>'; fs.appendChild(head);
+    it.words.forEach(function (w, wi) {
+      var row = document.createElement('div'); row.className = 'grid grid-cols-[1fr_auto_auto] gap-2 items-center';
+      row.innerHTML = '<span class="text-brand-900">' + w + '</span>';
+      var m = document.createElement('input'); m.type = 'radio'; m.name = 'dm_' + it.id; m.value = wi;
+      var l = document.createElement('input'); l.type = 'radio'; l.name = 'dl_' + it.id; l.value = wi;
+      row.appendChild(m); row.appendChild(l); fs.appendChild(row);
+    });
+    return fs;
+  }
+  function collectDisc(def, requireAll) {
+    var ok = true; A.disc = {};
+    def.items.forEach(function (it) {
+      var m = tpl.querySelector('[name="dm_' + it.id + '"]:checked'), l = tpl.querySelector('[name="dl_' + it.id + '"]:checked');
+      if (m && l && m.value !== l.value) A.disc[it.id] = { most: parseInt(m.value, 10), least: parseInt(l.value, 10) };
+      else ok = false;
+    });
+    if (requireAll && !ok) { showError(T.incomplete); return false; } return true;
+  }
+  function renderBig(it, i) {
+    var fs = fieldset((i + 1) + '. ' + it.text);
+    var wrap = document.createElement('div'); wrap.className = 'flex justify-between gap-2';
+    for (var n = 1; n <= 5; n++) { (function (v) { var l = document.createElement('label'); l.className = 'flex-1 text-center rounded-lg border border-paper-edge py-2 cursor-pointer hover:bg-brand-50'; var i2 = document.createElement('input'); i2.type = 'radio'; i2.name = 'bf_' + it.id; i2.value = v; i2.className = 'sr-only'; var s = document.createElement('span'); s.textContent = v; l.appendChild(i2); l.appendChild(s); wrap.appendChild(l); })(n); }
+    fs.appendChild(wrap); return fs;
+  }
+  function collectBig(def, requireAll) {
+    var ok = true; A.personality = {};
+    def.items.forEach(function (it) { var f = tpl.querySelector('[name="bf_' + it.id + '"]:checked'); if (f) A.personality[it.id] = parseInt(f.value, 10); else ok = false; });
+    if (requireAll && !ok) { showError(T.incomplete); return false; } return true;
+  }
+  function renderLogic(it, i) {
+    var fs = fieldset((i + 1) + '. ' + it.text); it.options.forEach(function (o) { fs.appendChild(radio('lg_' + it.id, o, o)); }); return fs;
+  }
+  function collectLogic(def, requireAll) {
+    var ok = true; A.logical = def.items.map(function (it) { var f = tpl.querySelector('[name="lg_' + it.id + '"]:checked'); if (!f) ok = false; return f ? f.value : ''; });
+    if (requireAll && !ok) { showError(T.incomplete); return false; } return true;
+  }
+  function renderKet(it, i) {
+    if (it.kind === 'pair') {
+      var fs = fieldset((i + 1) + '.');
+      var pair = document.createElement('div'); pair.className = 'flex items-center gap-4 font-mono text-brand-900'; pair.innerHTML = '<span>' + it.left + '</span><span class="text-brand-400">vs</span><span>' + it.right + '</span>'; fs.appendChild(pair);
+      fs.appendChild(radio('kt_' + it.id, 'Sama', T.ket_same)); fs.appendChild(radio('kt_' + it.id, 'Beda', T.ket_diff)); return fs;
     }
+    var fs2 = fieldset((i + 1) + '. ' + it.text); it.options.forEach(function (o) { fs2.appendChild(radio('kt_' + it.id, o, o)); }); return fs2;
+  }
+  function collectKet(def, requireAll) {
+    var ok = true; A.ketelitian = def.items.map(function (it) { var f = tpl.querySelector('[name="kt_' + it.id + '"]:checked'); if (!f) ok = false; return f ? f.value : ''; });
+    if (requireAll && !ok) { showError(T.incomplete); return false; } return true;
+  }
 
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      errBox.classList.add('hidden');
-      if (!form.reportValidity()) return;
+  // --- consent + identity + review + submit
+  document.getElementById('btn-consent').onclick = function () { next(); };
+  document.getElementById('btn-identity').onclick = function () {
+    var name = val('f-full_name'), email = val('f-email'), phone = val('f-phone'), nik = val('f-nik_ktp');
+    var cv = document.getElementById('f-cv');
+    if (!name || !email || !phone || !nik || !(cv.files && cv.files[0])) { showError(T.err_generic); return; }
+    fetch('/api/method/vernon_project.api.recruitment.check_can_apply?job=' + encodeURIComponent(SLUG) + '&nik_ktp=' + encodeURIComponent(nik) + '&email=' + encodeURIComponent(email), { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        var m = d.message || {}; if (!m.ok) { showError(m.reason || T.wiz_dup); return; } next();
+      }).catch(function () { next(); }); // network fail → let them proceed; submit re-checks
+  };
+  function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  function buildReview() { document.getElementById('review-summary').textContent = TEST_DEFS.map(function (d) { return d.title; }).join(' · '); }
 
-      var el = form.elements;
-      var answers = QUESTIONS.map(function (q) {
-        var field = el['q' + q.idx];
-        if (!field) return '';
-        // RadioNodeList (.value = checked radio's value) or a single textarea.
-        return (field.value || '');
-      });
-
-      var discAns = {}, bigAns = {}, logicAns = [];
-      for (var di = 0; di < DISC.length; di++) {
-        var id = DISC[di].id;
-        var m = form.elements['disc_most_' + id], l = form.elements['disc_least_' + id];
-        if (!m || m.value === '' || !l || l.value === '' || m.value === l.value) { showError(T.incomplete); return; }
-        discAns[id] = { most: parseInt(m.value, 10), least: parseInt(l.value, 10) };
-      }
-      for (var bi = 0; bi < BIG.length; bi++) {
-        var bid = BIG[bi].id, bf = form.elements['big_' + bid];
-        if (!bf || bf.value === '') { showError(T.incomplete); return; }
-        bigAns[bid] = parseInt(bf.value, 10);
-      }
-      logicAns = LOGIC.map(function (q) {
-        var f = form.elements['logic_' + q.id];
-        return f ? (f.value || '') : '';
-      });
-      if (LOGIC.length && logicAns.some(function (v) { return !v; })) { showError(T.incomplete); return; }
-
-      var fd = new FormData();
-      fd.append('job', SLUG);
-      fd.append('full_name', el.full_name.value.trim());
-      fd.append('email', el.email.value.trim());
-      fd.append('phone', el.phone.value.trim());
-      fd.append('nik_ktp', el.nik_ktp.value.trim());
-      fd.append('cover_letter', el.cover_letter.value.trim());
-      fd.append('company_website', el.company_website.value);
-      fd.append('answers', JSON.stringify(answers));
-      fd.append('disc_answers', JSON.stringify(discAns));
-      fd.append('personality_answers', JSON.stringify(bigAns));
-      fd.append('logical_answers', JSON.stringify(logicAns));
-      if (el.cv.files && el.cv.files[0]) fd.append('cv', el.cv.files[0]);
-
-      setSending(true);
-      fetch('/api/method/vernon_project.api.recruitment.submit_application', {
-        method: 'POST',
-        headers: { 'X-Frappe-CSRF-Token': CSRF },
-        body: fd
-      })
+  document.getElementById('btn-submit').onclick = function () {
+    var btn = this, txt = document.getElementById('submit-text'); btn.disabled = true; txt.textContent = T.sending;
+    var fd = new FormData();
+    fd.append('job', SLUG); fd.append('full_name', val('f-full_name')); fd.append('email', val('f-email'));
+    fd.append('phone', val('f-phone')); fd.append('nik_ktp', val('f-nik_ktp')); fd.append('cover_letter', val('f-cover_letter'));
+    fd.append('company_website', val('f-company_website'));
+    fd.append('answers', JSON.stringify(A.questions || []));
+    fd.append('disc_answers', JSON.stringify(A.disc)); fd.append('personality_answers', JSON.stringify(A.personality));
+    fd.append('logical_answers', JSON.stringify(A.logical)); fd.append('ketelitian_answers', JSON.stringify(A.ketelitian));
+    fd.append('attempt_id', ATTEMPT); fd.append('violations', String(violations));
+    fd.append('violation_reasons', JSON.stringify(Object.keys(reasons)));
+    var cv = document.getElementById('f-cv'); if (cv.files && cv.files[0]) fd.append('cv', cv.files[0]);
+    fetch('/api/method/vernon_project.api.recruitment.submit_application', { method: 'POST', headers: { 'X-Frappe-CSRF-Token': CSRF }, body: fd })
       .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
       .then(function (r) {
         var m = r.d && r.d.message;
-        if (r.ok && m && m.ok) {
-          form.classList.add('hidden');
-          thanks.classList.remove('hidden');
-          thanks.focus();
-          thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          return;
-        }
-        var msg = T.err_generic;
-        try {
-          if (r.d && r.d._server_messages) {
-            var arr = JSON.parse(r.d._server_messages);
-            if (arr.length) msg = JSON.parse(arr[0]).message || msg;
-          }
-        } catch (_) {}
+        if (r.ok && m && m.ok) { localStorage.removeItem(AKEY); wiz.querySelector('[data-step="review"]').classList.add('hidden'); document.getElementById('apply-thanks').classList.remove('hidden'); return; }
+        var msg = T.err_generic; try { if (r.d && r.d._server_messages) { var arr = JSON.parse(r.d._server_messages); if (arr.length) msg = JSON.parse(arr[0]).message || msg; } } catch (_) {}
         showError(msg);
-      })
-      .catch(function () { showError(T.err_generic); })
-      .finally(function () { setSending(false); });
-    });
-  })();
+      }).catch(function () { showError(T.err_generic); })
+      .finally(function () { btn.disabled = false; txt.textContent = T.submit; });
+  };
+
+  show(0);
+})();
 </script>
 {% endif %}
 {% endblock %}

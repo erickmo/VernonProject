@@ -40,6 +40,12 @@ def get_context(context):
             job["disc_items"] = ri.public_disc() if doc.test_disc else []
             job["bigfive_items"] = ri.public_bigfive() if doc.test_personality else []
             job["logic_items"] = ri.public_logic() if doc.test_logical else []
+            job["test_ketelitian"] = int(doc.test_ketelitian or 0)
+            job["ketelitian_items"] = ri.public_ketelitian() if doc.test_ketelitian else []
+            job["time_limits"] = {
+                "jobspecific": int(doc.time_jobspecific or 0), "disc": int(doc.time_disc or 0),
+                "personality": int(doc.time_personality or 0), "logical": int(doc.time_logical or 0),
+                "ketelitian": int(doc.time_ketelitian or 0)}
     context.job = job
 
     context.page_title = ((job["title"] + " — VernonCorp") if job
@@ -85,4 +91,16 @@ def get_context(context):
         "big_5": p({"id": "Sangat setuju", "en": "Strongly agree"}),
         "logic_title": p({"id": "Tes Logika & Pemecahan Masalah", "en": "Logical & problem-solving test"}),
         "incomplete": p({"id": "Mohon lengkapi semua tes sebelum mengirim.", "en": "Please complete every test before submitting."}),
+        "wiz_consent_title": p({"id": "Sebelum mulai", "en": "Before you start"}),
+        "wiz_rules": p({"id": "Tes ini memakai waktu per bagian dan dipantau. Tetap di tab ini, jangan berpindah aplikasi, dan pastikan JavaScript aktif. Kamu hanya bisa melamar satu kali.", "en": "This test is timed per section and monitored. Stay on this tab, don't switch apps, and keep JavaScript on. You may apply only once."}),
+        "wiz_start": p({"id": "Mulai", "en": "Start"}),
+        "wiz_next": p({"id": "Lanjut", "en": "Next"}),
+        "wiz_review": p({"id": "Tinjau & kirim", "en": "Review & submit"}),
+        "wiz_time_left": p({"id": "Sisa waktu", "en": "Time left"}),
+        "wiz_time_up": p({"id": "Waktu habis untuk bagian ini.", "en": "Time is up for this section."}),
+        "wiz_violation": p({"id": "Peringatan: kamu meninggalkan tes. Ini dicatat.", "en": "Warning: you left the test. This is recorded."}),
+        "wiz_dup": p({"id": "Kamu sudah pernah melamar posisi ini.", "en": "You have already applied for this role."}),
+        "ket_title": p({"id": "Tes Ketelitian", "en": "Accuracy test"}),
+        "ket_same": p({"id": "Sama", "en": "Same"}), "ket_diff": p({"id": "Beda", "en": "Different"}),
+        "nojs": p({"id": "Tes membutuhkan JavaScript aktif untuk melamar. Aktifkan JavaScript lalu muat ulang.", "en": "This test requires JavaScript. Enable it and reload."}),
     }
