@@ -364,7 +364,7 @@ function Bars({ title, scores, order, fit }: {
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-bold text-stone-800 dark:text-slate-100">{title}</span>
-        {fit != null && <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700">Fit {fit}%</span>}
+        {fit != null && <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">Fit {fit}%</span>}
       </div>
       <div className="flex flex-col gap-1.5">
         {order.map((k) => (
