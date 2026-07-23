@@ -20,33 +20,77 @@ BIGFIVE_TRAITS = ("O", "C", "E", "A", "N")
 # --- DISC: forced-choice. Each item = 4 words, one per axis. Applicant picks
 #     the word MOST like them and the word LEAST like them. (Seed — Task 2 fills to ~28.)
 DISC_ITEMS = [
-    {"id": "d1", "words": [
-        {"text": "Tegas", "axis": "D"}, {"text": "Ceria", "axis": "I"},
-        {"text": "Sabar", "axis": "S"}, {"text": "Teliti", "axis": "C"}]},
-    {"id": "d2", "words": [
-        {"text": "Cermat", "axis": "C"}, {"text": "Setia mendukung", "axis": "S"},
-        {"text": "Suka bergaul", "axis": "I"}, {"text": "Berani ambil keputusan", "axis": "D"}]},
-    {"id": "d3", "words": [
-        {"text": "Antusias", "axis": "I"}, {"text": "Analitis", "axis": "C"},
-        {"text": "Kompetitif", "axis": "D"}, {"text": "Tenang", "axis": "S"}]},
+    {"id": "d1", "words": [{"text": 'Tegas', "axis": 'D'}, {"text": 'Antusias', "axis": 'I'}, {"text": 'Kooperatif', "axis": 'S'}, {"text": 'Terstruktur', "axis": 'C'}]},
+    {"id": "d2", "words": [{"text": 'Ramah', "axis": 'I'}, {"text": 'Suportif', "axis": 'S'}, {"text": 'Analitis', "axis": 'C'}, {"text": 'Proaktif', "axis": 'D'}]},
+    {"id": "d3", "words": [{"text": 'Tenang', "axis": 'S'}, {"text": 'Rapi', "axis": 'C'}, {"text": 'Gigih', "axis": 'D'}, {"text": 'Persuasif', "axis": 'I'}]},
+    {"id": "d4", "words": [{"text": 'Sistematis', "axis": 'C'}, {"text": 'Vokal', "axis": 'D'}, {"text": 'Ceria', "axis": 'I'}, {"text": 'Sabar', "axis": 'S'}]},
+    {"id": "d5", "words": [{"text": 'Kompetitif', "axis": 'D'}, {"text": 'Supel', "axis": 'I'}, {"text": 'Suportif', "axis": 'S'}, {"text": 'Teliti', "axis": 'C'}]},
+    {"id": "d6", "words": [{"text": 'Ekspresif', "axis": 'I'}, {"text": 'Setia', "axis": 'S'}, {"text": 'Metodis', "axis": 'C'}, {"text": 'Berani', "axis": 'D'}]},
+    {"id": "d7", "words": [{"text": 'Konsisten', "axis": 'S'}, {"text": 'Akurat', "axis": 'C'}, {"text": 'Sigap', "axis": 'D'}, {"text": 'Optimis', "axis": 'I'}]},
+    {"id": "d8", "words": [{"text": 'Cermat', "axis": 'C'}, {"text": 'Lugas', "axis": 'D'}, {"text": 'Energik', "axis": 'I'}, {"text": 'Toleran', "axis": 'S'}]},
+    {"id": "d9", "words": [{"text": 'Ambisius', "axis": 'D'}, {"text": 'Komunikatif', "axis": 'I'}, {"text": 'Sabar', "axis": 'S'}, {"text": 'Rinci', "axis": 'C'}]},
+    {"id": "d10", "words": [{"text": 'Ramah', "axis": 'I'}, {"text": 'Tenang', "axis": 'S'}, {"text": 'Metodis', "axis": 'C'}, {"text": 'Tegas', "axis": 'D'}]},
+    {"id": "d11", "words": [{"text": 'Kooperatif', "axis": 'S'}, {"text": 'Sistematis', "axis": 'C'}, {"text": 'Proaktif', "axis": 'D'}, {"text": 'Persuasif', "axis": 'I'}]},
+    {"id": "d12", "words": [{"text": 'Akurat', "axis": 'C'}, {"text": 'Gigih', "axis": 'D'}, {"text": 'Ceria', "axis": 'I'}, {"text": 'Suportif', "axis": 'S'}]},
+    {"id": "d13", "words": [{"text": 'Berani', "axis": 'D'}, {"text": 'Antusias', "axis": 'I'}, {"text": 'Setia', "axis": 'S'}, {"text": 'Teliti', "axis": 'C'}]},
+    {"id": "d14", "words": [{"text": 'Ekspresif', "axis": 'I'}, {"text": 'Toleran', "axis": 'S'}, {"text": 'Rapi', "axis": 'C'}, {"text": 'Kompetitif', "axis": 'D'}]},
+    {"id": "d15", "words": [{"text": 'Bisa diandalkan', "axis": 'S'}, {"text": 'Teliti memeriksa detail', "axis": 'C'}, {"text": 'Berorientasi hasil', "axis": 'D'}, {"text": 'Percaya diri berbicara di depan umum', "axis": 'I'}]},
+    {"id": "d16", "words": [{"text": 'Suka merencanakan dengan matang', "axis": 'C'}, {"text": 'Cepat mengambil keputusan', "axis": 'D'}, {"text": 'Terbuka kepada siapa saja', "axis": 'I'}, {"text": 'Setia pada komitmen', "axis": 'S'}]},
+    {"id": "d17", "words": [{"text": 'Suka bersaing', "axis": 'D'}, {"text": 'Pandai memotivasi orang lain', "axis": 'I'}, {"text": 'Suka menenangkan suasana', "axis": 'S'}, {"text": 'Hati-hati sebelum bertindak', "axis": 'C'}]},
+    {"id": "d18", "words": [{"text": 'Suka menjadi pusat perhatian', "axis": 'I'}, {"text": 'Sabar menghadapi tekanan', "axis": 'S'}, {"text": 'Menjunjung standar kerja yang tinggi', "axis": 'C'}, {"text": 'Lugas menyampaikan pendapat', "axis": 'D'}]},
+    {"id": "d19", "words": [{"text": 'Konsisten menjalani rutinitas harian', "axis": 'S'}, {"text": 'Mengutamakan kualitas', "axis": 'C'}, {"text": 'Berani mengambil risiko', "axis": 'D'}, {"text": 'Ekspresif dalam berinteraksi', "axis": 'I'}]},
+    {"id": "d20", "words": [{"text": 'Rapi dalam bekerja', "axis": 'C'}, {"text": 'Suka memegang kendali', "axis": 'D'}, {"text": 'Luwes membangun relasi', "axis": 'I'}, {"text": 'Suka membantu orang lain', "axis": 'S'}]},
+    {"id": "d21", "words": [{"text": 'Tertarik pada tantangan baru', "axis": 'D'}, {"text": 'Senang bertemu orang baru', "axis": 'I'}, {"text": 'Mudah bekerja sama', "axis": 'S'}, {"text": 'Menyukai keputusan berbasis fakta', "axis": 'C'}]},
+    {"id": "d22", "words": [{"text": 'Mudah bergaul', "axis": 'I'}, {"text": 'Pendengar yang baik', "axis": 'S'}, {"text": 'Disiplin mengikuti prosedur', "axis": 'C'}, {"text": 'Fokus mengejar target', "axis": 'D'}]},
+    {"id": "d23", "words": [{"text": 'Menjaga keharmonisan tim', "axis": 'S'}, {"text": 'Objektif dalam menilai', "axis": 'C'}, {"text": 'Berani menghadapi tantangan', "axis": 'D'}, {"text": 'Pandai meyakinkan orang', "axis": 'I'}]},
+    {"id": "d24", "words": [{"text": 'Selalu meninjau ulang sebelum menyerahkan hasil kerja', "axis": 'C'}, {"text": 'Senang mengambil peran sebagai pemimpin', "axis": 'D'}, {"text": 'Suka menghidupkan suasana dengan humor', "axis": 'I'}, {"text": 'Tetap tenang saat menghadapi perubahan mendadak', "axis": 'S'}]},
+    {"id": "d25", "words": [{"text": 'Ingin segera melihat hasil nyata', "axis": 'D'}, {"text": 'Senang menjadi penghubung antar orang', "axis": 'I'}, {"text": 'Siap mendampingi rekan saat kesulitan', "axis": 'S'}, {"text": 'Mengandalkan logika dalam berpikir', "axis": 'C'}]},
+    {"id": "d26", "words": [{"text": 'Mudah menularkan semangat ke orang lain', "axis": 'I'}, {"text": 'Nyaman bekerja dengan ritme yang stabil', "axis": 'S'}, {"text": 'Bekerja secara runut dan terstruktur', "axis": 'C'}, {"text": 'Gemar mendobrak cara kerja lama', "axis": 'D'}]},
+    {"id": "d27", "words": [{"text": 'Bersedia mengalah demi kebaikan bersama', "axis": 'S'}, {"text": 'Memilih akurasi di atas kecepatan', "axis": 'C'}, {"text": 'Cepat merespons masalah yang muncul', "axis": 'D'}, {"text": 'Menikmati keramaian dan banyak interaksi', "axis": 'I'}]},
+    {"id": "d28", "words": [{"text": 'Cermat mengatur jadwal kerja', "axis": 'C'}, {"text": 'Tegas menghadapi situasi sulit', "axis": 'D'}, {"text": 'Gemar bercerita dan berbagi pengalaman', "axis": 'I'}, {"text": 'Lebih memilih menjaga kedamaian daripada berdebat', "axis": 'S'}]},
 ]
 
 # --- Big Five / OCEAN: Likert 1-5. `reverse` items are reverse-scored.
 BIGFIVE_ITEMS = [
-    {"id": "bf1", "text": "Saya suka mencoba hal-hal baru.", "trait": "O", "reverse": False},
-    {"id": "bf2", "text": "Saya selalu menyelesaikan pekerjaan tepat waktu.", "trait": "C", "reverse": False},
-    {"id": "bf3", "text": "Saya merasa berenergi saat berada di keramaian.", "trait": "E", "reverse": False},
-    {"id": "bf4", "text": "Saya mudah berempati pada perasaan orang lain.", "trait": "A", "reverse": False},
-    {"id": "bf5", "text": "Saya jarang merasa cemas.", "trait": "N", "reverse": True},
+    {"id": "bf1", "text": 'Saya senang mencoba pendekatan baru dalam menyelesaikan pekerjaan.', "trait": 'O', "reverse": False},
+    {"id": "bf2", "text": 'Saya meluangkan waktu untuk mempelajari topik yang tidak berkaitan langsung dengan pekerjaan saya.', "trait": 'O', "reverse": False},
+    {"id": "bf3", "text": 'Saya lebih memilih menjalankan cara kerja yang sudah terbukti daripada mengeksplorasi cara yang belum teruji.', "trait": 'O', "reverse": True},
+    {"id": "bf4", "text": 'Saya sering mengusulkan ide yang berbeda dari kebiasaan tim saat rapat.', "trait": 'O', "reverse": False},
+    {"id": "bf5", "text": 'Saya kurang tertarik mendalami gagasan yang bersifat abstrak atau teoretis.', "trait": 'O', "reverse": True},
+    {"id": "bf6", "text": 'Saya tetap menyelesaikan tugas sesuai tenggat waktu meskipun tidak ada yang mengingatkan saya.', "trait": 'C', "reverse": False},
+    {"id": "bf7", "text": 'Saya memeriksa kembali detail pekerjaan saya sebelum menyerahkannya kepada atasan atau rekan kerja.', "trait": 'C', "reverse": False},
+    {"id": "bf8", "text": 'Saya baru mengerjakan tugas ketika batas waktunya sudah sangat dekat.', "trait": 'C', "reverse": True},
+    {"id": "bf9", "text": 'Saya menyusun urutan prioritas sebelum memulai pekerjaan yang memiliki banyak bagian.', "trait": 'C', "reverse": False},
+    {"id": "bf10", "text": 'Saya sering kehilangan jejak dokumen atau catatan kerja saya.', "trait": 'C', "reverse": True},
+    {"id": "bf11", "text": 'Saya memulai percakapan lebih dulu ketika bertemu rekan kerja yang belum saya kenal.', "trait": 'E', "reverse": False},
+    {"id": "bf12", "text": 'Saya merasa berenergi setelah menghabiskan waktu berdiskusi dengan banyak orang dalam satu hari.', "trait": 'E', "reverse": False},
+    {"id": "bf13", "text": 'Saya memilih menyelesaikan pekerjaan sendirian di tempat yang sepi daripada berada di ruang kerja yang ramai.', "trait": 'E', "reverse": True},
+    {"id": "bf14", "text": 'Saya cenderung memilih diam dalam rapat meskipun saya memiliki pendapat yang berbeda.', "trait": 'E', "reverse": True},
+    {"id": "bf15", "text": 'Saya mengambil inisiatif untuk memimpin jalannya diskusi dalam pertemuan tim.', "trait": 'E', "reverse": False},
+    {"id": "bf16", "text": 'Saya mudah memaafkan rekan kerja yang melakukan kesalahan tanpa sengaja.', "trait": 'A', "reverse": False},
+    {"id": "bf17", "text": 'Saya meluangkan waktu untuk membantu rekan kerja menyelesaikan tugasnya meskipun bukan tanggung jawab saya.', "trait": 'A', "reverse": False},
+    {"id": "bf18", "text": 'Saya cenderung bersikap acuh tak acuh ketika rekan kerja sedang mengalami kesulitan.', "trait": 'A', "reverse": True},
+    {"id": "bf19", "text": 'Saya mendahulukan kepentingan saya sendiri ketika bertentangan dengan kepentingan tim.', "trait": 'A', "reverse": True},
+    {"id": "bf20", "text": 'Saya tetap berbicara dengan sopan kepada rekan kerja meskipun sedang berselisih pendapat.', "trait": 'A', "reverse": False},
+    {"id": "bf21", "text": 'Saya merasa cemas ketika harus menyelesaikan pekerjaan dengan tenggat waktu yang mendadak.', "trait": 'N', "reverse": False},
+    {"id": "bf22", "text": 'Saya mengalami perubahan suasana hati yang cepat ketika muncul masalah yang tidak terduga di pekerjaan.', "trait": 'N', "reverse": False},
+    {"id": "bf23", "text": 'Saya jarang merasa khawatir berlebihan terhadap hal-hal yang belum tentu terjadi.', "trait": 'N', "reverse": True},
+    {"id": "bf24", "text": 'Saya memikirkan kesalahan kecil dalam pekerjaan jauh lebih lama daripada yang seharusnya.', "trait": 'N', "reverse": False},
+    {"id": "bf25", "text": 'Saya tidak mudah terpengaruh secara emosional oleh kritik terhadap hasil kerja saya.', "trait": 'N', "reverse": True},
 ]
 
 # --- Logical / problem-solving: single-correct MCQ.
 LOGIC_ITEMS = [
-    {"id": "l1", "text": "2, 4, 6, 8, … berapa angka berikutnya?",
-     "options": ["9", "10", "11", "12"], "answer": "10", "points": 1},
-    {"id": "l2", "text": "Jika semua kucing adalah hewan, dan Mimi adalah kucing, maka Mimi adalah…",
-     "options": ["Tumbuhan", "Hewan", "Bukan keduanya", "Tidak dapat ditentukan"],
-     "answer": "Hewan", "points": 1},
+    {"id": "l1", "text": 'Lanjutkan deret angka berikut: 3, 6, 12, 24, 48, …', "options": ['84', '96', '72', '108'], "answer": '96', "points": 1},
+    {"id": "l2", "text": 'Lanjutkan deret angka berikut: 2, 5, 11, 23, 47, …', "options": ['92', '94', '95', '90'], "answer": '95', "points": 1},
+    {"id": "l3", "text": 'Lanjutkan deret angka berikut: 4, 7, 12, 19, 28, …', "options": ['37', '39', '41', '42'], "answer": '39', "points": 1},
+    {"id": "l4", "text": 'Semua manajer proyek di perusahaan ini memiliki sertifikasi manajemen proyek. Sebagian besar karyawan di divisi Teknologi Informasi menjabat sebagai manajer proyek. Berdasarkan kedua pernyataan tersebut, simpulan yang paling tepat adalah:', "options": ['Semua karyawan di divisi Teknologi Informasi memiliki sertifikasi manajemen proyek', 'Sebagian besar karyawan di divisi Teknologi Informasi memiliki sertifikasi manajemen proyek', 'Semua manajer proyek berasal dari divisi Teknologi Informasi', 'Karyawan yang memiliki sertifikasi manajemen proyek pasti menjabat sebagai manajer proyek di divisi Teknologi Informasi'], "answer": 'Sebagian besar karyawan di divisi Teknologi Informasi memiliki sertifikasi manajemen proyek', "points": 1},
+    {"id": "l5", "text": 'Setiap laporan yang belum diverifikasi oleh supervisor tidak pernah diserahkan kepada klien. Sebuah laporan sudah diserahkan kepada klien. Berdasarkan pernyataan tersebut, simpulan yang paling tepat adalah:', "options": ['Laporan tersebut sudah diverifikasi oleh supervisor', 'Laporan tersebut belum diverifikasi oleh supervisor', 'Supervisor tidak perlu memverifikasi laporan tersebut', 'Semua laporan yang diserahkan kepada klien sudah pasti belum diverifikasi'], "answer": 'Laporan tersebut sudah diverifikasi oleh supervisor', "points": 1},
+    {"id": "l6", "text": 'Bengkel berhubungan dengan Montir, sebagaimana Rumah Sakit berhubungan dengan …', "options": ['Pasien', 'Dokter', 'Obat', 'Ambulans'], "answer": 'Dokter', "points": 1},
+    {"id": "l7", "text": 'Kunci berhubungan dengan Gembok, sebagaimana Kata Sandi berhubungan dengan …', "options": ['Layar', 'Kabel', 'Akun', 'Baterai'], "answer": 'Akun', "points": 1},
+    {"id": "l8", "text": 'Sebuah proyek dapat diselesaikan oleh 8 orang pekerja dalam waktu 15 hari, dengan asumsi kecepatan kerja setiap orang sama. Jika perusahaan menambahkan 4 pekerja lagi sehingga total pekerja menjadi 12 orang, berapa hari yang dibutuhkan untuk menyelesaikan proyek yang sama?', "options": ['12 hari', '11 hari', '10 hari', '8 hari'], "answer": '10 hari', "points": 1},
+    {"id": "l9", "text": 'Setelah mendapat potongan harga sebesar 20%, harga sebuah peralatan kantor menjadi Rp240.000. Berapa harga peralatan tersebut sebelum diskon?', "options": ['Rp288.000', 'Rp320.000', 'Rp260.000', 'Rp300.000'], "answer": 'Rp300.000', "points": 1},
+    {"id": "l10", "text": 'Seorang karyawan memiliki jam kerja normal 8 jam per hari selama 5 hari kerja dalam seminggu. Pada minggu ini, karyawan tersebut tercatat bekerja selama total 46 jam. Berapa jam lembur yang diperoleh karyawan tersebut pada minggu itu?', "options": ['4 jam', '5 jam', '8 jam', '6 jam'], "answer": '6 jam', "points": 1},
 ]
 
 
@@ -153,9 +197,13 @@ def _selfcheck():
     scores, dom = score_disc(ans)
     assert scores["D"] == 100 and scores["S"] == 0, scores
     assert dom == "D", dom
-    # Big Five: all 5s. Reverse items invert → O/C/E/A =100, N (reverse) =0
-    b = score_bigfive({it["id"]: 5 for it in BIGFIVE_ITEMS})
-    assert b["O"] == 100 and b["N"] == 0, b
+    # Big Five reverse-scoring: answer each item toward its trait max (non-reverse→5,
+    # reverse→1) → every trait 100; toward min → every trait 0; all-neutral (3) → 50.
+    hi = score_bigfive({it["id"]: (1 if it["reverse"] else 5) for it in BIGFIVE_ITEMS})
+    lo = score_bigfive({it["id"]: (5 if it["reverse"] else 1) for it in BIGFIVE_ITEMS})
+    assert all(hi[t] == 100 for t in BIGFIVE_TRAITS), hi
+    assert all(lo[t] == 0 for t in BIGFIVE_TRAITS), lo
+    assert all(v == 50 for v in score_bigfive({it["id"]: 3 for it in BIGFIVE_ITEMS}).values())
     # fit: identical → 100, opposite → 0, blank target → distance from 50
     assert fit({"D": 80, "I": 40, "S": 20, "C": 60}, {"D": 80, "I": 40, "S": 20, "C": 60}, DISC_AXES) == 100.0
     assert fit({"D": 100, "I": 100, "S": 100, "C": 100}, {"D": 0, "I": 0, "S": 0, "C": 0}, DISC_AXES) == 0.0
@@ -166,6 +214,13 @@ def _selfcheck():
     # DISC word order must vary across items so position doesn't leak axis
     orders = {tuple(w["axis"] for w in it["words"]) for it in DISC_ITEMS}
     assert len(orders) > 1, "DISC word order must vary so position doesn't leak axis"
+    # full-bank counts (populated from the validated item banks)
+    assert len(DISC_ITEMS) >= 20, len(DISC_ITEMS)
+    assert len(BIGFIVE_ITEMS) == 5 * len(BIGFIVE_TRAITS), len(BIGFIVE_ITEMS)
+    for t in BIGFIVE_TRAITS:
+        assert sum(1 for it in BIGFIVE_ITEMS if it["trait"] == t) == 5, t
+    assert len(LOGIC_ITEMS) >= 8, len(LOGIC_ITEMS)
+    assert any(it["reverse"] for it in BIGFIVE_ITEMS), "need some reverse-keyed items"
     print("recruitment_instruments selfcheck ok")
 
 
