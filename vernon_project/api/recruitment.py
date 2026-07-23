@@ -128,6 +128,7 @@ TIMED_TESTS = ("jobspecific", "disc", "personality", "logical", "ketelitian")
 TIME_FIELD = {"jobspecific": "time_jobspecific", "disc": "time_disc", "personality": "time_personality",
 			  "logical": "time_logical", "ketelitian": "time_ketelitian"}
 GRACE_SEC = 15
+ATTEMPT_TTL = 4 * 3600  # stamps must survive a whole attempt
 
 
 def _already_applied(opening_name, nik, email):
@@ -139,14 +140,11 @@ def _already_applied(opening_name, nik, email):
 
 
 def _clean_attempt(attempt_id):
-	a = re.sub(r"[^A-Za-z0-9-]", "", attempt_id or "")[:64]
-	if not a:
-		frappe.throw("Sesi tes tidak valid.")
-	return a
+	return re.sub(r"[^A-Za-z0-9-]", "", attempt_id or "")[:64]
 
 
 def _test_timing(attempt_id, opening, enabled):
-	"""Recompute per-test elapsed from the server-stamped cache start. Never trusts the client clock."""
+	"""Recompute per-test elapsed from server-stamped start/end. Never trusts the client clock."""
 	now = now_datetime().timestamp()
 	cache = frappe.cache()
 	out = {}
@@ -161,8 +159,10 @@ def _test_timing(attempt_id, opening, enabled):
 		if not raw:
 			out[t] = {"elapsed": None, "limit": limit_sec, "expired": True}
 			continue
-		data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
-		elapsed = round(now - float(data["start_at"]))
+		start_at = float((json.loads(raw) if isinstance(raw, (str, bytes)) else raw)["start_at"])
+		endraw = cache.get_value(f"recruit_timer:{attempt_id}:{t}:end")
+		end_at = float((json.loads(endraw) if isinstance(endraw, (str, bytes)) else endraw)["end_at"]) if endraw else now
+		elapsed = round(end_at - start_at)
 		out[t] = {"elapsed": elapsed, "limit": limit_sec, "expired": elapsed > limit_sec + GRACE_SEC}
 	return out
 
@@ -200,8 +200,10 @@ def check_can_apply(job, nik_ktp=None, email=None):
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 @rate_limit(key="start_test", limit=120, seconds=3600)
-def start_test(attempt_id, job, test):
+def start_test(attempt_id, job, test, prev=None):
 	attempt_id = _clean_attempt(attempt_id)
+	if not attempt_id:
+		frappe.throw("Sesi tes tidak valid.")
 	if test not in TIMED_TESTS:
 		frappe.throw("Tes tidak dikenal.")
 	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
@@ -210,14 +212,18 @@ def start_test(attempt_id, job, test):
 	limit_sec = int(frappe.db.get_value("Job Opening", name, TIME_FIELD[test]) or 0) * 60
 	key = f"recruit_timer:{attempt_id}:{test}"
 	cache = frappe.cache()
-	raw = cache.get_value(key)
 	now = now_datetime().timestamp()
+	if prev and prev in TIMED_TESTS and prev != test:
+		endkey = f"recruit_timer:{attempt_id}:{prev}:end"
+		if not cache.get_value(endkey):
+			cache.set_value(endkey, json.dumps({"end_at": now}), expires_in_sec=ATTEMPT_TTL)
+	raw = cache.get_value(key)
 	if raw:
 		data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
 		remaining = max(0, int(data["limit_sec"] - (now - float(data["start_at"]))))
 		return {"remaining_sec": remaining, "limit_sec": int(data["limit_sec"])}
 	data = {"start_at": now, "limit_sec": limit_sec}
-	cache.set_value(key, json.dumps(data), expires_in_sec=limit_sec + GRACE_SEC + 300)
+	cache.set_value(key, json.dumps(data), expires_in_sec=ATTEMPT_TTL)
 	return {"remaining_sec": limit_sec, "limit_sec": limit_sec}
 
 
@@ -360,10 +366,10 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 								"ketelitian": (ketelitian_score, ketelitian_max)}, tests)
 
 	# timing + proctor violations — computed server-side, never trust the client clock.
-	aid = _clean_attempt(attempt_id) if attempt_id else ""
+	aid = _clean_attempt(attempt_id)
 	timing = _test_timing(aid, opening, tests) if aid else {}
 	try:
-		vcount = int(violations or 0)
+		vcount = max(0, min(int(violations or 0), 100000))
 	except (TypeError, ValueError):
 		vcount = 0
 	vreasons = _loadjson(violation_reasons, [])
