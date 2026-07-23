@@ -1,0 +1,33 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-22 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": ["question_text", "qtype", "test", "answer", "column_break_a", "is_correct", "points_awarded", "max_points"],
+ "fields": [
+  {"fieldname": "question_text", "fieldtype": "Small Text", "label": "Question", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "qtype", "fieldtype": "Data", "label": "Type", "read_only": 1},
+  {"fieldname": "test", "fieldtype": "Data", "label": "Test", "read_only": 1},
+  {"fieldname": "answer", "fieldtype": "Text", "label": "Answer", "in_list_view": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "is_correct", "fieldtype": "Check", "label": "Correct", "read_only": 1},
+  {"fieldname": "points_awarded", "fieldtype": "Float", "label": "Points Awarded"},
+  {"fieldname": "max_points", "fieldtype": "Int", "label": "Max Points", "read_only": 1}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Job Application Answer",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
