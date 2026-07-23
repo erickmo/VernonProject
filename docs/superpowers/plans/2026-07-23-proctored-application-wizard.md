@@ -700,15 +700,20 @@ Replace the existing `{% block scripts %}` script with the wizard. Complete scri
     announce();
     startTimer(def, tpl.querySelector('[data-timer]'));
   }
+  var prevTestKey = null;
   function startTimer(def, el) {
-    var limitMin = (JOB.time_limits || {})[def.key] || 0;
-    if (!limitMin) { el.textContent = ''; return; } // untimed
+    // ALWAYS call start_test on entry (even for an untimed test) so the server can
+    // stamp the PREVIOUS test's end — that is what makes per-test server elapsed accurate.
+    var body = { attempt_id: ATTEMPT, job: SLUG, test: def.key };
+    if (prevTestKey && prevTestKey !== def.key) body.prev = prevTestKey;
+    prevTestKey = def.key;
     fetch('/api/method/vernon_project.api.recruitment.start_test', {
       method: 'POST', headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ attempt_id: ATTEMPT, job: SLUG, test: def.key })
+      body: JSON.stringify(body)
     }).then(function (r) { return r.json(); }).then(function (d) {
-      var remaining = (d.message && d.message.remaining_sec) || 0;
-      tick(remaining, el, def);
+      var m = d.message || {};
+      if (!m.limit_sec) { el.textContent = ''; return; } // untimed
+      tick(m.remaining_sec || 0, el, def);
     }).catch(function () { el.textContent = ''; });
   }
   function tick(remaining, el, def) {
