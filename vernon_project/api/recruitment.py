@@ -216,6 +216,7 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	logical_score = logical_max = 0.0
 	if tests["logical"]:
 		la = _loadjson(logical_answers, [])
+		la = la if isinstance(la, list) else []
 		lrows, ls, lm, _ = _score_answers(ri.logic_qdefs(), la)
 		for r in lrows:
 			r["test"] = "Logical"
@@ -231,7 +232,10 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	disc_fit = personality_fit = None
 	if tests["disc"]:
 		da = _loadjson(disc_answers, {})
-		if len([1 for it in ri.DISC_ITEMS if da.get(it["id"])]) < len(ri.DISC_ITEMS):
+		da = da if isinstance(da, dict) else {}
+		def _disc_done(a):
+			return isinstance(a, dict) and a.get("most") is not None and a.get("least") is not None
+		if sum(1 for it in ri.DISC_ITEMS if _disc_done(da.get(it["id"]))) < len(ri.DISC_ITEMS):
 			frappe.throw("Mohon lengkapi tes DISC.")
 		dscores, disc_type = ri.score_disc(da)
 		disc_fit = ri.fit(dscores, {
@@ -240,6 +244,7 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		psych["disc"] = {"answers": da, "scores": dscores, "type": disc_type, "fit": disc_fit}
 	if tests["personality"]:
 		pa = _loadjson(personality_answers, {})
+		pa = pa if isinstance(pa, dict) else {}
 		if len([1 for it in ri.BIGFIVE_ITEMS if pa.get(it["id"]) is not None]) < len(ri.BIGFIVE_ITEMS):
 			frappe.throw("Mohon lengkapi tes kepribadian.")
 		pscores = ri.score_bigfive(pa)
@@ -377,7 +382,7 @@ def save_opening(name=None, title=None, brand=None, location=None, employment_ty
 	tg = json.loads(targets) if isinstance(targets, str) else (targets or {})
 	for f in ("target_d", "target_i", "target_s", "target_c",
 			  "target_o", "target_c_big", "target_e", "target_a", "target_n"):
-		doc.set(f, cint(tg.get(f)))
+		doc.set(f, cint(tg.get(f, 50)))
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()
 	return {"ok": True, "name": doc.name, "slug": doc.slug}
