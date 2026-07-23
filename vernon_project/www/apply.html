@@ -1,0 +1,291 @@
+{% extends "templates/vernoncorp_base.html" %}
+
+{% block head %}<meta name="robots" content="noindex,nofollow">{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden">
+  <div class="gradient-mesh absolute inset-0 -z-10"></div>
+  <div class="dotgrid absolute inset-0 -z-10 opacity-40"></div>
+
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 pt-14 pb-24">
+    <a href="{{ careers_url }}" class="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-900 transition-colors">{{ t.back }}</a>
+
+    {% if not job %}
+    <div class="mt-8 rounded-2xl bg-paper-card border border-paper-edge shadow-card p-8 text-center">
+      <h1 class="font-display text-2xl font-bold text-brand-900">{{ t.notfound_title }}</h1>
+      <p class="mt-3 text-brand-800/80">{{ t.notfound_body }}</p>
+      <a href="{{ careers_url }}" class="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">{{ t.back }}</a>
+    </div>
+    {% else %}
+
+    <!-- role header -->
+    <header class="mt-6">
+      <h1 class="font-display text-4xl sm:text-5xl font-bold tracking-tight text-brand-900 leading-tight">{{ job.title }}</h1>
+      <div class="mt-4 flex flex-wrap gap-2 text-sm">
+        {% if job.location %}<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-paper-card border border-paper-edge text-brand-700 font-medium">{{ job.location }}</span>{% endif %}
+        {% if job.employment_type %}<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-teal2/10 border border-teal2/20 text-teal2 font-medium">{{ job.employment_type }}</span>{% endif %}
+      </div>
+      {% if job.description %}<div class="prose prose-brand mt-6 max-w-none text-brand-800/85 leading-relaxed">{{ job.description | safe }}</div>{% endif %}
+      {% if job.requirements %}
+      <h2 class="mt-8 font-display text-xl font-bold text-brand-900">{{ t.requirements }}</h2>
+      <div class="prose prose-brand mt-3 max-w-none text-brand-800/85 leading-relaxed">{{ job.requirements | safe }}</div>
+      {% endif %}
+    </header>
+
+    <!-- application form -->
+    <div id="apply-thanks" class="hidden mt-10 rounded-2xl bg-brand-50 border border-brand-200 shadow-card p-8 text-center" tabindex="-1">
+      <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.thanks_title }}</h2>
+      <p class="mt-3 text-brand-800/80">{{ t.thanks_body }}</p>
+    </div>
+
+    <form id="apply-form" class="mt-10 space-y-6" novalidate>
+      <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.apply_title }}</h2>
+
+      <div id="apply-error" class="hidden rounded-xl bg-rose/10 border border-rose/30 text-rose px-4 py-3 text-sm font-medium"></div>
+
+      {# honeypot #}
+      <div class="absolute w-px h-px -m-px overflow-hidden" aria-hidden="true">
+        <input type="text" name="company_website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-5">
+        <label class="block">
+          <span class="block text-sm font-semibold text-brand-900">{{ t.full_name }}</span>
+          <input type="text" name="full_name" required maxlength="140"
+                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+        </label>
+        <label class="block">
+          <span class="block text-sm font-semibold text-brand-900">Email</span>
+          <input type="email" name="email" required maxlength="140"
+                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+        </label>
+        <label class="block">
+          <span class="block text-sm font-semibold text-brand-900">{{ t.phone }}</span>
+          <input type="tel" name="phone" required maxlength="30" inputmode="tel" placeholder="0812…"
+                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+          <span class="mt-1 block text-xs text-brand-700/70">{{ t.phone_hint }}</span>
+        </label>
+        <label class="block">
+          <span class="block text-sm font-semibold text-brand-900">{{ t.nik }}</span>
+          <input type="text" name="nik_ktp" required maxlength="30" inputmode="numeric"
+                 class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition">
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="block text-sm font-semibold text-brand-900">{{ t.cv }}</span>
+        <input type="file" name="cv" required accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+               class="mt-1.5 w-full text-sm text-brand-800 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2.5 file:text-white file:font-semibold hover:file:bg-brand-700 file:cursor-pointer">
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-semibold text-brand-900">{{ t.cover }}</span>
+        <textarea name="cover_letter" rows="4" maxlength="8000"
+                  class="mt-1.5 w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition"></textarea>
+      </label>
+
+      {% if job.questions %}
+      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-6">
+        <div>
+          <h3 class="font-display text-xl font-bold text-brand-900">{{ t.test_title }}</h3>
+          <p class="mt-1 text-sm text-brand-800/70">{{ t.test_lead }}</p>
+        </div>
+        {% for q in job.questions %}
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-semibold text-brand-900">{{ loop.index }}. {{ q.question_text }}</legend>
+          {% if q.qtype == 'Free Text' %}
+          <textarea name="q{{ q.idx }}" rows="3" placeholder="{{ t.free_text_ph }}"
+                    class="w-full rounded-xl border border-paper-edge bg-paper-card px-4 py-3 text-brand-900 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition"></textarea>
+          {% else %}
+            {% set opts = q.options if q.options else (['True', 'False'] if q.qtype == 'True/False' else []) %}
+            {% for opt in opts %}
+            <label class="flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-brand-50 cursor-pointer transition-colors">
+              <input type="radio" name="q{{ q.idx }}" value="{{ opt }}" class="text-brand-600 focus:ring-brand-300">
+              <span class="text-brand-900">{{ opt }}</span>
+            </label>
+            {% endfor %}
+          {% endif %}
+        </fieldset>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if job.test_disc %}
+      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-5" data-disc>
+        <div><h3 class="font-display text-xl font-bold text-brand-900">{{ t.disc_title }}</h3>
+          <p class="mt-1 text-sm text-brand-800/70">{{ t.disc_lead }}</p></div>
+        {% for it in job.disc_items %}
+        <fieldset class="space-y-2" data-disc-item="{{ it.id }}">
+          <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-xs font-semibold text-brand-700">
+            <span></span><span>{{ t.disc_most }}</span><span>{{ t.disc_least }}</span>
+          </div>
+          {% for w in it.words %}
+          <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+            <span class="text-brand-900">{{ w }}</span>
+            <input type="radio" name="disc_most_{{ it.id }}" value="{{ loop.index0 }}" class="text-brand-600">
+            <input type="radio" name="disc_least_{{ it.id }}" value="{{ loop.index0 }}" class="text-rose-500">
+          </div>
+          {% endfor %}
+        </fieldset>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if job.test_personality %}
+      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-5" data-big>
+        <div><h3 class="font-display text-xl font-bold text-brand-900">{{ t.big_title }}</h3>
+          <p class="mt-1 text-sm text-brand-800/70">{{ t.big_lead }}</p></div>
+        {% for it in job.bigfive_items %}
+        <fieldset class="space-y-1.5" data-big-item="{{ it.id }}">
+          <legend class="text-sm text-brand-900">{{ loop.index }}. {{ it.text }}</legend>
+          <div class="flex items-center justify-between gap-1 text-[11px] text-brand-700/70">
+            <span>{{ t.big_1 }}</span><span>{{ t.big_5 }}</span></div>
+          <div class="flex justify-between gap-2">
+            {% for n in [1,2,3,4,5] %}
+            <label class="flex-1 text-center rounded-lg border border-paper-edge py-2 cursor-pointer hover:bg-brand-50">
+              <input type="radio" name="big_{{ it.id }}" value="{{ n }}" class="sr-only peer">
+              <span class="peer-checked:font-bold peer-checked:text-brand-700">{{ n }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if job.test_logical %}
+      <div class="rounded-2xl bg-paper-card/70 border border-paper-edge shadow-card p-6 space-y-5" data-logic>
+        <div><h3 class="font-display text-xl font-bold text-brand-900">{{ t.logic_title }}</h3></div>
+        {% for it in job.logic_items %}
+        <fieldset class="space-y-2" data-logic-item="{{ it.id }}">
+          <legend class="text-sm font-semibold text-brand-900">{{ loop.index }}. {{ it.text }}</legend>
+          {% for opt in it.options %}
+          <label class="flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-brand-50 cursor-pointer">
+            <input type="radio" name="logic_{{ it.id }}" value="{{ opt }}" class="text-brand-600">
+            <span class="text-brand-900">{{ opt }}</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <button type="submit" id="apply-submit"
+              class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 hover:shadow-lift transition-all disabled:opacity-60">
+        <span id="apply-submit-text">{{ t.submit }}</span>
+        <svg id="apply-spinner" class="hidden animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" stroke-opacity=".3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if job %}
+<script>
+  (function () {
+    var form = document.getElementById('apply-form');
+    var thanks = document.getElementById('apply-thanks');
+    var errBox = document.getElementById('apply-error');
+    var btn = document.getElementById('apply-submit');
+    var btnText = document.getElementById('apply-submit-text');
+    var spinner = document.getElementById('apply-spinner');
+    if (!form) return;
+
+    var SLUG = {{ job.slug | tojson }};
+    var QUESTIONS = {{ job.questions | tojson }};
+    var DISC = {{ job.disc_items | tojson }};
+    var BIG = {{ job.bigfive_items | tojson }};
+    var LOGIC = {{ job.logic_items | tojson }};
+    var CSRF = "{{ frappe.session.csrf_token }}";
+    var T = {{ t | tojson }};
+
+    function setSending(on) {
+      btn.disabled = on;
+      btnText.textContent = on ? T.sending : T.submit;
+      spinner.classList.toggle('hidden', !on);
+    }
+    function showError(msg) {
+      errBox.textContent = msg || T.err_generic;
+      errBox.classList.remove('hidden');
+      errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      errBox.classList.add('hidden');
+      if (!form.reportValidity()) return;
+
+      var el = form.elements;
+      var answers = QUESTIONS.map(function (q) {
+        var field = el['q' + q.idx];
+        if (!field) return '';
+        // RadioNodeList (.value = checked radio's value) or a single textarea.
+        return (field.value || '');
+      });
+
+      var discAns = {}, bigAns = {}, logicAns = [];
+      for (var di = 0; di < DISC.length; di++) {
+        var id = DISC[di].id;
+        var m = form.elements['disc_most_' + id], l = form.elements['disc_least_' + id];
+        if (!m || m.value === '' || !l || l.value === '' || m.value === l.value) { showError(T.incomplete); return; }
+        discAns[id] = { most: parseInt(m.value, 10), least: parseInt(l.value, 10) };
+      }
+      for (var bi = 0; bi < BIG.length; bi++) {
+        var bid = BIG[bi].id, bf = form.elements['big_' + bid];
+        if (!bf || bf.value === '') { showError(T.incomplete); return; }
+        bigAns[bid] = parseInt(bf.value, 10);
+      }
+      logicAns = LOGIC.map(function (q) {
+        var f = form.elements['logic_' + q.id];
+        return f ? (f.value || '') : '';
+      });
+      if (LOGIC.length && logicAns.some(function (v) { return !v; })) { showError(T.incomplete); return; }
+
+      var fd = new FormData();
+      fd.append('job', SLUG);
+      fd.append('full_name', el.full_name.value.trim());
+      fd.append('email', el.email.value.trim());
+      fd.append('phone', el.phone.value.trim());
+      fd.append('nik_ktp', el.nik_ktp.value.trim());
+      fd.append('cover_letter', el.cover_letter.value.trim());
+      fd.append('company_website', el.company_website.value);
+      fd.append('answers', JSON.stringify(answers));
+      fd.append('disc_answers', JSON.stringify(discAns));
+      fd.append('personality_answers', JSON.stringify(bigAns));
+      fd.append('logical_answers', JSON.stringify(logicAns));
+      if (el.cv.files && el.cv.files[0]) fd.append('cv', el.cv.files[0]);
+
+      setSending(true);
+      fetch('/api/method/vernon_project.api.recruitment.submit_application', {
+        method: 'POST',
+        headers: { 'X-Frappe-CSRF-Token': CSRF },
+        body: fd
+      })
+      .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+      .then(function (r) {
+        var m = r.d && r.d.message;
+        if (r.ok && m && m.ok) {
+          form.classList.add('hidden');
+          thanks.classList.remove('hidden');
+          thanks.focus();
+          thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        var msg = T.err_generic;
+        try {
+          if (r.d && r.d._server_messages) {
+            var arr = JSON.parse(r.d._server_messages);
+            if (arr.length) msg = JSON.parse(arr[0]).message || msg;
+          }
+        } catch (_) {}
+        showError(msg);
+      })
+      .catch(function () { showError(T.err_generic); })
+      .finally(function () { setSending(false); });
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}
