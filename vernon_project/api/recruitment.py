@@ -352,7 +352,8 @@ def save_opening(name=None, title=None, brand=None, location=None, employment_ty
 	doc.title = (title or doc.title or "").strip()
 	if not doc.title:
 		frappe.throw("Judul lowongan wajib diisi.")
-	doc.brand = brand or None
+	if brand is not None:
+		doc.brand = brand or None
 	doc.location = location or None
 	doc.employment_type = employment_type or doc.employment_type or "Full-time"
 	doc.description = description or ""

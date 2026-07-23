@@ -54,7 +54,7 @@ export default function RecruitmentApplication() {
       if (a.qtype === 'Free Text') g[String(a.idx)] = a.points_awarded != null ? String(a.points_awarded) : ''
     })
     setGrades(g)
-    setInterviewAt(d.interview_at ? d.interview_at.slice(0, 16) : '')
+    setInterviewAt(d.interview_at ? d.interview_at.slice(0, 16).replace(' ', 'T') : '')
     setInterviewNotes(d.interview_notes ?? '')
   }, [d])
 

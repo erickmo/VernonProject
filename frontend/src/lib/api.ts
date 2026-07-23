@@ -1328,7 +1328,7 @@ export const recruitmentApi = {
     api.post<{ ok: boolean; name: string; slug: string }>(REC + 'save_opening', {
       ...(v.name ? { name: v.name } : {}),
       title: v.title,
-      brand: v.brand ?? '',
+      ...(v.brand != null ? { brand: v.brand } : {}),
       location: v.location ?? '',
       employment_type: v.employment_type ?? 'Full-time',
       description: v.description ?? '',
