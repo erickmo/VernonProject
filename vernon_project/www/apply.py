@@ -42,6 +42,26 @@ def get_context(context):
             job["logic_items"] = ri.public_logic() if doc.test_logical else []
             job["test_ketelitian"] = int(doc.test_ketelitian or 0)
             job["ketelitian_items"] = ri.public_ketelitian() if doc.test_ketelitian else []
+
+    # HR "try the test" preview: no real opening, all four tests on, nothing is
+    # submitted or stored (the wizard scores via recruitment.preview_score).
+    preview = bool(frappe.form_dict.get("preview")) and frappe.session.user != "Guest"
+    if preview:
+        if set(frappe.get_roles(frappe.session.user)) & {"HR Manager", "System Manager"}:
+            job = {
+                "slug": None,
+                "title": p({"id": "Coba Tes Rekrutmen", "en": "Try the Recruitment Test"}),
+                "brand": None, "location": None, "employment_type": None,
+                "description": None, "requirements": None, "questions": [],
+                "test_disc": 1, "test_personality": 1, "test_logical": 1, "test_ketelitian": 1,
+                "disc_items": ri.public_disc(),
+                "bigfive_items": ri.public_bigfive(),
+                "logic_items": ri.public_logic(),
+                "ketelitian_items": ri.public_ketelitian(),
+            }
+        else:
+            preview = False  # not HR → fall through to the normal (not-found) page
+    context.preview = preview
     context.job = job
 
     context.page_title = ((job["title"] + " — VernonCorp") if job
@@ -66,6 +86,7 @@ def get_context(context):
         "nik": p({"id": "NIK (KTP)", "en": "National ID (KTP)"}),
         "cv": p({"id": "CV / Resume — PDF, DOC, atau DOCX (maks 10 MB)", "en": "CV / Resume — PDF, DOC, or DOCX (max 10 MB)"}),
         "cover": p({"id": "Surat pengantar / catatan (opsional)", "en": "Cover letter / notes (optional)"}),
+        "cv_too_big": p({"id": "File terlalu besar (maks 10 MB). Pilih file lain.", "en": "File too large (max 10 MB). Choose another file."}),
         "test_title": p({"id": "Tes singkat", "en": "Short test"}),
         "test_lead": p({"id": "Jawab pertanyaan berikut sebagai bagian dari lamaran.",
                         "en": "Answer the questions below as part of your application."}),
@@ -90,8 +111,15 @@ def get_context(context):
         "wiz_consent_title": p({"id": "Sebelum mulai", "en": "Before you start"}),
         "wiz_rules": p({"id": "Tes ini memakai waktu per bagian dan dipantau. Tetap di tab ini, jangan berpindah aplikasi, dan pastikan JavaScript aktif. Kamu hanya bisa melamar satu kali.", "en": "This test is timed per section and monitored. Stay on this tab, don't switch apps, and keep JavaScript on. You may apply only once."}),
         "wiz_start": p({"id": "Mulai", "en": "Start"}),
+        "roadmap_title": p({"id": "Yang akan kamu kerjakan", "en": "What you'll do"}),
+        "roadmap_items": p({"id": "soal", "en": "questions"}),
+        "roadmap_timed": p({"id": "Tiap bagian punya batas waktu sendiri. Isi identitas & CV dulu, lalu mulai tes.",
+                            "en": "Each section has its own time limit. Fill in your details & CV first, then start the test."}),
+        "step_identity": p({"id": "Identitas", "en": "Your details"}),
+        "step_submit": p({"id": "Kirim", "en": "Submit"}),
         "wiz_next": p({"id": "Lanjut", "en": "Next"}),
         "wiz_review": p({"id": "Tinjau & kirim", "en": "Review & submit"}),
+        "review_flagged": p({"id": "kali meninggalkan tes — tercatat", "en": "times you left the test — recorded"}),
         "wiz_time_left": p({"id": "Sisa waktu", "en": "Time left"}),
         "wiz_time_up": p({"id": "Waktu habis untuk bagian ini.", "en": "Time is up for this section."}),
         "wiz_violation": p({"id": "Peringatan: kamu meninggalkan tes. Ini dicatat.", "en": "Warning: you left the test. This is recorded."}),

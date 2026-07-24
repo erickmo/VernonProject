@@ -10,7 +10,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
-import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
+import { passkeySupported, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 import { type Theme, getStoredTheme, setTheme } from '@/lib/theme'
 import type { FocusMode } from '@/lib/types'
 import { pushSupported, subscribeToPush, unsubscribeFromPush, getPushSubscription } from '@/lib/push'
@@ -433,7 +433,9 @@ function PasskeyCard() {
   const confirm = useConfirm()
 
   useEffect(() => {
-    platformAuthenticatorAvailable().then(setAvailable)
+    // Enroll wherever WebAuthn exists (desktops included): a security key or a
+    // phone passkey works, not only a built-in biometric sensor.
+    setAvailable(passkeySupported())
   }, [])
 
   if (!available) return null

@@ -440,6 +440,48 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	return {"ok": True, "application": app.name}
 
 
+@frappe.whitelist(methods=["POST"])
+def preview_score(disc_answers=None, personality_answers=None,
+				  logical_answers=None, ketelitian_answers=None):
+	"""HR-only 'try the test' scorer. Runs the SAME instrument scoring as
+	submit_application but persists nothing and creates no Job Application —
+	so HR can experience the applicant test and see how it grades. Targets are
+	neutral (blank → 50), so fit reflects the raw profile, not any opening."""
+	_require_hr()
+
+	def _lj(v, default):
+		try:
+			return json.loads(v) if isinstance(v, str) else (v if v is not None else default)
+		except ValueError:
+			return default
+
+	da = _lj(disc_answers, {}); da = da if isinstance(da, dict) else {}
+	dscores, disc_type = ri.score_disc(da)
+	disc_fit = ri.fit(dscores, {}, ri.DISC_AXES)
+
+	pa = _lj(personality_answers, {}); pa = pa if isinstance(pa, dict) else {}
+	pscores = ri.score_bigfive(pa)
+	personality_fit = ri.fit(pscores, {}, ri.BIGFIVE_TRAITS)
+
+	la = _lj(logical_answers, []); la = la if isinstance(la, list) else []
+	_, ls, lm, _ = _score_answers(ri.logic_qdefs(), la)
+
+	ka = _lj(ketelitian_answers, []); ka = ka if isinstance(ka, list) else []
+	_, ks, km, _ = _score_answers(ri.ketelitian_qdefs(), ka)
+
+	overall_fit = _overall_fit(disc_fit, personality_fit,
+		{"logical": (ls, lm), "ketelitian": (ks, km)},
+		{"disc": True, "personality": True, "logical": True, "ketelitian": True})
+
+	return {
+		"disc": {"scores": dscores, "type": disc_type, "fit": disc_fit},
+		"personality": {"scores": pscores, "fit": personality_fit},
+		"logical": {"score": ls, "max": lm},
+		"ketelitian": {"score": ks, "max": km},
+		"overall_fit": overall_fit,
+	}
+
+
 # ------------------------------------------------------------------- HR: openings
 
 @frappe.whitelist()

@@ -32,12 +32,23 @@
       {% endif %}
     </header>
 
+    {% if preview %}
+    <div class="mt-6 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 px-4 py-3 text-sm font-semibold">
+      Mode coba (HR). Jawabanmu tidak disimpan dan tidak membuat lamaran — skor tampil di akhir.
+    </div>
+    {% endif %}
+
     <noscript>
       <div class="mt-8 rounded-2xl bg-rose/10 border border-rose/30 text-rose px-5 py-4 font-semibold">{{ t.nojs }}</div>
     </noscript>
 
     <!-- applicant wizard: hidden until JS reveals it, so a no-JS client never sees the form -->
     <div id="wiz" class="hidden mt-10">
+      <!-- global progress: identity → tests → submit (consent step excluded) -->
+      <div id="wiz-stepper" class="hidden mb-6">
+        <div id="wiz-segs" class="flex items-center gap-1.5"></div>
+        <p id="wiz-steplabel" class="mt-2 text-xs font-semibold text-brand-700 tabular-nums"></p>
+      </div>
       <div id="wiz-error" class="hidden mb-4 rounded-xl bg-rose/10 border border-rose/30 text-rose px-4 py-3 text-sm font-medium"></div>
       <div id="wiz-violation" class="hidden mb-4 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 text-sm font-semibold"></div>
 
@@ -45,6 +56,8 @@
       <section data-step="consent" class="wiz-step">
         <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.wiz_consent_title }}</h2>
         <p class="mt-3 text-brand-800/85 leading-relaxed">{{ t.wiz_rules }}</p>
+        <!-- roadmap: what's ahead — populated from the enabled sections -->
+        <div id="consent-roadmap" class="mt-6"></div>
         <button type="button" id="btn-consent" class="mt-6 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">{{ t.wiz_start }}</button>
       </section>
 
@@ -85,6 +98,7 @@
           <span class="block text-sm font-semibold text-brand-900">{{ t.cv }}</span>
           <input type="file" id="f-cv" required accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                  class="mt-1.5 w-full text-sm text-brand-800 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2.5 file:text-white file:font-semibold hover:file:bg-brand-700 file:cursor-pointer">
+          <span id="cv-note" class="mt-1.5 block text-xs font-medium text-brand-700/70"></span>
         </label>
 
         <label class="mt-5 block">
@@ -98,22 +112,34 @@
 
       <!-- one timed step container per enabled test, hidden; populated by JS from job data -->
       <section data-step="test" data-test-key="" class="wiz-step hidden">
-        <div class="flex items-center justify-between">
-          <h2 class="font-display text-2xl font-bold text-brand-900" data-test-title></h2>
-          <span class="rounded-full bg-brand-100 text-brand-800 px-3 py-1 text-sm font-bold tabular-nums" data-timer>--:--</span>
+        <h2 class="font-display text-2xl font-bold text-brand-900" data-test-title></h2>
+        <p class="mt-1 text-sm text-brand-800/75" data-test-lead></p>
+        <!-- HUD: pins under the nav so time left + progress stay visible on long tests -->
+        <div class="sticky top-16 z-30 mt-4 px-4 py-3 rounded-xl bg-paper/90 backdrop-blur-md border border-paper-edge shadow-sm">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-brand-600" data-test-step></p>
+            <span class="shrink-0 rounded-full bg-brand-100 text-brand-800 px-3 py-1 text-sm font-bold tabular-nums transition-colors" data-timer>--:--</span>
+          </div>
+          <div class="mt-2 h-1.5 rounded-full bg-brand-100 overflow-hidden">
+            <div class="h-full rounded-full bg-brand-600 transition-all duration-500" data-test-prog style="width:0%"></div>
+          </div>
+          <p class="mt-1.5 text-sm font-medium text-brand-700" data-test-count></p>
         </div>
-        <div data-test-body class="mt-5 space-y-5"></div>
-        <button type="button" data-test-next class="mt-6 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">{{ t.wiz_next }}</button>
+        <div data-test-body class="mt-5 space-y-4"></div>
+        <button type="button" data-test-next class="mt-6 w-full sm:w-auto sticky bottom-4 z-10 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-lift hover:bg-brand-700 transition-all">{{ t.wiz_next }}</button>
       </section>
 
       <!-- step: review/submit -->
       <section data-step="review" class="wiz-step hidden">
         <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.wiz_review }}</h2>
-        <p class="mt-2 text-sm text-brand-800/70" id="review-summary"></p>
+        <div class="mt-3 rounded-xl border border-paper-edge bg-paper-card px-4 py-2 text-sm" id="review-summary"></div>
         <button type="button" id="btn-submit" class="mt-6 inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 hover:shadow-lift transition-all disabled:opacity-60">
           <span id="submit-text">{{ t.submit }}</span>
         </button>
       </section>
+
+      <!-- preview scores render here (HR "try the test" only) -->
+      <div id="preview-result" class="hidden mt-4 rounded-2xl bg-paper-card border border-paper-edge shadow-card p-6 sm:p-8" tabindex="-1"></div>
 
       <div id="apply-thanks" class="hidden mt-4 rounded-2xl bg-brand-50 border border-brand-200 shadow-card p-8 text-center" tabindex="-1">
         <h2 class="font-display text-2xl font-bold text-brand-900">{{ t.thanks_title }}</h2>
@@ -131,6 +157,7 @@
 (function () {
   var SLUG = {{ job.slug | tojson }};
   var CSRF = "{{ frappe.session.csrf_token }}";
+  var PREVIEW = {{ preview | default(false) | tojson }};  // HR "try the test": no identity, no submit, score only
   var T = {{ t | tojson }};
   var JOB = {{ {
       "questions": job.questions, "test_disc": job.test_disc, "disc_items": job.disc_items,
@@ -140,7 +167,7 @@
     } | tojson }};
 
   // --- attempt id (persist across reload so the server timer doesn't reset)
-  var AKEY = 'vernon-apply-attempt:' + SLUG;
+  var AKEY = 'vernon-apply-attempt:' + (SLUG || 'preview');
   var ATTEMPT = localStorage.getItem(AKEY);
   if (!ATTEMPT) { ATTEMPT = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()); localStorage.setItem(AKEY, ATTEMPT); }
 
@@ -160,10 +187,15 @@
     violations++; reasons[reason] = 1;
     vioBox.textContent = T.wiz_violation; vioBox.classList.remove('hidden');
   }
-  document.addEventListener('visibilitychange', function () { if (document.hidden) violation('pindah tab/aplikasi'); });
-  window.addEventListener('blur', function () { violation('kehilangan fokus'); });
+  if (!PREVIEW) {  // no proctoring in HR try-mode — nothing is submitted
+    document.addEventListener('visibilitychange', function () { if (document.hidden) violation('pindah tab/aplikasi'); });
+    window.addEventListener('blur', function () { violation('kehilangan fokus'); });
+    // guard accidental close/refresh/back mid-test: in-progress answers live only in memory
+    // and the server timer keeps ticking, so a stray navigation loses the whole section.
+    window.addEventListener('beforeunload', function (e) { if (inTest) { e.preventDefault(); e.returnValue = ''; } });
+  }
   var TAB = String(Math.random()).slice(2);
-  var bc = ('BroadcastChannel' in window) ? new BroadcastChannel('vernon-apply-' + SLUG) : null;
+  var bc = (!PREVIEW && 'BroadcastChannel' in window) ? new BroadcastChannel('vernon-apply-' + SLUG) : null;
   if (bc) { bc.onmessage = function (e) { if (e.data && e.data.tab !== TAB) violation('tab lain terdeteksi'); }; }
   function announce() { if (bc) bc.postMessage({ tab: TAB }); }
 
@@ -180,13 +212,37 @@
   var A = { questions: [], disc: {}, personality: {}, logical: {}, ketelitian: {} };
 
   // --- step machine
-  var steps = ['consent', 'identity'].concat(TEST_DEFS.map(function () { return 'test'; })).concat(['review']);
+  var steps = (PREVIEW ? ['consent'] : ['consent', 'identity']).concat(TEST_DEFS.map(function () { return 'test'; })).concat(['review']);
   var testStepAt = {}; // step index -> TEST_DEFS index
   (function () { var ti = 0; steps.forEach(function (s, i) { if (s === 'test') { testStepAt[i] = ti++; } }); })();
   var cur = 0, curTimer = null;
 
+  // --- global progress stepper (consent excluded; identity → tests → submit)
+  var stepEl = document.getElementById('wiz-stepper');
+  var segWrap = document.getElementById('wiz-segs');
+  var stepLabelEl = document.getElementById('wiz-steplabel');
+  var progList = [];
+  steps.forEach(function (s, i) {
+    if (s === 'consent') return;
+    var label = s === 'identity' ? T.step_identity : (s === 'review' ? T.step_submit : TEST_DEFS[testStepAt[i]].title);
+    progList.push({ i: i, label: label });
+  });
+  progList.forEach(function () { var d = document.createElement('div'); d.className = 'h-1.5 flex-1 rounded-full bg-brand-100 transition-colors'; segWrap.appendChild(d); });
+  function paintStepper(i) {
+    var pos = -1;
+    for (var k = 0; k < progList.length; k++) { if (progList[k].i === i) { pos = k; break; } }
+    if (pos < 0) { stepEl.classList.add('hidden'); return; }
+    stepEl.classList.remove('hidden');
+    var segs = segWrap.children;
+    for (var k = 0; k < segs.length; k++) {
+      segs[k].className = 'h-1.5 flex-1 rounded-full transition-colors ' + (k < pos ? 'bg-teal2' : (k === pos ? 'bg-brand-600' : 'bg-brand-100'));
+    }
+    stepLabelEl.textContent = (pos + 1) + ' / ' + progList.length + ' · ' + progList[pos].label;
+  }
+
   function show(i) {
     cur = i;
+    paintStepper(i);
     var secs = wiz.querySelectorAll('.wiz-step');
     // hide all
     for (var j = 0; j < secs.length; j++) secs[j].classList.add('hidden');
@@ -203,20 +259,37 @@
 
   // --- test step
   var tpl = wiz.querySelector('[data-step="test"]');
+  var curDef = null;
+  // one delegated listener (body element persists across tests): selection feedback,
+  // DISC most≠least guard, and live "answered" progress.
+  tpl.querySelector('[data-test-body]').addEventListener('change', function (e) {
+    var t = e.target; if (!t || t.type !== 'radio') return;
+    if (t.name.indexOf('dm_') === 0 || t.name.indexOf('dl_') === 0) discGuard(t);
+    else markSelect(t);
+    if (curDef) updateCount(curDef);
+  });
   function enterTest(def) {
+    curDef = def;
     tpl.classList.remove('hidden');
     tpl.querySelector('[data-test-title]').textContent = def.title;
+    var ti = TEST_DEFS.indexOf(def);
+    tpl.querySelector('[data-test-step]').textContent = 'Bagian ' + (ti + 1) + ' dari ' + TEST_DEFS.length;
+    var leadKey = { disc: 'disc_lead', personality: 'big_lead' }[def.key];
+    tpl.querySelector('[data-test-lead]').textContent = leadKey ? (T[leadKey] || '') : '';
     var body = tpl.querySelector('[data-test-body]'); body.innerHTML = '';
     def.items.forEach(function (it, idx) { body.appendChild(def.render(it, idx)); });
+    updateCount(def);
     tpl.querySelector('[data-test-next]').onclick = function () {
-      if (!def.collect(def, true)) return; // validate complete before manual advance
+      if (!def.collect(def, true)) { highlightMissing(def); return; } // validate complete before advance
       next();
     };
     announce();
     startTimer(def, tpl.querySelector('[data-timer]'));
+    tpl.scrollIntoView({ block: 'start' });
   }
   var prevTestKey = null;
   function startTimer(def, el) {
+    if (PREVIEW) { el.textContent = ''; return; }  // try-mode: no server timer, no opening to key on
     // ALWAYS call start_test on entry (even for an untimed test) so the server can
     // stamp the PREVIOUS test's end — that is what makes per-test server elapsed accurate.
     var body = { attempt_id: ATTEMPT, job: SLUG, test: def.key };
@@ -236,6 +309,10 @@
     function render() {
       var m = Math.floor(remaining / 60), s = remaining % 60;
       el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+      el.classList.remove('bg-brand-100', 'text-brand-800', 'bg-amber-100', 'text-amber-800', 'bg-rose', 'text-white', 'animate-pulse');
+      if (remaining <= 15) el.classList.add('bg-rose', 'text-white', 'animate-pulse');
+      else if (remaining <= 30) el.classList.add('bg-amber-100', 'text-amber-800');
+      else el.classList.add('bg-brand-100', 'text-brand-800');
       if (remaining <= 0) {
         if (done) return;
         done = true;
@@ -251,12 +328,66 @@
 
   // --- per-test renderers (build DOM) + collectors (write into A, return complete?)
   function radio(name, value, label) {
-    var l = document.createElement('label'); l.className = 'flex items-center gap-2.5 rounded-lg px-3 py-2 hover:bg-brand-50 cursor-pointer';
-    var i = document.createElement('input'); i.type = 'radio'; i.name = name; i.value = value; i.className = 'text-brand-600';
+    var l = document.createElement('label'); l.className = 'flex items-center gap-2.5 rounded-xl border border-paper-edge px-3.5 py-2.5 hover:bg-brand-50 cursor-pointer transition-colors';
+    var i = document.createElement('input'); i.type = 'radio'; i.name = name; i.value = value; i.className = 'text-brand-600 shrink-0';
     var s = document.createElement('span'); s.className = 'text-brand-900'; s.textContent = label;
     l.appendChild(i); l.appendChild(s); return l;
   }
   function fieldset(legendText) { var fs = document.createElement('fieldset'); fs.className = 'space-y-2'; var lg = document.createElement('legend'); lg.className = 'text-sm font-semibold text-brand-900'; lg.textContent = legendText; fs.appendChild(lg); return fs; }
+
+  // --- selection feedback + progress (shared by every test)
+  var SEL_LIST = ['bg-brand-50', 'border-brand-500', 'ring-1', 'ring-brand-300'];
+  var SEL_NUM = ['bg-brand-600', 'text-white', 'border-brand-600', 'shadow-card'];
+  function markSelect(input) {
+    var group = tpl.querySelectorAll('[data-test-body] input[name="' + input.name + '"]');
+    for (var i = 0; i < group.length; i++) {
+      var lab = group[i].closest('label'); if (lab) lab.classList.remove.apply(lab.classList, SEL_LIST.concat(SEL_NUM));
+    }
+    var cur = input.closest('label'); if (cur) cur.classList.add.apply(cur.classList, cur.dataset.num ? SEL_NUM : SEL_LIST);
+  }
+  function discGuard(input) {
+    var id = input.name.slice(3);
+    var m = tpl.querySelector('[name="dm_' + id + '"]:checked'), l = tpl.querySelector('[name="dl_' + id + '"]:checked');
+    if (m && l && m.value === l.value) {  // same word can't be both Most and Least — latest pick wins
+      (input.name.indexOf('dm_') === 0 ? l : m).checked = false;
+    }
+    var all = tpl.querySelectorAll('[name="dm_' + id + '"]');
+    for (var i = 0; i < all.length; i++) { var r = all[i].closest('.disc-row'); if (r) r.classList.remove('bg-brand-50', 'bg-amber-50'); }
+    var mm = tpl.querySelector('[name="dm_' + id + '"]:checked'), ll = tpl.querySelector('[name="dl_' + id + '"]:checked');
+    if (mm) { var rm = mm.closest('.disc-row'); if (rm) rm.classList.add('bg-brand-50'); }
+    if (ll) { var rl = ll.closest('.disc-row'); if (rl) rl.classList.add('bg-amber-50'); }
+  }
+  function itemAnswered(def, it) {
+    if (def.key === 'disc') { var m = tpl.querySelector('[name="dm_' + it.id + '"]:checked'), l = tpl.querySelector('[name="dl_' + it.id + '"]:checked'); return !!(m && l && m.value !== l.value); }
+    if (def.key === 'personality') return !!tpl.querySelector('[name="bf_' + it.id + '"]:checked');
+    if (def.key === 'logical') return !!tpl.querySelector('[name="lg_' + it.id + '"]:checked');
+    if (def.key === 'ketelitian') return !!tpl.querySelector('[name="kt_' + it.id + '"]:checked');
+    if (def.key === 'jobspecific') { var el = tpl.querySelector('[name="q_' + it.idx + '"]:checked') || tpl.querySelector('textarea[name="q_' + it.idx + '"]'); return !!(el && (el.value || '').trim()); }
+    return true;
+  }
+  function updateCount(def) {
+    var total = def.items.length, n = 0;
+    def.items.forEach(function (it) { if (itemAnswered(def, it)) n++; });
+    var done = total > 0 && n >= total;
+    var el = tpl.querySelector('[data-test-count]');
+    el.textContent = n + ' / ' + total + ' terjawab';
+    el.classList.toggle('text-teal2', done); el.classList.toggle('text-brand-700', !done);
+    tpl.querySelector('[data-test-prog]').style.width = (total ? Math.round(n / total * 100) : 0) + '%';
+  }
+  function highlightMissing(def) {
+    var body = tpl.querySelector('[data-test-body]');
+    for (var idx = 0; idx < def.items.length; idx++) {
+      if (!itemAnswered(def, def.items[idx])) {
+        var fs = body.children[idx];
+        if (fs) {
+          fs.classList.add('ring-2', 'ring-amber-400', 'rounded-xl', 'p-2', '-m-2');
+          fs.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (function (f) { setTimeout(function () { f.classList.remove('ring-2', 'ring-amber-400', 'p-2', '-m-2'); }, 2600); })(fs);
+        }
+        return;
+      }
+    }
+  }
 
   function renderQuestion(q, i) {
     var fs = fieldset((i + 1) + '. ' + q.question_text);
@@ -268,15 +399,21 @@
     A.questions = def.items.map(function (q) { var el = tpl.querySelector('[name="q_' + q.idx + '"]:checked') || tpl.querySelector('textarea[name="q_' + q.idx + '"]'); return el ? (el.value || '') : ''; });
     return true; // job-specific may include optional free-text; don't hard-require
   }
-  function renderDisc(it) {
+  function renderDisc(it, i) {
     var fs = fieldset(''); fs.querySelector('legend').remove();
-    var head = document.createElement('div'); head.className = 'grid grid-cols-[1fr_auto_auto] gap-2 text-xs font-semibold text-brand-700'; head.innerHTML = '<span></span><span>' + T.disc_most + '</span><span>' + T.disc_least + '</span>'; fs.appendChild(head);
+    fs.className = 'rounded-xl border border-paper-edge p-4 space-y-1';
+    var head = document.createElement('div'); head.className = 'grid grid-cols-[1fr_3.5rem_3.5rem] gap-2 pb-1 text-xs font-semibold text-brand-700';
+    head.innerHTML = '<span>' + (i + 1) + '.</span><span class="text-center">' + T.disc_most + '</span><span class="text-center">' + T.disc_least + '</span>';
+    fs.appendChild(head);
     it.words.forEach(function (w, wi) {
-      var row = document.createElement('div'); row.className = 'grid grid-cols-[1fr_auto_auto] gap-2 items-center';
-      row.innerHTML = '<span class="text-brand-900">' + w + '</span>';
-      var m = document.createElement('input'); m.type = 'radio'; m.name = 'dm_' + it.id; m.value = wi;
-      var l = document.createElement('input'); l.type = 'radio'; l.name = 'dl_' + it.id; l.value = wi;
-      row.appendChild(m); row.appendChild(l); fs.appendChild(row);
+      var row = document.createElement('div'); row.className = 'disc-row grid grid-cols-[1fr_3.5rem_3.5rem] gap-2 items-center rounded-lg transition-colors';
+      var word = document.createElement('span'); word.className = 'text-brand-900 pl-2 py-2.5'; word.textContent = w; row.appendChild(word);
+      ['dm_', 'dl_'].forEach(function (pfx) {  // whole cell tappable, bigger target for thumbs
+        var inp = document.createElement('input'); inp.type = 'radio'; inp.name = pfx + it.id; inp.value = wi; inp.className = 'h-5 w-5 text-brand-600';
+        var lab = document.createElement('label'); lab.className = 'flex items-center justify-center py-2.5 rounded-lg cursor-pointer hover:bg-brand-50 transition-colors'; lab.appendChild(inp);
+        row.appendChild(lab);
+      });
+      fs.appendChild(row);
     });
     return fs;
   }
@@ -292,8 +429,12 @@
   function renderBig(it, i) {
     var fs = fieldset((i + 1) + '. ' + it.text);
     var wrap = document.createElement('div'); wrap.className = 'flex justify-between gap-2';
-    for (var n = 1; n <= 5; n++) { (function (v) { var l = document.createElement('label'); l.className = 'flex-1 text-center rounded-lg border border-paper-edge py-2 cursor-pointer hover:bg-brand-50'; var i2 = document.createElement('input'); i2.type = 'radio'; i2.name = 'bf_' + it.id; i2.value = v; i2.className = 'sr-only'; var s = document.createElement('span'); s.textContent = v; l.appendChild(i2); l.appendChild(s); wrap.appendChild(l); })(n); }
-    fs.appendChild(wrap); return fs;
+    for (var n = 1; n <= 5; n++) { (function (v) { var l = document.createElement('label'); l.className = 'flex-1 text-center rounded-lg border border-paper-edge py-2.5 font-semibold text-brand-900 cursor-pointer hover:bg-brand-50 transition-colors'; l.dataset.num = '1'; var i2 = document.createElement('input'); i2.type = 'radio'; i2.name = 'bf_' + it.id; i2.value = v; i2.className = 'sr-only'; var s = document.createElement('span'); s.textContent = v; l.appendChild(i2); l.appendChild(s); wrap.appendChild(l); })(n); }
+    fs.appendChild(wrap);
+    var anch = document.createElement('div'); anch.className = 'mt-1.5 flex justify-between text-xs text-brand-700/70';
+    anch.innerHTML = '<span>1 · ' + T.big_1 + '</span><span>' + T.big_5 + ' · 5</span>';
+    fs.appendChild(anch);
+    return fs;
   }
   function collectBig(def, requireAll) {
     var ok = true; A.personality = {};
@@ -322,10 +463,21 @@
 
   // --- consent + identity + review + submit
   document.getElementById('btn-consent').onclick = function () { next(); };
+  // CV feedback: show name+size and flag oversize the moment it's picked — never after the timed test
+  var CV_MAX = 10 * 1024 * 1024;
+  function cvFile() { var c = document.getElementById('f-cv'); return c.files && c.files[0]; }
+  document.getElementById('f-cv').addEventListener('change', function () {
+    var note = document.getElementById('cv-note'), f = cvFile();
+    if (!f) { note.textContent = ''; note.className = 'mt-1.5 block text-xs font-medium text-brand-700/70'; return; }
+    var mb = (f.size / 1048576).toFixed(1);
+    if (f.size > CV_MAX) { note.textContent = f.name + ' — ' + mb + ' MB · ' + T.cv_too_big; note.className = 'mt-1.5 block text-xs font-semibold text-rose'; }
+    else { note.textContent = f.name + ' — ' + mb + ' MB'; note.className = 'mt-1.5 block text-xs font-medium text-teal2'; }
+  });
   document.getElementById('btn-identity').onclick = function () {
     var name = val('f-full_name'), email = val('f-email'), phone = val('f-phone'), nik = val('f-nik_ktp');
     var cv = document.getElementById('f-cv');
     if (!name || !email || !phone || !nik || !(cv.files && cv.files[0])) { showError(T.err_generic); return; }
+    if (cv.files[0].size > CV_MAX) { showError(T.cv_too_big); return; }
     fetch('/api/method/vernon_project.api.recruitment.check_can_apply', {
       method: 'POST',
       headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -336,9 +488,68 @@
       }).catch(function () { next(); }); // network fail → let them proceed; submit re-checks
   };
   function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
-  function buildReview() { document.getElementById('review-summary').textContent = TEST_DEFS.map(function (d) { return d.title; }).join(' · '); }
+  function reviewCount(def) {  // count from answer stores (DOM only holds the last test)
+    var total = def.items.length, n = 0;
+    if (def.key === 'jobspecific') (A.questions || []).forEach(function (v) { if ((v || '').trim()) n++; });
+    else if (def.key === 'disc') n = Object.keys(A.disc || {}).length;
+    else if (def.key === 'personality') n = Object.keys(A.personality || {}).length;
+    else if (def.key === 'logical') (A.logical || []).forEach(function (v) { if ((v || '').trim()) n++; });
+    else if (def.key === 'ketelitian') (A.ketelitian || []).forEach(function (v) { if ((v || '').trim()) n++; });
+    return { n: n, total: total };
+  }
+  function buildReview() {
+    var rows = TEST_DEFS.map(function (d) {
+      var c = reviewCount(d), done = c.total > 0 && c.n >= c.total;
+      var badge = '<span class="tabular-nums font-semibold ' + (done ? 'text-teal2' : 'text-amber-700') + '">' + (done ? '✓ ' : '') + c.n + '/' + c.total + '</span>';
+      return '<div class="flex items-center justify-between py-2 border-b border-paper-edge last:border-0"><span class="text-brand-900">' + d.title + '</span>' + badge + '</div>';
+    }).join('');
+    if (!PREVIEW && violations > 0) rows += '<div class="pt-2 text-xs font-semibold text-amber-700">' + violations + '× ' + T.review_flagged + '</div>';
+    document.getElementById('review-summary').innerHTML = rows;
+    if (PREVIEW) document.getElementById('submit-text').textContent = 'Lihat hasil skor';
+  }
+
+  // --- preview (HR try-mode): score without persisting, then render the profile
+  function pvBar(label, val) {
+    var w = Math.max(0, Math.min(100, val));
+    return '<div class="mb-2"><div class="flex justify-between text-sm"><span class="font-medium text-brand-900">' + label
+      + '</span><span class="tabular-nums text-brand-700">' + val + '</span></div>'
+      + '<div class="mt-1 h-2 rounded-full bg-brand-100"><div class="h-2 rounded-full bg-brand-600" style="width:' + w + '%"></div></div></div>';
+  }
+  function renderPreviewResult(m) {
+    var DN = { D: 'Dominance (D)', I: 'Influence (I)', S: 'Steadiness (S)', C: 'Conscientiousness (C)' };
+    var BN = { O: 'Keterbukaan (O)', C: 'Kehati-hatian (C)', E: 'Ekstraversi (E)', A: 'Keramahan (A)', N: 'Neurotisisme (N)' };
+    var h = '<h2 class="font-display text-2xl font-bold text-brand-900">Hasil tes (mode coba — tidak disimpan)</h2>';
+    h += '<p class="mt-1 text-sm text-brand-700">Overall fit (target netral): <span class="font-bold tabular-nums">' + m.overall_fit + '</span></p>';
+    h += '<h3 class="mt-6 font-display text-lg font-bold text-brand-900">DISC — dominan: ' + (m.disc.type || '-') + '</h3>';
+    ['D', 'I', 'S', 'C'].forEach(function (k) { h += pvBar(DN[k], m.disc.scores[k]); });
+    h += '<h3 class="mt-6 font-display text-lg font-bold text-brand-900">Kepribadian (Big Five)</h3>';
+    ['O', 'C', 'E', 'A', 'N'].forEach(function (k) { h += pvBar(BN[k], m.personality.scores[k]); });
+    h += '<h3 class="mt-6 font-display text-lg font-bold text-brand-900">Aptitude</h3>';
+    h += '<p class="text-brand-900">Logika: <span class="font-bold tabular-nums">' + m.logical.score + ' / ' + m.logical.max + '</span></p>';
+    h += '<p class="text-brand-900">Ketelitian: <span class="font-bold tabular-nums">' + m.ketelitian.score + ' / ' + m.ketelitian.max + '</span></p>';
+    h += '<a href="/apply?preview=1" class="mt-6 inline-flex px-6 py-3 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all">Coba lagi</a>';
+    document.getElementById('preview-result').innerHTML = h;
+  }
+  function runPreviewScore(btn) {
+    var txt = document.getElementById('submit-text'); btn.disabled = true; txt.textContent = T.sending;
+    fetch('/api/method/vernon_project.api.recruitment.preview_score', {
+      method: 'POST', headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        disc_answers: JSON.stringify(A.disc), personality_answers: JSON.stringify(A.personality),
+        logical_answers: JSON.stringify(A.logical), ketelitian_answers: JSON.stringify(A.ketelitian)
+      })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.message) { showError(T.err_generic); return; }
+      renderPreviewResult(d.message);
+      wiz.querySelector('[data-step="review"]').classList.add('hidden');
+      var box = document.getElementById('preview-result'); box.classList.remove('hidden');
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' }); box.focus();
+    }).catch(function () { showError(T.err_generic); })
+      .finally(function () { btn.disabled = false; txt.textContent = 'Lihat hasil skor'; });
+  }
 
   document.getElementById('btn-submit').onclick = function () {
+    if (PREVIEW) { runPreviewScore(this); return; }  // try-mode: score only, persist nothing
     var btn = this, txt = document.getElementById('submit-text'); btn.disabled = true; txt.textContent = T.sending;
     var fd = new FormData();
     fd.append('job', SLUG); fd.append('full_name', val('f-full_name')); fd.append('email', val('f-email'));
@@ -360,6 +571,22 @@
       }).catch(function () { showError(T.err_generic); })
       .finally(function () { btn.disabled = false; txt.textContent = T.submit; });
   };
+
+  // consent roadmap: list what's ahead so candidates commit informed, not blind
+  (function () {
+    var host = document.getElementById('consent-roadmap');
+    if (!host || !TEST_DEFS.length) return;
+    var h = '<p class="text-sm font-semibold text-brand-900">' + T.roadmap_title + '</p><ol class="mt-3 space-y-2">';
+    TEST_DEFS.forEach(function (d, i) {
+      var n = d.items ? d.items.length : 0;
+      h += '<li class="flex items-center gap-3 rounded-xl border border-paper-edge bg-paper-card px-4 py-2.5">'
+        + '<span class="grid place-items-center h-6 w-6 shrink-0 rounded-full bg-brand-600 text-white text-xs font-bold tabular-nums">' + (i + 1) + '</span>'
+        + '<span class="text-brand-900 font-medium">' + d.title + '</span>'
+        + '<span class="ml-auto text-sm text-brand-700 tabular-nums">' + n + ' ' + T.roadmap_items + '</span></li>';
+    });
+    h += '</ol><p class="mt-3 text-xs text-brand-700/70">' + T.roadmap_timed + '</p>';
+    host.innerHTML = h;
+  })();
 
   show(0);
 })();

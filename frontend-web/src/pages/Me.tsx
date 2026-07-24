@@ -11,7 +11,7 @@ import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 import { BentoGrid, BentoTile } from '@web/components/bento'
-import { platformAuthenticatorAvailable, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
+import { passkeySupported, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 import { AvatarScene } from '@/avatar/AvatarScene'
 
 function useOnline() {
@@ -311,7 +311,9 @@ function PasskeyTile() {
   const confirm = useConfirm()
 
   useEffect(() => {
-    platformAuthenticatorAvailable().then(setAvailable)
+    // Enroll wherever WebAuthn exists (desktops included): a security key or a
+    // phone passkey works, not only a built-in biometric sensor.
+    setAvailable(passkeySupported())
   }, [])
 
   if (!available) return null

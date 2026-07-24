@@ -3,7 +3,7 @@ import { Eye, EyeOff, ArrowRight, AlertCircle, Sparkles, Star, Zap, Fingerprint,
 import { login } from '@/lib/api'
 import { VERNON_VALUES, VERNON_STAKEHOLDERS } from '@/lib/values'
 import { Spinner } from '@/components/ui'
-import { loginWithPasskey, platformAuthenticatorAvailable, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
+import { loginWithPasskey, passkeySupported, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 
 // In-app login (does NOT use the Frappe desk login page). Posts to
 // /api/method/login and hard-reloads into /m on success.
@@ -22,7 +22,10 @@ export default function Login() {
   const [pkLoading, setPkLoading] = useState(false)
 
   useEffect(() => {
-    platformAuthenticatorAvailable().then(setPkAvailable)
+    // Show whenever the browser supports WebAuthn at all — not only when a
+    // built-in biometric exists. On a desktop with no sensor the browser routes
+    // to a phone (QR / hybrid) or security-key passkey.
+    setPkAvailable(passkeySupported())
   }, [])
 
   const passkeySignIn = async () => {

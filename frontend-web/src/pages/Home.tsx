@@ -17,7 +17,7 @@ import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
 import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
-import { ACTIONS, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
+import { ACTION_GROUPS, GROUP_ACCENT, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
 import { useHoldFeedback } from '@/hooks/useHoldFeedback'
 import { FilterButton, activeFilterCount, type FilterValue, type FilterDimension } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -246,26 +246,40 @@ const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
   (t.allocations ?? []).some((a) => a.date != null && pred(a.date))
 
 
-// Shortcut tiles — mobile QuickActions parity from the shared ACTIONS list, but a
-// web-styled wrapping grid (no mobile -mx-4 horizontal scroll).
+// Shortcut tiles — shared ACTION_GROUPS rendered as tinted category sections of
+// gradient tiles (web-styled wrapping grid; the mobile /m app scrolls each row).
 function ShortcutGrid() {
   return (
     <div className="rounded-2xl bg-surface p-4 shadow-card sm:p-5">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
         <Sparkles className="h-4 w-4" /> Shortcuts
       </h2>
-      <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
-        {ACTIONS.filter((a) => !MOBILE_ONLY.has(a.to.split('?')[0])).map((a) => (
-          <ShortcutTile key={a.title} action={a} />
-        ))}
+      <div className="space-y-5">
+        {ACTION_GROUPS.map((g) => {
+          const items = g.items.filter((a) => !MOBILE_ONLY.has(a.to.split('?')[0]))
+          if (!items.length) return null
+          return (
+            <div key={g.title}>
+              <h3 className={clsx('mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider', GROUP_ACCENT[g.hue])}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {g.title}
+              </h3>
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
+                {items.map((a) => (
+                  <ShortcutTile key={a.title} action={a} tile={g.tile} />
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
 // Tap navigates; long-press (touch) plays a press-in + pop and swallows the
-// trailing click, matching the mobile QuickActions tiles.
-function ShortcutTile({ action: a }: { action: ActionItem }) {
+// trailing click, matching the mobile QuickActions tiles. Hover lifts the tile.
+function ShortcutTile({ action: a, tile }: { action: ActionItem; tile: string }) {
   const navigate = useNavigate()
   const hold = useHoldFeedback()
   return (
@@ -276,13 +290,13 @@ function ShortcutTile({ action: a }: { action: ActionItem }) {
         navigate(a.to)
       }}
       {...hold.bind}
-      className="flex flex-col items-center gap-1.5 transition active:scale-95"
+      className="group flex flex-col items-center gap-1.5 transition active:scale-95"
     >
       <span
         style={{ transform: hold.holding ? 'scale(0.9)' : hold.fired ? 'scale(1.12)' : undefined }}
         className={clsx(
-          'relative flex h-12 w-12 items-center justify-center rounded-2xl shadow-card transition-transform',
-          a.tile,
+          'relative flex h-12 w-12 items-center justify-center rounded-2xl transition-transform group-hover:-translate-y-0.5',
+          tile,
           hold.holding && 'ring-2 ring-white/80',
         )}
       >

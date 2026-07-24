@@ -33,14 +33,25 @@ export type ActionItem = {
   tile?: string // icon-tile color classes, injected per-group into ACTIONS below
 }
 
+// Header text + dot accent per group hue. Home grids read this to tint each
+// category's section label; full literal strings so Tailwind's purge keeps them.
+export const GROUP_ACCENT: Record<string, string> = {
+  brand: 'text-brand-600 dark:text-brand-400',
+  amber: 'text-amber-600 dark:text-amber-400',
+  emerald: 'text-emerald-600 dark:text-emerald-400',
+  rose: 'text-rose-600 dark:text-rose-400',
+}
+
 // Single source of truth for "what can I do" — the /help screen renders it
-// grouped with descriptions; the home grid flattens it into tiles. Add an
-// action here and it shows up in both. `tile` = Gojek-style per-category hue
-// for the home tiles; full literal class strings so Tailwind's purge keeps them.
-export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }[] = [
+// grouped with descriptions; the home grids render it as tinted category
+// sections of tiles. Add an action here and it shows up in both. `tile` = the
+// per-category gradient + colored glow for the icon tiles; `hue` keys the
+// section header accent (GROUP_ACCENT). Full literal class strings so purge keeps them.
+export const ACTION_GROUPS: { title: string; hue: string; tile: string; items: ActionItem[] }[] = [
   {
     title: 'Get work done',
-    tile: 'bg-brand-500 text-white',
+    hue: 'brand',
+    tile: 'bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-lg shadow-brand-500/30',
     items: [
       { icon: FolderKanban, title: 'Projects & todos', short: 'Projects', desc: 'Open a project, add work items and todos.', to: '/projects' },
       { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/?plan=1' },
@@ -54,7 +65,8 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
   },
   {
     title: 'Events & community',
-    tile: 'bg-amber-500 text-white',
+    hue: 'amber',
+    tile: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30',
     items: [
       { icon: Ticket, title: 'Events', short: 'Events', desc: 'Browse and register for office events, or host your own.', to: '/events' },
       { icon: HandHeart, title: 'Recognize teammates', short: 'Recognize', desc: 'React on the team wall to send recognition points.', to: '/team-wall' },
@@ -63,7 +75,8 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
   },
   {
     title: 'Rewards & progress',
-    tile: 'bg-emerald-500 text-white',
+    hue: 'emerald',
+    tile: 'bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-500/30',
     items: [
       { icon: Trophy, title: 'Climb the leaderboard', short: 'Leaderboard', desc: 'See where you rank on productivity and character.', to: '/leaderboard' },
       { icon: Medal, title: 'Earn achievements', short: 'Achievements', desc: 'Unlock badges and warrior tiers as you contribute.', to: '/achievements' },
@@ -77,7 +90,8 @@ export const ACTION_GROUPS: { title: string; tile: string; items: ActionItem[] }
   },
   {
     title: 'Personal',
-    tile: 'bg-rose-500 text-white',
+    hue: 'rose',
+    tile: 'bg-gradient-to-br from-rose-400 to-pink-600 text-white shadow-lg shadow-rose-500/30',
     items: [
       { icon: StickyNote, title: 'Capture notes', short: 'Notes', desc: 'Jot quick notes — hold ➕ for an instant one.', to: '/notes' },
       { icon: Smile, title: 'Make it yours', short: 'Avatar', desc: 'Customize your avatar.', to: '/avatar' },

@@ -3,7 +3,7 @@ import { Eye, EyeOff, FolderKanban, Loader2, Fingerprint, Mail, Lock, Heart } fr
 import { login } from '@/lib/api'
 import { VERNON_VALUES, VERNON_STAKEHOLDERS } from '@/lib/values'
 import { parseFrappeError } from '@/lib/format'
-import { loginWithPasskey, platformAuthenticatorAvailable, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
+import { loginWithPasskey, passkeySupported, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -15,7 +15,10 @@ export default function Login() {
   const [pkBusy, setPkBusy] = useState(false)
 
   useEffect(() => {
-    platformAuthenticatorAvailable().then(setPkAvailable)
+    // Show whenever the browser supports WebAuthn at all — not only when a
+    // built-in biometric exists. On a desktop with no sensor the browser routes
+    // to a phone (QR / hybrid) or security-key passkey.
+    setPkAvailable(passkeySupported())
   }, [])
 
   const passkeySignIn = async () => {

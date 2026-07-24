@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Users, ArrowLeftRight, Briefcase, FileText, Ban, ClipboardList,
+  Users, ArrowLeftRight, Briefcase, FileText, Ban, ClipboardList, ClipboardCheck,
   Building2, Store, BookOpen, DoorOpen, ShieldAlert, ChevronRight, Copy,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
@@ -23,7 +23,7 @@ const HUE: Record<string, string> = {
   slate: 'bg-paper-line text-stone-500 dark:bg-slate-700 dark:text-slate-300',
 }
 
-type Row = { icon: LucideIcon; label: string; hue: string; to: string }
+type Row = { icon: LucideIcon; label: string; hue: string; to?: string; href?: string }
 
 export default function HrHubScreen() {
   const navigate = useNavigate()
@@ -44,6 +44,7 @@ export default function HrHubScreen() {
         ...(canManageRecruitment(boot) ? [{ icon: Briefcase, label: 'Kelola Lowongan', hue: 'indigo', to: '/recruitment/openings' }] : []),
         ...(canManageRecruitment(boot) ? [{ icon: FileText, label: 'Lamaran Masuk', hue: 'sky', to: '/recruitment/applications' }] : []),
         ...(canManageRecruitment(boot) ? [{ icon: Ban, label: 'Blacklist KTP', hue: 'rose', to: '/recruitment/blacklist' }] : []),
+        ...(canManageRecruitment(boot) ? [{ icon: ClipboardCheck, label: 'Coba Tes ↗', hue: 'violet', href: '/apply?preview=1' }] : []),
       ],
     },
     {
@@ -87,7 +88,7 @@ export default function HrHubScreen() {
               return (
                 <button
                   key={r.label}
-                  onClick={() => navigate(r.to)}
+                  onClick={() => (r.href ? window.open(r.href, '_blank', 'noopener') : navigate(r.to!))}
                   className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-paper-line/50 dark:active:bg-slate-700/50"
                 >
                   <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${HUE[r.hue]}`}>

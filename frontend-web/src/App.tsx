@@ -166,6 +166,10 @@ export default function App() {
     if (boot.data && !localStorage.getItem(ONBOARDED_KEY)) setShowOnboarding(true)
   }, [boot.data])
 
+  // Daily recognition gate — shown only after the self-claim gate is satisfied.
+  // Must run unconditionally (before the early returns below) or hook order breaks.
+  const recognitionGate = useRecognitionGate().data
+
   const finishOnboarding = () => {
     localStorage.setItem(ONBOARDED_KEY, '1')
     setShowOnboarding(false)
@@ -199,8 +203,6 @@ export default function App() {
   // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
   const superpowerBlocked =
     !!(sp?.force_superpower && !sp?.has_superpower) && !location.pathname.startsWith('/superpowers')
-  // Daily recognition gate — shown only after the self-claim gate is satisfied.
-  const recognitionGate = useRecognitionGate().data
 
   return (
     <TodoContextMenuProvider>

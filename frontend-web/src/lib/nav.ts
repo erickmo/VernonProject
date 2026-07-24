@@ -5,7 +5,7 @@ import {
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
-  History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy,
+  History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -120,6 +120,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ...(canManageRecruitment(b) ? [{ to: '/recruitment/openings', label: 'Job Openings', sub: 'Post & manage roles', icon: Briefcase } as NavLeaf] : []),
     ...(canManageRecruitment(b) ? [{ to: '/recruitment/applications', label: 'Applications', sub: 'Review & interview', icon: FileText } as NavLeaf] : []),
     ...(canManageRecruitment(b) ? [{ to: '/recruitment/blacklist', label: 'Blacklist', sub: 'Blocked KTP numbers', icon: Ban } as NavLeaf] : []),
+    ...(canManageRecruitment(b) ? [{ to: 'recruitment:try', href: '/apply?preview=1', label: 'Try the Test ↗', sub: 'Preview the applicant test', icon: ClipboardCheck } as NavLeaf] : []),
   ]
   // admin leaves are merged into one "HR Management" group with attendance below.
 

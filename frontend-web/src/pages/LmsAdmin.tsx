@@ -158,6 +158,18 @@ export default function LmsAdmin() {
     }
   }, [editDetail, editCourseId])
 
+  const patchCourse = useCallback(
+    (patch: Partial<CourseDraft>) =>
+      setCourseDraft((d) => (d ? { ...d, ...patch } : d)),
+    [],
+  )
+
+  const patchLesson = useCallback(
+    (patch: Partial<LessonDraft>) =>
+      setLessonDraft((d) => (d ? { ...d, ...patch } : d)),
+    [],
+  )
+
   // Gating — redirect must happen after all hooks (rules of hooks)
   const blocked = !!boot && !canManageLms(boot)
   useEffect(() => {
@@ -271,18 +283,6 @@ export default function LmsAdmin() {
       },
     )
   }
-
-  const patchCourse = useCallback(
-    (patch: Partial<CourseDraft>) =>
-      setCourseDraft((d) => (d ? { ...d, ...patch } : d)),
-    [],
-  )
-
-  const patchLesson = useCallback(
-    (patch: Partial<LessonDraft>) =>
-      setLessonDraft((d) => (d ? { ...d, ...patch } : d)),
-    [],
-  )
 
   // ── Report columns ──────────────────────────────────────────────────────────
 
