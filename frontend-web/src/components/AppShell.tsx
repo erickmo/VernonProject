@@ -9,6 +9,8 @@ import { MoreSheet } from '@web/components/MoreSheet'
 import { Fab } from '@web/components/Fab'
 import { buildNavGroups } from '@web/lib/nav'
 import { QuickCreate } from '@web/components/QuickCreate'
+import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { useShortcuts, ShortcutsHelp } from '@web/components/ShortcutsHelp'
 import { FocusHost } from '@web/components/FocusHost'
 import UpdateBanner from '@web/components/UpdateBanner'
 
@@ -22,21 +24,16 @@ export function AppShell() {
   const { pathname } = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [taskOpen, setTaskOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
 
   useEffect(() => { setMoreOpen(false) }, [pathname])
 
-  // ⌘K palette; bare `c` quick-create (desktop bonuses, kept).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen((o) => !o) }
-      if (e.key === 'c' && !e.metaKey && !e.ctrlKey &&
-          !/^(INPUT|TEXTAREA)$/.test((e.target as HTMLElement)?.tagName) &&
-          !(e.target as HTMLElement)?.isContentEditable) { e.preventDefault(); setQuickOpen(true) }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  const { helpOpen, setHelpOpen } = useShortcuts({
+    openPalette: () => setPaletteOpen(true),
+    openQuick: () => setQuickOpen(true),
+    openTask: () => setTaskOpen(true),
+  })
 
   const b = boot.data
   const navCommands: Command[] = buildNavGroups(b).flatMap((g) =>
@@ -59,6 +56,8 @@ export function AppShell() {
       </main>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} navCommands={navCommands} />}
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
+      {taskOpen && <CreateProjectItemDialog open={taskOpen} onClose={() => setTaskOpen(false)} />}
+      {helpOpen && <ShortcutsHelp onClose={() => setHelpOpen(false)} />}
       <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
       <Fab />
       <FocusHost />
