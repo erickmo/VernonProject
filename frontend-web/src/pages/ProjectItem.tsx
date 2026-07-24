@@ -623,6 +623,11 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
   )
 }
 
+// Only the top-most open todo responds to e/f/t: a workspace-inline ProjectItem
+// can stay mounted behind a TodoDrawer, and a raw document listener would else
+// fire on the off-screen instance too (silently mutating the hidden todo).
+const todoKeyStack: symbol[] = []
+
 // Keyboard shortcuts for an open todo. A child component so its effect obeys the
 // rules of hooks (ProjectItem early-returns before data loads); it mounts only
 // when a todo is on screen, so `e`/`f`/`t` auto-scope to "a task is open".
@@ -638,7 +643,10 @@ function TodoShortcuts(props: {
   const ref = useRef(props)
   ref.current = props
   useEffect(() => {
+    const token = Symbol()
+    todoKeyStack.push(token)
     const onKey = (e: KeyboardEvent) => {
+      if (todoKeyStack[todoKeyStack.length - 1] !== token) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isEditableTarget(e.target)) return
       const s = ref.current
@@ -648,7 +656,11 @@ function TodoShortcuts(props: {
       else if (e.key === 't' && s.canDeadlineToday) { e.preventDefault(); s.onDeadlineToday() }
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      const i = todoKeyStack.indexOf(token)
+      if (i !== -1) todoKeyStack.splice(i, 1)
+    }
   }, [])
   return null
 }
