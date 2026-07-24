@@ -5,6 +5,7 @@ import {
   ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3, FolderInput,
 } from 'lucide-react'
 import { useProjectDetail, useDeleteProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
+import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
@@ -48,6 +49,7 @@ export default function ProjectDetail() {
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
   const onRowContextMenu = useTodoRowContextMenu()
+  const focusedIds = useFocusedTaskIds()
   const canAutoApprove = !!boot?.settings?.show_auto_approve
   const itemSelected = !!itemName
 
@@ -271,6 +273,7 @@ export default function ProjectDetail() {
                     columns={todoColumns}
                     getKey={(r) => r.name}
                     activeKey={itemName}
+                    rowClassName={(r) => (focusedIds.has(r.name) ? 'bg-amber-100 dark:bg-amber-500/20 shadow-[inset_4px_0_0_#f59e0b]' : undefined)}
                     onRowContextMenu={onRowContextMenu}
                     onRowClick={(r) =>
                       nav(

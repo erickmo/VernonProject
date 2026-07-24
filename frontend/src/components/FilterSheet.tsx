@@ -6,7 +6,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 export interface FilterDimension {
   key: string
   label: string
-  options: { value: string; label: string; count?: number }[]
+  options: { value: string; label: string; count?: number; keywords?: string }[]
 }
 
 export type FilterValue = Record<string, string>
@@ -64,7 +64,7 @@ function DimensionGroup({
       <SearchableSelect
         value={selected}
         onChange={onSelect}
-        options={dim.options.map((o) => ({ value: o.value, label: o.label }))}
+        options={dim.options.map((o) => ({ value: o.value, label: o.label, keywords: o.keywords }))}
         allowClear
         placeholder="Any"
       />

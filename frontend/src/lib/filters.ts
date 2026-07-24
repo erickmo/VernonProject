@@ -1,4 +1,5 @@
 import type { ProjectItem, ProjectCard } from './types'
+import type { SelectOption } from '../components/SearchableSelect'
 
 /** Case-insensitive substring test. Empty/whitespace query matches everything. */
 export function matchText(haystack: string, query: string): boolean {
@@ -130,19 +131,90 @@ export function buildOptions<T>(
   items: T[],
   getValue: (i: T) => string | null | undefined,
   getLabel: (i: T) => string | null | undefined,
-): { value: string; label: string; count: number }[] {
-  const map = new Map<string, { label: string; count: number }>()
+  getKeywords?: (i: T) => string | null | undefined,
+): { value: string; label: string; count: number; keywords?: string }[] {
+  const map = new Map<string, { label: string; count: number; kw: Set<string> }>()
   for (const it of items) {
     const v = getValue(it)
     if (!v) continue
     const label = getLabel(it) || v
+    const kw = getKeywords?.(it)
     const cur = map.get(v)
-    if (cur) cur.count++
-    else map.set(v, { label, count: 1 })
+    if (cur) {
+      cur.count++
+      if (kw) cur.kw.add(kw)
+    } else map.set(v, { label, count: 1, kw: new Set(kw ? [kw] : []) })
   }
   return [...map.entries()]
-    .map(([value, { label, count }]) => ({ value, label, count }))
+    .map(([value, { label, count, kw }]) => ({
+      value,
+      label,
+      count,
+      keywords: kw.size ? [...kw].join(' ') : undefined,
+    }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+}
+
+export interface DetailGroup {
+  key: string
+  project: string
+  projectName: string
+  detailTitle: string
+  todos: ProjectItem[]
+}
+
+/**
+ * Bucket todos by project DETAIL (not the whole project), first-seen order.
+ * Detail-less todos fall back to a project-level bucket. Shared by the web
+ * ThreeColProjectList columns and the mobile SwipeProjectLists carousel so
+ * picking one detail focuses just that detail's todos.
+ */
+export function groupByDetail(todos: ProjectItem[]): DetailGroup[] {
+  const map = new Map<string, DetailGroup>()
+  for (const t of todos) {
+    const key = t.project_detail || t.project || t.project_name || '—'
+    let g = map.get(key)
+    if (!g) {
+      g = {
+        key,
+        project: t.project || t.project_name || '—',
+        projectName: t.project_name || t.project || '—',
+        detailTitle: t.project_detail_title || '',
+        todos: [],
+      }
+      map.set(key, g)
+    }
+    g.todos.push(t)
+  }
+  return [...map.values()]
+}
+
+/**
+ * Focus-picker options: each project is a heading, its details indented rows
+ * below it (marked with ↳ by SearchableSelect). Searching matches a detail's
+ * title (label) or, via keywords, its project name.
+ */
+export function detailPickerOptions(groups: DetailGroup[]): SelectOption[] {
+  const byProject = new Map<string, DetailGroup[]>()
+  for (const g of groups) {
+    const arr = byProject.get(g.project)
+    if (arr) arr.push(g)
+    else byProject.set(g.project, [g])
+  }
+  return [...byProject.values()]
+    .sort((a, b) => a[0].projectName.localeCompare(b[0].projectName))
+    .flatMap((details) => [
+      { value: `__hdr__${details[0].project}`, label: details[0].projectName, header: true },
+      ...details
+        .slice()
+        .sort((a, b) => a.detailTitle.localeCompare(b.detailTitle))
+        .map((g) => ({
+          value: g.key,
+          label: `${g.detailTitle || 'Tanpa rincian'} (${g.todos.length})`,
+          keywords: g.projectName,
+          indent: true,
+        })),
+    ])
 }
 
 /** Apply the standard project/brand/owner/leader/estimate filters to todos. */

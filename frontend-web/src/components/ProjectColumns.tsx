@@ -1,23 +1,7 @@
 import { type ReactNode } from 'react'
-import { SearchableSelect } from '@/components/SearchableSelect'
+import { SearchableSelect, type SelectOption } from '@/components/SearchableSelect'
 import type { ProjectItem } from '@/lib/types'
-
-// Bucket todos by project, preserving first-seen order (so groups follow the
-// list's existing sort). Feeds the by-project columns.
-export type ProjectGroup = { key: string; name: string; todos: ProjectItem[] }
-export function groupByProject(todos: ProjectItem[]): ProjectGroup[] {
-  const map = new Map<string, ProjectGroup>()
-  for (const t of todos) {
-    const key = t.project || t.project_name || '—'
-    let g = map.get(key)
-    if (!g) {
-      g = { key, name: t.project_name || t.project || '—', todos: [] }
-      map.set(key, g)
-    }
-    g.todos.push(t)
-  }
-  return [...map.values()]
-}
+import { groupByDetail, detailPickerOptions, type DetailGroup } from '@/lib/filters'
 
 // One by-project column: a project picker + that project's todos rendered via
 // `renderCard`. No matching group → placeholder, unless `fallbackTodos` is given
@@ -28,8 +12,8 @@ function ProjectPickCol({
 }: {
   pick: string
   setPick: (v: string) => void
-  options: { value: string; label: string }[]
-  group?: ProjectGroup
+  options: SelectOption[]
+  group?: DetailGroup
   renderCard: (t: ProjectItem, i: number) => ReactNode
   className?: string
   fallbackTodos?: ProjectItem[]
@@ -64,8 +48,8 @@ export function ThreeColProjectList({
   proj3: string; setProj3: (v: string) => void
   proj4: string; setProj4: (v: string) => void
 }) {
-  const groups = groupByProject(items)
-  const options = groups.map((g) => ({ value: g.key, label: `${g.name} (${g.todos.length})` }))
+  const groups = groupByDetail(items)
+  const options = detailPickerOptions(groups)
   const colFor = (pick: string) => groups.find((g) => g.key === pick)
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 xl:grid-cols-4">

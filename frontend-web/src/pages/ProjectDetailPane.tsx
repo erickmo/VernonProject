@@ -3,6 +3,7 @@ import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import { ListChecks, Plus, CalendarClock, List, BarChart3 } from 'lucide-react'
 import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
+import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
@@ -36,6 +37,7 @@ export default function ProjectDetailPane() {
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
   const onRowContextMenu = useTodoRowContextMenu()
+  const focusedIds = useFocusedTaskIds()
   const canAutoApprove = !!boot?.settings?.show_auto_approve
   const toast = useToast()
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
@@ -182,6 +184,7 @@ export default function ProjectDetailPane() {
                 columns={todoColumns}
                 getKey={(r) => r.name}
                 activeKey={itemName}
+                rowClassName={(r) => (focusedIds.has(r.name) ? 'bg-amber-100 dark:bg-amber-500/20 shadow-[inset_4px_0_0_#f59e0b]' : undefined)}
                 onRowContextMenu={onRowContextMenu}
                 onRowClick={(r) => nav(`${base}/item/${encodeURIComponent(r.name)}`)}
               />

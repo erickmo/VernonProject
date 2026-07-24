@@ -48,7 +48,7 @@ export default function Review() {
 
   const dims = useMemo(
     () => [
-      { key: 'project', label: 'Project', options: buildOptions(all, (t) => t.project, (t) => t.project_name) },
+      { key: 'project', label: 'Project', options: buildOptions(all, (t) => t.project, (t) => t.project_name, (t) => t.project_detail_title) },
       { key: 'brand', label: 'Brand', options: buildOptions(all, (t) => t.brand ?? '', (t) => t.brand ?? '—') },
       {
         key: 'assignee',
@@ -221,6 +221,7 @@ export default function Review() {
                       options={d.options.map((o) => ({
                         value: o.value,
                         label: o.count != null ? `${o.label} (${o.count})` : o.label,
+                        keywords: o.keywords,
                       }))}
                       allowClear
                       placeholder="Any"

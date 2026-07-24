@@ -5,6 +5,12 @@ import { ChevronDown, Search, Check, Plus } from 'lucide-react'
 export interface SelectOption {
   value: string
   label: string
+  /** Extra text matched by the search box but not shown (e.g. project name). */
+  keywords?: string
+  /** Renders as a non-selectable group heading (e.g. a project above its details). */
+  header?: boolean
+  /** Indents the row under its heading and prefixes a ↳ mark (e.g. a project detail). */
+  indent?: boolean
 }
 
 interface SearchableSelectProps {
@@ -53,9 +59,25 @@ export function SearchableSelect({
     }
   }, [open])
 
-  const sorted = [...options].sort((a, b) => a.label.localeCompare(b.label))
+  // With headers present, keep the caller's order (header then its children);
+  // otherwise alpha-sort as before.
+  const hasHeaders = options.some((o) => o.header)
   const term = q.trim().toLowerCase()
-  const shown = term ? sorted.filter((o) => o.label.toLowerCase().includes(term)) : sorted
+  const match = (o: SelectOption) => (o.keywords ? `${o.label} ${o.keywords}` : o.label).toLowerCase().includes(term)
+  const sorted = hasHeaders ? options : [...options].sort((a, b) => a.label.localeCompare(b.label))
+  let shown: SelectOption[]
+  if (!term) shown = sorted
+  else if (!hasHeaders) shown = sorted.filter(match)
+  else {
+    // Match only real rows; keep a header when a child before the next header matches.
+    const keep = sorted.map((o) => !o.header && match(o))
+    shown = sorted.filter((o, i) => {
+      if (!o.header) return keep[i]
+      for (let j = i + 1; j < sorted.length && !sorted[j].header; j++) if (keep[j]) return true
+      return false
+    })
+  }
+  const firstPick = shown.find((o) => !o.header)
   const selected = options.find((o) => o.value === value)
   const exact = !!term && options.some((o) => o.label.toLowerCase() === term)
 
@@ -93,7 +115,7 @@ export function SearchableSelect({
                 // enclosing <form> — the drawer forms wrap these selects).
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  if (shown.length) pick(shown[0].value)
+                  if (firstPick) pick(firstPick.value)
                   else if (allowCreate && term && !exact) pick(q.trim())
                 }
               }}
@@ -112,17 +134,32 @@ export function SearchableSelect({
                 {!value && <Check className="h-4 w-4 text-brand-600" />}
               </button>
             )}
-            {shown.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => pick(o.value)}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:active:bg-slate-700/50"
-              >
-                <span className="truncate">{o.label}</span>
-                {o.value === value && <Check className="ml-2 h-4 w-4 shrink-0 text-brand-600" />}
-              </button>
-            ))}
+            {shown.map((o) =>
+              o.header ? (
+                <div
+                  key={o.value}
+                  className="truncate px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500"
+                >
+                  {o.label}
+                </div>
+              ) : (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => pick(o.value)}
+                  className={clsx(
+                    'flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:active:bg-slate-700/50',
+                    o.indent && 'pl-7',
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {o.indent && <span className="shrink-0 text-slate-300 dark:text-slate-600">↳</span>}
+                    <span className="truncate">{o.label}</span>
+                  </span>
+                  {o.value === value && <Check className="ml-2 h-4 w-4 shrink-0 text-brand-600" />}
+                </button>
+              ),
+            )}
             {allowCreate && term && !exact && (
               <button
                 type="button"

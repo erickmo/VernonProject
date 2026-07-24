@@ -1,12 +1,12 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams, Outlet } from 'react-router-dom'
 import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy, FolderInput,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy, FolderInput, AlarmClock,
 } from 'lucide-react'
-import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject } from '@/hooks/useData'
+import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, useMeetings } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
@@ -21,12 +21,12 @@ import { MoveProjectDetailDialog } from '@web/components/MoveProjectDetailDialog
 import { TeamWorkloadDrawer } from '@web/components/TeamWorkloadDrawer'
 import { TeamManagerDrawer } from '@web/components/TeamManagerDrawer'
 import { Section } from '@web/components/Page'
-import { PropertyRow, Property } from '@web/components/Property'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { EntityChip } from '@web/components/EntityChip'
 import { ProjectGroupPhoto } from '@/components/TeamWallCanvas'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
 import { ProjectMeetings } from '@web/components/ProjectMeetings'
+import { upcomingMeetings, slot } from '@/components/MeetingReminder'
 import type { TeamMember, ProjectDetailSummary } from '@/lib/types'
 
 type View = 'list' | 'gantt'
@@ -58,18 +58,6 @@ function StatusPill({ status }: { status: string }) {
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {status}
     </span>
-  )
-}
-
-// Compact metric block for the project hero.
-function MiniStat({ label, value, accent }: { label: string; value: ReactNode; accent?: 'rose' }) {
-  return (
-    <div className="rounded-xl bg-canvas px-3 py-2 text-center">
-      <div className={clsx('font-display text-lg font-semibold tabular-nums leading-none', accent === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-ink')}>
-        {value}
-      </div>
-      <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted">{label}</div>
-    </div>
   )
 }
 
@@ -118,6 +106,7 @@ export default function Project() {
   >(null)
 
   const gantt = useProjectGantt(id, view === 'gantt')
+  const meetings = useMeetings(id)
 
   // Project is reused across /project/:name switches (rail stays visible), so
   // reset any open overlay when the project changes — else it lingers with the
@@ -176,6 +165,7 @@ export default function Project() {
   const minutesTotal = p.project_details.reduce((s, w) => s + w.minutes_total, 0)
   const minutesDone = p.project_details.reduce((s, w) => s + w.minutes_done, 0)
   const progress = progressPct(minutesDone, minutesTotal, doneTasks, totalTasks)
+  const nextMeeting = upcomingMeetings(meetings.data?.meetings ?? [], 1)[0]
 
   const doDelete = async () => {
     if (!(await confirm({ title: 'Delete this project?', confirmLabel: 'Delete', destructive: true }))) return
@@ -331,19 +321,42 @@ export default function Project() {
             )}
           </div>
 
-          {/* Progress + at-a-glance metrics */}
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          {/* Progress (left) + project meta & next-meeting reminder (right, same row) */}
+          <div className="grid gap-x-6 gap-y-4 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="min-w-0">
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-display text-2xl font-semibold tabular-nums text-ink">{progress}%</span>
-                <span className="text-xs font-medium text-muted">complete · {doneTasks}/{totalTasks} todos</span>
+                <span className="text-xs font-medium text-muted">complete · {doneTasks}/{totalTasks} todos · {formatEstimateRatio(minutesDone, minutesTotal)}</span>
+                {overdue > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                    <AlertCircle className="h-3 w-3" /> {overdue} overdue
+                  </span>
+                )}
               </div>
               <ProgressBar value={progress} className="mt-2" />
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:flex">
-              <MiniStat label="Todos" value={`${doneTasks}/${totalTasks}`} />
-              <MiniStat label="Overdue" value={overdue} accent={overdue > 0 ? 'rose' : undefined} />
-              <MiniStat label="Time" value={formatEstimateRatio(minutesDone, minutesTotal)} />
+
+            {/* Owner/Leader/dates/brand + soonest meeting — lifted out of the left column so the Details list leads it. */}
+            <div className="flex flex-col gap-2 lg:items-end">
+              <div className="flex flex-wrap items-center gap-1.5 lg:justify-end">
+                <EntityChip avatarName={p.owner_name} image={ownerMember?.image ?? undefined} config={ownerMember?.avatar_config} label={p.owner_name} />
+                {p.leader_name && p.leader_name !== p.owner_name && (
+                  <EntityChip avatarName={p.leader_name} image={leaderMember?.image ?? undefined} config={leaderMember?.avatar_config} label={p.leader_name} />
+                )}
+                {p.start_date && <EntityChip icon={CalendarDays} label={`Start ${formatDate(p.start_date)}`} />}
+                {p.deadline && <EntityChip icon={CalendarClock} label={`Due ${formatDate(p.deadline)}`} />}
+                <EntityChip icon={Tag} label={p.brand} />
+              </div>
+              {nextMeeting && (
+                <a
+                  href="#project-meetings"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber-300 bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_8px_20px_-8px_rgba(244,63,94,0.6)]"
+                >
+                  <AlarmClock className="h-3.5 w-3.5 shrink-0" />
+                  <span className="tabular-nums">{nextMeeting.scheduled_at ? slot(nextMeeting.scheduled_at) : 'No date'}</span>
+                  <span className="min-w-0 truncate font-medium text-amber-50">· {nextMeeting.title}</span>
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -354,48 +367,6 @@ export default function Project() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,26rem)_1fr]">
         {/* COL 2: project meta (top) → details list → group photo */}
         <section className="min-w-0 space-y-5">
-          {/* --- Project meta --- */}
-          <div className="rounded-2xl bg-surface p-4 shadow-card">
-          <PropertyRow>
-            <Property label="Owner" icon={Users}>
-              <EntityChip avatarName={p.owner_name} image={ownerMember?.image ?? undefined} config={ownerMember?.avatar_config} label={p.owner_name} />
-            </Property>
-            {p.leader_name && p.leader_name !== p.owner_name && (
-              <Property label="Leader" icon={Users}>
-                <EntityChip avatarName={p.leader_name} image={leaderMember?.image ?? undefined} config={leaderMember?.avatar_config} label={p.leader_name} />
-              </Property>
-            )}
-            {p.start_date && (
-              <Property label="Start" icon={CalendarDays}>
-                <span className="text-sm">{formatDate(p.start_date)}</span>
-              </Property>
-            )}
-            {p.deadline && (
-              <Property label="Deadline" icon={CalendarDays}>
-                <span className="text-sm">{formatDate(p.deadline)}</span>
-              </Property>
-            )}
-            <Property label="Brand" icon={Tag}>
-              <EntityChip icon={Tag} label={p.brand} />
-            </Property>
-          </PropertyRow>
-          </div>
-
-          {p.can_set_auto_approve && canAutoApprove && (
-            <div className="max-w-sm">
-              <ProjectAutoApproveSwitch
-                enabled={p.auto_approve}
-                disabled={setProjectAutoApprove.isPending}
-                onToggle={() =>
-                  setProjectAutoApprove.mutate(
-                    { project: p.name, enabled: p.auto_approve ? 0 : 1 },
-                    { onError: (e) => toast('error', (e as Error).message) },
-                  )
-                }
-              />
-            </div>
-          )}
-
           {p.blocked_by && (
             <button
               onClick={() => nav(`/project/${encodeURIComponent(p.blocked_by!)}`)}
@@ -407,52 +378,8 @@ export default function Project() {
             </button>
           )}
 
-          {p.goal && (
-            <Section title={<span className="inline-flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Goal</span>}>
-              <p className="text-sm leading-relaxed text-muted dark:text-slate-300">{p.goal}</p>
-            </Section>
-          )}
-
-          {p.team.length > 0 && (
-            <Section
-              title="Team"
-              actions={
-                perms.can_edit ? (
-                  <button
-                    onClick={() => setTeamOpen(true)}
-                    className="flex items-center gap-1 rounded-full bg-canvas px-3 py-1.5 text-xs font-semibold text-muted dark:text-slate-300 hover:bg-hover/[0.04] transition"
-                  >
-                    <Users className="h-3.5 w-3.5" /> Manage
-                  </button>
-                ) : undefined
-              }
-            >
-              <div className="flex flex-wrap gap-1.5">
-                {p.team.map((m) => {
-                  const role = m.is_owner && m.is_leader ? 'Owner · Leader'
-                    : m.is_owner ? 'Owner' : m.is_leader ? 'Leader' : null
-                  return (
-                    <button key={m.user} onClick={() => setWorkloadMember(m)}>
-                      <EntityChip
-                        avatarName={m.name}
-                        image={m.image ?? undefined}
-                        config={m.avatar_config}
-                        label={role ? `${m.name} (${role})` : m.name}
-                      />
-                    </button>
-                  )
-                })}
-              </div>
-            </Section>
-          )}
-
-          {/* --- Meetings (project-scoped): Upcoming / Past tabs --- */}
-          <div className="border-t border-line pt-5">
-            <ProjectMeetings project={p.name} canManage={perms.can_edit} />
-          </div>
-
-          {/* --- Details list / gantt (pick a detail → its todos fill col 3) --- */}
-          <div className="space-y-3 border-t border-line pt-5">
+          {/* --- Details list / gantt leads the column (meta + next meeting live in the hero now) --- */}
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Details</h2>
               <div className="flex items-center gap-2">
@@ -532,6 +459,65 @@ export default function Project() {
                 />
               </>
             )}
+          </div>
+
+          {p.can_set_auto_approve && canAutoApprove && (
+            <div className="max-w-sm border-t border-line pt-5">
+              <ProjectAutoApproveSwitch
+                enabled={p.auto_approve}
+                disabled={setProjectAutoApprove.isPending}
+                onToggle={() =>
+                  setProjectAutoApprove.mutate(
+                    { project: p.name, enabled: p.auto_approve ? 0 : 1 },
+                    { onError: (e) => toast('error', (e as Error).message) },
+                  )
+                }
+              />
+            </div>
+          )}
+
+          {p.goal && (
+            <Section title={<span className="inline-flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Goal</span>}>
+              <p className="text-sm leading-relaxed text-muted dark:text-slate-300">{p.goal}</p>
+            </Section>
+          )}
+
+          {p.team.length > 0 && (
+            <Section
+              title="Team"
+              actions={
+                perms.can_edit ? (
+                  <button
+                    onClick={() => setTeamOpen(true)}
+                    className="flex items-center gap-1 rounded-full bg-canvas px-3 py-1.5 text-xs font-semibold text-muted dark:text-slate-300 hover:bg-hover/[0.04] transition"
+                  >
+                    <Users className="h-3.5 w-3.5" /> Manage
+                  </button>
+                ) : undefined
+              }
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {p.team.map((m) => {
+                  const role = m.is_owner && m.is_leader ? 'Owner · Leader'
+                    : m.is_owner ? 'Owner' : m.is_leader ? 'Leader' : null
+                  return (
+                    <button key={m.user} onClick={() => setWorkloadMember(m)}>
+                      <EntityChip
+                        avatarName={m.name}
+                        image={m.image ?? undefined}
+                        config={m.avatar_config}
+                        label={role ? `${m.name} (${role})` : m.name}
+                      />
+                    </button>
+                  )
+                })}
+              </div>
+            </Section>
+          )}
+
+          {/* --- Meetings (project-scoped): Upcoming / Past tabs. #project-meetings = hero reminder jumps here --- */}
+          <div id="project-meetings" className="border-t border-line pt-5">
+            <ProjectMeetings project={p.name} canManage={perms.can_edit} />
           </div>
 
           {/* Group photo last — decorative + tall */}

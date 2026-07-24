@@ -3,22 +3,7 @@ import clsx from 'clsx'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { TodoCard } from '@/components/TodoCard'
 import type { ProjectItem } from '@/lib/types'
-
-// Bucket todos by project, first-seen order (follows the list's existing sort).
-type Group = { key: string; name: string; todos: ProjectItem[] }
-function groupByProject(todos: ProjectItem[]): Group[] {
-  const map = new Map<string, Group>()
-  for (const t of todos) {
-    const key = t.project || t.project_name || '—'
-    let g = map.get(key)
-    if (!g) {
-      g = { key, name: t.project_name || t.project || '—', todos: [] }
-      map.set(key, g)
-    }
-    g.todos.push(t)
-  }
-  return [...map.values()]
-}
+import { groupByDetail, detailPickerOptions } from '@/lib/filters'
 
 function Cards({ todos }: { todos: ProjectItem[] }) {
   return (
@@ -96,11 +81,11 @@ export function SwipeProjectLists({ items }: { items: ProjectItem[] }) {
     }
   }, [idx, picks])
 
-  const groups = groupByProject(items)
-  // One project → focus panes are pointless; just show the flat list.
+  const groups = groupByDetail(items)
+  // One detail → focus panes are pointless; just show the flat list.
   if (groups.length < 2) return <Cards todos={items} />
 
-  const options = groups.map((g) => ({ value: g.key, label: `${g.name} (${g.todos.length})` }))
+  const options = detailPickerOptions(groups)
   const setPick = (i: number, v: string) => setPicks((p) => p.map((x, k) => (k === i ? v : x)))
   const paneTodos = (i: number) => groups.find((g) => g.key === picks[i])?.todos
 

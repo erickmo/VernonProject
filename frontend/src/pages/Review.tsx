@@ -32,7 +32,7 @@ export default function Review() {
 
   const dimensions = useMemo(
     () => [
-      { key: 'project', label: 'Project', options: buildOptions(review, (t) => t.project, (t) => t.project_name) },
+      { key: 'project', label: 'Project', options: buildOptions(review, (t) => t.project, (t) => t.project_name, (t) => t.project_detail_title) },
       { key: 'brand', label: 'Brand', options: buildOptions(review, (t) => t.brand, (t) => t.brand) },
       {
         key: 'assignee',

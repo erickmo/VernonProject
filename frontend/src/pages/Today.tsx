@@ -289,7 +289,7 @@ export default function Today() {
   const statusCount = (k: StatusKey) => activeTodos.filter((t) => t.status_key === k).length
   const dimensions = useMemo(
     () => [
-      { key: 'project', label: 'Project', options: buildOptions(activeTodos, (t) => t.project, (t) => t.project_name) },
+      { key: 'project', label: 'Project', options: buildOptions(activeTodos, (t) => t.project, (t) => t.project_name, (t) => t.project_detail_title) },
       { key: 'brand', label: 'Brand', options: buildOptions(activeTodos, (t) => t.brand, (t) => t.brand) },
       { key: 'owner', label: 'Project Owner', options: buildOptions(activeTodos, (t) => t.project_owner, (t) => t.project_owner_name) },
       { key: 'leader', label: 'Project Leader', options: buildOptions(activeTodos, (t) => t.project_leader, (t) => t.project_leader_name) },

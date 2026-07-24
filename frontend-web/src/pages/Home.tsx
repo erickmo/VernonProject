@@ -503,7 +503,7 @@ export default function Home() {
   // Multi-dimension filters (project/brand/owner/leader/estimate) — options derive
   // from the active (non-waiting) work set.
   const filterDims: FilterDimension[] = [
-    { key: 'project', label: 'Project', options: buildOptions(activeTodos, (t) => t.project, (t) => t.project_name) },
+    { key: 'project', label: 'Project', options: buildOptions(activeTodos, (t) => t.project, (t) => t.project_name, (t) => t.project_detail_title) },
     { key: 'brand', label: 'Brand', options: buildOptions(activeTodos, (t) => t.brand, (t) => t.brand) },
     { key: 'owner', label: 'Project Owner', options: buildOptions(activeTodos, (t) => t.project_owner, (t) => t.project_owner_name) },
     { key: 'leader', label: 'Project Leader', options: buildOptions(activeTodos, (t) => t.project_leader, (t) => t.project_leader_name) },
@@ -834,6 +834,7 @@ export default function Home() {
                                 options={dd.options.map((o) => ({
                                   value: o.value,
                                   label: o.count != null ? `${o.label} (${o.count})` : o.label,
+                                  keywords: o.keywords,
                                 }))}
                                 allowClear
                                 placeholder="Any"
