@@ -14,10 +14,10 @@
 # See docs/superpowers/specs/2026-07-19-superpowers-design.md.
 
 import frappe
-from frappe.utils import cint, flt, now_datetime, add_days, getdate, nowdate
+from frappe.utils import cint, flt, now_datetime, add_days, get_time, getdate, nowdate
 # The gamified DiceBear avatar (config) wins over the uploaded photo everywhere
 # in the app — reuse mobile's batch resolver so superpower avatars match.
-from vernon_project.api.mobile import _avatar_config_map
+from vernon_project.api.mobile import _avatar_config_map, _notify
 
 # Mirrors mobile.py STATUS_COMPLETED (the completed Project Todo status).
 _STATUS_COMPLETED = "✅ Completed"
@@ -31,6 +31,32 @@ _ATT_ACTIVE = _ATT_ONTIME + _ATT_LATE     # counts as an active/attended day
 
 def _is_admin():
 	return "System Manager" in frappe.get_roles()
+
+
+def _is_hr():
+	"""HR Manager or System Manager — the roles allowed to see others' private
+	peer-vote scores (a person's received scores are otherwise owner-only)."""
+	roles = frappe.get_roles()
+	return "HR Manager" in roles or "System Manager" in roles
+
+
+# Peer-voted averages below this stay private and off the team wall. Votes are
+# anonymous and exist to help each person know & grow their own strengths, so
+# only strong signals (and only to the owner / HR) are surfaced elsewhere.
+# The threshold is admin-tunable via Superpower Settings.wall_score_min.
+_WALL_SCORE_MIN_DEFAULT = 7.5
+
+
+def _wall_min():
+	return flt(_settings().wall_score_min) or _WALL_SCORE_MIN_DEFAULT
+
+
+def _quarter_key(d=None):
+	"""Voting quarter tag like '2026-Q3'. Peer votes expire each quarter — a fresh
+	row per (ratee, voter, superpower, quarter) is kept so history powers the ratee's
+	progress trend, while aggregates and the gate scope to the current quarter."""
+	d = getdate(d) if d else getdate(nowdate())
+	return f"{d.year}-Q{(d.month - 1) // 3 + 1}"
 
 
 def _require_login():
@@ -100,9 +126,12 @@ def _shape_agg(sp, S, n, my_vote, prior_mean, K, levels, catalog):
 
 
 def _voted_for(ratee, caller):
-	"""Aggregate every Superpower Vote for `ratee`, grouped by superpower."""
+	"""Aggregate this quarter's Superpower Votes for `ratee`, grouped by superpower.
+	Votes expire quarterly, so only the current quarter counts toward live scores."""
 	votes = frappe.get_all(
-		"Superpower Vote", filters={"ratee": ratee}, fields=["superpower", "voter", "score"]
+		"Superpower Vote",
+		filters={"ratee": ratee, "quarter": _quarter_key()},
+		fields=["superpower", "voter", "score"],
 	)
 	if not votes:
 		return []
@@ -120,20 +149,6 @@ def _voted_for(ratee, caller):
 		_shape_agg(sp, a["sum"], a["count"], a["my_vote"], prior_mean, K, levels, catalog)
 		for sp, a in agg.items()
 	]
-
-
-def _agg_one(ratee, superpower, caller):
-	"""Fresh aggregate for a single (ratee, superpower) — same shape as a voted item."""
-	votes = frappe.get_all(
-		"Superpower Vote",
-		filters={"ratee": ratee, "superpower": superpower},
-		fields=["voter", "score"],
-	)
-	s = _settings()
-	S = sum(cint(v["score"]) for v in votes)
-	n = len(votes)
-	my_vote = next((cint(v["score"]) for v in votes if v["voter"] == caller), None)
-	return _shape_agg(superpower, S, n, my_vote, flt(s.prior_mean), cint(s.confidence_k), _levels(), _catalog_map([superpower]))
 
 
 def _mine_for(user):
@@ -157,12 +172,13 @@ def _mine_for(user):
 
 def _recognition_credit(voter, ratee, superpower):
 	"""Mint vote_points to the ratee as a Recognition Point Ledger row. Idempotent
-	per (voter, ratee, superpower) via the note key, so re-voting/score-updates never
-	farm extra points. Inert when vote_points<=0. Mirrors mobile.py::_recognition_credit."""
+	per (voter, ratee, superpower, quarter) via the note key, so re-voting within a
+	quarter never farms extra points but a new quarter's recognition mints again.
+	Inert when vote_points<=0. Mirrors mobile.py::_recognition_credit."""
 	pts = cint(_settings().vote_points)
 	if pts <= 0:
 		return
-	note = f"Superpower: {superpower}"
+	note = f"Superpower: {superpower} · {_quarter_key()}"
 	if frappe.db.exists(
 		"Point Ledger", {"user": ratee, "granted_by": voter, "source": "Recognition", "note": note}
 	):
@@ -371,11 +387,25 @@ def get_user_superpowers(user):
 	_require_login()
 	session = frappe.session.user
 	mine = _mine_for(user)
+	# A person's received peer-vote scores are private: only the owner (to know &
+	# grow themselves) or HR/System Manager may see the aggregates, signature and
+	# achievement. Any other viewer gets only their OWN cast vote per trait (so they
+	# can still see/change what they gave) — no averages, counts or levels leak.
+	can_see_scores = (session == user) or _is_hr()
 	voted = _voted_for(user, session)
-	signature = max(voted, key=lambda x: x["weighted"]) if voted else None
-	levels = _levels()
-	top_name = levels[-1]["level_name"] if levels else None
-	achievement = any(it["level"] and it["level"]["level_name"] == top_name for it in voted)
+	if can_see_scores:
+		signature = max(voted, key=lambda x: x["weighted"]) if voted else None
+		levels = _levels()
+		top_name = levels[-1]["level_name"] if levels else None
+		achievement = any(it["level"] and it["level"]["level_name"] == top_name for it in voted)
+	else:
+		voted = [
+			{**it, "avg": 0, "count": 0, "weighted": 0, "level": None}
+			for it in voted
+			if it["my_vote"] is not None
+		]
+		signature = None
+		achievement = False
 	meta = frappe.db.get_value("User", user, ["full_name", "user_image"], as_dict=True) or {}
 	return {
 		"user": user,
@@ -387,9 +417,211 @@ def get_user_superpowers(user):
 		"performance": _perf_scores(user),
 		"signature": signature,
 		"achievement": achievement,
+		"can_see_scores": can_see_scores,
 		# Only the owner may edit their own self-claimed superpowers (not admins).
 		"can_edit_mine": session == user,
 	}
+
+
+def _perf_wall_groups():
+	"""Performance superpowers as wall groups: each enabled Performance trait, with
+	members = users who earned score>0, ranked by score. Batched — 2 queries for all
+	users instead of _perf_scores' O(users) round-trips (85 users ≈ 8s otherwise).
+	Same scoring formulas as the per-user _score_* helpers, computed from in-memory
+	aggregates. Returns raw groups {superpower, kind, members:[{user,score,...}]}."""
+	perf = frappe.get_all(
+		"Superpower", filters={"enabled": 1, "kind": "Performance"}, fields=["name", "metric"]
+	)
+	if not perf:
+		return []
+	s = _settings()
+	window = cint(s.perf_window_days) or 30
+	streak_target = cint(s.streak_target) or 30
+	finisher_target = cint(s.finisher_target) or 30
+	# Streak needs target+2 days of history; fetch the longer of the two windows.
+	start = add_days(nowdate(), -max(window, streak_target + 2))
+	window_start = getdate(add_days(nowdate(), -window))
+	today = getdate(nowdate())
+	att = {}   # user -> [(date, status)]
+	for r in frappe.get_all(
+		"Daily Attendance",
+		filters={"attendance_date": [">=", start], "status": ["in", list(_ATT_ACTIVE)]},
+		fields=["employee", "status", "attendance_date"],
+	):
+		att.setdefault(r["employee"], []).append((getdate(r["attendance_date"]), r["status"]))
+	todo = {}  # user -> [(date, deadline)]
+	for r in frappe.get_all(
+		"Project Todo",
+		filters={"status": _STATUS_COMPLETED, "completed_at": [">=", start]},
+		fields=["assigned_to", "completed_at", "deadline"],
+	):
+		todo.setdefault(r["assigned_to"], []).append((getdate(r["completed_at"]), r.get("deadline")))
+	users = set(att) | set(todo)
+
+	def ontime(u):
+		rows = [st for (d, st) in att.get(u, []) if d >= window_start]
+		return (sum(1 for st in rows if st in _ATT_ONTIME) / len(rows) * 10) if rows else 0
+
+	def beat(u):
+		rows = [(d, dl) for (d, dl) in todo.get(u, []) if d >= window_start]
+		return (sum(1 for (d, dl) in rows if dl and d <= getdate(dl)) / len(rows) * 10) if rows else 0
+
+	def finisher(u):
+		cnt = sum(1 for (d, _) in todo.get(u, []) if d >= window_start)
+		return min(cnt, finisher_target) / finisher_target * 10 if finisher_target else 0
+
+	def streak(u):
+		active = {d for (d, _) in att.get(u, [])} | {d for (d, _) in todo.get(u, [])}
+		cur = today if today in active else (add_days(today, -1) if getdate(add_days(today, -1)) in active else None)
+		run, d = 0, (getdate(cur) if cur else None)
+		while d and d in active:
+			run += 1
+			d = getdate(add_days(d, -1))
+		return min(run, streak_target) / streak_target * 10 if streak_target else 0
+
+	fns = {"ontime": ontime, "beat_deadline": beat, "finisher": finisher, "streak": streak}
+	out = []
+	for t in perf:
+		f = fns.get(t["metric"])
+		if not f:
+			continue
+		members = [
+			{"user": u, "score": round(sc, 1), "vote_count": 0, "self_claimed": False}
+			for u in users
+			for sc in [f(u)]
+			if sc > 0
+		]
+		if members:
+			out.append({"superpower": t["name"], "kind": "Performance", "members": members})
+	return out
+
+
+@frappe.whitelist()
+def get_superpower_wall():
+	"""Team-wall grouping in two families the UI shows as separate tabs.
+	Scored (kind Voted / Performance): Voted groups list only members whose average
+	peer vote is > 7.5 — votes are anonymous and low scores stay private, so the wall
+	celebrates strengths only. Performance groups list users with an earned score>0
+	(objective, unfiltered). Self-claimed (kind SelfClaimed): everyone who self-claimed
+	the trait, no scores, fully public. Members sort by score desc (tiebreak vote
+	count, name); groups by member count desc, then name. Disabled users dropped."""
+	_require_login()
+	wall_min = _wall_min()
+	# --- peer-voted averages (this quarter), kept only above the threshold (private-strengths) ---
+	vagg = {}  # (superpower, user) -> {sum, count}
+	for v in frappe.get_all(
+		"Superpower Vote", filters={"quarter": _quarter_key()}, fields=["superpower", "ratee", "score"]
+	):
+		a = vagg.setdefault((v["superpower"], v["ratee"]), {"sum": 0, "count": 0})
+		a["sum"] += cint(v["score"])
+		a["count"] += 1
+	voted = {}  # superpower -> members
+	for (sp, user), a in vagg.items():
+		avg = a["sum"] / a["count"]
+		if avg > wall_min:
+			voted.setdefault(sp, []).append(
+				{"user": user, "score": round(avg, 1), "vote_count": a["count"], "self_claimed": False}
+			)
+	# --- self-claimed: public. Show the member's peer-vote score only when it clears
+	# the same threshold (else no score badge), so strong self-claims are validated. ---
+	claimed = {}  # superpower -> members
+	for r in frappe.get_all("User Superpower", fields=["superpower", "user"]):
+		a = vagg.get((r["superpower"], r["user"]))
+		avg = (a["sum"] / a["count"]) if a else 0
+		show = avg > wall_min
+		claimed.setdefault(r["superpower"], []).append({
+			"user": r["user"],
+			"score": round(avg, 1) if show else 0,
+			"vote_count": a["count"] if (a and show) else 0,
+			"self_claimed": True,
+		})
+	raw_groups = (
+		[{"superpower": sp, "kind": "Voted", "members": m} for sp, m in voted.items()]
+		+ _perf_wall_groups()
+		+ [{"superpower": sp, "kind": "SelfClaimed", "members": m} for sp, m in claimed.items()]
+	)
+	if not raw_groups:
+		return {"groups": []}
+	all_users = {m["user"] for g in raw_groups for m in g["members"]}
+	meta = {
+		m["name"]: m
+		for m in frappe.get_all(
+			"User",
+			filters={"name": ["in", list(all_users)], "enabled": 1},
+			fields=["name", "full_name", "user_image"],
+		)
+	}
+	avatars = _avatar_config_map(list(meta))
+	catalog = _catalog_map([g["superpower"] for g in raw_groups])
+	groups = []
+	for g in raw_groups:
+		users = []
+		for m in g["members"]:
+			um = meta.get(m["user"])
+			if not um:
+				continue
+			users.append({
+				"name": m["user"],
+				"full_name": um["full_name"] or m["user"],
+				"user_image": um["user_image"],
+				"avatar_config": avatars.get(m["user"]),
+				"score": m["score"],
+				"vote_count": m["vote_count"],
+				"self_claimed": m["self_claimed"],
+			})
+		if not users:
+			continue
+		users.sort(key=lambda x: (-x["score"], -x["vote_count"], (x["full_name"] or "").lower()))
+		cm = catalog.get(g["superpower"]) or {}
+		groups.append({
+			"superpower": g["superpower"],
+			"name": cm.get("superpower_name") or g["superpower"],
+			"icon": cm.get("icon"),
+			"color": cm.get("color"),
+			"category": cm.get("category"),
+			"kind": g["kind"],
+			"count": len(users),
+			"users": users,
+		})
+	groups.sort(key=lambda g: (-g["count"], g["name"].lower()))
+	return {"groups": groups}
+
+
+@frappe.whitelist()
+def get_superpower_progress(user):
+	"""Per-quarter recognition trend for `user` (the ratee) — owner or HR only, since
+	scores are private. Peer votes expire each quarter, so this is how the voted user
+	watches their progress build: each quarter's overall average received vote (0-10),
+	distinct superpowers scored, and distinct voters. Oldest → newest."""
+	_require_login()
+	session = frappe.session.user
+	if not (session == user or _is_hr()):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	by_q = {}
+	for r in frappe.get_all(
+		"Superpower Vote", filters={"ratee": user}, fields=["quarter", "superpower", "voter", "score"]
+	):
+		q = r["quarter"]
+		if not q:
+			continue
+		a = by_q.setdefault(q, {"sum": 0, "n": 0, "traits": set(), "voters": set()})
+		a["sum"] += cint(r["score"])
+		a["n"] += 1
+		a["traits"].add(r["superpower"])
+		a["voters"].add(r["voter"])
+	quarters = sorted(
+		(
+			{
+				"quarter": q,
+				"avg": round(a["sum"] / a["n"], 2) if a["n"] else 0,
+				"traits": len(a["traits"]),
+				"voters": len(a["voters"]),
+			}
+			for q, a in by_q.items()
+		),
+		key=lambda x: x["quarter"],
+	)
+	return {"quarters": quarters, "current": _quarter_key()}
 
 
 @frappe.whitelist()
@@ -439,8 +671,11 @@ def cast_vote(ratee, superpower, score):
 		frappe.throw("Unknown superpower.", frappe.DoesNotExistError)
 	if frappe.db.get_value("Superpower", superpower, "kind") == "Performance":
 		frappe.throw("This superpower is earned by performance and cannot be voted.")
+	# Upsert within the current quarter — a new quarter starts a fresh row so past
+	# quarters stay intact for the ratee's progress trend.
+	q = _quarter_key()
 	existing = frappe.db.exists(
-		"Superpower Vote", {"ratee": ratee, "voter": voter, "superpower": superpower}
+		"Superpower Vote", {"ratee": ratee, "voter": voter, "superpower": superpower, "quarter": q}
 	)
 	if existing:
 		frappe.db.set_value("Superpower Vote", existing, "score", score)
@@ -451,10 +686,13 @@ def cast_vote(ratee, superpower, score):
 			"voter": voter,
 			"superpower": superpower,
 			"score": score,
+			"quarter": q,
 		}).insert(ignore_permissions=True)
 	_recognition_credit(voter, ratee, superpower)
 	frappe.db.commit()
-	return _agg_one(ratee, superpower, voter)
+	# Anonymous & one-directional: the voter never sees the ratee's aggregate back
+	# (it's private). Echo only their own vote so the UI can reflect it.
+	return {"superpower": superpower, "my_vote": score}
 
 
 @frappe.whitelist()
@@ -470,8 +708,11 @@ def list_votable_users():
 		fields=["name", "full_name", "user_image"],
 		order_by="full_name asc",
 	)
+	# Current quarter only — the "sudah dinilai" marker resets when votes expire.
 	counts = {}
-	for r in frappe.get_all("Superpower Vote", filters={"voter": session}, fields=["ratee"]):
+	for r in frappe.get_all(
+		"Superpower Vote", filters={"voter": session, "quarter": _quarter_key()}, fields=["ratee"]
+	):
 		counts[r["ratee"]] = counts.get(r["ratee"], 0) + 1
 	avatars = _avatar_config_map([u["name"] for u in users])
 	return [{
@@ -486,11 +727,12 @@ def list_votable_users():
 
 @frappe.whitelist()
 def remove_vote(ratee, superpower):
-	"""The voter deletes their own vote for that (ratee, superpower)."""
+	"""The voter deletes their own current-quarter vote for that (ratee, superpower)."""
 	_require_login()
 	voter = frappe.session.user
 	existing = frappe.db.exists(
-		"Superpower Vote", {"ratee": ratee, "voter": voter, "superpower": superpower}
+		"Superpower Vote",
+		{"ratee": ratee, "voter": voter, "superpower": superpower, "quarter": _quarter_key()},
 	)
 	if existing:
 		frappe.delete_doc("Superpower Vote", existing, ignore_permissions=True)
@@ -510,6 +752,7 @@ def get_superpower_settings():
 		"prior_mean": flt(s.prior_mean),
 		"confidence_k": cint(s.confidence_k),
 		"vote_points": cint(s.vote_points),
+		"wall_score_min": _wall_min(),
 		"perf_window_days": cint(s.perf_window_days) or 30,
 		"streak_target": cint(s.streak_target) or 30,
 		"finisher_target": cint(s.finisher_target) or 30,
@@ -518,7 +761,7 @@ def get_superpower_settings():
 
 
 @frappe.whitelist()
-def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=None, perf_window_days=None, streak_target=None, finisher_target=None, levels=None):
+def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=None, wall_score_min=None, perf_window_days=None, streak_target=None, finisher_target=None, levels=None):
 	"""Admin only. Update the knobs and replace the level bands."""
 	if not _is_admin():
 		frappe.throw("Not permitted", frappe.PermissionError)
@@ -529,6 +772,8 @@ def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=Non
 		s.confidence_k = cint(confidence_k)
 	if vote_points is not None:
 		s.vote_points = cint(vote_points)
+	if wall_score_min is not None:
+		s.wall_score_min = flt(wall_score_min)
 	if perf_window_days is not None:
 		s.perf_window_days = cint(perf_window_days)
 	if streak_target is not None:
@@ -548,3 +793,184 @@ def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=Non
 	s.save(ignore_permissions=True)
 	frappe.db.commit()
 	return get_superpower_settings()
+
+
+# --- daily recognition gate ----------------------------------------------------
+# Force each Internal-Team member to cast one superpower vote per day for an
+# Internal-Team colleague they haven't voted yet, until all colleagues are voted.
+# Blocking gate on app open + a daily push. State derives entirely from Superpower
+# Vote rows — no new doctype. Gated by Vernon Settings.force_daily_recognition.
+# See docs/superpowers/specs/2026-07-22-daily-recognition-gate-design.md.
+
+_INTERNAL_TEAM = "Internal Team"
+
+
+def _recognition_enabled():
+	return bool(cint(frappe.db.get_single_value("Vernon Settings", "force_daily_recognition")))
+
+
+def _recognition_gate_open():
+	"""True if the current server time is at/after the configured gate start time.
+	Empty/unset start time means the gate may pop any time of day."""
+	start = frappe.db.get_single_value("Vernon Settings", "recognition_gate_start_time")
+	if not start:
+		return True
+	return now_datetime().time() >= get_time(start)
+
+
+def _has_votable_catalog():
+	"""True if any enabled, non-Performance (votable) superpower exists. Null kind
+	is treated as Voted, matching set_my_superpowers."""
+	rows = frappe.get_all("Superpower", filters={"enabled": 1}, fields=["name", "kind"])
+	return any((r["kind"] or "Voted") != "Performance" for r in rows)
+
+
+def _internal_colleagues(user):
+	"""Enabled Internal-Team users other than `user`."""
+	return frappe.get_all(
+		"User",
+		filters={"enabled": 1, "custom_member_type": _INTERNAL_TEAM, "name": ["!=", user]},
+		fields=["name", "full_name", "user_image"],
+		order_by="full_name asc",
+	)
+
+
+def _votable_names():
+	"""Enabled, votable (non-Performance) superpower names — the full set a colleague
+	must be scored on to count as recognized. Null kind is treated as Voted."""
+	return {
+		r["name"]
+		for r in frappe.get_all("Superpower", filters={"enabled": 1}, fields=["name", "kind"])
+		if (r["kind"] or "Voted") != "Performance"
+	}
+
+
+def _done_and_progress(user, colleagues):
+	"""(done, progress) for this quarter. progress[colleague] = # distinct votable
+	superpowers `user` scored them on this quarter; done = colleagues scored on EVERY
+	votable superpower (none left out). Recognition is complete only when whole."""
+	names = [c["name"] for c in colleagues]
+	votable = _votable_names()
+	need = len(votable)
+	progress = {}
+	if names and votable:
+		for v in frappe.get_all(
+			"Superpower Vote",
+			filters={
+				"voter": user,
+				"ratee": ["in", names],
+				"quarter": _quarter_key(),
+				"superpower": ["in", list(votable)],
+			},
+			fields=["ratee", "superpower"],
+		):
+			progress.setdefault(v["ratee"], set()).add(v["superpower"])
+	done = {r for r, sp in progress.items() if len(sp) >= need} if need else set()
+	return done, {r: len(sp) for r, sp in progress.items()}
+
+
+def _completed_today(user, done):
+	"""True if `user` finished a colleague (all superpowers) today — a fully-done
+	colleague with a vote created today. Enforces one full recognition per day."""
+	if not done:
+		return False
+	return bool(
+		frappe.db.exists(
+			"Superpower Vote",
+			{
+				"voter": user,
+				"ratee": ["in", list(done)],
+				"quarter": _quarter_key(),
+				"creation": [">=", getdate(nowdate())],
+			},
+		)
+	)
+
+
+def _assign(undone, progress):
+	"""Pick the next colleague to recognize: finish ones already started this quarter
+	first (progress desc), then spread to those with the fewest current-quarter votes
+	received, tiebreak name — so nobody is abandoned half-scored or piled on."""
+	names = [c["name"] for c in undone]
+	recv = {}
+	for v in frappe.get_all(
+		"Superpower Vote", filters={"ratee": ["in", names], "quarter": _quarter_key()}, fields=["ratee"]
+	):
+		recv[v["ratee"]] = recv.get(v["ratee"], 0) + 1
+	return min(
+		undone,
+		key=lambda c: (-progress.get(c["name"], 0), recv.get(c["name"], 0), (c["full_name"] or c["name"]).lower()),
+	)
+
+
+def _gate_off(remaining=0, total=0):
+	return {"owed": False, "assignee": None, "remaining": remaining, "total": total}
+
+
+@frappe.whitelist()
+def get_recognition_gate(preview=0):
+	"""The session user's daily recognition obligation. `owed` is True only when the
+	feature is on, the user is Internal Team, a votable catalog exists, they still
+	have un-voted Internal-Team colleagues, and they haven't voted a new colleague
+	today. `assignee` is who to recognize now.
+
+	`preview=1` (System Manager only) is a testing override: it ignores the settings
+	flag, the Internal-Team membership check, and the once-per-day check, so an admin
+	can always see a populated gate. It still casts real votes if submitted."""
+	_require_login()
+	user = frappe.session.user
+	preview = bool(cint(preview)) and _is_admin()
+	if not _has_votable_catalog():
+		return _gate_off()
+	if not preview:
+		if not _recognition_enabled() or not _recognition_gate_open():
+			return _gate_off()
+		if (frappe.db.get_value("User", user, "custom_member_type") or "") != _INTERNAL_TEAM:
+			return _gate_off()
+	colleagues = _internal_colleagues(user)
+	total = len(colleagues)
+	if not total:
+		return _gate_off()
+	done, progress = _done_and_progress(user, colleagues)
+	undone = [c for c in colleagues if c["name"] not in done]
+	remaining = len(undone)
+	if not preview and (not remaining or _completed_today(user, done)):
+		return _gate_off(remaining, total)
+	# preview always shows someone: fall back to the full colleague list if all done.
+	a = _assign(undone if undone else colleagues, progress)
+	return {
+		"owed": True,
+		"assignee": {
+			"user": a["name"],
+			"user_name": a["full_name"] or a["name"],
+			"user_image": a["user_image"],
+			"avatar_config": _avatar_config_map([a["name"]]).get(a["name"]),
+		},
+		"remaining": remaining,
+		"total": total,
+	}
+
+
+def notify_recognition_gate():
+	"""Daily scheduler: push each owing Internal-Team member a reminder to recognize
+	their assigned colleague. Runs in the morning, before anyone has voted today, so
+	it only checks that un-voted colleagues remain."""
+	if not _recognition_enabled() or not _has_votable_catalog():
+		return
+	for m in frappe.get_all(
+		"User", filters={"enabled": 1, "custom_member_type": _INTERNAL_TEAM}, fields=["name"]
+	):
+		user = m["name"]
+		colleagues = _internal_colleagues(user)
+		done, progress = _done_and_progress(user, colleagues)
+		undone = [c for c in colleagues if c["name"] not in done]
+		if not undone:
+			continue
+		a = _assign(undone, progress)
+		name = a["full_name"] or a["name"]
+		_notify(
+			user,
+			"Kudos",
+			"Kenali rekanmu hari ini ⚡",
+			f"Nilai semua superpower {name}. {len(undone)} rekan lagi menunggu pengakuanmu kuartal ini.",
+		)

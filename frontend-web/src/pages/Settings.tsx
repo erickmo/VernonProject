@@ -4,7 +4,7 @@ import { Spinner, EmptyState } from '@/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
-import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings } from '@/hooks/useData'
+import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings, useSuperpowerSettings, useSaveSuperpowerSettings } from '@/hooks/useData'
 import { uploadBannerImage } from '@/lib/api'
 import type { HomeBanner } from '@/lib/types'
 
@@ -23,12 +23,19 @@ export default function Settings() {
   const { data: boot } = useBoot()
   const { data: loaded, isLoading } = useAppSettings()
   const save = useSaveAppSettings()
+  // Team Wall min score lives in Superpower Settings (separate endpoint) — surfaced
+  // here beside the recognition toggle since that's where admins look for it.
+  const { data: spSettings } = useSuperpowerSettings()
+  const saveSp = useSaveSuperpowerSettings()
+  const [wallScoreMin, setWallScoreMin] = useState('')
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<string>('0')
   const [toleranceMinutes, setToleranceMinutes] = useState<string>('0')
   const [minByWeekday, setMinByWeekday] = useState<string[]>(['0', '0', '0', '0', '0', '0', '0'])
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
   const [forceSuperpower, setForceSuperpower] = useState<boolean>(false)
+  const [forceDailyRecognition, setForceDailyRecognition] = useState<boolean>(false)
+  const [recognitionStart, setRecognitionStart] = useState<string>('')
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
   const [lateRate, setLateRate] = useState<string>('0')
@@ -49,6 +56,8 @@ export default function Settings() {
     setMinByWeekday(WEEKDAY_MIN_KEYS.map((k) => String(loaded[k])))
     setAttendanceEnabled(!!loaded.attendance_enabled)
     setForceSuperpower(!!loaded.force_superpower_onboarding)
+    setForceDailyRecognition(!!loaded.force_daily_recognition)
+    setRecognitionStart(loaded.recognition_gate_start_time || '')
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
     setLateRate(String(loaded.late_penalty_per_minute))
@@ -57,6 +66,10 @@ export default function Settings() {
     setBanners(loaded.home_banners ?? [])
     setAppLogo(loaded.app_logo ?? '')
   }, [loaded])
+
+  useEffect(() => {
+    if (spSettings) setWallScoreMin(String(spSettings.wall_score_min))
+  }, [spSettings])
 
   const isManager = boot ? canManageGroups(boot) : null
 
@@ -100,6 +113,8 @@ export default function Settings() {
         min_minutes_sunday: n(minByWeekday[6]),
         attendance_enabled: attendanceEnabled ? 1 : 0,
         force_superpower_onboarding: forceSuperpower ? 1 : 0,
+        force_daily_recognition: forceDailyRecognition ? 1 : 0,
+        recognition_gate_start_time: recognitionStart,
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
         late_penalty_per_minute: n(lateRate),
@@ -112,6 +127,8 @@ export default function Settings() {
         onError: (e) => toast('error', (e as Error).message),
       },
     )
+    // Persist the Team Wall threshold (Superpower Settings) alongside the same Save.
+    if (spSettings) saveSp.mutate({ ...spSettings, wall_score_min: n(wallScoreMin) })
   }
 
   // Banner helpers — image upload targets the row stored in pickForIdx.
@@ -321,6 +338,51 @@ export default function Settings() {
             <p className="text-xs text-muted">
               Saat aktif, pengguna yang belum memilih superpower akan melihat layar wajib-pilih saat
               membuka aplikasi dan harus memilih dulu sebelum bisa memakai aplikasi.
+            </p>
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Wajib apresiasi harian</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={forceDailyRecognition}
+                onChange={(e) => setForceDailyRecognition(e.target.checked)}
+              />
+            </label>
+            <p className="text-xs text-muted">
+              Setiap anggota Internal Team wajib memberi 1 vote superpower/hari untuk rekan yang belum
+              dinilai, sampai semua rekan dinilai. Default nonaktif.
+            </p>
+            {forceDailyRecognition && (
+              <>
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+                  <span className="text-sm font-semibold text-ink dark:text-slate-200">Mulai muncul jam</span>
+                  <input
+                    type="time"
+                    className="rounded-lg border border-line px-2 py-1.5 text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    value={recognitionStart}
+                    onChange={(e) => setRecognitionStart(e.target.value)}
+                  />
+                </label>
+                <p className="text-xs text-muted">
+                  Gerbang apresiasi baru muncul mulai jam ini (waktu server). Kosongkan agar muncul kapan saja.
+                </p>
+              </>
+            )}
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Ambang skor Team Wall (0–10)</span>
+              <input
+                type="number"
+                step="0.1"
+                min={0}
+                max={10}
+                className="w-24 rounded-lg border border-line px-2 py-1.5 text-right text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                value={wallScoreMin}
+                onChange={(e) => setWallScoreMin(e.target.value)}
+              />
+            </label>
+            <p className="text-xs text-muted">
+              Skor rata-rata rekan harus melebihi angka ini agar tampil di Team Wall (dan memberi skor pada
+              superpower yang dipilih sendiri). Default 7,5.
             </p>
           </div>
         </BentoTile>

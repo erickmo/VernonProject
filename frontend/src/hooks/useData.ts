@@ -111,6 +111,8 @@ export const keys = {
   myAttendance: ['my-attendance'] as const,
   gamification: ['gamification'] as const,
   teamWall: ['team-wall'] as const,
+  superpowerWall: ['superpower-wall'] as const,
+  superpowerProgress: (user: string) => ['superpower-progress', user] as const,
   events: ['events'] as const,
   event: (n: string) => ['event', n] as const,
   myRegistrations: ['myRegistrations'] as const,
@@ -147,6 +149,7 @@ export const keys = {
   votableUsers: ['votable-users'] as const,
   userSuperpowers: (user: string) => ['user-superpowers', user] as const,
   superpowerSettings: ['superpower-settings'] as const,
+  recognitionGate: ['recognition-gate'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -536,6 +539,57 @@ export function useCreateProjectItem(projectDetail: string) {
   })
 }
 
+/**
+ * Bulk-create todos one at a time so the caller can show a real progress bar.
+ * Rows insert top-to-bottom; a blocked_by entry of "#<i>" depends on the i-th
+ * row IN THIS batch (earlier rows only) and resolves to the just-created name,
+ * so tasks can be chained. A failed row is skipped and any later ref to it is
+ * dropped. Each insert runs the normal create-permission + scoring controller.
+ */
+export function useCreateProjectItems(projectDetail: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ shared, rows, onProgress }: {
+      shared: Record<string, unknown>
+      rows: { to_do: string; notes?: string; blocked_by?: string[] }[]
+      onProgress?: (done: number, total: number) => void
+    }) => {
+      const created: (string | null)[] = [] // per-row created name, null if it failed
+      const names: string[] = []
+      const failed: { to_do: string; error: string }[] = []
+      onProgress?.(0, rows.length)
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        const blocked = (row.blocked_by ?? [])
+          .map((b) => (b.startsWith('#') ? created[Number(b.slice(1))] : b))
+          .filter((x): x is string => !!x)
+          .map((todo) => ({ todo }))
+        try {
+          const doc = (await mobileApi.createTask({
+            project_detail: projectDetail,
+            ...shared,
+            to_do: row.to_do,
+            notes: row.notes ?? '',
+            blocked_by: blocked,
+          })) as { name: string }
+          created.push(doc.name)
+          names.push(doc.name)
+        } catch (e) {
+          created.push(null)
+          failed.push({ to_do: row.to_do, error: (e as Error).message })
+        }
+        onProgress?.(i + 1, rows.length)
+      }
+      return { created: names, failed }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projectDetail(projectDetail) })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
 export function useSaveNotes(todoId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -864,6 +918,11 @@ export function canManageBadges(boot: Boot | undefined): boolean {
   return !!boot && boot.roles.includes('System Manager')
 }
 
+// Bare System-Manager check (e.g. testing-only screens).
+export function isSystemManager(boot: Boot | undefined): boolean {
+  return !!boot && boot.roles.includes('System Manager')
+}
+
 // Stations, schedules, holidays, profiles and the daily report. Deliberately
 // NOT widened to HR Manager: the report's backend gate is System Manager only
 // (api/attendance.py _require_attendance_admin), so HR would get a screen that
@@ -875,6 +934,21 @@ export function canManageAttendance(boot: Boot | undefined): boolean {
 /** Who may cast the final verdict on a cuti / WFH request. Mirrors _is_hr(). */
 export function canHrApprove(boot: Boot | undefined): boolean {
   return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('HR Manager'))
+}
+
+/** Who may post job openings and manage applications / blacklist. Mirrors _require_hr(). */
+export function canManageRecruitment(boot: Boot | undefined): boolean {
+  return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('HR Manager'))
+}
+
+/** Anyone who can reach at least one admin tool — gates the /hr "HR Management" hub. */
+export function canSeeHrHub(boot: Boot | undefined): boolean {
+  return (
+    canManageUsers(boot) || canHrApprove(boot) || canManageAttendance(boot) ||
+    canManageRecruitment(boot) || canManageBadges(boot) || canManageCompanies(boot) ||
+    canManageBrands(boot) || canManageBusinessUnits(boot) || canManageIncome(boot) ||
+    canManageLms(boot) || canManageGroups(boot) || canManageResources(boot)
+  )
 }
 
 // The Vernon roles assignable from the mobile user-management screen.
@@ -1000,7 +1074,7 @@ export function useBusinessUnits() {
     queryKey: keys.businessUnits,
     queryFn: () =>
       resource.list<BusinessUnit[]>('Business Unit', {
-        fields: ['name', 'business_unit_name', 'company', 'description', 'image'],
+        fields: ['name', 'business_unit_name', 'company', 'description', 'image', 'logo'],
         limit: 0,
       }),
   })
@@ -1022,6 +1096,7 @@ export function useCreateBusinessUnit() {
       company: string | null
       description: string | null
       image: string | null
+      logo: string | null
     }) => resource.create<{ name: string }>('Business Unit', payload as unknown as Record<string, unknown>),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.businessUnits }),
   })
@@ -1030,7 +1105,7 @@ export function useCreateBusinessUnit() {
 export function useUpdateBusinessUnit() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, payload }: { name: string; payload: { company: string | null; description: string | null; image: string | null } }) =>
+    mutationFn: ({ name, payload }: { name: string; payload: { company: string | null; description: string | null; image: string | null; logo: string | null } }) =>
       resource.update<{ name: string }>('Business Unit', name, payload as unknown as Record<string, unknown>),
     onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: keys.businessUnits })
@@ -1211,6 +1286,20 @@ export const useTeamWall = () =>
   // latest avatars/config each time; a stale cache here showed old user_image
   // snapshots after avatar fixes. Pair with pull-to-refresh on the screen.
   useQuery({ queryKey: keys.teamWall, queryFn: () => mobileApi.getTeamWall() as Promise<TeamWallResponse>, refetchOnMount: 'always' })
+
+export const useSuperpowerWall = () =>
+  useQuery({
+    queryKey: keys.superpowerWall,
+    queryFn: () => mobileApi.getSuperpowerWall() as Promise<import('@/lib/types').SuperpowerWallResponse>,
+    refetchOnMount: 'always',
+  })
+
+export const useSuperpowerProgress = (user: string) =>
+  useQuery({
+    queryKey: keys.superpowerProgress(user),
+    queryFn: () => mobileApi.getSuperpowerProgress(user) as Promise<import('@/lib/types').SuperpowerProgressView>,
+    enabled: !!user,
+  })
 
 export const useMarketplace = () =>
   useQuery({ queryKey: keys.marketplace, queryFn: () => mobileApi.getMarketplace() as Promise<MarketplaceData> })
@@ -2022,11 +2111,18 @@ export function canManageResources(boot: Boot | undefined): boolean {
 export function useBookings() {
   return useQuery({
     queryKey: keys.bookings,
-    queryFn: () =>
-      resource.list<Booking[]>('Resource Booking', {
+    queryFn: async () => {
+      const rows = await resource.list<Booking[]>('Resource Booking', {
         fields: ['name', 'title', 'booked_by', 'start', 'end', 'room', 'status'],
         limit: 0,
-      }),
+      })
+      // Sort: booked date DESC, then time-of-day ASC (start = "YYYY-MM-DDTHH:MM:SS")
+      return rows.sort(
+        (a, b) =>
+          b.start.slice(0, 10).localeCompare(a.start.slice(0, 10)) ||
+          a.start.slice(11).localeCompare(b.start.slice(11)),
+      )
+    },
   })
 }
 
@@ -2374,6 +2470,15 @@ export const useSuperpowers = () =>
 export const useVotableUsers = () =>
   useQuery({ queryKey: keys.votableUsers, queryFn: () => mobileApi.listVotableUsers() })
 
+// Daily recognition gate: is the session user forced to recognize a colleague now?
+export const useRecognitionGate = () =>
+  useQuery({ queryKey: keys.recognitionGate, queryFn: () => mobileApi.getRecognitionGate() })
+
+// System-Manager-only preview of the gate (ignores the flag / membership / once-per-day),
+// for the testing screen. Separate query key so it never clashes with the real gate.
+export const useRecognitionGatePreview = () =>
+  useQuery({ queryKey: ['recognition-gate-preview'], queryFn: () => mobileApi.getRecognitionGate(1) })
+
 export const useUserSuperpowers = (user: string) =>
   useQuery({
     queryKey: keys.userSuperpowers(user),
@@ -2402,7 +2507,11 @@ export function useCastVote() {
   return useMutation({
     mutationFn: ({ ratee, superpower, score }: { ratee: string; superpower: string; score: number }) =>
       mobileApi.castVote(ratee, superpower, score),
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.ratee) }),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.ratee) })
+      // Casting a vote may satisfy today's recognition gate — refresh it so it clears.
+      qc.invalidateQueries({ queryKey: keys.recognitionGate })
+    },
   })
 }
 
@@ -2412,6 +2521,22 @@ export function useRemoveVote() {
     mutationFn: ({ ratee, superpower }: { ratee: string; superpower: string }) =>
       mobileApi.removeVote(ratee, superpower),
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.ratee) }),
+  })
+}
+
+// Cast several superpower votes for one ratee in one go (used by the recognition gate,
+// which lets you score multiple traits per line). Invalidates the gate ONCE at the end
+// so the gate doesn't unmount mid-batch.
+export function useCastVotes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ ratee, votes }: { ratee: string; votes: { superpower: string; score: number }[] }) => {
+      for (const v of votes) await mobileApi.castVote(ratee, v.superpower, v.score)
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: keys.userSuperpowers(v.ratee) })
+      qc.invalidateQueries({ queryKey: keys.recognitionGate })
+    },
   })
 }
 

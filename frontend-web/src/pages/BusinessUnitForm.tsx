@@ -23,6 +23,47 @@ import {
 const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
+// Single image/logo upload tile — dashed dropzone, preview, remove. Both the
+// business image and the logo reuse it (same generic upload endpoint).
+function PickTile({ label, value, uploading, onPick, onClear }: {
+  label: string
+  value: string | null
+  uploading: boolean
+  onPick: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-muted">{label}</p>
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={uploading}
+        className="flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-brand-300 bg-brand-50/50 text-muted hover:border-brand-400 dark:border-brand-600/40 dark:bg-brand-500/5"
+      >
+        {uploading ? (
+          <span className="flex flex-col items-center gap-1 text-xs"><Spinner className="h-5 w-5" /> Uploading…</span>
+        ) : value ? (
+          <img src={value} alt="" className="h-full w-full object-cover rounded-xl" />
+        ) : (
+          <span className="flex flex-col items-center gap-1 text-xs"><ImagePlus className="h-6 w-6" /> Click to upload</span>
+        )}
+      </button>
+      {value && !uploading && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 dark:hover:text-rose-400"
+        >
+          <X className="h-3.5 w-3.5" /> Remove
+        </button>
+      )}
+      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={onPick} />
+    </div>
+  )
+}
+
 export default function BusinessUnitForm() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -43,11 +84,12 @@ export default function BusinessUnitForm() {
     company: string
     description: string
     image: string | null
-  }>({ business_unit_name: '', company: '', description: '', image: null })
+    logo: string | null
+  }>({ business_unit_name: '', company: '', description: '', image: null, logo: null })
   const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const patch = (p: Partial<typeof form>) => {
     setForm((f) => ({ ...f, ...p }))
@@ -61,6 +103,7 @@ export default function BusinessUnitForm() {
         company: existing.company ?? '',
         description: existing.description ?? '',
         image: existing.image ?? null,
+        logo: existing.logo ?? null,
       })
     }
   }, [isEdit, existing])
@@ -103,19 +146,23 @@ export default function BusinessUnitForm() {
     navigate('/business-units')
   }
 
-  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadTo = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setBusy: (v: boolean) => void,
+    field: 'image' | 'logo',
+  ) => {
     const f = e.target.files?.[0]
+    e.target.value = ''
     if (!f) return
-    setUploading(true)
+    setBusy(true)
     try {
       const url = await uploadBusinessUnitImage(f)
-      patch({ image: url })
-      toast('success', 'Image uploaded')
+      patch({ [field]: url })
+      toast('success', 'Uploaded')
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Upload failed')
     } finally {
-      setUploading(false)
-      if (fileRef.current) fileRef.current.value = ''
+      setBusy(false)
     }
   }
 
@@ -138,6 +185,7 @@ export default function BusinessUnitForm() {
       company: form.company || null,
       description: form.description.trim() || null,
       image: form.image ?? null,
+      logo: form.logo ?? null,
     }
     if (isEdit) update.mutate({ name, payload: shared }, opts)
     else create.mutate({ business_unit_name: form.business_unit_name.trim(), ...shared }, opts)
@@ -232,7 +280,7 @@ export default function BusinessUnitForm() {
 
               <button
                 type="submit"
-                disabled={saving || uploading}
+                disabled={saving || uploadingImage || uploadingLogo}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
               >
                 {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
@@ -241,37 +289,23 @@ export default function BusinessUnitForm() {
             </div>
           </BentoTile>
 
-          {/* Preview / image tile */}
-          <BentoTile span="sm" tone="tint" accent="brand" title="Preview">
-            <div className="mt-1 space-y-3">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex h-32 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-brand-300 bg-brand-50/50 text-muted hover:border-brand-400 dark:border-brand-600/40 dark:bg-brand-500/5"
-              >
-                {uploading ? (
-                  <span className="flex flex-col items-center gap-1 text-xs">
-                    <Spinner className="h-5 w-5" /> Uploading…
-                  </span>
-                ) : form.image ? (
-                  <img src={form.image} alt="" className="h-full w-full object-cover rounded-xl" />
-                ) : (
-                  <span className="flex flex-col items-center gap-1 text-xs">
-                    <ImagePlus className="h-6 w-6" /> Click to upload
-                  </span>
-                )}
-              </button>
-              {form.image && !uploading && (
-                <button
-                  type="button"
-                  onClick={() => patch({ image: null })}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 dark:hover:text-rose-400"
-                >
-                  <X className="h-3.5 w-3.5" /> Remove image
-                </button>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
+          {/* Preview / image + logo tile */}
+          <BentoTile span="sm" tone="tint" accent="brand" title="Image & logo">
+            <div className="mt-1 space-y-4">
+              <PickTile
+                label="Business image"
+                value={form.image}
+                uploading={uploadingImage}
+                onPick={(e) => uploadTo(e, setUploadingImage, 'image')}
+                onClear={() => patch({ image: null })}
+              />
+              <PickTile
+                label="Logo"
+                value={form.logo}
+                uploading={uploadingLogo}
+                onPick={(e) => uploadTo(e, setUploadingLogo, 'logo')}
+                onClear={() => patch({ logo: null })}
+              />
 
               <div>
                 <p className="text-lg font-bold text-ink truncate">

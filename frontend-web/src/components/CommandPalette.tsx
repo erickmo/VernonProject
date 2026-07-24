@@ -15,6 +15,7 @@ export type Command = {
   group: string
   icon: LucideIcon
   to: string
+  href?: string
   haystack?: string
   meta?: string
 }
@@ -103,7 +104,8 @@ export function CommandPalette({
     const target = c ?? filtered[active]
     if (!target) return
     onClose()
-    navigate(target.to)
+    if (target.href) window.open(target.href, '_blank', 'noopener')
+    else navigate(target.to)
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {

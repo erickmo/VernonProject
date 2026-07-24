@@ -9,7 +9,8 @@
   "business_unit_name",
   "company",
   "description",
-  "image"
+  "image",
+  "logo"
  ],
  "fields": [
   {
@@ -37,6 +38,11 @@
    "fieldname": "image",
    "fieldtype": "Attach Image",
    "label": "Image"
+  },
+  {
+   "fieldname": "logo",
+   "fieldtype": "Attach Image",
+   "label": "Logo"
   }
  ],
  "grid_page_length": 50,

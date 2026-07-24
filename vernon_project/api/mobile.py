@@ -2379,6 +2379,8 @@ def get_app_settings():
 		"attendance_enabled": int(g("attendance_enabled") or 0),
 		"show_auto_approve": int(g("show_auto_approve") or 0),
 		"force_superpower_onboarding": int(g("force_superpower_onboarding") or 0),
+		"force_daily_recognition": int(g("force_daily_recognition") or 0),
+		"recognition_gate_start_time": str(g("recognition_gate_start_time") or "")[:5],
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
@@ -2450,6 +2452,8 @@ def save_app_settings(
 	attendance_enabled=None,
 	show_auto_approve=None,
 	force_superpower_onboarding=None,
+	force_daily_recognition=None,
+	recognition_gate_start_time=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
 	late_penalty_per_minute=None,
@@ -2463,6 +2467,8 @@ def save_app_settings(
 	# Each field is optional; only the ones provided in the request are updated.
 	if app_logo is not None:
 		settings.set("app_logo", (app_logo or "").strip() or None)
+	if recognition_gate_start_time is not None:
+		settings.set("recognition_gate_start_time", (recognition_gate_start_time or "").strip() or None)
 	int_fields = {
 		"max_estimated_minutes": max_estimated_minutes,
 		"under_occupied_tolerance_minutes": under_occupied_tolerance_minutes,
@@ -2476,6 +2482,7 @@ def save_app_settings(
 		"attendance_enabled": attendance_enabled,
 		"show_auto_approve": show_auto_approve,
 		"force_superpower_onboarding": force_superpower_onboarding,
+		"force_daily_recognition": force_daily_recognition,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
 	}

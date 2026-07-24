@@ -36,6 +36,7 @@ export default function SuperpowersAdmin() {
   const [priorMean, setPriorMean] = useState(5)
   const [confidenceK, setConfidenceK] = useState(3)
   const [votePoints, setVotePoints] = useState(0)
+  const [wallScoreMin, setWallScoreMin] = useState(7.5)
   const [perfWindowDays, setPerfWindowDays] = useState(30)
   const [streakTarget, setStreakTarget] = useState(30)
   const [finisherTarget, setFinisherTarget] = useState(30)
@@ -48,6 +49,7 @@ export default function SuperpowersAdmin() {
     setPriorMean(s.prior_mean)
     setConfidenceK(s.confidence_k)
     setVotePoints(s.vote_points)
+    setWallScoreMin(s.wall_score_min)
     setPerfWindowDays(s.perf_window_days)
     setStreakTarget(s.streak_target)
     setFinisherTarget(s.finisher_target)
@@ -72,6 +74,7 @@ export default function SuperpowersAdmin() {
     try {
       await saveSettings.mutateAsync({
         prior_mean: priorMean, confidence_k: confidenceK, vote_points: votePoints,
+        wall_score_min: wallScoreMin,
         perf_window_days: perfWindowDays, streak_target: streakTarget, finisher_target: finisherTarget,
         levels,
       })
@@ -132,6 +135,11 @@ export default function SuperpowersAdmin() {
             Poin per suara
             <input type="number" min={0} className={field} value={votePoints}
               onChange={(e) => setVotePoints(Number(e.target.value))} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+            Ambang skor Team Wall (0–10)
+            <input type="number" step="0.1" min={0} max={10} className={field} value={wallScoreMin}
+              onChange={(e) => setWallScoreMin(Number(e.target.value))} />
           </label>
         </div>
 

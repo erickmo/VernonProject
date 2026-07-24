@@ -506,6 +506,7 @@ export interface BusinessUnit {
   company: string | null
   description: string | null
   image: string | null
+  logo: string | null
 }
 
 export interface ManagedUser {
@@ -783,6 +784,8 @@ export interface AppSettings {
   attendance_enabled: number
   show_auto_approve: number
   force_superpower_onboarding: number
+  force_daily_recognition: number
+  recognition_gate_start_time: string
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number
@@ -909,6 +912,25 @@ export type TeamWallUser = {
 }
 
 export type TeamWallResponse = { users: TeamWallUser[] }
+
+export type SuperpowerWallUser = TeamWallUser & {
+  score: number // voted: average rating 0-10; performance: earned score 0-10
+  vote_count: number
+  self_claimed: boolean
+}
+
+export type SuperpowerWallGroup = {
+  superpower: string
+  name: string
+  icon: string | null
+  color: string | null
+  category: string | null
+  kind: string // 'Voted' | 'Performance'
+  count: number
+  users: SuperpowerWallUser[]
+}
+
+export type SuperpowerWallResponse = { groups: SuperpowerWallGroup[] }
 
 export interface EventItem {
   name: string
@@ -1316,13 +1338,21 @@ export interface UserSuperpowersView {
   performance: PerfSuperpower[]
   signature: VotedSuperpower | null
   achievement: boolean
+  // A person's peer-vote scores are private: true only for the owner or HR/SysMgr.
+  // When false, `voted` carries only the viewer's own cast vote (aggregates zeroed).
+  can_see_scores: boolean
   can_edit_mine: boolean
 }
+
+export type SuperpowerQuarter = { quarter: string; avg: number; traits: number; voters: number }
+export type SuperpowerProgressView = { quarters: SuperpowerQuarter[]; current: string }
 
 export interface SuperpowerSettings {
   prior_mean: number
   confidence_k: number
   vote_points: number
+  // Peer-voted average must exceed this to appear on the Team Wall / badge self-claims.
+  wall_score_min: number
   perf_window_days: number
   streak_target: number
   finisher_target: number
@@ -1337,4 +1367,19 @@ export interface VotableUser {
   avatar_config?: AvatarConfig | null
   voted: boolean
   vote_count: number
+}
+
+export interface RecognitionAssignee {
+  user: string
+  user_name: string
+  user_image: string | null
+  avatar_config?: AvatarConfig | null
+}
+
+// Daily recognition gate state for the session user. owed=true → show the blocking gate.
+export interface RecognitionGate {
+  owed: boolean
+  assignee: RecognitionAssignee | null
+  remaining: number
+  total: number
 }

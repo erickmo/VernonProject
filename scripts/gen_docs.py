@@ -60,6 +60,10 @@ CLUSTERS = {
     "hr": ("Kepegawaian", "HR", "1x1", {
         "Employee Profile", "Employee Education", "Employee Skill", "Employee Training",
     }),
+    "recruitment": ("Rekrutmen", "Recruitment", "1x1", {
+        "Job Opening", "Job Test Question", "Job Application",
+        "Job Application Answer", "Recruitment Blacklist",
+    }),
     "meetings": ("Rapat & Ruangan", "Meetings & rooms", "1x1", {
         "Meeting", "Meeting Participant", "Meeting Room", "Resource Booking",
         "Resource Booking Equipment", "Equipment",

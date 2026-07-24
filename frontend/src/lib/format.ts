@@ -65,6 +65,19 @@ export function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// Group already date-sorted rows into contiguous sections by their start date (YYYY-MM-DD).
+// Order is preserved, so upstream sort (date DESC, time ASC) carries into the groups.
+export function groupByStartDate<T extends { start: string }>(rows: T[]): { date: string; items: T[] }[] {
+  const out: { date: string; items: T[] }[] = []
+  for (const r of rows) {
+    const date = r.start.slice(0, 10)
+    const last = out[out.length - 1]
+    if (last && last.date === date) last.items.push(r)
+    else out.push({ date, items: [r] })
+  }
+  return out
+}
+
 // Sub-line for a tile whose value is a relative label ("Today", "in 3 days") — spells out the
 // date the label hides, optionally behind a flag like "Overdue".
 export function dateSub(iso: string | null | undefined, flag?: string | false | null): string | undefined {

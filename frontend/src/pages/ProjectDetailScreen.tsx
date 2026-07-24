@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
+import { BulkAddSheet } from '@/components/BulkAddSheet'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
@@ -25,6 +26,7 @@ export default function ProjectDetailScreen() {
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const toast = useToast()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [todoFilter, setTodoFilter] = useState<'all' | 'open' | 'completed'>('all')
 
@@ -136,12 +138,20 @@ export default function ProjectDetailScreen() {
               </button>
             </div>
             {data.can_create && (
-              <button
-                onClick={() => setSheetOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5" /> Todo
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setBulkOpen(true)}
+                  className="flex items-center gap-1 rounded-full border border-brand-600 px-3 py-1.5 text-xs font-semibold text-brand-600 active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Bulk
+                </button>
+                <button
+                  onClick={() => setSheetOpen(true)}
+                  className="flex items-center gap-1 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Todo
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -272,6 +282,17 @@ export default function ProjectDetailScreen() {
         defaultGroup={data.default_group}
         siblings={data.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
       />
+
+      {bulkOpen && (
+        <BulkAddSheet
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          projectDetail={data.name}
+          team={data.team}
+          defaultGroup={data.default_group}
+          siblings={data.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
+        />
+      )}
     </DetailScreen>
   )
 }

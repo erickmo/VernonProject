@@ -5,12 +5,13 @@
  "creation": "2026-07-19 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["ratee", "voter", "superpower", "score"],
+ "field_order": ["ratee", "voter", "superpower", "score", "quarter"],
  "fields": [
   {"fieldname": "ratee", "fieldtype": "Link", "label": "Ratee", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
   {"fieldname": "voter", "fieldtype": "Link", "label": "Voter", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
   {"fieldname": "superpower", "fieldtype": "Link", "label": "Superpower", "options": "Superpower", "reqd": 1, "in_list_view": 1, "search_index": 1},
-  {"fieldname": "score", "fieldtype": "Int", "label": "Score", "reqd": 1, "in_list_view": 1}
+  {"fieldname": "score", "fieldtype": "Int", "label": "Score", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "quarter", "fieldtype": "Data", "label": "Quarter", "description": "Voting quarter e.g. 2026-Q3; votes expire each quarter so this scopes aggregates & the gate.", "read_only": 1, "in_list_view": 1, "search_index": 1}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 0,

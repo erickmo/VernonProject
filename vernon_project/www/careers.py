@@ -1,7 +1,17 @@
+import re
+from html import unescape
+
 import frappe
 from vernon_project.www._i18n import base_context, norm_lang, pick
 
 ROUTE = "/careers"
+
+
+def _blurb(html, limit=180):
+    """Plain-text snippet from a Text Editor HTML description."""
+    text = unescape(re.sub(r"<[^>]+>", " ", html or ""))
+    text = " ".join(text.split())
+    return (text[:limit].rstrip() + "…") if len(text) > limit else text
 
 # Placeholder open roles — EDIT THESE (title/location/blurb/employmentType) as real
 # openings appear. Each role also emits a JobPosting JSON-LD below, keyed by "slug".
@@ -190,16 +200,38 @@ def get_context(context):
             "en": "Don't see the right fit? Reach out anyway — there's always room for good people.",
         }
     )
-    context.roles = [
-        {
-            "title": p(r["title"]),
-            "loc": p(r["loc"]),
-            "type": p(r["type"]),
-            "blurb": p(r["blurb"]),
-            "apply": apply_url,
-        }
-        for r in ROLES
-    ]
+    # Real Open Job Openings drive the list; fall back to placeholder ROLES when
+    # none are posted yet (page never looks empty). Each real role links to the
+    # /apply form; placeholders keep linking to /contact.
+    lang_qs = "?lang=en" if lang == "en" else ""
+    db_openings = frappe.get_all(
+        "Job Opening",
+        filters={"status": "Open"},
+        fields=["slug", "title", "location", "employment_type", "description"],
+        order_by="posted_on desc, creation desc",
+    )
+    if db_openings:
+        context.roles = [
+            {
+                "title": o.title,
+                "loc": o.location or "Indonesia",
+                "type": o.employment_type or "Full-time",
+                "blurb": _blurb(o.description),
+                "apply": "/apply?job=" + o.slug + lang_qs,
+            }
+            for o in db_openings
+        ]
+    else:
+        context.roles = [
+            {
+                "title": p(r["title"]),
+                "loc": p(r["loc"]),
+                "type": p(r["type"]),
+                "blurb": p(r["blurb"]),
+                "apply": apply_url,
+            }
+            for r in ROLES
+        ]
     context.apply_label = p({"id": "Lamar", "en": "Apply"})
 
     context.cta_title = p({"id": "Siap membuat orang bahagia bersama kami?", "en": "Ready to make people happy with us?"})

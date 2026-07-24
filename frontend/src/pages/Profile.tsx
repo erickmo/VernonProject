@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
 import { useNavigate } from 'react-router-dom'
-import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageBusinessUnits, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
+import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageBusinessUnits, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, canManageRecruitment, canSeeHrHub, isSystemManager, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -206,75 +206,16 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           ],
         },
         {
-          title: 'User Management',
+          title: 'Management',
           rows: [
-            ...(canManageUsers(boot)
-              ? [{ icon: Users, label: 'Manage Users', hue: 'sky' as const, onClick: () => navigate('/users') }]
+            ...(isSystemManager(boot)
+              ? [{ icon: HeartHandshake, label: 'Culture Hub', hue: 'violet' as const, onClick: () => navigate('/culture') }]
               : []),
-            ...(canManageUsers(boot)
-              ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky' as const, onClick: () => navigate('/transfer-tasks') }]
+            ...(canSeeHrHub(boot)
+              ? [{ icon: Briefcase, label: 'HR Management', hue: 'indigo' as const, onClick: () => navigate('/hr') }]
               : []),
-            ...(boot?.roles.includes('System Manager')
-              ? [{ icon: UserMinus, label: 'Under-Occupied', hue: 'amber' as const, onClick: () => navigate('/reports/under-occupied') }]
-              : []),
-          ],
-        },
-        {
-          title: 'Feedbacks',
-          rows: [
-            ...(canManageUsers(boot)
-              ? [{ icon: Inbox, label: 'Feedback Inbox', hue: 'sky' as const, onClick: () => navigate('/feedback-inbox') }]
-              : []),
-          ],
-        },
-        {
-          title: 'Points',
-          rows: [
-            ...(canManageBadges(boot)
-              ? [{ icon: Zap, label: 'Gamification', hue: 'amber' as const, onClick: () => navigate('/gamification-settings') }]
-              : []),
-            ...(boot?.roles.includes('System Manager')
-              ? [{ icon: Sparkles, label: 'Superpower', hue: 'violet' as const, onClick: () => navigate('/superpower-admin') }]
-              : []),
-          ],
-        },
-        {
-          title: 'Companies',
-          rows: [
-            ...(canManageCompanies(boot)
-              ? [{ icon: Building2, label: 'Manage Companies', hue: 'sky' as const, onClick: () => navigate('/companies') }]
-              : []),
-            ...(canManageBrands(boot)
-              ? [{ icon: Store, label: 'Manage Brands', hue: 'pink' as const, onClick: () => navigate('/brands') }]
-              : []),
-            ...(canManageBusinessUnits(boot)
-              ? [{ icon: Boxes, label: 'Manage Business Units', hue: 'indigo' as const, onClick: () => navigate('/business-units') }]
-              : []),
-          ],
-        },
-        {
-          title: 'Admin',
-          rows: [
-            ...(canManageAttendance(boot)
-              ? [{ icon: ClipboardList, label: 'Manage attendance', hue: 'emerald' as const, onClick: () => navigate('/attendance/manage') }]
-              : []),
-            ...(canManageIncome(boot)
-              ? [{ icon: Banknote, label: 'Manage Extra Income', hue: 'emerald' as const, onClick: () => navigate('/income-admin') }]
-              : []),
-            ...(canManageLms(boot)
-              ? [{ icon: BookOpen, label: 'Manage Learning', hue: 'indigo' as const, onClick: () => navigate('/learn-admin') }]
-              : []),
-            ...(canManageGroups(boot)
-              ? [{ icon: Layers, label: 'Manage Groups', hue: 'emerald' as const, onClick: () => navigate('/groups') }]
-              : []),
-            ...(canManageResources(boot)
-              ? [{ icon: DoorOpen, label: 'Resources', hue: 'indigo' as const, onClick: () => navigate('/meeting-rooms') }]
-              : []),
-            ...(canManageGroups(boot)
-              ? [{ icon: ShieldAlert, label: 'Data Health', hue: 'rose' as const, onClick: () => navigate('/data-health') }]
-              : []),
-            ...(canManageGroups(boot)
-              ? [{ icon: Settings, label: 'Settings', hue: 'slate' as const, onClick: () => navigate('/settings') }]
+            ...(canManageRecruitment(boot) || canManageBusinessUnits(boot)
+              ? [{ icon: Globe, label: 'Web Management', hue: 'emerald' as const, onClick: () => navigate('/web') }]
               : []),
           ],
         },

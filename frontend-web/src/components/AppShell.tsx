@@ -42,7 +42,7 @@ export function AppShell() {
   const navCommands: Command[] = buildNavGroups(b).flatMap((g) =>
     g.to
       ? [{ id: g.to, label: g.label, group: g.label, icon: FolderKanban, to: g.to }]
-      : g.leaves.map((l) => ({ id: l.to, label: l.label, group: g.label, icon: l.icon, to: l.to })),
+      : (g.sections ? g.sections.flatMap((s) => s.leaves) : g.leaves).map((l) => ({ id: l.to, label: l.label, group: g.label, icon: l.icon, to: l.to, href: l.href })),
   )
 
   return (

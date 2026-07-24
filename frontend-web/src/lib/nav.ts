@@ -5,18 +5,24 @@ import {
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
-  History, Scale, Boxes,
+  History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
-  canManageGroups, canManageBrands, canManageUsers, canManageBadges,
+  canManageGroups, canManageBrands, canManageUsers,
   canManageAttendance, canHrApprove, canManageResources,
-  canModerateAds, canManageLms, canManageIncome, canManageCompanies,
-  canManageBusinessUnits,
+  canModerateAds, canManageLms, canManageCompanies,
+  canManageBusinessUnits, canManageRecruitment, isSystemManager,
 } from '@/hooks/useData'
 
-export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string }
-export type NavGroup = { id: string; label: string; to?: string; leaves: NavLeaf[] }
+// `href` marks an off-SPA / external destination (a Frappe www page or another
+// origin). Renderers open it in a new tab via a real <a>/window.open instead of
+// react-router navigate() — navigate() would 404 inside /w. `to` stays a unique key.
+export type NavLeaf = { to: string; label: string; sub: string; icon: LucideIcon; end?: boolean; badge?: 'review'; match?: string; href?: string }
+export type NavSection = { title: string; leaves: NavLeaf[] }
+// A group renders either a flat `leaves` list or, when `sections` is set, titled
+// sub-groups. Consumers that need every destination flatten `sections` too.
+export type NavGroup = { id: string; label: string; to?: string; leaves: NavLeaf[]; sections?: NavSection[] }
 
 // Mobile's 5 primary tabs (BottomNav) — pinned at the top of the web sidebar so
 // the web's primary flow mirrors the mobile app. Groups below exclude these.
@@ -74,25 +80,48 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     ] },
   ]
 
+  // Culture Hub — System-Manager-only big menu. These moved out of HR Management
+  // and are grouped into three titled sub-sections. SysMgr gate applies to the
+  // whole hub, so no per-leaf gating inside.
+  if (isSystemManager(b)) {
+    groups.push({
+      id: 'culture',
+      label: 'Culture Hub',
+      leaves: [],
+      sections: [
+        { title: 'Configuration', leaves: [
+          { to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon },
+          { to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap },
+          { to: '/groups', label: 'Manage Groups', sub: 'Work-type taxonomy', icon: Layers },
+        ] },
+        { title: 'Recognition', leaves: [
+          { to: '/superpower-admin', label: 'Superpowers', sub: 'Traits & leveling', icon: Sparkles },
+          { to: '/recognition-test', label: 'Recognition Gate (test)', sub: 'Preview the daily gate', icon: HeartHandshake },
+        ] },
+        { title: 'Community', leaves: [
+          { to: '/feedback-inbox', label: 'Feedback Inbox', sub: 'Read & triage feedback', icon: Inbox },
+          { to: '/income-admin', label: 'Manage Extra Income', sub: 'Review claims & opportunities', icon: Banknote },
+        ] },
+      ],
+    })
+  }
+
   // Admin group — nav.ts is the single source of truth; gated per capability
   const admin: NavLeaf[] = [
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', sub: 'People & roles', icon: UsersIcon } as NavLeaf] : []),
-    ...(canManageUsers(b) ? [{ to: '/feedback-inbox', label: 'Feedback Inbox', sub: 'Read & triage feedback', icon: Inbox } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/transfer-tasks', label: 'Transfer Tasks', sub: 'Reassign a user’s tasks', icon: ArrowLeftRight } as NavLeaf] : []),
-    ...(canManageGroups(b) ? [{ to: '/groups', label: 'Groups', sub: 'Work-type taxonomy', icon: Layers } as NavLeaf] : []),
+    ...(canManageUsers(b) ? [{ to: '/clone-memberships', label: 'Salin Keanggotaan Proyek', sub: 'Tambah karyawan baru ke proyek karyawan lain', icon: Copy } as NavLeaf] : []),
     ...(canManageGroups(b) ? [{ to: '/data-health', label: 'Data Health', sub: 'Integrity checks', icon: ShieldAlert } as NavLeaf] : []),
-    ...(canManageGroups(b) ? [{ to: '/settings', label: 'Settings', sub: 'System settings', icon: SettingsIcon } as NavLeaf] : []),
     ...(canManageBrands(b) ? [{ to: '/brands', label: 'Brands', sub: 'Brand registry', icon: Tag } as NavLeaf] : []),
     ...(canManageCompanies(b) ? [{ to: '/companies', label: 'Companies', sub: 'Company registry', icon: Building2 } as NavLeaf] : []),
-    ...(canManageBusinessUnits(b) ? [{ to: '/business-units', label: 'Business Units', sub: 'Business unit registry', icon: Boxes } as NavLeaf] : []),
-    ...(canManageIncome(b) ? [{ to: '/income-admin', label: 'Manage Extra Income', sub: 'Review claims & opportunities', icon: Banknote } as NavLeaf] : []),
     ...(canManageResources(b) ? [{ to: '/meeting-rooms', label: 'Resources', sub: 'Rooms & equipment', icon: Building2 } as NavLeaf] : []),
-    ...(canManageBadges(b) ? [{ to: '/gamification-settings', label: 'Gamification', sub: 'Badges & tiers', icon: Zap } as NavLeaf] : []),
-    ...(canManageBadges(b) ? [{ to: '/superpower-admin', label: 'Superpowers', sub: 'Traits & leveling', icon: Sparkles } as NavLeaf] : []),
     ...(canModerateAds(b) ? [{ to: '/papan-iklan/bans', label: 'Iklan Bans', sub: 'Banned posters', icon: Ban } as NavLeaf] : []),
     ...(canManageLms(b) ? [{ to: '/learn-admin', label: 'Manage Learning', sub: 'Author & assign courses', icon: BookOpen } as NavLeaf] : []),
+    ...(canManageRecruitment(b) ? [{ to: '/recruitment/openings', label: 'Job Openings', sub: 'Post & manage roles', icon: Briefcase } as NavLeaf] : []),
+    ...(canManageRecruitment(b) ? [{ to: '/recruitment/applications', label: 'Applications', sub: 'Review & interview', icon: FileText } as NavLeaf] : []),
+    ...(canManageRecruitment(b) ? [{ to: '/recruitment/blacklist', label: 'Blacklist', sub: 'Blocked KTP numbers', icon: Ban } as NavLeaf] : []),
   ]
-  if (admin.length) groups.push({ id: 'admin', label: 'Admin', leaves: admin })
+  // admin leaves are merged into one "HR Management" group with attendance below.
 
   // attendance — admin surfaces under canManageAttendance; the HR cuti inbox is
   // unshifted below under canHrApprove, so HR gets it without the rest.
@@ -110,7 +139,20 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     att.unshift({ to: '/attendance/leave-types', label: 'Leave Types', sub: 'Kategori & batas cuti', icon: CalendarDays })
     att.unshift({ to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'HR final approval', icon: Inbox })
   }
-  if (att.length) groups.push({ id: 'attendance', label: 'Attendance', leaves: att })
+  const hrLeaves = [...admin, ...att]
+  if (hrLeaves.length) groups.push({ id: 'hr', label: 'HR Management', leaves: hrLeaves })
+
+  // Web Management — the public-web surfaces: the recruitment/careers funnel plus
+  // quick-links out to the live public properties (open in a new tab, see `href`).
+  const web: NavLeaf[] = [
+    ...(canManageBusinessUnits(b) ? [{ to: '/business-units', label: 'Business Units', sub: 'Business unit registry', icon: Boxes } as NavLeaf] : []),
+    ...(canManageRecruitment(b) ? [
+      { to: 'web:careers', href: '/careers', label: 'Careers Page ↗', sub: 'Public jobs page', icon: Megaphone },
+      { to: 'web:docs', href: '/docs', label: 'Docs ↗', sub: 'Documentation site', icon: BookOpen },
+      { to: 'web:site', href: 'https://project-www.vernon.id', label: 'Public Site ↗', sub: 'Company website', icon: Globe },
+    ] as NavLeaf[] : []),
+  ]
+  if (web.length) groups.push({ id: 'web', label: 'Web Management', leaves: web })
 
   return groups
 }

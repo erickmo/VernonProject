@@ -21,6 +21,43 @@ import {
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
+// Single image/logo upload tile — dashed dropzone, preview, remove. Both the
+// business image and the logo reuse it (same generic upload endpoint).
+function PickTile({ label, value, uploading, onPick, onClear }: {
+  label: string
+  value: string | null
+  uploading: boolean
+  onPick: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</label>
+        {value && !uploading && (
+          <button type="button" onClick={onClear} className="text-xs font-medium text-rose-600">Remove</button>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={uploading}
+        className="flex h-36 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white text-slate-400 dark:border-slate-600 dark:bg-slate-800"
+      >
+        {uploading ? (
+          <Spinner className="h-5 w-5" />
+        ) : value ? (
+          <img src={value} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex flex-col items-center gap-1 text-xs"><ImagePlus className="h-6 w-6" /> Tap to upload</span>
+        )}
+      </button>
+      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={onPick} />
+    </div>
+  )
+}
+
 export default function BusinessUnitFormScreen() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -41,9 +78,10 @@ export default function BusinessUnitFormScreen() {
     company: string
     description: string
     image: string | null
-  }>({ business_unit_name: '', company: '', description: '', image: null })
-  const [uploading, setUploading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+    logo: string | null
+  }>({ business_unit_name: '', company: '', description: '', image: null, logo: null })
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   useEffect(() => {
     if (isEdit && existing) {
@@ -52,6 +90,7 @@ export default function BusinessUnitFormScreen() {
         company: existing.company ?? '',
         description: existing.description ?? '',
         image: existing.image ?? null,
+        logo: existing.logo ?? null,
       })
     }
   }, [isEdit, existing])
@@ -70,19 +109,23 @@ export default function BusinessUnitFormScreen() {
     )
   }
 
-  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadTo = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setBusy: (v: boolean) => void,
+    field: 'image' | 'logo',
+  ) => {
     const f = e.target.files?.[0]
+    e.target.value = ''
     if (!f) return
-    setUploading(true)
+    setBusy(true)
     try {
       const url = await uploadBusinessUnitImage(f)
-      setForm((s) => ({ ...s, image: url }))
-      toast('success', 'Image uploaded')
+      setForm((s) => ({ ...s, [field]: url }))
+      toast('success', 'Uploaded')
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Upload failed')
     } finally {
-      setUploading(false)
-      if (fileRef.current) fileRef.current.value = ''
+      setBusy(false)
     }
   }
 
@@ -102,6 +145,7 @@ export default function BusinessUnitFormScreen() {
       company: form.company || null,
       description: (form.description ?? '').trim() || null,
       image: form.image ?? null,
+      logo: form.logo ?? null,
     }
     if (isEdit) update.mutate({ name, payload: common }, opts)
     else create.mutate({ business_unit_name: form.business_unit_name.trim(), ...common }, opts)
@@ -128,27 +172,21 @@ export default function BusinessUnitFormScreen() {
           <Boxes className="h-6 w-6" />
         </div>
 
-        {/* Image */}
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Image</label>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex h-36 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white text-slate-400 dark:border-slate-600 dark:bg-slate-800"
-          >
-            {uploading ? (
-              <Spinner className="h-5 w-5" />
-            ) : form.image ? (
-              <img src={form.image} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex flex-col items-center gap-1 text-xs">
-                <ImagePlus className="h-6 w-6" /> Tap to upload
-              </span>
-            )}
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
-        </div>
+        {/* Image + logo */}
+        <PickTile
+          label="Business image"
+          value={form.image}
+          uploading={uploadingImage}
+          onPick={(e) => uploadTo(e, setUploadingImage, 'image')}
+          onClear={() => setForm((f) => ({ ...f, image: null }))}
+        />
+        <PickTile
+          label="Logo"
+          value={form.logo}
+          uploading={uploadingLogo}
+          onPick={(e) => uploadTo(e, setUploadingLogo, 'logo')}
+          onClear={() => setForm((f) => ({ ...f, logo: null }))}
+        />
 
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Business unit name</label>
@@ -185,7 +223,7 @@ export default function BusinessUnitFormScreen() {
 
         <button
           onClick={save}
-          disabled={saving || uploading}
+          disabled={saving || uploadingImage || uploadingLogo}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60"
         >
           {saving ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}

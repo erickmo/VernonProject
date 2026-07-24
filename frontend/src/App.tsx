@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { FolderKanban } from 'lucide-react'
-import { useBoot } from './hooks/useData'
+import { useBoot, useRecognitionGate } from './hooks/useData'
 import { ApiError } from './lib/api'
 import { Spinner } from './components/ui'
 import { useConfirm } from './components/Confirm'
@@ -18,9 +18,14 @@ import ProjectScreen from './pages/ProjectScreen'
 import ProjectDetailScreen from './pages/ProjectDetailScreen'
 import ProjectItemScreen from './pages/ProjectItemScreen'
 import Profile from './pages/Profile'
+import HrHubScreen from './pages/HrHubScreen'
+import CultureHubScreen from './pages/CultureHubScreen'
+import WebManagementScreen from './pages/WebManagementScreen'
 import MyInfoScreen from '@/pages/MyInfoScreen'
 import Onboarding from './pages/Onboarding'
 import SuperpowerGate from './components/SuperpowerGate'
+import DailyRecognitionGate from './components/DailyRecognitionGate'
+import RecognitionGateTest from './pages/RecognitionGateTest'
 import GroupsScreen from './pages/GroupsScreen'
 import DataHealthScreen from './pages/DataHealthScreen'
 import GroupFormScreen from './pages/GroupFormScreen'
@@ -44,6 +49,7 @@ import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
 import GrantPointsScreen from './pages/GrantPointsScreen'
 import TransferTasksScreen from './pages/TransferTasksScreen'
+import CloneMembershipsScreen from './pages/CloneMembershipsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import IncomeScreen from './pages/IncomeScreen'
 import IncomeAdminScreen from './pages/IncomeAdminScreen'
@@ -80,6 +86,11 @@ import ExceptionApprovals from './pages/ExceptionApprovals'
 import MyExceptions from './pages/MyExceptions'
 import CutiLedgerScreen from './pages/CutiLedgerScreen'
 import CutiLedgerAdminScreen from './pages/CutiLedgerAdminScreen'
+import RecruitmentOpeningsScreen from './pages/RecruitmentOpeningsScreen'
+import RecruitmentOpeningFormScreen from './pages/RecruitmentOpeningFormScreen'
+import RecruitmentApplicationsScreen from './pages/RecruitmentApplicationsScreen'
+import RecruitmentApplicationScreen from './pages/RecruitmentApplicationScreen'
+import RecruitmentBlacklistScreen from './pages/RecruitmentBlacklistScreen'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
@@ -97,7 +108,7 @@ import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms, canHrApprove } from './hooks/useData'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms, canHrApprove, canManageRecruitment } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -126,6 +137,8 @@ export default function App() {
   // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
   const superpowerBlocked =
     !!(sp?.force_superpower && !sp?.has_superpower) && !location.pathname.startsWith('/superpowers')
+  // Daily recognition gate — shown only after the self-claim gate is satisfied.
+  const recognitionGate = useRecognitionGate().data
   const [showOnboarding, setShowOnboarding] = useState(false)
   const confirm = useConfirm()
 
@@ -173,6 +186,9 @@ export default function App() {
     <TodoContextMenuProvider>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
       {superpowerBlocked && <SuperpowerGate onGo={() => navigate('/superpowers')} />}
+      {!superpowerBlocked && recognitionGate?.owed && recognitionGate.assignee && (
+        <DailyRecognitionGate gate={recognitionGate} />
+      )}
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />
@@ -230,6 +246,7 @@ export default function App() {
             <Route path="/users/:name" element={<UserDashboardScreen />} />
             <Route path="/users/:name/edit" element={<UserFormScreen />} />
             <Route path="/transfer-tasks" element={<TransferTasksScreen />} />
+            <Route path="/clone-memberships" element={<CloneMembershipsScreen />} />
             <Route path="/feedback-inbox" element={<FeedbackInboxScreen />} />
           </>
         )}
@@ -241,6 +258,16 @@ export default function App() {
             <Route path="/marketplace-admin" element={<MarketplaceAdminScreen />} />
             <Route path="/marketplace-admin/reward/new" element={<RewardFormScreen />} />
             <Route path="/marketplace-admin/reward/:name" element={<RewardFormScreen />} />
+          </>
+        )}
+        {canManageRecruitment(boot) && (
+          <>
+            <Route path="/recruitment/openings" element={<RecruitmentOpeningsScreen />} />
+            <Route path="/recruitment/openings/new" element={<RecruitmentOpeningFormScreen />} />
+            <Route path="/recruitment/openings/:name" element={<RecruitmentOpeningFormScreen />} />
+            <Route path="/recruitment/applications" element={<RecruitmentApplicationsScreen />} />
+            <Route path="/recruitment/applications/:name" element={<RecruitmentApplicationScreen />} />
+            <Route path="/recruitment/blacklist" element={<RecruitmentBlacklistScreen />} />
           </>
         )}
         {canGrantPoints(boot) && (
@@ -315,10 +342,16 @@ export default function App() {
         {boot?.roles.includes('System Manager') && (
           <Route path="/superpower-admin" element={<SuperpowerAdminScreen />} />
         )}
+        {boot?.roles.includes('System Manager') && (
+          <Route path="/recognition-test" element={<RecognitionGateTest />} />
+        )}
         <Route path="/team-wall" element={<TeamWallScreen />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="/me/info" element={<MyInfoScreen />} />
+        <Route path="/hr" element={<HrHubScreen />} />
+        <Route path="/culture" element={<CultureHubScreen />} />
+        <Route path="/web" element={<WebManagementScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </TodoContextMenuProvider>

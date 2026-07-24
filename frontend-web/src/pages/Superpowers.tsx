@@ -10,6 +10,7 @@ import {
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { AddSuperpowerModal } from '@/components/AddSuperpowerModal'
+import { SuperpowerProgress } from '@/components/SuperpowerProgress'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { Page } from '@web/components/Page'
@@ -45,10 +46,10 @@ export function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
 
 // Shared score-bar row — the one visual language across My / Voted / Kinerja.
 function ScoreRow({
-  icon, color, name, desc, level, score, scored = true, meta, action, children, i = 0,
+  icon, color, name, desc, level, score, scored = true, showLevel = true, meta, action, children, i = 0,
 }: {
   icon?: string; color?: string; name: string; desc?: string | null
-  level: SuperpowerLevel | null; score: number; scored?: boolean
+  level: SuperpowerLevel | null; score: number; scored?: boolean; showLevel?: boolean
   meta?: ReactNode; action?: ReactNode; children?: ReactNode; i?: number
 }) {
   const bar = level?.color || color || '#6366f1'
@@ -81,13 +82,24 @@ function ScoreRow({
               {scored ? score.toFixed(1) : '—'}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <LevelBadge level={level} />
-            {meta && <span className="text-xs text-muted">{meta}</span>}
-          </div>
+          {(showLevel || meta) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {showLevel && <LevelBadge level={level} />}
+              {meta && <span className="text-xs text-muted">{meta}</span>}
+            </div>
+          )}
         </div>
       </div>
       {children}
+    </div>
+  )
+}
+
+function AnonymityNote() {
+  return (
+    <div className="mb-4 rounded-2xl border border-brand-200/60 bg-brand-50/60 px-4 py-3 text-sm leading-relaxed text-brand-900/80 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-200">
+      Penilaian bersifat <b>anonim</b>. Tujuannya membantu setiap orang mengenali &amp; mengembangkan
+      kekuatannya — hasil penilaian hanya bisa dilihat oleh pemiliknya.
     </div>
   )
 }
@@ -115,7 +127,7 @@ function VotePills({ value, onPick, disabled }: { value: number | null; onPick: 
   )
 }
 
-type Tab = 'mine' | 'voted' | 'perf' | 'others'
+type Tab = 'mine' | 'voted' | 'perf' | 'others' | 'progress'
 
 export default function Superpowers() {
   const { user: routeUser = '' } = useParams<{ user: string }>()
@@ -138,7 +150,7 @@ export default function Superpowers() {
   const [params] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => {
     const t = params.get('tab')
-    return t === 'mine' || t === 'voted' || t === 'perf' || t === 'others' ? t : 'mine'
+    return t === 'mine' || t === 'voted' || t === 'perf' || t === 'others' || t === 'progress' ? t : 'mine'
   })
 
   const v = view.data
@@ -207,10 +219,12 @@ export default function Superpowers() {
 
   const ratedCount = v.voted.filter((x) => x.count > 0).length
 
-  const tabDefs: [Tab, string, number][] = [
+  const tabDefs: [Tab, string, number | null][] = [
     ['mine', 'Superpower Saya', v.mine.length],
     ['voted', 'Dinilai Rekan', ratedCount],
-    ...(isSelf ? ([['others', 'Nilai Rekan', votable.length]] as [Tab, string, number][]) : []),
+    // Progres (per-quarter trend) — owner or HR only, since scores are private.
+    ...(v.can_see_scores ? ([['progress', 'Progres', null]] as [Tab, string, number | null][]) : []),
+    ...(isSelf ? ([['others', 'Nilai Rekan', votable.length]] as [Tab, string, number | null][]) : []),
     ['perf', 'Kinerja', v.performance.length],
   ]
 
@@ -300,13 +314,15 @@ export default function Superpowers() {
                 )}
               >
                 {label}
-                <span className={clsx('rounded-full px-1.5 text-xs tabular-nums', tab === k ? 'bg-white/20' : 'bg-canvas text-muted')}>{count}</span>
+                {count != null && (
+                  <span className={clsx('rounded-full px-1.5 text-xs tabular-nums', tab === k ? 'bg-white/20' : 'bg-canvas text-muted')}>{count}</span>
+                )}
               </button>
             ))}
           </div>
 
-          {/* MINE */}
-          {tab === 'mine' && (
+          {/* MINE (also the fallback when a peer deep-links the gated Progres tab) */}
+          {(tab === 'mine' || (tab === 'progress' && !v.can_see_scores)) && (
             <div className="space-y-4">
               {v.mine.length === 0 ? (
                 <EmptyState
@@ -318,7 +334,7 @@ export default function Superpowers() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {mineSorted.map((m, i) => {
                     const vv = votedByName[m.superpower]
-                    const scored = !!vv && vv.count > 0
+                    const scored = v.can_see_scores && !!vv && vv.count > 0
                     return (
                       <ScoreRow
                         key={m.superpower}
@@ -327,10 +343,11 @@ export default function Superpowers() {
                         color={m.color}
                         name={m.name}
                         desc={m.description}
-                        level={vv?.level ?? null}
-                        score={vv?.weighted ?? 0}
+                        level={scored ? vv?.level ?? null : null}
+                        score={scored ? vv?.weighted ?? 0 : 0}
                         scored={scored}
-                        meta={scored ? `${vv.count} suara` : 'Belum dinilai'}
+                        showLevel={v.can_see_scores}
+                        meta={v.can_see_scores ? (scored ? `${vv!.count} suara` : 'Belum dinilai') : undefined}
                         action={v.can_edit_mine && (
                           <button
                             type="button"
@@ -365,6 +382,8 @@ export default function Superpowers() {
             cards.length === 0 ? (
               <EmptyState icon={Zap} title="Belum ada superpower" subtitle="Katalog superpower masih kosong." />
             ) : (
+              <>
+              {!isSelf && <AnonymityNote />}
               <div className="grid gap-3 sm:grid-cols-2">
                 {cards.map((c, i) => (
                   <ScoreRow
@@ -376,8 +395,9 @@ export default function Superpowers() {
                     desc={c.description}
                     level={c.level}
                     score={c.weighted}
-                    scored={c.count > 0}
-                    meta={c.count > 0 ? `${c.count} suara · rata-rata ${c.avg.toFixed(1)}` : 'Belum ada suara'}
+                    scored={v.can_see_scores && c.count > 0}
+                    showLevel={v.can_see_scores}
+                    meta={v.can_see_scores ? (c.count > 0 ? `${c.count} suara · rata-rata ${c.avg.toFixed(1)}` : 'Belum ada suara') : undefined}
                   >
                     {!isSelf && (
                       <div className="mt-3 space-y-2 border-t border-line pt-3">
@@ -398,12 +418,14 @@ export default function Superpowers() {
                   </ScoreRow>
                 ))}
               </div>
+              </>
             )
           )}
 
           {/* OTHERS — vote for peers */}
           {tab === 'others' && isSelf && (
             <div className="space-y-4">
+              <AnonymityNote />
               <p className="text-sm text-muted">Klik seorang rekan untuk menilai superpower mereka.</p>
               {votable.length === 0 ? (
                 <EmptyState icon={Users} title="Belum ada rekan" subtitle="Belum ada rekan untuk dinilai." />
@@ -435,6 +457,9 @@ export default function Superpowers() {
               )}
             </div>
           )}
+
+          {/* PROGRESS — per-quarter trend (owner / HR only) */}
+          {tab === 'progress' && v.can_see_scores && <SuperpowerProgress user={user} />}
 
           {/* PERFORMANCE */}
           {tab === 'perf' && (

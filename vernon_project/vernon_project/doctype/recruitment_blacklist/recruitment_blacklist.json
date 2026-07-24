@@ -1,0 +1,34 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:nik_ktp",
+ "naming_rule": "By fieldname",
+ "creation": "2026-07-22 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["nik_ktp", "full_name", "reason", "column_break_a", "blacklisted_by", "blacklisted_on"],
+ "fields": [
+  {"fieldname": "nik_ktp", "fieldtype": "Data", "label": "NIK (KTP)", "reqd": 1, "unique": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "full_name", "fieldtype": "Data", "label": "Full Name", "in_list_view": 1},
+  {"fieldname": "reason", "fieldtype": "Small Text", "label": "Reason", "reqd": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "blacklisted_by", "fieldtype": "Link", "label": "Blacklisted By", "options": "User", "read_only": 1},
+  {"fieldname": "blacklisted_on", "fieldtype": "Date", "label": "Blacklisted On", "read_only": 1, "in_list_view": 1}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Recruitment Blacklist",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "HR Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

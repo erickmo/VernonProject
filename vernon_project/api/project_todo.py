@@ -423,4 +423,3 @@ def download_todo_file(todo_id, file_name):
 	frappe.local.response.filename = f.file_name
 	frappe.local.response.filecontent = f.get_content()
 	frappe.local.response.type = "download"
-

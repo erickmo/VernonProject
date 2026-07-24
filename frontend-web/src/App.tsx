@@ -17,6 +17,8 @@ import {
   canManageIncome,
   canManageCompanies,
   canManageBusinessUnits,
+  canManageRecruitment,
+  useRecognitionGate,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
@@ -68,10 +70,18 @@ import GamificationSettings from '@web/pages/GamificationSettings'
 import Settings from '@web/pages/Settings'
 import MarketplaceAdmin from '@web/pages/MarketplaceAdmin'
 import RewardForm from '@web/pages/RewardForm'
+import RecruitmentOpenings from '@web/pages/RecruitmentOpenings'
+import RecruitmentOpeningForm from '@web/pages/RecruitmentOpeningForm'
+import RecruitmentApplications from '@web/pages/RecruitmentApplications'
+import RecruitmentApplication from '@web/pages/RecruitmentApplication'
+import RecruitmentBlacklist from '@web/pages/RecruitmentBlacklist'
 import GrantPoints from '@web/pages/GrantPoints'
 import TransferTasks from '@web/pages/TransferTasks'
+import CloneMemberships from '@web/pages/CloneMemberships'
 import Onboarding from '@web/pages/Onboarding'
 import SuperpowerGate from '@/components/SuperpowerGate'
+import DailyRecognitionGate from '@/components/DailyRecognitionGate'
+import RecognitionGateTest from '@/pages/RecognitionGateTest'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
 import AttendanceReport from '@web/pages/AttendanceReport'
@@ -189,11 +199,16 @@ export default function App() {
   // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
   const superpowerBlocked =
     !!(sp?.force_superpower && !sp?.has_superpower) && !location.pathname.startsWith('/superpowers')
+  // Daily recognition gate — shown only after the self-claim gate is satisfied.
+  const recognitionGate = useRecognitionGate().data
 
   return (
     <TodoContextMenuProvider>
       {showOnboarding && <Onboarding onDone={finishOnboarding} />}
       {superpowerBlocked && <SuperpowerGate onGo={() => navigate('/superpowers')} />}
+      {!superpowerBlocked && recognitionGate?.owed && recognitionGate.assignee && (
+        <DailyRecognitionGate gate={recognitionGate} />
+      )}
       <Routes location={background}>
         <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>
@@ -246,6 +261,7 @@ export default function App() {
               <Route path="/users/:name/edit" element={<UserForm />} />
               <Route path="/feedback-inbox" element={<FeedbackInbox />} />
               <Route path="/transfer-tasks" element={<TransferTasks />} />
+              <Route path="/clone-memberships" element={<CloneMemberships />} />
             </>
           )}
           {canManageGroups(b) && (
@@ -287,6 +303,16 @@ export default function App() {
               <Route path="/marketplace-admin" element={<MarketplaceAdmin />} />
               <Route path="/marketplace-admin/reward/new" element={<RewardForm />} />
               <Route path="/marketplace-admin/reward/:name" element={<RewardForm />} />
+            </>
+          )}
+          {canManageRecruitment(b) && (
+            <>
+              <Route path="/recruitment/openings" element={<RecruitmentOpenings />} />
+              <Route path="/recruitment/openings/new" element={<RecruitmentOpeningForm />} />
+              <Route path="/recruitment/openings/:name" element={<RecruitmentOpeningForm />} />
+              <Route path="/recruitment/applications" element={<RecruitmentApplications />} />
+              <Route path="/recruitment/applications/:name" element={<RecruitmentApplication />} />
+              <Route path="/recruitment/blacklist" element={<RecruitmentBlacklist />} />
             </>
           )}
           {canGrantPoints(b) && (
@@ -340,6 +366,9 @@ export default function App() {
           <Route path="/superpowers/:user" element={<Superpowers />} />
           {canManageBadges(b) && (
             <Route path="/superpower-admin" element={<SuperpowersAdmin />} />
+          )}
+          {canManageBadges(b) && (
+            <Route path="/recognition-test" element={<RecognitionGateTest />} />
           )}
           <Route path="/avatar" element={<AvatarCustomizer />} />
           <Route path="/papan-iklan" element={<PapanIklan />} />

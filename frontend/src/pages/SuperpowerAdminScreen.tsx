@@ -56,6 +56,7 @@ export default function SuperpowerAdminScreen() {
   const [priorMean, setPriorMean] = useState<number | ''>('')
   const [confidenceK, setConfidenceK] = useState<number | ''>('')
   const [votePoints, setVotePoints] = useState<number | ''>('')
+  const [wallScoreMin, setWallScoreMin] = useState<number | ''>('')
   const [perfWindowDays, setPerfWindowDays] = useState<number | ''>('')
   const [streakTarget, setStreakTarget] = useState<number | ''>('')
   const [finisherTarget, setFinisherTarget] = useState<number | ''>('')
@@ -67,6 +68,7 @@ export default function SuperpowerAdminScreen() {
     setPriorMean(settings.prior_mean)
     setConfidenceK(settings.confidence_k)
     setVotePoints(settings.vote_points)
+    setWallScoreMin(settings.wall_score_min)
     setPerfWindowDays(settings.perf_window_days)
     setStreakTarget(settings.streak_target)
     setFinisherTarget(settings.finisher_target)
@@ -89,6 +91,7 @@ export default function SuperpowerAdminScreen() {
         prior_mean: priorMean === '' ? 0 : Number(priorMean),
         confidence_k: confidenceK === '' ? 0 : Number(confidenceK),
         vote_points: votePoints === '' ? 0 : Number(votePoints),
+        wall_score_min: wallScoreMin === '' ? 0 : Number(wallScoreMin),
         perf_window_days: perfWindowDays === '' ? 0 : Number(perfWindowDays),
         streak_target: streakTarget === '' ? 0 : Number(streakTarget),
         finisher_target: finisherTarget === '' ? 0 : Number(finisherTarget),
@@ -261,6 +264,18 @@ export default function SuperpowerAdminScreen() {
                       className={`${inputCls} mt-1`}
                       value={votePoints}
                       onChange={(e) => setVotePoints(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-stone-500 dark:text-slate-400">
+                    Ambang skor Team Wall (0–10)
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={10}
+                      className={`${inputCls} mt-1`}
+                      value={wallScoreMin}
+                      onChange={(e) => setWallScoreMin(e.target.value === '' ? '' : Number(e.target.value))}
                     />
                   </label>
                 </div>

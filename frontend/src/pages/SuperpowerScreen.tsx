@@ -6,6 +6,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { SPIcon as SpIcon } from '@/lib/spIcon'
 import { AddSuperpowerModal } from '@/components/AddSuperpowerModal'
+import { SuperpowerProgress } from '@/components/SuperpowerProgress'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import {
@@ -19,7 +20,7 @@ import {
 } from '@/hooks/useData'
 import type { PerfSuperpower, SuperpowerLevel, VotedSuperpower } from '@/lib/types'
 
-type TabKey = 'mine' | 'voted' | 'others' | 'perf'
+type TabKey = 'mine' | 'voted' | 'others' | 'perf' | 'progress'
 
 
 function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
@@ -75,7 +76,17 @@ function VoteScale({
   )
 }
 
-function VotedCard({ item, ratee, canVote }: { item: VotedSuperpower; ratee: string; canVote: boolean }) {
+// Anonymous + purpose reminder shown on the rating / results surfaces.
+function AnonymityNote() {
+  return (
+    <div className="rounded-2xl bg-brand-50/70 dark:bg-brand-500/10 px-4 py-3 text-xs leading-relaxed text-brand-800/90 dark:text-brand-200">
+      Penilaian bersifat <b>anonim</b>. Tujuannya membantu setiap orang mengenali &amp; mengembangkan
+      kekuatannya — hasil penilaian hanya bisa dilihat oleh pemiliknya.
+    </div>
+  )
+}
+
+function VotedCard({ item, ratee, canVote, canSee }: { item: VotedSuperpower; ratee: string; canVote: boolean; canSee: boolean }) {
   const cast = useCastVote()
   const remove = useRemoveVote()
   const toast = useToast()
@@ -113,25 +124,31 @@ function VotedCard({ item, ratee, canVote }: { item: VotedSuperpower; ratee: str
         <div className="col-span-11">
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="truncate font-semibold text-stone-700 dark:text-slate-200">{item.name}</span>
-            <span className="shrink-0 text-stone-400 dark:text-slate-500">
-              {item.level?.level_name ?? '—'} · {item.weighted.toFixed(1)}
-            </span>
+            {canSee && (
+              <span className="shrink-0 text-stone-400 dark:text-slate-500">
+                {item.level?.level_name ?? '—'} · {item.weighted.toFixed(1)}
+              </span>
+            )}
           </div>
           {item.description && (
             <p className="mt-0.5 text-[11px] leading-snug text-stone-400 dark:text-slate-500">{item.description}</p>
           )}
-          <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${Math.max(0, Math.min(100, item.weighted * 10))}%`,
-                backgroundColor: item.level?.color || item.color,
-              }}
-            />
-          </div>
-          <p className="mt-1 text-[11px] text-stone-400 dark:text-slate-500">
-            {item.count > 0 ? `Rata-rata ${item.avg.toFixed(1)} · ${item.count} suara` : 'Belum ada suara'}
-          </p>
+          {canSee && (
+            <>
+              <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, item.weighted * 10))}%`,
+                    backgroundColor: item.level?.color || item.color,
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-stone-400 dark:text-slate-500">
+                {item.count > 0 ? `Rata-rata ${item.avg.toFixed(1)} · ${item.count} suara` : 'Belum ada suara'}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -204,6 +221,7 @@ function MineRow({
   icon,
   color,
   voted,
+  showScore,
   canEdit,
   disabled,
   onRemove,
@@ -213,12 +231,13 @@ function MineRow({
   icon?: string
   color?: string
   voted?: VotedSuperpower
+  showScore: boolean
   canEdit: boolean
   disabled: boolean
   onRemove: () => void
 }) {
-  const score = voted?.weighted ?? 0
-  const level = voted?.level ?? null
+  const score = showScore ? voted?.weighted ?? 0 : 0
+  const level = showScore ? voted?.level ?? null : null
   return (
     <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
       <div className="grid grid-cols-12 items-center gap-2">
@@ -234,9 +253,11 @@ function MineRow({
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="truncate font-semibold text-stone-700 dark:text-slate-200">{name}</span>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="text-stone-400 dark:text-slate-500">
-                {voted ? `${level?.level_name ?? '—'} · ${score.toFixed(1)}` : 'Belum dinilai'}
-              </span>
+              {showScore && (
+                <span className="text-stone-400 dark:text-slate-500">
+                  {voted ? `${level?.level_name ?? '—'} · ${score.toFixed(1)}` : 'Belum dinilai'}
+                </span>
+              )}
               {canEdit && (
                 <button
                   onClick={onRemove}
@@ -285,7 +306,7 @@ export default function SuperpowerScreen() {
   // Deep-link support: /superpowers/:user?tab=voted opens straight on that tab.
   const [tab, setTab] = useState<TabKey>(() => {
     const t = searchParams.get('tab')
-    return t === 'voted' || t === 'others' || t === 'perf' || t === 'mine' ? t : 'mine'
+    return t === 'voted' || t === 'others' || t === 'perf' || t === 'progress' || t === 'mine' ? t : 'mine'
   })
   // Local claimed set — seeded from the server, toggled optimistically on tap.
   const [claimed, setClaimed] = useState<string[]>([])
@@ -296,10 +317,12 @@ export default function SuperpowerScreen() {
     if (view) setClaimed(view.mine.map((m) => m.superpower))
   }, [view])
 
-  // "Nilai Rekan" only exists on your own profile; snap back if URL forced it elsewhere.
+  // "Nilai Rekan" only exists on your own profile; "Progres" only when scores are
+  // visible (owner / HR). Snap back if a URL forced an off-limits tab.
   useEffect(() => {
     if (tab === 'others' && boot && !isSelf) setTab('mine')
-  }, [tab, boot, isSelf])
+    if (tab === 'progress' && view && !view.can_see_scores) setTab('mine')
+  }, [tab, boot, isSelf, view])
 
   const claimedSet = useMemo(() => new Set(claimed), [claimed])
 
@@ -438,10 +461,11 @@ export default function SuperpowerScreen() {
       </div>
 
       <Segmented
-        scroll={isSelf}
+        scroll
         options={[
           { value: 'mine', label: 'Superpower Saya' },
           { value: 'voted', label: 'Dinilai Rekan' },
+          ...(view.can_see_scores ? [{ value: 'progress' as TabKey, label: 'Progres' }] : []),
           ...(isSelf ? [{ value: 'others' as TabKey, label: 'Nilai Rekan' }] : []),
           { value: 'perf', label: 'Kinerja' },
         ]}
@@ -486,6 +510,7 @@ export default function SuperpowerScreen() {
                     icon={cat?.icon ?? m?.icon}
                     color={cat?.color ?? m?.color}
                     voted={votedByName.get(id)}
+                    showScore={view.can_see_scores}
                     canEdit={view.can_edit_mine}
                     disabled={setMine.isPending}
                     onRemove={() => removeClaim(id)}
@@ -498,6 +523,7 @@ export default function SuperpowerScreen() {
 
         {tab === 'voted' && (
           <div className="space-y-3">
+            {!isSelf && <AnonymityNote />}
             {votedAll.length === 0 ? (
               <EmptyState
                 icon={Star}
@@ -506,7 +532,7 @@ export default function SuperpowerScreen() {
               />
             ) : (
               votedAll.map((item) => (
-                <VotedCard key={item.superpower} item={item} ratee={user} canVote={!isSelf} />
+                <VotedCard key={item.superpower} item={item} ratee={user} canVote={!isSelf} canSee={view.can_see_scores} />
               ))
             )}
           </div>
@@ -514,6 +540,7 @@ export default function SuperpowerScreen() {
 
         {tab === 'others' && isSelf && (
           <div className="space-y-3">
+            <AnonymityNote />
             <p className="text-xs text-stone-400 dark:text-slate-500">
               Ketuk untuk menilai superpower rekanmu.
             </p>
@@ -545,6 +572,8 @@ export default function SuperpowerScreen() {
             )}
           </div>
         )}
+
+        {tab === 'progress' && view.can_see_scores && <SuperpowerProgress user={user} />}
 
         {tab === 'perf' && (
           <div className="space-y-3">

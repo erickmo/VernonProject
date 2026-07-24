@@ -219,6 +219,7 @@ scheduler_events = {
 		"vernon_project.tasks.notify_comeback_nudge",
 		"vernon_project.attendance.engine.nightly_finalize",
 		"vernon_project.tasks.notify_overdue_courses",
+		"vernon_project.api.superpowers.notify_recognition_gate",
 	],
 	# Jan 1, 01:00 — mint every employee's annual cuti Grant row for the new year.
 	"cron": {
