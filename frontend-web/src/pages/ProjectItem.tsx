@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
+import { isEditableTarget } from '@web/lib/shortcuts'
 import clsx from 'clsx'
 import {
   AlertCircle,
@@ -622,6 +623,36 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
   )
 }
 
+// Keyboard shortcuts for an open todo. A child component so its effect obeys the
+// rules of hooks (ProjectItem early-returns before data loads); it mounts only
+// when a todo is on screen, so `e`/`f`/`t` auto-scope to "a task is open".
+function TodoShortcuts(props: {
+  canEdit: boolean
+  editing: boolean
+  focusActive: boolean
+  canDeadlineToday: boolean
+  onEdit: () => void
+  onFocusToggle: () => void
+  onDeadlineToday: () => void
+}) {
+  const ref = useRef(props)
+  ref.current = props
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isEditableTarget(e.target)) return
+      const s = ref.current
+      if (s.editing) return
+      if (e.key === 'e' && s.canEdit) { e.preventDefault(); s.onEdit() }
+      else if (e.key === 'f') { e.preventDefault(); s.onFocusToggle() }
+      else if (e.key === 't' && s.canDeadlineToday) { e.preventDefault(); s.onDeadlineToday() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+  return null
+}
+
 // ─────────────────────────── EditForm ───────────────────────────
 
 function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => void }) {
@@ -738,6 +769,20 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       onError: (err) => toast('error', (err as Error).message),
     })
   }
+
+  // ⌘S / Ctrl+S saves the open edit form (fires even while typing in a field).
+  const saveRef = useRef(save)
+  saveRef.current = save
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        saveRef.current()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   const fieldCls =
     'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
@@ -1198,6 +1243,15 @@ const [followOpen, setFollowOpen] = useState(false)
 
   return (
     <div className="space-y-6">
+      <TodoShortcuts
+        canEdit={data.can_edit}
+        editing={editing}
+        focusActive={focusActive}
+        canDeadlineToday={canSetDeadlineToday}
+        onEdit={() => setEditing(true)}
+        onFocusToggle={() => (focusActive ? focus.stop() : openFocus())}
+        onDeadlineToday={onDeadlineToday}
+      />
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
