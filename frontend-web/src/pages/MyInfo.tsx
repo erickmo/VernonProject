@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Award, BookOpen, CalendarDays, Check, MapPin, Phone, Plus, Trash2 } from 'lucide-react'
-import { useBoot, useSaveMyProfile } from '@/hooks/useData'
+import { useBoot, useSaveMyProfile, useMyDisc } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { Spinner } from '@/components/ui'
 import { Page, PageHeader } from '@web/components/Page'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import PsychometricTile from '@web/components/PsychometricTile'
 import { DatePicker } from '@web/components/DatePicker'
 import type { EmployeeChildEducation, EmployeeChildSkill, EmployeeChildTraining } from '@/lib/types'
 
@@ -27,6 +28,7 @@ export default function MyInfo() {
   const navigate = useNavigate()
   const toast = useToast()
   const save = useSaveMyProfile()
+  const { data: myDisc } = useMyDisc()
 
   const [phone, setPhone] = useState('')
   const [birthdate, setBirthdate] = useState('')
@@ -113,6 +115,9 @@ export default function MyInfo() {
       />
 
       <BentoGrid>
+        {/* DISC & personality self-view — renders only once a test is completed */}
+        {myDisc && <PsychometricTile {...myDisc} />}
+
         {/* Personal */}
         <BentoTile span="lg" tone="plain" title="Personal">
           <div className="mt-1 grid grid-cols-1 gap-4 sm:grid-cols-2">

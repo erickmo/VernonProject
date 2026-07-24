@@ -36,6 +36,8 @@ export default function Settings() {
   const [forceSuperpower, setForceSuperpower] = useState<boolean>(false)
   const [forceDailyRecognition, setForceDailyRecognition] = useState<boolean>(false)
   const [recognitionStart, setRecognitionStart] = useState<string>('')
+  const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
+  const [discReminderHours, setDiscReminderHours] = useState<string>('24')
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
   const [lateRate, setLateRate] = useState<string>('0')
@@ -58,6 +60,8 @@ export default function Settings() {
     setForceSuperpower(!!loaded.force_superpower_onboarding)
     setForceDailyRecognition(!!loaded.force_daily_recognition)
     setRecognitionStart(loaded.recognition_gate_start_time || '')
+    setForceDiscReminder(!!loaded.force_disc_reminder)
+    setDiscReminderHours(String(loaded.disc_reminder_hours))
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
     setLateRate(String(loaded.late_penalty_per_minute))
@@ -115,6 +119,8 @@ export default function Settings() {
         force_superpower_onboarding: forceSuperpower ? 1 : 0,
         force_daily_recognition: forceDailyRecognition ? 1 : 0,
         recognition_gate_start_time: recognitionStart,
+        force_disc_reminder: forceDiscReminder ? 1 : 0,
+        disc_reminder_hours: Math.max(1, n(discReminderHours)),
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
         late_penalty_per_minute: n(lateRate),
@@ -365,6 +371,37 @@ export default function Settings() {
                 </label>
                 <p className="text-xs text-muted">
                   Gerbang apresiasi baru muncul mulai jam ini (waktu server). Kosongkan agar muncul kapan saja.
+                </p>
+              </>
+            )}
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Pengingat Tes DISC &amp; Kepribadian</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={forceDiscReminder}
+                onChange={(e) => setForceDiscReminder(e.target.checked)}
+              />
+            </label>
+            <p className="text-xs text-muted">
+              Saat aktif, anggota Internal Team &amp; Intern yang belum menyelesaikan tes DISC &amp; kepribadian
+              akan diingatkan lewat popup yang bisa ditutup, dan muncul lagi tiap beberapa jam. Default nonaktif.
+            </p>
+            {forceDiscReminder && (
+              <>
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+                  <span className="text-sm font-semibold text-ink dark:text-slate-200">Interval pengingat (jam)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-24 rounded-lg border border-line px-2 py-1.5 text-right text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    value={discReminderHours}
+                    onChange={(e) => setDiscReminderHours(e.target.value)}
+                    onBlur={() => setDiscReminderHours((h) => String(Math.max(1, n(h))))}
+                  />
+                </label>
+                <p className="text-xs text-muted">
+                  Jeda sebelum popup muncul lagi setelah pengguna menekan “Nanti”. Minimal 1 jam.
                 </p>
               </>
             )}

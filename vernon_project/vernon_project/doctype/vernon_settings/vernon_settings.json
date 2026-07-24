@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["branding_section", "app_logo", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
+ "field_order": ["branding_section", "app_logo", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
   {"fieldname": "branding_section", "fieldtype": "Section Break", "label": "Branding"},
   {
@@ -130,6 +130,21 @@
    "label": "Recognition Gate Start Time",
    "depends_on": "force_daily_recognition",
    "description": "Time of day the daily recognition gate starts popping (server time). Before this, the gate stays closed even if a vote is owed. Empty = pops any time."
+  },
+  {
+   "fieldname": "force_disc_reminder",
+   "fieldtype": "Check",
+   "label": "Force DISC Reminder",
+   "default": "0",
+   "description": "When on, reminds internal & intern users to take the DISC + personality test via a dismissible popup that re-appears every N hours until both tests are done. 0 = off (no reminder)."
+  },
+  {
+   "fieldname": "disc_reminder_hours",
+   "fieldtype": "Int",
+   "label": "DISC Reminder Interval (hours)",
+   "non_negative": 1,
+   "default": "24",
+   "depends_on": "force_disc_reminder"
   },
   {
    "fieldname": "recognition_section",

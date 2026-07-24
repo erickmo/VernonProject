@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate, DiscReminder, DiscQuestions, DiscSubmitResult } from './types'
 
 const METHOD = '/api/method/'
 
@@ -83,6 +83,7 @@ const IN = 'vernon_project.api.income.'
 const R = 'vernon_project.api.report.'
 const LN = 'vernon_project.api.leader_notes.'
 const SP = 'vernon_project.api.superpowers.'
+const DT = 'vernon_project.api.disc_test.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -671,6 +672,20 @@ export const mobileApi = {
     api.get<RecognitionGate>(SP + 'get_recognition_gate', preview ? { preview } : undefined),
   getUserSuperpowers: (user: string) =>
     api.get<UserSuperpowersView>(SP + 'get_user_superpowers', { user }),
+  // DISC + personality (Big Five) test reminder. Answer maps are sent as JSON strings.
+  getDiscReminder: () => api.get<DiscReminder>(DT + 'get_disc_reminder'),
+  getDiscQuestions: () => api.get<DiscQuestions>(DT + 'get_disc_questions'),
+  // Caller's own stored results for the read-only self-view (same shape as submit echo).
+  getMyDisc: () => api.get<DiscSubmitResult>(DT + 'get_my_disc'),
+  submitDiscTest: (
+    discAnswers: Record<string, { most: number; least: number }>,
+    personalityAnswers: Record<string, number>,
+  ) =>
+    api.post<DiscSubmitResult>(DT + 'submit_disc_test', {
+      disc_answers: JSON.stringify(discAnswers),
+      personality_answers: JSON.stringify(personalityAnswers),
+    }),
+  resetDisc: (user: string) => api.post<{ status: string }>(DT + 'reset_disc', { user }),
   setMySuperpowers: (user: string, superpowers: string[]) =>
     api.post<MySuperpower[]>(SP + 'set_my_superpowers', {
       user,

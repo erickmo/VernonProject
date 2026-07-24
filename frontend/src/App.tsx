@@ -25,6 +25,7 @@ import MyInfoScreen from '@/pages/MyInfoScreen'
 import Onboarding from './pages/Onboarding'
 import SuperpowerGate from './components/SuperpowerGate'
 import DailyRecognitionGate from './components/DailyRecognitionGate'
+import DiscReminderPopup from './components/DiscReminderPopup'
 import RecognitionGateTest from './pages/RecognitionGateTest'
 import GroupsScreen from './pages/GroupsScreen'
 import DataHealthScreen from './pages/DataHealthScreen'
@@ -189,6 +190,8 @@ export default function App() {
       {!superpowerBlocked && recognitionGate?.owed && recognitionGate.assignee && (
         <DailyRecognitionGate gate={recognitionGate} />
       )}
+      {/* DISC reminder: dismissible, self-gates via localStorage. Behind the blocking gates. */}
+      {!superpowerBlocked && !recognitionGate?.owed && <DiscReminderPopup />}
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />

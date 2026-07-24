@@ -40,6 +40,8 @@ export default function SettingsScreen() {
   const [forceSuperpower, setForceSuperpower] = useState<boolean>(false)
   const [forceDailyRecognition, setForceDailyRecognition] = useState<boolean>(false)
   const [recognitionStart, setRecognitionStart] = useState<string>('')
+  const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
+  const [discReminderHours, setDiscReminderHours] = useState<number>(24)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
   const [graceMinutes, setGraceMinutes] = useState<number>(0)
   const [lateRate, setLateRate] = useState<number>(0)
@@ -60,6 +62,8 @@ export default function SettingsScreen() {
     setForceSuperpower(!!loaded.force_superpower_onboarding)
     setForceDailyRecognition(!!loaded.force_daily_recognition)
     setRecognitionStart(loaded.recognition_gate_start_time || '')
+    setForceDiscReminder(!!loaded.force_disc_reminder)
+    setDiscReminderHours(loaded.disc_reminder_hours || 24)
     setQrValiditySeconds(loaded.qr_validity_seconds)
     setGraceMinutes(loaded.attendance_grace_minutes)
     setLateRate(loaded.late_penalty_per_minute)
@@ -105,6 +109,8 @@ export default function SettingsScreen() {
         force_superpower_onboarding: forceSuperpower ? 1 : 0,
         force_daily_recognition: forceDailyRecognition ? 1 : 0,
         recognition_gate_start_time: recognitionStart,
+        force_disc_reminder: forceDiscReminder ? 1 : 0,
+        disc_reminder_hours: discReminderHours,
         qr_validity_seconds: qrValiditySeconds,
         attendance_grace_minutes: graceMinutes,
         late_penalty_per_minute: lateRate,
@@ -330,6 +336,35 @@ export default function SettingsScreen() {
             Skor rata-rata rekan harus melebihi angka ini agar tampil di Team Wall (dan memberi skor pada
             superpower yang dipilih sendiri). Default 7,5.
           </p>
+
+          <p className="mb-3 mt-4 text-xs text-slate-500 dark:text-slate-400">
+            Ingatkan setiap anggota Internal Team &amp; Intern untuk mengisi tes DISC &amp; kepribadian.
+            Popup pengingat muncul kembali tiap N jam sampai kedua tes selesai. Default nonaktif.
+          </p>
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Pengingat Tes DISC &amp; Kepribadian</span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={forceDiscReminder}
+              onChange={(e) => setForceDiscReminder(e.target.checked)}
+            />
+          </label>
+          {forceDiscReminder && (
+            <label className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Interval pengingat (jam)</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                value={String(discReminderHours)}
+                // Clamp on blur/commit, not per keystroke — typing "1" before "12" mustn't snap to 1.
+                onChange={(e) => setDiscReminderHours(e.target.value === '' ? 0 : Number(e.target.value))}
+                onBlur={() => setDiscReminderHours((h) => (h < 1 ? 1 : Math.floor(h)))}
+              />
+            </label>
+          )}
         </div>
 
         <div className={card}>

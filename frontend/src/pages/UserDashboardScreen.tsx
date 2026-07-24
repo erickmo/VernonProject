@@ -4,6 +4,7 @@ import { Pencil, Sparkles, Coins, ChevronRight, CalendarCheck, CalendarOff, Scro
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, Avatar } from '@/components/ui'
 import { LeaderNotesSection } from '@/components/LeaderNotesSection'
+import { PsychometricCard } from '@/components/PsychometricCard'
 import { useUsers, useEmployeeProfile, useUserPointsLog, useBoot, canManageUsers, canManageAttendance, canHrApprove, canGrantPoints, canManageMarketplace, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
@@ -171,6 +172,9 @@ export default function UserDashboardScreen() {
             </div>
           </div>
         )}
+
+        {/* Psychometric results (read-only) — only when the user has completed a test */}
+        <PsychometricCard emp={emp} />
 
         {/* Related menu, grouped */}
         <div className="flex flex-col gap-5">

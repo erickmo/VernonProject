@@ -2381,6 +2381,8 @@ def get_app_settings():
 		"force_superpower_onboarding": int(g("force_superpower_onboarding") or 0),
 		"force_daily_recognition": int(g("force_daily_recognition") or 0),
 		"recognition_gate_start_time": str(g("recognition_gate_start_time") or "")[:5],
+		"force_disc_reminder": int(g("force_disc_reminder") or 0),
+		"disc_reminder_hours": int(g("disc_reminder_hours") or 24),
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
@@ -2454,6 +2456,8 @@ def save_app_settings(
 	force_superpower_onboarding=None,
 	force_daily_recognition=None,
 	recognition_gate_start_time=None,
+	force_disc_reminder=None,
+	disc_reminder_hours=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
 	late_penalty_per_minute=None,
@@ -2483,6 +2487,8 @@ def save_app_settings(
 		"show_auto_approve": show_auto_approve,
 		"force_superpower_onboarding": force_superpower_onboarding,
 		"force_daily_recognition": force_daily_recognition,
+		"force_disc_reminder": force_disc_reminder,
+		"disc_reminder_hours": disc_reminder_hours,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
 	}
@@ -2494,6 +2500,8 @@ def save_app_settings(
 	for field, value in int_fields.items():
 		if value is not None:
 			ival = int(value)
+			if field == "disc_reminder_hours" and ival < 1:
+				ival = 1  # nudge interval floored to 1h
 			if ival < 0:
 				frappe.throw(f"{field} cannot be negative.")
 			settings.set(field, ival)

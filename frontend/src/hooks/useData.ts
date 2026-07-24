@@ -150,6 +150,8 @@ export const keys = {
   userSuperpowers: (user: string) => ['user-superpowers', user] as const,
   superpowerSettings: ['superpower-settings'] as const,
   recognitionGate: ['recognition-gate'] as const,
+  discReminder: ['disc-reminder'] as const,
+  myDisc: ['my-disc'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -2473,6 +2475,14 @@ export const useVotableUsers = () =>
 // Daily recognition gate: is the session user forced to recognize a colleague now?
 export const useRecognitionGate = () =>
   useQuery({ queryKey: keys.recognitionGate, queryFn: () => mobileApi.getRecognitionGate() })
+
+// DISC + personality reminder: does the session user still owe a sub-test? No poll — like the gate.
+export const useDiscReminder = () =>
+  useQuery({ queryKey: keys.discReminder, queryFn: () => mobileApi.getDiscReminder() })
+
+// Caller's own stored DISC/personality results for the read-only self-view.
+export const useMyDisc = () =>
+  useQuery({ queryKey: keys.myDisc, queryFn: () => mobileApi.getMyDisc() })
 
 // System-Manager-only preview of the gate (ignores the flag / membership / once-per-day),
 // for the testing screen. Separate query key so it never clashes with the real gate.

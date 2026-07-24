@@ -786,6 +786,8 @@ export interface AppSettings {
   force_superpower_onboarding: number
   force_daily_recognition: number
   recognition_gate_start_time: string
+  force_disc_reminder: number
+  disc_reminder_hours: number
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number
@@ -1107,6 +1109,9 @@ export type EmployeeProfileAdmin = EmployeeSoft & {
   employment_status?: string; job_title?: string; date_joined?: string;
   contract_start?: string; contract_end?: string; annual_leave_quota?: number; prior_leave_taken?: number;
   leave?: LeaveBalance | null;
+  // Psychometric (read-only, set by the DISC test flow). scores are JSON strings.
+  disc_scores?: string | null; disc_type?: string | null; disc_completed_on?: string | null;
+  personality_scores?: string | null; personality_completed_on?: string | null;
 }
 
 export type ExceptionDecision = 'Pending' | 'Approved' | 'Rejected'
@@ -1382,4 +1387,26 @@ export interface RecognitionGate {
   assignee: RecognitionAssignee | null
   remaining: number
   total: number
+}
+
+// --- DISC + personality (Big Five) test reminder ---
+// owed=1 → the caller still owes at least one sub-test and the admin toggle is on.
+export interface DiscReminder {
+  enabled: number
+  owed: number
+  hours: number
+}
+export interface DiscQuestions {
+  disc: { id: string; words: string[] }[]
+  personality: { id: string; text: string }[]
+  disc_done: number
+  personality_done: number
+}
+// submit_disc_test echo. scores are JSON strings → JSON.parse to {D,I,S,C} / {O,C,E,A,N}.
+export interface DiscSubmitResult {
+  disc_type: string | null
+  disc_scores: string | null
+  personality_scores: string | null
+  disc_completed_on: string | null
+  personality_completed_on: string | null
 }

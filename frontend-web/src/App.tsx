@@ -81,6 +81,7 @@ import CloneMemberships from '@web/pages/CloneMemberships'
 import Onboarding from '@web/pages/Onboarding'
 import SuperpowerGate from '@/components/SuperpowerGate'
 import DailyRecognitionGate from '@/components/DailyRecognitionGate'
+import DiscReminderPopup from '@/components/DiscReminderPopup'
 import RecognitionGateTest from '@/pages/RecognitionGateTest'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
@@ -211,6 +212,8 @@ export default function App() {
       {!superpowerBlocked && recognitionGate?.owed && recognitionGate.assignee && (
         <DailyRecognitionGate gate={recognitionGate} />
       )}
+      {/* DISC reminder: dismissible, self-gates via localStorage. Behind the blocking gates. */}
+      {!superpowerBlocked && !recognitionGate?.owed && <DiscReminderPopup />}
       <Routes location={background}>
         <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>

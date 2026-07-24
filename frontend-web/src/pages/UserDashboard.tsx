@@ -7,6 +7,7 @@ import {
 import { Spinner, Avatar } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
+import PsychometricTile from '@web/components/PsychometricTile'
 import LeaderNotesSection from '@web/components/LeaderNotesSection'
 import { useUsers, useEmployeeProfile, useUserPointsLog, useBoot, canManageUsers, canManageAttendance, canHrApprove, canGrantPoints, canManageMarketplace, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
 
@@ -194,6 +195,17 @@ export default function UserDashboard() {
             <Info label="Contract" value={emp?.contract_start ? `${emp.contract_start}${emp.contract_end ? ` → ${emp.contract_end}` : ''}` : undefined} />
           </div>
         </BentoTile>
+
+        {/* Psychometric (read-only) — written by the DISC test flow, shown only if completed */}
+        {emp && (
+          <PsychometricTile
+            disc_type={emp.disc_type}
+            disc_scores={emp.disc_scores}
+            personality_scores={emp.personality_scores}
+            disc_completed_on={emp.disc_completed_on}
+            personality_completed_on={emp.personality_completed_on}
+          />
+        )}
 
         {/* Related menu, grouped */}
         <BentoTile span="full" tone="plain" title="Related">

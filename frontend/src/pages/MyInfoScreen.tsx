@@ -5,7 +5,8 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { useBoot, useSaveMyProfile } from '@/hooks/useData'
+import { useBoot, useSaveMyProfile, useMyDisc } from '@/hooks/useData'
+import { PsychometricCard } from '@/components/PsychometricCard'
 import type { EmployeeChildSkill, EmployeeChildEducation, EmployeeChildTraining } from '@/lib/types'
 
 // Moved verbatim from Profile.tsx (was the MyInfoCard module consts).
@@ -23,6 +24,7 @@ export default function MyInfoScreen() {
   const leave = boot?.leave
   const toast = useToast()
   const save = useSaveMyProfile()
+  const { data: myDisc } = useMyDisc()
 
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [birthdate, setBirthdate] = useState(employee?.birthdate ?? '')
@@ -100,6 +102,13 @@ export default function MyInfoScreen() {
             Lihat riwayat <ChevronRight className="h-3.5 w-3.5" />
           </span>
         </button>
+      )}
+
+      {/* DISC & personality self-view — renders only once a test is completed */}
+      {myDisc && (myDisc.disc_completed_on || myDisc.personality_completed_on) && (
+        <div className="mb-4">
+          <PsychometricCard emp={myDisc} />
+        </div>
       )}
 
       {/* Personal */}
