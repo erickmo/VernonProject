@@ -3532,9 +3532,10 @@ def transfer_tasks(from_user, to_user, project=None, dry_run=0):
 def get_team_wall():
 	"""All enabled, non-protected users with avatar snapshot — for the team wall.
 
-	Org-wide read: returns only display name + avatar image, the same fields
-	get_leaderboard already exposes to every user. Ungated, unlike
-	list_grant_users (which gates on the grant-points permission).
+	Org-wide read: returns display name + avatar image + job_title, the same
+	fields get_leaderboard already exposes to every user (plus the jabatan used
+	by the nametag sheet). Ungated, unlike list_grant_users (which gates on the
+	grant-points permission).
 	"""
 	users = frappe.get_all(
 		"User",
@@ -3544,8 +3545,18 @@ def get_team_wall():
 		order_by="full_name asc",
 	)
 	avatar_map = _avatar_config_map([u["name"] for u in users])
+	# job_title (jabatan) for the nametag; blank for users without an Employee Profile.
+	title_map = dict(
+		frappe.get_all(
+			"Employee Profile",
+			filters={"user": ["in", [u["name"] for u in users]]},
+			fields=["user", "job_title"],
+			as_list=True,
+		)
+	)
 	for u in users:
 		u["avatar_config"] = avatar_map.get(u["name"])
+		u["job_title"] = title_map.get(u["name"]) or None
 	return {"users": users}
 
 
@@ -4001,8 +4012,10 @@ def _meeting_can_manage(doc):
 	user = frappe.session.user
 	if "System Manager" in frappe.get_roles(user):
 		return True
-	owner, leader = frappe.get_value("Project", doc.project, ["project_owner", "project_leader"])
-	return user in (doc.organizer, owner, leader)
+	owner, leader, admin = frappe.get_value(
+		"Project", doc.project, ["project_owner", "project_leader", "project_admin"]
+	) or (None, None, None)
+	return user in (doc.organizer, owner, leader, admin)
 
 
 @frappe.whitelist()
@@ -4012,9 +4025,11 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 		if not frappe.db.exists("Project", project):
 			return {"status": "error", "message": "Project not found."}
 		user = frappe.session.user
-		owner, leader = frappe.get_value("Project", project, ["project_owner", "project_leader"])
-		if "System Manager" not in frappe.get_roles(user) and user not in (owner, leader):
-			return {"status": "error", "message": "Only the Project Owner or Leader can create meetings."}
+		owner, leader, admin = frappe.get_value(
+			"Project", project, ["project_owner", "project_leader", "project_admin"]
+		)
+		if "System Manager" not in frappe.get_roles(user) and user not in (owner, leader, admin):
+			return {"status": "error", "message": "Only the Project Owner, Leader or Admin can create meetings."}
 		rows = json.loads(participants) if isinstance(participants, str) else (participants or [])
 		doc = frappe.get_doc({
 			"doctype": "Meeting",
@@ -4114,9 +4129,9 @@ def list_meetings(project=None):
 		# A meeting can outlive its project (deleted). get_value returns None then;
 		# guard the unpack so one dangling ref doesn't 500 the whole list → the
 		# calendar/meetings screen going empty for every user who can see it.
-		owner, leader = frappe.get_value("Project", r["project"], ["project_owner", "project_leader"]) or (None, None)
+		owner, leader, admin = frappe.get_value("Project", r["project"], ["project_owner", "project_leader", "project_admin"]) or (None, None, None)
 		r["can_mark_done"] = (
-			"System Manager" in roles or user in (r["organizer"], owner, leader)
+			"System Manager" in roles or user in (r["organizer"], owner, leader, admin)
 		)
 	return {"meetings": rows}
 
@@ -4162,9 +4177,9 @@ def meeting_invitable_users(project, txt=""):
 		return {"users": []}
 	user = frappe.session.user
 	if "System Manager" not in frappe.get_roles(user):
-		owner, leader = frappe.get_value("Project", project, ["project_owner", "project_leader"]) or (None, None)
+		owner, leader, admin = frappe.get_value("Project", project, ["project_owner", "project_leader", "project_admin"]) or (None, None, None)
 		is_team = frappe.db.exists("Project Team", {"parent": project, "parenttype": "Project", "user": user})
-		if user not in (owner, leader) and not is_team:
+		if user not in (owner, leader, admin) and not is_team:
 			return {"users": []}
 	team = frappe.get_all(
 		"Project Team",

@@ -7,9 +7,14 @@ import { Page, PageHeader } from '@web/components/Page'
 import { useTeamWall } from '@/hooks/useData'
 import { TeamWallCanvas, WALL_MODES, type WallMode } from '@/components/TeamWallCanvas'
 import { SuperpowerWall } from '@/components/SuperpowerWall'
+import { NametagPicker } from '@/components/NametagPicker'
 
-type Mode = WallMode | 'super'
-const MODES: { value: Mode; label: string }[] = [...WALL_MODES, { value: 'super', label: 'Superpower' }]
+type Mode = WallMode | 'super' | 'nametag'
+const MODES: { value: Mode; label: string }[] = [
+  ...WALL_MODES,
+  { value: 'super', label: 'Superpower' },
+  { value: 'nametag', label: 'Nametag' },
+]
 
 export default function TeamWall() {
   const [mode, setMode] = useState<Mode>('photo')
@@ -34,6 +39,12 @@ export default function TeamWall() {
         </div>
       ) : !data || data.users.length === 0 ? (
         <EmptyState icon={UsersRound} title="No teammates yet" />
+      ) : mode === 'nametag' ? (
+        <BentoGrid>
+          <BentoTile span="full" tone="plain">
+            <NametagPicker users={data.users} />
+          </BentoTile>
+        </BentoGrid>
       ) : (
         <BentoGrid>
           <BentoTile span="full" tone="plain">

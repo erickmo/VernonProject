@@ -45,6 +45,7 @@ import UserPointsLogScreen from './pages/UserPointsLogScreen'
 import SuperpowerScreen from './pages/SuperpowerScreen'
 import SuperpowerAdminScreen from './pages/SuperpowerAdminScreen'
 import TeamWallScreen from './pages/TeamWallScreen'
+import NametagSheet from './components/NametagSheet'
 import MarketplaceScreen from './pages/MarketplaceScreen'
 import RewardFormScreen from './pages/RewardFormScreen'
 import MarketplaceAdminScreen from './pages/MarketplaceAdminScreen'
@@ -349,6 +350,7 @@ export default function App() {
           <Route path="/recognition-test" element={<RecognitionGateTest />} />
         )}
         <Route path="/team-wall" element={<TeamWallScreen />} />
+        <Route path="/team-wall/nametags" element={<NametagSheet />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
         <Route path="/me/info" element={<MyInfoScreen />} />

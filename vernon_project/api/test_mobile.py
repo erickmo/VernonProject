@@ -452,6 +452,9 @@ class TestTeamWall(unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		for email in (self.enabled_user, self.disabled_user):
+			if frappe.db.exists("Employee Profile", {"user": email}):
+				frappe.delete_doc("Employee Profile", frappe.db.get_value(
+					"Employee Profile", {"user": email}), force=True, ignore_permissions=True)
 			if frappe.db.exists("User", email):
 				frappe.delete_doc("User", email, force=True, ignore_permissions=True)
 		frappe.db.commit()
@@ -462,6 +465,17 @@ class TestTeamWall(unittest.TestCase):
 		self.assertNotIn(self.disabled_user, names)
 		for protected in PROTECTED_USERS:
 			self.assertNotIn(protected, names)
+
+	def test_job_title_from_employee_profile(self):
+		# The nametag reads job_title off the wall roster: present when the user has
+		# an Employee Profile job_title, None otherwise.
+		frappe.get_doc({
+			"doctype": "Employee Profile",
+			"user": self.enabled_user,
+			"job_title": "QA Lead",
+		}).insert(ignore_permissions=True)
+		by_name = {u["name"]: u for u in get_team_wall()["users"]}
+		self.assertEqual(by_name[self.enabled_user]["job_title"], "QA Lead")
 
 
 class TestMobileRecurring(unittest.TestCase):

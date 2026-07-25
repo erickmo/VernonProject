@@ -46,6 +46,7 @@ import BusinessUnitForm from '@web/pages/BusinessUnitForm'
 import Activity from '@web/pages/Activity'
 import Leaderboard from '@web/pages/Leaderboard'
 import TeamWall from '@web/pages/TeamWall'
+import NametagSheet from '@/components/NametagSheet'
 import Marketplace from '@web/pages/Marketplace'
 import WalletLog from '@web/pages/WalletLog'
 import UserPointsLog from '@web/pages/UserPointsLog'
@@ -253,6 +254,7 @@ export default function App() {
           )}
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/team-wall" element={<TeamWall />} />
+          <Route path="/team-wall/nametags" element={<NametagSheet />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/wallet" element={<WalletLog />} />
           <Route path="/points-log/:user" element={<UserPointsLog />} />

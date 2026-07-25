@@ -6,9 +6,14 @@ import { EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { useTeamWall } from '@/hooks/useData'
 import { TeamWallCanvas, WALL_MODES, type WallMode } from '@/components/TeamWallCanvas'
 import { SuperpowerWall } from '@/components/SuperpowerWall'
+import { NametagPicker } from '@/components/NametagPicker'
 
-type Mode = WallMode | 'super'
-const MODES: { value: Mode; label: string }[] = [...WALL_MODES, { value: 'super', label: 'Superpower' }]
+type Mode = WallMode | 'super' | 'nametag'
+const MODES: { value: Mode; label: string }[] = [
+  ...WALL_MODES,
+  { value: 'super', label: 'Superpower' },
+  { value: 'nametag', label: 'Nametag' },
+]
 
 export default function TeamWallScreen() {
   const [mode, setMode] = useState<Mode>('photo')
@@ -24,6 +29,8 @@ export default function TeamWallScreen() {
           <FullScreenLoader />
         ) : !data || data.users.length === 0 ? (
           <EmptyState icon={UsersRound} title="No teammates yet" />
+        ) : mode === 'nametag' ? (
+          <NametagPicker users={data.users} />
         ) : (
           <div className="mt-4">
             <TeamWallCanvas users={data.users} mode={mode} />

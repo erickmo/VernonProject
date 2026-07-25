@@ -911,12 +911,13 @@ export type TeamWallUser = {
   full_name: string | null
   user_image: string | null
   avatar_config?: AvatarConfig | null
+  job_title?: string | null
 }
 
 export type TeamWallResponse = { users: TeamWallUser[] }
 
 export type SuperpowerWallUser = TeamWallUser & {
-  score: number // voted: average rating 0-10; performance: earned score 0-10
+  score: number // voted: average rating 1-4; performance: earned score 1-4
   vote_count: number
   self_claimed: boolean
 }
