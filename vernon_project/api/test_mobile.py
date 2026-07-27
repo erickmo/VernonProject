@@ -1012,3 +1012,14 @@ class TestProfilePhoto(FrappeTestCase):
 			frappe.db.get_value("Employee Profile", {"user": "Administrator"}, "photo"),
 			"/files/real_face.png",
 		)
+
+
+class TestEduRank(unittest.TestCase):
+	def test_prefers_higher_level_then_year(self):
+		from vernon_project.api.mobile import _edu_rank
+		self.assertGreater(_edu_rank({"level": "S1", "year": 2020}),
+			_edu_rank({"level": "SMA/SMK", "year": 2024}))
+		self.assertGreater(_edu_rank({"level": "S1", "year": 2024}),
+			_edu_rank({"level": "S1", "year": 2020}))
+		self.assertLess(_edu_rank({"level": None, "year": 2024}),
+			_edu_rank({"level": "SD", "year": 2000}))

@@ -3584,6 +3584,17 @@ def transfer_tasks(from_user, to_user, project=None, dry_run=0):
 	return {"moved": len(todos)}
 
 
+EDU_LEVELS = ("SD", "SMP", "SMA/SMK", "D1", "D2", "D3", "D4", "S1", "S2", "S3")
+
+
+def _edu_rank(row):
+	"""Sort key for an intern's 'current' school: higher education level wins, tie-break
+	by graduation year. Blank/unknown level ranks below any known level."""
+	lvl = row.get("level")
+	rank = EDU_LEVELS.index(lvl) if lvl in EDU_LEVELS else -1
+	return (rank, row.get("year") or 0)
+
+
 @frappe.whitelist()
 def get_team_wall():
 	"""All enabled, non-protected users with avatar snapshot — for the team wall.
@@ -3600,19 +3611,39 @@ def get_team_wall():
 		limit_page_length=0,
 		order_by="full_name asc",
 	)
-	avatar_map = _avatar_config_map([u["name"] for u in users])
-	# job_title (jabatan) for the nametag; blank for users without an Employee Profile.
-	title_map = dict(
-		frappe.get_all(
+	emails = [u["name"] for u in users]
+	avatar_map = _avatar_config_map(emails)
+	# Employee Profile: jabatan + REAL photo + employment status for the nametag.
+	profiles = {
+		p["user"]: p
+		for p in frappe.get_all(
 			"Employee Profile",
-			filters={"user": ["in", [u["name"] for u in users]]},
-			fields=["user", "job_title"],
-			as_list=True,
+			filters={"user": ["in", emails]},
+			fields=["user", "job_title", "photo", "employment_status"],
 		)
-	)
+	}
+	# Intern schooling: highest-level education row per intern.
+	interns = [e for e, p in profiles.items() if p.get("employment_status") == "Intern"]
+	edu_map = {}
+	if interns:
+		for row in frappe.get_all(
+			"Employee Education",
+			filters={"parenttype": "Employee Profile", "parent": ["in", interns]},
+			fields=["parent", "level", "institution", "major", "year"],
+			order_by="parent asc",
+		):
+			cur = edu_map.get(row["parent"])
+			if cur is None or _edu_rank(row) > _edu_rank(cur):
+				edu_map[row["parent"]] = row
 	for u in users:
+		p = profiles.get(u["name"]) or {}
 		u["avatar_config"] = avatar_map.get(u["name"])
-		u["job_title"] = title_map.get(u["name"]) or None
+		u["job_title"] = p.get("job_title") or None
+		u["photo"] = p.get("photo") or None
+		u["is_intern"] = 1 if p.get("employment_status") == "Intern" else 0
+		edu = edu_map.get(u["name"]) or {}
+		u["school"] = edu.get("institution") or None
+		u["major"] = edu.get("major") or None
 	return {"users": users}
 
 
