@@ -8,7 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "personal_section", "gender", "religion", "verse_enabled", "focus_mode", "home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
+  "personal_section", "photo", "gender", "religion", "verse_enabled", "focus_mode", "home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
   "background_section", "education", "skills", "trainings",
   "legal_section", "nik_ktp", "npwp", "bpjs_kesehatan", "bpjs_ketenagakerjaan", "bank_name", "bank_account_no", "bank_account_holder", "attach_ktp", "attach_npwp",
   "contract_section", "employment_status", "job_title", "date_joined", "contract_start", "contract_end", "attach_contract",
@@ -19,6 +19,7 @@
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "unique": 1, "in_list_view": 1, "search_index": 1, "permlevel": 1},
 
   {"fieldname": "personal_section", "fieldtype": "Section Break", "label": "Personal"},
+  {"fieldname": "photo", "fieldtype": "Attach Image", "label": "Foto (foto asli, bukan avatar)"},
   {"fieldname": "gender", "fieldtype": "Select", "label": "Gender", "options": "\nMale\nFemale"},
   {"fieldname": "religion", "fieldtype": "Select", "label": "Agama", "options": "\nIslam\nKristen\nKatolik\nHindu\nBuddha\nKonghucu"},
   {"fieldname": "verse_enabled", "fieldtype": "Check", "label": "Tampilkan Ayat Harian", "default": "0"},
