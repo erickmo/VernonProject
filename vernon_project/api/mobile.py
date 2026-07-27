@@ -753,7 +753,16 @@ def bootstrap():
 			"has_superpower": 1 if frappe.db.exists("User Superpower", {"user": user}) else 0,
 		},
 		"leave": _leave_balance(user),
+		"leave_rules": _leave_rules_status(user),
 	}
+
+
+def _leave_rules_status(user):
+	from vernon_project.attendance.leave_rules import accrual_status
+	try:
+		return accrual_status(user, int(nowdate()[:4]))
+	except Exception:
+		return None
 
 
 @frappe.whitelist()
@@ -2388,6 +2397,11 @@ def get_app_settings():
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
 		"early_leave_penalty_per_minute": float(g("early_leave_penalty_per_minute") or 0),
 		"absence_penalty": float(g("absence_penalty") or 0),
+		"late_penalty_enabled": int(g("late_penalty_enabled") or 0),
+		"count_early_leave_in_penalty": int(g("count_early_leave_in_penalty") or 0),
+		"lateness_deduction_threshold_minutes": int(g("lateness_deduction_threshold_minutes") or 0),
+		"overtime_bonus_enabled": int(g("overtime_bonus_enabled") or 0),
+		"overtime_bonus_threshold_minutes": int(g("overtime_bonus_threshold_minutes") or 0),
 		"home_banners": [
 			{"image": b.image, "link": b.link or "", "is_active": int(b.is_active or 0)}
 			for b in frappe.get_single("Vernon Settings").get("home_banners") or []
@@ -2463,6 +2477,11 @@ def save_app_settings(
 	late_penalty_per_minute=None,
 	early_leave_penalty_per_minute=None,
 	absence_penalty=None,
+	late_penalty_enabled=None,
+	count_early_leave_in_penalty=None,
+	lateness_deduction_threshold_minutes=None,
+	overtime_bonus_enabled=None,
+	overtime_bonus_threshold_minutes=None,
 	home_banners=None,
 ):
 	_require_settings_manager()
@@ -2491,6 +2510,11 @@ def save_app_settings(
 		"disc_reminder_hours": disc_reminder_hours,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
+		"late_penalty_enabled": late_penalty_enabled,
+		"count_early_leave_in_penalty": count_early_leave_in_penalty,
+		"lateness_deduction_threshold_minutes": lateness_deduction_threshold_minutes,
+		"overtime_bonus_enabled": overtime_bonus_enabled,
+		"overtime_bonus_threshold_minutes": overtime_bonus_threshold_minutes,
 	}
 	float_fields = {
 		"late_penalty_per_minute": late_penalty_per_minute,
