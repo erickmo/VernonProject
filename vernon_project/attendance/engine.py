@@ -248,8 +248,11 @@ def recompute_range(employee, from_date, to_date):
 def nightly_finalize():
 	"""Scheduled daily: finalise yesterday for every active employee."""
 	yesterday = add_days(nowdate(), -1)
+	year = int(nowdate()[:4])
+	from vernon_project.attendance.leave_rules import reconcile_penalty
 	for emp in frappe.get_all("Attendance Profile", filters={"active": 1}, pluck="user"):
 		try:
 			recompute_daily(emp, yesterday, notify=True)
+			reconcile_penalty(emp, year)
 		except Exception:
 			frappe.log_error(title="attendance nightly_finalize failed")

@@ -9,7 +9,11 @@
   "brand_name", "company", "holiday_list", "weekday_minimums_section",
   "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday",
   "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday",
-  "min_minutes_sunday"
+  "min_minutes_sunday", "default_annual_leave_quota",
+  "leave_rules_override_section", "override_leave_rules",
+  "late_penalty_enabled", "count_early_leave_in_penalty",
+  "lateness_deduction_threshold_minutes", "overtime_bonus_enabled",
+  "overtime_bonus_threshold_minutes"
  ],
  "fields": [
   {
@@ -30,7 +34,14 @@
   {"fieldname": "min_minutes_friday", "fieldtype": "Int", "label": "Friday", "non_negative": 1, "default": "0"},
   {"fieldname": "min_minutes_saturday", "fieldtype": "Int", "label": "Saturday", "non_negative": 1, "default": "0"},
   {"fieldname": "min_minutes_sunday", "fieldtype": "Int", "label": "Sunday", "non_negative": 1, "default": "0"},
-  {"fieldname": "default_annual_leave_quota", "fieldtype": "Int", "label": "Default Annual Leave Quota", "default": "0", "description": "0 = fall back to app default of 12 days"}
+  {"fieldname": "default_annual_leave_quota", "fieldtype": "Int", "label": "Default Annual Leave Quota", "default": "0", "description": "0 = fall back to app default of 12 days"},
+  {"fieldname": "leave_rules_override_section", "fieldtype": "Section Break", "label": "Leave Rules Override", "description": "When 'Override global leave rules' is on, this brand's members use the fields below instead of the global Vernon Settings values for lateness deduction and overtime bonus."},
+  {"fieldname": "override_leave_rules", "fieldtype": "Check", "label": "Override global leave rules", "default": "0"},
+  {"fieldname": "late_penalty_enabled", "fieldtype": "Check", "label": "Deduct leave for lateness / early-leave", "default": "0", "depends_on": "override_leave_rules"},
+  {"fieldname": "count_early_leave_in_penalty", "fieldtype": "Check", "label": "Include early-leave minutes", "default": "1", "depends_on": "override_leave_rules"},
+  {"fieldname": "lateness_deduction_threshold_minutes", "fieldtype": "Int", "label": "Lateness minutes per 1 day deducted", "non_negative": 1, "default": "480", "depends_on": "override_leave_rules"},
+  {"fieldname": "overtime_bonus_enabled", "fieldtype": "Check", "label": "Grant leave for approved overtime", "default": "0", "depends_on": "override_leave_rules"},
+  {"fieldname": "overtime_bonus_threshold_minutes", "fieldtype": "Int", "label": "Overtime minutes per 1 day granted", "non_negative": 1, "default": "480", "depends_on": "override_leave_rules"}
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,

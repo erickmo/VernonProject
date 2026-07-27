@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["branding_section", "app_logo", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
+ "field_order": ["branding_section", "app_logo", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "leave_rules_section", "late_penalty_enabled", "count_early_leave_in_penalty", "lateness_deduction_threshold_minutes", "overtime_bonus_enabled", "overtime_bonus_threshold_minutes", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
   {"fieldname": "branding_section", "fieldtype": "Section Break", "label": "Branding"},
   {
@@ -108,6 +108,47 @@
    "fieldtype": "Check",
    "label": "Show Auto-Approve Controls",
    "default": "0"
+  },
+  {"fieldname": "leave_rules_section", "fieldtype": "Section Break", "label": "Leave Rules (lateness & overtime)"},
+  {
+   "fieldname": "late_penalty_enabled",
+   "fieldtype": "Check",
+   "label": "Deduct leave for lateness / early-leave",
+   "default": "0",
+   "description": "When on, accrued lateness (and early-leave) minutes from attendance are summed per year; every full threshold's worth deducts 1 day of annual leave. Overridable per Brand. 0 = off."
+  },
+  {
+   "fieldname": "count_early_leave_in_penalty",
+   "fieldtype": "Check",
+   "label": "Include early-leave minutes",
+   "default": "1",
+   "depends_on": "late_penalty_enabled",
+   "description": "Count early-leave minutes toward the lateness accrual too. Off = only late arrivals count."
+  },
+  {
+   "fieldname": "lateness_deduction_threshold_minutes",
+   "fieldtype": "Int",
+   "label": "Lateness minutes per 1 day deducted",
+   "non_negative": 1,
+   "default": "480",
+   "depends_on": "late_penalty_enabled",
+   "description": "Accrued lateness minutes that equal one deducted leave day (480 = 8h). 0 = disabled."
+  },
+  {
+   "fieldname": "overtime_bonus_enabled",
+   "fieldtype": "Check",
+   "label": "Grant leave for approved overtime",
+   "default": "0",
+   "description": "When on, HR-assigned overtime approved by a System Manager accrues per year; every full threshold's worth grants 1 bonus day of annual leave. Overridable per Brand. 0 = off."
+  },
+  {
+   "fieldname": "overtime_bonus_threshold_minutes",
+   "fieldtype": "Int",
+   "label": "Overtime minutes per 1 day granted",
+   "non_negative": 1,
+   "default": "480",
+   "depends_on": "overtime_bonus_enabled",
+   "description": "Approved overtime minutes that equal one granted leave day (480 = 8h). 0 = disabled."
   },
   {"fieldname": "gamification_section", "fieldtype": "Section Break", "label": "Gamification"},
   {

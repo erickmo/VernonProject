@@ -277,3 +277,31 @@ def post_adjustment(employee, entry_type, days, year, reason, posted_by=None):
         "reason": reason.strip(), "posted_by": posted_by or frappe.session.user,
         "posted_on": now_datetime(),
     }).insert(ignore_permissions=True)
+
+
+def reconcile_signed(employee, year, entry_type, unit_days, target_count, reason):
+    """Force the count of (employee, year, entry_type) rows to equal target_count.
+
+    Each row carries days=unit_days (signed: −1 penalty, +1 bonus). Idempotent —
+    inserts or deletes only the delta, so re-running is a no-op and turning a
+    feature off (target 0) removes every row it once minted. Used by
+    leave_rules.reconcile_penalty / reconcile_overtime.
+    """
+    names = frappe.get_all(
+        DOCTYPE,
+        filters={"employee": employee, "year": int(year), "entry_type": entry_type},
+        pluck="name",
+    )
+    existing = len(names)
+    target = max(0, int(target_count))
+    if target > existing:
+        for _i in range(target - existing):
+            frappe.get_doc({
+                "doctype": DOCTYPE, "employee": employee, "entry_type": entry_type,
+                "leave_type": default_annual_type(), "days": unit_days, "year": int(year),
+                "reason": reason, "posted_by": frappe.session.user, "posted_on": now_datetime(),
+            }).insert(ignore_permissions=True)
+    elif target < existing:
+        for name in names[: existing - target]:
+            frappe.delete_doc(DOCTYPE, name, ignore_permissions=True, force=True)
+    return target
