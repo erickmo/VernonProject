@@ -61,9 +61,10 @@ export default function Overtime() {
     if (!fEmployee) return toast('error', 'Pilih karyawan')
     if (!fDate) return toast('error', 'Pilih tanggal')
     if (!m || Number.isNaN(m) || m <= 0) return toast('error', 'Isi menit lembur (lebih dari 0)')
+    if (!fReason.trim()) return toast('error', 'Isi alasan lembur')
     setSubmitting(true)
     try {
-      await overtimeApi.create({ employee: fEmployee, date: fDate, minutes: m, reason: fReason.trim() || undefined })
+      await overtimeApi.create({ employee: fEmployee, date: fDate, minutes: m, reason: fReason.trim() })
       toast('success', 'Lembur ditambahkan')
       setFDate(''); setFMinutes(''); setFReason('')
       q.refetch()
@@ -143,15 +144,15 @@ export default function Overtime() {
                 <SearchableSelect value={fEmployee} onChange={setFEmployee} options={userOptions} placeholder="Cari karyawan…" allowClear />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted">Tanggal</label>
+                <label className="mb-1 block text-xs font-semibold text-muted">Tanggal *</label>
                 <DatePicker value={fDate} onChange={setFDate} className={field} placeholder="Pilih tanggal" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted">Menit lembur</label>
+                <label className="mb-1 block text-xs font-semibold text-muted">Menit lembur *</label>
                 <input type="number" min={1} className={field} value={fMinutes} onChange={(e) => setFMinutes(e.target.value)} placeholder="mis. 480" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted">Alasan (opsional)</label>
+                <label className="mb-1 block text-xs font-semibold text-muted">Alasan *</label>
                 <input className={field} value={fReason} onChange={(e) => setFReason(e.target.value)} placeholder="Alasan lembur" />
               </div>
               <div className="sm:col-span-2">

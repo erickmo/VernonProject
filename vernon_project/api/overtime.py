@@ -43,9 +43,11 @@ def create_overtime(employee, date, minutes, reason=None):
     minutes = int(minutes)
     if minutes <= 0:
         frappe.throw("Extra minutes must be positive.")
+    if not (reason or "").strip():
+        frappe.throw("Reason is required.")
     doc = frappe.get_doc({
         "doctype": "Overtime Entry", "employee": employee, "date": date,
-        "minutes": minutes, "reason": reason, "status": "Pending",
+        "minutes": minutes, "reason": reason.strip(), "status": "Pending",
     }).insert()
     return doc.name
 

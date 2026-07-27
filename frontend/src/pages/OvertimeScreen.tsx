@@ -63,9 +63,10 @@ export default function OvertimeScreen() {
     const m = Number(minutes)
     if (!Number.isFinite(m) || m <= 0) return toast('error', 'Isi jumlah menit lembur')
     if (!date) return toast('error', 'Pilih tanggal')
+    if (!reason.trim()) return toast('error', 'Isi alasan lembur')
     setSaving(true)
     try {
-      await overtimeApi.create({ employee, date, minutes: m, reason: reason.trim() || undefined })
+      await overtimeApi.create({ employee, date, minutes: m, reason: reason.trim() })
       toast('success', 'Lembur dicatat')
       setEmployee('')
       setMinutes('')
@@ -125,11 +126,11 @@ export default function OvertimeScreen() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-500">Tanggal</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-500">Tanggal *</label>
                   <input type="date" className={field} value={date} onChange={(e) => setDate(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-500">Menit</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-500">Menit *</label>
                   <input
                     className={field}
                     type="number"
@@ -142,7 +143,7 @@ export default function OvertimeScreen() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-500">Keterangan (opsional)</label>
+                <label className="mb-1 block text-xs font-semibold text-slate-500">Keterangan *</label>
                 <textarea
                   className={field + ' min-h-[64px] resize-y'}
                   value={reason}
