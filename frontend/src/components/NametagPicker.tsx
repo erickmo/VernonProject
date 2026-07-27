@@ -83,9 +83,10 @@ export function NametagPicker({ users }: { users: TeamWallUser[] }) {
               onClick={() => toggle(u.name)}
               className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
-              {(u.photo || u.user_image) ? (
-                <img src={(u.photo || u.user_image) as string} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+              {u.photo ? (
+                <img src={u.photo} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
               ) : (
+                // No real photo → initials, never the gamified avatar (user_image).
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400 dark:bg-slate-700">
                   {initials(name)}
                 </span>

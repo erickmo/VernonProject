@@ -11,17 +11,6 @@ import { Printer, ArrowLeft } from 'lucide-react'
 import { useTeamWall, useBoot } from '@/hooks/useData'
 import type { TeamWallUser } from '@/lib/types'
 
-function initials(name: string) {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() ?? '')
-      .join('') || '?'
-  )
-}
-
 // A4, 3 badges across × 3 down = 9 per page. Cards get their real mm size only in
 // print; on screen they size to content as a preview.
 const PRINT_CSS = `
@@ -59,8 +48,9 @@ export default function NametagSheet() {
   }, [data, selected])
 
   // Auto-open the print dialog once every real photo has loaded, so faces aren't
-  // blank in the printout. Users without a photo don't count toward the wait.
-  const photoCount = users.filter((u) => u.photo || u.user_image).length
+  // blank in the printout. Only the REAL photo counts — the gamified avatar snapshot
+  // (user_image) is intentionally NOT used on the tag; no-photo users print a blank spot.
+  const photoCount = users.filter((u) => u.photo).length
   const [loaded, setLoaded] = useState(0)
   const [printed, setPrinted] = useState(false)
   useEffect(() => {
@@ -115,18 +105,17 @@ export default function NametagSheet() {
               className="nametag-card flex w-40 flex-col items-center justify-start gap-2 rounded-lg border border-slate-300 p-3 text-center"
             >
               {logo ? <img src={logo} alt="" className="nametag-logo h-6 object-contain" /> : null}
-              {(u.photo || u.user_image) ? (
+              {u.photo ? (
                 <img
-                  src={(u.photo || u.user_image) as string}
+                  src={u.photo}
                   alt=""
                   onLoad={() => setLoaded((n) => n + 1)}
                   onError={() => setLoaded((n) => n + 1)}
                   className="nametag-face h-28 w-28 rounded-full object-cover ring-1 ring-slate-200"
                 />
               ) : (
-                <div className="nametag-face flex h-28 w-28 items-center justify-center rounded-full bg-slate-100 text-2xl font-bold text-slate-400 ring-1 ring-slate-200">
-                  {initials(name)}
-                </div>
+                // No real photo → blank circle placeholder (never the gamified avatar).
+                <div className="nametag-face h-28 w-28 rounded-full ring-1 ring-slate-200" />
               )}
               <div className="min-w-0">
                 <p className="nametag-name truncate text-base font-bold text-slate-900">{name}</p>
