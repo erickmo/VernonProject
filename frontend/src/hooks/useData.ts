@@ -152,6 +152,7 @@ export const keys = {
   recognitionGate: ['recognition-gate'] as const,
   discReminder: ['disc-reminder'] as const,
   myDisc: ['my-disc'] as const,
+  photoGate: ['photo-gate'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -2479,6 +2480,10 @@ export const useRecognitionGate = () =>
 // DISC + personality reminder: does the session user still owe a sub-test? No poll — like the gate.
 export const useDiscReminder = () =>
   useQuery({ queryKey: keys.discReminder, queryFn: () => mobileApi.getDiscReminder() })
+
+// Forced real-photo upload: does the session user still owe a profile photo? No poll — like the gate.
+export const usePhotoGate = () =>
+  useQuery({ queryKey: keys.photoGate, queryFn: () => mobileApi.getPhotoGate() })
 
 // Caller's own stored DISC/personality results for the read-only self-view.
 export const useMyDisc = () =>

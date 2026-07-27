@@ -939,6 +939,10 @@ export type TeamWallUser = {
   user_image: string | null
   avatar_config?: AvatarConfig | null
   job_title?: string | null
+  photo?: string | null
+  is_intern?: number
+  school?: string | null
+  major?: string | null
 }
 
 export type TeamWallResponse = { users: TeamWallUser[] }
@@ -1089,6 +1093,7 @@ export type EmployeeChildSkill = { skill: string; proficiency?: string }
 export type EmployeeChildTraining = { title: string; provider?: string; training_date?: string; certificate?: string; expiry_date?: string }
 
 export type EmployeeSoft = {
+  photo?: string;
   phone?: string; birthdate?: string; bio?: string;
   home_address?: string;
   emergency_contact_name?: string; emergency_contact_phone?: string; emergency_contact_relation?: string;
@@ -1437,4 +1442,10 @@ export interface DiscSubmitResult {
   personality_scores: string | null
   disc_completed_on: string | null
   personality_completed_on: string | null
+}
+
+// Forced real-photo upload gate. owed=1 → the caller still owes a profile photo and the admin toggle is on.
+export interface PhotoGate {
+  enabled: number
+  owed: number
 }

@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate, DiscReminder, DiscQuestions, DiscSubmitResult } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate, DiscReminder, DiscQuestions, DiscSubmitResult, PhotoGate } from './types'
 
 const METHOD = '/api/method/'
 
@@ -675,6 +675,8 @@ export const mobileApi = {
     api.get<UserSuperpowersView>(SP + 'get_user_superpowers', { user }),
   // DISC + personality (Big Five) test reminder. Answer maps are sent as JSON strings.
   getDiscReminder: () => api.get<DiscReminder>(DT + 'get_disc_reminder'),
+  // Forced real-photo upload gate: does the session user still owe a profile photo?
+  getPhotoGate: () => api.get<PhotoGate>(M + 'get_photo_gate'),
   getDiscQuestions: () => api.get<DiscQuestions>(DT + 'get_disc_questions'),
   // Caller's own stored results for the read-only self-view (same shape as submit echo).
   getMyDisc: () => api.get<DiscSubmitResult>(DT + 'get_my_disc'),
@@ -763,6 +765,31 @@ export async function uploadRewardImage(file: File): Promise<string> {
   const fd = new FormData()
   fd.append('file', file)
   const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_reward_image', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
+    body: fd,
+    credentials: 'same-origin',
+  })
+  let data: any = null
+  try {
+    data = await res.json()
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) {
+    const msg =
+      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
+    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+  }
+  const out = data?.message ?? data
+  return out.file_url as string
+}
+
+// Multipart upload of the caller's real profile photo. Returns the saved public URL.
+export async function uploadProfilePhoto(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_profile_photo', {
     method: 'POST',
     headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },
     body: fd,
