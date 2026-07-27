@@ -5,6 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { PhotoUpload } from '@/components/PhotoUpload'
 import { useBoot, useSaveMyProfile, useMyDisc } from '@/hooks/useData'
 import { PsychometricCard } from '@/components/PsychometricCard'
 import type { EmployeeChildSkill, EmployeeChildEducation, EmployeeChildTraining } from '@/lib/types'
@@ -27,6 +28,7 @@ export default function MyInfoScreen() {
   const { data: myDisc } = useMyDisc()
 
   const [phone, setPhone] = useState(employee?.phone ?? '')
+  const [photo, setPhoto] = useState(employee?.photo ?? '')
   const [birthdate, setBirthdate] = useState(employee?.birthdate ?? '')
   const [bio, setBio] = useState(employee?.bio ?? '')
   const [homeAddress, setHomeAddress] = useState(employee?.home_address ?? '')
@@ -44,6 +46,7 @@ export default function MyInfoScreen() {
   useEffect(() => {
     if (employee && !hydrated) {
       setPhone(employee.phone ?? '')
+      setPhoto(employee.photo ?? '')
       setBirthdate(employee.birthdate ?? '')
       setBio(employee.bio ?? '')
       setHomeAddress(employee.home_address ?? '')
@@ -61,7 +64,7 @@ export default function MyInfoScreen() {
 
   const doSave = () => {
     save.mutate(
-      { phone, birthdate, bio, home_address: homeAddress,
+      { photo, phone, birthdate, bio, home_address: homeAddress,
         emergency_contact_name: ecName, emergency_contact_phone: ecPhone, emergency_contact_relation: ecRelation,
         skills, education, trainings,
         religion, verse_enabled: verseEnabled ? 1 : 0 },
@@ -87,6 +90,10 @@ export default function MyInfoScreen() {
       }
     >
       <div className="flex flex-col">
+      <div className="mb-4 rounded-xl bg-paper-card p-3 shadow-card dark:bg-slate-900/40">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-slate-500">Foto</p>
+        <PhotoUpload value={photo || null} onChange={setPhoto} />
+      </div>
       {/* Leave balance — tap to open the full Riwayat Cuti statement */}
       {leave && (
         <button

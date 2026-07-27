@@ -4,6 +4,7 @@ import { ArrowLeft, Award, BookOpen, CalendarDays, Check, MapPin, Phone, Plus, T
 import { useBoot, useSaveMyProfile, useMyDisc } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { PhotoUpload } from '@/components/PhotoUpload'
 import { Spinner } from '@/components/ui'
 import { Page, PageHeader } from '@web/components/Page'
 import { BentoGrid, BentoTile } from '@web/components/bento'
@@ -31,6 +32,7 @@ export default function MyInfo() {
   const { data: myDisc } = useMyDisc()
 
   const [phone, setPhone] = useState('')
+  const [photo, setPhoto] = useState('')
   const [birthdate, setBirthdate] = useState('')
   const [bio, setBio] = useState('')
   const [homeAddress, setHomeAddress] = useState('')
@@ -49,6 +51,7 @@ export default function MyInfo() {
   useEffect(() => {
     if (employee && !hydrated) {
       setPhone(employee.phone ?? '')
+      setPhoto(employee.photo ?? '')
       setBirthdate(employee.birthdate ?? '')
       setBio(employee.bio ?? '')
       setHomeAddress(employee.home_address ?? '')
@@ -66,12 +69,12 @@ export default function MyInfo() {
 
   const payload = useMemo(
     () => ({
-      phone, birthdate, bio, home_address: homeAddress,
+      photo, phone, birthdate, bio, home_address: homeAddress,
       emergency_contact_name: ecName, emergency_contact_phone: ecPhone, emergency_contact_relation: ecRelation,
       skills, education, trainings,
       religion, verse_enabled: (verseEnabled ? 1 : 0) as 0 | 1,
     }),
-    [phone, birthdate, bio, homeAddress, ecName, ecPhone, ecRelation, skills, education, trainings, religion, verseEnabled],
+    [photo, phone, birthdate, bio, homeAddress, ecName, ecPhone, ecRelation, skills, education, trainings, religion, verseEnabled],
   )
 
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
@@ -121,6 +124,9 @@ export default function MyInfo() {
         {/* Personal */}
         <BentoTile span="lg" tone="plain" title="Personal">
           <div className="mt-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <PhotoUpload value={photo || null} onChange={setPhoto} />
+            </div>
             <label className="flex flex-col gap-1 text-sm font-medium text-ink">
               <span className="flex items-center gap-1 text-muted"><Phone className="h-3.5 w-3.5" /> Phone</span>
               <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={field} placeholder="+62 xxx" />
