@@ -23,6 +23,7 @@ export interface Boot {
     has_superpower?: 0 | 1
   }
   leave?: LeaveBalance | null
+  leave_rules?: LeaveRulesStatus | null
 }
 
 export type NotificationType =
@@ -793,7 +794,33 @@ export interface AppSettings {
   late_penalty_per_minute: number
   early_leave_penalty_per_minute: number
   absence_penalty: number
+  late_penalty_enabled: number
+  count_early_leave_in_penalty: number
+  lateness_deduction_threshold_minutes: number
+  overtime_bonus_enabled: number
+  overtime_bonus_threshold_minutes: number
   home_banners: HomeBanner[]
+}
+
+export interface OvertimeEntry {
+  name: string
+  employee: string
+  date: string
+  minutes: number
+  reason?: string | null
+  status: 'Pending' | 'Approved' | 'Rejected'
+  assigned_by?: string | null
+  approved_by?: string | null
+  approved_on?: string | null
+}
+
+export interface LeaveRulesStatus {
+  late_enabled: boolean
+  late_threshold: number
+  late_accrued: number
+  overtime_enabled: boolean
+  overtime_threshold: number
+  overtime_accrued: number
 }
 
 export interface MeetingListItem {

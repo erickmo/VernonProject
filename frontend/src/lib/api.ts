@@ -84,6 +84,7 @@ const R = 'vernon_project.api.report.'
 const LN = 'vernon_project.api.leader_notes.'
 const SP = 'vernon_project.api.superpowers.'
 const DT = 'vernon_project.api.disc_test.'
+const OV = 'vernon_project.api.overtime.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -976,6 +977,17 @@ export const lmsApi = {
   courseReport: (course: string) =>
     api.get<{ course_title: string; rows: LmsReportRow[] }>(LMS + 'course_report', { course }),
   assignableUsers: () => api.get<{ users: LmsAssignableUser[] }>(LMS + 'list_assignable_users'),
+}
+
+export const overtimeApi = {
+  list: (params: { employee?: string; status?: string; year?: number } = {}) =>
+    api.get<import('./types').OvertimeEntry[]>(OV + 'list_overtime', params),
+  create: (v: { employee: string; date: string; minutes: number; reason?: string }) =>
+    api.post<string>(OV + 'create_overtime', v),
+  setStatus: (name: string, status: string) =>
+    api.post<{ name: string; status: string }>(OV + 'set_status', { name, status }),
+  remove: (name: string) => api.post<{ ok: boolean }>(OV + 'delete_overtime', { name }),
+  myStatus: () => api.get<import('./types').LeaveRulesStatus>(OV + 'my_leave_rules_status'),
 }
 
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>
