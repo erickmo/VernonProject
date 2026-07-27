@@ -38,6 +38,7 @@ export default function Settings() {
   const [recognitionStart, setRecognitionStart] = useState<string>('')
   const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
   const [discReminderHours, setDiscReminderHours] = useState<string>('24')
+  const [forcePhotoUpload, setForcePhotoUpload] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
   const [lateRate, setLateRate] = useState<string>('0')
@@ -67,6 +68,7 @@ export default function Settings() {
     setRecognitionStart(loaded.recognition_gate_start_time || '')
     setForceDiscReminder(!!loaded.force_disc_reminder)
     setDiscReminderHours(String(loaded.disc_reminder_hours))
+    setForcePhotoUpload(!!loaded.force_photo_upload)
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
     setLateRate(String(loaded.late_penalty_per_minute))
@@ -131,6 +133,7 @@ export default function Settings() {
         recognition_gate_start_time: recognitionStart,
         force_disc_reminder: forceDiscReminder ? 1 : 0,
         disc_reminder_hours: Math.max(1, n(discReminderHours)),
+        force_photo_upload: forcePhotoUpload ? 1 : 0,
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
         late_penalty_per_minute: n(lateRate),
@@ -490,6 +493,19 @@ export default function Settings() {
                 </p>
               </>
             )}
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Wajib Unggah Foto Asli</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={forcePhotoUpload}
+                onChange={(e) => setForcePhotoUpload(e.target.checked)}
+              />
+            </label>
+            <p className="text-xs text-muted">
+              Saat aktif, anggota Internal Team &amp; Intern tanpa foto asli wajib mengunggahnya lewat modal
+              yang tidak bisa dilewati saat membuka aplikasi. Default nonaktif.
+            </p>
             <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
               <span className="text-sm font-semibold text-ink dark:text-slate-200">Ambang skor Team Wall (1–4)</span>
               <input

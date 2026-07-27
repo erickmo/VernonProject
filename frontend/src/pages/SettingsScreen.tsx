@@ -42,6 +42,7 @@ export default function SettingsScreen() {
   const [recognitionStart, setRecognitionStart] = useState<string>('')
   const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
   const [discReminderHours, setDiscReminderHours] = useState<number>(24)
+  const [forcePhotoUpload, setForcePhotoUpload] = useState<boolean>(false)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
   const [graceMinutes, setGraceMinutes] = useState<number>(0)
   const [lateRate, setLateRate] = useState<number>(0)
@@ -69,6 +70,7 @@ export default function SettingsScreen() {
     setRecognitionStart(loaded.recognition_gate_start_time || '')
     setForceDiscReminder(!!loaded.force_disc_reminder)
     setDiscReminderHours(loaded.disc_reminder_hours || 24)
+    setForcePhotoUpload(!!loaded.force_photo_upload)
     setQrValiditySeconds(loaded.qr_validity_seconds)
     setGraceMinutes(loaded.attendance_grace_minutes)
     setLateRate(loaded.late_penalty_per_minute)
@@ -121,6 +123,7 @@ export default function SettingsScreen() {
         recognition_gate_start_time: recognitionStart,
         force_disc_reminder: forceDiscReminder ? 1 : 0,
         disc_reminder_hours: discReminderHours,
+        force_photo_upload: forcePhotoUpload ? 1 : 0,
         qr_validity_seconds: qrValiditySeconds,
         attendance_grace_minutes: graceMinutes,
         late_penalty_per_minute: lateRate,
@@ -443,6 +446,20 @@ export default function SettingsScreen() {
               />
             </label>
           )}
+
+          <p className="mb-3 mt-4 text-xs text-slate-500 dark:text-slate-400">
+            Wajibkan anggota Internal Team &amp; Intern yang belum punya foto asli untuk mengunggahnya
+            lewat modal yang tidak bisa dilewati saat membuka aplikasi. Default nonaktif.
+          </p>
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Wajib Unggah Foto Asli</span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={forcePhotoUpload}
+              onChange={(e) => setForcePhotoUpload(e.target.checked)}
+            />
+          </label>
         </div>
 
         <div className={card}>

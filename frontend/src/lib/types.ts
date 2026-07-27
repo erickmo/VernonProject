@@ -789,6 +789,7 @@ export interface AppSettings {
   recognition_gate_start_time: string
   force_disc_reminder: number
   disc_reminder_hours: number
+  force_photo_upload: number
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number
