@@ -43,6 +43,11 @@ export default function Settings() {
   const [lateRate, setLateRate] = useState<string>('0')
   const [earlyRate, setEarlyRate] = useState<string>('0')
   const [absencePenalty, setAbsencePenalty] = useState<string>('0')
+  const [lateRuleEnabled, setLateRuleEnabled] = useState<boolean>(false)
+  const [countEarlyLeave, setCountEarlyLeave] = useState<boolean>(false)
+  const [lateThreshold, setLateThreshold] = useState<string>('0')
+  const [overtimeRuleEnabled, setOvertimeRuleEnabled] = useState<boolean>(false)
+  const [overtimeThreshold, setOvertimeThreshold] = useState<string>('0')
   const [banners, setBanners] = useState<HomeBanner[]>([])
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const bannerFileRef = useRef<HTMLInputElement>(null)
@@ -67,6 +72,11 @@ export default function Settings() {
     setLateRate(String(loaded.late_penalty_per_minute))
     setEarlyRate(String(loaded.early_leave_penalty_per_minute))
     setAbsencePenalty(String(loaded.absence_penalty))
+    setLateRuleEnabled(!!loaded.late_penalty_enabled)
+    setCountEarlyLeave(!!loaded.count_early_leave_in_penalty)
+    setLateThreshold(String(loaded.lateness_deduction_threshold_minutes))
+    setOvertimeRuleEnabled(!!loaded.overtime_bonus_enabled)
+    setOvertimeThreshold(String(loaded.overtime_bonus_threshold_minutes))
     setBanners(loaded.home_banners ?? [])
     setAppLogo(loaded.app_logo ?? '')
   }, [loaded])
@@ -126,6 +136,11 @@ export default function Settings() {
         late_penalty_per_minute: n(lateRate),
         early_leave_penalty_per_minute: n(earlyRate),
         absence_penalty: n(absencePenalty),
+        late_penalty_enabled: lateRuleEnabled ? 1 : 0,
+        count_early_leave_in_penalty: countEarlyLeave ? 1 : 0,
+        lateness_deduction_threshold_minutes: n(lateThreshold),
+        overtime_bonus_enabled: overtimeRuleEnabled ? 1 : 0,
+        overtime_bonus_threshold_minutes: n(overtimeThreshold),
         home_banners: banners.filter((b) => b.image),
       },
       {
@@ -330,6 +345,76 @@ export default function Settings() {
           </div>
         </BentoTile>
 
+        <BentoTile span="md" tone="tint" accent="brand" title="Aturan Cuti">
+          <div className="mt-3 space-y-3">
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Potong cuti untuk keterlambatan / pulang cepat</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={lateRuleEnabled}
+                onChange={(e) => setLateRuleEnabled(e.target.checked)}
+              />
+            </label>
+            {lateRuleEnabled && (
+              <>
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+                  <span className="text-sm font-semibold text-ink dark:text-slate-200">Ikut hitung menit pulang cepat</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-brand-600"
+                    checked={countEarlyLeave}
+                    onChange={(e) => setCountEarlyLeave(e.target.checked)}
+                  />
+                </label>
+                <Field label="Menit keterlambatan per 1 hari dipotong">
+                  {(id) => (
+                    <input
+                      id={id}
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      className={field}
+                      value={lateThreshold}
+                      onChange={(e) => setLateThreshold(e.target.value)}
+                      placeholder="480"
+                    />
+                  )}
+                </Field>
+              </>
+            )}
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Tambah cuti untuk lembur disetujui</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={overtimeRuleEnabled}
+                onChange={(e) => setOvertimeRuleEnabled(e.target.checked)}
+              />
+            </label>
+            {overtimeRuleEnabled && (
+              <Field label="Menit lembur per 1 hari ditambah">
+                {(id) => (
+                  <input
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className={field}
+                    value={overtimeThreshold}
+                    onChange={(e) => setOvertimeThreshold(e.target.value)}
+                    placeholder="480"
+                  />
+                )}
+              </Field>
+            )}
+            <p className="text-xs text-muted">
+              Keterlambatan (dan pulang cepat, bila diaktifkan) yang terkumpul memotong 1 hari cuti tiap kelipatan
+              menit di atas. Lembur yang disetujui menambah 1 hari cuti tiap kelipatan menitnya. 0 = nonaktif.
+            </p>
+          </div>
+        </BentoTile>
+
         <BentoTile span="md" tone="tint" accent="brand" title="Gamification">
           <div className="mt-3 space-y-3">
             <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
@@ -406,12 +491,12 @@ export default function Settings() {
               </>
             )}
             <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
-              <span className="text-sm font-semibold text-ink dark:text-slate-200">Ambang skor Team Wall (0–10)</span>
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Ambang skor Team Wall (1–4)</span>
               <input
                 type="number"
                 step="0.1"
-                min={0}
-                max={10}
+                min={1}
+                max={4}
                 className="w-24 rounded-lg border border-line px-2 py-1.5 text-right text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 value={wallScoreMin}
                 onChange={(e) => setWallScoreMin(e.target.value)}
@@ -419,7 +504,7 @@ export default function Settings() {
             </label>
             <p className="text-xs text-muted">
               Skor rata-rata rekan harus melebihi angka ini agar tampil di Team Wall (dan memberi skor pada
-              superpower yang dipilih sendiri). Default 7,5.
+              superpower yang dipilih sendiri). Default 3,25.
             </p>
           </div>
         </BentoTile>

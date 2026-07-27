@@ -100,6 +100,7 @@ import RequestException from '@web/pages/RequestException'
 import MyExceptions from '@web/pages/MyExceptions'
 import CutiLedger from '@web/pages/CutiLedger'
 import CutiLedgerAdmin from '@web/pages/CutiLedgerAdmin'
+import Overtime from '@web/pages/Overtime'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
 import Bookings from '@web/pages/Bookings'
@@ -346,6 +347,7 @@ export default function App() {
           <Route path="/attendance/request" element={<RequestException />} />
           <Route path="/attendance/my-requests" element={<MyExceptions />} />
           <Route path="/attendance/cuti" element={<CutiLedger />} />
+          <Route path="/attendance/overtime" element={<Overtime />} />
           {canHrApprove(b) && <Route path="/attendance/exceptions" element={<Exceptions />} />}
           {canHrApprove(b) && <Route path="/attendance/leave-types" element={<LeaveTypesAdmin />} />}
           {canHrApprove(b) && <Route path="/attendance/cuti-admin" element={<CutiLedgerAdmin />} />}

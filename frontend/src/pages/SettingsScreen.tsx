@@ -47,6 +47,11 @@ export default function SettingsScreen() {
   const [lateRate, setLateRate] = useState<number>(0)
   const [earlyRate, setEarlyRate] = useState<number>(0)
   const [absencePenalty, setAbsencePenalty] = useState<number>(0)
+  const [latePenaltyEnabled, setLatePenaltyEnabled] = useState<boolean>(false)
+  const [countEarlyLeave, setCountEarlyLeave] = useState<boolean>(false)
+  const [latenessThreshold, setLatenessThreshold] = useState<number>(0)
+  const [overtimeBonusEnabled, setOvertimeBonusEnabled] = useState<boolean>(false)
+  const [overtimeThreshold, setOvertimeThreshold] = useState<number>(0)
   const [banners, setBanners] = useState<HomeBanner[]>([])
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const bannerFileRef = useRef<HTMLInputElement>(null)
@@ -69,6 +74,11 @@ export default function SettingsScreen() {
     setLateRate(loaded.late_penalty_per_minute)
     setEarlyRate(loaded.early_leave_penalty_per_minute)
     setAbsencePenalty(loaded.absence_penalty)
+    setLatePenaltyEnabled(!!loaded.late_penalty_enabled)
+    setCountEarlyLeave(!!loaded.count_early_leave_in_penalty)
+    setLatenessThreshold(loaded.lateness_deduction_threshold_minutes)
+    setOvertimeBonusEnabled(!!loaded.overtime_bonus_enabled)
+    setOvertimeThreshold(loaded.overtime_bonus_threshold_minutes)
     setBanners(loaded.home_banners ?? [])
   }, [loaded])
 
@@ -116,6 +126,11 @@ export default function SettingsScreen() {
         late_penalty_per_minute: lateRate,
         early_leave_penalty_per_minute: earlyRate,
         absence_penalty: absencePenalty,
+        late_penalty_enabled: latePenaltyEnabled ? 1 : 0,
+        count_early_leave_in_penalty: countEarlyLeave ? 1 : 0,
+        lateness_deduction_threshold_minutes: latenessThreshold,
+        overtime_bonus_enabled: overtimeBonusEnabled ? 1 : 0,
+        overtime_bonus_threshold_minutes: overtimeThreshold,
         home_banners: banners.filter((b) => b.image),
       },
       {
@@ -261,6 +276,69 @@ export default function SettingsScreen() {
         </div>
 
         <div className={card}>
+          <p className="mb-1 text-sm font-bold text-stone-800 dark:text-slate-100">Aturan Cuti</p>
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            Potong cuti saat menit keterlambatan menumpuk; tambah cuti saat lembur yang disetujui menumpuk.
+          </p>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Potong cuti untuk keterlambatan / pulang cepat
+            </span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={latePenaltyEnabled}
+              onChange={(e) => setLatePenaltyEnabled(e.target.checked)}
+            />
+          </label>
+
+          {latePenaltyEnabled && (
+            <label className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Ikut hitung menit pulang cepat
+              </span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={countEarlyLeave}
+                onChange={(e) => setCountEarlyLeave(e.target.checked)}
+              />
+            </label>
+          )}
+
+          {latePenaltyEnabled && (
+            <div className="mt-3 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Menit keterlambatan per 1 hari dipotong
+              </label>
+              {num(latenessThreshold, setLatenessThreshold, '480')}
+            </div>
+          )}
+
+          <label className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Tambah cuti untuk lembur disetujui
+            </span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={overtimeBonusEnabled}
+              onChange={(e) => setOvertimeBonusEnabled(e.target.checked)}
+            />
+          </label>
+
+          {overtimeBonusEnabled && (
+            <div className="mt-3 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Menit lembur per 1 hari ditambah
+              </label>
+              {num(overtimeThreshold, setOvertimeThreshold, '480')}
+            </div>
+          )}
+        </div>
+
+        <div className={card}>
           <p className="mb-3 text-sm font-bold text-stone-800 dark:text-slate-100">Auto-Approve</p>
 
           <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
@@ -320,13 +398,13 @@ export default function SettingsScreen() {
           )}
           <label className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Ambang skor Team Wall (0–10)
+              Ambang skor Team Wall (1–4)
             </span>
             <input
               type="number"
               step="0.1"
-              min={0}
-              max={10}
+              min={1}
+              max={4}
               className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={wallScoreMin}
               onChange={(e) => setWallScoreMin(e.target.value === '' ? '' : Number(e.target.value))}
@@ -334,7 +412,7 @@ export default function SettingsScreen() {
           </label>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Skor rata-rata rekan harus melebihi angka ini agar tampil di Team Wall (dan memberi skor pada
-            superpower yang dipilih sendiri). Default 7,5.
+            superpower yang dipilih sendiri). Default 3,25.
           </p>
 
           <p className="mb-3 mt-4 text-xs text-slate-500 dark:text-slate-400">

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { QrCode, CalendarPlus, ClipboardCheck, FileText, Inbox, Tag, Scale } from 'lucide-react'
+import { QrCode, CalendarPlus, ClipboardCheck, FileText, Inbox, Tag, Scale, Clock } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useMyAttendance, useBoot, canHrApprove } from '@/hooks/useData'
@@ -48,6 +48,12 @@ export default function MyAttendance() {
           className="flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
         >
           <FileText className="h-5 w-5" /> My requests
+        </button>
+        <button
+          onClick={() => navigate('/lembur')}
+          className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
+        >
+          <Clock className="h-5 w-5" /> Lembur
         </button>
         {/* HR's own way in. The /attendance/manage hub is System-Manager-gated,
             so without this an HR Manager could only reach the inbox from a

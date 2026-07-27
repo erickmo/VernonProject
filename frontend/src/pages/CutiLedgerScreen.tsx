@@ -3,8 +3,47 @@ import { useQuery } from '@tanstack/react-query'
 import { CalendarDays } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
+import { useBoot } from '@/hooks/useData'
 import { mobileApi } from '@/lib/api'
-import type { CutiLedgerResponse, CutiLedgerRow, CutiLedgerEntryType } from '@/lib/types'
+import type { CutiLedgerResponse, CutiLedgerRow, CutiLedgerEntryType, LeaveRulesStatus } from '@/lib/types'
+
+/** Progress toward the next accrual/deduction threshold — one thin bar per rule. */
+function AccrualRow({ label, accrued, threshold, tone }: { label: string; accrued: number; threshold: number; tone: string }) {
+  const pct = threshold > 0 ? Math.min((accrued % threshold) / threshold, 1) * 100 : 0
+  return (
+    <div>
+      <p className="text-xs font-medium text-stone-600 dark:text-slate-300">{label}</p>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/** Accrual card shown on the personal ledger — reflects the logged-in user's live rules. */
+function AccrualCard({ rules }: { rules: LeaveRulesStatus }) {
+  if (!rules.late_enabled && !rules.overtime_enabled) return null
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-paper-edge bg-paper-card p-4 shadow-card dark:border-slate-700 dark:bg-slate-800">
+      {rules.late_enabled && (
+        <AccrualRow
+          label={`Keterlambatan: ${rules.late_accrued}/${rules.late_threshold} menit → potong 1 hari`}
+          accrued={rules.late_accrued}
+          threshold={rules.late_threshold}
+          tone="bg-rose-500"
+        />
+      )}
+      {rules.overtime_enabled && (
+        <AccrualRow
+          label={`Lembur: ${rules.overtime_accrued}/${rules.overtime_threshold} menit → tambah 1 hari`}
+          accrued={rules.overtime_accrued}
+          threshold={rules.overtime_threshold}
+          tone="bg-emerald-500"
+        />
+      )}
+    </div>
+  )
+}
 
 const ENTRY_LABEL: Record<CutiLedgerEntryType, string> = {
   Grant: 'Kuota tahunan',
@@ -85,6 +124,8 @@ export function CutiStatement({ data }: { data: CutiLedgerResponse }) {
 
 export default function CutiLedgerScreen() {
   const [year, setYear] = useState(new Date().getFullYear())
+  const { data: boot } = useBoot()
+  const rules = boot?.leave_rules
   const { data, isLoading } = useQuery({
     queryKey: ['cutiLedger', 'self', year],
     queryFn: () => mobileApi.getCutiLedger(undefined, year),
@@ -92,6 +133,7 @@ export default function CutiLedgerScreen() {
 
   return (
     <DetailScreen title="Riwayat Cuti">
+      {rules && <AccrualCard rules={rules} />}
       <YearSwitch year={year} onChange={setYear} />
       {isLoading ? (
         <div className="flex justify-center py-16">

@@ -5,7 +5,7 @@ import {
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
-  History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck,
+  History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck, Clock,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -48,6 +48,7 @@ const WORK: NavLeaf[] = [
   { to: '/attendance/request', label: 'Request leave', sub: 'Cuti / WFH', icon: CalendarPlus },
   { to: '/attendance/my-requests', label: 'My leave/WFH', sub: 'Your requests & status', icon: FileText },
   { to: '/attendance/cuti', label: 'Riwayat Cuti', sub: 'Saldo & histori cuti', icon: History },
+  { to: '/attendance/overtime', label: 'Lembur', sub: 'Jam lembur & status', icon: Clock },
   { to: '/learn', label: 'Learn', sub: 'Courses & progress', icon: BookOpen, match: '/learn' },
 ]
 
