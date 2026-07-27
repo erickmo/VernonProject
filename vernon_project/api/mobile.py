@@ -3300,6 +3300,37 @@ def upload_reward_image():
 
 
 @frappe.whitelist()
+def upload_profile_photo():
+	"""Save the caller's uploaded REAL profile photo as a public File and return its URL.
+	Self-service: any logged-in user sets their OWN photo (the form stores the URL on
+	Employee Profile.photo via update_my_profile). Independent of the avatar snapshot,
+	which clobbers User.user_image. Raster images only — served public, so SVG/HTML
+	(stored-XSS vectors) are rejected by extension + MIME."""
+	if frappe.session.user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	import os
+	from frappe.utils.file_manager import save_file
+
+	f = frappe.request.files.get("file")
+	if not f:
+		frappe.throw("No file uploaded")
+
+	ext = os.path.splitext(f.filename or "")[1].lower()
+	if ext not in ALLOWED_IMAGE_EXT:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+	mimetype = (getattr(f, "mimetype", "") or "").lower()
+	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
+
+	content = f.stream.read()
+	if len(content) > MAX_IMAGE_BYTES:
+		frappe.throw("Image too large (max 5 MB).")
+
+	saved = save_file(f.filename, content, None, None, is_private=0)
+	return {"file_url": saved.file_url}
+
+
+@frappe.whitelist()
 def upload_business_unit_image():
 	"""Save an uploaded business unit image as a public File and return its URL.
 	The form then stores the URL on the business unit's `image` field like any
