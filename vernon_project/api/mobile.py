@@ -3648,6 +3648,22 @@ def get_team_wall():
 
 
 @frappe.whitelist()
+def get_photo_gate():
+	"""{enabled, owed} — whether to force the caller to upload a REAL profile photo.
+	enabled by the force_photo_upload setting; owed when an Internal-Team/Intern caller
+	has no Employee Profile.photo yet. Same scoped population as the DISC reminder."""
+	enabled = int(bool(frappe.db.get_single_value("Vernon Settings", "force_photo_upload")))
+	user = frappe.session.user
+	owed = 0
+	if enabled and user != "Guest":
+		member_type = frappe.db.get_value("User", user, "custom_member_type")
+		if member_type in ("Internal Team", "Intern"):
+			if not frappe.db.get_value("Employee Profile", {"user": user}, "photo"):
+				owed = 1
+	return {"enabled": enabled, "owed": owed}
+
+
+@frappe.whitelist()
 def gift_points(to_user, amount, note=None):
 	"""Transfer points from the logged-in user to another user. Zero-sum:
 	the sender is debited (negative ledger row), the recipient credited.
