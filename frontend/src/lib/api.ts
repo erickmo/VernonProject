@@ -635,11 +635,14 @@ export const mobileApi = {
   buzzTodo: (todo: string) =>
     api.post<{ ok: boolean; assignee: string }>('vernon_project.api.report.buzz_todo', { todo }),
   updateMyProfile: (payload: Partial<import('./types').EmployeeSoft>) =>
+    // Only stringify+send child tables the caller actually provided. Backend treats a present
+    // value (even "[]") as "replace", so sending them unconditionally would wipe education/
+    // skills/trainings on a partial save like PhotoGate's bare { photo }.
     api.post<{ status: string; message?: string }>(M + 'update_my_profile', {
       ...payload,
-      education: JSON.stringify(payload.education ?? []),
-      skills: JSON.stringify(payload.skills ?? []),
-      trainings: JSON.stringify(payload.trainings ?? []),
+      ...(payload.education !== undefined ? { education: JSON.stringify(payload.education) } : {}),
+      ...(payload.skills !== undefined ? { skills: JSON.stringify(payload.skills) } : {}),
+      ...(payload.trainings !== undefined ? { trainings: JSON.stringify(payload.trainings) } : {}),
     } as Record<string, unknown>),
   getEmployeeProfile: (user: string) =>
     api.get<import('./types').EmployeeProfileAdmin>(M + 'get_employee_profile', { user }),
