@@ -448,7 +448,7 @@ export default function SettingsScreen() {
           )}
 
           <p className="mb-3 mt-4 text-xs text-slate-500 dark:text-slate-400">
-            Wajibkan anggota Internal Team &amp; Intern yang belum punya foto asli untuk mengunggahnya
+            Wajibkan semua pengguna yang belum punya foto asli untuk mengunggahnya
             lewat modal yang tidak bisa dilewati saat membuka aplikasi. Default nonaktif.
           </p>
           <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">

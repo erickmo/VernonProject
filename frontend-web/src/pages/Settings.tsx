@@ -503,7 +503,7 @@ export default function Settings() {
               />
             </label>
             <p className="text-xs text-muted">
-              Saat aktif, anggota Internal Team &amp; Intern tanpa foto asli wajib mengunggahnya lewat modal
+              Saat aktif, semua pengguna tanpa foto asli wajib mengunggahnya lewat modal
               yang tidak bisa dilewati saat membuka aplikasi. Default nonaktif.
             </p>
             <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">

@@ -1914,52 +1914,6 @@ def set_todo_allocations(project_item, allocations):
 		return {"status": "error", "message": msg}
 
 
-@frappe.whitelist(methods=["POST"])
-def plan_today(todo, minutes=None):
-	"""Assignee-only: put ONE todo on today's day-plan, preserving every other-day
-	allocation row. Backs the buzz popup's "added to your plan by default / Batalkan"
-	flow. minutes=None => add mode: sets today only if it's currently empty, using the
-	todo's estimate (fallback 30) — never stomps a plan the user already made. An
-	explicit minutes (incl. 0) => set today exactly (0 drops the row); that's how the
-	popup's undo restores the prior value. Returns prev_minutes (today's minutes before
-	this call) so the caller can undo precisely."""
-	user = frappe.session.user
-	todo = frappe.utils.cstr(todo)
-	if not frappe.db.exists("Project Todo", todo):
-		frappe.throw("Task not found.", frappe.DoesNotExistError)
-	assigned_to = frappe.get_value("Project Todo", todo, "assigned_to")
-	if user != assigned_to and "System Manager" not in frappe.get_roles(user):
-		frappe.throw("Only the assignee can plan this task.", frappe.PermissionError)
-
-	today = frappe.utils.nowdate()
-	doc = frappe.get_doc("Project Todo", todo)
-	prev = 0
-	kept = []
-	for a in doc.allocations:
-		if str(a.allocation_date) == today:
-			prev = int(a.estimated_minutes or 0)
-		else:
-			kept.append(
-				{"allocation_date": a.allocation_date, "estimated_minutes": a.estimated_minutes, "note": a.note}
-			)
-
-	if minutes is None:
-		if prev > 0:  # already on today's plan — leave it as the user set it
-			return {"ok": True, "prev_minutes": prev, "minutes": prev, "changed": False}
-		minutes = int(frappe.utils.cint(doc.get("estimated"))) or 30
-	else:
-		minutes = int(frappe.utils.cint(minutes))
-
-	doc.set("allocations", [])
-	for k in kept:
-		doc.append("allocations", k)
-	if minutes > 0:
-		doc.append("allocations", {"allocation_date": today, "estimated_minutes": minutes, "note": ""})
-	doc.save(ignore_permissions=True)
-	frappe.db.commit()
-	return {"ok": True, "prev_minutes": prev, "minutes": minutes, "changed": True}
-
-
 # --------------------------------------------------------------------------------
 # Reports (mobile)
 # Reuse the existing Script Reports via the standard query-report runner so the
@@ -3699,16 +3653,14 @@ def get_team_wall():
 @frappe.whitelist()
 def get_photo_gate():
 	"""{enabled, owed} — whether to force the caller to upload a REAL profile photo.
-	enabled by the force_photo_upload setting; owed when an Internal-Team/Intern caller
-	has no Employee Profile.photo yet. Same scoped population as the DISC reminder."""
+	enabled by the force_photo_upload setting; owed when ANY logged-in user has no
+	Employee Profile.photo yet (applies to everyone, not just Internal-Team/Intern)."""
 	enabled = int(bool(frappe.db.get_single_value("Vernon Settings", "force_photo_upload")))
 	user = frappe.session.user
 	owed = 0
 	if enabled and user != "Guest":
-		member_type = frappe.db.get_value("User", user, "custom_member_type")
-		if member_type in ("Internal Team", "Intern"):
-			if not frappe.db.get_value("Employee Profile", {"user": user}, "photo"):
-				owed = 1
+		if not frappe.db.get_value("Employee Profile", {"user": user}, "photo"):
+			owed = 1
 	return {"enabled": enabled, "owed": owed}
 
 

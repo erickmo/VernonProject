@@ -192,7 +192,7 @@
    "fieldtype": "Check",
    "label": "Force Profile Photo Upload",
    "default": "0",
-   "description": "When on, Internal-Team & Intern users with no real profile photo are shown a blocking modal on app open and must upload one before using the app. 0 = off (no gate)."
+   "description": "When on, ANY user with no real profile photo is shown a blocking modal on app open and must upload one before using the app. 0 = off (no gate)."
   },
   {
    "fieldname": "recognition_section",
