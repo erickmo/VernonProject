@@ -26,6 +26,15 @@ surfaced on the tag.
   intern has no education row filled.
 - **Intern line placement:** one line `institution · major` **under** the job title. Job title
   still shows if set. Non-interns are unchanged (name + job title only).
+- **Forcing:** a **blocking** gate (not dismissible) forces users with no real photo to upload one
+  on app open — modelled on `DailyRecognitionGate`/`SuperpowerGate`, with `<PhotoUpload>` embedded
+  so they upload in place; it closes only when a photo is saved. Toggle-gated by a new
+  `force_photo_upload` **Vernon Settings** flag, **default 0 (off)** — matches every other forcing
+  gate, so the whole gate ships inert until an admin enables it.
+- **Gate population:** `Internal Team` + `Intern` only (reuse `disc_test._SCOPED`) — the same real-staff
+  set the DISC reminder targets. Contractors/externals/guests are never forced.
+- **Real-photo guidance:** copy shown in both the upload control and the gate modal —
+  "Gunakan foto asli wajah kamu — bukan avatar, kartun, atau logo."
 
 ## Components
 
@@ -62,8 +71,11 @@ No other doctype changes. `Employee Education` (level/institution/major/year) al
   `uploadRewardImage`, posts to `vernon_project.api.mobile.upload_profile_photo`.
 - `components/PhotoUpload.tsx`: small shared control — shows current photo (or `user_image`
   fallback, or initials), a file picker (`accept="image/*"`), uploads via `uploadProfilePhoto`,
-  calls `onChange(url)`. Neutral styling that reads acceptably in both design systems; a screen
-  may wrap it if needed. Shared logic (pick → upload → state) lives here per the two-frontend rule.
+  calls `onChange(url)`. Includes the real-photo guidance line. Neutral styling that reads
+  acceptably in both design systems; a screen may wrap it if needed. Shared logic
+  (pick → upload → state) lives here per the two-frontend rule.
+- `hooks/useData.ts`: `usePhotoGate()` querying `getPhotoGate`; `api.ts`: `getPhotoGate()` →
+  `{ enabled, owed }`.
 
 ### 4. Nametag (shared components used by both frontends)
 - `components/NametagSheet.tsx`:
@@ -79,16 +91,33 @@ No other doctype changes. `Employee Education` (level/institution/major/year) al
   chosen URL flows into the `updateMyProfile` payload (add `photo` to the saved fields).
 - `/w` `frontend-web/src/pages/MyInfo.tsx`: same, in its Personal tile.
 
+### 6. Forcing gate + settings
+- **Vernon Settings** (`vernon_settings.json`, `gamification_section`): add `force_photo_upload`
+  (Check, default `0`). Add to the bootstrap settings payload (`mobile.py` ~2437) and the
+  `update_settings` whitelist (~2517) + admin **Settings** screen on both frontends (mirror the
+  `force_disc_reminder` toggle row).
+- **`get_photo_gate()`** (mobile.py) → `{enabled, owed}`, mirroring `disc_test.get_disc_reminder`:
+  `enabled = force_photo_upload`; `owed = 1` when enabled, caller is not Guest, caller's
+  `custom_member_type in ("Internal Team","Intern")`, and their `Employee Profile.photo` is empty.
+- **`components/PhotoGate.tsx`** (shared): blocking modal (model on `DailyRecognitionGate` —
+  no dismiss, no localStorage throttle). Renders when `usePhotoGate().owed`. Body = short
+  real-photo instruction + `<PhotoUpload>`; on a successful save it invalidates the gate + team-wall
+  queries and unmounts. Mounted in both `App.tsx` next to the other blocking gates (before the
+  DISC reminder). Multiple blocking gates simply resolve one after another.
+
 ## Out of scope (YAGNI)
 - Admin/HR uploading photos for others (explicitly deferred — self-service only).
 - Changing how the avatar writes `user_image` (unchanged; the new `photo` field sidesteps it).
 - Showing school/major for non-interns.
 
 ## Ship chores
-- `python3 scripts/gen_docs.py` (new whitelisted endpoint changes the docs data) + commit `data.js`.
+- `python3 scripts/gen_docs.py` (new whitelisted endpoints `upload_profile_photo` + `get_photo_gate`
+  change the docs data) + commit `data.js`.
+- Migrate the site (new `Employee Profile.photo` field + new `Vernon Settings.force_photo_upload`).
 - Rebuild **both** bundles (`frontend` + `frontend-web`), `sudo /usr/local/bin/tj-restart`.
-- Migrate the site (new doctype field).
-- Add a What's New (`App Release`) entry after it is live (Bahasa, `Both`).
+- What's New (`App Release`, Bahasa, `Both`) after it is live — cover the **visible** parts only:
+  profile photo upload, real photo on the nametag, intern school+major. The forcing gate is
+  inert (default-off) → **not** announced until an admin enables `force_photo_upload`.
 
 ## Testing / verification
 - Backend: a user with an avatar-clobbered `user_image` + a `photo` set → `get_team_wall`
@@ -97,3 +126,6 @@ No other doctype changes. `Employee Education` (level/institution/major/year) al
   highest-level pick (rank + tie-break).
 - E2E on the live site: upload a photo on /m and /w MyInfo, open the nametag sheet, confirm the
   real photo prints and an intern shows the school·major line.
+- Gate: with `force_photo_upload=1`, an Internal/Intern user with no `photo` sees the blocking
+  modal on app open; uploading closes it; a user with a photo, or a non-scoped member type, or the
+  flag off → no gate. `get_photo_gate` returns the right `owed`/`enabled` in each case.
