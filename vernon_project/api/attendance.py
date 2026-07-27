@@ -5,7 +5,7 @@ import hmac
 
 import frappe
 from frappe import _
-from frappe.utils import cint, getdate, now_datetime, nowdate
+from frappe.utils import add_days, cint, getdate, now_datetime, nowdate
 
 from vernon_project.attendance import qr
 from vernon_project.attendance.engine import recompute_daily
@@ -403,6 +403,20 @@ def request_exception(from_date, to_date, exception_type, reason=None, leave_typ
 		return {"status": "error", "message": _("Invalid type.")}
 	if getdate(to_date) < getdate(from_date):
 		return {"status": "error", "message": _("To Date cannot be before From Date.")}
+	# Reject overlap with an existing request that's still pending or approved —
+	# no double-booking the same days (two dates overlap iff each starts on or
+	# before the other ends).
+	if frappe.get_all(
+		"Attendance Exception",
+		filters={
+			"employee": user,
+			"status": ["in", ["Pending", "Approved"]],
+			"from_date": ["<=", to_date],
+			"to_date": [">=", from_date],
+		},
+		limit=1,
+	):
+		return {"status": "error", "message": _("Sudah ada pengajuan izin/cuti untuk tanggal tersebut.")}
 	if exception_type == "Leave":
 		if not leave_type:
 			return {"status": "error", "message": _("Pilih kategori cuti.")}
@@ -547,6 +561,39 @@ def pending_exception_approvals():
 	names = list({r.parent for r in mine})
 	# only surface parents still Pending overall
 	rows = [e for e in _shape_exception_rows(names) if e["status"] == "Pending"]
+	return {"status": "ok", "rows": rows}
+
+
+@frappe.whitelist()
+def team_leave():
+	"""Approved Leave (Cuti) across the whole team for the calendar's Team Leave
+	lens — who's out, when. Any logged-in user can see it; it carries no reasons
+	or proof, just name + leave category + span."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please log in"), frappe.PermissionError)
+	# ponytail: window to the last ~14 months so old leave never accumulates;
+	# widen if anyone needs to browse further back on the calendar.
+	rows = frappe.get_all(
+		"Attendance Exception",
+		filters={
+			"exception_type": "Leave",
+			"status": "Approved",
+			"to_date": [">=", add_days(nowdate(), -430)],
+		},
+		fields=["name", "employee", "leave_type", "from_date", "to_date"],
+		order_by="from_date desc",
+		limit_page_length=0,
+	)
+	names = {r["employee"] for r in rows}
+	name_map = {
+		u["name"]: u["full_name"]
+		for u in frappe.get_all(
+			"User", filters={"name": ["in", list(names)]}, fields=["name", "full_name"]
+		)
+	} if names else {}
+	for r in rows:
+		r["employee_name"] = name_map.get(r["employee"]) or r["employee"]
 	return {"status": "ok", "rows": rows}
 
 

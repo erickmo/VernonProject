@@ -10,6 +10,7 @@ submit them via `ignore_permissions=True` but only HR can read them back.
 
 import json
 import os
+import random
 import re
 
 import frappe
@@ -227,6 +228,71 @@ def start_test(attempt_id, job, test, prev=None):
 	return {"remaining_sec": limit_sec, "limit_sec": limit_sec}
 
 
+def _ket_seed(attempt_id):
+	"""Get-or-create this attempt's accuracy-bank seed (idempotent within the attempt TTL).
+	Only the tiny (seed, n) is stored; the items+answers regenerate deterministically from it."""
+	key = f"recruit_ket:{attempt_id}"
+	cache = frappe.cache()
+	raw = cache.get_value(key)
+	if raw:
+		data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+		return int(data["seed"]), int(data["n"])
+	seed = random.SystemRandom().randrange(1, 2 ** 31)
+	cache.set_value(key, json.dumps({"seed": seed, "n": ri.KET_COUNT, "at": now_datetime().timestamp()}),
+					expires_in_sec=ATTEMPT_TTL)
+	return seed, ri.KET_COUNT
+
+
+# Below this, a submission "completed" the whole accuracy section faster than any human could
+# read 20 items — a strong signal the UI (per-item timer, one-at-a-time) was bypassed by a script.
+# Same/diff + odd-one-out answers are derivable from the displayed text, so this server-observed
+# timing is the only real automation signal; we FLAG it for HR (never silently zero a real score).
+_KET_MIN_HUMAN_SEC = 20
+
+
+def _ket_age(attempt_id):
+	"""Seconds since this attempt first fetched the accuracy bank; None if unknown."""
+	attempt_id = _clean_attempt(attempt_id)
+	if not attempt_id:
+		return None
+	raw = frappe.cache().get_value(f"recruit_ket:{attempt_id}")
+	if not raw:
+		return None
+	data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+	at = data.get("at")
+	return (now_datetime().timestamp() - float(at)) if at else None
+
+
+def _ket_bank(attempt_id):
+	"""Regenerate this attempt's accuracy bank WITH answers, for scoring. None if the seed is
+	gone (attempt older than the TTL) — caller then leaves the section unscored, never mis-scored."""
+	attempt_id = _clean_attempt(attempt_id)
+	if not attempt_id:
+		return None
+	raw = frappe.cache().get_value(f"recruit_ket:{attempt_id}")
+	if not raw:
+		return None
+	data = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+	return ri.gen_ketelitian(int(data["seed"]), int(data["n"]))
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(key="ket_items", limit=60, seconds=3600)
+def get_ketelitian(attempt_id, job):
+	"""Per-attempt randomized accuracy bank, answers stripped. Idempotent: a reload returns the
+	SAME items (seed persists), so the server timer and the item set stay consistent across reloads."""
+	attempt_id = _clean_attempt(attempt_id)
+	if not attempt_id:
+		frappe.throw("Sesi tes tidak valid.")
+	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
+	if not name:
+		frappe.throw("Lowongan tidak ditemukan.", frappe.DoesNotExistError)
+	if not frappe.db.get_value("Job Opening", name, "test_ketelitian"):
+		frappe.throw("Tes tidak aktif.")
+	seed, n = _ket_seed(attempt_id)
+	return {"items": ri.public_ketelitian_from(ri.gen_ketelitian(seed, n))}
+
+
 @frappe.whitelist(allow_guest=True)
 def get_job(slug):
 	name = frappe.db.get_value("Job Opening", {"slug": slug, "status": "Open"}, "name")
@@ -327,15 +393,19 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	if tests["ketelitian"]:
 		ka = _loadjson(ketelitian_answers, [])
 		ka = ka if isinstance(ka, list) else []
-		krows, ks, km, _ = _score_answers(ri.ketelitian_qdefs(), ka)
-		for r in krows:
-			r["test"] = "Ketelitian"
-		if not _timed("ketelitian") and len(ka) < len(ri.KETELITIAN_ITEMS):
-			frappe.throw("Mohon jawab semua soal tes ketelitian.")
-		rows += krows
-		ketelitian_score, ketelitian_max = ks, km
-		score += ks
-		max_score += km
+		ket_items = _ket_bank(attempt_id)  # regenerate the exact bank this attempt was served
+		if ket_items:
+			qdefs = ri.ketelitian_qdefs_from(ket_items)
+			krows, ks, km, _ = _score_answers(qdefs, ka)
+			for r in krows:
+				r["test"] = "Ketelitian"
+			if not _timed("ketelitian") and len(ka) < len(qdefs):
+				frappe.throw("Mohon jawab semua soal tes ketelitian.")
+			rows += krows
+			ketelitian_score, ketelitian_max = ks, km
+			score += ks
+			max_score += km
+		# else: per-attempt seed expired (>TTL) → leave unscored (max 0) rather than mis-score
 
 	psych = {}
 	disc_type = None
@@ -376,6 +446,13 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 		vcount = 0
 	vreasons = _loadjson(violation_reasons, [])
 	vreasons = [str(x)[:60] for x in vreasons] if isinstance(vreasons, list) else []
+	# server-authoritative automation signal: a human can't clear 20 accuracy items in seconds.
+	# The per-item timer is client-side and bypassable by a direct POST; this catches that.
+	if tests["ketelitian"] and ketelitian_max:
+		age = _ket_age(attempt_id)
+		if age is not None and age < _KET_MIN_HUMAN_SEC:
+			vcount += 1
+			vreasons.append("tes ketelitian selesai tak wajar cepat (kemungkinan otomatisasi)")
 	vdetail = ", ".join(sorted(set(vreasons)))[:1000]
 
 	# CV file — private, PDF/doc only (no HTML/SVG stored-XSS).

@@ -137,8 +137,8 @@ export default function SuperpowersAdmin() {
               onChange={(e) => setVotePoints(Number(e.target.value))} />
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
-            Ambang skor Team Wall (0–10)
-            <input type="number" step="0.1" min={0} max={10} className={field} value={wallScoreMin}
+            Ambang skor Team Wall (1–4)
+            <input type="number" step="0.1" min={1} max={4} className={field} value={wallScoreMin}
               onChange={(e) => setWallScoreMin(Number(e.target.value))} />
           </label>
         </div>

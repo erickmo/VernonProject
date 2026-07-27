@@ -3,7 +3,7 @@
 #
 # Superpowers — workspace traits surfaced two ways:
 #   1. My Superpowers   — self-claimed (User Superpower rows).
-#   2. Peer-Voted       — others score a user 0-10 per trait (Superpower Vote);
+#   2. Peer-Voted       — others score a user 1-4 per trait (Superpower Vote);
 #      each trait gets a confidence-weighted level.
 #
 #   W = (S + prior_mean * K) / (n + K)     # S = sum of n votes, K = confidence_k
@@ -44,7 +44,17 @@ def _is_hr():
 # anonymous and exist to help each person know & grow their own strengths, so
 # only strong signals (and only to the owner / HR) are surfaced elsewhere.
 # The threshold is admin-tunable via Superpower Settings.wall_score_min.
-_WALL_SCORE_MIN_DEFAULT = 7.5
+# On the 1-4 scale, 3.25 mirrors the old 0-10 default of 7.5 (both are 75% of range).
+_WALL_SCORE_MIN_DEFAULT = 3.25
+
+# Voted + Performance both live on this scale. Peer votes are raw 1-4; Performance
+# maps its 0..1 completion ratio onto it via _perf_score.
+VOTE_MIN, VOTE_MAX = 1, 4
+
+
+def _perf_score(ratio):
+	"""Completion ratio 0..1 → 1-4 Performance score (VOTE_MIN + ratio*range)."""
+	return VOTE_MIN + ratio * (VOTE_MAX - VOTE_MIN)
 
 
 def _wall_min():
@@ -208,7 +218,7 @@ def _score_ontime(user, start):
 	)
 	total = len(rows)
 	on = sum(1 for r in rows if r["status"] in _ATT_ONTIME)
-	score = (on / total * 10) if total else 0
+	score = _perf_score(on / total) if total else VOTE_MIN
 	return score, (f"{on}/{total} hari tepat waktu" if total else "Belum ada data absensi")
 
 
@@ -221,7 +231,7 @@ def _score_beat_deadline(user, start):
 	)
 	total = len(rows)
 	on = sum(1 for r in rows if r.get("deadline") and getdate(r["completed_at"]) <= getdate(r["deadline"]))
-	score = (on / total * 10) if total else 0
+	score = _perf_score(on / total) if total else VOTE_MIN
 	return score, (f"{on}/{total} selesai tepat waktu" if total else "Belum ada tugas selesai")
 
 
@@ -254,7 +264,7 @@ def _score_streak(user, target):
 	while d and d in active:
 		streak += 1
 		d = getdate(add_days(d, -1))
-	score = min(streak, target) / target * 10 if target else 0
+	score = _perf_score(min(streak, target) / target) if target else VOTE_MIN
 	return score, f"{streak} hari beruntun"
 
 
@@ -264,7 +274,7 @@ def _score_finisher(user, start, target):
 		"Project Todo",
 		{"assigned_to": user, "status": _STATUS_COMPLETED, "completed_at": [">=", start]},
 	)
-	score = min(count, target) / target * 10 if target else 0
+	score = _perf_score(min(count, target) / target) if target else VOTE_MIN
 	return score, f"{count} tugas selesai"
 
 
@@ -460,15 +470,15 @@ def _perf_wall_groups():
 
 	def ontime(u):
 		rows = [st for (d, st) in att.get(u, []) if d >= window_start]
-		return (sum(1 for st in rows if st in _ATT_ONTIME) / len(rows) * 10) if rows else 0
+		return _perf_score(sum(1 for st in rows if st in _ATT_ONTIME) / len(rows)) if rows else 0
 
 	def beat(u):
 		rows = [(d, dl) for (d, dl) in todo.get(u, []) if d >= window_start]
-		return (sum(1 for (d, dl) in rows if dl and d <= getdate(dl)) / len(rows) * 10) if rows else 0
+		return _perf_score(sum(1 for (d, dl) in rows if dl and d <= getdate(dl)) / len(rows)) if rows else 0
 
 	def finisher(u):
 		cnt = sum(1 for (d, _) in todo.get(u, []) if d >= window_start)
-		return min(cnt, finisher_target) / finisher_target * 10 if finisher_target else 0
+		return _perf_score(min(cnt, finisher_target) / finisher_target) if finisher_target else 0
 
 	def streak(u):
 		active = {d for (d, _) in att.get(u, [])} | {d for (d, _) in todo.get(u, [])}
@@ -477,7 +487,7 @@ def _perf_wall_groups():
 		while d and d in active:
 			run += 1
 			d = getdate(add_days(d, -1))
-		return min(run, streak_target) / streak_target * 10 if streak_target else 0
+		return _perf_score(min(run, streak_target) / streak_target) if streak_target else 0
 
 	fns = {"ontime": ontime, "beat_deadline": beat, "finisher": finisher, "streak": streak}
 	out = []
@@ -658,15 +668,15 @@ def set_my_superpowers(user, superpowers):
 
 @frappe.whitelist()
 def cast_vote(ratee, superpower, score):
-	"""Any logged-in user (not the ratee). Upsert the caller's 0-10 vote, mint
+	"""Any logged-in user (not the ratee). Upsert the caller's 1-4 vote, mint
 	recognition points, and return the trait's updated aggregate."""
 	_require_login()
 	voter = frappe.session.user
 	if ratee == voter:
 		frappe.throw("You cannot vote on yourself.")
 	score = cint(score)
-	if score < 0 or score > 10:
-		frappe.throw("Score must be between 0 and 10.")
+	if score < VOTE_MIN or score > VOTE_MAX:
+		frappe.throw(f"Score must be between {VOTE_MIN} and {VOTE_MAX}.")
 	if not frappe.db.exists("Superpower", superpower):
 		frappe.throw("Unknown superpower.", frappe.DoesNotExistError)
 	if frappe.db.get_value("Superpower", superpower, "kind") == "Performance":

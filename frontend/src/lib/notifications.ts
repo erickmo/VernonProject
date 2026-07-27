@@ -22,6 +22,7 @@ export const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   Comment: MessageCircle,
   Mention: AtSign,
   Points: Coins,
+  Gift: Gift,
   Redemption: Gift,
   Kudos: Hand,
   Feedback: MessageSquareText,

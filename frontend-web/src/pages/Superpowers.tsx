@@ -10,6 +10,7 @@ import {
 import { Spinner, EmptyState, Avatar } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { AddSuperpowerModal } from '@/components/AddSuperpowerModal'
+import { VOTE_OPTIONS, scorePct } from '@/lib/voteScale'
 import { SuperpowerProgress } from '@/components/SuperpowerProgress'
 import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
@@ -29,7 +30,7 @@ export { SPIcon }
 export const hexBg = (color?: string) =>
   color && /^#[0-9a-f]{6}$/i.test(color) ? color + '1f' : undefined
 
-const pct = (score: number) => Math.max(0, Math.min(100, score * 10))
+const pct = scorePct
 
 export function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
   if (!level)
@@ -107,7 +108,7 @@ function AnonymityNote() {
 function VotePills({ value, onPick, disabled }: { value: number | null; onPick: (n: number) => void; disabled?: boolean }) {
   return (
     <div className="flex flex-wrap gap-1">
-      {Array.from({ length: 11 }).map((_, n) => (
+      {VOTE_OPTIONS.map((n) => (
         <button
           key={n}
           type="button"
@@ -401,7 +402,7 @@ export default function Superpowers() {
                   >
                     {!isSelf && (
                       <div className="mt-3 space-y-2 border-t border-line pt-3">
-                        <div className="text-xs font-medium text-muted">Nilai kamu (0–10){c.my_vote != null ? ` · ${c.my_vote}` : ''}</div>
+                        <div className="text-xs font-medium text-muted">Nilai kamu (1–4){c.my_vote != null ? ` · ${c.my_vote}` : ''}</div>
                         <VotePills value={c.my_vote} onPick={(n) => doCast(c.superpower, n)} disabled={cast.isPending} />
                         {c.my_vote != null && (
                           <button

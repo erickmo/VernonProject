@@ -3,13 +3,14 @@ import clsx from 'clsx'
 import { Sparkles, Send, X } from 'lucide-react'
 import { Avatar, Spinner } from './ui'
 import { SPIcon } from '../lib/spIcon'
+import { VOTE_OPTIONS } from '../lib/voteScale'
 import { useSuperpowers, useCastVotes } from '../hooks/useData'
 import type { RecognitionGate } from '../lib/types'
 
 // Blocking daily recognition gate: shown on app open when the session user still owes a
 // superpower vote for a colleague. No skip/dismiss (unless `onClose` is passed — used only
 // by the System-Manager testing screen). Voting UI mirrors the main vote screen: EVERY
-// votable superpower on its own line with its own 0–10 scale. Submitting casts every trait
+// votable superpower on its own line with its own 1–4 scale. Submitting casts every trait
 // the user scored; on success useCastVotes invalidates the gate so the parent unmounts it.
 // Shared by both frontends (web imports via @/components, like SuperpowerGate).
 
@@ -23,7 +24,7 @@ const ORBIT = [
   { e: '🧠', cls: 'right-0 top-1/2', d: '0.6s' },
 ]
 
-// 0–10 selector (11 wrapping buttons) — mirrors VoteScale on the main vote screen.
+// 1–4 selector — mirrors VoteScale on the main vote screen.
 function VoteScale({
   value,
   color,
@@ -36,8 +37,8 @@ function VoteScale({
   disabled?: boolean
 }) {
   return (
-    <div className="grid grid-cols-11 gap-1">
-      {Array.from({ length: 11 }, (_, n) => {
+    <div className="grid grid-cols-4 gap-1">
+      {VOTE_OPTIONS.map((n) => {
         const active = value === n
         return (
           <button
@@ -70,7 +71,7 @@ export default function DailyRecognitionGate({
   const { data: catalog } = useSuperpowers()
   const cast = useCastVotes()
 
-  // superpower name -> chosen 0–10 score (a trait is "scored" once it's a key here).
+  // superpower name -> chosen 1–4 score (a trait is "scored" once it's a key here).
   const [scores, setScores] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
 
@@ -150,7 +151,7 @@ export default function DailyRecognitionGate({
           {traits.length > 0 ? ` · ${picked.length}/${traits.length} superpower dinilai` : ''}.
         </p>
 
-        {/* per-superpower rows, each with its own 0–10 scale */}
+        {/* per-superpower rows, each with its own 1–4 scale */}
         <div className="mt-5 w-full max-w-md space-y-2.5 text-left">
           {traits.map((t) => (
             <div

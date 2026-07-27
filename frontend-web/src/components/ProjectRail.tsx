@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
-import { Search, AlertCircle, CheckCheck, ChevronDown, Layers } from 'lucide-react'
+import { Search, AlertCircle, CheckCheck, ChevronDown, Layers, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { useProjects } from '@/hooks/useData'
 import { ProgressBar, Spinner, Segmented } from '@/components/ui'
 import { buildOptions } from '@/lib/filters'
@@ -68,7 +68,7 @@ export function ProjectRail() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<StatusFilter>('Ongoing')
   const [filters, setFilters] = useState<Record<string, string>>({})
-  const [grouped, setGrouped] = useState(false)
+  const [grouped, setGrouped] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const filterRef = useRef<HTMLSpanElement>(null)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -122,6 +122,9 @@ export function ProjectRail() {
       else next.add(key)
       return next
     })
+
+  const groupKeys = groups.map((g) => g.brand || '__none__')
+  const allCollapsed = groupKeys.length > 0 && groupKeys.every((k) => collapsed.has(k))
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -200,6 +203,17 @@ export function ProjectRail() {
           <div className="px-3 py-8 text-center text-sm text-muted">No projects</div>
         ) : grouped ? (
           <div className="space-y-3">
+            {groupKeys.length > 1 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groupKeys))}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 dark:text-brand-300 hover:text-brand-700"
+                >
+                  {allCollapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
+                  {allCollapsed ? 'Expand all' : 'Collapse all'}
+                </button>
+              </div>
+            )}
             {groups.map((g) => {
               const key = g.brand || '__none__'
               const isCollapsed = collapsed.has(key)

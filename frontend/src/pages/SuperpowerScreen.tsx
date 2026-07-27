@@ -5,6 +5,7 @@ import { Sparkles, Star, Zap, Trash2, Trophy, Check, Plus } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { SPIcon as SpIcon } from '@/lib/spIcon'
+import { VOTE_OPTIONS, scorePct } from '@/lib/voteScale'
 import { AddSuperpowerModal } from '@/components/AddSuperpowerModal'
 import { SuperpowerProgress } from '@/components/SuperpowerProgress'
 import { useConfirm } from '@/components/Confirm'
@@ -41,7 +42,7 @@ function LevelBadge({ level }: { level: SuperpowerLevel | null }) {
   )
 }
 
-// 0–10 selector (11 wrapping buttons). `value` is the viewer's current vote.
+// 1–4 selector. `value` is the viewer's current vote.
 function VoteScale({
   value,
   color,
@@ -55,7 +56,7 @@ function VoteScale({
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {Array.from({ length: 11 }, (_, n) => {
+      {VOTE_OPTIONS.map((n) => {
         const active = value === n
         return (
           <button
@@ -139,7 +140,7 @@ function VotedCard({ item, ratee, canVote, canSee }: { item: VotedSuperpower; ra
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${Math.max(0, Math.min(100, item.weighted * 10))}%`,
+                    width: `${scorePct(item.weighted)}%`,
                     backgroundColor: item.level?.color || item.color,
                   }}
                 />
@@ -155,7 +156,7 @@ function VotedCard({ item, ratee, canVote, canSee }: { item: VotedSuperpower; ra
       {canVote ? (
         <div className="mt-3 border-t border-paper-edge dark:border-slate-700 pt-3">
           <p className="mb-2 text-xs font-medium text-stone-500 dark:text-slate-400">
-            Beri nilai (0–10){item.my_vote !== null ? ` · nilaimu ${item.my_vote}` : ''}
+            Beri nilai (1–4){item.my_vote !== null ? ` · nilaimu ${item.my_vote}` : ''}
           </p>
           <VoteScale value={item.my_vote} color={item.color} onPick={onPick} disabled={busy} />
           {item.my_vote !== null && (
@@ -201,7 +202,7 @@ function PerfCard({ item }: { item: PerfSuperpower }) {
             <div
               className="h-full rounded-full transition-all"
               style={{
-                width: `${Math.max(0, Math.min(100, item.score * 10))}%`,
+                width: `${scorePct(item.score)}%`,
                 backgroundColor: item.level?.color || item.color,
               }}
             />
@@ -277,7 +278,7 @@ function MineRow({
             <div
               className="h-full rounded-full transition-all"
               style={{
-                width: `${Math.max(0, Math.min(100, score * 10))}%`,
+                width: `${scorePct(score)}%`,
                 backgroundColor: level?.color || color || '#6366f1',
               }}
             />

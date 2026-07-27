@@ -1,7 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCheerPop } from '@/hooks/useCheerPop'
+import { mobileApi } from '@/lib/api'
+import { keys } from '@/hooks/useData'
 
 // A full-screen celebratory overlay that pops when someone cheers or nudges you.
 // It renders into a body-level portal (like BulkProgressModal) so `fixed` covers
@@ -33,7 +36,29 @@ const KIND = {
     gradient: 'from-indigo-400 via-indigo-300 to-amber-300',
     headlineColor: 'text-indigo-700 dark:text-indigo-300',
   },
+  // Someone gifted you points. Warm gold party, gift-forward.
+  gift: {
+    hero: '🎁',
+    headline: 'Kamu dapat kado!',
+    emojis: ['🎁', '✨', '💛', '🙏'],
+    colors: ['#f59e0b', '#fbbf24', '#fcd34d', '#fdba74', '#fde68a', '#fb923c'],
+    count: 32,
+    gradient: 'from-amber-300 via-yellow-200 to-orange-300',
+    headlineColor: 'text-amber-600 dark:text-amber-300',
+  },
 } as const
+
+type PlanState = 'idle' | 'adding' | 'added' | 'kept' | 'cancelling' | 'cancelled' | 'error'
+
+const PLAN_MSG: Record<PlanState, string> = {
+  idle: '',
+  adding: 'Menambahkan ke rencana hari ini…',
+  added: '✓ Ditambahkan ke rencana hari ini',
+  kept: 'Sudah ada di rencana hari ini',
+  cancelling: 'Membatalkan…',
+  cancelled: 'Dibatalkan — tidak ditambahkan',
+  error: 'Gagal menambahkan ke rencana',
+}
 
 const CSS = `
 .cheerpop-piece {
@@ -69,6 +94,44 @@ const CSS = `
 
 export default function CheerPop(): JSX.Element | null {
   const { cheer, dismiss } = useCheerPop()
+  const qc = useQueryClient()
+
+  // A buzz that references a Project Todo auto-adds it to the recipient's plan for
+  // today (the default), leaving a Batalkan to undo. planPrev holds the pre-add
+  // minutes so the undo restores exactly. Keyed by cheer.name; the ref guards
+  // against firing the write twice (StrictMode double-mount / re-render).
+  const [plan, setPlan] = useState<PlanState>('idle')
+  const planPrev = useRef(0)
+  const autoAdded = useRef<string | null>(null)
+  const buzzTodo = cheer && cheer.kind === 'buzz' ? cheer.todo : null
+
+  useEffect(() => {
+    setPlan('idle')
+    if (!buzzTodo || !cheer) return
+    if (autoAdded.current === cheer.name) return
+    autoAdded.current = cheer.name
+    setPlan('adding')
+    mobileApi
+      .planToday(buzzTodo)
+      .then((r) => {
+        planPrev.current = r.prev_minutes
+        setPlan(r.changed ? 'added' : 'kept')
+        qc.invalidateQueries({ queryKey: keys.dashboard })
+      })
+      .catch(() => setPlan('error'))
+  }, [cheer?.name, buzzTodo, qc])
+
+  const undoPlan = () => {
+    if (!buzzTodo) return
+    setPlan('cancelling')
+    mobileApi
+      .planToday(buzzTodo, planPrev.current)
+      .then(() => {
+        setPlan('cancelled')
+        qc.invalidateQueries({ queryKey: keys.dashboard })
+      })
+      .catch(() => setPlan('error'))
+  }
 
   // Confetti is randomized once per cheer (keyed on name) — not on every render.
   const pieces = useMemo(() => {
@@ -92,25 +155,31 @@ export default function CheerPop(): JSX.Element | null {
     })
   }, [cheer?.name, cheer?.kind])
 
-  // Auto-dismiss ~4.5s + Escape. Re-armed whenever the cheer changes; both are
-  // torn down on unmount / before the next cheer.
+  // Escape always closes. Auto-dismiss ~4.5s EXCEPT a buzz that put a todo on your
+  // plan — that one stays up so you can read it and Batalkan before it closes.
+  // Re-armed whenever the cheer changes; torn down on unmount / before the next cheer.
   useEffect(() => {
     if (!cheer) return
-    const timer = window.setTimeout(dismiss, 4500)
+    const timer = buzzTodo ? undefined : window.setTimeout(dismiss, 4500)
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismiss()
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      window.clearTimeout(timer)
+      if (timer) window.clearTimeout(timer)
       window.removeEventListener('keydown', onKey)
     }
-  }, [cheer?.name, dismiss])
+  }, [cheer?.name, buzzTodo, dismiss])
 
   if (!cheer) return null
 
   const cfg = KIND[cheer.kind]
-  const sub = cheer.kind === 'thanks' ? cheer.title : `${cheer.from} lagi nungguin kamu`
+  const sub =
+    cheer.kind === 'thanks'
+      ? cheer.title
+      : cheer.kind === 'gift'
+        ? cheer.body // "{sender} memberi kamu {n} poin."
+        : `${cheer.from} lagi nungguin kamu`
   const detail = cheer.kind === 'buzz' ? cheer.body : ''
 
   return createPortal(
@@ -167,6 +236,34 @@ export default function CheerPop(): JSX.Element | null {
                 <span key={i}>{e}</span>
               ))}
             </div>
+
+            {buzzTodo && (
+              // Stop clicks bubbling to the backdrop (which dismisses); the buttons
+              // close explicitly. The plan was already added on open — this is undo.
+              <div className="mt-5" onClick={(e) => e.stopPropagation()}>
+                <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                  {PLAN_MSG[plan]}
+                </p>
+                <div className="mt-3 flex justify-center gap-2">
+                  {plan === 'added' && (
+                    <button
+                      type="button"
+                      onClick={undoPlan}
+                      className="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-semibold text-stone-600 hover:bg-stone-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      Batalkan
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={dismiss}
+                    className="rounded-full bg-indigo-600 px-5 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -359,11 +359,72 @@ export default function Project() {
               )}
             </div>
           </div>
+
+          {/* Goal / Team / Auto-approve — project context kept up top with the meta */}
+          {(p.goal || p.team.length > 0 || (p.can_set_auto_approve && canAutoApprove)) && (
+            <div className="space-y-5 border-t border-line pt-5">
+              <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                {p.goal && (
+                  <Section divider={false} className="!py-0" title={<span className="inline-flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Goal</span>}>
+                    <p className="text-sm leading-relaxed text-muted dark:text-slate-300">{p.goal}</p>
+                  </Section>
+                )}
+                {p.team.length > 0 && (
+                  <Section
+                    divider={false}
+                    className="!py-0"
+                    title="Team"
+                    actions={
+                      perms.can_edit ? (
+                        <button
+                          onClick={() => setTeamOpen(true)}
+                          className="flex items-center gap-1 rounded-full bg-canvas px-3 py-1.5 text-xs font-semibold text-muted dark:text-slate-300 hover:bg-hover/[0.04] transition"
+                        >
+                          <Users className="h-3.5 w-3.5" /> Manage
+                        </button>
+                      ) : undefined
+                    }
+                  >
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.team.map((m) => {
+                        const role = m.is_owner && m.is_leader ? 'Owner · Leader'
+                          : m.is_owner ? 'Owner' : m.is_leader ? 'Leader' : null
+                        return (
+                          <button key={m.user} onClick={() => setWorkloadMember(m)}>
+                            <EntityChip
+                              avatarName={m.name}
+                              image={m.image ?? undefined}
+                              config={m.avatar_config}
+                              label={role ? `${m.name} (${role})` : m.name}
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </Section>
+                )}
+              </div>
+              {p.can_set_auto_approve && canAutoApprove && (
+                <div className="max-w-sm">
+                  <ProjectAutoApproveSwitch
+                    enabled={p.auto_approve}
+                    disabled={setProjectAutoApprove.isPending}
+                    onToggle={() =>
+                      setProjectAutoApprove.mutate(
+                        { project: p.name, enabled: p.auto_approve ? 0 : 1 },
+                        { onError: (e) => toast('error', (e as Error).message) },
+                      )
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 3-col workspace: rail (col1, in ProjectsWorkspace) · project meta + details
-          list (col2) · selected detail's todos (col3). */}
+      {/* 3-col workspace: rail (col1, in ProjectsWorkspace) · project context in hero →
+          details list + meetings + group photo (col2) · selected detail's todos (col3). */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,26rem)_1fr]">
         {/* COL 2: project meta (top) → details list → group photo */}
         <section className="min-w-0 space-y-5">
@@ -461,63 +522,9 @@ export default function Project() {
             )}
           </div>
 
-          {p.can_set_auto_approve && canAutoApprove && (
-            <div className="max-w-sm border-t border-line pt-5">
-              <ProjectAutoApproveSwitch
-                enabled={p.auto_approve}
-                disabled={setProjectAutoApprove.isPending}
-                onToggle={() =>
-                  setProjectAutoApprove.mutate(
-                    { project: p.name, enabled: p.auto_approve ? 0 : 1 },
-                    { onError: (e) => toast('error', (e as Error).message) },
-                  )
-                }
-              />
-            </div>
-          )}
-
-          {p.goal && (
-            <Section title={<span className="inline-flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Goal</span>}>
-              <p className="text-sm leading-relaxed text-muted dark:text-slate-300">{p.goal}</p>
-            </Section>
-          )}
-
-          {p.team.length > 0 && (
-            <Section
-              title="Team"
-              actions={
-                perms.can_edit ? (
-                  <button
-                    onClick={() => setTeamOpen(true)}
-                    className="flex items-center gap-1 rounded-full bg-canvas px-3 py-1.5 text-xs font-semibold text-muted dark:text-slate-300 hover:bg-hover/[0.04] transition"
-                  >
-                    <Users className="h-3.5 w-3.5" /> Manage
-                  </button>
-                ) : undefined
-              }
-            >
-              <div className="flex flex-wrap gap-1.5">
-                {p.team.map((m) => {
-                  const role = m.is_owner && m.is_leader ? 'Owner · Leader'
-                    : m.is_owner ? 'Owner' : m.is_leader ? 'Leader' : null
-                  return (
-                    <button key={m.user} onClick={() => setWorkloadMember(m)}>
-                      <EntityChip
-                        avatarName={m.name}
-                        image={m.image ?? undefined}
-                        config={m.avatar_config}
-                        label={role ? `${m.name} (${role})` : m.name}
-                      />
-                    </button>
-                  )
-                })}
-              </div>
-            </Section>
-          )}
-
           {/* --- Meetings (project-scoped): Upcoming / Past tabs. #project-meetings = hero reminder jumps here --- */}
           <div id="project-meetings" className="border-t border-line pt-5">
-            <ProjectMeetings project={p.name} canManage={perms.can_edit} />
+            <ProjectMeetings project={p.name} canManage={perms.can_manage_meetings} />
           </div>
 
           {/* Group photo last — decorative + tall */}

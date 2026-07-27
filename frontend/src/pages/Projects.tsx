@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, FolderKanban, Plus, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, FolderKanban, Plus, Search, X } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { ProjectCard } from '@/components/ProjectCard'
@@ -37,6 +37,12 @@ export default function Projects() {
       localStorage.setItem('projectsCollapsedGroups', JSON.stringify(Array.from(next)))
       return next
     })
+
+  const setAllCollapsed = (collapse: boolean) => {
+    const next = collapse ? new Set(groups.map((g) => g.brand || '__none__')) : new Set<string>()
+    localStorage.setItem('projectsCollapsedGroups', JSON.stringify(Array.from(next)))
+    setCollapsed(next)
+  }
 
   const projects = data ?? []
 
@@ -95,6 +101,7 @@ export default function Projects() {
   }, [groups])
 
   const advCount = ['brand', 'owner', 'leader'].filter((k) => filters[k]).length
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.brand || '__none__'))
 
   return (
     <TabScreen title="Projects" subtitle={`${list.length} of ${projects.length}`} right={<NotificationBell />}>
@@ -148,7 +155,19 @@ export default function Projects() {
           </div>
 
           {list.length ? (
-            <div className="flex flex-col gap-5">
+            <>
+              {groups.length > 1 && (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    onClick={() => setAllCollapsed(!allCollapsed)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 dark:text-brand-300 active:scale-95"
+                  >
+                    {allCollapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
+                    {allCollapsed ? 'Expand all' : 'Collapse all'}
+                  </button>
+                </div>
+              )}
+              <div className="flex flex-col gap-5">
               {groups.map((g) => {
                 const key = g.brand || '__none__'
                 const isCollapsed = collapsed.has(key)
@@ -181,7 +200,8 @@ export default function Projects() {
                   </div>
                 )
               })}
-            </div>
+              </div>
+            </>
           ) : (
             <EmptyState
               icon={FolderKanban}

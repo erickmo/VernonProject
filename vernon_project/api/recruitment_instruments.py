@@ -12,7 +12,9 @@ items to the browser.
 Run `python3 vernon_project/api/recruitment_instruments.py` to self-check.
 """
 
+import random
 import re
+import string
 
 DISC_AXES = ("D", "I", "S", "C")
 BIGFIVE_TRAITS = ("O", "C", "E", "A", "N")
@@ -177,12 +179,140 @@ def public_ketelitian():
 
 def ketelitian_qdefs():
     """→ _score_answers question defs. Pair items use Sama/Beda options; odd items use their options."""
-    defs = []
-    for it in KETELITIAN_ITEMS:
-        defs.append({"question_text": it.get("text") or f'{it.get("left")} / {it.get("right")}',
-                     "qtype": "Multiple Choice", "correct_answer": it["answer"],
-                     "points": int(it.get("points", 1))})
-    return defs
+    return ketelitian_qdefs_from(KETELITIAN_ITEMS)
+
+
+def ketelitian_qdefs_from(items):
+    """Same as ketelitian_qdefs but over a supplied (e.g. generated) item list."""
+    return [{"question_text": it.get("text") or f'{it.get("left")} / {it.get("right")}',
+             "qtype": "Multiple Choice", "correct_answer": it["answer"],
+             "points": int(it.get("points", 1))}
+            for it in items]
+
+
+# ----------------------------------------------------------------- Ketelitian: per-attempt generated bank
+#
+# Real applicants get a fresh randomized bank derived DETERMINISTICALLY from a seed:
+# the server stores only the tiny int seed per attempt and regenerates the identical
+# items+answers at score time. This (a) removes a fixed, shareable/memorizable answer key
+# that leaks across candidates, and (b) raises difficulty with subtle transposition/
+# substitution errors. It does NOT make the test AI-proof: same/diff and odd-one-out
+# answers are derivable from the displayed text by a trivial script (no AI needed), so
+# the real automation defense is the server-side too-fast flag in recruitment.py, not this.
+# Preview (HR self-test) keeps the fixed bank above — no real candidate, so a stable key is fine.
+
+_KET_FIRST = ["Budi", "Siti", "Andi", "Rina", "Dewi", "Agus", "Putri", "Rizky", "Yulia", "Fajar",
+              "Indah", "Bayu", "Wawan", "Nia", "Eka", "Dian", "Hadi", "Kurnia", "Rahmat", "Sari"]
+_KET_LAST = ["Santoso", "Wijaya", "Pratama", "Kusuma", "Permatasari", "Nugroho", "Halim", "Saputra",
+             "Anggraini", "Maulana", "Hidayat", "Rahmawati", "Sasmita", "Utami", "Firmansyah", "Lestari"]
+
+
+def _ket_digits(rng, n):
+    return "".join(rng.choice("0123456789") for _ in range(n))
+
+
+def _ket_account(rng):
+    return _ket_digits(rng, 16)
+
+
+def _ket_phone(rng):
+    return "08" + rng.choice("1235678") + _ket_digits(rng, 2) + "-" + _ket_digits(rng, 4) + "-" + _ket_digits(rng, 4)
+
+
+def _ket_date(rng):
+    return "%02d/%02d/%d" % (rng.randint(1, 28), rng.randint(1, 12), rng.randint(1990, 2025))
+
+
+def _ket_plate(rng):
+    return rng.choice("BDFLNTZ") + " " + _ket_digits(rng, 4) + " " + "".join(rng.choice(string.ascii_uppercase) for _ in range(3))
+
+
+def _ket_code(rng):
+    return "".join(rng.choice(string.ascii_uppercase) for _ in range(2)) + "-" + _ket_digits(rng, 4) + "-" + "".join(rng.choice(string.ascii_uppercase) for _ in range(2))
+
+
+def _ket_invoice(rng):
+    return "INV-" + str(rng.randint(2020, 2025)) + "-" + _ket_digits(rng, 5)
+
+
+def _ket_email(rng):
+    return rng.choice(_KET_FIRST).lower() + "." + rng.choice(_KET_LAST).lower() + "@" + rng.choice(["mail", "perusahaan", "kantor", "data"]) + ".co.id"
+
+
+def _ket_name(rng):
+    return rng.choice(_KET_FIRST) + " " + rng.choice(_KET_LAST)
+
+
+# (builder, Indonesian label for the odd-one-out prompt)
+_KET_GENERATORS = [
+    (_ket_account, "nomor rekening"), (_ket_name, "nama"), (_ket_phone, "nomor telepon"),
+    (_ket_date, "tanggal"), (_ket_plate, "nomor plat"), (_ket_code, "kode produk"),
+    (_ket_invoice, "nomor faktur"), (_ket_email, "alamat email"),
+]
+
+
+def _ket_mutate(s, rng):
+    """One subtle, same-length clerical error: adjacent transposition (preferred) or single-char
+    substitution. Returns a string guaranteed != s for our inputs (length >= 2 with alnum chars)."""
+    chars = list(s)
+    order = list(range(len(chars)))
+    rng.shuffle(order)
+    for i in order:  # prefer transposing two adjacent, differing, non-space chars
+        if i + 1 < len(chars) and chars[i] != chars[i + 1] and not chars[i].isspace() and not chars[i + 1].isspace():
+            chars[i], chars[i + 1] = chars[i + 1], chars[i]
+            return "".join(chars)
+    for i in order:  # fallback: substitute one alnum char with a different one of the same class
+        c = chars[i]
+        if c.isdigit():
+            chars[i] = rng.choice([d for d in "0123456789" if d != c])
+            return "".join(chars)
+        if c.isalpha():
+            pool = string.ascii_uppercase if c.isupper() else string.ascii_lowercase
+            chars[i] = rng.choice([d for d in pool if d != c])
+            return "".join(chars)
+    return "".join(chars)
+
+
+KET_COUNT = 20  # generated accuracy items per attempt (single source of truth)
+
+
+def gen_ketelitian(seed, n=KET_COUNT):
+    """Deterministic randomized accuracy bank. Same (seed, n) → identical items+answers.
+    Alternates same/different pairs and odd-one-out. Each item carries its answer (server-side)."""
+    rng = random.Random(seed)
+    items = []
+    for i in range(int(n)):
+        gen, label = rng.choice(_KET_GENERATORS)
+        if i % 2 == 0:
+            left = gen(rng)
+            same = rng.random() < 0.5
+            right = left if same else _ket_mutate(left, rng)
+            while not same and right == left:  # mutate guarantees difference, but be defensive
+                right = _ket_mutate(left, rng)
+            items.append({"id": "g%d" % i, "kind": "pair", "left": left, "right": right,
+                          "answer": "Sama" if right == left else "Beda", "points": 1})
+        else:
+            base = gen(rng)
+            odd = _ket_mutate(base, rng)
+            while odd == base:
+                odd = _ket_mutate(base, rng)
+            opts = [base, base, base, odd]
+            rng.shuffle(opts)
+            items.append({"id": "g%d" % i, "kind": "odd",
+                          "text": "Mana %s yang berbeda dari yang lain?" % label,
+                          "options": opts, "answer": odd, "points": 1})
+    return items
+
+
+def public_ketelitian_from(items):
+    """Strip answers from a generated bank before it reaches the browser."""
+    out = []
+    for it in items:
+        if it["kind"] == "pair":
+            out.append({"id": it["id"], "kind": "pair", "left": it["left"], "right": it["right"]})
+        else:
+            out.append({"id": it["id"], "kind": "odd", "text": it["text"], "options": list(it["options"])})
+    return out
 
 
 # ----------------------------------------------------------------- scoring
@@ -303,6 +433,29 @@ def _selfcheck():
         assert "answer" not in it, it["id"]
         assert it["kind"] in ("pair", "odd")
     assert len(ketelitian_qdefs()) == len(KETELITIAN_ITEMS)
+
+    # --- generated ketelitian bank
+    a = gen_ketelitian(12345, 20)
+    b = gen_ketelitian(12345, 20)
+    assert a == b, "gen_ketelitian must be deterministic for a fixed seed"
+    assert gen_ketelitian(999, 20) != a, "different seed must give a different bank"
+    assert len(gen_ketelitian(7, 30)) == 30, "n controls length"
+    both_kinds = {it["kind"] for it in a}
+    assert both_kinds == {"pair", "odd"}, both_kinds
+    for it in a:
+        if it["kind"] == "pair":
+            assert it["answer"] in PAIR_OPTIONS
+            assert (it["answer"] == "Sama") == (it["left"] == it["right"]), it["id"]
+            assert len(it["left"]) == len(it["right"]), "mutation must keep length (subtle)"
+        else:
+            assert it["answer"] in it["options"], it["id"]
+            assert it["options"].count(it["answer"]) == 1, "odd answer must be unique"
+            base = [o for o in it["options"] if o != it["answer"]]
+            assert len(base) == 3 and len(set(base)) == 1, "3 identical + 1 odd"
+    for it in public_ketelitian_from(a):  # answers stripped before browser
+        assert "answer" not in it, it["id"]
+    qd = ketelitian_qdefs_from(a)  # scoring keys regenerate 1:1 with the public items
+    assert len(qd) == len(a) and all(q["correct_answer"] for q in qd)
     print("recruitment_instruments selfcheck ok")
 
 

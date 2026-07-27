@@ -41,7 +41,9 @@ def get_context(context):
             job["bigfive_items"] = ri.public_bigfive() if doc.test_personality else []
             job["logic_items"] = ri.public_logic() if doc.test_logical else []
             job["test_ketelitian"] = int(doc.test_ketelitian or 0)
-            job["ketelitian_items"] = ri.public_ketelitian() if doc.test_ketelitian else []
+            # Real applicants get a randomized per-attempt bank fetched client-side (get_ketelitian),
+            # so nothing is baked here — no fixed key in the page source to lift or pre-solve.
+            job["ketelitian_items"] = []
 
     # HR "try the test" preview: no real opening, all four tests on, nothing is
     # submitted or stored (the wizard scores via recruitment.preview_score).
@@ -63,6 +65,7 @@ def get_context(context):
             preview = False  # not HR → fall through to the normal (not-found) page
     context.preview = preview
     context.job = job
+    context.ket_count = ri.KET_COUNT  # accuracy-test length, for the pre-start roadmap
 
     context.page_title = ((job["title"] + " — VernonCorp") if job
                           else p({"id": "Lowongan tidak ditemukan — VernonCorp", "en": "Job not found — VernonCorp"}))
@@ -93,6 +96,8 @@ def get_context(context):
         "free_text_ph": p({"id": "Jawaban kamu…", "en": "Your answer…"}),
         "submit": p({"id": "Kirim lamaran", "en": "Submit application"}),
         "sending": p({"id": "Mengirim…", "en": "Sending…"}),
+        "loading": p({"id": "Memuat soal…", "en": "Loading questions…"}),
+        "retry": p({"id": "Coba lagi", "en": "Try again"}),
         "thanks_title": p({"id": "Lamaran terkirim 🎉", "en": "Application sent 🎉"}),
         "thanks_body": p({"id": "Terima kasih! Tim HR akan meninjau lamaranmu dan menghubungi lewat WhatsApp bila cocok.",
                           "en": "Thank you! Our HR team will review your application and reach out on WhatsApp if it's a fit."}),
@@ -125,6 +130,8 @@ def get_context(context):
         "wiz_violation": p({"id": "Peringatan: kamu meninggalkan tes. Ini dicatat.", "en": "Warning: you left the test. This is recorded."}),
         "wiz_dup": p({"id": "Kamu sudah pernah melamar posisi ini.", "en": "You have already applied for this role."}),
         "ket_title": p({"id": "Tes Ketelitian", "en": "Accuracy test"}),
+        "ket_lead": p({"id": "Satu soal per layar dengan batas waktu. Jawab secepat & seteliti mungkin — otomatis lanjut.",
+                       "en": "One item per screen, each timed. Answer as fast and accurately as you can — it auto-advances."}),
         "ket_same": p({"id": "Sama", "en": "Same"}), "ket_diff": p({"id": "Beda", "en": "Different"}),
         "nojs": p({"id": "Tes membutuhkan JavaScript aktif untuk melamar. Aktifkan JavaScript lalu muat ulang.", "en": "This test requires JavaScript. Enable it and reload."}),
     }

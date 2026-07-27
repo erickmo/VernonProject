@@ -637,6 +637,9 @@ export function permFlags(project: ProjectFull, boot: Boot | undefined) {
     can_edit: isSM || isOwner || isLeader,
     can_delete: isSM || isOwner || isLeader || isAdmin,
     can_reassign: isSM || isOwner,
+    // Meetings: Admin manages them too (matches Meeting doctype has_permission),
+    // unlike can_edit which stays owner/leader-only.
+    can_manage_meetings: isSM || isOwner || isLeader || isAdmin,
   }
 }
 
@@ -1879,6 +1882,13 @@ export function useMyLeaders() {
   return useQuery({
     queryKey: keys.myLeaders,
     queryFn: async () => (await mobileApi.myLeaders()).leaders,
+  })
+}
+
+export function useTeamLeave() {
+  return useQuery({
+    queryKey: ['team-leave'],
+    queryFn: async () => (await mobileApi.teamLeave()).rows,
   })
 }
 

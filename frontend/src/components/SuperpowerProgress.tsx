@@ -1,10 +1,11 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { EmptyState, Spinner } from '@/components/ui'
+import { scorePct } from '@/lib/voteScale'
 import { useSuperpowerProgress } from '@/hooks/useData'
 
 // Per-quarter recognition trend for the ratee (owner or HR only). Peer votes reset
 // each quarter, so this is how the voted user watches their scores build over time:
-// one bar per quarter (overall average received vote, 0–10), current quarter marked,
+// one bar per quarter (overall average received vote, 1–4), current quarter marked,
 // plus the delta vs the previous quarter. Shared by /m and /w.
 export function SuperpowerProgress({ user }: { user: string }) {
   const { data, isLoading } = useSuperpowerProgress(user)
@@ -28,7 +29,7 @@ export function SuperpowerProgress({ user }: { user: string }) {
   return (
     <div className="space-y-4">
       <p className="rounded-2xl bg-paper-line/60 dark:bg-slate-800/60 px-4 py-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-        Penilaian rekan diperbarui tiap kuartal. Berikut skor rata-rata (0–10) yang kamu terima tiap kuartal.
+        Penilaian rekan diperbarui tiap kuartal. Berikut skor rata-rata (1–4) yang kamu terima tiap kuartal.
       </p>
 
       <div className="rounded-2xl border border-paper-edge bg-paper-card p-4 shadow-card dark:border-slate-700 dark:bg-slate-800">
@@ -66,7 +67,7 @@ export function SuperpowerProgress({ user }: { user: string }) {
               <div className="h-3 flex-1 overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
                 <div
                   className={`h-full rounded-full transition-all ${isCurrent ? 'bg-brand-500' : 'bg-brand-300 dark:bg-brand-500/50'}`}
-                  style={{ width: `${Math.max(0, Math.min(100, q.avg * 10))}%` }}
+                  style={{ width: `${scorePct(q.avg)}%` }}
                 />
               </div>
               <span className="w-9 shrink-0 text-right text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300">

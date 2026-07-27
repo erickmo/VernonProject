@@ -48,6 +48,7 @@ export function AppShell() {
         onOpenPalette={() => setPaletteOpen(true)}
         onQuickCreate={() => setQuickOpen(true)}
         onOpenMore={() => setMoreOpen(true)}
+        onOpenShortcuts={() => setHelpOpen(true)}
       />
       {/* Centered column that fits 2–3 card columns — soft-pop desktop-fit.
           (Replaces the former LOCKED full-width main — deliberate per redesign.) */}

@@ -5,14 +5,14 @@ import { useNavigate } from 'react-router-dom'
 import { TodoCard } from '@/components/TodoCard'
 import { MeetingSheet } from '@/components/MeetingSheet'
 import { Segmented, EmptyState, FullScreenLoader } from '@/components/ui'
-import { useCalendar, useMeetings, useBookings, useProjects, useBoot } from '@/hooks/useData'
+import { useCalendar, useMeetings, useBookings, useProjects, useTeamLeave, useBoot } from '@/hooks/useData'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatEstimate } from '@/lib/format'
-import type { ProjectItem, MeetingListItem, Booking, ProjectCard } from '@/lib/types'
+import type { ProjectItem, MeetingListItem, Booking, ProjectCard, TeamLeaveRow } from '@/lib/types'
 
 // The lens the calendar is showing. Each mode buckets a different source of
 // dated things onto the month grid and sums a per-day estimate.
-type Mode = 'assigned' | 'plan' | 'meeting' | 'booking' | 'project'
+type Mode = 'assigned' | 'plan' | 'meeting' | 'booking' | 'project' | 'teamleave'
 
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'assigned', label: 'Assigned' },
@@ -20,6 +20,7 @@ const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'meeting', label: 'Meetings' },
   { value: 'booking', label: 'Bookings' },
   { value: 'project', label: 'Projects' },
+  { value: 'teamleave', label: 'Team Leave' },
 ]
 
 const MONTHS = [
@@ -35,9 +36,20 @@ type CalItem =
   | { kind: 'meeting'; day: string; minutes: number; color: string; label: string; meeting: MeetingListItem }
   | { kind: 'booking'; day: string; minutes: number; color: string; label: string; booking: Booking }
   | { kind: 'project'; day: string; minutes: number; color: string; label: string; project: ProjectCard }
+  | { kind: 'leave'; day: string; minutes: number; color: string; label: string; leave: TeamLeaveRow }
 
 const BOOKING_COLOR = 'bg-violet-500'
 const PROJECT_COLOR = 'bg-rose-500'
+const LEAVE_COLOR = 'bg-amber-500'
+
+// Every calendar day from..to inclusive, as YYYY-MM-DD keys. Leave spans days.
+function dayRange(from: string, to: string): string[] {
+  const out: string[] = []
+  const start = new Date(from.slice(0, 10) + 'T00:00:00')
+  const end = new Date((to || from).slice(0, 10) + 'T00:00:00')
+  for (let d = start; d <= end; d.setDate(d.getDate() + 1)) out.push(keyOf(d))
+  return out
+}
 
 // Meeting chips are colored by how I'm involved: organizing, invited, or just
 // observing (visible via the project but not on the invite list).
@@ -91,12 +103,14 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
   const meetings = useMeetings()
   const bookings = useBookings()
   const projects = useProjects()
+  const teamLeave = useTeamLeave()
   const me = useBoot().data?.user ?? ''
 
   const isLoading =
     (mode === 'assigned' || mode === 'plan') ? calendar.isLoading
     : mode === 'meeting' ? meetings.isLoading
     : mode === 'booking' ? bookings.isLoading
+    : mode === 'teamleave' ? teamLeave.isLoading
     : projects.isLoading
 
   const now = new Date()
@@ -111,6 +125,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
       meetings: meetings.data?.meetings ?? [],
       bookings: bookings.data ?? [],
       projects: projects.data ?? [],
+      teamLeave: teamLeave.data ?? [],
     }, me)
     const map = new Map<string, CalItem[]>()
     const est = new Map<string, number>()
@@ -123,7 +138,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
       est.set(it.day, (est.get(it.day) ?? 0) + (it.minutes || 0))
     }
     return { byDay: map, estByDay: est, undated: undatedCount }
-  }, [mode, calendar.data, meetings.data, bookings.data, projects.data, me])
+  }, [mode, calendar.data, meetings.data, bookings.data, projects.data, teamLeave.data, me])
 
   // Build the 6-week (42-cell) grid, Monday-first.
   const cells = useMemo(() => {
@@ -148,7 +163,7 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
   const goToday = () => setCursor({ y: now.getFullYear(), m: now.getMonth() })
 
   const legend = legendFor(mode)
-  const showEstimates = mode !== 'project' // projects carry no minute estimate
+  const showEstimates = mode !== 'project' && mode !== 'teamleave' // these carry no minute estimate
   const dayItems = openDay ? byDay.get(openDay) ?? [] : []
 
   return (
@@ -378,6 +393,23 @@ function DayRow({
       </div>
     )
   }
+  if (item.kind === 'leave') {
+    const l = item.leave
+    return (
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 flex-1 truncate font-semibold text-slate-900 dark:text-slate-50">{l.employee_name}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500">
+            <span className={clsx('h-2 w-2 rounded-full', LEAVE_COLOR)} />
+            {l.leave_type || 'Cuti'}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          {l.from_date === l.to_date ? humanDay(l.from_date) : `${humanDay(l.from_date)} – ${humanDay(l.to_date)}`}
+        </p>
+      </div>
+    )
+  }
   // project deadline
   const p = item.project
   return (
@@ -397,7 +429,7 @@ function DayRow({
 // Turn the active mode's source data into a flat CalItem list.
 function buildItems(
   mode: Mode,
-  src: { todos: ProjectItem[]; meetings: MeetingListItem[]; bookings: Booking[]; projects: ProjectCard[] },
+  src: { todos: ProjectItem[]; meetings: MeetingListItem[]; bookings: Booking[]; projects: ProjectCard[]; teamLeave: TeamLeaveRow[] },
   me: string,
 ): CalItem[] {
   const out: CalItem[] = []
@@ -444,9 +476,22 @@ function buildItems(
       const mins = Math.max(0, Math.round((parseDT(b.end).getTime() - parseDT(b.start).getTime()) / 60000))
       out.push({ kind: 'booking', day: b.start.slice(0, 10), minutes: mins, color: BOOKING_COLOR, label: b.title, booking: b })
     }
-  } else {
+  } else if (mode === 'project') {
     for (const p of src.projects) {
       out.push({ kind: 'project', day: p.deadline ?? '', minutes: 0, color: PROJECT_COLOR, label: p.project_name, project: p })
+    }
+  } else {
+    // Team leave: one chip per day the colleague is out, across the whole span.
+    // Overlapping/duplicate approved records for the same person collapse to a
+    // single chip per person per day.
+    const seen = new Set<string>()
+    for (const l of src.teamLeave) {
+      for (const day of dayRange(l.from_date, l.to_date)) {
+        const k = `${l.employee}|${day}`
+        if (seen.has(k)) continue
+        seen.add(k)
+        out.push({ kind: 'leave', day, minutes: 0, color: LEAVE_COLOR, label: l.employee_name, leave: l })
+      }
     }
   }
   return out
@@ -464,6 +509,7 @@ function legendFor(mode: Mode): { color: string; label: string }[] {
   }
   if (mode === 'meeting') return [MEETING_INVOLVEMENT.organizer, MEETING_INVOLVEMENT.participant, MEETING_INVOLVEMENT.observer]
   if (mode === 'booking') return [{ color: BOOKING_COLOR, label: 'Reservation' }]
+  if (mode === 'teamleave') return [{ color: LEAVE_COLOR, label: 'On leave' }]
   return [{ color: PROJECT_COLOR, label: 'Project deadline' }]
 }
 

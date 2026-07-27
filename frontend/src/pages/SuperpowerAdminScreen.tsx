@@ -267,12 +267,12 @@ export default function SuperpowerAdminScreen() {
                     />
                   </label>
                   <label className="block text-xs font-medium text-stone-500 dark:text-slate-400">
-                    Ambang skor Team Wall (0–10)
+                    Ambang skor Team Wall (1–4)
                     <input
                       type="number"
                       step="0.1"
-                      min={0}
-                      max={10}
+                      min={1}
+                      max={4}
                       className={`${inputCls} mt-1`}
                       value={wallScoreMin}
                       onChange={(e) => setWallScoreMin(e.target.value === '' ? '' : Number(e.target.value))}

@@ -12,6 +12,7 @@ export interface PendingCheer {
   body: string
   from: string
   name: string
+  todo: string | null // the buzzed Project Todo, for "add to my plan"
 }
 
 const noop = () => {}
@@ -90,6 +91,7 @@ export function useCheerPop(): { cheer: PendingCheer | null; dismiss: () => void
       body: hit.body ?? '',
       from: hit.actor_name || hit.actor || '',
       name: hit.name,
+      todo: hit.reference_doctype === 'Project Todo' ? hit.reference_name : null,
     }
   }, [hydrated, candidates, seen])
 

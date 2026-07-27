@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Search, Plus, Coins, Sun, Moon, Monitor, LogOut, User, Grid3x3, Maximize2, Timer } from 'lucide-react'
+import { Search, Plus, Coins, Sun, Moon, Monitor, LogOut, User, Grid3x3, Maximize2, Timer, Keyboard } from 'lucide-react'
 import clsx from 'clsx'
 import { useBoot, useWallet, useDashboard, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { Avatar } from '@/components/ui'
@@ -28,11 +28,12 @@ const FOCUS_MODES: { value: FocusMode; icon: typeof Sun; label: string }[] = [
 // the More overlay. This bar also holds search / create / notifications /
 // wallet / account actions.
 export function TopBar({
-  onOpenPalette, onQuickCreate, onOpenMore,
+  onOpenPalette, onQuickCreate, onOpenMore, onOpenShortcuts,
 }: {
   onOpenPalette: () => void
   onQuickCreate: () => void
   onOpenMore: () => void
+  onOpenShortcuts: () => void
 }) {
   const boot = useBoot()
   const wallet = useWallet()
@@ -105,6 +106,12 @@ export function TopBar({
           <Search className="h-4 w-4" />
           <span className="hidden md:inline">Search…</span>
           <kbd className="hidden rounded-md border border-white/40 bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white xl:inline-flex">⌘K</kbd>
+        </button>
+        {/* Discoverability hint for the `?` cheat-sheet — desktop-only (needs a physical keyboard). */}
+        <button onClick={onOpenShortcuts} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (press ?)"
+          className="hidden items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-2.5 py-2 text-white/80 shadow-[inset_0_1px_0_rgb(255_255_255/0.2)] transition hover:bg-white/20 hover:text-white lg:inline-flex">
+          <Keyboard className="h-4 w-4" />
+          <kbd className="rounded-md border border-white/40 bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white">?</kbd>
         </button>
         <button onClick={onQuickCreate} aria-label="New"
           className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 shadow-[0_4px_14px_-2px_rgb(0_0_0/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-1 ring-inset ring-white/50 transition hover:shadow-[0_6px_20px_-2px_rgb(0_0_0/0.4)] active:scale-[0.97]">

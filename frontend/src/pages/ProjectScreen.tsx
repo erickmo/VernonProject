@@ -277,7 +277,7 @@ export default function ProjectScreen() {
       )}
 
       {/* Meetings */}
-      <ProjectMeetings project={data.name} canManage={flags.can_edit} />
+      <ProjectMeetings project={data.name} canManage={flags.can_manage_meetings} />
 
       {/* Details */}
       <section className="mt-5">

@@ -32,6 +32,7 @@ export type NotificationType =
   | 'Comment'
   | 'Mention'
   | 'Points'
+  | 'Gift'
   | 'Redemption'
   | 'Kudos'
   | 'Feedback'
@@ -1174,6 +1175,16 @@ export type AttendanceExceptionRow = {
   hr_reason?: string
   leave_type?: string
   proof?: string
+}
+
+/** One approved leave span on the team-wide calendar lens. */
+export type TeamLeaveRow = {
+  name: string
+  employee: string
+  employee_name: string
+  leave_type?: string
+  from_date: string
+  to_date: string
 }
 
 export type LeaveType = {

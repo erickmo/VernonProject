@@ -12,7 +12,7 @@ const SUBS: { value: Sub; label: string }[] = [
 ]
 
 // Team-wall superpower view with two sub-tabs. Dinilai = peer-voted strengths
-// (avg > 7.5, anonymous) + earned Kinerja, each member badged with their 0–10 score.
+// (avg > 3.25, anonymous) + earned Kinerja, each member badged with their 1–4 score.
 // Dipilih sendiri = who self-declared each trait, no scores. Shared by /m and /w.
 export function SuperpowerWall() {
   const { data, isLoading } = useSuperpowerWall()
@@ -34,7 +34,7 @@ export function SuperpowerWall() {
         {sub === 'scored' ? (
           <>
             Penilaian rekan bersifat <b>anonim</b> dan bertujuan membantu setiap orang mengenali serta
-            mengembangkan kekuatannya. Hanya superpower dengan skor rata-rata di atas 7,5 yang tampil di sini.
+            mengembangkan kekuatannya. Hanya superpower dengan skor rata-rata di atas 3,25 yang tampil di sini.
           </>
         ) : (
           <>Superpower yang dipilih sendiri oleh setiap rekan.</>

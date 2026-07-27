@@ -1,5 +1,5 @@
 // Progress bar chart for the points log. Buckets an (newest-first) log by
-// day / week / month into net points and draws them chronologically
+// day / week / month into net EARNED points (spends/purchases excluded) and draws them chronologically
 // (oldest -> newest), showing the last 50 buckets. Shared by /m and /w
 // points-log screens; each wraps it in its own card.
 import { useState } from 'react'
@@ -59,6 +59,7 @@ const parseKey = (k: string): Date => {
 export function netSeries(rows: PointsLogRow[], g: Gran, max = 50): { key: string; net: number }[] {
   const m = new Map<string, number>()
   for (const r of rows) {
+    if (r.kind !== 'credit') continue // exclude spends/purchases — chart shows earned-points progress
     const iso = r.date ? r.date.slice(0, 10) : ''
     if (!iso) continue
     const k = bucketKey(iso, g)

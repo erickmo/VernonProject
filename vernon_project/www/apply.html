@@ -158,6 +158,8 @@
   var SLUG = {{ job.slug | tojson }};
   var CSRF = "{{ frappe.session.csrf_token }}";
   var PREVIEW = {{ preview | default(false) | tojson }};  // HR "try the test": no identity, no submit, score only
+  var KET_N = {{ ket_count | default(20) | tojson }};  // accuracy-test length (server = ri.KET_COUNT)
+  var KET_SEC = 8;  // seconds per accuracy item — speeded, auto-advances
   var T = {{ t | tojson }};
   var JOB = {{ {
       "questions": job.questions, "test_disc": job.test_disc, "disc_items": job.disc_items,
@@ -260,13 +262,14 @@
   // --- test step
   var tpl = wiz.querySelector('[data-step="test"]');
   var curDef = null;
+  var ketRunning = false;  // per-question accuracy runner owns the count/timer while true
   // one delegated listener (body element persists across tests): selection feedback,
   // DISC most≠least guard, and live "answered" progress.
   tpl.querySelector('[data-test-body]').addEventListener('change', function (e) {
     var t = e.target; if (!t || t.type !== 'radio') return;
     if (t.name.indexOf('dm_') === 0 || t.name.indexOf('dl_') === 0) discGuard(t);
     else markSelect(t);
-    if (curDef) updateCount(curDef);
+    if (curDef && !ketRunning) updateCount(curDef);
   });
   function enterTest(def) {
     curDef = def;
@@ -276,6 +279,37 @@
     tpl.querySelector('[data-test-step]').textContent = 'Bagian ' + (ti + 1) + ' dari ' + TEST_DEFS.length;
     var leadKey = { disc: 'disc_lead', personality: 'big_lead' }[def.key];
     tpl.querySelector('[data-test-lead]').textContent = leadKey ? (T[leadKey] || '') : '';
+    tpl.scrollIntoView({ block: 'start' });
+    // real applicants: fetch this attempt's randomized accuracy bank before rendering it
+    if (def.key === 'ketelitian' && !PREVIEW && !def._loaded) {
+      var body = tpl.querySelector('[data-test-body]');
+      tpl.querySelector('[data-test-next]').style.display = 'none';  // hide the prior test's Next while loading
+      tpl.querySelector('[data-timer]').textContent = '';            // clear the prior test's stale countdown
+      body.innerHTML = '<p class="text-sm text-brand-700">' + T.loading + '</p>';
+      tpl.querySelector('[data-test-count]').textContent = '';
+      var ketFail = function () {  // never dead-end: offer a retry (def._loaded still false → refetches)
+        clearError();
+        body.innerHTML = '';
+        var p = document.createElement('p'); p.className = 'text-sm font-medium text-rose'; p.textContent = T.err_generic;
+        var b = document.createElement('button'); b.type = 'button'; b.textContent = T.retry;
+        b.className = 'mt-3 px-6 py-3 rounded-xl font-semibold bg-brand-600 text-white shadow-card hover:bg-brand-700 transition-all';
+        b.onclick = function () { enterTest(def); };
+        body.appendChild(p); body.appendChild(b);
+      };
+      fetch('/api/method/vernon_project.api.recruitment.get_ketelitian', {
+        method: 'POST', headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attempt_id: ATTEMPT, job: SLUG })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        var m = d.message || {};
+        if (!m.items || !m.items.length) { ketFail(); return; }
+        def.items = m.items; def._loaded = true; renderTest(def);
+      }).catch(ketFail);
+      return;
+    }
+    renderTest(def);
+  }
+  function renderTest(def) {
+    if (def.key === 'ketelitian') { runKetelitian(def); return; }  // speeded, one item at a time
     var body = tpl.querySelector('[data-test-body]'); body.innerHTML = '';
     def.items.forEach(function (it, idx) { body.appendChild(def.render(it, idx)); });
     updateCount(def);
@@ -285,7 +319,73 @@
     };
     announce();
     startTimer(def, tpl.querySelector('[data-timer]'));
-    tpl.scrollIntoView({ block: 'start' });
+  }
+  // Accuracy test: one item per screen, own countdown, auto-advance on pick or timeout. Time
+  // pressure discriminates speed+accuracy and discourages casual lookups; it is NOT AI-proof
+  // (a script can derive same/diff & odd-one-out from the text). The real automation guard is
+  // the server-side too-fast flag in recruitment.py; this is the honest, human-facing half.
+  function runKetelitian(def) {
+    ketRunning = true;
+    A.ketelitian = def.items.map(function () { return ''; });  // positional, aligned to served order
+    var body = tpl.querySelector('[data-test-body]');
+    var timerEl = tpl.querySelector('[data-timer]');
+    var nextBtn = tpl.querySelector('[data-test-next]');
+    nextBtn.style.display = 'none';  // no manual advance while speeded
+    tpl.querySelector('[data-test-lead]').textContent = T.ket_lead || '';
+    // minor friction only (a screenshot or DOM read still lifts the text): block casual copy/right-click
+    body.style.userSelect = 'none'; body.style.webkitUserSelect = 'none';
+    var block = function (e) { e.preventDefault(); };
+    ['copy', 'cut', 'paste', 'contextmenu', 'dragstart'].forEach(function (ev) { body.addEventListener(ev, block); });
+    if (!PREVIEW) {  // record server timing (stamps prev test's end); per-item timer owns the display
+      var sb = { attempt_id: ATTEMPT, job: SLUG, test: def.key };
+      if (prevTestKey && prevTestKey !== def.key) sb.prev = prevTestKey;
+      prevTestKey = def.key;
+      fetch('/api/method/vernon_project.api.recruitment.start_test', {
+        method: 'POST', headers: { 'X-Frappe-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
+        body: JSON.stringify(sb)
+      }).catch(function () {});
+    }
+    announce();
+    var idx = 0;
+    function paint(rem) {
+      timerEl.textContent = '0:' + (rem < 10 ? '0' : '') + rem;
+      timerEl.classList.remove('bg-brand-100', 'text-brand-800', 'bg-amber-100', 'text-amber-800', 'bg-rose', 'text-white', 'animate-pulse');
+      if (rem <= 2) timerEl.classList.add('bg-rose', 'text-white', 'animate-pulse');
+      else if (rem <= 4) timerEl.classList.add('bg-amber-100', 'text-amber-800');
+      else timerEl.classList.add('bg-brand-100', 'text-brand-800');
+    }
+    function advance() {
+      if (curTimer) { clearInterval(curTimer); curTimer = null; }
+      idx++;
+      if (idx >= def.items.length) { finish(); return; }
+      showItem();
+    }
+    function showItem() {
+      body.innerHTML = '';
+      body.appendChild(def.render(def.items[idx], idx));  // reuse renderKet
+      tpl.querySelector('[data-test-count]').textContent = 'Soal ' + (idx + 1) + ' / ' + def.items.length;
+      tpl.querySelector('[data-test-prog]').style.width = Math.round(idx / def.items.length * 100) + '%';
+      var picked = false;  // lock so a pick and the 0s timeout can't both advance (would skip an item)
+      body.querySelectorAll('input[type="radio"]').forEach(function (r) {
+        r.addEventListener('change', function () {
+          if (picked) return; picked = true;
+          A.ketelitian[idx] = r.value;
+          if (curTimer) { clearInterval(curTimer); curTimer = null; }  // stop countdown so it can't also advance
+          body.querySelectorAll('input[type="radio"]').forEach(function (x) { x.disabled = true; });
+          setTimeout(advance, 350);
+        });
+      });
+      var rem = KET_SEC; paint(rem);
+      if (curTimer) { clearInterval(curTimer); curTimer = null; }
+      curTimer = setInterval(function () { rem--; if (rem <= 0) { if (!picked) advance(); return; } paint(rem); }, 1000);
+    }
+    function finish() {
+      ketRunning = false;
+      tpl.querySelector('[data-test-prog]').style.width = '100%';
+      nextBtn.style.display = '';
+      next();
+    }
+    showItem();
   }
   var prevTestKey = null;
   function startTimer(def, el) {
@@ -456,6 +556,9 @@
     }
     var fs2 = fieldset((i + 1) + '. ' + it.text); it.options.forEach(function (o) { fs2.appendChild(radio('kt_' + it.id, o, o)); }); return fs2;
   }
+  // ponytail: dead on the ketelitian path — runKetelitian is speeded (one item at a time) and owns
+  // A.ketelitian directly, so def.collect is never called for ketelitian. Kept as the TEST_DEF shape's
+  // collect slot / fallback; a whole-DOM :checked scan here would only ever see the last shown item.
   function collectKet(def, requireAll) {
     var ok = true; A.ketelitian = def.items.map(function (it) { var f = tpl.querySelector('[name="kt_' + it.id + '"]:checked'); if (!f) ok = false; return f ? f.value : ''; });
     if (requireAll && !ok) { showError(T.incomplete); return false; } return true;
@@ -578,7 +681,8 @@
     if (!host || !TEST_DEFS.length) return;
     var h = '<p class="text-sm font-semibold text-brand-900">' + T.roadmap_title + '</p><ol class="mt-3 space-y-2">';
     TEST_DEFS.forEach(function (d, i) {
-      var n = d.items ? d.items.length : 0;
+      // ketelitian items are fetched per-attempt (empty here) — show the known length instead
+      var n = (d.key === 'ketelitian' && !PREVIEW) ? KET_N : (d.items ? d.items.length : 0);
       h += '<li class="flex items-center gap-3 rounded-xl border border-paper-edge bg-paper-card px-4 py-2.5">'
         + '<span class="grid place-items-center h-6 w-6 shrink-0 rounded-full bg-brand-600 text-white text-xs font-bold tabular-nums">' + (i + 1) + '</span>'
         + '<span class="text-brand-900 font-medium">' + d.title + '</span>'
