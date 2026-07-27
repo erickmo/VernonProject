@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { valueOfDay } from '@/lib/values'
 import { ValuesWelcome } from '@web/components/ValuesWelcome'
+import CheerPop from '@/components/CheerPop'
 import {
   useBoot, useDashboard, useProjects, useWallet, useGamification, useMyAttendance,
   useMeetings, useWeeklyRecap, useClaimDaily, useDailyVerse, useHomeBanners,
@@ -613,6 +614,7 @@ export default function Home() {
 
   return (
     <Page className="space-y-6">
+      <CheerPop />
       <ValuesWelcome />
       {/* Hero — command-center greeting; today's demands surface as tappable focal chips */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-50 via-surface to-surface p-5 shadow-card dark:from-brand-500/10 dark:via-slate-900 dark:to-slate-900 sm:p-6">

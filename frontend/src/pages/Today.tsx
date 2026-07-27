@@ -53,6 +53,7 @@ import { BannerCarousel } from '@/components/BannerCarousel'
 import { useBoot, useDashboard, useProjects, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings } from '@/hooks/useData'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MeetingSheet } from '@/components/MeetingSheet'
+import CheerPop from '@/components/CheerPop'
 import type { MeetingListItem } from '@/lib/types'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { focusedFirst } from '@/lib/planDay'
@@ -496,6 +497,7 @@ export default function Today() {
 
   return (
     <TabScreen title="Home" subtitle={`${greeting()}, ${firstName}`} right={right}>
+      <CheerPop />
       <ValuesWelcome />
       {isLoading && !data ? (
         <FullScreenLoader label="Loading your work…" />
