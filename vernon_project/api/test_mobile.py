@@ -3,6 +3,7 @@
 
 import frappe
 import unittest
+from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days
 from vernon_project.api.mobile import get_project_detail, get_team_wall, PROTECTED_USERS
 
@@ -1000,3 +1001,14 @@ class TestMoveProjectDetail(unittest.TestCase):
 		self.assertNotIn(self.source.name, names)
 		self.assertNotIn(foreign.name, names)
 		self.assertNotIn(closed.name, names)
+
+
+class TestProfilePhoto(FrappeTestCase):
+	def test_update_my_profile_sets_photo(self):
+		from vernon_project.api.mobile import update_my_profile
+		frappe.set_user("Administrator")
+		update_my_profile(photo="/files/real_face.png")
+		self.assertEqual(
+			frappe.db.get_value("Employee Profile", {"user": "Administrator"}, "photo"),
+			"/files/real_face.png",
+		)

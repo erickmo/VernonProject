@@ -25,6 +25,7 @@ MEMBER_TYPES = ("", "Internal Team", "Intern")
 
 # Employee Profile self-editable soft fields (mobile /m). Legal/contract/quota are NOT here.
 EMPLOYEE_SOFT_FIELDS = (
+	"photo",
 	"home_address", "emergency_contact_name", "emergency_contact_phone", "emergency_contact_relation",
 	"religion", "verse_enabled", "focus_mode", "gender",
 )
@@ -5572,7 +5573,7 @@ def save_gamification_settings(premium_price=None, points_per_level=None, daily_
 
 @frappe.whitelist()
 def update_my_profile(
-	phone=None, birthdate=None, bio=None,
+	phone=None, photo=None, birthdate=None, bio=None,
 	home_address=None, emergency_contact_name=None,
 	emergency_contact_phone=None, emergency_contact_relation=None,
 	education=None, skills=None, trainings=None,
@@ -5607,6 +5608,8 @@ def update_my_profile(
 		doc.set("focus_mode", focus_mode)
 	if gender in ("Male", "Female"):
 		doc.set("gender", gender)
+	if photo is not None:
+		doc.set("photo", (photo or "").strip() or None)
 
 	def _rows(raw):
 		return json.loads(raw) if isinstance(raw, str) else (raw or [])
