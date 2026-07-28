@@ -223,6 +223,10 @@ export const mobileApi = {
       'vernon_project.api.postpone.postpone',
       { target_type: targetType, target_name: targetName, new_date: newDate },
     ),
+  // Per-date daily-minimum minutes for the session user over an inclusive range
+  // ({ "YYYY-MM-DD": target_minutes }). Drives the plan screen's day-load targets.
+  getDailyTargets: (from_date: string, to_date: string) =>
+    api.get<Record<string, number>>(M + 'get_daily_targets', { from_date, to_date }),
   setTodoAllocations: (todoId: string, allocations: { date: string; minutes: number; note?: string }[]) =>
     api.post<{ status: string; message: string; allocations: { date: string; minutes: number; note?: string }[] }>(
       M + 'set_todo_allocations',

@@ -1,7 +1,7 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert'
 import type { ProjectItem } from './types'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor } from './planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes, weekLoad, boardDate, allocTotal, planColumns } from './planDay'
 import { byAllocationAsc } from './format'
 
 // Minimal ProjectItem factory — only the fields these pure fns read.
@@ -30,12 +30,42 @@ assert.deepEqual(
   'planned (d=60, b=30) on top; unplanned a,c stable',
 )
 
-// touchedDiff: only rows whose today-minutes changed vs today_allocation
-const saved = [item({ name: 'a', today_allocation: 0 }), item({ name: 'b', today_allocation: 30 })]
+// allocMinutes: minutes of the row matching `date`, else 0
+const D = '2026-07-28'
+const allocT = item({ allocations: [{ date: D, minutes: 45 }, { date: '2026-07-29', minutes: 60 }] })
+assert.equal(allocMinutes(allocT, D), 45, 'matching date row minutes')
+assert.equal(allocMinutes(allocT, '2026-07-29'), 60, 'other date row minutes')
+assert.equal(allocMinutes(allocT, '2026-07-30'), 0, 'no row for date → 0')
+assert.equal(allocMinutes(item({ allocations: [] }), D), 0, 'empty allocations → 0')
+
+// touchedDiff: only rows whose minutes for `date` changed vs the saved allocation row
+const saved = [
+  item({ name: 'a', allocations: [] }),
+  item({ name: 'b', allocations: [{ date: D, minutes: 30 }] }),
+]
 assert.deepEqual(
-  touchedDiff(saved, { a: 15, b: 30 }).map((t) => t.name),
+  touchedDiff(saved, { a: 15, b: 30 }, D).map((t) => t.name),
   ['a'],
-  'a changed 0→15; b unchanged 30',
+  'a changed 0→15; b unchanged 30 on date D',
+)
+
+// weekLoad: per-date Σ allocMinutes across todos, paired with target (default 0)
+const wl = weekLoad(
+  [
+    item({ name: 't1', allocations: [{ date: D, minutes: 30 }, { date: '2026-07-29', minutes: 60 }] }),
+    item({ name: 't2', allocations: [{ date: D, minutes: 20 }] }),
+  ],
+  [D, '2026-07-29', '2026-07-30'],
+  { [D]: 300, '2026-07-29': 180 },
+)
+assert.deepEqual(
+  wl,
+  [
+    { date: D, minutes: 50, target: 300 },
+    { date: '2026-07-29', minutes: 60, target: 180 },
+    { date: '2026-07-30', minutes: 0, target: 0 },
+  ],
+  'weekLoad sums per date; missing target defaults 0',
 )
 
 // buildNext: replace today's row, preserve others; 0 drops today's row
@@ -177,5 +207,34 @@ assert.deepEqual(
   ['d1'],
   'min <= 0 → base only',
 )
+
+// boardDate: earliest allocation date, else null
+assert.equal(boardDate(item({ allocations: [] })), null, 'no allocations → unscheduled')
+assert.equal(
+  boardDate(item({ allocations: [{ date: '2026-07-10', minutes: 30 }, { date: '2026-07-08', minutes: 20 }] })),
+  '2026-07-08',
+  'earliest allocation date wins',
+)
+
+// allocTotal: sum of allocation minutes
+assert.equal(
+  allocTotal(item({ allocations: [{ date: '2026-07-08', minutes: 20 }, { date: '2026-07-10', minutes: 30 }] })),
+  50,
+  'sum of all allocation minutes',
+)
+
+// planColumns: bucket into week days vs unscheduled
+{
+  const week = ['2026-07-06', '2026-07-07', '2026-07-08']
+  const todos = [
+    item({ name: 'inWeek', allocations: [{ date: '2026-07-07', minutes: 30 }] }),
+    item({ name: 'noPlan', allocations: [] }),
+    item({ name: 'otherWeek', allocations: [{ date: '2026-08-01', minutes: 30 }] }),
+  ]
+  const cols = planColumns(todos, week)
+  assert.deepEqual(cols.byDate['2026-07-07'].map((t) => t.name), ['inWeek'], 'in-week todo → its day column')
+  assert.deepEqual(cols.unscheduled.map((t) => t.name), ['noPlan', 'otherWeek'], 'no-plan + other-week → unscheduled')
+  assert.deepEqual(cols.byDate['2026-07-06'], [], 'empty day column present')
+}
 
 console.log('planDay self-check OK')

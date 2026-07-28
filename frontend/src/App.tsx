@@ -10,6 +10,7 @@ import { pushSupported, subscribeToPush } from './lib/push'
 import Login from './pages/Login'
 import Today from './pages/Today'
 import Calendar from './pages/Calendar'
+import PlanScreen from './pages/PlanScreen'
 import Reports from './pages/Reports'
 import ReportPage from './pages/ReportPage'
 import Review from './pages/Review'
@@ -199,6 +200,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/plan" element={<PlanScreen />} />
         <Route path="/review" element={<Review />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/todos-due" element={<TodosDueScreen />} />

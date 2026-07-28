@@ -6,6 +6,7 @@ import {
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
   History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck, Clock,
+  ClipboardList,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -38,6 +39,7 @@ export const NAV_PRIMARY_PATHS = new Set(NAV_PRIMARY.map((l) => l.to))
 const WORK: NavLeaf[] = [
   { to: '/', label: 'Today', sub: "Today's work & progress", icon: Home, end: true },
   { to: '/calendar', label: 'Calendar', sub: 'Month & deadlines', icon: CalendarDays },
+  { to: '/plan', label: 'Plan', sub: 'Allocate minutes by date', icon: ClipboardList },
   { to: '/projects', label: 'Projects', sub: 'All projects & details', icon: FolderKanban, match: '/project' },
   { to: '/review', label: 'Review', sub: 'Approve completed work', icon: CheckCircle2, badge: 'review' },
   { to: '/meetings', label: 'Meetings', sub: 'Schedule & notes', icon: Video },

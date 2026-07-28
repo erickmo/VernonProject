@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query'
 import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
+import { allocTotal } from '@/lib/planDay'
 import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
 import type {
   AppSettings,
@@ -69,6 +70,7 @@ export const keys = {
   boot: ['boot'] as const,
   dashboard: ['dashboard'] as const,
   calendar: ['calendar'] as const,
+  dailyTargets: (from: string, to: string) => ['daily-targets', from, to] as const,
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
   projectGantt: (n: string) => ['project-gantt', n] as const,
@@ -186,6 +188,15 @@ export const useCalendar = () =>
   useQuery({
     queryKey: keys.calendar,
     queryFn: () => mobileApi.calendar() as Promise<{ todos: ProjectItem[] }>,
+  })
+
+// Per-date daily-minimum minutes over an inclusive range — the plan screen's
+// day-load targets. Disabled until both dates are set.
+export const useDailyTargets = (from: string, to: string) =>
+  useQuery({
+    queryKey: keys.dailyTargets(from, to),
+    queryFn: () => mobileApi.getDailyTargets(from, to),
+    enabled: !!from && !!to,
   })
 
 export const useProjects = () =>
@@ -509,6 +520,30 @@ export function useSetTodoAllocations(todoId: string) {
       qc.invalidateQueries({ queryKey: keys.dashboard })
       // Project Detail / workspace todo tables render today_allocation too — refetch
       // so the "Today" toggle turns green there, not only on the dashboard.
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
+// Move a todo's whole plan onto a single date (the "By project" board's
+// drag/tap-to-move), or clear it when date is null. Replaces ALL existing
+// allocation rows — collapsing a multi-date plan to the one dropped date.
+// Minutes carried over: the todo's existing total, else its estimate (else 30).
+// Invalidates calendar (the board's read source) plus the usual dashboard/detail.
+export function useMoveTodoPlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ todo, date }: { todo: ProjectItem; date: string | null }) => {
+      const minutes = allocTotal(todo) || (todo.estimated > 0 ? todo.estimated : 30)
+      const allocations = date ? [{ date, minutes }] : []
+      const res = await mobileApi.setTodoAllocations(todo.name, allocations)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todo.name) })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
     },
   })

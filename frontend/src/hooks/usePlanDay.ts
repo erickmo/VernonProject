@@ -4,17 +4,16 @@ import { mobileApi } from '@/lib/api'
 import { keys } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { todayISO, formatEstimate } from '@/lib/format'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor } from '@/lib/planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes } from '@/lib/planDay'
 import { usePreviousShiftShortfall } from '@/hooks/useData'
 import type { ProjectItem } from '@/lib/types'
 
-// Shared plan-my-day state + save semantics for both the mobile sheet and the
-// web drawer. Writes only today's allocation row per touched todo, preserving
-// other-day rows (planning only — never touches status/scoring).
-export function usePlanDay(candidates: ProjectItem[]) {
+// Shared plan-a-date state + save semantics for both the mobile sheet and the
+// web drawer. Writes only `targetDate`'s allocation row per touched todo,
+// preserving other-day rows (planning only — never touches status/scoring).
+export function usePlanDate(candidates: ProjectItem[], targetDate: string) {
   const qc = useQueryClient()
   const toast = useToast()
-  const today = todayISO()
 
   // A today-deadline todo is pinned to today's plan server-side and cannot be
   // removed, so every edit path applies its floor — setMin clamps immediately for
@@ -29,18 +28,18 @@ export function usePlanDay(candidates: ProjectItem[]) {
   // back as a dropped row.
   const [overrides, setOverrides] = useState<Record<string, number>>({})
   const floors = useMemo(
-    () => Object.fromEntries(candidates.map((t) => [t.name, planFloor(t, today)])),
-    [candidates, today],
+    () => Object.fromEntries(candidates.map((t) => [t.name, planFloor(t, targetDate)])),
+    [candidates, targetDate],
   )
   const mins = useMemo(
     () =>
       Object.fromEntries(
         candidates.map((t) => [
           t.name,
-          overrides[t.name] ?? Math.max(floors[t.name] || 0, t.today_allocation || 0),
+          overrides[t.name] ?? Math.max(floors[t.name] || 0, allocMinutes(t, targetDate)),
         ]),
       ),
-    [candidates, floors, overrides],
+    [candidates, floors, overrides, targetDate],
   )
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
@@ -62,7 +61,7 @@ export function usePlanDay(candidates: ProjectItem[]) {
   const total = Object.values(mins).reduce((s, v) => s + v, 0)
 
   const save = async () => {
-    const touched = touchedDiff(candidates, mins)
+    const touched = touchedDiff(candidates, mins, targetDate)
     if (!touched.length) return
     setSaving(true)
     try {
@@ -70,7 +69,7 @@ export function usePlanDay(candidates: ProjectItem[]) {
         touched.map((t) =>
           mobileApi.setTodoAllocations(
             t.name,
-            buildNext(t.allocations ?? [], today, Math.max(floors[t.name] || 0, mins[t.name] || 0)),
+            buildNext(t.allocations ?? [], targetDate, Math.max(floors[t.name] || 0, mins[t.name] || 0)),
           ),
         ),
       )
@@ -86,6 +85,12 @@ export function usePlanDay(candidates: ProjectItem[]) {
   }
 
   return { mins, setMin, setMinRaw, useEstimate, query, setQuery, visible, total, saving, save, floors }
+}
+
+// Plan-my-day: the original today-only hook, now a thin wrapper over usePlanDate.
+// Byte-for-byte equivalent to before (allocMinutes(t, today) === today_allocation).
+export function usePlanDay(candidates: ProjectItem[]) {
+  return usePlanDate(candidates, todayISO())
 }
 
 // Silent auto-plan. Mounted on both dashboards, so it fires on load AND every

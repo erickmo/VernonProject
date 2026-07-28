@@ -25,6 +25,7 @@ import Login from '@web/pages/Login'
 import { AppShell } from '@web/components/AppShell'
 import Home from '@web/pages/Home'
 import Calendar from '@web/pages/Calendar'
+import Plan from '@web/pages/Plan'
 import ProjectsWorkspace, { ProjectsIndexPrompt } from '@web/pages/ProjectsWorkspace'
 import Project, { ProjectIndexPane } from '@web/pages/Project'
 import ProjectDetailPane from '@web/pages/ProjectDetailPane'
@@ -223,6 +224,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/plan" element={<Plan />} />
           {/* Projects workspace: persistent rail (left) + selected project (right) */}
           <Route element={<ProjectsWorkspace />}>
             <Route path="/projects" element={<ProjectsIndexPrompt />} />

@@ -91,6 +91,14 @@ export function todayISO(): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 }
 
+// YYYY-MM-DD shifted by n days, TZ-safe (parse as local midnight, add days, format
+// back like todayISO). Handles month/year rollover; n may be negative.
+export function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + n)
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
 export function stripHtml(html: string): string {
   if (!html) return ''
   const tmp = document.createElement('div')

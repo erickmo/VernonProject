@@ -871,6 +871,28 @@ def get_calendar():
 
 
 @frappe.whitelist()
+def get_daily_targets(from_date, to_date):
+	"""Per-user daily-minimum target minutes for every date in [from_date, to_date].
+
+	Returns {"YYYY-MM-DD": target_minutes} for frappe.session.user — one entry per
+	inclusive date, each via report._resolve_min_minutes (Brand/global per-weekday
+	floor, Shift Template override, holiday/off-day -> 0). Drives the plan screen's
+	day-load bar and week strip. Range capped to bound the per-date resolver loop.
+	"""
+	# Lazy import: report.py imports mobile (_notify), so avoid a load-time cycle.
+	from vernon_project.api.report import _resolve_min_minutes
+
+	user = frappe.session.user
+	start = getdate(from_date)
+	span = date_diff(getdate(to_date), start)  # to - from, in days
+	if span < 0:
+		frappe.throw("from_date must be on or before to_date")
+	if span > 45:
+		frappe.throw("Date range too wide — pick 45 days or fewer.")
+	return {str(add_days(start, i)): int(_resolve_min_minutes(user, add_days(start, i))) for i in range(span + 1)}
+
+
+@frappe.whitelist()
 def get_projects():
 	"""Project cards with progress + overdue rollups for the Projects tab."""
 	user = frappe.session.user

@@ -23,9 +23,32 @@ export function sortForPlanning(candidates: ProjectItem[], mins: Record<string, 
     .map((x) => x.t)
 }
 
-// Candidates whose today-minutes differ from what's already saved.
-export function touchedDiff(candidates: ProjectItem[], mins: Record<string, number>): ProjectItem[] {
-  return candidates.filter((t) => (mins[t.name] || 0) !== (t.today_allocation || 0))
+// Minutes of t's allocation row for `date` (0 if none). Invariant:
+// allocMinutes(t, todayISO()) === t.today_allocation (same today alloc row).
+export function allocMinutes(t: ProjectItem, date: string): number {
+  return t.allocations?.find((a) => a.date === date)?.minutes ?? 0
+}
+
+// Per-date day load: Σ allocation minutes across todos, paired with each date's target.
+export function weekLoad(
+  todos: ProjectItem[],
+  dates: string[],
+  targets: Record<string, number>,
+): { date: string; minutes: number; target: number }[] {
+  return dates.map((date) => ({
+    date,
+    minutes: todos.reduce((s, t) => s + allocMinutes(t, date), 0),
+    target: targets[date] ?? 0,
+  }))
+}
+
+// Candidates whose minutes for `date` differ from what's already saved.
+export function touchedDiff(
+  candidates: ProjectItem[],
+  mins: Record<string, number>,
+  date: string,
+): ProjectItem[] {
+  return candidates.filter((t) => (mins[t.name] || 0) !== allocMinutes(t, date))
 }
 
 // Replace ONLY today's allocation row; preserve every other-day row. 0 min → drop today's row.
@@ -102,4 +125,40 @@ export function autoFillPlan(
 export function planFloor(t: ProjectItem, today: string): number {
   if (t.is_waiting || !t.deadline || t.deadline !== today) return 0
   return t.estimated > 0 ? t.estimated : 30
+}
+
+// --- Project board (the "By project" plan mode) ---------------------------
+
+// The single date a todo shows under on the project board: the earliest of its
+// allocation dates. A board move collapses a todo to one date, but date-mode can
+// leave several — earliest wins. null = unscheduled (no allocation at all).
+export function boardDate(t: ProjectItem): string | null {
+  const ds = (t.allocations ?? []).map((a) => a.date).filter(Boolean).sort()
+  return ds[0] ?? null
+}
+
+// Sum of a todo's planned minutes across all its allocation rows. Used to carry
+// the existing plan size when moving a todo to a new single date.
+export function allocTotal(t: ProjectItem): number {
+  return (t.allocations ?? []).reduce((s, a) => s + (a.minutes || 0), 0)
+}
+
+// Bucket a project's todos into the week board's columns. A todo whose boardDate
+// falls inside `weekDates` lands in that day's column; everything else — no plan,
+// or planned in another week — lands in `unscheduled` (the card can show its
+// out-of-week boardDate as a hint). byDate has an entry for every weekDate.
+export function planColumns(
+  todos: ProjectItem[],
+  weekDates: string[],
+): { unscheduled: ProjectItem[]; byDate: Record<string, ProjectItem[]> } {
+  const inWeek = new Set(weekDates)
+  const byDate: Record<string, ProjectItem[]> = {}
+  for (const d of weekDates) byDate[d] = []
+  const unscheduled: ProjectItem[] = []
+  for (const t of todos) {
+    const bd = boardDate(t)
+    if (bd && inWeek.has(bd)) byDate[bd].push(t)
+    else unscheduled.push(t)
+  }
+  return { unscheduled, byDate }
 }
