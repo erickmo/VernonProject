@@ -1023,3 +1023,18 @@ class TestEduRank(unittest.TestCase):
 			_edu_rank({"level": "S1", "year": 2020}))
 		self.assertLess(_edu_rank({"level": None, "year": 2024}),
 			_edu_rank({"level": "SD", "year": 2000}))
+
+
+class TestFaceDetect(unittest.TestCase):
+	def test_blank_image_has_no_face(self):
+		import cv2
+		import numpy as np
+		from vernon_project.api.mobile import _has_face
+		blank = np.full((300, 300, 3), 200, dtype=np.uint8)  # solid gray — no face
+		ok, buf = cv2.imencode(".png", blank)
+		self.assertTrue(ok)
+		self.assertFalse(_has_face(buf.tobytes()))
+
+	def test_undecodable_bytes_return_none(self):
+		from vernon_project.api.mobile import _has_face
+		self.assertIsNone(_has_face(b"definitely not an image"))

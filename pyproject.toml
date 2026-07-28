@@ -16,6 +16,10 @@ dependencies = [
     "webauthn~=2.7.1",
     # Web Push delivery for Vernon Notifications (see api/mobile.py _push_to_subscriptions).
     "pywebpush~=2.3.0",
+    # Server-side face detection for profile-photo uploads (api/mobile.py _has_face).
+    # headless = no libGL/system GUI deps. Pinned <5: 5.x ships without the bundled
+    # haarcascade data files; 4.10 includes haarcascade_frontalface_default.xml.
+    "opencv-python-headless~=4.10.0",
 ]
 
 [build-system]

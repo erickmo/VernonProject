@@ -3308,13 +3308,45 @@ def upload_reward_image():
 	return {"file_url": saved.file_url}
 
 
+_FACE_CASCADE = None
+
+
+def _has_face(content):
+	"""Detect a frontal human face in raw image bytes (OpenCV Haar cascade).
+	Returns True/False, or None if the image can't be decoded at all. Fail-OPEN: any
+	unexpected detector error returns True so a broken detector never locks users out
+	of the forced-photo gate — this is a quality check, not a security boundary.
+	ponytail: Haar frontal cascade; if false-rejects (profiles/tilt/low-light) become a
+	problem, loosen minNeighbors/minSize or swap in the DNN detector."""
+	try:
+		import cv2
+		import numpy as np
+
+		global _FACE_CASCADE
+		if _FACE_CASCADE is None:
+			_FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+		img = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+		if img is None:
+			return None
+		h, w = img.shape[:2]
+		scale = 1000.0 / max(h, w)  # cap the long edge — cascade cost scales with pixels
+		if scale < 1:
+			img = cv2.resize(img, (int(w * scale), int(h * scale)))
+		faces = _FACE_CASCADE.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+		return len(faces) > 0
+	except Exception:
+		frappe.log_error(title="profile photo face-detect failed (fail-open)")
+		return True
+
+
 @frappe.whitelist()
 def upload_profile_photo():
 	"""Save the caller's uploaded REAL profile photo as a public File and return its URL.
 	Self-service: any logged-in user sets their OWN photo (the form stores the URL on
 	Employee Profile.photo via update_my_profile). Independent of the avatar snapshot,
 	which clobbers User.user_image. Raster images only — served public, so SVG/HTML
-	(stored-XSS vectors) are rejected by extension + MIME."""
+	(stored-XSS vectors) are rejected by extension + MIME. The image must contain a
+	visible human face, so avatars/logos/scenery are rejected."""
 	if frappe.session.user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
 	import os
@@ -3334,6 +3366,15 @@ def upload_profile_photo():
 	content = f.stream.read()
 	if len(content) > MAX_IMAGE_BYTES:
 		frappe.throw("Image too large (max 5 MB).")
+
+	face = _has_face(content)
+	if face is None:
+		frappe.throw("Gambar tidak bisa dibaca. Coba file lain.", frappe.ValidationError)
+	if not face:
+		frappe.throw(
+			"Foto harus menampilkan wajah dengan jelas — unggah foto asli wajahmu (bukan avatar, logo, atau gambar lain).",
+			frappe.ValidationError,
+		)
 
 	saved = save_file(f.filename, content, None, None, is_private=0)
 	return {"file_url": saved.file_url}
