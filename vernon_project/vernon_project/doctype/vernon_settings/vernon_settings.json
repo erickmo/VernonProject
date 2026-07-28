@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["branding_section", "app_logo", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "leave_rules_section", "late_penalty_enabled", "count_early_leave_in_penalty", "lateness_deduction_threshold_minutes", "overtime_bonus_enabled", "overtime_bonus_threshold_minutes", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "force_photo_upload", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
+ "field_order": ["branding_section", "app_logo", "nametag_value", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "leave_rules_section", "late_penalty_enabled", "count_early_leave_in_penalty", "lateness_deduction_threshold_minutes", "overtime_bonus_enabled", "overtime_bonus_threshold_minutes", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "force_photo_upload", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
   {"fieldname": "branding_section", "fieldtype": "Section Break", "label": "Branding"},
   {
@@ -11,6 +11,12 @@
    "fieldtype": "Attach Image",
    "label": "App Logo",
    "description": "Logo shown in the web top navbar (replaces the default wordmark). Wide/landscape PNG or SVG with transparent background works best."
+  },
+  {
+   "fieldname": "nametag_value",
+   "fieldtype": "Data",
+   "label": "Nametag Value / Motto",
+   "description": "One short line printed on the footer of every lanyard nametag (e.g. a company value or motto). Blank = decorative bar only."
   },
   {
    "fieldname": "max_estimated_minutes",

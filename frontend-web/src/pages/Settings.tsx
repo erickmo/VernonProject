@@ -54,6 +54,7 @@ export default function Settings() {
   const bannerFileRef = useRef<HTMLInputElement>(null)
   const pickForIdx = useRef<number | null>(null)
   const [appLogo, setAppLogo] = useState<string>('')
+  const [nametagValue, setNametagValue] = useState<string>('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const logoFileRef = useRef<HTMLInputElement>(null)
 
@@ -81,6 +82,7 @@ export default function Settings() {
     setOvertimeThreshold(String(loaded.overtime_bonus_threshold_minutes))
     setBanners(loaded.home_banners ?? [])
     setAppLogo(loaded.app_logo ?? '')
+    setNametagValue(loaded.nametag_value ?? '')
   }, [loaded])
 
   useEffect(() => {
@@ -118,6 +120,7 @@ export default function Settings() {
     save.mutate(
       {
         app_logo: appLogo,
+        nametag_value: nametagValue,
         max_estimated_minutes: n(maxEstimatedMinutes),
         under_occupied_tolerance_minutes: n(toleranceMinutes),
         min_minutes_monday: n(minByWeekday[0]),
@@ -241,6 +244,22 @@ export default function Settings() {
                 </button>
               )}
             </div>
+          </div>
+          <div className="mt-4 border-t border-line pt-4">
+            <label className="flex flex-col gap-1 text-sm font-medium text-ink">
+              <span className="text-muted">Nametag value / motto</span>
+              <input
+                type="text"
+                value={nametagValue}
+                onChange={(e) => setNametagValue(e.target.value)}
+                maxLength={48}
+                placeholder="e.g. Grow Together"
+                className="w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-brand-600 focus:outline-none"
+              />
+            </label>
+            <p className="mt-1 text-xs text-muted">
+              Printed on the footer of every lanyard nametag (/m &amp; /w). Blank = decorative bar only.
+            </p>
           </div>
         </BentoTile>
 

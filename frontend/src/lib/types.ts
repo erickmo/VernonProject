@@ -19,6 +19,7 @@ export interface Boot {
   settings?: {
     show_auto_approve?: 0 | 1
     app_logo?: string | null
+    nametag_value?: string | null
     force_superpower?: 0 | 1
     has_superpower?: 0 | 1
   }
@@ -774,6 +775,7 @@ export interface AssignmentOverload {
 
 export interface AppSettings {
   app_logo: string
+  nametag_value: string
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
   min_minutes_monday: number
@@ -1175,16 +1177,6 @@ export type AttendanceExceptionRow = {
   hr_reason?: string
   leave_type?: string
   proof?: string
-}
-
-/** One approved leave span on the team-wide calendar lens. */
-export type TeamLeaveRow = {
-  name: string
-  employee: string
-  employee_name: string
-  leave_type?: string
-  from_date: string
-  to_date: string
 }
 
 export type LeaveType = {

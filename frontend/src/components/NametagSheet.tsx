@@ -43,7 +43,7 @@ const BAND_TEXTURE =
   'repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 1px, transparent 1px 7px),' +
   'repeating-linear-gradient(-45deg, rgba(255,255,255,.07) 0 1px, transparent 1px 9px)'
 
-function Badge({ u, logo }: { u: TeamWallUser; logo: string }) {
+function Badge({ u, logo, value }: { u: TeamWallUser; logo: string; value: string }) {
   const name = u.full_name || u.name
   const edu = [u.school, u.major].filter(Boolean).join(' · ')
   const showEdu = !!u.is_intern && !!edu
@@ -105,11 +105,17 @@ function Badge({ u, logo }: { u: TeamWallUser; logo: string }) {
         ) : null}
       </div>
 
-      {/* Footer accent bar */}
+      {/* Footer accent bar — company value/motto, or a decorative bar when unset */}
       <div className="absolute inset-x-0 bottom-0 flex h-[18px] items-center justify-center gap-[6px] bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600">
-        <span className="h-[3px] w-[3px] rounded-full bg-white/70" />
-        <span className="h-[3px] w-[16px] rounded-full bg-white/70" />
-        <span className="h-[3px] w-[3px] rounded-full bg-white/70" />
+        {value ? (
+          <span className="truncate px-3 text-[7px] font-bold uppercase tracking-[0.2em] text-white">{value}</span>
+        ) : (
+          <>
+            <span className="h-[3px] w-[3px] rounded-full bg-white/70" />
+            <span className="h-[3px] w-[16px] rounded-full bg-white/70" />
+            <span className="h-[3px] w-[3px] rounded-full bg-white/70" />
+          </>
+        )}
       </div>
     </div>
   )
@@ -120,7 +126,9 @@ export default function NametagSheet() {
   const location = useLocation()
   const selected = (location.state as { users?: string[] } | null)?.users ?? null
   const { data } = useTeamWall()
-  const logo = useBoot().data?.settings?.app_logo || ''
+  const bootSettings = useBoot().data?.settings
+  const logo = bootSettings?.app_logo || ''
+  const value = bootSettings?.nametag_value || ''
 
   const users = useMemo<TeamWallUser[]>(() => {
     const all = data?.users ?? []
@@ -191,7 +199,7 @@ export default function NametagSheet() {
       </div>
       <div className="nametag-grid mx-auto flex max-w-[900px] flex-wrap content-start justify-center gap-5 p-6">
         {users.map((u) => (
-          <Badge key={u.name} u={u} logo={logo} />
+          <Badge key={u.name} u={u} logo={logo} value={value} />
         ))}
       </div>
     </div>

@@ -750,6 +750,7 @@ def bootstrap():
 		"settings": {
 			"show_auto_approve": int(frappe.db.get_single_value("Vernon Settings", "show_auto_approve") or 0),
 			"app_logo": frappe.db.get_single_value("Vernon Settings", "app_logo") or None,
+			"nametag_value": frappe.db.get_single_value("Vernon Settings", "nametag_value") or None,
 			"force_superpower": int(frappe.db.get_single_value("Vernon Settings", "force_superpower_onboarding") or 0),
 			"has_superpower": 1 if frappe.db.exists("User Superpower", {"user": user}) else 0,
 		},
@@ -2377,6 +2378,7 @@ def get_app_settings():
 
 	return {
 		"app_logo": g("app_logo") or "",
+		"nametag_value": g("nametag_value") or "",
 		"max_estimated_minutes": int(g("max_estimated_minutes") or 0),
 		"under_occupied_tolerance_minutes": int(g("under_occupied_tolerance_minutes") or 0),
 		"min_minutes_monday": int(g("min_minutes_monday") or 0),
@@ -2458,6 +2460,7 @@ def upload_banner_image():
 @frappe.whitelist()
 def save_app_settings(
 	app_logo=None,
+	nametag_value=None,
 	max_estimated_minutes=None,
 	under_occupied_tolerance_minutes=None,
 	min_minutes_monday=None,
@@ -2493,6 +2496,8 @@ def save_app_settings(
 	# Each field is optional; only the ones provided in the request are updated.
 	if app_logo is not None:
 		settings.set("app_logo", (app_logo or "").strip() or None)
+	if nametag_value is not None:
+		settings.set("nametag_value", (nametag_value or "").strip() or None)
 	if recognition_gate_start_time is not None:
 		settings.set("recognition_gate_start_time", (recognition_gate_start_time or "").strip() or None)
 	int_fields = {
