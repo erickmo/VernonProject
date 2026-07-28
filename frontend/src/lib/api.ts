@@ -13,6 +13,37 @@ export class ApiError extends Error {
   }
 }
 
+// Extract a clean human error string from a Frappe JSON error body. Frappe puts the
+// real text in `_server_messages` (a JSON array of JSON strings — NOT display-ready);
+// `exception`/`message` are fallbacks. Never returns raw JSON, so UIs show plain text.
+export function frappeMessage(data: any, fallback: string): string {
+  try {
+    const sm = data?._server_messages
+    if (sm) {
+      const arr = JSON.parse(sm)
+      if (Array.isArray(arr) && arr.length) {
+        const text = arr
+          .map((s: string) => {
+            try {
+              return JSON.parse(s).message
+            } catch {
+              return s
+            }
+          })
+          .filter(Boolean)
+          .join('\n')
+          .replace(/<[^>]*>/g, '') // strip any HTML Frappe wrapped around the message
+          .trim()
+        if (text) return text
+      }
+    }
+  } catch {
+    /* fall through to plain fields */
+  }
+  const m = data?.exception || data?.message
+  return (typeof m === 'string' && m.trim()) || fallback
+}
+
 function csrf(): string {
   // Injected into m.html by Frappe. Empty string for Guest is fine for GET.
   // @ts-expect-error injected global
@@ -806,9 +837,7 @@ export async function uploadProfilePhoto(file: File): Promise<string> {
     /* non-JSON */
   }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out.file_url as string
