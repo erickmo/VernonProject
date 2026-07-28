@@ -1,10 +1,16 @@
 // Nametag selection list — shared by /m and /w Team Wall "Nametag" mode.
 // Pick employees (search + select-all), then "Cetak Nametag" hands the chosen
 // User names to the print sheet via router state. Shows the REAL photo thumbnail
-// (user_image) so you pick by face, matching what the printed badge will show.
+// (Employee Profile.photo) so you pick by face, matching the printed badge. HR/SysMgr
+// get a per-row trash to remove an inappropriate photo (the person can re-upload).
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Printer, Search, Check } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Printer, Search, Check, Trash2 } from 'lucide-react'
+import { useBoot, canHrApprove, keys } from '@/hooks/useData'
+import { useConfirm } from './Confirm'
+import { useToast } from './Toast'
+import { mobileApi } from '../lib/api'
 import type { TeamWallUser } from '@/lib/types'
 
 function initials(name: string) {
@@ -20,8 +26,31 @@ function initials(name: string) {
 
 export function NametagPicker({ users }: { users: TeamWallUser[] }) {
   const nav = useNavigate()
+  const { data: boot } = useBoot()
+  const canHr = canHrApprove(boot)
+  const confirm = useConfirm()
+  const toast = useToast()
+  const qc = useQueryClient()
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Set<string>>(new Set())
+
+  // HR/SysMgr: clear a user's real photo (e.g. inappropriate upload). They can re-upload.
+  const removePhoto = async (u: TeamWallUser) => {
+    const ok = await confirm({
+      title: 'Hapus foto?',
+      message: `Hapus foto ${u.full_name || u.name}? Mereka bisa mengunggah ulang.`,
+      confirmLabel: 'Hapus',
+      destructive: true,
+    })
+    if (!ok) return
+    try {
+      await mobileApi.hrRemovePhoto(u.name)
+      qc.invalidateQueries({ queryKey: keys.teamWall })
+      toast('success', 'Foto dihapus')
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Gagal menghapus foto')
+    }
+  }
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -97,6 +126,21 @@ export function NametagPicker({ users }: { users: TeamWallUser[] }) {
                   <span className="block truncate text-xs text-slate-400">{u.job_title}</span>
                 ) : null}
               </span>
+              {canHr && u.photo ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  title="Hapus foto (HR)"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    removePhoto(u)
+                  }}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </span>
+              ) : null}
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                   on ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300 dark:border-slate-600'

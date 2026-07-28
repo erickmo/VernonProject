@@ -3381,6 +3381,21 @@ def upload_profile_photo():
 
 
 @frappe.whitelist()
+def hr_remove_photo(user):
+	"""HR / System Manager: clear a user's real profile photo (e.g. an inappropriate or
+	wrong upload) from the Team Wall. The person can re-upload; if the forced-photo gate
+	is on they'll simply be prompted again on next app open."""
+	from vernon_project.api.attendance import _is_hr
+
+	if not _is_hr(frappe.session.user):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	name = frappe.db.exists("Employee Profile", {"user": user})
+	if name:
+		frappe.db.set_value("Employee Profile", name, "photo", None)
+	return {"ok": True}
+
+
+@frappe.whitelist()
 def upload_business_unit_image():
 	"""Save an uploaded business unit image as a public File and return its URL.
 	The form then stores the URL on the business unit's `image` field like any

@@ -192,14 +192,6 @@ export const mobileApi = {
       'vernon_project.api.postpone.postpone',
       { target_type: targetType, target_name: targetName, new_date: newDate },
     ),
-  // Put/clear ONE todo on today's plan server-side (preserves other days). minutes
-  // omitted = add-if-absent using the todo's estimate; explicit minutes sets today
-  // exactly (0 removes). Returns prev_minutes so the buzz popup's Batalkan can undo.
-  planToday: (todo: string, minutes?: number) =>
-    api.post<{ ok: boolean; prev_minutes: number; minutes: number; changed: boolean }>(
-      M + 'plan_today',
-      minutes === undefined ? { todo } : { todo, minutes },
-    ),
   setTodoAllocations: (todoId: string, allocations: { date: string; minutes: number; note?: string }[]) =>
     api.post<{ status: string; message: string; allocations: { date: string; minutes: number; note?: string }[] }>(
       M + 'set_todo_allocations',
@@ -330,6 +322,7 @@ export const mobileApi = {
       ...(dryRun ? { dry_run: 1 } : {}),
     }),
   getTeamWall: () => api.get<import('./types').TeamWallResponse>(M + 'get_team_wall'),
+  hrRemovePhoto: (user: string) => api.post<{ ok: boolean }>(M + 'hr_remove_photo', { user }),
   income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
   submitIncomeClaim: (opportunity: string, details: string) =>
     api.post<{ ok: boolean; name: string }>(IN + 'submit_claim', { opportunity, details }),
@@ -593,8 +586,6 @@ export const mobileApi = {
   myLeaders: () => api.get<{ status: string; leaders: string[] }>(A + 'my_leaders'),
   myExceptions: (limit = 30) =>
     api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'my_exceptions', { limit }),
-  teamLeave: () =>
-    api.get<{ status: string; rows: import('./types').TeamLeaveRow[] }>(A + 'team_leave'),
   // Cuti Ledger — materialized leave statement + HR adjustments.
   getCutiLedger: (employee?: string, year?: number) =>
     api.get<import('./types').CutiLedgerResponse>('vernon_project.api.cuti_ledger.get_cuti_ledger', {
