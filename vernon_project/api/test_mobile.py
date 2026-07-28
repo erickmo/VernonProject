@@ -1026,14 +1026,18 @@ class TestEduRank(unittest.TestCase):
 
 
 class TestFaceDetect(unittest.TestCase):
-	def test_blank_image_has_no_face(self):
+	def _jpg(self, img):
 		import cv2
+		ok, buf = cv2.imencode(".jpg", img)
+		self.assertTrue(ok)
+		return buf.tobytes()
+
+	def test_non_face_images_rejected(self):
 		import numpy as np
 		from vernon_project.api.mobile import _has_face
-		blank = np.full((300, 300, 3), 200, dtype=np.uint8)  # solid gray — no face
-		ok, buf = cv2.imencode(".png", blank)
-		self.assertTrue(ok)
-		self.assertFalse(_has_face(buf.tobytes()))
+		self.assertFalse(_has_face(self._jpg(np.full((400, 400, 3), 200, np.uint8))))  # solid
+		rng = np.random.default_rng(0)  # seeded → deterministic
+		self.assertFalse(_has_face(self._jpg(rng.integers(0, 255, (400, 400, 3), dtype=np.uint8))))  # noise
 
 	def test_undecodable_bytes_return_none(self):
 		from vernon_project.api.mobile import _has_face

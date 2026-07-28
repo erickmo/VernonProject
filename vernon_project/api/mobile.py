@@ -3308,32 +3308,39 @@ def upload_reward_image():
 	return {"file_url": saved.file_url}
 
 
-_FACE_CASCADE = None
+_FACE_DETECTOR = None
+_YUNET_SCORE = 0.9  # min confidence for a detection to count as a real face
 
 
 def _has_face(content):
-	"""Detect a frontal human face in raw image bytes (OpenCV Haar cascade).
-	Returns True/False, or None if the image can't be decoded at all. Fail-OPEN: any
-	unexpected detector error returns True so a broken detector never locks users out
-	of the forced-photo gate — this is a quality check, not a security boundary.
-	ponytail: Haar frontal cascade; if false-rejects (profiles/tilt/low-light) become a
-	problem, loosen minNeighbors/minSize or swap in the DNN detector."""
+	"""Detect a human face in raw image bytes using OpenCV's YuNet DNN detector.
+	Returns True/False, or None if the image can't be decoded at all. YuNet is
+	confidence-scored, so it rejects textured non-face photos that the old Haar cascade
+	false-accepted. Fail-OPEN: any unexpected detector error returns True so a broken
+	detector never locks users out of the forced-photo gate — this is a quality check,
+	not a security boundary.
+	ponytail: single score threshold (0.9); lower it if real faces get false-rejected."""
 	try:
+		import os
+
 		import cv2
 		import numpy as np
 
-		global _FACE_CASCADE
-		if _FACE_CASCADE is None:
-			_FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-		img = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+		global _FACE_DETECTOR
+		if _FACE_DETECTOR is None:
+			model = os.path.join(os.path.dirname(__file__), "face_detection_yunet_2023mar.onnx")
+			_FACE_DETECTOR = cv2.FaceDetectorYN.create(model, "", (320, 320), _YUNET_SCORE, 0.3, 5000)
+		img = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_COLOR)
 		if img is None:
 			return None
 		h, w = img.shape[:2]
-		scale = 1000.0 / max(h, w)  # cap the long edge — cascade cost scales with pixels
+		scale = 1000.0 / max(h, w)  # cap the long edge — detector cost scales with pixels
 		if scale < 1:
 			img = cv2.resize(img, (int(w * scale), int(h * scale)))
-		faces = _FACE_CASCADE.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
-		return len(faces) > 0
+			h, w = img.shape[:2]
+		_FACE_DETECTOR.setInputSize((w, h))
+		_, faces = _FACE_DETECTOR.detect(img)
+		return faces is not None and len(faces) > 0
 	except Exception:
 		frappe.log_error(title="profile photo face-detect failed (fail-open)")
 		return True
