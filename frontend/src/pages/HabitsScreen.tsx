@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Flame, Plus, Check, Trash2, Sparkles } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
+import { useConfirm } from '@/components/Confirm'
 import { useHabits, useToggleHabit, useCreateHabit, useDeleteHabit, useAdoptSuggestion } from '@/hooks/useData'
 import type { Habit, HabitWeekDot } from '@/lib/types'
 
@@ -29,6 +30,7 @@ function WeekStrip({ week }: { week: HabitWeekDot[] }) {
 function HabitCard({ h }: { h: Habit }) {
   const toggle = useToggleHabit()
   const del = useDeleteHabit()
+  const confirm = useConfirm()
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
       <button
@@ -50,7 +52,10 @@ function HabitCard({ h }: { h: Habit }) {
           </p>
           <button
             aria-label="Arsipkan"
-            onClick={() => del.mutate(h.name)}
+            onClick={async () => {
+              if (await confirm({ title: 'Hapus kebiasaan ini?', confirmLabel: 'Hapus', destructive: true }))
+                del.mutate(h.name)
+            }}
             className="shrink-0 text-stone-300 transition active:scale-90 active:text-rose-500 dark:text-slate-600"
           >
             <Trash2 className="h-4 w-4" />
