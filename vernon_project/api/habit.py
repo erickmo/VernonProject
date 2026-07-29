@@ -31,19 +31,21 @@ def _streak(log_dates, cadence, weekdays, today):
 		return d.isoformat() in log_dates
 
 	# ---- current streak ----
+	# Walk back over scheduled days; terminate at the earliest logged day — no
+	# streak can extend before the first check-in, which also bounds the loop.
 	current = 0
-	d = today
-	if _scheduled(d, cadence, weekdays) and not done(d):
-		d = d - datetime.timedelta(days=1)  # today unchecked → don't penalize yet
-	while True:
-		if _scheduled(d, cadence, weekdays):
-			if done(d):
-				current += 1
-			else:
-				break
-		d = d - datetime.timedelta(days=1)
-		if (today - d).days > 366:  # safety bound
-			break
+	if log_dates:
+		earliest = min(datetime.date.fromisoformat(x) for x in log_dates)
+		d = today
+		if _scheduled(d, cadence, weekdays) and not done(d):
+			d = d - datetime.timedelta(days=1)  # today unchecked → don't penalize yet
+		while d >= earliest:
+			if _scheduled(d, cadence, weekdays):
+				if done(d):
+					current += 1
+				else:
+					break
+			d = d - datetime.timedelta(days=1)
 
 	# ---- best streak ----
 	best = run = 0
@@ -75,6 +77,9 @@ def demo():
 	assert _streak(set(), "Daily", set(), D(2026, 7, 29)) == (0, 0)
 	# best > current: long run then gap then short: 20,21,22 (run3) gap 23 then 29 today
 	assert _streak({"2026-07-20", "2026-07-21", "2026-07-22", "2026-07-29"}, "Daily", set(), D(2026, 7, 29)) == (1, 3)
+	# streak longer than the old 366-day cap must be exact (regression guard)
+	long_dates = {(D(2026, 7, 29) - datetime.timedelta(days=i)).isoformat() for i in range(400)}
+	assert _streak(long_dates, "Daily", set(), D(2026, 7, 29)) == (400, 400)
 	print("habit _streak self-check OK")
 
 
