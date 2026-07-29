@@ -1,5 +1,5 @@
 import {
-  Home, CalendarDays, FolderKanban, CheckCircle2, Video, StickyNote, MessageSquarePlus,
+  Home, CalendarDays, FolderKanban, CheckCircle2, Video, StickyNote, MessageSquarePlus, Flame,
   Trophy, UsersRound, ShoppingBag, Wallet, Gift,
   Users as UsersIcon, Inbox, Layers, ShieldAlert, Settings as SettingsIcon, Tag,
   Zap, QrCode, Monitor, UserCheck, Ticket, ArrowLeftRight,
@@ -44,6 +44,7 @@ const WORK: NavLeaf[] = [
   { to: '/review', label: 'Review', sub: 'Approve completed work', icon: CheckCircle2, badge: 'review' },
   { to: '/meetings', label: 'Meetings', sub: 'Schedule & notes', icon: Video },
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },
+  { to: '/habits', label: 'Kebiasaan', sub: 'Pelacak kebiasaan pribadi', icon: Flame },
   { to: '/feedback', label: 'Feedback', sub: 'Send · admins triage', icon: MessageSquarePlus, match: '/feedback' },
   { to: '/bookings', label: 'Bookings', sub: 'Rooms & equipment', icon: CalendarClock },
   { to: '/attendance/my-approvals', label: 'Leave/WFH input', sub: 'Give input as a leader', icon: Inbox },

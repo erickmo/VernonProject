@@ -24,6 +24,7 @@ import { ApiError } from '@/lib/api'
 import Login from '@web/pages/Login'
 import { AppShell } from '@web/components/AppShell'
 import Home from '@web/pages/Home'
+import Habits from '@web/pages/Habits'
 import Calendar from '@web/pages/Calendar'
 import Plan from '@web/pages/Plan'
 import ProjectsWorkspace, { ProjectsIndexPrompt } from '@web/pages/ProjectsWorkspace'
@@ -243,6 +244,7 @@ export default function App() {
           <Route path="/review" element={<Review />} />
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/notes" element={<Notes />} />
+          <Route path="/habits" element={<Habits />} />
           <Route path="/notes/new" element={<NoteForm />} />
           <Route path="/notes/:name" element={<NoteForm />} />
           <Route path="/bookings" element={<Bookings />} />
