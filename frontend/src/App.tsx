@@ -64,6 +64,7 @@ import GamificationSettingsScreen from './pages/GamificationSettingsScreen'
 import SettingsScreen from './pages/SettingsScreen'
 import NotesScreen from './pages/NotesScreen'
 import NoteFormScreen from './pages/NoteFormScreen'
+import HabitsScreen from './pages/HabitsScreen'
 import PapanIklanScreen from './pages/PapanIklanScreen'
 import PapanIklanDetailScreen from './pages/PapanIklanDetailScreen'
 import PapanIklanFormScreen from './pages/PapanIklanFormScreen'
@@ -295,6 +296,7 @@ export default function App() {
         <Route path="/notes" element={<NotesScreen />} />
         <Route path="/notes/new" element={<NoteFormScreen />} />
         <Route path="/notes/:name" element={<NoteFormScreen />} />
+        <Route path="/habits" element={<HabitsScreen />} />
         <Route path="/papan-iklan" element={<PapanIklanScreen />} />
         <Route path="/papan-iklan/new" element={<PapanIklanFormScreen />} />
         {canModerateAds(boot) && (
