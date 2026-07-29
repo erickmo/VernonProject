@@ -83,6 +83,12 @@ def demo():
 	# streak longer than the old 366-day cap must be exact (regression guard)
 	long_dates = {(D(2026, 7, 29) - datetime.timedelta(days=i)).isoformat() for i in range(400)}
 	assert _streak(long_dates, "Daily", set(), D(2026, 7, 29)) == (400, 400)
+	# _parse_weekdays accepts CSV, JSON-array string, and list; drops junk tokens
+	assert _parse_weekdays("0,2,4") == [0, 2, 4]
+	assert _parse_weekdays("[0,2,4]") == [0, 2, 4]
+	assert _parse_weekdays([0, 2, 4]) == [0, 2, 4]
+	assert _parse_weekdays("") == []
+	assert _parse_weekdays("9,x,3") == [3]
 	print("habit _streak self-check OK")
 
 
@@ -131,9 +137,16 @@ def _require_user():
 
 
 def _parse_weekdays(csv):
-	"""CSV string or list -> sorted list of ints 0..6."""
+	"""CSV string, JSON-array string, or list -> sorted list of ints 0..6."""
 	if not csv:
 		return []
+	if isinstance(csv, str):
+		s = csv.strip()
+		if s.startswith("["):
+			try:
+				csv = json.loads(s)
+			except (ValueError, TypeError):
+				csv = s
 	if isinstance(csv, str):
 		parts = [p.strip() for p in csv.split(",") if p.strip() != ""]
 	else:
@@ -159,8 +172,7 @@ def _disc_type(user):
 		return ""
 
 
-def _suggestions_for(user, existing_titles):
-	disc = _disc_type(user)
+def _suggestions_for(existing_titles, disc):
 	axes = [a for a in ("D", "I", "S", "C") if a in disc]
 	picked = []
 	seen = set()
@@ -226,10 +238,11 @@ def get_habits():
 		})
 
 	existing_titles = {h["title"] for h in habits}
+	disc = _disc_type(user)
 	return {
 		"habits": habits,
-		"suggestions": _suggestions_for(user, existing_titles),
-		"disc_type": _disc_type(user),
+		"suggestions": _suggestions_for(existing_titles, disc),
+		"disc_type": disc,
 	}
 
 
