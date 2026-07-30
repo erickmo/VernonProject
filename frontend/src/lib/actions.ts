@@ -21,6 +21,7 @@ import {
   Megaphone,
   BookOpen,
   Sparkles,
+  Flame,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -94,6 +95,7 @@ export const ACTION_GROUPS: { title: string; hue: string; tile: string; items: A
     tile: 'bg-gradient-to-br from-rose-400 to-pink-600 text-white shadow-lg shadow-rose-500/30',
     items: [
       { icon: StickyNote, title: 'Capture notes', short: 'Notes', desc: 'Jot quick notes — hold ➕ for an instant one.', to: '/notes' },
+      { icon: Flame, title: 'Build habits', short: 'Kebiasaan', desc: 'Bangun kebiasaan harian dan pantau streak 🔥.', to: '/habits' },
       { icon: Smile, title: 'Make it yours', short: 'Avatar', desc: 'Customize your avatar.', to: '/avatar' },
       { icon: MessageSquarePlus, title: 'Send feedback', short: 'Feedback', desc: "Tell the team what's working or missing.", to: '/feedback' },
     ],
