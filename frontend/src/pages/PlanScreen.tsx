@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, CalendarRange, CalendarDays, Plus, Save, Fil
 import { DetailScreen } from '@/components/Layout'
 import { PlanRow } from '@/components/PlanRow'
 import { PlanProjectBoard } from '@/components/PlanProjectBoard'
+import { PlanDeadlineDay } from '@/components/PlanDeadlineDay'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useCalendar, useDailyTargets } from '@/hooks/useData'
@@ -28,7 +29,8 @@ export function weekStartISO(iso: string): string {
 // a today-scoped pool would leave future days empty.
 export default function PlanScreen() {
   const today = todayISO()
-  const [mode, setMode] = useState<'date' | 'project'>('date')
+  const [scope, setScope] = useState<'work' | 'project'>('work')
+  const [mode, setMode] = useState<'date' | 'project'>('project')
   const [selected, setSelected] = useState(today)
   const { data, isLoading } = useCalendar()
 
@@ -36,26 +38,32 @@ export default function PlanScreen() {
     () => (data?.todos ?? []).filter((t) => todoIsOpen(t) && !t.is_waiting),
     [data],
   )
+  // Scope narrows the pool: "My work" = todos assigned to me; "My project" = every
+  // todo in projects I lead or own (so a leader/owner can arrange the whole team).
+  const scoped = useMemo(
+    () => candidates.filter((t) => (scope === 'work' ? t.is_mine : t.is_leader || t.is_owner)),
+    [candidates, scope],
+  )
 
-  const plan = usePlanDate(candidates, selected)
+  const plan = usePlanDate(scoped, selected)
 
   const weekStart = weekStartISO(selected)
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysISO(weekStart, i)), [weekStart])
   const { data: targets } = useDailyTargets(weekStart, weekDates[6])
-  const loads = useMemo(() => weekLoad(candidates, weekDates, targets ?? {}), [candidates, weekDates, targets])
+  const loads = useMemo(() => weekLoad(scoped, weekDates, targets ?? {}), [scoped, weekDates, targets])
 
   // Optional project narrowing — only the day list + add-pool; the load bar and
   // week strip stay whole-day (capacity is capacity across every project).
   const [projectFilter, setProjectFilter] = useState('')
   const projectOptions = useMemo(() => {
     const m = new Map<string, string>()
-    for (const t of candidates) if (!m.has(t.project)) m.set(t.project, t.project_name)
+    for (const t of scoped) if (!m.has(t.project)) m.set(t.project, t.project_name)
     return [...m].map(([value, label]) => ({ value, label }))
-  }, [candidates])
+  }, [scoped])
   const inProject = (t: (typeof candidates)[number]) => !projectFilter || t.project === projectFilter
 
   const dayList = plan.visible.filter((t) => (plan.mins[t.name] || 0) > 0 && inProject(t))
-  const addable = candidates.filter((t) => (plan.mins[t.name] || 0) === 0 && inProject(t))
+  const addable = scoped.filter((t) => (plan.mins[t.name] || 0) === 0 && inProject(t))
   const dayTarget = targets?.[selected] ?? 0
   const dayPct = dayTarget > 0 ? Math.min(1, plan.total / dayTarget) : 0
   const met = dayTarget > 0 && plan.total >= dayTarget
@@ -113,19 +121,37 @@ export default function PlanScreen() {
               setSelected(addDaysISO(selected, dx < 0 ? 1 : -1))
           }}
         >
-          {/* Mode toggle — plan a single day's minutes, or move a project's todos across the week */}
+          {/* Scope — my own assigned work, or the projects I lead / own */}
           <Segmented
-            value={mode}
-            onChange={setMode}
+            value={scope}
+            onChange={setScope}
             options={[
-              { value: 'date', label: 'By date' },
-              { value: 'project', label: 'By project' },
+              { value: 'work', label: 'My work' },
+              { value: 'project', label: 'My project' },
             ]}
           />
 
+          {/* View — plan a single day, or move todos across the week */}
+          <div className="mt-3">
+            <Segmented
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: 'date', label: 'By date' },
+                { value: 'project', label: 'By project' },
+              ]}
+            />
+          </div>
+
           {mode === 'project' ? (
+            // By project: my-work moves the day-plan; my-project moves the deadline.
             <div className="mt-5">
-              <PlanProjectBoard candidates={candidates} projectOptions={projectOptions} />
+              <PlanProjectBoard candidates={scoped} mode={scope === 'project' ? 'deadline' : 'alloc'} />
+            </div>
+          ) : scope === 'project' ? (
+            // My project / by date: the leader/owner sets what's due on this day.
+            <div className="mt-5">
+              <PlanDeadlineDay candidates={scoped} selected={selected} onSelect={setSelected} today={today} />
             </div>
           ) : (
             <>
@@ -275,7 +301,7 @@ export default function PlanScreen() {
             <SearchableSelect
               value=""
               onChange={(v) => {
-                const t = candidates.find((c) => c.name === v)
+                const t = scoped.find((c) => c.name === v)
                 if (t) plan.useEstimate(t)
               }}
               options={addable.map((t) => ({ value: t.name, label: t.to_do, keywords: t.project_name }))}

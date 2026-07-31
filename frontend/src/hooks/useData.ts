@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile } from '@/lib/api'
+import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi } from '@/lib/api'
 import { enrollPasskey } from '@/lib/webauthn'
 import { allocTotal } from '@/lib/planDay'
 import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
@@ -61,6 +61,7 @@ import type {
   LmsReportRow,
   LmsCompleteResult,
   LeaveType,
+  HabitsResponse,
 } from '@/lib/types'
 import type { GanttGroup } from '@/lib/gantt'
 
@@ -155,6 +156,7 @@ export const keys = {
   discReminder: ['disc-reminder'] as const,
   myDisc: ['my-disc'] as const,
   photoGate: ['photo-gate'] as const,
+  habits: ['habits'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -538,10 +540,36 @@ export function useMoveTodoPlan() {
       const allocations = date ? [{ date, minutes }] : []
       const res = await mobileApi.setTodoAllocations(todo.name, allocations)
       if (res.status === 'error') throw new Error(res.message)
+      // Stay in flight until the board's read source (calendar) has refetched and
+      // re-bucketed — so the moving-card animation holds until the card actually
+      // lands in its new column, not merely until the POST returns.
+      await qc.invalidateQueries({ queryKey: keys.calendar })
       return res
     },
     onSettled: (_res, _err, vars) => {
-      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todo.name) })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
+// "Plan my project" board move: a leader/owner drops a todo on a day to set its
+// DEADLINE to that date (null → clear it, back to Unscheduled). Mirrors
+// useMoveTodoPlan but writes `deadline` via update_todo (permitted for
+// leader/owner/assignee) instead of the assignee-only allocation split.
+export function useMoveTodoDeadline() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ todo, date }: { todo: ProjectItem; date: string | null }) => {
+      const res = await mobileApi.updateTodo(todo.name, { deadline: date ?? '' })
+      if (res.status === 'error') throw new Error(res.message)
+      // Hold in flight until the board's read source (calendar) re-buckets — so the
+      // moving-card animation lasts until the card lands in its new column.
+      await qc.invalidateQueries({ queryKey: keys.calendar })
+      return res
+    },
+    onSettled: (_res, _err, vars) => {
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projectItem(vars.todo.name) })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
@@ -573,6 +601,7 @@ export function useCreateProjectItem(projectDetail: string) {
       qc.invalidateQueries({ queryKey: keys.projectDetail(projectDetail) })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.calendar }) // refresh the plan board on new task
     },
   })
 }
@@ -624,6 +653,7 @@ export function useCreateProjectItems(projectDetail: string) {
       qc.invalidateQueries({ queryKey: keys.projectDetail(projectDetail) })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.calendar }) // refresh the plan board on new task
     },
   })
 }
@@ -667,7 +697,7 @@ export function permFlags(project: ProjectFull, boot: Boot | undefined) {
   const isSM = !!boot?.roles.includes('System Manager')
   const isOwner = !!me && me === project.project_owner
   const isLeader = !!me && me === project.project_leader
-  const isAdmin = !!me && me === project.project_admin
+  const isAdmin = !!me && (project.project_admins ?? []).includes(me)
   return {
     can_edit: isSM || isOwner || isLeader,
     can_delete: isSM || isOwner || isLeader || isAdmin,
@@ -1626,6 +1656,38 @@ export function usePersonalNotes() {
         shared: PersonalNote[]
       }>,
   })
+}
+
+export function useHabits() {
+  return useQuery({ queryKey: keys.habits, queryFn: () => habitApi.getHabits() as Promise<HabitsResponse> })
+}
+export function useCreateHabit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { title: string; icon: string; cadence: string; weekdays: number[] }) =>
+      habitApi.createHabit(v.title, v.icon, v.cadence, v.weekdays),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.habits }),
+  })
+}
+export function useUpdateHabit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { habit: string; patch: { title?: string; icon?: string; cadence?: string; weekdays?: number[] } }) =>
+      habitApi.updateHabit(v.habit, v.patch),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.habits }),
+  })
+}
+export function useDeleteHabit() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (habit: string) => habitApi.deleteHabit(habit), onSettled: () => qc.invalidateQueries({ queryKey: keys.habits }) })
+}
+export function useToggleHabit() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (v: { habit: string; date?: string }) => habitApi.toggleHabit(v.habit, v.date), onSettled: () => qc.invalidateQueries({ queryKey: keys.habits }) })
+}
+export function useAdoptSuggestion() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (key: string) => habitApi.adoptSuggestion(key), onSettled: () => qc.invalidateQueries({ queryKey: keys.habits }) })
 }
 
 export const useMeetings = (project?: string) =>

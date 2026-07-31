@@ -6,6 +6,7 @@ import { DatePicker } from '@web/components/DatePicker'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { PlanRow } from '@/components/PlanRow'
 import { PlanProjectBoard } from '@web/components/PlanProjectBoard'
+import { PlanDeadlineDay } from '@web/components/PlanDeadlineDay'
 import { EmptyState, Spinner } from '@/components/ui'
 import { usePlanDate } from '@/hooks/usePlanDay'
 import { useCalendar, useDailyTargets } from '@/hooks/useData'
@@ -36,7 +37,8 @@ function relLabel(iso: string): string {
 // todos, add todos from any project, and balance the week against per-day
 // targets. Web sibling of the mobile PlanScreen; shares usePlanDate + PlanRow.
 export default function Plan() {
-  const [mode, setMode] = useState<'date' | 'project'>('date')
+  const [scope, setScope] = useState<'work' | 'project'>('work')
+  const [mode, setMode] = useState<'date' | 'project'>('project')
   const [selected, setSelected] = useState(todayISO())
   const today = todayISO()
 
@@ -48,15 +50,21 @@ export default function Plan() {
     () => (cal.data?.todos ?? []).filter((t) => todoIsOpen(t) && !t.is_waiting),
     [cal.data],
   )
+  // Scope narrows the pool: "My work" = todos assigned to me; "My project" = every
+  // todo in projects I lead or own (so a leader/owner can arrange the whole team).
+  const scoped = useMemo(
+    () => candidates.filter((t) => (scope === 'work' ? t.is_mine : t.is_leader || t.is_owner)),
+    [candidates, scope],
+  )
 
-  const plan = usePlanDate(candidates, selected)
+  const plan = usePlanDate(scoped, selected)
 
   const weekDates = useMemo(() => {
     const start = weekStart(selected)
     return Array.from({ length: 7 }, (_, i) => addDaysISO(start, i))
   }, [selected])
   const targets = useDailyTargets(weekDates[0], weekDates[6]).data ?? {}
-  const week = useMemo(() => weekLoad(candidates, weekDates, targets), [candidates, weekDates, targets])
+  const week = useMemo(() => weekLoad(scoped, weekDates, targets), [scoped, weekDates, targets])
 
   const target = targets[selected] ?? 0
   const minutes = plan.total
@@ -68,16 +76,16 @@ export default function Plan() {
   const [projectFilter, setProjectFilter] = useState('')
   const projectOptions = useMemo(() => {
     const m = new Map<string, string>()
-    for (const t of candidates) if (!m.has(t.project)) m.set(t.project, t.project_name)
+    for (const t of scoped) if (!m.has(t.project)) m.set(t.project, t.project_name)
     return [...m].map(([value, label]) => ({ value, label }))
-  }, [candidates])
+  }, [scoped])
   const inProject = (t: (typeof candidates)[number]) => !projectFilter || t.project === projectFilter
 
   const dayList = useMemo(
-    () => sortForPlanning(candidates.filter((t) => (plan.mins[t.name] || 0) > 0 && inProject(t)), plan.mins),
-    [candidates, plan.mins, projectFilter],
+    () => sortForPlanning(scoped.filter((t) => (plan.mins[t.name] || 0) > 0 && inProject(t)), plan.mins),
+    [scoped, plan.mins, projectFilter],
   )
-  const addPool = candidates.filter((t) => (plan.mins[t.name] || 0) === 0 && inProject(t))
+  const addPool = scoped.filter((t) => (plan.mins[t.name] || 0) === 0 && inProject(t))
 
   const onSave = () => plan.save().catch(() => {}) // save() already toasts on error
 
@@ -92,7 +100,7 @@ export default function Plan() {
         title="Plan"
         subtitle="Allocate minutes to any date and balance your week"
         actions={
-          mode === 'date' ? (
+          mode === 'date' && scope === 'work' ? (
             <button
               onClick={onSave}
               disabled={plan.saving}
@@ -104,29 +112,56 @@ export default function Plan() {
         }
       />
 
-      {/* Mode toggle — date-first planner vs. by-project week board */}
-      <div className="inline-flex rounded-full bg-surface p-1 shadow-card">
-        {(
-          [
-            ['date', 'By date'],
-            ['project', 'By project'],
-          ] as const
-        ).map(([m, label]) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={clsx(
-              'rounded-full px-4 py-1.5 text-sm font-semibold transition active:scale-95',
-              mode === m ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:text-ink',
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Scope — my own assigned work, or the projects I lead / own */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-full bg-surface p-1 shadow-card">
+          {(
+            [
+              ['work', 'My work'],
+              ['project', 'My project'],
+            ] as const
+          ).map(([s, label]) => (
+            <button
+              key={s}
+              onClick={() => setScope(s)}
+              className={clsx(
+                'rounded-full px-4 py-1.5 text-sm font-semibold transition active:scale-95',
+                scope === s ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:text-ink',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* View — date-first planner vs. by-project week board */}
+        <div className="inline-flex rounded-full bg-surface p-1 shadow-card">
+          {(
+            [
+              ['date', 'By date'],
+              ['project', 'By project'],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={clsx(
+                'rounded-full px-4 py-1.5 text-sm font-semibold transition active:scale-95',
+                mode === m ? 'bg-brand-600 text-white shadow-sm' : 'text-muted hover:text-ink',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {mode === 'project' ? (
-        <PlanProjectBoard candidates={candidates} projectOptions={projectOptions} />
+        // By project: my-work moves the day-plan; my-project moves the deadline.
+        <PlanProjectBoard candidates={scoped} mode={scope === 'project' ? 'deadline' : 'alloc'} />
+      ) : scope === 'project' ? (
+        // My project / by date: the leader/owner sets what's due on this day.
+        <PlanDeadlineDay candidates={scoped} selected={selected} onSelect={setSelected} />
       ) : (
         <>
       {/* Date controls — prev/next, human date, Today/Tomorrow, arbitrary picker */}
@@ -233,7 +268,7 @@ export default function Plan() {
             <SearchableSelect
               value=""
               onChange={(id) => {
-                const t = candidates.find((x) => x.name === id)
+                const t = scoped.find((x) => x.name === id)
                 if (t) plan.useEstimate(t)
               }}
               options={addPool.map((t) => ({

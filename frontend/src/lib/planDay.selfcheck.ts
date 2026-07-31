@@ -1,7 +1,7 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert'
 import type { ProjectItem } from './types'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes, weekLoad, boardDate, allocTotal, planColumns } from './planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes, weekLoad, boardDate, deadlineDate, allocTotal, planColumns, deadlineTone } from './planDay'
 import { byAllocationAsc } from './format'
 
 // Minimal ProjectItem factory — only the fields these pure fns read.
@@ -235,6 +235,26 @@ assert.equal(
   assert.deepEqual(cols.byDate['2026-07-07'].map((t) => t.name), ['inWeek'], 'in-week todo → its day column')
   assert.deepEqual(cols.unscheduled.map((t) => t.name), ['noPlan', 'otherWeek'], 'no-plan + other-week → unscheduled')
   assert.deepEqual(cols.byDate['2026-07-06'], [], 'empty day column present')
+
+  // deadline board: bucket by deadlineDate, not allocations
+  const dTodos = [
+    item({ name: 'dueIn', deadline: '2026-07-08', allocations: [] }),
+    item({ name: 'noDue', deadline: null, allocations: [{ date: '2026-07-07', minutes: 30 }] }),
+    item({ name: 'dueOut', deadline: '2026-08-01', allocations: [] }),
+  ]
+  const dCols = planColumns(dTodos, week, deadlineDate)
+  assert.deepEqual(dCols.byDate['2026-07-08'].map((t) => t.name), ['dueIn'], 'deadline in week → its day column')
+  assert.deepEqual(dCols.unscheduled.map((t) => t.name), ['noDue', 'dueOut'], 'no-deadline + out-of-week deadline → unscheduled')
+}
+
+// deadlineTone: overdue / today / soon(<=3d) / future / none
+{
+  const T = '2026-07-10'
+  assert.equal(deadlineTone(item({ deadline: null }), T), 'none', 'no deadline → none')
+  assert.equal(deadlineTone(item({ deadline: '2026-07-01', is_overdue: true }), T), 'overdue', 'is_overdue → overdue')
+  assert.equal(deadlineTone(item({ deadline: T }), T), 'today', 'deadline today → today')
+  assert.equal(deadlineTone(item({ deadline: '2026-07-12' }), T), 'soon', 'within 3 days → soon')
+  assert.equal(deadlineTone(item({ deadline: '2026-07-20' }), T), 'future', 'far off → future')
 }
 
 console.log('planDay self-check OK')

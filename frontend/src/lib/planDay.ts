@@ -1,5 +1,6 @@
 import type { ProjectItem } from './types'
 import { matchProjectItem } from './filters'
+import { addDaysISO } from './format'
 
 export type Alloc = { date: string; minutes: number; note?: string }
 
@@ -143,22 +144,42 @@ export function allocTotal(t: ProjectItem): number {
   return (t.allocations ?? []).reduce((s, a) => s + (a.minutes || 0), 0)
 }
 
-// Bucket a project's todos into the week board's columns. A todo whose boardDate
-// falls inside `weekDates` lands in that day's column; everything else — no plan,
-// or planned in another week — lands in `unscheduled` (the card can show its
-// out-of-week boardDate as a hint). byDate has an entry for every weekDate.
+// The date a todo sits under on the deadline board: its own deadline. Mirrors
+// boardDate (which uses allocations) so both plan modes share planColumns.
+export function deadlineDate(t: ProjectItem): string | null {
+  return t.deadline || null
+}
+
+// Bucket a project's todos into the week board's columns. `dateOf` picks each
+// todo's column date — boardDate (earliest allocation) for the "plan my work"
+// alloc board, deadlineDate for the "plan my project" deadline board. A todo whose
+// date falls inside `weekDates` lands in that day's column; everything else — no
+// date, or a date in another week — lands in `unscheduled` (the card can show that
+// out-of-week date as a hint). byDate has an entry for every weekDate.
 export function planColumns(
   todos: ProjectItem[],
   weekDates: string[],
+  dateOf: (t: ProjectItem) => string | null = boardDate,
 ): { unscheduled: ProjectItem[]; byDate: Record<string, ProjectItem[]> } {
   const inWeek = new Set(weekDates)
   const byDate: Record<string, ProjectItem[]> = {}
   for (const d of weekDates) byDate[d] = []
   const unscheduled: ProjectItem[] = []
   for (const t of todos) {
-    const bd = boardDate(t)
+    const bd = dateOf(t)
     if (bd && inWeek.has(bd)) byDate[bd].push(t)
     else unscheduled.push(t)
   }
   return { unscheduled, byDate }
+}
+
+// Deadline-urgency bucket for board card colouring. Pure; pass todayISO() as
+// `today`. `soon` = due within the next 3 days (today itself is its own bucket).
+export type DeadlineTone = 'overdue' | 'today' | 'soon' | 'future' | 'none'
+export function deadlineTone(t: ProjectItem, today: string): DeadlineTone {
+  if (!t.deadline) return 'none'
+  if (t.is_overdue) return 'overdue'
+  if (t.deadline === today) return 'today'
+  if (t.deadline <= addDaysISO(today, 3)) return 'soon'
+  return 'future'
 }
