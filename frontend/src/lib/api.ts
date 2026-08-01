@@ -1,7 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
-import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate, DiscReminder, DiscQuestions, DiscSubmitResult, PhotoGate } from './types'
+import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate, DiscReminder, DiscQuestions, DiscSubmitResult, PhotoGate, HabitsResponse } from './types'
 
 const METHOD = '/api/method/'
 
@@ -77,6 +77,7 @@ async function request<T>(
     headers,
     body,
     credentials: 'same-origin',
+    cache: 'no-store', // real-time reads: never serve a GET from the browser HTTP cache
   })
 
   if (res.status === 401 || res.status === 403) {
@@ -116,6 +117,7 @@ const LN = 'vernon_project.api.leader_notes.'
 const SP = 'vernon_project.api.superpowers.'
 const DT = 'vernon_project.api.disc_test.'
 const OV = 'vernon_project.api.overtime.'
+const H = 'vernon_project.api.habit.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -222,6 +224,14 @@ export const mobileApi = {
     api.post<{ shifted_count: number; skipped_count: number; delta_days: number }>(
       'vernon_project.api.postpone.postpone',
       { target_type: targetType, target_name: targetName, new_date: newDate },
+    ),
+  // Put/clear ONE todo on today's plan server-side (preserves other days). minutes
+  // omitted = add-if-absent using the todo's estimate; explicit minutes sets today
+  // exactly (0 removes). Returns prev_minutes so the buzz popup's Batalkan can undo.
+  planToday: (todo: string, minutes?: number) =>
+    api.post<{ ok: boolean; prev_minutes: number; minutes: number; changed: boolean }>(
+      M + 'plan_today',
+      minutes === undefined ? { todo } : { todo, minutes },
     ),
   // Per-date daily-minimum minutes for the session user over an inclusive range
   // ({ "YYYY-MM-DD": target_minutes }). Drives the plan screen's day-load targets.
@@ -621,6 +631,8 @@ export const mobileApi = {
   myLeaders: () => api.get<{ status: string; leaders: string[] }>(A + 'my_leaders'),
   myExceptions: (limit = 30) =>
     api.get<{ status: string; rows: import('./types').AttendanceExceptionRow[] }>(A + 'my_exceptions', { limit }),
+  teamLeave: () =>
+    api.get<{ status: string; rows: import('./types').TeamLeaveRow[] }>(A + 'team_leave'),
   // Cuti Ledger — materialized leave statement + HR adjustments.
   getCutiLedger: (employee?: string, year?: number) =>
     api.get<import('./types').CutiLedgerResponse>('vernon_project.api.cuti_ledger.get_cuti_ledger', {
@@ -769,6 +781,21 @@ export const mobileApi = {
     api.get<import('./types').SuperpowerWallResponse>(SP + 'get_superpower_wall'),
   getSuperpowerProgress: (user: string) =>
     api.get<import('./types').SuperpowerProgressView>(SP + 'get_superpower_progress', { user }),
+}
+
+export const habitApi = {
+  getHabits: () => api.get<HabitsResponse>(H + 'get_habits'),
+  createHabit: (title: string, icon: string, cadence: string, weekdays: number[]) =>
+    api.post<{ name: string }>(H + 'create_habit', { title, icon, cadence, weekdays: weekdays.join(',') }),
+  updateHabit: (habit: string, patch: { title?: string; icon?: string; cadence?: string; weekdays?: number[] }) =>
+    api.post<{ ok: number }>(H + 'update_habit', {
+      habit, ...patch,
+      ...(patch.weekdays ? { weekdays: patch.weekdays.join(',') } : {}),
+    }),
+  deleteHabit: (habit: string) => api.post<{ ok: number }>(H + 'delete_habit', { habit }),
+  toggleHabit: (habit: string, date?: string) =>
+    api.post<{ done_today: boolean; current_streak: number; best_streak: number }>(H + 'toggle_habit', { habit, date }),
+  adoptSuggestion: (key: string) => api.post<{ name: string }>(H + 'adopt_suggestion', { key }),
 }
 
 const EV = 'vernon_project.api.events.'
@@ -1215,7 +1242,7 @@ async function resourceRequest<T>(
     if (body !== undefined) payload = JSON.stringify(body)
   }
 
-  const res = await fetch(url, { method, headers, body: payload, credentials: 'same-origin' })
+  const res = await fetch(url, { method, headers, body: payload, credentials: 'same-origin', cache: 'no-store' })
 
   // Only 401 means "not logged in" (drives the in-app login). A 403 here is a
   // real permission denial we want to surface with its message.

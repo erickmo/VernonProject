@@ -12,6 +12,7 @@ import json
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
+from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -123,10 +124,10 @@ def _can_advance(status_key, project, user, assigned_to):
 	so the UI only offers an action the backend will actually accept."""
 	owner = project.get("project_owner")
 	leader = project.get("project_leader")
-	admin = project.get("project_admin")
+	admins = project.get("admins") or []
 
-	# Project Admin may never advance status.
-	if admin and user == admin:
+	# Project Admins may never advance status.
+	if user in admins:
 		return False
 
 	if status_key == "planned":
@@ -147,9 +148,9 @@ def _can_reject(status_key, project, user):
 	owner); Owner or Leader may reject; Admin never."""
 	owner = project.get("project_owner")
 	leader = project.get("project_leader")
-	admin = project.get("project_admin")
+	admins = project.get("admins") or []
 
-	if admin and user == admin:
+	if user in admins:
 		return False
 	if status_key in ("done", "checked"):
 		return user in (owner, leader)
@@ -408,10 +409,18 @@ def _involved_project_names(user):
 	"""Projects the user is involved in: owner / leader / admin, a Project Team
 	member, or assigned to any todo in the project."""
 	names = set()
-	for role_field in ("project_owner", "project_leader", "project_admin"):
+	for role_field in ("project_owner", "project_leader"):
 		names |= set(
 			frappe.get_all("Project", filters={role_field: user}, pluck="name", limit_page_length=0)
 		)
+	names |= set(
+		frappe.get_all(
+			"Project Admin User",
+			filters={"user": user, "parentfield": "project_admins"},
+			pluck="parent",
+			limit_page_length=0,
+		)
+	)
 	names |= set(
 		frappe.get_all("Project Team", filters={"user": user}, pluck="parent", limit_page_length=0)
 	)
@@ -443,24 +452,30 @@ def _visible_projects(status=None):
 	return [n for n in allowed if n in involved]
 
 
-def _fetch_todos(project_names, include_cancelled=False):
+def _fetch_todos(project_names, include_cancelled=False, statuses=None):
 	"""All todos (with project + work-item context) for the given projects.
-	Cancelled todos are excluded unless include_cancelled is True."""
+	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
+	(full status strings) to fetch only those — lets status-scoped callers like the
+	dashboard skip pulling + shaping the whole completed backlog."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
+	params = {"projects": tuple(project_names), "cancelled": STATUS_CANCELLED}
+	if statuses:
+		cond += " AND t.status IN %(statuses)s"
+		params["statuses"] = tuple(statuses)
 	return frappe.db.sql(
 		f"""
 		SELECT
 			t.name, t.to_do, t.status, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.is_recurring, t.auto_approve, t.auto_approve_opt_out,
+			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
 			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
-			p.project_name, p.project_owner, p.project_leader, p.project_admin, p.auto_approve AS project_auto_approve,
+			p.project_name, p.project_owner, p.project_leader, p.auto_approve AS project_auto_approve,
 			p.brand
 		FROM `tabProject Todo` t
 		JOIN `tabProject Detail` pd
@@ -469,7 +484,7 @@ def _fetch_todos(project_names, include_cancelled=False):
 		WHERE pd.project IN %(projects)s {cond}
 		ORDER BY t.deadline ASC
 		""",
-		{"projects": tuple(project_names), "cancelled": STATUS_CANCELLED},
+		params,
 		as_dict=True,
 	)
 
@@ -540,12 +555,33 @@ def _allocations_map(todo_names):
 	return m
 
 
-def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
+def _admins_by_project(rows):
+	"""{project_name: [admin user-ids]} for the projects present in `rows`.
+
+	One query for the whole batch — avoids a per-todo child-table lookup. Callers
+	pass the resulting list into _shape_todo so _can_advance/_can_reject can tell
+	whether the viewer is an admin (admins can never move a todo's status).
+	"""
+	names = {r["project"] for r in rows if r.get("project")}
+	if not names:
+		return {}
+	m = {}
+	for a in frappe.get_all(
+		"Project Admin User",
+		filters={"parent": ["in", list(names)], "parentfield": "project_admins"},
+		fields=["parent", "user"],
+		limit_page_length=0,
+	):
+		m.setdefault(a["parent"], []).append(a["user"])
+	return m
+
+
+def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins=None):
 	skey = _status_key(row["status"])
 	project = {
 		"project_owner": row["project_owner"],
 		"project_leader": row["project_leader"],
-		"project_admin": row["project_admin"],
+		"admins": admins or [],
 	}
 	can_advance = skey != "completed" and _can_advance(skey, project, user, row["assigned_to"])
 	can_reject = _can_reject(skey, project, user)
@@ -626,6 +662,13 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None):
 		"assignee_earned": row.get("assignee_earned") or 0,
 		"leader_earned": row.get("leader_earned") or 0,
 		"notes": row.get("notes") or "",
+		"cancellation_reason": row.get("cancellation_reason") or None,
+		# When the todo was cancelled. Legacy rows have no cancelled_on — fall back to
+		# `modified` (the cancel is a cancelled todo's last write in practice).
+		"cancelled_on": (
+			str(row["cancelled_on"]) if row.get("cancelled_on")
+			else (str(row["modified"]) if skey == "cancelled" and row.get("modified") else None)
+		),
 	}
 	# Day allocations (assignee's per-day plan; not scored). alloc_map avoids N+1
 	# in list contexts; for a single todo fetch directly when no map is supplied.
@@ -772,7 +815,10 @@ def get_dashboard():
 	"""Everything the Today + Review tabs need, in one round-trip."""
 	user = frappe.session.user
 	projects = _visible_projects()
-	rows = _fetch_todos(projects)
+	# Dashboard only surfaces my Planned queue + the review queue (Done/Checked);
+	# completed_today is counted separately below. Skipping the completed/cancelled
+	# backlog avoids fetching + shaping thousands of finished todos on every load.
+	rows = _fetch_todos(projects, statuses=[STATUS_PLANNED, STATUS_DONE, STATUS_CHECKED])
 
 	emails = {r["assigned_to"] for r in rows}
 	for r in rows:
@@ -781,12 +827,13 @@ def get_dashboard():
 		)
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])
+	admins_map = _admins_by_project(rows)
 
 	today = getdate(nowdate())
 	overdue, due_today, upcoming, review = [], [], [], []
 
 	for r in rows:
-		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map)
+		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
 		skey = shaped["status_key"]
 
 		# Review queue: items awaiting an action *I* am allowed to take.
@@ -807,16 +854,18 @@ def get_dashboard():
 	review.sort(key=lambda t: t["modified"] or "", reverse=True)
 	upcoming.sort(key=lambda t: t["deadline"] or "9999")
 
-	completed_today = 0
-	completed_minutes_today = 0
-	for r in rows:
-		if (
-			r["assigned_to"] == user
-			and r["completed_at"]
-			and str(r["completed_at"])[:10] == str(today)
-		):
-			completed_today += 1
-			completed_minutes_today += r["estimated"] or 0
+	# My tasks completed today — one aggregate instead of scanning the (now
+	# unfetched) completed backlog. assigned_to is the todo's own assignee.
+	_c = frappe.db.sql(
+		"""SELECT COUNT(*) AS cnt, COALESCE(SUM(estimated), 0) AS mins
+		   FROM `tabProject Todo`
+		   WHERE assigned_to = %(user)s AND status = %(completed)s
+		     AND DATE(completed_at) = %(today)s""",
+		{"user": user, "completed": STATUS_COMPLETED, "today": today},
+		as_dict=True,
+	)[0]
+	completed_today = _c["cnt"]
+	completed_minutes_today = _c["mins"]
 
 	return {
 		"counts": {
@@ -855,10 +904,11 @@ def get_calendar():
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])
 	assigned_map = _assigned_allocations_map([r["name"] for r in rows])
+	admins_map = _admins_by_project(rows)
 
 	todos = []
 	for r in rows:
-		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map)
+		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
 		# Leader's authoritative per-day split (falls back to the whole estimate on
 		# the deadline). Drives the calendar's "Assigned" mode; mirrors get_project_item.
 		_asg = assigned_map.get(r["name"], [])
@@ -900,7 +950,7 @@ def get_projects():
 		"Project",
 		fields=[
 			"name", "project_name", "status", "brand", "start_date",
-			"deadline", "project_owner", "project_leader", "project_admin", "goal",
+			"deadline", "project_owner", "project_leader", "goal",
 		],
 		order_by="modified desc",
 		limit_page_length=0,
@@ -918,6 +968,15 @@ def get_projects():
 		frappe.get_all(
 			"Project Team",
 			filters={"parent": ["in", names], "user": user},
+			pluck="parent",
+			limit_page_length=0,
+		)
+	)
+	# ...and which they are an admin of (project_admins is now many-to-one).
+	admin_of = set(
+		frappe.get_all(
+			"Project Admin User",
+			filters={"parent": ["in", names], "parentfield": "project_admins", "user": user},
 			pluck="parent",
 			limit_page_length=0,
 		)
@@ -965,7 +1024,7 @@ def get_projects():
 		# Relationship of the current user to this project (drives dashboard lenses)
 		p["is_owner"] = p["project_owner"] == user
 		p["is_leader"] = p["project_leader"] == user
-		p["is_admin"] = p.get("project_admin") == user
+		p["is_admin"] = p["name"] in admin_of
 		p["is_member"] = p["name"] in member_of
 	return plist
 
@@ -1087,7 +1146,7 @@ def get_project(project):
 		"leader_name": (name_map.get(doc.project_leader) or {}).get("full_name") or doc.project_leader,
 		"project_owner": doc.project_owner,
 		"project_leader": doc.project_leader,
-		"project_admin": doc.project_admin,
+		"project_admins": get_project_admins(doc),
 		"auto_approve": bool(doc.auto_approve),
 		"can_set_auto_approve": _can_set_auto_approve({"project_owner": doc.project_owner}, user),
 		"blocked_by": doc.blocked_by,
@@ -1111,12 +1170,13 @@ def get_member_workload(project, user, include_completed=0):
 	rows = [r for r in _fetch_todos([project]) if r["assigned_to"] == user]
 	name_map = _user_name_map({user})
 	alloc_map = _allocations_map([r["name"] for r in rows])
+	project_admins = get_project_admins(project)
 	out = []
 	for r in rows:
 		skey = _status_key(r["status"])
 		if not include_completed and skey == "completed":
 			continue
-		shaped = _shape_todo(r, me, name_map, alloc_map=alloc_map)
+		shaped = _shape_todo(r, me, name_map, alloc_map=alloc_map, admins=project_admins)
 		out.append({
 			"name": shaped["name"],
 			"to_do": shaped["to_do"],
@@ -1216,10 +1276,11 @@ def _comment_participants(reference_doctype, reference_name):
 	project = _comment_project(reference_doctype, reference_name)
 	people = set()
 	if project:
-		owner, leader, admin = frappe.get_value(
-			"Project", project, ["project_owner", "project_leader", "project_admin"]
+		owner, leader = frappe.get_value(
+			"Project", project, ["project_owner", "project_leader"]
 		)
-		people |= {e for e in (owner, leader, admin) if e}
+		people |= {e for e in (owner, leader) if e}
+		people |= set(get_project_admins(project))
 	if reference_doctype == "Project Todo":
 		assignee = frappe.get_value("Project Todo", reference_name, "assigned_to")
 		if assignee:
@@ -1292,10 +1353,11 @@ def get_mentionable_users(reference_doctype, reference_name):
 	if not project:
 		return []
 
-	owner, leader, admin = frappe.get_value(
-		"Project", project, ["project_owner", "project_leader", "project_admin"]
+	owner, leader = frappe.get_value(
+		"Project", project, ["project_owner", "project_leader"]
 	)
-	emails = {e for e in (owner, leader, admin) if e}
+	emails = {e for e in (owner, leader) if e}
+	emails |= set(get_project_admins(project))
 	emails |= set(
 		frappe.get_all(
 			"Project Team",
@@ -1358,13 +1420,15 @@ def get_project_detail(project_detail, include_cancelled=0):
 	detail["project_items"] = [_shape_item_row(r, user, name_map, alloc_map) for r in rows]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
-	owner, leader, admin = frappe.get_value(
-		"Project", detail["project"], ["project_owner", "project_leader", "project_admin"]
+	owner, leader = frappe.get_value(
+		"Project", detail["project"], ["project_owner", "project_leader"]
 	)
+	admins = get_project_admins(detail["project"])
 	is_sm = "System Manager" in frappe.get_roles(user)
-	detail["can_create"] = is_sm or user in (owner, leader)
+	# Admins may now create tasks (task injectors), alongside owner/leader.
+	detail["can_create"] = is_sm or user == owner or user == leader or user in admins
 	detail["can_edit"] = is_sm or user in (owner, leader)
-	detail["can_delete"] = is_sm or user in (owner, leader, admin)
+	detail["can_delete"] = is_sm or user == owner or user == leader or user in admins
 	detail["auto_approve"] = bool(frappe.db.get_value("Project", detail["project"], "auto_approve"))
 	detail["can_set_auto_approve"] = user == owner and "Partner" in frappe.get_roles(user)
 	detail["groupings"] = frappe.get_all(
@@ -1433,7 +1497,7 @@ def get_project_item(project_item):
 	team_emails = {tr["user"] for tr in team_rows}
 	emails = {r["assigned_to"], r["developed_by"], r["tested_by"], r["completed_by"], r.get("waiting_by")} | team_emails
 	name_map = _user_name_map(emails)
-	shaped = _shape_todo(r, user, name_map, include_notes=True)
+	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=get_project_admins(r["project"]))
 	shaped["can_edit_notes"] = user in (
 		r["assigned_to"], r["project_owner"], r["project_leader"]
 	)
@@ -1829,6 +1893,7 @@ def cancel_todo(project_item, reason=None):
 		return {"status": "info", "message": "Task is already cancelled."}
 	row.status = STATUS_CANCELLED
 	row.cancellation_reason = (reason or "").strip() or None
+	row.cancelled_on = frappe.utils.now_datetime()
 	row.save(ignore_permissions=True)
 	return {"status": "ok", "message": "Task cancelled."}
 
@@ -1843,6 +1908,7 @@ def restore_todo(project_item):
 		return {"status": "info", "message": "Task is not cancelled."}
 	row.status = STATUS_PLANNED
 	row.cancellation_reason = None
+	row.cancelled_on = None
 	row.save(ignore_permissions=True)
 	return {"status": "ok", "message": "Task restored."}
 
@@ -1935,6 +2001,52 @@ def set_todo_allocations(project_item, allocations):
 	except Exception as e:
 		msg = frappe.utils.strip_html(str(e)).strip() or "Could not save allocations."
 		return {"status": "error", "message": msg}
+
+
+@frappe.whitelist(methods=["POST"])
+def plan_today(todo, minutes=None):
+	"""Assignee-only: put ONE todo on today's day-plan, preserving every other-day
+	allocation row. Backs the buzz popup's "added to your plan by default / Batalkan"
+	flow. minutes=None => add mode: sets today only if it's currently empty, using the
+	todo's estimate (fallback 30) — never stomps a plan the user already made. An
+	explicit minutes (incl. 0) => set today exactly (0 drops the row); that's how the
+	popup's undo restores the prior value. Returns prev_minutes (today's minutes before
+	this call) so the caller can undo precisely."""
+	user = frappe.session.user
+	todo = frappe.utils.cstr(todo)
+	if not frappe.db.exists("Project Todo", todo):
+		frappe.throw("Task not found.", frappe.DoesNotExistError)
+	assigned_to = frappe.get_value("Project Todo", todo, "assigned_to")
+	if user != assigned_to and "System Manager" not in frappe.get_roles(user):
+		frappe.throw("Only the assignee can plan this task.", frappe.PermissionError)
+
+	today = frappe.utils.nowdate()
+	doc = frappe.get_doc("Project Todo", todo)
+	prev = 0
+	kept = []
+	for a in doc.allocations:
+		if str(a.allocation_date) == today:
+			prev = int(a.estimated_minutes or 0)
+		else:
+			kept.append(
+				{"allocation_date": a.allocation_date, "estimated_minutes": a.estimated_minutes, "note": a.note}
+			)
+
+	if minutes is None:
+		if prev > 0:  # already on today's plan — leave it as the user set it
+			return {"ok": True, "prev_minutes": prev, "minutes": prev, "changed": False}
+		minutes = int(frappe.utils.cint(doc.get("estimated"))) or 30
+	else:
+		minutes = int(frappe.utils.cint(minutes))
+
+	doc.set("allocations", [])
+	for k in kept:
+		doc.append("allocations", k)
+	if minutes > 0:
+		doc.append("allocations", {"allocation_date": today, "estimated_minutes": minutes, "note": ""})
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"ok": True, "prev_minutes": prev, "minutes": minutes, "changed": True}
 
 
 # --------------------------------------------------------------------------------
@@ -2418,6 +2530,8 @@ def get_app_settings():
 		"force_disc_reminder": int(g("force_disc_reminder") or 0),
 		"disc_reminder_hours": int(g("disc_reminder_hours") or 24),
 		"force_photo_upload": int(g("force_photo_upload") or 0),
+		"sweep_stale_plans": int(g("sweep_stale_plans") or 0),
+		"sweep_stale_plan_after_days": int(g("sweep_stale_plan_after_days") or 1),
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
@@ -2500,6 +2614,8 @@ def save_app_settings(
 	force_disc_reminder=None,
 	disc_reminder_hours=None,
 	force_photo_upload=None,
+	sweep_stale_plans=None,
+	sweep_stale_plan_after_days=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
 	late_penalty_per_minute=None,
@@ -2539,6 +2655,8 @@ def save_app_settings(
 		"force_disc_reminder": force_disc_reminder,
 		"disc_reminder_hours": disc_reminder_hours,
 		"force_photo_upload": force_photo_upload,
+		"sweep_stale_plans": sweep_stale_plans,
+		"sweep_stale_plan_after_days": sweep_stale_plan_after_days,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
 		"late_penalty_enabled": late_penalty_enabled,
@@ -4206,10 +4324,10 @@ def _meeting_can_manage(doc):
 	user = frappe.session.user
 	if "System Manager" in frappe.get_roles(user):
 		return True
-	owner, leader, admin = frappe.get_value(
-		"Project", doc.project, ["project_owner", "project_leader", "project_admin"]
-	) or (None, None, None)
-	return user in (doc.organizer, owner, leader, admin)
+	owner, leader = frappe.get_value(
+		"Project", doc.project, ["project_owner", "project_leader"]
+	) or (None, None)
+	return user in (doc.organizer, owner, leader) or user in get_project_admins(doc.project)
 
 
 @frappe.whitelist()
@@ -4219,10 +4337,14 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 		if not frappe.db.exists("Project", project):
 			return {"status": "error", "message": "Project not found."}
 		user = frappe.session.user
-		owner, leader, admin = frappe.get_value(
-			"Project", project, ["project_owner", "project_leader", "project_admin"]
+		owner, leader = frappe.get_value(
+			"Project", project, ["project_owner", "project_leader"]
 		)
-		if "System Manager" not in frappe.get_roles(user) and user not in (owner, leader, admin):
+		if (
+			"System Manager" not in frappe.get_roles(user)
+			and user != owner and user != leader
+			and user not in get_project_admins(project)
+		):
 			return {"status": "error", "message": "Only the Project Owner, Leader or Admin can create meetings."}
 		rows = json.loads(participants) if isinstance(participants, str) else (participants or [])
 		doc = frappe.get_doc({
@@ -4323,9 +4445,11 @@ def list_meetings(project=None):
 		# A meeting can outlive its project (deleted). get_value returns None then;
 		# guard the unpack so one dangling ref doesn't 500 the whole list → the
 		# calendar/meetings screen going empty for every user who can see it.
-		owner, leader, admin = frappe.get_value("Project", r["project"], ["project_owner", "project_leader", "project_admin"]) or (None, None, None)
+		owner, leader = frappe.get_value("Project", r["project"], ["project_owner", "project_leader"]) or (None, None)
 		r["can_mark_done"] = (
-			"System Manager" in roles or user in (r["organizer"], owner, leader, admin)
+			"System Manager" in roles
+			or user in (r["organizer"], owner, leader)
+			or user in get_project_admins(r["project"])
 		)
 	return {"meetings": rows}
 
@@ -4371,9 +4495,9 @@ def meeting_invitable_users(project, txt=""):
 		return {"users": []}
 	user = frappe.session.user
 	if "System Manager" not in frappe.get_roles(user):
-		owner, leader, admin = frappe.get_value("Project", project, ["project_owner", "project_leader", "project_admin"]) or (None, None, None)
+		owner, leader = frappe.get_value("Project", project, ["project_owner", "project_leader"]) or (None, None)
 		is_team = frappe.db.exists("Project Team", {"parent": project, "parenttype": "Project", "user": user})
-		if user not in (owner, leader, admin) and not is_team:
+		if user not in (owner, leader) and user not in get_project_admins(project) and not is_team:
 			return {"users": []}
 	team = frappe.get_all(
 		"Project Team",
@@ -5816,7 +5940,7 @@ def _can_duplicate_project(project, user):
 	return (
 		user == project.get("project_owner")
 		or user == project.get("project_leader")
-		or user == project.get("project_admin")
+		or user in get_project_admins(project)
 		or "System Manager" in frappe.get_roles(user)
 	)
 
@@ -5843,7 +5967,7 @@ def duplicate_project(project):
 		"brand": src.brand,
 		"project_owner": src.project_owner,
 		"project_leader": src.project_leader,
-		"project_admin": src.project_admin,
+		"project_admins": [{"user": u} for u in get_project_admins(src)],
 		"start_date": src.start_date,
 		"deadline": src.deadline,
 		"goal": src.goal,
@@ -5906,9 +6030,8 @@ def _require_project_manager(project_doc):
 	managers = {
 		project_doc.get("project_owner"),
 		project_doc.get("project_leader"),
-		project_doc.get("project_admin"),
 	}
-	if user not in managers:
+	if user not in managers and user not in get_project_admins(project_doc):
 		frappe.throw("Not permitted", frappe.PermissionError)
 
 
