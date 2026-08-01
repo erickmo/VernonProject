@@ -19,7 +19,10 @@ const CACHE_BUSTER = 'v1'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true },
+    // Real-time: staleTime 0 revalidates every query on mount + focus (stale-while-
+    // revalidate keeps the last value on screen during the refetch). The persister
+    // below only supplies an instant first paint on reload; it's replaced immediately.
+    queries: { staleTime: 0, retry: 1, refetchOnWindowFocus: true },
   },
 })
 

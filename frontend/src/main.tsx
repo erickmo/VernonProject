@@ -22,7 +22,11 @@ initTheme()
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      // Real-time: every query revalidates on mount + window focus. React Query
+      // still serves the last value instantly while refetching (stale-while-
+      // revalidate), so screens don't flash empty. A few genuinely-static queries
+      // (daily verse 6h, branding 1h) keep their own longer staleTime override.
+      staleTime: 0,
       retry: 1,
       refetchOnWindowFocus: true,
     },

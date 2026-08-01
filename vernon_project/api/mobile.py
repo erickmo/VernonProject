@@ -916,6 +916,12 @@ def get_calendar():
 			_asg, shaped.get("deadline"), shaped.get("estimated") or 0
 		)
 		shaped["assigned_total"] = sum((a["minutes"] or 0) for a in shaped["assigned_allocation"])
+		# Calendar cards never render the assignee avatar (CalendarView passes
+		# showAssignee=false, PlanRow shows none, search/palette use the text name),
+		# so drop the per-user avatar config + image — the same ~450-byte blob was
+		# repeated on every todo and made up ~40% of this payload.
+		shaped.pop("assigned_to_avatar_config", None)
+		shaped.pop("assigned_to_image", None)
 		todos.append(shaped)
 	return {"todos": todos}
 
@@ -2068,10 +2074,15 @@ ALLOWED_REPORTS = {
 def get_report_options():
 	"""Option lists used by the mobile report filters (project & assignee pickers)."""
 	projects = _visible_projects()
-	proj_list = [
-		{"value": p, "label": frappe.get_value("Project", p, "project_name") or p}
-		for p in projects
-	]
+	# Batch the project_name lookups — one query, not one frappe.get_value per project.
+	pname = {
+		row["name"]: row["project_name"]
+		for row in frappe.get_all(
+			"Project", filters={"name": ["in", projects]},
+			fields=["name", "project_name"], limit_page_length=0,
+		)
+	} if projects else {}
+	proj_list = [{"value": p, "label": pname.get(p) or p} for p in projects]
 	users = set()
 	if projects:
 		rows = frappe.get_all(
@@ -4436,20 +4447,38 @@ def list_meetings(project=None):
 	)
 	user = frappe.session.user
 	roles = frappe.get_roles(user)
-	for r in rows:
-		r["participants"] = frappe.get_all(
+	is_sm = "System Manager" in roles
+	names = [r["name"] for r in rows]
+	proj_names = list({r["project"] for r in rows if r.get("project")})
+
+	# Batch the three per-meeting lookups (participants, project owner/leader,
+	# project admins) into one query each instead of three per row.
+	participants = {}
+	if names:
+		for p in frappe.get_all(
 			"Meeting Participant",
-			filters={"parent": r["name"], "parenttype": "Meeting"},
-			pluck="user",
-		)
-		# A meeting can outlive its project (deleted). get_value returns None then;
-		# guard the unpack so one dangling ref doesn't 500 the whole list → the
-		# calendar/meetings screen going empty for every user who can see it.
-		owner, leader = frappe.get_value("Project", r["project"], ["project_owner", "project_leader"]) or (None, None)
+			filters={"parent": ["in", names], "parenttype": "Meeting"},
+			fields=["parent", "user"], limit_page_length=0,
+		):
+			participants.setdefault(p["parent"], []).append(p["user"])
+	# A meeting can outlive its project (deleted) — a missing entry yields (None, None)
+	# so one dangling ref can't 500 the list and blank the meetings screen.
+	proj_ol = {}
+	if proj_names:
+		for p in frappe.get_all(
+			"Project", filters={"name": ["in", proj_names]},
+			fields=["name", "project_owner", "project_leader"], limit_page_length=0,
+		):
+			proj_ol[p["name"]] = (p["project_owner"], p["project_leader"])
+	admins = _admins_by_project([{"project": pn} for pn in proj_names])
+
+	for r in rows:
+		r["participants"] = participants.get(r["name"], [])
+		owner, leader = proj_ol.get(r["project"], (None, None))
 		r["can_mark_done"] = (
-			"System Manager" in roles
+			is_sm
 			or user in (r["organizer"], owner, leader)
-			or user in get_project_admins(r["project"])
+			or user in admins.get(r["project"], [])
 		)
 	return {"meetings": rows}
 
