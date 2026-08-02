@@ -4331,6 +4331,13 @@ MEETING_SCHEDULED = "⚪️ Scheduled"
 MEETING_DONE = "✅ Done"
 
 
+def _enabled_only(user_ids):
+	"""Keep only enabled users — disabled accounts can't be invited to meetings."""
+	if not user_ids:
+		return []
+	return frappe.get_all("User", filters={"name": ["in", user_ids], "enabled": 1}, pluck="name")
+
+
 def _meeting_can_manage(doc):
 	user = frappe.session.user
 	if "System Manager" in frappe.get_roles(user):
@@ -4358,6 +4365,7 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 		):
 			return {"status": "error", "message": "Only the Project Owner, Leader or Admin can create meetings."}
 		rows = json.loads(participants) if isinstance(participants, str) else (participants or [])
+		rows = _enabled_only([u for u in rows if u])
 		doc = frappe.get_doc({
 			"doctype": "Meeting",
 			"project": project,
@@ -4413,6 +4421,7 @@ def set_meeting_participants(meeting, users):
 		if doc.status == MEETING_DONE:
 			return {"status": "error", "message": "A completed meeting cannot be edited."}
 		rows = json.loads(users) if isinstance(users, str) else (users or [])
+		rows = _enabled_only([u for u in rows if u])
 		doc.set("participants", [{"user": u} for u in rows if u])
 		doc.save(ignore_permissions=True)
 		return {"status": "success", "message": "Participants updated."}

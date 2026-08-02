@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate
+from frappe.utils import getdate, cint
 
 
 class Project(Document):
@@ -42,6 +42,7 @@ class Project(Document):
 	def before_save(self):
 		self.add_owner_and_leader_to_team()
 		self.remove_duplicate_team_members()
+		self.remove_disabled_team_members()
 
 	# --------------------------------------------------------------------------------
 	# METHODS
@@ -69,6 +70,17 @@ class Project(Document):
 
 		self.team_members = unique_team_members
 
+	def remove_disabled_team_members(self):
+		"""Self-heal: a disabled user is never a team member (batched, one query)."""
+		users = [m.user for m in self.team_members if m.user]
+		if not users:
+			return
+		disabled = set(
+			frappe.get_all("User", filters={"name": ["in", users], "enabled": 0}, pluck="name")
+		)
+		if disabled:
+			self.team_members = [m for m in self.team_members if m.user not in disabled]
+
 	def validate_lead_roles(self):
 		"""Enforce role gating on the two lead fields.
 
@@ -83,6 +95,14 @@ class Project(Document):
 		if self.project_leader and "Project Leader" not in frappe.get_roles(self.project_leader):
 			frappe.throw(
 				f"Project Leader {frappe.bold(self.project_leader)} must have the 'Project Leader' role."
+			)
+		if self.project_owner and not cint(frappe.db.get_value("User", self.project_owner, "enabled")):
+			frappe.throw(
+				f"Project Owner {frappe.bold(self.project_owner)} is disabled; pick an active user."
+			)
+		if self.project_leader and not cint(frappe.db.get_value("User", self.project_leader, "enabled")):
+			frappe.throw(
+				f"Project Leader {frappe.bold(self.project_leader)} is disabled; pick an active user."
 			)
 
 	def validate_blocking_chain(self):
