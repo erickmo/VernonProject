@@ -516,12 +516,14 @@ import frappe
 from vernon_project.user_offboarding import offboard_user
 disabled = frappe.get_all("User", filters={"enabled": 0, "user_type": "System User", "name": ["not in", ("Guest", "Administrator")]}, pluck="name")
 done, blocked = [], {}
+# Per-user commit: a blocker throws in Phase 1 BEFORE writing anything, but
+# frappe.db.rollback() is transaction-wide — without committing each success
+# first, one block would discard every prior success. Commit-per-user isolates them.
 for u in disabled:
     try:
-        offboard_user(u); done.append(u)
+        offboard_user(u); frappe.db.commit(); done.append(u)
     except frappe.ValidationError as e:
-        blocked[u] = str(e); frappe.db.rollback()
-frappe.db.commit()
+        frappe.db.rollback(); blocked[u] = str(e)
 print("offboarded:", len(done), "blocked:", list(blocked))
 print(blocked)
 EOF
