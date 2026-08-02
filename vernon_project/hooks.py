@@ -205,7 +205,7 @@ doc_events = {
 		"after_insert": "vernon_project.attendance.cuti_ledger.grant_on_profile_create",
 	},
 	"User": {
-		"on_update": "vernon_project.user_offboarding.transfer_open_todos_on_disable",
+		"on_update": "vernon_project.user_offboarding.offboard_disabled_user",
 	},
 }
 
