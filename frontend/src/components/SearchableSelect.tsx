@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import clsx from 'clsx'
 import { ChevronDown, Search, Check, Plus } from 'lucide-react'
+import { AnchoredPanel } from '@/components/AnchoredPanel'
 
 export interface SelectOption {
   value: string
@@ -41,23 +42,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // With headers present, keep the caller's order (header then its children);
   // otherwise alpha-sort as before.
@@ -88,8 +73,9 @@ export function SearchableSelect({
   }
 
   return (
-    <div className="relative mt-1" ref={ref}>
+    <div className="relative mt-1">
       <button
+        ref={triggerRef}
         type="button"
         id={id}
         disabled={disabled}
@@ -102,8 +88,8 @@ export function SearchableSelect({
         <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
       </button>
 
-      {open && !disabled && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
+      <AnchoredPanel open={open && !disabled} onClose={() => setOpen(false)} anchorRef={triggerRef}>
+        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
           <div className="relative border-b border-slate-100 dark:border-slate-800 p-2">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
@@ -176,7 +162,7 @@ export function SearchableSelect({
             )}
           </div>
         </div>
-      )}
+      </AnchoredPanel>
     </div>
   )
 }

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import clsx from 'clsx'
 import { ChevronDown, Search, Check, X } from 'lucide-react'
 import type { Opt2 } from '@/lib/types'
+import { AnchoredPanel } from '@/components/AnchoredPanel'
 
 interface Props {
   options: Opt2[]
@@ -20,23 +21,7 @@ const FIELD =
 export function MultiSelectSearch({ options, value, onChange, placeholder = 'Select…', emptyText = 'No options' }: Props) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+  const triggerRef = useRef<HTMLDivElement>(null)
 
   if (!options.length) return <p className="mt-1 text-xs italic text-slate-400 dark:text-slate-500">{emptyText}</p>
 
@@ -52,8 +37,9 @@ export function MultiSelectSearch({ options, value, onChange, placeholder = 'Sel
     .filter((o): o is Opt2 => !!o)
 
   return (
-    <div className="relative mt-1" ref={ref}>
+    <div className="relative mt-1">
       <div
+        ref={triggerRef}
         role="button"
         tabIndex={0}
         onClick={() => setOpen((o) => !o)}
@@ -90,8 +76,8 @@ export function MultiSelectSearch({ options, value, onChange, placeholder = 'Sel
         <ChevronDown className="ml-1 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
       </div>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
+      <AnchoredPanel open={open} onClose={() => setOpen(false)} anchorRef={triggerRef}>
+        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
           <div className="relative border-b border-slate-100 dark:border-slate-800 p-2">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
@@ -132,7 +118,7 @@ export function MultiSelectSearch({ options, value, onChange, placeholder = 'Sel
             )}
           </div>
         </div>
-      )}
+      </AnchoredPanel>
     </div>
   )
 }
