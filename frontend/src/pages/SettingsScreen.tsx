@@ -34,6 +34,7 @@ export default function SettingsScreen() {
 
   const [maxEstimatedMinutes, setMaxEstimatedMinutes] = useState<number>(0)
   const [toleranceMinutes, setToleranceMinutes] = useState<number>(0)
+  const [onlineWindow, setOnlineWindow] = useState<number>(15)
   const [minByWeekday, setMinByWeekday] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(false)
   const [showAutoApprove, setShowAutoApprove] = useState<boolean>(false)
@@ -43,6 +44,8 @@ export default function SettingsScreen() {
   const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
   const [discReminderHours, setDiscReminderHours] = useState<number>(24)
   const [forcePhotoUpload, setForcePhotoUpload] = useState<boolean>(false)
+  const [sweepStalePlans, setSweepStalePlans] = useState<boolean>(false)
+  const [sweepAfterDays, setSweepAfterDays] = useState<number>(1)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
   const [graceMinutes, setGraceMinutes] = useState<number>(0)
   const [lateRate, setLateRate] = useState<number>(0)
@@ -62,6 +65,7 @@ export default function SettingsScreen() {
     if (!loaded) return
     setMaxEstimatedMinutes(loaded.max_estimated_minutes)
     setToleranceMinutes(loaded.under_occupied_tolerance_minutes)
+    setOnlineWindow(loaded.online_window_minutes ?? 15)
     setMinByWeekday(WEEKDAY_MIN_KEYS.map((k) => loaded[k]))
     setAttendanceEnabled(!!loaded.attendance_enabled)
     setShowAutoApprove(!!loaded.show_auto_approve)
@@ -71,6 +75,8 @@ export default function SettingsScreen() {
     setForceDiscReminder(!!loaded.force_disc_reminder)
     setDiscReminderHours(loaded.disc_reminder_hours || 24)
     setForcePhotoUpload(!!loaded.force_photo_upload)
+    setSweepStalePlans(!!loaded.sweep_stale_plans)
+    setSweepAfterDays(loaded.sweep_stale_plan_after_days)
     setQrValiditySeconds(loaded.qr_validity_seconds)
     setGraceMinutes(loaded.attendance_grace_minutes)
     setLateRate(loaded.late_penalty_per_minute)
@@ -109,6 +115,7 @@ export default function SettingsScreen() {
       {
         max_estimated_minutes: maxEstimatedMinutes,
         under_occupied_tolerance_minutes: toleranceMinutes,
+        online_window_minutes: onlineWindow,
         min_minutes_monday: minByWeekday[0],
         min_minutes_tuesday: minByWeekday[1],
         min_minutes_wednesday: minByWeekday[2],
@@ -124,6 +131,8 @@ export default function SettingsScreen() {
         force_disc_reminder: forceDiscReminder ? 1 : 0,
         disc_reminder_hours: discReminderHours,
         force_photo_upload: forcePhotoUpload ? 1 : 0,
+        sweep_stale_plans: sweepStalePlans ? 1 : 0,
+        sweep_stale_plan_after_days: Math.max(0, sweepAfterDays),
         qr_validity_seconds: qrValiditySeconds,
         attendance_grace_minutes: graceMinutes,
         late_penalty_per_minute: lateRate,
@@ -204,6 +213,16 @@ export default function SettingsScreen() {
           {num(toleranceMinutes, setToleranceMinutes, '60')}
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Flag a day under (min daily − this) in the Under-Occupied report.
+          </p>
+        </div>
+
+        <div className={card + ' flex flex-col gap-2'}>
+          <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Online window (min)
+          </label>
+          {num(onlineWindow, setOnlineWindow, '15')}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            People active within this many minutes show as “Online”. Keep ≥ 10 — activity is recorded at most every ~10 minutes.
           </p>
         </div>
 
@@ -460,6 +479,35 @@ export default function SettingsScreen() {
               onChange={(e) => setForcePhotoUpload(e.target.checked)}
             />
           </label>
+        </div>
+
+        <div className={card}>
+          <p className="mb-1 text-sm font-bold text-stone-800 dark:text-slate-100">Rapikan Rencana</p>
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            Tiap tengah malam (00:00), todo yang masih “⚪️ Planned” dibersihkan dari slot rencana harian
+            yang sudah lewat. Slot hari ini &amp; mendatang, serta todo Done/Checked/Completed, tidak
+            disentuh. Default nonaktif.
+          </p>
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Sapu rencana lama tiap malam</span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={sweepStalePlans}
+              onChange={(e) => setSweepStalePlans(e.target.checked)}
+            />
+          </label>
+          {sweepStalePlans && (
+            <div className="mt-3 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Hapus slot rencana yang lebih tua dari (hari)
+              </label>
+              {num(sweepAfterDays, setSweepAfterDays, '1')}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                1 = buang kemarin dan sebelumnya (hari ini tetap); 0 = buang semua tanggal sebelum hari ini.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className={card}>
