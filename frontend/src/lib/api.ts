@@ -680,6 +680,12 @@ export const mobileApi = {
         assignee_mobile: string | null; overdue: boolean
       }[]
     }>('vernon_project.api.report.todos_due', { due_by }),
+  lastSeenReport: () =>
+    api.get<{ rows: import('./types').LastSeenRow[]; scope: 'all' | 'team' }>(
+      'vernon_project.api.report.last_seen_report',
+    ),
+  lastSeenAccess: () =>
+    api.get<import('./types').LastSeenAccess>('vernon_project.api.report.last_seen_access'),
   buzzTodo: (todo: string) =>
     api.post<{ ok: boolean; assignee: string }>('vernon_project.api.report.buzz_todo', { todo }),
   updateMyProfile: (payload: Partial<import('./types').EmployeeSoft>) =>

@@ -525,6 +525,20 @@ export interface ManagedUser {
   member_type: string
 }
 
+export interface LastSeenRow {
+  name: string
+  full_name: string | null
+  user_image: string | null
+  enabled: 0 | 1
+  last_active: string | null
+  member_type: string | null
+}
+
+export interface LastSeenAccess {
+  can: boolean
+  scope: 'all' | 'team' | 'none'
+}
+
 export interface UserFormPayload {
   full_name: string
   roles: string[]

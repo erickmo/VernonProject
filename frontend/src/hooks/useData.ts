@@ -4,8 +4,10 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from '@tanstack/react-query'
 import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi } from '@/lib/api'
+import { useToast } from '@/components/Toast'
 import { enrollPasskey } from '@/lib/webauthn'
 import { allocTotal } from '@/lib/planDay'
 import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
@@ -260,6 +262,7 @@ export function useAdvanceStatus() {
     // card is fresh before the dialog closes (no stale "stuck" window after confirm).
     onSettled: () =>
       Promise.all([
+        qc.invalidateQueries({ queryKey: keys.calendar }),
         qc.invalidateQueries({ queryKey: keys.dashboard }),
         qc.invalidateQueries({ queryKey: keys.projects }),
         qc.invalidateQueries({ queryKey: ['project'] }),
@@ -301,6 +304,7 @@ export function useBulkProcess() {
     qc.invalidateQueries({ queryKey: ['project'] })
     qc.invalidateQueries({ queryKey: ['project-detail'] })
     qc.invalidateQueries({ queryKey: ['project-item'] })
+    qc.invalidateQueries({ queryKey: keys.calendar })
     setProgress(null)
     return { ok, failed: ids.length - ok }
   }
@@ -319,6 +323,7 @@ export function useRejectStatus() {
       return res
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
@@ -387,6 +392,7 @@ export function useCancelTodo() {
       return res
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
@@ -405,6 +411,7 @@ export function useRestoreTodo() {
       return res
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
@@ -423,6 +430,7 @@ export function useDeleteTodo() {
       return res
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
@@ -465,6 +473,21 @@ export const useReport = (report: string, filters: Record<string, unknown>, enab
     staleTime: 1000 * 30,
   })
 
+export const useLastSeenAccess = () =>
+  useQuery({
+    queryKey: ['last-seen-access'],
+    queryFn: () => mobileApi.lastSeenAccess(),
+    staleTime: 1000 * 60 * 5,
+  })
+
+export const useLastSeenReport = (enabled = true) =>
+  useQuery({
+    queryKey: ['last-seen'],
+    queryFn: () => mobileApi.lastSeenReport(),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+
 export function useUpdateTodo(todoId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -475,6 +498,7 @@ export function useUpdateTodo(todoId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project'] })
@@ -500,6 +524,7 @@ export function usePostpone() {
       newDate: string
     }) => mobileApi.postpone(targetType, targetName, newDate),
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project'] })
@@ -519,6 +544,7 @@ export function useSetTodoAllocations(todoId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       // Project Detail / workspace todo tables render today_allocation too — refetch
       // so the "Today" toggle turns green there, not only on the dashboard.
@@ -527,26 +553,51 @@ export function useSetTodoAllocations(todoId: string) {
   })
 }
 
+// Optimistically move a todo to its new board column in the calendar cache (the
+// board's read source) so it re-buckets the instant it's tapped, and return the
+// pre-move snapshot for rollback. Without this the card sat frozen through a
+// POST *and* a full calendar refetch — two serial round-trips — before it moved.
+// `fields` = whatever changes the todo's column: allocations for the alloc board,
+// deadline for the deadline board.
+async function optimisticCalendarMove(
+  qc: QueryClient,
+  todoName: string,
+  fields: Partial<ProjectItem>,
+) {
+  await qc.cancelQueries({ queryKey: keys.calendar })
+  const prev = qc.getQueryData<{ todos: ProjectItem[] }>(keys.calendar)
+  qc.setQueryData<{ todos: ProjectItem[] }>(keys.calendar, (old) =>
+    old ? { todos: old.todos.map((t) => (t.name === todoName ? { ...t, ...fields } : t)) } : old,
+  )
+  return prev
+}
+
 // Move a todo's whole plan onto a single date (the "By project" board's
 // drag/tap-to-move), or clear it when date is null. Replaces ALL existing
 // allocation rows — collapsing a multi-date plan to the one dropped date.
 // Minutes carried over: the todo's existing total, else its estimate (else 30).
-// Invalidates calendar (the board's read source) plus the usual dashboard/detail.
+// Optimistic: the card jumps columns at once; calendar/dashboard/detail reconcile
+// on settle, and a failed write rolls the card back to where it was.
 export function useMoveTodoPlan() {
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: async ({ todo, date }: { todo: ProjectItem; date: string | null }) => {
       const minutes = allocTotal(todo) || (todo.estimated > 0 ? todo.estimated : 30)
-      const allocations = date ? [{ date, minutes }] : []
-      const res = await mobileApi.setTodoAllocations(todo.name, allocations)
+      const res = await mobileApi.setTodoAllocations(todo.name, date ? [{ date, minutes }] : [])
       if (res.status === 'error') throw new Error(res.message)
-      // Stay in flight until the board's read source (calendar) has refetched and
-      // re-bucketed — so the moving-card animation holds until the card actually
-      // lands in its new column, not merely until the POST returns.
-      await qc.invalidateQueries({ queryKey: keys.calendar })
       return res
     },
+    onMutate: ({ todo, date }) => {
+      const minutes = allocTotal(todo) || (todo.estimated > 0 ? todo.estimated : 30)
+      return optimisticCalendarMove(qc, todo.name, { allocations: date ? [{ date, minutes }] : [] })
+    },
+    onError: (e, _vars, prev) => {
+      if (prev) qc.setQueryData(keys.calendar, prev)
+      toast('error', (e as Error).message || 'Could not move the task')
+    },
     onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projectItem(vars.todo.name) })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
@@ -560,16 +611,20 @@ export function useMoveTodoPlan() {
 // leader/owner/assignee) instead of the assignee-only allocation split.
 export function useMoveTodoDeadline() {
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: async ({ todo, date }: { todo: ProjectItem; date: string | null }) => {
       const res = await mobileApi.updateTodo(todo.name, { deadline: date ?? '' })
       if (res.status === 'error') throw new Error(res.message)
-      // Hold in flight until the board's read source (calendar) re-buckets — so the
-      // moving-card animation lasts until the card lands in its new column.
-      await qc.invalidateQueries({ queryKey: keys.calendar })
       return res
     },
+    onMutate: ({ todo, date }) => optimisticCalendarMove(qc, todo.name, { deadline: date }),
+    onError: (e, _vars, prev) => {
+      if (prev) qc.setQueryData(keys.calendar, prev)
+      toast('error', (e as Error).message || 'Could not move the task')
+    },
     onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projectItem(vars.todo.name) })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
@@ -587,6 +642,7 @@ export function useSetAssignedAllocation(todoId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
     },
   })
