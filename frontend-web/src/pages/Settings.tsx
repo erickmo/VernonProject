@@ -39,8 +39,11 @@ export default function Settings() {
   const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
   const [discReminderHours, setDiscReminderHours] = useState<string>('24')
   const [forcePhotoUpload, setForcePhotoUpload] = useState<boolean>(false)
+  const [sweepStalePlans, setSweepStalePlans] = useState<boolean>(false)
+  const [sweepAfterDays, setSweepAfterDays] = useState<string>('1')
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
+  const [onlineWindow, setOnlineWindow] = useState<string>('15')
   const [lateRate, setLateRate] = useState<string>('0')
   const [earlyRate, setEarlyRate] = useState<string>('0')
   const [absencePenalty, setAbsencePenalty] = useState<string>('0')
@@ -70,8 +73,11 @@ export default function Settings() {
     setForceDiscReminder(!!loaded.force_disc_reminder)
     setDiscReminderHours(String(loaded.disc_reminder_hours))
     setForcePhotoUpload(!!loaded.force_photo_upload)
+    setSweepStalePlans(!!loaded.sweep_stale_plans)
+    setSweepAfterDays(String(loaded.sweep_stale_plan_after_days))
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
+    setOnlineWindow(String(loaded.online_window_minutes ?? 15))
     setLateRate(String(loaded.late_penalty_per_minute))
     setEarlyRate(String(loaded.early_leave_penalty_per_minute))
     setAbsencePenalty(String(loaded.absence_penalty))
@@ -137,8 +143,11 @@ export default function Settings() {
         force_disc_reminder: forceDiscReminder ? 1 : 0,
         disc_reminder_hours: Math.max(1, n(discReminderHours)),
         force_photo_upload: forcePhotoUpload ? 1 : 0,
+        sweep_stale_plans: sweepStalePlans ? 1 : 0,
+        sweep_stale_plan_after_days: Math.max(0, n(sweepAfterDays)),
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
+        online_window_minutes: n(onlineWindow),
         late_penalty_per_minute: n(lateRate),
         early_leave_penalty_per_minute: n(earlyRate),
         absence_penalty: n(absencePenalty),
@@ -290,6 +299,20 @@ export default function Settings() {
                   value={toleranceMinutes}
                   onChange={(e) => setToleranceMinutes(e.target.value)}
                   placeholder="60"
+                />
+              )}
+            </Field>
+            <Field label="Online window (min)" hint="People active within this many minutes show as “Online”. Keep ≥ 10 — activity is recorded at most every ~10 minutes.">
+              {(id) => (
+                <input
+                  id={id}
+                  type="number"
+                  inputMode="numeric"
+                  min={10}
+                  className={field}
+                  value={onlineWindow}
+                  onChange={(e) => setOnlineWindow(e.target.value)}
+                  placeholder="15"
                 />
               )}
             </Field>
@@ -540,6 +563,43 @@ export default function Settings() {
             <p className="text-xs text-muted">
               Skor rata-rata rekan harus melebihi angka ini agar tampil di Team Wall (dan memberi skor pada
               superpower yang dipilih sendiri). Default 3,25.
+            </p>
+          </div>
+        </BentoTile>
+
+        <BentoTile span="md" tone="tint" accent="amber" title="Plan Housekeeping">
+          <div className="mt-3 space-y-3">
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Sapu rencana lama tiap malam</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={sweepStalePlans}
+                onChange={(e) => setSweepStalePlans(e.target.checked)}
+              />
+            </label>
+            {sweepStalePlans && (
+              <Field label="Hapus slot rencana yang lebih tua dari (hari)">
+                {(id) => (
+                  <input
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className={field}
+                    value={sweepAfterDays}
+                    onChange={(e) => setSweepAfterDays(e.target.value)}
+                    onBlur={() => setSweepAfterDays((d) => String(Math.max(0, n(d))))}
+                    placeholder="1"
+                  />
+                )}
+              </Field>
+            )}
+            <p className="text-xs text-muted">
+              Tiap tengah malam (00:00), todo yang masih “⚪️ Planned” dibersihkan dari slot rencana harian
+              yang sudah lewat. 1 = buang kemarin dan sebelumnya (hari ini tetap); 0 = buang semua tanggal
+              sebelum hari ini. Slot hari ini &amp; mendatang, serta todo Done/Checked/Completed, tidak disentuh.
+              Default nonaktif.
             </p>
           </div>
         </BentoTile>
