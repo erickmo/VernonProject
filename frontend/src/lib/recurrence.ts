@@ -103,6 +103,29 @@ export function recurrenceFromDetail(d: {
   }
 }
 
+// Meeting rows carry the raw `recurring_*` columns; re-key them for recurrenceFromDetail.
+export function recurrenceFromMeeting(m: {
+  is_recurring?: number | boolean; recurring_frequency?: string | null; recurring_interval?: number | null
+  recurring_weekdays?: string | null; recurring_monthly_mode?: string | null; recurring_day_of_month?: number | null
+  recurring_nth?: string | null; recurring_until?: string | null; recurring_exception_weekdays?: string | null
+  recurring_exception_monthdays?: string | null; recurring_exception_dates?: string | null; recurring_exception_behavior?: string | null
+}): Recurrence {
+  return recurrenceFromDetail({
+    is_recurring: !!m.is_recurring,
+    frequency: m.recurring_frequency ?? null,
+    interval: m.recurring_interval ?? 1,
+    weekdays: m.recurring_weekdays ?? '',
+    monthly_mode: m.recurring_monthly_mode ?? undefined,
+    day_of_month: m.recurring_day_of_month ?? null,
+    nth: m.recurring_nth ?? undefined,
+    until: m.recurring_until ?? '',
+    exception_weekdays: m.recurring_exception_weekdays ?? '',
+    exception_monthdays: m.recurring_exception_monthdays ?? '',
+    exception_dates: m.recurring_exception_dates ?? '',
+    exception_behavior: m.recurring_exception_behavior ?? 'Skip',
+  })
+}
+
 // API gives a list; tolerate a raw JSON string too. Guard bad input to [].
 function parseExceptionDates(v: { from: string; to: string }[] | string | undefined): { from: string; to: string }[] {
   if (Array.isArray(v)) return v

@@ -5,6 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { BulkAddSheet } from '@/components/BulkAddSheet'
 import { GanttChart } from '@/components/GanttChart'
+import { CancelledNote } from '@/components/CancelledNote'
 import { groupFromItems } from '@/lib/gantt'
 import CommentThread from '@/components/CommentThread'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
@@ -238,6 +239,11 @@ export default function ProjectDetailScreen() {
                       </>
                     )}
                   </div>
+                  {isCancelled && (
+                    <div className="mt-1">
+                      <CancelledNote item={t} variant="line" />
+                    </div>
+                  )}
                   {t.can_set_auto_approve && !!boot?.settings?.show_auto_approve && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <AutoApproveSegment

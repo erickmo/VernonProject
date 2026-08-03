@@ -155,6 +155,12 @@ export function buildOptions<T>(
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
 }
 
+// Dashboard by-project view column/pane count bounds — shared by the web
+// ThreeColProjectList columns and the mobile SwipeProjectLists carousel. Total
+// columns incl. the leading "all" column; the user can grow it within this range.
+export const MIN_COLS = 4
+export const MAX_COLS = 8
+
 export interface DetailGroup {
   key: string
   project: string

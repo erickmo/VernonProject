@@ -73,6 +73,7 @@ export function usePlanDate(candidates: ProjectItem[], targetDate: string) {
           ),
         ),
       )
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       for (const t of touched) qc.invalidateQueries({ queryKey: keys.projectItem(t.name) })
       toast('success', 'Day planned')
@@ -128,7 +129,10 @@ export function useAutoPlanToday(buckets: {
     Promise.all(
       picks.map((p) => mobileApi.setTodoAllocations(p.todo.name, buildNext(p.todo.allocations ?? [], today, p.minutes))),
     )
-      .then(() => qc.invalidateQueries({ queryKey: keys.dashboard }))
+      .then(() => {
+        qc.invalidateQueries({ queryKey: keys.dashboard })
+        qc.invalidateQueries({ queryKey: keys.calendar })
+      })
       .catch(() => {}) // silent — a failed write just retries on the next trigger
   }, [due_today, overdue, upcoming, min, today, qc])
 }
@@ -167,6 +171,7 @@ export function useAutoFillPlan() {
       await Promise.all(
         picks.map((p) => mobileApi.setTodoAllocations(p.todo.name, buildNext(p.todo.allocations ?? [], today, p.minutes))),
       )
+      qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       for (const p of picks) qc.invalidateQueries({ queryKey: keys.projectItem(p.todo.name) })
       toast(

@@ -38,7 +38,7 @@ export function ProjectFormDialog({
     brand: '',
     project_owner: '',
     project_leader: '',
-    project_admin: '',
+    project_admins: [],
     blocked_by: '',
     start_date: '',
     deadline: '',
@@ -57,7 +57,7 @@ export function ProjectFormDialog({
         brand: project.brand,
         project_owner: project.project_owner,
         project_leader: project.project_leader,
-        project_admin: project.project_admin ?? '',
+        project_admins: (project.project_admins ?? []).map((user) => ({ user })),
         blocked_by: project.blocked_by ?? '',
         start_date: project.start_date ?? '',
         deadline: project.deadline ?? '',
@@ -191,14 +191,13 @@ export function ProjectFormDialog({
           />
         </div>
 
-        {/* Admin */}
+        {/* Admins */}
         <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">Admin</span>
-          <SearchableSelect
-            value={f.project_admin ?? ''}
-            onChange={(v) => set('project_admin', v)}
+          <span className="text-sm font-medium text-muted">Admins</span>
+          <MultiSelectSearch
             options={users}
-            allowClear
+            value={(f.project_admins ?? []).map((a) => a.user)}
+            onChange={(vs) => set('project_admins', vs.map((user) => ({ user })))}
             placeholder="None"
           />
         </div>

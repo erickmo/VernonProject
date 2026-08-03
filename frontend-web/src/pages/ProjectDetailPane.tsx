@@ -15,6 +15,7 @@ import { Drawer } from '@web/components/overlays/Drawer'
 import { DataTable, type Column } from '@web/components/DataTable'
 import { DetailMeta } from '@web/components/DetailMeta'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { BulkAddDialog } from '@web/components/BulkAddDialog'
 import { TODO_COLUMNS, todoGroupsOf, TodoProgress, useTodoRowContextMenu } from '@web/lib/todoTable'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@web/components/ProjectAutoApproveSwitch'
@@ -29,6 +30,7 @@ export default function ProjectDetailPane() {
   const nav = useNavigate()
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
 
@@ -132,9 +134,14 @@ export default function ProjectDetailPane() {
             Show cancelled
           </label>
           {d.can_create && (
-            <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-3.5 w-3.5" /> Todo
-            </Button>
+            <>
+              <Button variant="secondary" size="sm" onClick={() => setBulkOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> Bulk
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> Todo
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -213,6 +220,16 @@ export default function ProjectDetailPane() {
         defaultGroup={d.default_group ?? null}
         siblings={d.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
       />
+      {bulkOpen && (
+        <BulkAddDialog
+          open={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          projectDetail={d.name}
+          team={d.team.map((t) => ({ user: t.user, name: t.name }))}
+          defaultGroup={d.default_group ?? null}
+          siblings={d.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
+        />
+      )}
     </div>
   )
 }

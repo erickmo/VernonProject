@@ -78,6 +78,7 @@
       "waiting_since",
       "waiting_by",
       "cancellation_reason",
+      "cancelled_on",
       "action",
       "column_break_hypm",
       "developed_at",
@@ -576,6 +577,12 @@
          "fieldname": "cancellation_reason",
          "fieldtype": "Small Text",
          "label": "Cancellation Reason"
+      },
+      {
+         "fieldname": "cancelled_on",
+         "fieldtype": "Datetime",
+         "label": "Cancelled On",
+         "read_only": 1
       },
       {
          "columns": 1,

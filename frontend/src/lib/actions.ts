@@ -55,7 +55,7 @@ export const ACTION_GROUPS: { title: string; hue: string; tile: string; items: A
     tile: 'bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-lg shadow-brand-500/30',
     items: [
       { icon: FolderKanban, title: 'Projects & todos', short: 'Projects', desc: 'Open a project, add work items and todos.', to: '/projects' },
-      { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/?plan=1' },
+      { icon: CalendarClock, title: 'Plan your day', short: 'Plan day', desc: "Review today's todos and what's due.", to: '/plan' },
       { icon: QrCode, title: 'Check in with QR', short: 'Check-in', desc: 'Scan the station code to mark attendance.', to: '/scan' },
       { icon: ClipboardCheck, title: 'My attendance', short: 'Attendance', desc: 'Review your attendance record.', to: '/attendance' },
       { icon: CalendarOff, title: 'Request leave', short: 'Cuti', desc: 'Ajukan cuti atau WFH.', to: '/attendance/request' },

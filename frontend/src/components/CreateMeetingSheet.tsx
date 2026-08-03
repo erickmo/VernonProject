@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import type { Opt2 } from '@/lib/types'
 import { MultiSelectSearch } from './MultiSelectSearch'
 import { SearchableSelect } from './SearchableSelect'
 import { GroupLevelPicker, emptyGroupLevel, type GroupLevel } from './GroupLevelPicker'
-import { useCreateMeeting, useMeetingInvitableUsers, useProjects } from '@/hooks/useData'
+import { RecurrenceEditor } from './RecurrenceEditor'
+import { emptyRecurrence, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
+import { useBoot, useCreateMeeting, useMeetingInvitableUsers, useProjects } from '@/hooks/useData'
 import { useToast } from './Toast'
 
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
 export function CreateMeetingSheet({ open, onClose, project }: Props) {
   const toast = useToast()
   const create = useCreateMeeting()
+  const { data: boot } = useBoot()
+  const me = boot?.user
   const [proj, setProj] = useState(project ?? '')
   const invitable = useMeetingInvitableUsers(proj)
   const projects = useProjects()
@@ -28,6 +32,13 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
   const [notes, setNotes] = useState('')
   const [participants, setParticipants] = useState<string[]>([])
   const [gl, setGl] = useState<GroupLevel>(emptyGroupLevel)
+  const [recurrence, setRecurrence] = useState<Recurrence>(emptyRecurrence)
+
+  // The creator is a participant by default — seed them when the sheet opens
+  // (only if the list is still empty, so it never clobbers manual edits).
+  useEffect(() => {
+    if (open) setParticipants((p) => (p.length ? p : me ? [me] : []))
+  }, [open, me])
 
   const reset = () => {
     setProj(project ?? '')
@@ -38,6 +49,7 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
     setNotes('')
     setParticipants([])
     setGl(emptyGroupLevel)
+    setRecurrence(emptyRecurrence)
   }
   const close = () => {
     reset()
@@ -53,6 +65,14 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
       toast('error', 'Title is required')
       return
     }
+    if (recurrence.isRecurring && !date) {
+      toast('error', 'A recurring meeting needs a date')
+      return
+    }
+    if (!participants.length) {
+      toast('error', 'Invite at least one participant')
+      return
+    }
     const fields: Record<string, unknown> = {
       project: proj,
       title: title.trim(),
@@ -66,6 +86,7 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
     if (notes) fields.notes = notes
     if (gl.group) fields.group = gl.group
     if (gl.levelId) fields.level_id = gl.levelId
+    Object.assign(fields, serializeRecurrence(recurrence))
     create.mutate(fields, {
       onSuccess: () => {
         toast('success', 'Meeting created')
@@ -84,6 +105,11 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
     value: u.user,
     label: u.full_name || u.user,
   }))
+  // The creator may not be on the project team — add them so their auto-added
+  // chip renders (MultiSelectSearch drops selected values absent from options).
+  if (me && !options.some((o) => o.value === me)) {
+    options.unshift({ value: me, label: boot?.full_name || me })
+  }
   // meetings can only be scheduled for unclosed (Ongoing) projects
   const projectOptions = (projects.data ?? [])
     .filter((p) => p.status !== 'Closed')
@@ -126,7 +152,7 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
               onChange={(e) => setDate(e.target.value)}
             />
             <input
-              className={field + ' w-32'}
+              className={field + ' flex-1'}
               type="time"
               aria-label="Meeting time"
               value={time}
@@ -153,6 +179,7 @@ export function CreateMeetingSheet({ open, onClose, project }: Props) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+          <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
           <button
             onClick={submit}
             disabled={create.isPending}

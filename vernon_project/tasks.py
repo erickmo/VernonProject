@@ -43,6 +43,42 @@ def create_recurring_todos():
     return created
 
 
+def create_recurring_meetings():
+    """Daily: roll each active recurring meeting series forward by one step when due.
+
+    Keys off the LATEST occurrence per series (COALESCE(original_meeting,name)), so a
+    deleted/cancelled occurrence cannot strand the series. generate_next() enforces
+    paused/until/resume-clamp/dedup internally.
+    """
+    from vernon_project.vernon_project.doctype.meeting.meeting import (
+        latest_occurrence, generate_next,
+    )
+
+    roots = frappe.db.sql(
+        """
+        SELECT DISTINCT COALESCE(NULLIF(original_meeting,''), name) AS root
+        FROM `tabMeeting`
+        WHERE is_recurring = 1 AND recurring_frequency IS NOT NULL AND recurring_frequency != ''
+        """,
+        as_dict=True,
+    )
+
+    created = 0
+    for r in roots:
+        try:
+            anchor = latest_occurrence(r.root)
+            if anchor and generate_next(anchor):  # scheduler path: force=False
+                created += 1
+                frappe.db.commit()
+        except Exception as e:
+            frappe.db.rollback()
+            frappe.log_error(f"Error creating recurring meeting: {e}", "Recurring Meeting Error")
+
+    if created:
+        frappe.logger().info(f"Created {created} recurring meetings")
+    return created
+
+
 def _due_message(to_do, deadline, today):
     """Pure (no DB): the (title, body) for a due/overdue Planned todo, or None
     when the deadline is still in the future. `deadline`/`today` accept a date or
@@ -208,3 +244,91 @@ def notify_overdue_courses():
             f"Your assigned course “{title}” was due {r.due_date}.",
             "Course", r.course,
         )
+
+
+def _stale_plan_cutoff(today_date, grace_days):
+    """Latest allocation_date that still gets swept: slots with allocation_date <= cutoff are stale.
+
+    grace_days=1 -> cutoff is yesterday (today's slot kept). grace floored at 0 so a
+    negative setting can't reach into the future.
+    """
+    from datetime import timedelta
+
+    return today_date - timedelta(days=max(0, int(grace_days)))
+
+
+def sweep_stale_plans():
+    """Cron 00:00: drop past-due day-plan slots from still-Planned todos.
+
+    Gated by Vernon Settings.sweep_stale_plans (default off). A slot is stale when its
+    allocation_date <= today - sweep_stale_plan_after_days (grace, default 1). Only the
+    assignee's `allocations` are touched (planning-only, not scored); Done/Checked/
+    Completed todos and today's / future slots are left alone. One JOINed DELETE.
+    """
+    from frappe.utils import getdate
+    from vernon_project.api.mobile import STATUS_PLANNED
+
+    if not frappe.db.get_single_value("Vernon Settings", "sweep_stale_plans"):
+        return 0
+    grace = frappe.db.get_single_value("Vernon Settings", "sweep_stale_plan_after_days")
+    cutoff = _stale_plan_cutoff(getdate(nowdate()), grace if grace is not None else 1)
+
+    where = (
+        "FROM `tabProject Todo Allocation` a "
+        "JOIN `tabProject Todo` t ON t.name = a.parent "
+        "WHERE t.status = %s AND a.allocation_date <= %s"
+    )
+    args = (STATUS_PLANNED, cutoff)
+    count = frappe.db.sql(f"SELECT COUNT(*) {where}", args)[0][0]
+    if count:
+        frappe.db.sql(f"DELETE a {where}", args)
+        frappe.db.commit()
+    frappe.logger().info(f"sweep_stale_plans: removed {count} stale plan slots (allocation_date <= {cutoff})")
+    return count
+
+
+def notify_habit_checkins():
+	"""Once/day: nudge users who have an active habit scheduled today but no
+	check-in yet. Admin-gated by Vernon Settings.habit_reminders (default off).
+	Dedup per-user-per-day on Vernon Notification (type Encouragement, ref Habit).
+	"""
+	if not frappe.db.get_single_value("Vernon Settings", "habit_reminders"):
+		return 0
+	from vernon_project.api.habit import _scheduled, _parse_weekdays
+	from vernon_project.api.mobile import _notify
+
+	today = frappe.utils.getdate(frappe.utils.today())
+	today_iso = today.isoformat()
+	habits = frappe.get_all(
+		"Habit", filters={"active": 1},
+		fields=["name", "user", "cadence", "weekdays"], limit_page_length=0,
+	)
+	# users with a habit scheduled today
+	scheduled_users = {}
+	for h in habits:
+		if _scheduled(today, h.cadence, set(_parse_weekdays(h.weekdays))):
+			scheduled_users.setdefault(h.user, []).append(h.name)
+	if not scheduled_users:
+		return 0
+	# users who already logged ANY habit today
+	logged = set(frappe.get_all(
+		"Habit Log", filters={"date": today, "user": ["in", list(scheduled_users)]},
+		pluck="user", limit_page_length=0,
+	))
+	sent = 0
+	for user, names in scheduled_users.items():
+		if user in logged:
+			continue
+		if frappe.db.exists("Vernon Notification", {
+			"recipient": user, "type": "Encouragement",
+			"reference_doctype": "Habit", "creation": [">=", today_iso],
+		}):
+			continue
+		_notify(
+			recipient=user, type="Encouragement",
+			title="Kebiasaanmu menunggu 🌱",
+			body="Belum ada centang hari ini. Yuk selesaikan satu kebiasaan.",
+			reference_doctype="Habit", reference_name=names[0],
+		)
+		sent += 1
+	return sent

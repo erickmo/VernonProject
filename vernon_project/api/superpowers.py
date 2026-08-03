@@ -807,7 +807,8 @@ def save_superpower_settings(prior_mean=None, confidence_k=None, vote_points=Non
 
 # --- daily recognition gate ----------------------------------------------------
 # Force each Internal-Team member to cast one superpower vote per day for an
-# Internal-Team colleague they haven't voted yet, until all colleagues are voted.
+# Internal-Team colleague on a shared Ongoing project they haven't voted yet,
+# until all such project-mates are voted.
 # Blocking gate on app open + a daily push. State derives entirely from Superpower
 # Vote rows — no new doctype. Gated by Vernon Settings.force_daily_recognition.
 # See docs/superpowers/specs/2026-07-22-daily-recognition-gate-design.md.
@@ -835,14 +836,47 @@ def _has_votable_catalog():
 	return any((r["kind"] or "Voted") != "Performance" for r in rows)
 
 
-def _internal_colleagues(user):
-	"""Enabled Internal-Team users other than `user`."""
+def _shared_project_users(user):
+	"""Users sharing at least one Ongoing project with `user`, via Project Team —
+	the membership source of truth (owner/leader are auto-appended there by
+	Project.validate). Excludes `user`. Only Ongoing projects count as "currently
+	together"; Closed/Inbox projects don't."""
+	mine = frappe.get_all(
+		"Project Team", filters={"user": user, "parenttype": "Project"}, pluck="parent", limit_page_length=0
+	)
+	if not mine:
+		return set()
+	ongoing = frappe.get_all(
+		"Project", filters={"name": ["in", mine], "status": "Ongoing"}, pluck="name", limit_page_length=0
+	)
+	if not ongoing:
+		return set()
+	return set(
+		frappe.get_all(
+			"Project Team",
+			filters={"parent": ["in", ongoing], "parenttype": "Project", "user": ["!=", user]},
+			pluck="user",
+			limit_page_length=0,
+		)
+	)
+
+
+def _internal_users(name_filter):
+	"""Enabled Internal-Team users matching a `name` filter (e.g. ["in", peers])."""
 	return frappe.get_all(
 		"User",
-		filters={"enabled": 1, "custom_member_type": _INTERNAL_TEAM, "name": ["!=", user]},
+		filters={"enabled": 1, "custom_member_type": _INTERNAL_TEAM, "name": name_filter},
 		fields=["name", "full_name", "user_image"],
 		order_by="full_name asc",
 	)
+
+
+def _internal_colleagues(user):
+	"""Enabled Internal-Team users who currently share an Ongoing project with
+	`user`. Project membership scopes the daily recognition gate so people only
+	recognize colleagues they actually work alongside right now."""
+	peers = _shared_project_users(user)
+	return _internal_users(["in", list(peers)]) if peers else []
 
 
 def _votable_names():
@@ -925,8 +959,9 @@ def get_recognition_gate(preview=0):
 	today. `assignee` is who to recognize now.
 
 	`preview=1` (System Manager only) is a testing override: it ignores the settings
-	flag, the Internal-Team membership check, and the once-per-day check, so an admin
-	can always see a populated gate. It still casts real votes if submitted."""
+	flag, the Internal-Team membership check, and the once-per-day check, and — when the
+	admin shares no Ongoing project with anyone — falls back to the full Internal-Team
+	list so the gate is never empty. It still casts real votes if submitted."""
 	_require_login()
 	user = frappe.session.user
 	preview = bool(cint(preview)) and _is_admin()
@@ -938,6 +973,8 @@ def get_recognition_gate(preview=0):
 		if (frappe.db.get_value("User", user, "custom_member_type") or "") != _INTERNAL_TEAM:
 			return _gate_off()
 	colleagues = _internal_colleagues(user)
+	if preview and not colleagues:
+		colleagues = _internal_users(["!=", user])  # keep the preview populated off-project
 	total = len(colleagues)
 	if not total:
 		return _gate_off()

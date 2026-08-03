@@ -9,7 +9,7 @@ const YEAR = new Date().getFullYear()
 
 // Thin accrual bar: lateness (deducts a day) or overtime (adds a day) progress
 // toward its threshold. Reads boot.leave_rules — no extra request.
-function AccrualBar({ label, accrued, threshold, tone }: { label: string; accrued: number; threshold: number; tone: 'rose' | 'emerald' }) {
+export function AccrualBar({ label, accrued, threshold, tone }: { label: string; accrued: number; threshold: number; tone: 'rose' | 'emerald' }) {
   const pct = threshold > 0 ? Math.min(100, Math.round((accrued / threshold) * 100)) : 0
   const bar = tone === 'rose' ? 'bg-rose-500' : 'bg-emerald-500'
   return (

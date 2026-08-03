@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useAppReleases } from '@/hooks/useData'
 import { formatDate } from '@/lib/format'
 import { Page, PageHeader } from '@web/components/Page'
@@ -6,6 +7,8 @@ import { Skeleton } from '@web/components/ui'
 export default function WhatsNew() {
   const { data, isLoading } = useAppReleases('Web')
   const releases = data ?? []
+
+  useEffect(() => window.scrollTo(0, 0), [])
 
   return (
     <Page className="max-w-2xl">

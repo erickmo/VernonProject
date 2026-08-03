@@ -65,6 +65,17 @@ export function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// Like formatDate but keeps the time: "5 Aug 2026, 14:30". For datetime fields
+// (e.g. cancelled_on) where the clock matters, not just the day.
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso.includes('T') || iso.length > 10 ? iso.replace(' ', 'T') : iso + 'T00:00:00')
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleString(undefined, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
 // Group already date-sorted rows into contiguous sections by their start date (YYYY-MM-DD).
 // Order is preserved, so upstream sort (date DESC, time ASC) carries into the groups.
 export function groupByStartDate<T extends { start: string }>(rows: T[]): { date: string; items: T[] }[] {

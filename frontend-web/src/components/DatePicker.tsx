@@ -102,22 +102,46 @@ function CalendarPanel({
 }) {
   const init = parseISO(selected) ?? todayParts()
   const [view, setView] = useState({ y: init.y, m: init.m })
+  const [picking, setPicking] = useState(false) // header label tapped → year grid
   const today = todayISO()
+  const todayYr = todayParts().y
   const weeks = monthGrid(view.y, view.m)
+  const decadeStart = view.y - (((view.y % 12) + 12) % 12) // 12-year page, view.y inside it
 
   return (
     <div className="w-full">
       <div className="mb-2 flex items-center justify-between">
-        <button type="button" aria-label="Previous month" className="rounded-lg p-1.5 text-muted hover:bg-hover/[0.06]"
-          onClick={() => setView((v) => stepMonth(v.y, v.m, -1))}>
+        <button type="button" aria-label={picking ? 'Previous years' : 'Previous month'}
+          className="rounded-lg p-1.5 text-muted hover:bg-hover/[0.06]"
+          onClick={() => picking ? setView((v) => ({ ...v, y: v.y - 12 })) : setView((v) => stepMonth(v.y, v.m, -1))}>
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="text-sm font-semibold text-ink">{monthLabel(view.y, view.m)}</span>
-        <button type="button" aria-label="Next month" className="rounded-lg p-1.5 text-muted hover:bg-hover/[0.06]"
-          onClick={() => setView((v) => stepMonth(v.y, v.m, 1))}>
+        <button type="button" className="rounded-lg px-2 py-0.5 text-sm font-semibold text-ink hover:bg-hover/[0.06]"
+          aria-label="Jump to year" onClick={() => setPicking((p) => !p)}>
+          {picking ? `${decadeStart}–${decadeStart + 11}` : monthLabel(view.y, view.m)}
+        </button>
+        <button type="button" aria-label={picking ? 'Next years' : 'Next month'}
+          className="rounded-lg p-1.5 text-muted hover:bg-hover/[0.06]"
+          onClick={() => picking ? setView((v) => ({ ...v, y: v.y + 12 })) : setView((v) => stepMonth(v.y, v.m, 1))}>
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+      {picking ? (
+        <div className="grid grid-cols-3 gap-1 text-center">
+          {Array.from({ length: 12 }, (_, i) => decadeStart + i).map((yr) => (
+            <button key={yr} type="button"
+              onClick={() => { setView((v) => ({ ...v, y: yr })); setPicking(false) }}
+              className={clsx(
+                'rounded-lg py-2 text-sm transition',
+                yr === view.y ? 'bg-brand-600 font-semibold text-white' : 'text-ink hover:bg-hover/[0.08]',
+                yr === todayYr && yr !== view.y && 'ring-1 ring-inset ring-brand-500',
+              )}
+            >
+              {yr}
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-7 gap-0.5 text-center">
         {WEEKDAYS.map((w, i) => (
           <div key={i} className="py-1 text-[0.65rem] font-medium uppercase text-muted">{w}</div>
@@ -147,6 +171,7 @@ function CalendarPanel({
           )
         })}
       </div>
+      )}
       <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
         <button type="button" className="rounded-lg px-2 py-1 text-xs font-medium text-brand-600 hover:bg-hover/[0.06]"
           disabled={!inRange(today, min, max)} onClick={() => onPick(today)}>

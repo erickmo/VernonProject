@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Sparkles } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
@@ -12,6 +13,8 @@ function fmtDate(s: string): string {
 
 export default function WhatsNew() {
   const { data, isLoading } = useAppReleases('Mobile')
+
+  useEffect(() => window.scrollTo(0, 0), [])
 
   return (
     <DetailScreen title="What's New">

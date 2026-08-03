@@ -4,6 +4,7 @@ import { useFormOptions, useCreateProject, useUpdateProject, useProjects } from 
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import type { ProjectFull, ProjectInput } from '@/lib/types'
 
 interface Props {
@@ -29,7 +30,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
   const [f, setF] = useState<ProjectInput>({
     project_name: '', brand: '', project_owner: '', project_leader: '',
-    project_admin: '', blocked_by: '', start_date: '', deadline: '',
+    project_admins: [], blocked_by: '', start_date: '', deadline: '',
     goal: '', status: 'Ongoing', reward_type: 'Rupiah', bonus_amount: 0, discount: 0, team_members: [],
   })
 
@@ -40,7 +41,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
         brand: project.brand,
         project_owner: project.project_owner,
         project_leader: project.project_leader,
-        project_admin: project.project_admin ?? '',
+        project_admins: (project.project_admins ?? []).map((user) => ({ user })),
         blocked_by: project.blocked_by ?? '',
         start_date: project.start_date ?? '',
         deadline: project.deadline ?? '',
@@ -119,8 +120,13 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Admin
-            <SearchableSelect value={f.project_admin ?? ''} onChange={(v) => set('project_admin', v)} options={users} allowClear placeholder="None" />
+            Admins
+            <MultiSelectSearch
+              options={users}
+              value={(f.project_admins ?? []).map((a) => a.user)}
+              onChange={(vs) => set('project_admins', vs.map((user) => ({ user })))}
+              placeholder="None"
+            />
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">

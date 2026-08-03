@@ -6,6 +6,7 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { useUpdateTodo, useFormOptions } from '@/hooks/useData'
 import { STATUS } from '@/lib/status'
+import { CancelledNote } from '@/components/CancelledNote'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { DatePicker } from '@web/components/DatePicker'
 import type { ProjectItem } from '@/lib/types'
@@ -118,6 +119,14 @@ export function StatusCell({ todo }: { todo: ProjectItem }) {
   const advance = useAdvance()
   const reject = useReject()
   const meta = STATUS[todo.status_key]
+  if (todo.status_key === 'cancelled') {
+    return (
+      <span className="inline-flex flex-col items-start gap-1">
+        <span className={`rounded px-1.5 py-0.5 text-xs ${meta.pill}`}>{meta.emoji} {meta.label}</span>
+        <CancelledNote item={todo} variant="line" />
+      </span>
+    )
+  }
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`rounded px-1.5 py-0.5 text-xs ${meta.pill}`}>{meta.emoji} {meta.label}</span>

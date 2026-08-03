@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
-import { Send, ImagePlus } from 'lucide-react'
+import { Send, ImagePlus, ZoomIn } from 'lucide-react'
 import { useComments, useAddComment } from '../hooks/useData'
 import { Spinner } from './ui'
 import { sanitizeHtml } from '../lib/format'
 import { uploadCommentImage, mobileApi } from '../lib/api'
 import type { MentionUser } from '../lib/types'
 import { useToast } from './Toast'
+import ImageZoom from './ImageZoom'
 
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -28,6 +29,7 @@ export default function CommentThread({
   const [people, setPeople] = useState<MentionUser[]>([])
   const peopleLoaded = useRef(false)
   const [pending, setPending] = useState(false)
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null)
 
   // Insert an HTML fragment at the current caret inside the editor.
   const insertHtml = (html: string) => {
@@ -176,9 +178,20 @@ export default function CommentThread({
                 <span className="text-xs text-gray-400">{c.at_human}</span>
               </div>
               <div
-                className="comment-body mt-1 text-sm text-gray-700 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700"
+                className="comment-body mt-1 text-sm text-gray-700 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700"
+                onClick={(e) => {
+                  const t = e.target as HTMLElement
+                  if (t.tagName === 'IMG')
+                    setZoomSrc((t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src)
+                }}
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.content) }}
               />
+              {c.content.includes('<img') && (
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400">
+                  <ZoomIn className="h-3 w-3" />
+                  Ketuk gambar untuk memperbesar
+                </p>
+              )}
             </li>
           ))}
           {comments && comments.length === 0 && (
@@ -239,6 +252,7 @@ export default function CommentThread({
           <Send className="h-4 w-4" />
         </button>
       </div>
+      {zoomSrc && <ImageZoom src={zoomSrc} onClose={() => setZoomSrc(null)} />}
     </section>
   )
 }

@@ -1012,3 +1012,11 @@ def assignable_users(doctype, txt, searchfield, start, page_len, filters):
 		   LIMIT %(start)s, %(page_len)s""",
 		{"users": tuple(users), "like": like, "start": start, "page_len": page_len},
 	)
+
+
+def on_doctype_update():
+	# Runs on every migrate AND fresh install, so new sites index too (patches are
+	# skipped on install). The "my todos" list filters (assigned_to, status) on
+	# every home load; neither column was indexed. assigned_to first — far more
+	# selective than the ~4-value status. Verified with EXPLAIN (was a full scan).
+	frappe.db.add_index("Project Todo", ["assigned_to", "status"])

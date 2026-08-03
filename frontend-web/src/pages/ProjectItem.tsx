@@ -58,6 +58,7 @@ import { formatClock, formatEstimate, formatDate, dateSub, formatNumber, stripHt
 import { computeTodoPoints } from '@/lib/points'
 import { todoFileHref } from '@/lib/api'
 import { Avatar, Spinner } from '@/components/ui'
+import { CancelledNote } from '@/components/CancelledNote'
 import { Button, OverflowMenu, type MenuItem } from '@web/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useToast } from '@/components/Toast'
@@ -1101,8 +1102,6 @@ export default function ProjectItem() {
   const navigate = useNavigate()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
-  const [showCancel, setShowCancel] = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
   const [showWaiting, setShowWaiting] = useState(false)
   const [showFocusNote, setShowFocusNote] = useState(false)
   const [waitingReason, setWaitingReason] = useState('')
@@ -1152,14 +1151,21 @@ const [followOpen, setFollowOpen] = useState(false)
   }
 
   const onCancel = async () => {
+    const reason = await confirm({
+      title: 'Cancel this task?',
+      message: 'It moves to Cancelled. You can Restore it to Planned later.',
+      destructive: true,
+      confirmLabel: 'Cancel task',
+      cancelLabel: 'Keep it',
+      input: { placeholder: 'Reason (optional)', rows: 2 },
+    })
+    if (reason === null) return
     try {
       const res = await cancelTodo.mutateAsync({
         projectItem: data.name,
-        reason: cancelReason.trim() || undefined,
+        reason: reason.trim() || undefined,
       })
       toast(res.status === 'ok' ? 'success' : 'info', res.message)
-      setShowCancel(false)
-      setCancelReason('')
     } catch (e: unknown) {
       toast('error', e instanceof Error ? e.message : 'Cancel failed')
     }
@@ -1264,6 +1270,7 @@ const [followOpen, setFollowOpen] = useState(false)
         onFocusToggle={() => (focusActive ? focus.stop() : openFocus())}
         onDeadlineToday={onDeadlineToday}
       />
+      {data.status_key === 'cancelled' && <CancelledNote item={data} />}
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1338,7 +1345,7 @@ const [followOpen, setFollowOpen] = useState(false)
                   ? [{ label: 'Restore to Planned', icon: RotateCcw, onClick: onRestore, disabled: restoreTodo.isPending }]
                   : []),
                 ...(data.can_edit && data.status_key !== 'completed' && data.status_key !== 'cancelled'
-                  ? [{ label: 'Cancel task', icon: Ban, danger: true, onClick: () => setShowCancel(true) }]
+                  ? [{ label: 'Cancel task', icon: Ban, danger: true, onClick: onCancel }]
                   : []),
                 ...(data.can_delete
                   ? [{ label: 'Delete task', icon: Trash2, danger: true, onClick: onDelete, disabled: deleteTodo.isPending }]
@@ -1531,13 +1538,7 @@ const [followOpen, setFollowOpen] = useState(false)
               </p>
               <Stepper current={data.status_key} />
 
-              {data.status_key === 'cancelled' ? (
-                data.cancellation_reason ? (
-                  <p className="mt-5 rounded-xl bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
-                    Reason: {data.cancellation_reason}
-                  </p>
-                ) : null
-              ) : (
+              {data.status_key === 'cancelled' ? null : (
                 <>
                   {data.status_key !== 'completed' &&
                     (data.can_advance ? (
@@ -1570,38 +1571,6 @@ const [followOpen, setFollowOpen] = useState(false)
                       disabled={setAutoApprove.isPending}
                       onChange={onSetAutoApprove}
                     />
-                  )}
-
-                  {/* Cancel reason form — opened from the ⋮ menu */}
-                  {data.can_edit && data.status_key !== 'completed' && showCancel && (
-                    <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
-                      <textarea
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                        rows={2}
-                        placeholder="Reason (optional)"
-                        className="w-full resize-none rounded-xl border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
-                      />
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={onCancel}
-                          disabled={cancelTodo.isPending}
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-rose-700 disabled:opacity-60"
-                        >
-                          {cancelTodo.isPending ? <Spinner className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                          Confirm cancel
-                        </button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setShowCancel(false)
-                            setCancelReason('')
-                          }}
-                        >
-                          Back
-                        </Button>
-                      </div>
-                    </div>
                   )}
                 </>
               )}

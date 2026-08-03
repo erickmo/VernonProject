@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -14,6 +14,8 @@ import { passkeySupported, defaultDeviceLabel, isPasskeyCancel, describePasskeyE
 import { type Theme, getStoredTheme, setTheme } from '@/lib/theme'
 import type { FocusMode } from '@/lib/types'
 import { pushSupported, subscribeToPush, unsubscribeFromPush, getPushSubscription } from '@/lib/push'
+import { AccrualCard } from './CutiLedgerScreen'
+import { getStartedComplete, getStartedProgress } from '@/lib/getStarted'
 
 function useOnline() {
   const [online, setOnline] = useState(navigator.onLine)
@@ -150,9 +152,18 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
         {
           title: '',
           rows: [
+            ...(boot && !getStartedComplete(boot)
+              ? [{
+                  icon: Rocket,
+                  label: `Get started (${getStartedProgress(boot).done}/${getStartedProgress(boot).total})`,
+                  hue: 'amber' as const,
+                  onClick: () => navigate('/get-started'),
+                }]
+              : []),
             { icon: User, label: 'My Info', hue: 'sky', onClick: () => navigate('/me/info') },
             { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
             { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
+            { icon: Flame, label: 'Kebiasaan', hue: 'amber', onClick: () => navigate('/habits') },
             { icon: Sparkles, label: 'Superpower', hue: 'violet', onClick: () => navigate(`/superpowers/${boot?.user}`) },
             { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
             ...(pushSupported()
@@ -319,6 +330,32 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
               >
                 {claimDaily.isPending ? <Spinner className="h-3.5 w-3.5" /> : 'Claim'}
               </button>
+            </div>
+          )}
+
+          {/* Leave quota + late/overtime accrual — taps through to the full ledger.
+              Quota always shows; the accrual bars only when an admin enabled the rules. */}
+          {boot.leave && (
+            <button
+              onClick={() => navigate('/cuti-ledger')}
+              className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 px-4 py-3.5 text-left shadow-card transition active:scale-[0.99]"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+                <CalendarOff className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-stone-800 dark:text-slate-100">
+                  Sisa cuti <span className="tabular-nums">{boot.leave.remaining}</span>
+                  <span className="font-normal text-stone-400"> / {boot.leave.quota} hari</span>
+                </p>
+                <p className="text-xs text-stone-400 dark:text-slate-500">{boot.leave.used} hari terpakai tahun ini</p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-stone-300 dark:text-slate-600" />
+            </button>
+          )}
+          {boot.leave && boot.leave_rules && (boot.leave_rules.late_enabled || boot.leave_rules.overtime_enabled) && (
+            <div className="mt-3">
+              <AccrualCard rules={boot.leave_rules} />
             </div>
           )}
 

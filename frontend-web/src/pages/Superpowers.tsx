@@ -271,7 +271,7 @@ export default function Superpowers() {
                     <span className="truncate">{v.signature.name}</span>
                   </div>
                   {v.signature.level && (
-                    <div className="mt-1 text-xs text-white/80">{v.signature.level.level_name} · {v.signature.weighted.toFixed(1)}</div>
+                    <div className="mt-1 text-xs text-white/80">{v.signature.level.level_name} · {v.signature.avg.toFixed(1)}</div>
                   )}
                 </div>
               ) : (
@@ -345,7 +345,7 @@ export default function Superpowers() {
                         name={m.name}
                         desc={m.description}
                         level={scored ? vv?.level ?? null : null}
-                        score={scored ? vv?.weighted ?? 0 : 0}
+                        score={scored ? vv?.avg ?? 0 : 0}
                         scored={scored}
                         showLevel={v.can_see_scores}
                         meta={v.can_see_scores ? (scored ? `${vv!.count} suara` : 'Belum dinilai') : undefined}
@@ -395,10 +395,10 @@ export default function Superpowers() {
                     name={c.name}
                     desc={c.description}
                     level={c.level}
-                    score={c.weighted}
+                    score={c.avg}
                     scored={v.can_see_scores && c.count > 0}
                     showLevel={v.can_see_scores}
-                    meta={v.can_see_scores ? (c.count > 0 ? `${c.count} suara · rata-rata ${c.avg.toFixed(1)}` : 'Belum ada suara') : undefined}
+                    meta={v.can_see_scores ? (c.count > 0 ? `${c.count} suara` : 'Belum ada suara') : undefined}
                   >
                     {!isSelf && (
                       <div className="mt-3 space-y-2 border-t border-line pt-3">

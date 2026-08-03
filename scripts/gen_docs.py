@@ -34,7 +34,7 @@ CLUSTERS = {
     # key: (nameId, nameEn, span, {DocType, ...})
     "project-core": ("Inti Proyek", "Project core", "2x2", {
         "Project", "Project Detail", "Project Glossary", "Project Proposal",
-        "Project Team", "Project Todo", "Project Todo Allocation",
+        "Project Team", "Project Admin User", "Project Todo", "Project Todo Allocation",
         "Project Todo Assigned Allocation", "Project Todo Dependency",
         "Scope of Work", "Glossary",
     }),
@@ -68,7 +68,7 @@ CLUSTERS = {
         "Meeting", "Meeting Participant", "Meeting Room", "Resource Booking",
         "Resource Booking Equipment", "Equipment",
     }),
-    "focus": ("Fokus", "Focus", "1x1", {"Focus Timer"}),
+    "focus": ("Fokus", "Focus", "1x1", {"Focus Timer", "Habit", "Habit Log"}),
     "events": ("Acara", "Events", "1x1", {"Vernon Event", "Vernon Event Registration"}),
     "classifieds": ("Papan Iklan", "Classifieds", "1x1", {
         "Papan Iklan", "Papan Iklan Ban", "Papan Iklan Photo",
@@ -351,18 +351,18 @@ def selfcheck(vp):
     expectations, not truth — they are asserted only here, never in the generate path,
     so a real DocType #75 shows up as a git diff (the drift oracle) instead of a crash.
     """
-    assert vp["counts"]["doctypes"]["n"] == 82, vp["counts"]["doctypes"]
+    assert vp["counts"]["doctypes"]["n"] == 83, vp["counts"]["doctypes"]
     # ponytail: the listdir/os.walk traps are described in read_doctypes, not asserted
     # here — their counts move with __pycache__ litter, so asserting them fails on the
     # bare checkout this generator promises to run on. This is the env-independent one.
-    assert len(glob.glob(str(ROOT / DT_GLOB))) == 82, "doctype json glob moved"
+    assert len(glob.glob(str(ROOT / DT_GLOB))) == 83, "doctype json glob moved"
     seen = [c for d in vp["doctypes"] for c in [d["cluster"]] if c]
-    assert len(seen) == 82 and sum(len(c["doctypes"]) for c in vp["clusters"]) == 82, "cluster gap/dupe"
+    assert len(seen) == 83 and sum(len(c["doctypes"]) for c in vp["clusters"]) == 83, "cluster gap/dupe"
     mods = {e["module"] for e in vp["endpoints"]}
     for m in ("vernon_project.vernon_project.doctype.project.project",
               "vernon_project.vernon_project.doctype.project_todo.project_todo"):
         assert m in mods, f"endpoint glob dropped {m} — naive api/*.py bug"
-    assert vp["counts"]["fields"]["n"] == 675, vp["counts"]["fields"]
+    assert vp["counts"]["fields"]["n"] == 676, vp["counts"]["fields"]
     # 149 (80 specs) was true until 2026-07-15-docs-site-rebuild-design.md — this very
     # rebuild's own spec — landed in 874178e, making it 150/81. A hand-typed count that
     # rotted inside one commit; the reason this file exists.
@@ -384,7 +384,7 @@ def selfcheck(vp):
     for must in ("page_renderer", "doc_events", "scheduler_events", "after_request",
                  "permission_query_conditions", "has_permission", "website_route_rules"):
         assert must in vp["hooks"], f"{must} is declared in hooks.py but missing from the docs"
-    print(f"selfcheck OK — 82 doctypes / {vp['counts']['fields']['n']} fields / "
+    print(f"selfcheck OK — 83 doctypes / {vp['counts']['fields']['n']} fields / "
           f"{vp['counts']['endpoints']['n']} endpoints / {vp['counts']['devlogs']['n']} devlogs / "
           f"{len(vp['hooks'])} hooks")
 

@@ -159,6 +159,8 @@ permission_query_conditions = {
 	"Employee Profile": "vernon_project.vernon_project.doctype.employee_profile.employee_profile.get_permission_query_conditions",
 	"Income Opportunity Claim": "vernon_project.vernon_project.doctype.income_opportunity_claim.income_opportunity_claim.get_permission_query_conditions",
 	"Course Enrollment": "vernon_project.vernon_project.doctype.course_enrollment.course_enrollment.get_permission_query_conditions",
+	"Habit": "vernon_project.vernon_project.doctype.habit.habit.get_permission_query_conditions",
+	"Habit Log": "vernon_project.vernon_project.doctype.habit_log.habit_log.get_permission_query_conditions",
 }
 
 has_permission = {
@@ -172,6 +174,8 @@ has_permission = {
 	"Employee Profile": "vernon_project.vernon_project.doctype.employee_profile.employee_profile.has_permission",
 	"Income Opportunity Claim": "vernon_project.vernon_project.doctype.income_opportunity_claim.income_opportunity_claim.has_permission",
 	"Course Enrollment": "vernon_project.vernon_project.doctype.course_enrollment.course_enrollment.has_permission",
+	"Habit": "vernon_project.vernon_project.doctype.habit.habit.has_permission",
+	"Habit Log": "vernon_project.vernon_project.doctype.habit_log.habit_log.has_permission",
 }
 
 # DocType Class
@@ -215,16 +219,22 @@ doc_events = {
 scheduler_events = {
 	"daily": [
 		"vernon_project.tasks.create_recurring_todos",
+		"vernon_project.tasks.create_recurring_meetings",
 		"vernon_project.tasks.notify_due_todos",
 		"vernon_project.tasks.notify_comeback_nudge",
 		"vernon_project.attendance.engine.nightly_finalize",
 		"vernon_project.tasks.notify_overdue_courses",
 		"vernon_project.api.superpowers.notify_recognition_gate",
+		"vernon_project.tasks.notify_habit_checkins",
 	],
 	# Jan 1, 01:00 — mint every employee's annual cuti Grant row for the new year.
 	"cron": {
 		"0 1 1 1 *": [
 			"vernon_project.attendance.cuti_ledger.grant_annual_cuti",
+		],
+		# Every day 00:00 — sweep past-due day-plan slots off still-Planned todos.
+		"0 0 * * *": [
+			"vernon_project.tasks.sweep_stale_plans",
 		],
 	},
 }

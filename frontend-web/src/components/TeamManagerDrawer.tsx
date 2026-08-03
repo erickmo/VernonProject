@@ -4,6 +4,7 @@ import { useFormOptions, useUpdateProject } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Avatar, Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { Button } from '@web/components/ui'
 import type { ProjectFull } from '@/lib/types'
@@ -26,14 +27,14 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
   const [members, setMembers] = useState<string[]>([])
   const [owner, setOwner] = useState('')
   const [leader, setLeader] = useState('')
-  const [admin, setAdmin] = useState('')
+  const [admins, setAdmins] = useState<string[]>([])
 
   useEffect(() => {
     if (open) {
       setMembers(project.team.filter((t) => t.is_member).map((t) => t.user))
       setOwner(project.project_owner)
       setLeader(project.project_leader)
-      setAdmin(project.project_admin ?? '')
+      setAdmins(project.project_admins ?? [])
     }
   }, [open, project])
 
@@ -53,7 +54,7 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
   const roleOf = (email: string): string | null => {
     if (email === owner) return 'Owner'
     if (email === leader) return 'Leader'
-    if (email === admin) return 'Admin'
+    if (admins.includes(email)) return 'Admin'
     return null
   }
 
@@ -61,11 +62,11 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
     setMembers((m) => (email && !m.includes(email) ? [...m, email] : m))
   const setOwnerRole = (v: string) => { setOwner(v); ensureMember(v) }
   const setLeaderRole = (v: string) => { setLeader(v); ensureMember(v) }
-  const setAdminRole = (v: string) => { setAdmin(v); ensureMember(v) }
+  const setAdminsRole = (vs: string[]) => { setAdmins(vs); vs.forEach(ensureMember) }
 
   const addMember = (email: string) => ensureMember(email)
   const removeMember = (email: string) => {
-    if (email === owner || email === leader || (admin && email === admin)) return
+    if (email === owner || email === leader || admins.includes(email)) return
     setMembers((m) => m.filter((u) => u !== email))
   }
 
@@ -79,7 +80,7 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
         team_members: members.map((user) => ({ user })),
         project_owner: owner,
         project_leader: leader,
-        project_admin: admin || null,
+        project_admins: admins.map((user) => ({ user })),
       },
       {
         onSuccess: () => { toast('success', 'Team updated'); onClose() },
@@ -118,8 +119,8 @@ export function TeamManagerDrawer({ open, onClose, project, canReassign }: Props
             <SearchableSelect value={leader} onChange={setLeaderRole} options={leaders} disabled={!canReassign} placeholder="Select…" />
           </label>
           <label className="text-sm font-medium text-muted">
-            Admin
-            <SearchableSelect value={admin} onChange={setAdminRole} options={users} allowClear placeholder="None" />
+            Admins
+            <MultiSelectSearch options={users} value={admins} onChange={setAdminsRole} placeholder="None" />
           </label>
         </div>
 

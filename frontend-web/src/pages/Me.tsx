@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen, Wifi, WifiOff, RefreshCw, User } from 'lucide-react'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen, Wifi, WifiOff, RefreshCw, User, CalendarOff, ChevronRight, Rocket } from 'lucide-react'
 import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
@@ -11,6 +11,8 @@ import { useConfirm } from '@/components/Confirm'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { ChangePasswordDialog } from '@web/components/ChangePasswordDialog'
 import { BentoGrid, BentoTile } from '@web/components/bento'
+import { AccrualBar } from '@web/pages/CutiLedger'
+import { getStartedComplete, getStartedProgress } from '@/lib/getStarted'
 import { passkeySupported, defaultDeviceLabel, isPasskeyCancel, describePasskeyError } from '@/lib/webauthn'
 import { AvatarScene } from '@/avatar/AvatarScene'
 
@@ -62,6 +64,47 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
       <ProfileHero />
 
       <BentoGrid>
+        {/* Setup checklist for new users — self-hides once all steps are done. */}
+        {b && !getStartedComplete(b) && (
+          <BentoTile
+            span="full" tone="tint" accent="amber" title="Get started" icon={Rocket}
+            to="/get-started" actions={<ChevronRight className="h-4 w-4 opacity-40" />}
+          >
+            <p className="text-sm text-muted">
+              Finish setting up your account — {getStartedProgress(b).done} of {getStartedProgress(b).total} done.
+            </p>
+          </BentoTile>
+        )}
+        {/* Leave quota + late/overtime accrual — quota always; bars only when the
+            admin enabled those rules. Taps through to the full ledger. */}
+        {b?.leave && (
+          <BentoTile
+            span="full" tone="tint" accent="rose" title="Cuti" icon={CalendarOff}
+            to="/attendance/cuti" actions={<ChevronRight className="h-4 w-4 opacity-40" />}
+          >
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-3xl font-semibold tabular-nums text-ink">Sisa {b.leave.remaining}</span>
+              <span className="text-sm text-muted">/ {b.leave.quota} hari</span>
+            </div>
+            <p className="mt-0.5 text-xs text-muted">{b.leave.used} hari terpakai tahun ini</p>
+            {b.leave_rules && (b.leave_rules.late_enabled || b.leave_rules.overtime_enabled) && (
+              <div className="mt-4 space-y-4">
+                {b.leave_rules.late_enabled && (
+                  <AccrualBar
+                    label={`Keterlambatan: ${b.leave_rules.late_accrued}/${b.leave_rules.late_threshold} menit → potong 1 hari`}
+                    accrued={b.leave_rules.late_accrued} threshold={b.leave_rules.late_threshold} tone="rose"
+                  />
+                )}
+                {b.leave_rules.overtime_enabled && (
+                  <AccrualBar
+                    label={`Lembur: ${b.leave_rules.overtime_accrued}/${b.leave_rules.overtime_threshold} menit → tambah 1 hari`}
+                    accrued={b.leave_rules.overtime_accrued} threshold={b.leave_rules.overtime_threshold} tone="emerald"
+                  />
+                )}
+              </div>
+            )}
+          </BentoTile>
+        )}
         <AvatarTile />
         <DailyTile />
 

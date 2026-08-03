@@ -90,9 +90,44 @@
     html.js.webgl #site-content{position:fixed;opacity:0;visibility:hidden;pointer-events:none;z-index:-1}
     html.js.webgl.reveal-content #site-content{position:relative;opacity:1;visibility:visible;pointer-events:auto;z-index:1}
 
-    #game-root{position:fixed;inset:0;z-index:20;overflow:hidden;
+    /* game is the HERO: one viewport tall, in normal flow so the jobs section scrolls in below */
+    #game-root{position:relative;height:100svh;width:100%;overflow:hidden;
       background:radial-gradient(120% 100% at 50% 0%, #eef3ff 0%, #e7eeff 45%, #eef1ea 100%)}
     #game-canvas{display:block;width:100%;height:100%;touch-action:none}
+
+    /* scroll-down affordance (needed: wheel over the canvas zooms, so give a way down) */
+    #to-jobs{position:absolute;left:50%;transform:translateX(-50%);
+      bottom:calc(env(safe-area-inset-bottom) + 3.5rem);z-index:25;
+      display:inline-flex;align-items:center;gap:.4rem;background:var(--brand);color:#fff;border:0;cursor:pointer;
+      font-family:'Figtree',sans-serif;font-weight:700;font-size:.82rem;padding:.5rem 1rem;border-radius:999px;
+      box-shadow:0 10px 24px -8px rgba(67,56,202,.6);animation:bobjobs 1.8s ease-in-out infinite}
+    @keyframes bobjobs{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(4px)}}
+
+    /* ---------- OPEN ROLES & INTERNSHIPS (below the hero) ---------- */
+    #home-openings{position:relative;z-index:1;background:var(--paper);
+      padding:clamp(3rem,7vw,5.5rem) 1.25rem clamp(4rem,8vw,6rem)}
+    .jobs-wrap{max-width:72rem;margin:0 auto}
+    .jobs-eyebrow{font-size:.8rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--brand)}
+    .jobs-title{font-family:'Familjen Grotesk',sans-serif;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;color:var(--brand9);margin:.5rem 0 .6rem}
+    .jobs-lead{font-size:1.08rem;line-height:1.6;color:#3730a3bf;max-width:44rem;margin-bottom:2rem}
+    .jobs-grid{list-style:none;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))}
+    .job-card{display:flex;flex-direction:column;border:1px solid var(--edge);background:var(--card);
+      border-radius:1.2rem;padding:1.3rem 1.4rem;box-shadow:0 8px 26px -18px rgba(49,46,129,.4);
+      transition:transform .14s,box-shadow .14s}
+    .job-card:hover{transform:translateY(-3px);box-shadow:0 16px 34px -18px rgba(49,46,129,.45)}
+    .job-card.intern{border-color:#12b6a0;background:linear-gradient(180deg,#effcf9,var(--card))}
+    .job-top{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+    .job-type{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand7);
+      background:#eef2ff;border:1px solid var(--edge);border-radius:.6rem;padding:.2rem .55rem}
+    .job-badge{font-size:.72rem;font-weight:700;color:#0f766e;background:#ccfbf1;border-radius:.6rem;padding:.2rem .55rem}
+    .job-name{font-family:'Familjen Grotesk',sans-serif;font-size:1.2rem;font-weight:700;color:var(--brand9);margin-bottom:.2rem}
+    .job-loc{font-size:.85rem;color:#3730a3a0;margin-bottom:.55rem}
+    .job-blurb{font-size:.92rem;line-height:1.55;color:#3730a3cc;margin-bottom:1rem;flex:1}
+    .job-apply{align-self:flex-start;margin-top:auto;font-weight:700;font-size:.9rem;color:#fff;background:var(--brand);
+      border-radius:.7rem;padding:.55rem .95rem;text-decoration:none;box-shadow:0 6px 16px -6px rgba(67,56,202,.5)}
+    .job-apply:hover{background:var(--brand7)}
+    .jobs-empty{font-size:1.05rem;color:#3730a3bf;padding:1.5rem 0}
+    .jobs-all{display:inline-block;margin-top:2rem;font-weight:700;color:var(--brand7);text-decoration:underline;text-underline-offset:3px}
 
     /* labels + prompts projected over the canvas */
     #overlay{position:absolute;inset:0;z-index:22;pointer-events:none;overflow:hidden}
@@ -317,6 +352,9 @@
       <!-- controls hint -->
       <div class="hint" id="hint">{{ 'WASD / panah / klik jalan · Spasi masuk · Q/E putar · scroll zoom' if lang == 'id' else 'WASD / arrows / click to walk · Space to enter · Q/E rotate · scroll to zoom' }}</div>
 
+      <!-- scroll to the jobs section below the hero -->
+      <button id="to-jobs" type="button">{{ jobs.scroll }} &darr;</button>
+
       <!-- touch joystick (coarse pointers only) -->
       <div class="stick" id="stick" aria-hidden="true"><div class="stick-knob"></div></div>
 
@@ -351,6 +389,34 @@
         </div>
       </div>
     </div>
+
+    <!-- ============ OPEN ROLES & INTERNSHIPS (scrolls in below the hero) ============ -->
+    <section id="home-openings">
+      <div class="jobs-wrap">
+        <p class="jobs-eyebrow">{{ jobs.eyebrow }}</p>
+        <h2 class="jobs-title">{{ jobs.title }}</h2>
+        <p class="jobs-lead">{{ jobs.lead }}</p>
+        {% if openings %}
+        <ul class="jobs-grid">
+          {% for o in openings %}
+          <li class="job-card{% if o.intern %} intern{% endif %}">
+            <div class="job-top">
+              <span class="job-type">{{ o.type }}</span>
+              {% if o.intern %}<span class="job-badge">&#9733; {{ jobs.intern_badge }}</span>{% endif %}
+            </div>
+            <h3 class="job-name">{{ o.title }}</h3>
+            <p class="job-loc">&#128205; {{ o.loc }}</p>
+            <p class="job-blurb">{{ o.blurb }}</p>
+            <a class="job-apply" href="{{ o.apply }}">{{ jobs.apply }} &rarr;</a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="jobs-empty">{{ jobs.empty }}</p>
+        {% endif %}
+        <a class="jobs-all" href="/careers{{ q }}">{{ jobs.all }} &rarr;</a>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -383,6 +449,11 @@
       const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const canvas = document.getElementById('game-canvas');
       const overlay = document.getElementById('overlay');
+      const gameRoot = document.getElementById('game-root');
+      // hero size (drives camera/renderer/label projection) — element-based, not window,
+      // so the canvas fills the 100svh hero exactly whether or not the page has scrolled.
+      let VW = 0, VH = 0;
+      const heroVisible = () => gameRoot.getBoundingClientRect().bottom > 60;
 
       let renderer;
       try {
@@ -392,7 +463,8 @@
         return;
       }
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      VW = gameRoot.clientWidth; VH = gameRoot.clientHeight;
+      renderer.setSize(VW, VH);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.28;
@@ -410,16 +482,18 @@
       let camYaw = 0, yawTarget = 0;   // Q/E rotate the isometric view
       let camera = new THREE.OrthographicCamera(-F, F, F, -F, 0.1, 300);
       function resize(){
-        const w = window.innerWidth, h = window.innerHeight, a = w/h;
+        VW = gameRoot.clientWidth; VH = gameRoot.clientHeight;
+        const a = VW/VH;
         camera.left = -F*a; camera.right = F*a; camera.top = F; camera.bottom = -F;
         camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
+        renderer.setSize(VW, VH);
       }
       resize();
       window.addEventListener('resize', resize);
 
-      // scroll to zoom the isometric view
-      window.addEventListener('wheel', e=>{
+      // scroll to zoom the isometric view — bound to the canvas only, so wheeling
+      // over the jobs section below scrolls the page normally.
+      canvas.addEventListener('wheel', e=>{
         if (document.documentElement.classList.contains('reveal-content')) return;
         e.preventDefault();
         F = Math.max(F_MIN, Math.min(F_MAX, F + (e.deltaY>0 ? 1 : -1)));
@@ -1006,6 +1080,7 @@
 
       window.addEventListener('keydown', e=>{
         if (document.documentElement.classList.contains('reveal-content')) return; // game hidden -> let content arrow-scroll
+        if (!heroVisible()) return; // scrolled to the jobs section -> let the page handle arrows/space
         const k = e.key.toLowerCase();
         if (k==='escape'){ closePanel(); closeMenu(); return; }
         if (document.getElementById('panel-scrim').classList.contains('on')) return; // panel open -> don't drive the hidden hero
@@ -1044,8 +1119,9 @@
       const ndc = new THREE.Vector2();
       // Point the ray at (clientX,clientY); returns the XZ ground-plane hit or null.
       function pointerGround(clientX, clientY){
-        ndc.x = (clientX/window.innerWidth)*2 - 1;
-        ndc.y = -(clientY/window.innerHeight)*2 + 1;
+        const r = gameRoot.getBoundingClientRect();
+        ndc.x = ((clientX-r.left)/r.width)*2 - 1;
+        ndc.y = -((clientY-r.top)/r.height)*2 + 1;
         ray.setFromCamera(ndc, camera);
         const hit = new THREE.Vector3();
         return ray.ray.intersectPlane(gplane, hit) ? new THREE.Vector2(hit.x, hit.z) : null;
@@ -1101,7 +1177,7 @@
       const _pv = new THREE.Vector3();
       function project(x,y,z){
         const v = _pv.set(x,y,z).project(camera);
-        return { x:(v.x*0.5+0.5)*window.innerWidth, y:(-v.y*0.5+0.5)*window.innerHeight, front:v.z<1 };
+        return { x:(v.x*0.5+0.5)*VW, y:(-v.y*0.5+0.5)*VH, front:v.z<1 };
       }
 
       // ============================================================
@@ -1469,6 +1545,8 @@
       document.addEventListener('click',()=>closeMenu());
       function revealContent(){ document.documentElement.classList.add('reveal-content'); }
       document.getElementById('btn-about').addEventListener('click',revealContent);
+      { const tj=document.getElementById('to-jobs');
+        if(tj) tj.addEventListener('click',()=>document.getElementById('home-openings').scrollIntoView({behavior:'smooth'})); }
 
       // ----- time-of-day switch: tap to cycle sunrise → afternoon → sunset → night -----
       // Each preset swaps sky/fog + the light rig (sun colour/angle/intensity + exposure);
@@ -1530,8 +1608,9 @@
       const _move = new THREE.Vector2(), _to = new THREE.Vector2(), _next = new THREE.Vector2(), _desired = new THREE.Vector3();
 
       function frame(){
-        // pause all work while the marketing text view is shown (saves battery/GPU)
-        if (document.documentElement.classList.contains('reveal-content')){ requestAnimationFrame(frame); return; }
+        // pause all work while the marketing text view is shown, or the hero is scrolled
+        // out of view (jobs section) — saves battery/GPU.
+        if (document.documentElement.classList.contains('reveal-content') || !heroVisible()){ requestAnimationFrame(frame); return; }
         const dt = Math.min(clock.getDelta(), 0.05);
         if (!reduce){ for (const c of clouds){ c.position.x += c.userData.spd*dt; if (c.position.x>58) c.position.x=-58; } }
         if (!reduce){ for (const b of balloons){ b.position.x += b.userData.spd*dt; if (b.position.x>62) b.position.x=-62;

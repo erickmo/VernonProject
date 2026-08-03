@@ -1,30 +1,42 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { ACTION_GROUPS, GROUP_ACCENT, type ActionItem } from '@/lib/actions'
 import { useHoldFeedback } from '@/hooks/useHoldFeedback'
 
-// Sectioned Gojek-style home: each category is a tinted header + a horizontal
-// row of gradient tiles. Surfacing the four groups (instead of one flat blob of
-// 22 tiles) gives the grid rhythm and makes actions findable by intent.
+// Sectioned Gojek-style home actions, now tabbed: the four category headers
+// become tabs and only the active group's gradient tiles render, so the block
+// stays one row tall and the todo list sits higher. Tiles are unchanged.
 // `badges` is keyed by route (`to`) — only a couple of tiles carry a count.
 export function QuickActions({ badges }: { badges?: Record<string, string | number> }) {
+  const [tab, setTab] = useState(0)
+  const g = ACTION_GROUPS[tab]
   return (
-    <div className="mt-4 space-y-4">
-      {ACTION_GROUPS.map((g) => (
-        <div key={g.title}>
-          <h3 className={clsx('mb-2 flex items-center gap-1.5 px-0.5 text-[11px] font-bold uppercase tracking-wider', GROUP_ACCENT[g.hue])}>
+    <div className="mt-4">
+      <div className="no-scrollbar -mx-4 flex gap-5 overflow-x-auto border-b border-paper-edge px-4">
+        {ACTION_GROUPS.map((grp, i) => (
+          <button
+            key={grp.title}
+            onClick={() => setTab(i)}
+            className={clsx(
+              '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 pb-2 text-[11px] font-bold uppercase tracking-wider transition',
+              i === tab
+                ? clsx('border-current', GROUP_ACCENT[grp.hue])
+                : 'border-transparent text-stone-400 dark:text-slate-500',
+            )}
+          >
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            {g.title}
-          </h3>
-          <div className="no-scrollbar -mx-4 overflow-x-auto px-4 pt-1">
-            <div className="flex gap-5">
-              {g.items.map((a) => (
-                <Tile key={a.title} action={a} tile={g.tile} badge={badges?.[a.to]} />
-              ))}
-            </div>
-          </div>
+            {grp.title}
+          </button>
+        ))}
+      </div>
+      <div className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-2 pt-5">
+        <div className="flex gap-7">
+          {g.items.map((a) => (
+            <Tile key={a.title} action={a} tile={g.tile} badge={badges?.[a.to]} />
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -41,24 +53,24 @@ function Tile({ action: a, tile, badge }: { action: ActionItem; tile: string; ba
         navigate(a.to)
       }}
       {...hold.bind}
-      className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 transition active:scale-95"
+      className="flex w-[68px] shrink-0 flex-col items-center gap-2 transition active:scale-95"
     >
       <span
         style={{ transform: hold.holding ? 'scale(0.9)' : hold.fired ? 'scale(1.12)' : undefined }}
         className={clsx(
-          'relative flex h-14 w-14 items-center justify-center rounded-2xl transition-transform',
+          'relative flex h-16 w-16 items-center justify-center rounded-2xl transition-transform',
           tile,
           hold.holding && 'ring-2 ring-white/80 dark:ring-white/60',
         )}
       >
-        <a.icon className="h-6 w-6" strokeWidth={2} />
+        <a.icon className="h-7 w-7" strokeWidth={2} />
         {badge != null && (
           <span className="absolute -right-1.5 -top-1.5 min-w-[20px] rounded-full bg-brand-600 px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-white shadow-sm">
             {badge}
           </span>
         )}
       </span>
-      <span className="w-full truncate text-center text-[11px] font-semibold text-stone-600 dark:text-slate-300">
+      <span className="w-full truncate text-center text-xs font-semibold text-stone-600 dark:text-slate-300">
         {a.short}
       </span>
     </button>

@@ -1,5 +1,14 @@
 import frappe
 from vernon_project.www._i18n import base_context, norm_lang, pick
+from vernon_project.www.careers import _blurb
+
+EMP = {
+    "Full-time": {"id": "Penuh waktu", "en": "Full-time"},
+    "Part-time": {"id": "Paruh waktu", "en": "Part-time"},
+    "Contract": {"id": "Kontrak", "en": "Contract"},
+    "Internship": {"id": "Magang", "en": "Internship"},
+    "Freelance": {"id": "Lepas", "en": "Freelance"},
+}
 
 SITE = "https://project-www.vernon.id"
 
@@ -223,4 +232,34 @@ def get_context(context):
         "final_careers": L({"id": "Lihat karier", "en": "See careers"}),
     }
     context.q = "?lang=en" if lang == "en" else ""
+
+    # --- Open roles & internships, shown below the game hero -------------------
+    db_openings = frappe.get_all(
+        "Job Opening",
+        filters={"status": "Open"},
+        fields=["slug", "title", "location", "employment_type", "description"],
+        order_by="posted_on desc, creation desc",
+    )
+    context.openings = [
+        {
+            "title": o.title,
+            "loc": o.location or "Indonesia",
+            "type": L(EMP.get(o.employment_type, {"id": o.employment_type or "", "en": o.employment_type or ""})),
+            "intern": o.employment_type == "Internship",
+            "blurb": _blurb(o.description),
+            "apply": "/apply?job=" + o.slug + context.q,
+        }
+        for o in db_openings
+    ]
+    context.jobs = {
+        "eyebrow": L({"id": "Bergabung dengan kami", "en": "Join us"}),
+        "title": L({"id": "Lowongan & magang terbuka", "en": "Open roles & internships"}),
+        "lead": L({"id": "Tumbuh bersama VernonCorp. Lihat posisi penuh waktu dan program magang kami — semua dijalankan dengan empati.",
+                   "en": "Grow with VernonCorp. See our full-time roles and internship programs — all run with empathy."}),
+        "apply": L({"id": "Lamar", "en": "Apply"}),
+        "all": L({"id": "Lihat semua karier", "en": "See all careers"}),
+        "empty": L({"id": "Belum ada lowongan saat ini — tapi tetap sapa kami.", "en": "No openings right now — but do say hello."}),
+        "intern_badge": L({"id": "Magang", "en": "Internship"}),
+        "scroll": L({"id": "Lowongan & Magang", "en": "Jobs & Internships"}),
+    }
     return context

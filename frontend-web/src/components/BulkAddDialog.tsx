@@ -285,7 +285,7 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-muted">{i + 1}</span>
                 <input className={field} value={r.toDo} onChange={(e) => setRow(i, { toDo: e.target.value })} placeholder="Task title…" />
-                <button onClick={() => removeRow(i)} className="rounded-full p-1 text-muted active:scale-95" aria-label="Remove task">
+                <button type="button" onClick={() => removeRow(i)} className="rounded-full p-1 text-muted active:scale-95" aria-label="Remove task">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -302,7 +302,7 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
           )
         })}
 
-        <button onClick={addRow} className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-line py-2 text-sm font-medium text-muted active:scale-95">
+        <button type="button" onClick={addRow} className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-line py-2 text-sm font-medium text-muted active:scale-95">
           <Plus className="h-4 w-4" /> Add task
         </button>
       </div>

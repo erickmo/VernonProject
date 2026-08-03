@@ -1,13 +1,17 @@
+import clsx from 'clsx'
 import { AlarmClock, CalendarCheck } from 'lucide-react'
 import { todayISO } from '@/lib/format'
 import type { MeetingListItem } from '@/lib/types'
 
 // The next un-done meetings coming up (today or later), soonest first, capped at `limit`.
 // scheduled_at is ISO "YYYY-MM-DD HH:MM:SS" so string compare/sort is chronological.
-export function upcomingMeetings(all: MeetingListItem[], limit = 5): MeetingListItem[] {
+// Pass `me` (session user) to restrict to meetings you organize or are invited to —
+// the personal reminder banner uses this; project-scoped callers omit it.
+export function upcomingMeetings(all: MeetingListItem[], limit = 5, me?: string): MeetingListItem[] {
   const today = todayISO()
   return all
     .filter((m) => m.scheduled_at != null && m.scheduled_at.slice(0, 10) >= today && m.status !== '✅ Done')
+    .filter((m) => !me || m.organizer === me || m.participants.includes(me))
     .sort((a, b) => (a.scheduled_at! < b.scheduled_at! ? -1 : 1))
     .slice(0, limit)
 }
@@ -31,10 +35,12 @@ export function MeetingReminder({
   meetings,
   onOpen,
   onOpenMeeting,
+  className,
 }: {
   meetings: MeetingListItem[]
   onOpen: () => void
   onOpenMeeting: (m: MeetingListItem) => void
+  className?: string // caller override (e.g. /w drops mb-6 inside the glance grid)
 }) {
   const count = meetings.length
 
@@ -44,7 +50,7 @@ export function MeetingReminder({
       <button
         type="button"
         onClick={onOpen}
-        className="mb-6 flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
+        className={clsx('mb-6 flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600', className)}
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400">
           <CalendarCheck className="h-5 w-5" />
@@ -60,9 +66,18 @@ export function MeetingReminder({
   return (
     <div
       role="alert"
-      className="mb-6 flex flex-col gap-3 rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600 p-4 text-white shadow-[0_12px_32px_-8px_rgba(244,63,94,0.7)] ring-2 ring-amber-400/50"
+      className={clsx('relative mb-6 flex flex-col gap-3 overflow-hidden rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600 p-4 text-white shadow-[0_12px_32px_-8px_rgba(244,63,94,0.7)] ring-2 ring-amber-400/50', className)}
     >
-      <button type="button" onClick={onOpen} className="flex items-center gap-3 text-left">
+      {/* Decorative dotted background — adds depth without an image asset. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.18) 1.5px, transparent 1.5px)',
+          backgroundSize: '18px 18px',
+        }}
+      />
+      <button type="button" onClick={onOpen} className="relative flex items-center gap-3 text-left">
         <span className="flex h-10 w-10 shrink-0 animate-pulse items-center justify-center rounded-full bg-white/25">
           <AlarmClock className="h-5 w-5" />
         </span>
@@ -74,7 +89,7 @@ export function MeetingReminder({
         </div>
       </button>
 
-      <ul className="flex flex-col gap-1.5">
+      <ul className="relative flex flex-col gap-1.5">
         {meetings.map((m) => (
           <li key={m.name}>
             <button

@@ -6,6 +6,15 @@ from vernon_project.www._i18n import base_context, norm_lang, pick
 
 ROUTE = "/careers"
 
+# employment_type (doctype Select) -> schema.org JobPosting employmentType enum
+EMP_SCHEMA = {
+    "Full-time": "FULL_TIME",
+    "Part-time": "PART_TIME",
+    "Contract": "CONTRACTOR",
+    "Internship": "INTERN",
+    "Freelance": "CONTRACTOR",
+}
+
 
 def _blurb(html, limit=180):
     """Plain-text snippet from a Text Editor HTML description."""
@@ -75,7 +84,7 @@ def get_context(context):
     p = lambda d: pick(d, lang)
     apply_url = "/contact" + ("?lang=en" if lang == "en" else "")
 
-    # ---- JSON-LD: breadcrumb + one JobPosting per role ------------------------
+    # ---- JSON-LD breadcrumb (JobPostings appended after roles resolve) --------
     jsonld = [
         {
             "@context": "https://schema.org",
@@ -86,32 +95,6 @@ def get_context(context):
             ],
         }
     ]
-    for r in ROLES:
-        jsonld.append(
-            {
-                "@context": "https://schema.org",
-                "@type": "JobPosting",
-                "title": p(r["title"]),
-                "description": p(r["blurb"]),
-                "employmentType": "FULL_TIME",
-                "datePosted": "2026-07-21",
-                "validThrough": "2026-12-31",
-                "directApply": True,
-                "hiringOrganization": {
-                    "@type": "Organization",
-                    "name": "VernonCorp",
-                    "sameAs": "https://project-www.vernon.id",
-                    "logo": "https://project-www.vernon.id/assets/vernon_project/frontend/favicon.svg",
-                },
-                "jobLocation": {
-                    "@type": "Place",
-                    "address": {"@type": "PostalAddress", "addressCountry": "ID", "addressRegion": p({"id": "Indonesia", "en": "Indonesia"})},
-                },
-                "applicantLocationRequirements": {"@type": "Country", "name": "Indonesia"},
-                "jobLocationType": "TELECOMMUTE",
-            }
-        )
-    context.page_jsonld = jsonld
 
     # ---- content --------------------------------------------------------------
     context.eyebrow = p({"id": "Bergabung dengan kami", "en": "Join us"})
@@ -218,6 +201,8 @@ def get_context(context):
                 "type": o.employment_type or "Full-time",
                 "blurb": _blurb(o.description),
                 "apply": "/apply?job=" + o.slug + lang_qs,
+                "_emp": EMP_SCHEMA.get(o.employment_type, "OTHER"),
+                "_date": str(o.posted_on) if o.posted_on else "2026-07-21",
             }
             for o in db_openings
         ]
@@ -229,10 +214,38 @@ def get_context(context):
                 "type": p(r["type"]),
                 "blurb": p(r["blurb"]),
                 "apply": apply_url,
+                "_emp": "FULL_TIME",
+                "_date": "2026-07-21",
             }
             for r in ROLES
         ]
     context.apply_label = p({"id": "Lamar", "en": "Apply"})
+
+    # JobPosting JSON-LD from the actual roles shown (real openings or fallback)
+    for r in context.roles:
+        jsonld.append(
+            {
+                "@context": "https://schema.org",
+                "@type": "JobPosting",
+                "title": r["title"],
+                "description": r["blurb"],
+                "employmentType": r["_emp"],
+                "datePosted": r["_date"],
+                "validThrough": "2026-12-31",
+                "directApply": True,
+                "hiringOrganization": {
+                    "@type": "Organization",
+                    "name": "VernonCorp",
+                    "sameAs": "https://project-www.vernon.id",
+                    "logo": "https://project-www.vernon.id/assets/vernon_project/frontend/favicon.svg",
+                },
+                "jobLocation": {
+                    "@type": "Place",
+                    "address": {"@type": "PostalAddress", "addressCountry": "ID", "addressLocality": r["loc"]},
+                },
+            }
+        )
+    context.page_jsonld = jsonld
 
     context.cta_title = p({"id": "Siap membuat orang bahagia bersama kami?", "en": "Ready to make people happy with us?"})
     context.cta_lead = p(

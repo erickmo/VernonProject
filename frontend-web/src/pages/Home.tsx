@@ -1,44 +1,38 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState, type ReactNode, type ComponentType } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   Sparkles, Plus, Gift, ShieldCheck, CheckCheck, CalendarClock,
-  FolderKanban, Flame, QrCode, BookOpen, Pause, Search, X, Clock, CalendarDays,
-  SearchX, AlertTriangle, Users, Wand2, User, KeyRound, Flag, ChevronRight, Heart,
+  Flame, QrCode, Pause, Search, X, Clock, CalendarDays, CalendarOff,
+  SearchX, AlertTriangle, Wand2, ChevronRight, Heart, LayoutList,
 } from 'lucide-react'
 import { valueOfDay } from '@/lib/values'
+import { verseTheme, verseCardStyle } from '@/lib/verseTheme'
 import { ValuesWelcome } from '@web/components/ValuesWelcome'
 import CheerPop from '@/components/CheerPop'
 import {
-  useBoot, useDashboard, useProjects, useWallet, useGamification, useMyAttendance,
+  useBoot, useDashboard, useWallet, useGamification, useMyAttendance,
   useMeetings, useWeeklyRecap, useClaimDaily, useDailyVerse, useHomeBanners,
   usePreviousShiftShortfall,
 } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
-import { applyProjectItemFilters, buildOptions, ESTIMATE_OPTIONS } from '@/lib/filters'
 import { ACTION_GROUPS, GROUP_ACCENT, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
 import { useHoldFeedback } from '@/hooks/useHoldFeedback'
-import { FilterButton, activeFilterCount, type FilterValue, type FilterDimension } from '@/components/FilterSheet'
-import { SearchableSelect } from '@/components/SearchableSelect'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MeetingSheet } from '@/components/MeetingSheet'
 import { TodoCard } from '@/components/TodoCard'
 import { ListProgress, ListSummary } from '@web/components/PlanList'
-import { Popover } from '@web/components/overlays/Popover'
 import { Segmented, EmptyState } from '@/components/ui'
 import { Page, rise } from '@web/components/Page'
 import { Button, ErrorState, Skeleton } from '@web/components/ui'
-import { CardList } from '@web/components/Card'
-import { PlanDayDrawer } from '@web/components/PlanDayDrawer'
 import { AutoPlanProgress } from '@/components/AutoPlanProgress'
 import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
 import { QuickCreate } from '@web/components/QuickCreate'
 import { DatePicker } from '@web/components/DatePicker'
 import { ThreeColProjectList } from '@web/components/ProjectColumns'
-import { usePersistentState } from '@web/lib/usePersistentState'
-import type { ProjectItem, BannerSlide, MeetingListItem, ProjectCard as ProjectCardType } from '@/lib/types'
+import type { ProjectItem, BannerSlide, MeetingListItem } from '@/lib/types'
 
 // ── small building blocks ─────────────────────────────────────────────────────
 
@@ -51,8 +45,8 @@ const ACCENT: Record<string, string> = {
   ink: 'text-ink',
 }
 
-// Accent → soft tile fill + icon-chip fill. Shared by StatTile / HeroChip / MiniStat
-// so every accented block (rose overdue, amber review, violet points…) reads as one system.
+// Accent → soft tile fill + icon-chip fill. Shared by QueueRow / MiniStat so every
+// accented block (rose overdue, amber review, violet points…) reads as one system.
 const TINT: Record<string, { tile: string; chip: string }> = {
   rose: { tile: 'bg-rose-50 dark:bg-rose-500/10', chip: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300' },
   amber: { tile: 'bg-amber-50 dark:bg-amber-500/10', chip: 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300' },
@@ -67,9 +61,9 @@ function SectionHead({ children }: { children: ReactNode }) {
   return <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted">{children}</h2>
 }
 
-// Soft-pop stat tile — the "at a glance" summary blocks that stand in for the
-// mobile Today Spotlight/progress hero.
-function StatTile({
+// Compact queue row — icon chip + label (+ sub), count as the hero on the right.
+// Fits the narrow "Queues" dashboard column where the big tile stacks far too tall.
+function QueueRow({
   label, value, sub, accent = 'ink', icon: Icon, to, onClick, active,
 }: {
   label: string; value: ReactNode; sub?: ReactNode; accent?: keyof typeof ACCENT
@@ -78,47 +72,25 @@ function StatTile({
   const t = TINT[accent] ?? TINT.ink
   const clickable = !!(to || onClick)
   const cls = clsx(
-    'group block rounded-2xl p-4 text-left shadow-card transition', t.tile,
-    active && 'ring-2 ring-brand-500',
+    'group flex items-center gap-2.5 rounded-lg p-2 text-left transition', t.tile,
+    active && 'ring-1 ring-brand-500',
     clickable && 'hover:-translate-y-0.5 active:scale-[0.99]',
   )
   const inner = (
     <>
-      <div className="flex items-center justify-between">
-        {Icon && (
-          <span className={clsx('flex h-8 w-8 items-center justify-center rounded-xl', t.chip)}>
-            <Icon className="h-4 w-4" />
-          </span>
-        )}
-        {clickable && <ChevronRight className="h-4 w-4 text-muted/40 transition group-hover:translate-x-0.5 group-hover:text-muted" />}
-      </div>
-      <div className={clsx('mt-3 font-display text-3xl font-semibold tabular-nums leading-none', ACCENT[accent])}>{value}</div>
-      <div className="mt-1 text-xs font-medium text-muted">{label}</div>
-      {sub != null && <div className="text-xs text-muted">{sub}</div>}
+      {Icon && (
+        <span className={clsx('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', t.chip)}>
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{label}</span>
+      {sub != null && <span className="shrink-0 truncate text-[11px] font-medium text-muted">{sub}</span>}
+      <span className={clsx('shrink-0 font-display text-xl font-semibold tabular-nums leading-none', ACCENT[accent])}>{value}</span>
     </>
   )
   if (to) return <Link to={to} className={cls}>{inner}</Link>
   if (onClick) return <button type="button" onClick={onClick} className={clsx(cls, 'w-full')}>{inner}</button>
   return <div className={cls}>{inner}</div>
-}
-
-// Actionable count pill for the hero — one tap jumps to that queue.
-function HeroChip({
-  icon: Icon, accent, label, n, onClick,
-}: {
-  icon: ComponentType<{ className?: string }>; accent: keyof typeof ACCENT; label: string; n: number; onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={clsx('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95', (TINT[accent] ?? TINT.ink).chip)}
-    >
-      <Icon className="h-4 w-4" />
-      <span className="tabular-nums">{n}</span>
-      <span className="font-medium opacity-80">{label}</span>
-    </button>
-  )
 }
 
 // Today-momentum ring for the hero — done-minutes as a proportion of the day's
@@ -166,7 +138,7 @@ function Card({
     </div>
   )
   return (
-    <div className={clsx('rounded-2xl bg-surface p-4 shadow-card', className)}>
+    <div className={clsx('rounded-2xl border border-line bg-surface p-4', className)}>
       {(title || action) && (
         <div className="mb-3 flex items-center justify-between gap-2">
           {heading}
@@ -176,65 +148,6 @@ function Card({
       {children}
     </div>
   )
-}
-
-// Brand nudge banner — mirrors Today's per-lens ActionBanner (approvals to owe).
-function ActionBanner({
-  icon: Icon, text, onClick,
-}: {
-  icon: ComponentType<{ className?: string }>; text: string; onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-2xl bg-brand-50 p-4 text-left shadow-card transition active:scale-[0.99] dark:bg-brand-500/15"
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="flex-1 text-sm font-semibold text-brand-800 dark:text-brand-300">{text}</span>
-      <ChevronRight className="h-5 w-5 text-brand-400" />
-    </button>
-  )
-}
-
-// One project as a soft-pop card (single source — dedupes the old steer/member copies).
-function ProjectRow({ p }: { p: ProjectCardType }) {
-  const pct = p.item_total ? Math.round((p.item_done / p.item_total) * 100) : 0
-  return (
-    <Link
-      to={`/project/${encodeURIComponent(p.name)}`}
-      className="block rounded-2xl bg-surface p-4 shadow-card transition hover:bg-hover/[0.03] active:scale-[0.99] dark:hover:bg-hover/[0.04]"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate text-sm font-semibold text-ink">{p.project_name}</span>
-        <span className="shrink-0 text-xs tabular-nums text-muted">{pct}%</span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.08]">
-        <div className="h-full rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
-      </div>
-      {(p.overdue > 0 || p.review > 0) && (
-        <div className="mt-1.5 flex gap-2 text-xs">
-          {p.overdue > 0 && <span className="text-rose-600 dark:text-rose-400">{p.overdue} overdue</span>}
-          {p.review > 0 && <span className="text-amber-600 dark:text-amber-400">{p.review} to review</span>}
-        </div>
-      )}
-    </Link>
-  )
-}
-
-function ProjectLens({ items, empty }: { items: ProjectCardType[]; empty: string }) {
-  if (!items.length) return <EmptyState icon={FolderKanban} title="Nothing here" subtitle={empty} />
-  return <CardList>{items.map((p) => <ProjectRow key={p.name} p={p} />)}</CardList>
-}
-
-type Lens = 'me' | 'owned' | 'led' | 'in'
-const LENS_META: Record<Lens, { label: string; icon: ComponentType<{ className?: string }> }> = {
-  me: { label: 'For me', icon: User },
-  owned: { label: 'Owned', icon: KeyRound },
-  led: { label: 'Led', icon: Flag },
-  in: { label: "I'm in", icon: Users },
 }
 
 // Home work view: axis (Plan/Deadline/Waiting) + sub-tab within Plan/Deadline. Mobile Today parity.
@@ -250,29 +163,40 @@ const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
 // Shortcut tiles — shared ACTION_GROUPS rendered as tinted category sections of
 // gradient tiles (web-styled wrapping grid; the mobile /m app scrolls each row).
 function ShortcutGrid() {
+  // Tabbed groups: only the active category's tiles render, so the block stays
+  // one row tall and "Your work" sits higher. Group headers become the tabs.
+  const [tab, setTab] = useState(0)
+  const groups = ACTION_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter((a) => !MOBILE_ONLY.has(a.to.split('?')[0])) }))
+    .filter((g) => g.items.length)
+  const active = groups[Math.min(tab, groups.length - 1)]
   return (
-    <div className="rounded-2xl bg-surface p-4 shadow-card sm:p-5">
+    <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
         <Sparkles className="h-4 w-4" /> Shortcuts
       </h2>
-      <div className="space-y-5">
-        {ACTION_GROUPS.map((g) => {
-          const items = g.items.filter((a) => !MOBILE_ONLY.has(a.to.split('?')[0]))
-          if (!items.length) return null
-          return (
-            <div key={g.title}>
-              <h3 className={clsx('mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider', GROUP_ACCENT[g.hue])}>
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {g.title}
-              </h3>
-              <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
-                {items.map((a) => (
-                  <ShortcutTile key={a.title} action={a} tile={g.tile} />
-                ))}
-              </div>
-            </div>
-          )
-        })}
+      <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 border-b border-line">
+        {groups.map((g, i) => (
+          <button
+            key={g.title}
+            type="button"
+            onClick={() => setTab(i)}
+            className={clsx(
+              '-mb-px flex items-center gap-1.5 border-b-2 pb-2 text-xs font-bold uppercase tracking-wider transition',
+              i === Math.min(tab, groups.length - 1)
+                ? clsx('border-current', GROUP_ACCENT[g.hue])
+                : 'border-transparent text-muted hover:text-ink',
+            )}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {g.title}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12">
+        {active.items.map((a) => (
+          <ShortcutTile key={a.title} action={a} tile={active.tile} />
+        ))}
       </div>
     </div>
   )
@@ -308,33 +232,63 @@ function ShortcutTile({ action: a, tile }: { action: ActionItem; tile: string })
   )
 }
 
+// Stat-chip sub-tabs — the count is the hero, colored by urgency (today=indigo,
+// overdue=red, past=amber, upcoming=slate). Doubles as a mini KPI strip you tap
+// to filter. Replaces the flat segmented sub-tabs on the Plan/Deadline axes.
+const STAT_TONE = {
+  brand: { on: 'border-brand-400 dark:border-brand-500/50', bar: 'bg-brand-500', num: 'text-brand-600 dark:text-brand-400' },
+  rose: { on: 'border-rose-400 dark:border-rose-500/50', bar: 'bg-rose-500', num: 'text-rose-600 dark:text-rose-400' },
+  amber: { on: 'border-amber-400 dark:border-amber-500/50', bar: 'bg-amber-500', num: 'text-amber-600 dark:text-amber-400' },
+  slate: { on: 'border-slate-400 dark:border-slate-500/50', bar: 'bg-slate-400', num: 'text-ink' },
+} as const
+
+function StatTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { key: T; label: string; count: number; tone: keyof typeof STAT_TONE; icon: ComponentType<{ className?: string }> }[]
+  value: T
+  onChange: (k: T) => void
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {tabs.map((t) => {
+        const on = t.key === value
+        const c = STAT_TONE[t.tone]
+        const Icon = t.icon
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onChange(t.key)}
+            className={clsx(
+              'relative overflow-hidden rounded-xl border bg-surface p-2.5 text-left transition active:scale-[0.98]',
+              on ? c.on : 'border-line hover:border-muted/40',
+            )}
+          >
+            <span className={clsx('absolute inset-y-0 left-0 w-1', on ? c.bar : 'bg-transparent')} />
+            <span className={clsx('block pl-1 text-xl font-extrabold leading-none tabular-nums', on ? c.num : 'text-muted')}>{t.count}</span>
+            <span className={clsx('mt-1.5 flex items-center gap-1 pl-1 text-xs font-semibold', on ? 'text-ink' : 'text-muted')}>
+              <Icon className="h-3 w-3" />
+              {t.label}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── skeleton ──────────────────────────────────────────────────────────────────
 
 function HomeSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-9 w-64" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-3xl" />)}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
-      </div>
-    </div>
-  )
-}
-
-function VerseCard() {
-  const { data: verse } = useDailyVerse()
-  if (!verse) return null
-  return (
-    <div className="rounded-2xl bg-amber-50 p-5 shadow-card dark:bg-amber-500/10">
-      <div className="mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
-        <BookOpen className="h-4 w-4" />
-        <span className="text-xs font-semibold uppercase tracking-wide">Ayat Hari Ini</span>
-      </div>
-      <p className="max-w-2xl text-base leading-relaxed text-amber-950 dark:text-amber-50">"{verse.text}"</p>
-      <p className="mt-2 text-sm font-medium text-amber-700/80 dark:text-amber-400/80">— {verse.reference}</p>
+      <Skeleton className="h-40 rounded-2xl" />
     </div>
   )
 }
@@ -358,7 +312,7 @@ function WebBanners({ slides }: { slides: BannerSlide[] }) {
     else window.open(link, '_blank', 'noopener')
   }
   return (
-    <div className="relative max-w-3xl overflow-hidden rounded-2xl shadow-card">
+    <div className="relative max-w-3xl overflow-hidden rounded-2xl border border-line">
       <div
         onScroll={(e) => setIdx(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
         className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -391,40 +345,25 @@ function WebBanners({ slides }: { slides: BannerSlide[] }) {
 export default function Home() {
   const boot = useBoot()
   const dash = useDashboard()
-  const projects = useProjects()
   const wallet = useWallet()
   const gam = useGamification()
   const attendance = useMyAttendance()
   const meetings = useMeetings()
   const recap = useWeeklyRecap()
+  const { data: verse } = useDailyVerse()
   const claim = useClaimDaily()
   const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
   const banners = useHomeBanners()
   const shortfall = usePreviousShiftShortfall()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
 
-  const [lens, setLens] = useState<Lens>('me')
   const [axis, setAxis] = useState<Axis>('plan')
   const [planSub, setPlanSub] = useState<PlanSub>('today')
   const [deadlineSub, setDeadlineSub] = useState<DeadlineSub>('today')
   const [pickedDate, setPickedDate] = useState('')
-  const [proj1, setProj1] = usePersistentState('home.proj1') // column 1 filter ('' = all)
-  const [proj2, setProj2] = usePersistentState('home.proj2') // project focused in column 2
-  const [proj3, setProj3] = usePersistentState('home.proj3') // project focused in column 3
-  const [proj4, setProj4] = usePersistentState('home.proj4') // project focused in column 4 (xl only)
   const [query, setQuery] = useState('')
-  const [filters, setFilters] = useState<FilterValue>({})
-  const [filterOpen, setFilterOpen] = useState(false)
-  const filterRef = useRef<HTMLSpanElement>(null)
-  const [planOpen, setPlanOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
   const autoFill = useAutoFillPlan()
-
-  // Deep-link: /?plan=1 (e.g. the /help "Plan your day" card) opens the plan flow.
-  useEffect(() => {
-    if (params.get('plan') === '1') setPlanOpen(true)
-  }, [params])
 
   const allTasks: ProjectItem[] = useMemo(() => {
     const d = dash.data
@@ -433,7 +372,7 @@ export default function Home() {
 
   const focusedIds = useFocusedTaskIds()
   const activeTodos = useMemo(() => allTasks.filter((t) => !t.is_waiting), [allTasks])
-  const filteredActive = useMemo(() => applyProjectItemFilters(activeTodos, filters), [activeTodos, filters])
+  const filteredActive = activeTodos
 
   // Plan-axis buckets by allocation date: today / past (slipped, still planned) /
   // upcoming. Mutually exclusive, precedence Today > Past > Upcoming (mobile parity).
@@ -456,21 +395,11 @@ export default function Home() {
   )
   const plannedTodayMin = planGroups.today.reduce((s, t) => s + (t.today_allocation || 0), 0)
 
-  const planCandidates = useMemo(() => {
-    const d = dash.data
-    if (!d) return []
-    const byId = new Map<string, ProjectItem>()
-    for (const t of [...d.due_today, ...d.overdue]) byId.set(t.name, t)
-    for (const t of d.upcoming) if ((t.today_allocation || 0) > 0) byId.set(t.name, t)
-    return [...byId.values()]
-  }, [dash.data])
-
   // Silent auto-plan toward the daily minimum (same logic as Auto-plan button).
   useAutoPlanToday({ due_today: dash.data?.due_today, overdue: dash.data?.overdue, upcoming: dash.data?.upcoming })
 
   // KPI tiles jump to the "For me" Deadline axis on a given sub-tab.
   const goDeadline = (sub: DeadlineSub) => {
-    setLens('me')
     setAxis('deadline')
     setDeadlineSub(sub)
     setPickedDate('')
@@ -495,21 +424,11 @@ export default function Home() {
   // Deadline-axis lists (filter → sort). Overdue newest-first (byDeadlineDesc); the
   // rest nearest-first. Waiting parked list sorted by deadline.
   const deadlineLists: Record<DeadlineSub, ProjectItem[]> = {
-    today: applyProjectItemFilters(dueTodayActive, filters).slice().sort(byDeadlineAsc),
-    overdue: applyProjectItemFilters(overdueActive, filters).slice().sort(byDeadlineDesc),
-    upcoming: applyProjectItemFilters(upcomingActive, filters).slice().sort(byDeadlineAsc),
+    today: dueTodayActive.slice().sort(byDeadlineAsc),
+    overdue: overdueActive.slice().sort(byDeadlineDesc),
+    upcoming: upcomingActive.slice().sort(byDeadlineAsc),
   }
   const waitingList = waiting.slice().sort(byDeadlineAsc)
-
-  // Multi-dimension filters (project/brand/owner/leader/estimate) — options derive
-  // from the active (non-waiting) work set.
-  const filterDims: FilterDimension[] = [
-    { key: 'project', label: 'Project', options: buildOptions(activeTodos, (t) => t.project, (t) => t.project_name, (t) => t.project_detail_title) },
-    { key: 'brand', label: 'Brand', options: buildOptions(activeTodos, (t) => t.brand, (t) => t.brand) },
-    { key: 'owner', label: 'Project Owner', options: buildOptions(activeTodos, (t) => t.project_owner, (t) => t.project_owner_name) },
-    { key: 'leader', label: 'Project Leader', options: buildOptions(activeTodos, (t) => t.project_leader, (t) => t.project_leader_name) },
-    { key: 'estimate', label: 'Estimated time', options: ESTIMATE_OPTIONS },
-  ]
 
   // Shared list renderer. Column 1 = the current sorted flat list. Columns 2-3 =
   // the same todos re-grouped by project (a SearchableSelect focuses one project)
@@ -533,19 +452,12 @@ export default function Home() {
       <div className="mt-3">
         <ThreeColProjectList
           items={shown}
+          storageKey="home"
           renderCard={(t, i) => (
             <div key={t.name} {...rise(i)}>
               <TodoCard todo={t} />
             </div>
           )}
-          proj1={proj1}
-          setProj1={setProj1}
-          proj2={proj2}
-          setProj2={setProj2}
-          proj3={proj3}
-          setProj3={setProj3}
-          proj4={proj4}
-          setProj4={setProj4}
         />
       </div>
     )
@@ -571,36 +483,20 @@ export default function Home() {
     )
   }
 
-  // review split (approvals I owe) — surfaced via the per-lens ActionBanners.
-  const review = d.review ?? []
-  const ownerApprovals = review.filter((t) => t.status_key === 'checked')
-  const leadChecks = review.filter((t) => t.status_key === 'done')
-
   const today = todayISO()
-  // next 5 un-done meetings (today or later) drive the vibrant top reminder
-  const upcoming = upcomingMeetings(meetings.data?.meetings ?? [])
+  // next 5 un-done meetings (today or later) you organize or are invited to drive the vibrant top reminder
+  const upcoming = upcomingMeetings(meetings.data?.meetings ?? [], 5, boot.data?.user)
 
   // attendance — only surfaces when the module is actually in use for this user
   const attRows = attendance.data?.rows ?? []
   const attToday = attRows.find((r) => r.attendance_date === today) ?? attRows[0]
-
-  // Lens project sets — mirror mobile Today's For me / Owned / Led / I'm in.
-  const allProjects = projects.data ?? []
-  const owned = allProjects.filter((p) => p.is_owner)
-  const led = allProjects.filter((p) => p.is_leader)
-  const memberIn = allProjects.filter((p) => p.is_member && !p.is_owner && !p.is_leader)
-  const lensCount: Record<Lens, number> = {
-    me: activeTodos.length,
-    owned: owned.length,
-    led: led.length,
-    in: memberIn.length,
-  }
 
   const daily = gam.data?.daily
   const w = wallet.data
   const r = recap.data
 
   const needCount = counts.overdue + counts.due_today + counts.review
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
@@ -616,13 +512,13 @@ export default function Home() {
     <Page className="space-y-6">
       <CheerPop />
       <ValuesWelcome />
-      {/* Hero — command-center greeting; today's demands surface as tappable focal chips */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-50 via-surface to-surface p-5 shadow-card dark:from-brand-500/10 dark:via-slate-900 dark:to-slate-900 sm:p-6">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl dark:bg-brand-500/20" />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
+      {/* First row — 4 columns: Hello + Ayat · Meetings · This week · Queues */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-stretch">
+        {/* 1 · Hello + Ayat */}
+        <div className="flex flex-col gap-3">
+          <div className="rounded-3xl border border-line bg-gradient-to-br from-brand-50 via-surface to-surface p-4 dark:from-brand-500/10 dark:via-slate-900 dark:to-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{dateStr}</p>
-            <h1 className="mt-1 font-display text-2xl font-semibold text-ink sm:text-3xl">{firstName ? `${greeting}, ${firstName}` : greeting}</h1>
+            <h1 className="mt-1 font-display text-2xl font-semibold text-ink">{firstName ? `${greeting}, ${firstName}` : greeting}</h1>
             <p className="mt-1 text-sm text-muted">
               {needCount === 0
                 ? `You're all caught up${daily?.streak ? ` — 🔥 ${daily.streak}-day streak` : ''}.${counts.upcoming > 0 ? '' : ' Enjoy the clear plate.'}`
@@ -632,33 +528,85 @@ export default function Home() {
             <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-600/80 dark:text-brand-400/80">
               <Heart className="h-3 w-3 shrink-0" fill="currentColor" /> {valueOfDay()}
             </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-            {showTodayRing && <TodayRing pct={todayPct} doneCount={counts.completed_today} doneMin={doneMinToday} />}
-            <div className="flex items-center gap-2">
-              {daily?.can_claim && (
-                <Button variant="secondary" size="sm" onClick={() => claim.mutate()} disabled={claim.isPending}>
-                  <Gift className="h-4 w-4" /> Claim +{daily.claimable}
+            <div className="mt-3 flex items-center gap-3">
+              {showTodayRing && <TodayRing pct={todayPct} doneCount={counts.completed_today} doneMin={doneMinToday} />}
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {daily?.can_claim && (
+                  <Button variant="secondary" size="sm" className="w-full" onClick={() => claim.mutate()} disabled={claim.isPending}>
+                    <Gift className="h-4 w-4" /> Claim +{daily.claimable}
+                  </Button>
+                )}
+                <Button variant="primary" size="sm" className="w-full" onClick={() => setQuickOpen(true)}>
+                  <Plus className="h-4 w-4" /> New task
                 </Button>
-              )}
-              <Button variant="primary" size="sm" onClick={() => setQuickOpen(true)}>
-                <Plus className="h-4 w-4" /> New task
-              </Button>
+              </div>
             </div>
           </div>
+
+          {/* Ayat — daily verse, themed by religion */}
+          {verse && (() => {
+            const vt = verseTheme(b?.employee?.religion)
+            const VerseIcon = vt.Icon
+            return (
+              <div className="relative flex grow flex-col justify-center overflow-hidden rounded-3xl p-4 text-white ring-1 ring-white/15" style={verseCardStyle(vt)}>
+                <VerseIcon aria-hidden strokeWidth={1.25} className="pointer-events-none absolute -bottom-10 -right-8 h-56 w-56 rotate-6 text-white/10" />
+                <div className="relative">
+                  <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/20 px-2.5 py-1 backdrop-blur-sm">
+                    <VerseIcon className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-bold uppercase tracking-wide">Ayat Hari Ini</span>
+                  </div>
+                  <p className="text-sm font-medium leading-relaxed drop-shadow-sm">&ldquo;{verse.text}&rdquo;</p>
+                  <p className="mt-2 text-sm font-semibold text-white/85">— {verse.reference}</p>
+                </div>
+              </div>
+            )
+          })()}
         </div>
-        {needCount > 0 ? (
-          <div className="relative mt-4 flex flex-wrap gap-2">
-            {counts.overdue > 0 && <HeroChip icon={AlertTriangle} accent="rose" label="overdue" n={counts.overdue} onClick={() => goDeadline('overdue')} />}
-            {counts.due_today > 0 && <HeroChip icon={Clock} accent="brand" label="due today" n={counts.due_today} onClick={() => goDeadline('today')} />}
-            {counts.review > 0 && <HeroChip icon={ShieldCheck} accent="amber" label="to review" n={counts.review} onClick={() => navigate('/review')} />}
+
+        {/* 2 · Meetings */}
+        <MeetingReminder
+          meetings={upcoming}
+          onOpen={() => navigate('/meetings')}
+          onOpenMeeting={setOpenMeeting}
+          className="!mb-0 !shadow-none"
+        />
+
+        {/* 3 · This week */}
+        <div className="flex flex-col rounded-3xl border border-line bg-surface p-3.5">
+          <div className="mb-2.5 flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-muted" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">This week</h2>
           </div>
-        ) : counts.upcoming > 0 ? (
-          // Caught up: no dead-end — offer the forward look at what's coming.
-          <div className="relative mt-4">
-            <HeroChip icon={CalendarDays} accent="brand" label="upcoming" n={counts.upcoming} onClick={() => goDeadline('upcoming')} />
+          {r ? (
+            <div className="grid flex-1 content-center grid-cols-2 gap-2.5">
+              <MiniStat label="Completed" value={r.completed} accent="emerald" icon={CheckCheck} />
+              <MiniStat label="Focused" value={formatEstimate(r.minutes)} accent="brand" icon={Clock} />
+              <MiniStat label="Points" value={`+${r.points}`} accent="violet" icon={Sparkles} />
+              <MiniStat label="Streak" value={r.streak} accent="amber" icon={Flame} />
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center py-6 text-center text-sm text-muted">
+              No activity yet this week.
+            </div>
+          )}
+        </div>
+
+        {/* 4 · Queues */}
+        <div className="flex flex-col rounded-3xl border border-line bg-surface p-3.5">
+          <div className="mb-2.5 flex items-center gap-2">
+            <LayoutList className="h-4 w-4 text-muted" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Queues</h2>
           </div>
-        ) : null}
+          <div className="flex flex-1 flex-col gap-2">
+            <QueueRow label="Overdue" value={counts.overdue} accent="rose" icon={AlertTriangle} active={axis === 'deadline' && deadlineSub === 'overdue'} onClick={() => goDeadline('overdue')} />
+            <QueueRow label="Due today" value={counts.due_today} accent="brand" icon={Clock} active={axis === 'deadline' && deadlineSub === 'today'} onClick={() => goDeadline('today')} />
+            <QueueRow label="Upcoming" value={counts.upcoming} icon={CalendarDays} active={axis === 'deadline' && deadlineSub === 'upcoming'} onClick={() => goDeadline('upcoming')} />
+            <QueueRow label="To review" value={counts.review} accent="amber" icon={ShieldCheck} to="/review" />
+            <QueueRow label="Done today" value={counts.completed_today} accent="emerald" icon={CheckCheck} sub={counts.completed_minutes_today > 0 ? formatEstimate(counts.completed_minutes_today) : undefined} />
+            <QueueRow label="Points" value={w ? w.balance.toLocaleString() : '—'} accent="violet" icon={Sparkles} sub={w && w.today_earned ? `+${w.today_earned} today` : undefined} to="/wallet" />
+            {b?.leave && <QueueRow label="Sisa cuti" value={b.leave.remaining} accent="rose" icon={CalendarOff} sub={`/ ${b.leave.quota} hari`} to="/attendance/cuti" />}
+          </div>
+        </div>
       </div>
 
       {/* Managed promo banners — from Settings → Home Banners */}
@@ -666,7 +614,7 @@ export default function Home() {
 
       {/* DANGER: previous shift day fell below the daily-minimum minutes setting */}
       {shortfall.data?.under && (
-        <div role="alert" className="flex items-start gap-3 rounded-2xl bg-rose-50 p-4 shadow-card dark:bg-rose-500/10">
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-500/10">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Daily minimum missed</p>
@@ -680,66 +628,19 @@ export default function Home() {
         </div>
       )}
 
-      {/* Meeting reminder (left) + at-a-glance stats (right) */}
-      <section className="space-y-3">
-        <SectionHead>At a glance</SectionHead>
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-          <MeetingReminder
-            meetings={upcoming}
-            onOpen={() => navigate('/meetings')}
-            onOpenMeeting={setOpenMeeting}
-          />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatTile label="Overdue" value={counts.overdue} accent="rose" icon={AlertTriangle} active={lens === 'me' && axis === 'deadline' && deadlineSub === 'overdue'} onClick={() => goDeadline('overdue')} />
-            <StatTile label="Due today" value={counts.due_today} accent="brand" icon={Clock} active={lens === 'me' && axis === 'deadline' && deadlineSub === 'today'} onClick={() => goDeadline('today')} />
-            <StatTile label="Upcoming" value={counts.upcoming} icon={CalendarDays} active={lens === 'me' && axis === 'deadline' && deadlineSub === 'upcoming'} onClick={() => goDeadline('upcoming')} />
-            <StatTile label="To review" value={counts.review} accent="amber" icon={ShieldCheck} to="/review" />
-            <StatTile label="Done today" value={counts.completed_today} accent="emerald" icon={CheckCheck} sub={counts.completed_minutes_today > 0 ? formatEstimate(counts.completed_minutes_today) : undefined} />
-            <StatTile label="Points" value={w ? w.balance.toLocaleString() : '—'} accent="violet" icon={Sparkles} sub={w && w.today_earned ? `+${w.today_earned} today` : undefined} to="/wallet" />
-          </div>
-        </div>
-      </section>
 
       {/* Shortcut tiles — mobile QuickActions parity */}
       <ShortcutGrid />
 
-      <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start xl:gap-6 xl:space-y-0">
+      <div className={clsx('space-y-6', attToday && 'xl:grid xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start xl:gap-6 xl:space-y-0')}>
         <div className="min-w-0 space-y-6">
           <SectionHead>Your work</SectionHead>
-          {/* Lens switcher — For me / Owned / Led / I'm in (mobile Today parity) */}
-          <div className="no-scrollbar -mx-1 -mt-3 flex gap-2 overflow-x-auto px-1">
-            {(Object.keys(LENS_META) as Lens[]).map((k) => {
-              const M = LENS_META[k]
-              const Icon = M.icon
-              const active = lens === k
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setLens(k)}
-                  className={clsx(
-                    'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold shadow-card transition active:scale-95',
-                    active ? 'bg-brand-600 text-white' : 'bg-surface text-muted hover:text-ink',
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {M.label}
-                  <span className={clsx('rounded-full px-1.5 text-xs font-bold tabular-nums', active ? 'bg-white/25' : 'bg-black/[0.05] dark:bg-white/[0.08]')}>
-                    {lensCount[k]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* ----- For me: Plan / Deadline / Waiting axis (mobile parity) ----- */}
-          {lens === 'me' && (
-            <div id="my-work" className="scroll-mt-4 space-y-4">
+          <div id="my-work" className="scroll-mt-4 space-y-4">
               {/* Work well — groups the toggle toolbar with its todo list in one recessed
                   tray so the two read as a single unit; the white cards float inside it. */}
               <div className="space-y-3 rounded-[1.75rem] border border-line bg-surface p-2.5 sm:p-3">
               {/* ---- Unified work toolbar: axis + search (top) · sub-tabs + Pick + filter (refine) ---- */}
-              <div className="rounded-2xl bg-surface shadow-card">
+              <div className="rounded-2xl border border-line bg-surface">
                 {/* Top: axis (Plan · Deadline · Waiting) + inline search */}
                 <div className="flex flex-col gap-2 p-2 sm:flex-row sm:items-center">
                   <div className="sm:shrink-0">
@@ -785,11 +686,11 @@ export default function Home() {
                   <div className="flex items-center gap-2 border-t border-line p-2">
                     <div className="min-w-0 flex-1">
                       {axis === 'plan' ? (
-                        <Segmented
-                          options={[
-                            { value: 'today', label: 'Today', badge: planGroups.today.length || undefined },
-                            { value: 'past', label: 'Past', badge: planGroups.past.length || undefined },
-                            { value: 'upcoming', label: 'Upcoming', badge: planGroups.upcoming.length || undefined },
+                        <StatTabs<PlanSub>
+                          tabs={[
+                            { key: 'today', label: 'Today', count: planGroups.today.length, tone: 'brand', icon: Clock },
+                            { key: 'past', label: 'Past', count: planGroups.past.length, tone: 'amber', icon: CalendarOff },
+                            { key: 'upcoming', label: 'Upcoming', count: planGroups.upcoming.length, tone: 'slate', icon: CalendarClock },
                           ]}
                           value={pickedDate ? ('' as PlanSub) : planSub}
                           onChange={(k) => {
@@ -798,11 +699,11 @@ export default function Home() {
                           }}
                         />
                       ) : (
-                        <Segmented
-                          options={[
-                            { value: 'today', label: 'Today', badge: deadlineLists.today.length || undefined },
-                            { value: 'overdue', label: 'Overdue', badge: deadlineLists.overdue.length || undefined },
-                            { value: 'upcoming', label: 'Upcoming', badge: deadlineLists.upcoming.length || undefined },
+                        <StatTabs<DeadlineSub>
+                          tabs={[
+                            { key: 'today', label: 'Today', count: deadlineLists.today.length, tone: 'brand', icon: Clock },
+                            { key: 'overdue', label: 'Overdue', count: deadlineLists.overdue.length, tone: 'rose', icon: AlertTriangle },
+                            { key: 'upcoming', label: 'Upcoming', count: deadlineLists.upcoming.length, tone: 'slate', icon: CalendarClock },
                           ]}
                           value={deadlineSub}
                           onChange={setDeadlineSub}
@@ -821,34 +722,6 @@ export default function Home() {
                         )}
                       />
                     )}
-                    <div className="relative shrink-0">
-                      <span ref={filterRef}>
-                        <FilterButton count={activeFilterCount(filters)} onClick={() => setFilterOpen((o) => !o)} />
-                      </span>
-                      <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchorRef={filterRef}>
-                        <div className="space-y-4">
-                          {filterDims.map((dd) => (
-                            <div key={dd.key} className="space-y-1">
-                              <div className="text-xs font-semibold text-muted">{dd.label}</div>
-                              <SearchableSelect
-                                value={filters[dd.key] ?? ''}
-                                onChange={(v) => setFilters((f) => ({ ...f, [dd.key]: v }))}
-                                options={dd.options.map((o) => ({
-                                  value: o.value,
-                                  label: o.count != null ? `${o.label} (${o.count})` : o.label,
-                                  keywords: o.keywords,
-                                }))}
-                                allowClear
-                                placeholder="Any"
-                              />
-                            </div>
-                          ))}
-                          <button onClick={() => setFilters({})} className="text-sm text-brand-600">
-                            Clear all
-                          </button>
-                        </div>
-                      </Popover>
-                    </div>
                   </div>
                 )}
               </div>
@@ -859,8 +732,8 @@ export default function Home() {
                   <div className="flex items-stretch gap-2">
                     <button
                       type="button"
-                      onClick={() => setPlanOpen(true)}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-brand-50 p-3.5 text-left shadow-card transition active:scale-[0.99] dark:bg-brand-500/15"
+                      onClick={() => navigate('/plan')}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-brand-50 p-3.5 text-left transition active:scale-[0.99] dark:bg-brand-500/15"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
                         <Sparkles className="h-5 w-5" />
@@ -878,7 +751,7 @@ export default function Home() {
                       onClick={() => autoFill.run({ due_today: d.due_today, overdue: d.overdue, upcoming: d.upcoming })}
                       disabled={autoFill.saving}
                       aria-label="Auto-plan my day"
-                      className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-surface text-brand-700 shadow-card transition active:scale-95 disabled:opacity-50 dark:text-brand-300"
+                      className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-surface text-brand-700 transition active:scale-95 disabled:opacity-50 dark:text-brand-300"
                     >
                       <Wand2 className={clsx('h-5 w-5', autoFill.saving && 'animate-pulse')} />
                       <span className="text-xs font-semibold">{autoFill.saving ? 'Planning…' : 'Auto-plan'}</span>
@@ -929,58 +802,11 @@ export default function Home() {
               )}
               </div>
             </div>
-          )}
-
-          {/* ----- Owned ----- */}
-          {lens === 'owned' && (
-            <div className="space-y-4">
-              {ownerApprovals.length > 0 && (
-                <ActionBanner
-                  icon={ShieldCheck}
-                  text={`${ownerApprovals.length} todo${ownerApprovals.length > 1 ? 's' : ''} awaiting your final approval`}
-                  onClick={() => navigate('/review')}
-                />
-              )}
-              <ProjectLens items={owned} empty="You don't own any projects yet." />
-            </div>
-          )}
-
-          {/* ----- Led ----- */}
-          {lens === 'led' && (
-            <div className="space-y-4">
-              {leadChecks.length > 0 && (
-                <ActionBanner
-                  icon={CheckCheck}
-                  text={`${leadChecks.length} todo${leadChecks.length > 1 ? 's' : ''} to check & approve`}
-                  onClick={() => navigate('/review')}
-                />
-              )}
-              <ProjectLens items={led} empty="You're not leading any projects yet." />
-            </div>
-          )}
-
-          {/* ----- I'm in ----- */}
-          {lens === 'in' && <ProjectLens items={memberIn} empty="You're not a member of other projects." />}
         </div>
 
-        <aside className="space-y-6">
-          {/* Weekly recap — mirrors mobile Today's RecapCard */}
-          {r && (
-            <Card title="This week" icon={CalendarClock}>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-2">
-                <MiniStat label="Completed" value={r.completed} accent="emerald" icon={CheckCheck} />
-                <MiniStat label="Focused" value={formatEstimate(r.minutes)} accent="brand" icon={Clock} />
-                <MiniStat label="Points" value={`+${r.points}`} accent="violet" icon={Sparkles} />
-                <MiniStat label="Streak" value={r.streak} accent="amber" icon={Flame} />
-              </div>
-            </Card>
-          )}
-
-          {/* Daily verse — only when the user enabled Ayat Harian */}
-          <VerseCard />
-
-          {/* Attendance — surfaces only when the module is in use (web extra, kept) */}
-          {attToday && (
+        {attToday && (
+          <aside className="space-y-6">
+            {/* Attendance — surfaces only when the module is in use (web extra, kept) */}
             <Card title="Attendance" icon={QrCode} to={canManage(b) ? '/attendance-report' : undefined}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-ink">{attToday.status}</span>
@@ -995,11 +821,10 @@ export default function Home() {
                 </p>
               )}
             </Card>
-          )}
-        </aside>
+          </aside>
+        )}
       </div>
 
-      {planOpen && <PlanDayDrawer open onClose={() => setPlanOpen(false)} candidates={planCandidates} />}
       <AutoPlanProgress open={autoFill.saving} summary={autoFill.summary} />
       <QuickCreate open={quickOpen} onClose={() => setQuickOpen(false)} />
       <MeetingSheet meeting={openMeeting} onClose={() => setOpenMeeting(null)} variant="modal" />

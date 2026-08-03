@@ -14,7 +14,6 @@ import { Popover } from '@web/components/overlays/Popover'
 import { ListProgress } from '@web/components/PlanList'
 import { Page, PageHeader, rise } from '@web/components/Page'
 import { ThreeColProjectList } from '@web/components/ProjectColumns'
-import { usePersistentState } from '@web/lib/usePersistentState'
 import { Sheet } from '@web/components/Sheet'
 
 const REL_TABS: { value: 'all' | 'owned' | 'led'; label: string }[] = [
@@ -39,10 +38,6 @@ export default function Review() {
   const [reason, setReason] = useState('')
   // Frozen progress dialog: set at run start, holds result until user clicks Done.
   const [bulk, setBulk] = useState<{ mode: 'approve' | 'reject'; result: { ok: number; failed: number } | null } | null>(null)
-  const [proj1, setProj1] = usePersistentState('review.proj1') // column 1 filter ('' = all)
-  const [proj2, setProj2] = usePersistentState('review.proj2') // review focused in column 2
-  const [proj3, setProj3] = usePersistentState('review.proj3') // review focused in column 3
-  const [proj4, setProj4] = usePersistentState('review.proj4') // review focused in column 4 (xl only)
 
   const all = dash.data?.review ?? []
 
@@ -251,14 +246,7 @@ export default function Review() {
       {visible.length > 0 ? (
         <ThreeColProjectList
           items={visible}
-          proj1={proj1}
-          setProj1={setProj1}
-          proj2={proj2}
-          setProj2={setProj2}
-          proj3={proj3}
-          setProj3={setProj3}
-          proj4={proj4}
-          setProj4={setProj4}
+          storageKey="review"
           renderCard={(t, i) =>
             selectMode && t.can_advance ? (
               <label key={t.name} className="flex items-center gap-2.5">

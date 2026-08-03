@@ -21,7 +21,7 @@ function AccrualRow({ label, accrued, threshold, tone }: { label: string; accrue
 }
 
 /** Accrual card shown on the personal ledger — reflects the logged-in user's live rules. */
-function AccrualCard({ rules }: { rules: LeaveRulesStatus }) {
+export function AccrualCard({ rules }: { rules: LeaveRulesStatus }) {
   if (!rules.late_enabled && !rules.overtime_enabled) return null
   return (
     <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-paper-edge bg-paper-card p-4 shadow-card dark:border-slate-700 dark:bg-slate-800">

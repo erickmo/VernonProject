@@ -35,6 +35,7 @@ import {
   X,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
+import { CancelledNote } from '@/components/CancelledNote'
 import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
@@ -994,8 +995,6 @@ export default function ProjectItemScreen() {
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
-  const [showCancel, setShowCancel] = useState(false)
-  const [cancelReason, setCancelReason] = useState('')
   const [showWaiting, setShowWaiting] = useState(false)
   const [showFocusNote, setShowFocusNote] = useState(false)
   const [dupOpen, setDupOpen] = useState(false)
@@ -1043,11 +1042,18 @@ const [followOpen, setFollowOpen] = useState(false)
   }
 
   const onCancel = async () => {
+    const reason = await confirm({
+      title: 'Cancel this task?',
+      message: 'It moves to Cancelled. You can Restore it to Planned later.',
+      destructive: true,
+      confirmLabel: 'Cancel task',
+      cancelLabel: 'Keep it',
+      input: { placeholder: 'Reason (optional)', rows: 2 },
+    })
+    if (reason === null) return
     try {
-      const res = await cancelTodo.mutateAsync({ projectItem: data.name, reason: cancelReason.trim() || undefined })
+      const res = await cancelTodo.mutateAsync({ projectItem: data.name, reason: reason.trim() || undefined })
       toast(res.status === 'ok' ? 'success' : 'info', res.message)
-      setShowCancel(false)
-      setCancelReason('')
     } catch (e: any) {
       toast('error', e?.message || 'Cancel failed')
     }
@@ -1143,7 +1149,7 @@ const [followOpen, setFollowOpen] = useState(false)
             ? [{ label: 'Set deadline to today', icon: CalendarCheck, onClick: onDeadlineToday, disabled: setDeadlineToday.isPending }]
             : []),
           ...(data.can_edit && data.status_key !== 'completed' && data.status_key !== 'cancelled'
-            ? [{ label: 'Cancel task', icon: Ban, danger: true, onClick: () => setShowCancel(true) }]
+            ? [{ label: 'Cancel task', icon: Ban, danger: true, onClick: onCancel }]
             : []),
           ...(data.can_delete
             ? [{ label: 'Delete task', icon: Trash2, danger: true, onClick: onDelete, disabled: deleteTodo.isPending }]
@@ -1183,6 +1189,11 @@ const [followOpen, setFollowOpen] = useState(false)
   return (
     <DetailScreen title="Todo" right={topActions}>
       {editing && <EditForm data={data} onClose={() => setEditing(false)} />}
+      {data.status_key === 'cancelled' && (
+        <div className="mb-3">
+          <CancelledNote item={data} />
+        </div>
+      )}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {data.project_name}
@@ -1408,23 +1419,16 @@ const [followOpen, setFollowOpen] = useState(false)
         <Stepper current={data.status_key} />
 
         {data.status_key === 'cancelled' ? (
-          <div className="mt-5 space-y-3">
-            {data.cancellation_reason && (
-              <p className="rounded-xl bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
-                Reason: {data.cancellation_reason}
-              </p>
-            )}
-            {data.can_edit && (
-              <button
-                onClick={onRestore}
-                disabled={restoreTodo.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-700 dark:text-slate-200 active:scale-[0.99] disabled:opacity-60"
-              >
-                {restoreTodo.isPending ? <Spinner className="h-5 w-5" /> : <RotateCcw className="h-4 w-4" />}
-                Restore to Planned
-              </button>
-            )}
-          </div>
+          data.can_edit && (
+            <button
+              onClick={onRestore}
+              disabled={restoreTodo.isPending}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-700 dark:text-slate-200 active:scale-[0.99] disabled:opacity-60"
+            >
+              {restoreTodo.isPending ? <Spinner className="h-5 w-5" /> : <RotateCcw className="h-4 w-4" />}
+              Restore to Planned
+            </button>
+          )
         ) : (
           <>
             {data.status_key !== 'completed' &&
@@ -1463,33 +1467,6 @@ const [followOpen, setFollowOpen] = useState(false)
               />
             )}
 
-            {data.can_edit && data.status_key !== 'completed' && showCancel && (
-                <div className="mt-3 space-y-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 p-3">
-                  <textarea
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    rows={2}
-                    placeholder="Reason (optional)"
-                    className="w-full resize-none rounded-lg border border-rose-200 dark:border-rose-500/30 bg-transparent px-3 py-2 text-sm outline-none"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={onCancel}
-                      disabled={cancelTodo.isPending}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-60"
-                    >
-                      {cancelTodo.isPending ? <Spinner className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                      Confirm cancel
-                    </button>
-                    <button
-                      onClick={() => { setShowCancel(false); setCancelReason('') }}
-                      className="rounded-lg bg-white dark:bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-200"
-                    >
-                      Back
-                    </button>
-                  </div>
-                </div>
-            )}
           </>
         )}
 

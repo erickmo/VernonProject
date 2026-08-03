@@ -127,7 +127,7 @@ function VotedCard({ item, ratee, canVote, canSee }: { item: VotedSuperpower; ra
             <span className="truncate font-semibold text-stone-700 dark:text-slate-200">{item.name}</span>
             {canSee && (
               <span className="shrink-0 text-stone-400 dark:text-slate-500">
-                {item.level?.level_name ?? '—'} · {item.weighted.toFixed(1)}
+                {item.level?.level_name ?? '—'} · {item.avg.toFixed(1)}
               </span>
             )}
           </div>
@@ -140,13 +140,13 @@ function VotedCard({ item, ratee, canVote, canSee }: { item: VotedSuperpower; ra
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${scorePct(item.weighted)}%`,
+                    width: `${scorePct(item.avg)}%`,
                     backgroundColor: item.level?.color || item.color,
                   }}
                 />
               </div>
               <p className="mt-1 text-[11px] text-stone-400 dark:text-slate-500">
-                {item.count > 0 ? `Rata-rata ${item.avg.toFixed(1)} · ${item.count} suara` : 'Belum ada suara'}
+                {item.count > 0 ? `${item.count} suara` : 'Belum ada suara'}
               </p>
             </>
           )}
@@ -237,7 +237,7 @@ function MineRow({
   disabled: boolean
   onRemove: () => void
 }) {
-  const score = showScore ? voted?.weighted ?? 0 : 0
+  const score = showScore ? voted?.avg ?? 0 : 0
   const level = showScore ? voted?.level ?? null : null
   return (
     <div className="rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">

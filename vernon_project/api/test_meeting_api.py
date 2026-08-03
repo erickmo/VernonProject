@@ -49,6 +49,13 @@ class TestMeetingApi(unittest.TestCase):
 		self.assertEqual(listed[0]["title"], "Kickoff")
 		self.assertEqual(sorted(listed[0]["participants"]), ["api_u1@example.com", "api_u2@example.com"])
 
+	def test_create_without_participants_rejected(self):
+		res = mobile.create_meeting(
+			project=self.project.name, title="Empty", participants="[]",
+		)
+		self.assertEqual(res["status"], "error")
+		self.assertEqual(len(mobile.list_meetings(project=self.project.name)["meetings"]), 0)
+
 	def test_invitable_users_are_team(self):
 		users = mobile.meeting_invitable_users(project=self.project.name)["users"]
 		emails = {u["user"] for u in users}
