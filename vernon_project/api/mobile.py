@@ -796,6 +796,7 @@ def bootstrap():
 			"nametag_value": frappe.db.get_single_value("Vernon Settings", "nametag_value") or None,
 			"force_superpower": int(frappe.db.get_single_value("Vernon Settings", "force_superpower_onboarding") or 0),
 			"has_superpower": 1 if frappe.db.exists("User Superpower", {"user": user}) else 0,
+			"online_window_minutes": int(frappe.db.get_single_value("Vernon Settings", "online_window_minutes") or 15),
 		},
 		"leave": _leave_balance(user),
 		"leave_rules": _leave_rules_status(user),
@@ -2302,7 +2303,37 @@ def update_user(user, full_name=None, roles=None, enabled=1, member_type=None):
 		doc.add_roles(*to_add)
 	if to_remove:
 		doc.remove_roles(*to_remove)
+
+	# Offboarding: a disabled account should not linger on project teams.
+	# ponytail: only chokepoint is this SysMgr endpoint; disabling via Desk won't
+	# trigger it — re-run _drop_user_from_project_teams as a sweep if that happens.
+	if enabled == 0:
+		_drop_user_from_project_teams(user)
 	return {"name": doc.name}
+
+
+def _drop_user_from_project_teams(user):
+	"""Remove `user` from every Project team roster. Skips projects where they are
+	owner/leader/admin — Project.validate re-appends those, so they cannot be
+	dropped without reassignment. Idempotent. Returns the projects changed."""
+	from vernon_project.vernon_project.doctype.project.project import get_project_admins
+
+	names = frappe.get_all(
+		"Project Team", filters={"user": user, "parenttype": "Project"}, pluck="parent"
+	)
+	dropped = []
+	for name in dict.fromkeys(names):  # de-dup, keep order
+		if not frappe.db.exists("Project", name):
+			continue
+		doc = frappe.get_doc("Project", name)
+		if user in (doc.project_owner, doc.project_leader) or user in get_project_admins(doc):
+			continue  # role-bound — validate would re-add
+		kept = [m for m in doc.team_members if m.user != user]
+		if len(kept) != len(doc.team_members):
+			doc.team_members = kept
+			doc.save(ignore_permissions=True)
+			dropped.append(name)
+	return dropped
 
 
 @frappe.whitelist()
@@ -2526,6 +2557,7 @@ def get_app_settings():
 		"nametag_value": g("nametag_value") or "",
 		"max_estimated_minutes": int(g("max_estimated_minutes") or 0),
 		"under_occupied_tolerance_minutes": int(g("under_occupied_tolerance_minutes") or 0),
+		"online_window_minutes": int(g("online_window_minutes") or 15),
 		"min_minutes_monday": int(g("min_minutes_monday") or 0),
 		"min_minutes_tuesday": int(g("min_minutes_tuesday") or 0),
 		"min_minutes_wednesday": int(g("min_minutes_wednesday") or 0),
@@ -2610,6 +2642,7 @@ def save_app_settings(
 	nametag_value=None,
 	max_estimated_minutes=None,
 	under_occupied_tolerance_minutes=None,
+	online_window_minutes=None,
 	min_minutes_monday=None,
 	min_minutes_tuesday=None,
 	min_minutes_wednesday=None,
@@ -2652,6 +2685,7 @@ def save_app_settings(
 	int_fields = {
 		"max_estimated_minutes": max_estimated_minutes,
 		"under_occupied_tolerance_minutes": under_occupied_tolerance_minutes,
+		"online_window_minutes": online_window_minutes,
 		"min_minutes_monday": min_minutes_monday,
 		"min_minutes_tuesday": min_minutes_tuesday,
 		"min_minutes_wednesday": min_minutes_wednesday,
@@ -2686,6 +2720,8 @@ def save_app_settings(
 			ival = int(value)
 			if field == "disc_reminder_hours" and ival < 1:
 				ival = 1  # nudge interval floored to 1h
+			if field == "online_window_minutes" and ival < 10:
+				ival = 10  # server writes last_active at most every ~10 min; lower flickers
 			if ival < 0:
 				frappe.throw(f"{field} cannot be negative.")
 			settings.set(field, ival)
@@ -4350,7 +4386,12 @@ def _meeting_can_manage(doc):
 
 @frappe.whitelist()
 def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
-				   level_id=None, participants=None, notes=None):
+				   level_id=None, participants=None, notes=None,
+				   is_recurring=None, recurring_frequency=None, recurring_interval=None,
+				   recurring_weekdays=None, recurring_monthly_mode=None,
+				   recurring_day_of_month=None, recurring_nth=None, recurring_until=None,
+				   recurring_exception_weekdays=None, recurring_exception_monthdays=None,
+				   recurring_exception_dates=None, recurring_exception_behavior=None):
 	try:
 		if not frappe.db.exists("Project", project):
 			return {"status": "error", "message": "Project not found."}
@@ -4379,6 +4420,19 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 			"status": MEETING_SCHEDULED,
 			"participants": [{"user": u} for u in rows if u],
 		})
+		if str(is_recurring) in ("1", "true", "True"):
+			doc.is_recurring = 1
+			doc.recurring_frequency = recurring_frequency or None
+			doc.recurring_interval = cint(recurring_interval) or 1
+			doc.recurring_weekdays = recurring_weekdays or ""
+			doc.recurring_monthly_mode = recurring_monthly_mode or "Day of Month"
+			doc.recurring_day_of_month = cint(recurring_day_of_month) or None
+			doc.recurring_nth = recurring_nth or "First"
+			doc.recurring_until = recurring_until or None
+			doc.recurring_exception_weekdays = recurring_exception_weekdays or ""
+			doc.recurring_exception_monthdays = recurring_exception_monthdays or ""
+			doc.recurring_exception_dates = recurring_exception_dates or ""
+			doc.recurring_exception_behavior = recurring_exception_behavior or "Skip"
 		doc.insert(ignore_permissions=True)
 		return {"status": "success", "message": "Meeting created.", "name": doc.name}
 	except (frappe.ValidationError, ValueError, TypeError) as e:
@@ -4387,7 +4441,13 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 
 @frappe.whitelist()
 def update_meeting(meeting, title=None, scheduled_at=None, estimated=None,
-				   group=None, level_id=None, notes=None):
+				   group=None, level_id=None, notes=None,
+				   is_recurring=None, recurring_frequency=None, recurring_interval=None,
+				   recurring_weekdays=None, recurring_monthly_mode=None,
+				   recurring_day_of_month=None, recurring_nth=None, recurring_until=None,
+				   recurring_paused=None, recurring_exception_weekdays=None,
+				   recurring_exception_monthdays=None, recurring_exception_dates=None,
+				   recurring_exception_behavior=None):
 	try:
 		doc = frappe.get_doc("Meeting", meeting)
 		if not _meeting_can_manage(doc):
@@ -4406,7 +4466,58 @@ def update_meeting(meeting, title=None, scheduled_at=None, estimated=None,
 			doc.level_id = level_id
 		if notes is not None:
 			doc.notes = notes
+
+		# Recurring settings (mirror update_todo). Pause is a series-level flag on the
+		# root; write it after save so doc.save() can't overwrite it when root == name.
+		from vernon_project.vernon_project.doctype.meeting.meeting import series_root
+		_pause_root = None
+		_pause_val = None
+		if is_recurring is not None:
+			doc.is_recurring = 1 if str(is_recurring) in ("1", "true", "True") else 0
+			if not doc.is_recurring:
+				doc.recurring_frequency = None
+				doc.recurring_until = None
+				doc.recurring_interval = None
+				doc.recurring_weekdays = None
+				doc.recurring_monthly_mode = None
+				doc.recurring_day_of_month = None
+				doc.recurring_nth = None
+				doc.recurring_exception_weekdays = None
+				doc.recurring_exception_monthdays = None
+				doc.recurring_exception_dates = None
+				doc.recurring_exception_behavior = None
+				_pause_root = series_root(doc.name, doc.original_meeting)
+				_pause_val = 0
+		if recurring_frequency is not None:
+			doc.recurring_frequency = recurring_frequency or None
+		if recurring_until is not None:
+			doc.recurring_until = recurring_until or None
+		if doc.is_recurring:
+			if recurring_interval is not None:
+				doc.recurring_interval = cint(recurring_interval) or 1
+			if recurring_weekdays is not None:
+				doc.recurring_weekdays = recurring_weekdays or ""
+			if recurring_monthly_mode is not None:
+				doc.recurring_monthly_mode = recurring_monthly_mode or "Day of Month"
+			if recurring_day_of_month is not None:
+				doc.recurring_day_of_month = cint(recurring_day_of_month) or None
+			if recurring_nth is not None:
+				doc.recurring_nth = recurring_nth or "First"
+			if recurring_exception_weekdays is not None:
+				doc.recurring_exception_weekdays = recurring_exception_weekdays or ""
+			if recurring_exception_monthdays is not None:
+				doc.recurring_exception_monthdays = recurring_exception_monthdays or ""
+			if recurring_exception_dates is not None:
+				doc.recurring_exception_dates = recurring_exception_dates or ""
+			if recurring_exception_behavior is not None:
+				doc.recurring_exception_behavior = recurring_exception_behavior or "Skip"
+			if recurring_paused is not None:
+				_pause_root = series_root(doc.name, doc.original_meeting)
+				_pause_val = cint(recurring_paused)
+
 		doc.save(ignore_permissions=True)
+		if _pause_root is not None:
+			frappe.db.set_value("Meeting", _pause_root, "recurring_paused", _pause_val, update_modified=False)
 		return {"status": "success", "message": "Meeting updated."}
 	except (frappe.ValidationError, ValueError, TypeError) as e:
 		return {"status": "error", "message": str(e)}
@@ -4451,7 +4562,12 @@ def list_meetings(project=None):
 		"Meeting",
 		filters=filters,
 		fields=["name", "title", "project", "organizer", "scheduled_at",
-				"estimated", "point", "status", "notes", "group", "level_id"],
+				"estimated", "point", "status", "notes", "group", "level_id",
+				"is_recurring", "recurring_frequency", "recurring_interval",
+				"recurring_weekdays", "recurring_monthly_mode", "recurring_day_of_month",
+				"recurring_nth", "recurring_until", "recurring_paused",
+				"recurring_exception_weekdays", "recurring_exception_monthdays",
+				"recurring_exception_dates", "recurring_exception_behavior", "original_meeting"],
 		order_by="scheduled_at desc",
 	)
 	user = frappe.session.user
@@ -4476,14 +4592,16 @@ def list_meetings(project=None):
 	if proj_names:
 		for p in frappe.get_all(
 			"Project", filters={"name": ["in", proj_names]},
-			fields=["name", "project_owner", "project_leader"], limit_page_length=0,
+			fields=["name", "project_name", "project_owner", "project_leader"], limit_page_length=0,
 		):
-			proj_ol[p["name"]] = (p["project_owner"], p["project_leader"])
+			proj_ol[p["name"]] = (p["project_owner"], p["project_leader"], p["project_name"])
 	admins = _admins_by_project([{"project": pn} for pn in proj_names])
 
 	for r in rows:
 		r["participants"] = participants.get(r["name"], [])
-		owner, leader = proj_ol.get(r["project"], (None, None))
+		owner, leader, proj_name = proj_ol.get(r["project"], (None, None, None))
+		# Friendly display name for the UI; fall back to the code if unnamed/dangling.
+		r["project_name"] = proj_name or r["project"]
 		r["can_mark_done"] = (
 			is_sm
 			or user in (r["organizer"], owner, leader)

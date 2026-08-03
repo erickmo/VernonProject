@@ -22,6 +22,7 @@ export interface Boot {
     nametag_value?: string | null
     force_superpower?: 0 | 1
     has_superpower?: 0 | 1
+    online_window_minutes?: number
   }
   leave?: LeaveBalance | null
   leave_rules?: LeaveRulesStatus | null
@@ -222,6 +223,7 @@ export interface ProjectItemDetail extends ProjectItem {
   blocking: string[]
   detail_todos: { name: string; to_do: string }[]
   cancellation_reason?: string | null
+  cancelled_on?: string | null
 }
 
 export interface ProjectItemEdit {
@@ -334,7 +336,7 @@ export interface ProjectFull {
   leader_name: string
   project_owner: string
   project_leader: string
-  project_admin: string | null
+  project_admins: string[]
   blocked_by: string | null
   blocked_by_name: string | null
   groupings: string[]
@@ -396,7 +398,7 @@ export interface ProjectInput {
   brand: string
   project_owner: string
   project_leader: string
-  project_admin?: string | null
+  project_admins?: { user: string }[]
   blocked_by?: string | null
   start_date: string
   deadline: string
@@ -778,6 +780,7 @@ export interface AppSettings {
   nametag_value: string
   max_estimated_minutes: number
   under_occupied_tolerance_minutes: number
+  online_window_minutes: number
   min_minutes_monday: number
   min_minutes_tuesday: number
   min_minutes_wednesday: number
@@ -793,6 +796,8 @@ export interface AppSettings {
   force_disc_reminder: number
   disc_reminder_hours: number
   force_photo_upload: number
+  sweep_stale_plans: number
+  sweep_stale_plan_after_days: number
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number
@@ -831,6 +836,7 @@ export interface MeetingListItem {
   name: string
   title: string
   project: string
+  project_name?: string
   organizer: string
   scheduled_at: string | null
   estimated: number
@@ -841,6 +847,21 @@ export interface MeetingListItem {
   notes?: string | null
   group?: string | null
   level_id?: string | null
+  // Recurrence (mirrors Project Todo). See @/lib/recurrence.
+  is_recurring?: number | boolean
+  recurring_frequency?: string | null
+  recurring_interval?: number | null
+  recurring_weekdays?: string | null
+  recurring_monthly_mode?: string | null
+  recurring_day_of_month?: number | null
+  recurring_nth?: string | null
+  recurring_until?: string | null
+  recurring_paused?: number | boolean
+  recurring_exception_weekdays?: string | null
+  recurring_exception_monthdays?: string | null
+  recurring_exception_dates?: string | null
+  recurring_exception_behavior?: string | null
+  original_meeting?: string | null
 }
 
 export interface MeetingInvitableUser {
@@ -1179,6 +1200,16 @@ export type AttendanceExceptionRow = {
   proof?: string
 }
 
+/** One approved leave span on the team-wide calendar lens. */
+export type TeamLeaveRow = {
+  name: string
+  employee: string
+  employee_name: string
+  leave_type?: string
+  from_date: string
+  to_date: string
+}
+
 export type LeaveType = {
   name: string
   leave_name: string
@@ -1452,4 +1483,33 @@ export interface DiscSubmitResult {
 export interface PhotoGate {
   enabled: number
   owed: number
+}
+
+// ---- Habit tracker (personal, no gamification) ----
+export interface HabitWeekDot { date: string; scheduled: boolean; done: boolean }
+export interface Habit {
+  name: string
+  title: string
+  icon: string
+  cadence: 'Daily' | 'Weekdays'
+  weekdays: number[]
+  active: number
+  scheduled_today: boolean
+  done_today: boolean
+  current_streak: number
+  best_streak: number
+  week: HabitWeekDot[]
+}
+export interface HabitSuggestion {
+  key: string
+  title: string
+  icon: string
+  cadence: 'Daily' | 'Weekdays'
+  weekdays: number[]
+  disc_axis: string
+}
+export interface HabitsResponse {
+  habits: Habit[]
+  suggestions: HabitSuggestion[]
+  disc_type: string
 }

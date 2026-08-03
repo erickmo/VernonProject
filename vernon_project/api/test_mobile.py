@@ -1042,3 +1042,14 @@ class TestFaceDetect(unittest.TestCase):
 	def test_undecodable_bytes_return_none(self):
 		from vernon_project.api.mobile import _has_face
 		self.assertIsNone(_has_face(b"definitely not an image"))
+
+
+class TestOnlineWindowSetting(unittest.TestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+
+	def test_get_app_settings_has_online_window_default(self):
+		from vernon_project.api.mobile import get_app_settings
+		out = get_app_settings()
+		self.assertIn("online_window_minutes", out)
+		self.assertGreaterEqual(int(out["online_window_minutes"]), 10)

@@ -3,7 +3,7 @@
  "creation": "2026-06-26 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["branding_section", "app_logo", "nametag_value", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "leave_rules_section", "late_penalty_enabled", "count_early_leave_in_penalty", "lateness_deduction_threshold_minutes", "overtime_bonus_enabled", "overtime_bonus_threshold_minutes", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "force_photo_upload", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
+ "field_order": ["branding_section", "app_logo", "nametag_value", "max_estimated_minutes", "min_daily_estimated_minutes", "under_occupied_tolerance_minutes", "online_window_minutes", "weekday_minimums_section", "min_minutes_monday", "min_minutes_tuesday", "min_minutes_wednesday", "min_minutes_thursday", "min_minutes_friday", "min_minutes_saturday", "min_minutes_sunday", "attendance_section", "attendance_enabled", "qr_validity_seconds", "attendance_grace_minutes", "late_penalty_per_minute", "early_leave_penalty_per_minute", "absence_penalty", "show_auto_approve", "leave_rules_section", "late_penalty_enabled", "count_early_leave_in_penalty", "lateness_deduction_threshold_minutes", "overtime_bonus_enabled", "overtime_bonus_threshold_minutes", "gamification_section", "force_superpower_onboarding", "force_daily_recognition", "recognition_gate_start_time", "force_disc_reminder", "disc_reminder_hours", "force_photo_upload", "plan_housekeeping_section", "sweep_stale_plans", "habit_reminders", "sweep_stale_plan_after_days", "recognition_section", "recognition_points", "feedback_points", "recognition_weekly_cap", "payments_section", "midtrans_client_key", "midtrans_server_key", "midtrans_is_production", "home_banners_section", "home_banners"],
  "fields": [
   {"fieldname": "branding_section", "fieldtype": "Section Break", "label": "Branding"},
   {
@@ -41,6 +41,14 @@
    "non_negative": 1,
    "default": "60",
    "description": "A day counts as under-occupied when assigned minutes fall below (Min Daily Estimated Minutes − this tolerance). Used by the Under-Occupied report."
+  },
+  {
+   "fieldname": "online_window_minutes",
+   "fieldtype": "Int",
+   "label": "Online Window (minutes)",
+   "non_negative": 1,
+   "default": "15",
+   "description": "Users active within this many minutes show as Online. Keep >= 10 — the server records activity at most once every ~10 minutes, so lower values flicker false-offline."
   },
   {
    "fieldname": "weekday_minimums_section",
@@ -199,6 +207,24 @@
    "label": "Force Profile Photo Upload",
    "default": "0",
    "description": "When on, ANY user with no real profile photo is shown a blocking modal on app open and must upload one before using the app. 0 = off (no gate)."
+  },
+  {"fieldname": "plan_housekeeping_section", "fieldtype": "Section Break", "label": "Plan Housekeeping"},
+  {
+   "fieldname": "sweep_stale_plans",
+   "fieldtype": "Check",
+   "label": "Sweep stale plans nightly",
+   "default": "0",
+   "description": "When on, at 00:00 (server time) every still-Planned todo has its past-due day-plan slots removed (allocation date older than the grace below). Keeps today's and future slots; Done/Checked/Completed todos are untouched. 0 = off."
+  },
+  {"fieldname": "habit_reminders", "fieldtype": "Check", "label": "Habit Reminders", "default": "0"},
+  {
+   "fieldname": "sweep_stale_plan_after_days",
+   "fieldtype": "Int",
+   "label": "Sweep plan slots older than (days)",
+   "non_negative": 1,
+   "default": "1",
+   "depends_on": "sweep_stale_plans",
+   "description": "Grace before a past-due plan slot is swept. 1 = remove yesterday and older at tonight's midnight (today kept). 0 = also remove any slot dated before today's run."
   },
   {
    "fieldname": "recognition_section",
