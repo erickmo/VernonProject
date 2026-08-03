@@ -495,11 +495,13 @@ class TestRunsProject(unittest.TestCase):
 	"""Pure permission predicate for buzz_todo — owns/leads/admins the project."""
 
 	def test_owner_leader_admin_pass(self):
-		for field in ("project_owner", "project_leader", "project_admin"):
-			self.assertTrue(_runs_project("me@x.id", {field: "me@x.id"}))
+		self.assertTrue(_runs_project("me@x.id", {"project_owner": "me@x.id"}))
+		self.assertTrue(_runs_project("me@x.id", {"project_leader": "me@x.id"}))
+		# Admin is now a list (a project may have many admins).
+		self.assertTrue(_runs_project("me@x.id", {"admins": ["other@x.id", "me@x.id"]}))
 
 	def test_non_member_denied(self):
-		row = {"project_owner": "a@x.id", "project_leader": "b@x.id", "project_admin": "c@x.id"}
+		row = {"project_owner": "a@x.id", "project_leader": "b@x.id", "admins": ["c@x.id"]}
 		self.assertFalse(_runs_project("me@x.id", row))
 
 	def test_missing_project_denied(self):
@@ -507,7 +509,7 @@ class TestRunsProject(unittest.TestCase):
 
 	def test_none_fields_denied(self):
 		# A project with no roles set must never match a real user.
-		self.assertFalse(_runs_project("me@x.id", {"project_owner": None, "project_leader": None, "project_admin": None}))
+		self.assertFalse(_runs_project("me@x.id", {"project_owner": None, "project_leader": None, "admins": []}))
 
 
 class TestBuzzTodoEndpoint(unittest.TestCase):
@@ -747,3 +749,65 @@ class TestOverloadVerdict(unittest.TestCase):
 		# No positive daily minimum configured -> nothing to overload, no warning.
 		out = _overload_verdict(assigned=500, added=500, minimum=0, tolerance=30)
 		self.assertFalse(out["over"])
+
+
+class TestLastSeenReport(unittest.TestCase):
+	LEADER = "ls_leader@example.com"
+	MEMBER = "ls_member@example.com"
+	OUTSIDER = "ls_outsider@example.com"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		for email, fn in ((self.LEADER, "Leader"), (self.MEMBER, "Member"), (self.OUTSIDER, "Outsider")):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
+					"send_welcome_email": 0}).insert(ignore_permissions=True)
+		u = frappe.get_doc("User", self.LEADER)
+		u.add_roles("Project Owner", "Project Leader")  # project_owner/leader must hold the role
+		if not frappe.db.exists("Brand", "LS Brand"):
+			company = (frappe.get_all("Company", pluck="name", limit=1) or [None])[0]
+			frappe.get_doc({"doctype": "Brand", "brand_name": "LS Brand", "company": company}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Project", {"project_name": "LS Project"}):
+			frappe.get_doc({
+				"doctype": "Project", "project_name": "LS Project", "brand": "LS Brand",
+				"project_owner": self.LEADER, "project_leader": self.LEADER,
+				"status": "Ongoing", "start_date": nowdate(), "deadline": "2026-12-31",
+				"reward_type": "Point", "bonus_amount": 0, "discount": 0,
+				"team_members": [{"user": self.LEADER}, {"user": self.MEMBER}],
+			}).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_sysmgr_sees_all(self):
+		from vernon_project.api.report import last_seen_report
+		frappe.set_user("Administrator")
+		out = last_seen_report()
+		names = {r["name"] for r in out["rows"]}
+		self.assertEqual(out["scope"], "all")
+		self.assertIn(self.OUTSIDER, names)
+
+	def test_leader_sees_only_team_and_self(self):
+		from vernon_project.api.report import last_seen_report
+		frappe.set_user(self.LEADER)
+		out = last_seen_report()
+		names = {r["name"] for r in out["rows"]}
+		self.assertEqual(out["scope"], "team")
+		self.assertIn(self.LEADER, names)
+		self.assertIn(self.MEMBER, names)
+		self.assertNotIn(self.OUTSIDER, names)
+
+	def test_outsider_is_denied(self):
+		from vernon_project.api.report import last_seen_report
+		frappe.set_user(self.OUTSIDER)
+		with self.assertRaises(frappe.PermissionError):
+			last_seen_report()
+
+	def test_access_endpoint(self):
+		from vernon_project.api.report import last_seen_access
+		frappe.set_user("Administrator")
+		self.assertEqual(last_seen_access(), {"can": True, "scope": "all"})
+		frappe.set_user(self.LEADER)
+		self.assertEqual(last_seen_access(), {"can": True, "scope": "team"})
+		frappe.set_user(self.OUTSIDER)
+		self.assertEqual(last_seen_access(), {"can": False, "scope": "none"})

@@ -12,6 +12,8 @@ import datetime
 import frappe
 from frappe.utils import getdate, add_days, date_diff, nowdate
 
+from vernon_project.vernon_project.doctype.project.project import get_project_admins
+
 MAX_SPAN_DAYS = 92
 
 # Weekday flags on Shift Assignment, indexed by date.weekday() (Mon=0 .. Sun=6).
@@ -635,10 +637,19 @@ def todos_due(due_by):
 	me = frappe.session.user
 	due = getdate(due_by)
 
+	admin_projects = set(frappe.get_all(
+		"Project Admin User",
+		filters={"user": me, "parentfield": "project_admins"},
+		pluck="parent",
+	))
 	projects = frappe.get_all(
 		"Project",
-		or_filters={"project_owner": me, "project_leader": me, "project_admin": me},
-		fields=["name", "project_name", "project_owner", "project_leader", "project_admin"],
+		or_filters={
+			"project_owner": me,
+			"project_leader": me,
+			"name": ["in", list(admin_projects) or [""]],
+		},
+		fields=["name", "project_name", "project_owner", "project_leader"],
 		limit_page_length=0,
 	)
 	role_by_project = {}
@@ -648,7 +659,7 @@ def todos_due(due_by):
 			roles.append("Owner")
 		if p["project_leader"] == me:
 			roles.append("Leader")
-		if p["project_admin"] == me:
+		if p["name"] in admin_projects:
 			roles.append("Admin")
 		role_by_project[p["name"]] = {
 			"my_role": ", ".join(roles),
@@ -815,14 +826,86 @@ def logbook(from_date, to_date, user=None):
 
 def _runs_project(user, project_row):
 	"""True iff `user` owns, leads, or admins the project. `project_row` is a dict with
-	project_owner / project_leader / project_admin (falsy/None -> not permitted)."""
+	project_owner / project_leader / admins (a list of admin user-ids). Pure predicate:
+	the caller precomputes `admins` (via get_project_admins) so this stays DB-free."""
 	if not project_row:
 		return False
-	return user in (
-		project_row.get("project_owner"),
-		project_row.get("project_leader"),
-		project_row.get("project_admin"),
+	if user == project_row.get("project_owner") or user == project_row.get("project_leader"):
+		return True
+	return user in (project_row.get("admins") or [])
+
+
+def _projects_i_run(user):
+	"""Names of Projects `user` owns, leads, or admins."""
+	owned = frappe.get_all("Project", filters={"project_owner": user}, pluck="name")
+	led = frappe.get_all("Project", filters={"project_leader": user}, pluck="name")
+	adminned = frappe.get_all(
+		"Project Admin User",
+		filters={"user": user, "parentfield": "project_admins", "parenttype": "Project"},
+		pluck="parent",
 	)
+	return set(owned) | set(led) | set(adminned)
+
+
+def _users_on_projects(project_names):
+	"""Distinct Project Team member user-ids across the given projects."""
+	if not project_names:
+		return set()
+	return set(
+		frappe.get_all(
+			"Project Team",
+			filters={"parent": ["in", list(project_names)], "parenttype": "Project"},
+			pluck="user",
+		)
+	)
+
+
+def _last_seen_rows(name_filter):
+	"""User rows for the last-seen report, stalest-first. name_filter: None = all
+	(minus Guest/Administrator), else an iterable of user-ids to restrict to."""
+	filters = {"enabled": 1, "user_type": "System User"}
+	if name_filter is None:
+		filters["name"] = ["not in", ("Guest", "Administrator")]
+	else:
+		allowed = [n for n in name_filter if n not in ("Guest", "Administrator")]
+		if not allowed:
+			return []
+		filters["name"] = ["in", allowed]
+	rows = frappe.get_all(
+		"User",
+		filters=filters,
+		fields=["name", "full_name", "user_image", "enabled", "last_active",
+			"custom_member_type as member_type"],
+		limit_page_length=0,
+	)
+	# Stalest first: never-seen (null) before oldest before newest.
+	rows.sort(key=lambda r: (r["last_active"] is not None, r["last_active"] or ""))
+	return rows
+
+
+@frappe.whitelist()
+def last_seen_access():
+	"""Whether the caller may open the Last Seen report, and at what scope.
+	Single source for the nav/tile gate — same rule last_seen_report enforces."""
+	if _is_system_manager():
+		return {"can": True, "scope": "all"}
+	runs_any = bool(_projects_i_run(frappe.session.user))
+	return {"can": runs_any, "scope": "team" if runs_any else "none"}
+
+
+@frappe.whitelist()
+def last_seen_report():
+	"""Users with their last-active time. System Manager -> everyone; a project
+	owner/leader/admin -> members of projects they run (plus themselves).
+	Anyone else -> PermissionError."""
+	me = frappe.session.user
+	if _is_system_manager():
+		return {"rows": _last_seen_rows(None), "scope": "all"}
+	projects = _projects_i_run(me)
+	if not projects:
+		frappe.throw("Not permitted", frappe.PermissionError)
+	names = _users_on_projects(projects) | {me}
+	return {"rows": _last_seen_rows(names), "scope": "team"}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -847,9 +930,11 @@ def buzz_todo(todo):
 
 	project = frappe.db.get_value(
 		"Project", row.project,
-		["project_owner", "project_leader", "project_admin"],
+		["project_owner", "project_leader"],
 		as_dict=True,
 	)
+	if project:
+		project["admins"] = get_project_admins(row.project)
 	if not _runs_project(me, project):
 		frappe.throw("You don't run this project.", frappe.PermissionError)
 
