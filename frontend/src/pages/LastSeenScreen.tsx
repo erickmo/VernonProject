@@ -28,7 +28,7 @@ export default function LastSeenScreen() {
               <div className="flex flex-wrap gap-3">
                 {active.map((r) => (
                   <div key={r.name} className="flex w-14 flex-col items-center gap-1">
-                    <PresenceAvatar name={r.full_name || r.name} image={r.user_image} size={44} online />
+                    <PresenceAvatar name={r.full_name || r.name} image={r.user_image} config={r.avatar_config} size={44} online />
                     <span className="w-full truncate text-center text-[10px] text-slate-500 dark:text-slate-400">
                       {(r.full_name || r.name).split(' ')[0]}
                     </span>
@@ -49,7 +49,7 @@ export default function LastSeenScreen() {
               const p = presenceOf(r.last_active, win)
               return (
                 <div key={r.name} className={`${card} flex items-center gap-3`}>
-                  <PresenceAvatar name={r.full_name || r.name} image={r.user_image} size={40} online={p.online} />
+                  <PresenceAvatar name={r.full_name || r.name} image={r.user_image} config={r.avatar_config} size={40} online={p.online} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-stone-800 dark:text-slate-100">{r.full_name || r.name}</p>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">{r.member_type || r.name}</p>

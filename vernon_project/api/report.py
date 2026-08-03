@@ -878,6 +878,12 @@ def _last_seen_rows(name_filter):
 			"custom_member_type as member_type"],
 		limit_page_length=0,
 	)
+	# Attach each user's gamified avatar config (the one they picked) so the UI shows
+	# their real avatar, not a name-seeded default. Same source list_users uses.
+	from vernon_project.api.mobile import _avatar_config_map
+	amap = _avatar_config_map([r["name"] for r in rows])
+	for r in rows:
+		r["avatar_config"] = amap.get(r["name"])
 	# Stalest first: never-seen (null) before oldest before newest.
 	rows.sort(key=lambda r: (r["last_active"] is not None, r["last_active"] or ""))
 	return rows
