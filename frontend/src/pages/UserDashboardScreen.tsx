@@ -5,6 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner, Avatar } from '@/components/ui'
 import { LeaderNotesSection } from '@/components/LeaderNotesSection'
 import { PsychometricCard } from '@/components/PsychometricCard'
+import { presenceOf } from '@/lib/presence'
 import { useUsers, useEmployeeProfile, useUserPointsLog, useBoot, canManageUsers, canManageAttendance, canHrApprove, canGrantPoints, canManageMarketplace, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
@@ -121,6 +122,15 @@ export default function UserDashboardScreen() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold text-slate-800 dark:text-slate-100">{u.full_name || u.name}</p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.name}</p>
+            {(() => {
+              const p = presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15)
+              return (
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <span className={`h-2 w-2 rounded-full ${p.online ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                  {p.label}
+                </p>
+              )
+            })()}
             <div className="mt-1.5 flex flex-wrap gap-1">
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
