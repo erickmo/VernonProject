@@ -20,7 +20,7 @@ export default function LastSeen() {
       sortValue: (u) => u.full_name || u.name,
       render: (u) => (
         <div className="flex items-center gap-3">
-          <PresenceAvatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={32} online={presenceOf(u.last_active, win).online} />
+          <PresenceAvatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={32} rounded online={presenceOf(u.last_active, win).online} />
           <div className="min-w-0">
             <p className="truncate font-medium text-ink">{u.full_name || u.name}</p>
             <p className="truncate text-xs text-muted">{u.name}</p>
@@ -62,7 +62,7 @@ export default function LastSeen() {
             <div className="flex flex-wrap gap-3">
               {active.map((u) => (
                 <div key={u.name} className="flex w-16 flex-col items-center gap-1" title={u.full_name || u.name}>
-                  <PresenceAvatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={44} online />
+                  <PresenceAvatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={44} rounded online />
                   <span className="w-full truncate text-center text-[11px] text-muted">{(u.full_name || u.name).split(' ')[0]}</span>
                 </div>
               ))}

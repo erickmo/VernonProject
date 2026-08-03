@@ -94,6 +94,8 @@ export function PresenceAvatar({
   image?: string | null
   config?: AvatarConfig | null
   size?: number
+  // rounded = soft square (no circle crop) so half-body avatars (e.g. notionists) show fully.
+  rounded?: boolean
   online?: boolean | null
 }) {
   const dot = Math.max(9, Math.round(size * 0.3))
