@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, AlarmClock, Search, X, SearchX } from 'lucide-react'
+import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
+import { useLastSeenAccess } from '@/hooks/useData'
 import { Card, CardList } from '@web/components/Card'
 import { EmptyState } from '@/components/ui'
 import { Page, PageHeader, rise } from '@web/components/Page'
@@ -27,9 +28,11 @@ export default function Reports() {
   const match = (title: string, desc: string) =>
     !query || title.toLowerCase().includes(query) || desc.toLowerCase().includes(query)
 
+  const { data: lastSeenAccess } = useLastSeenAccess()
   const showTodosDue = match(TODOS_DUE.title, TODOS_DUE.desc)
+  const showLastSeen = !!lastSeenAccess?.can && match('Last Seen', 'When each teammate was last active')
   const filtered = useMemo(() => REPORTS.filter((r) => match(r.title, r.desc)), [query])
-  const count = filtered.length + (showTodosDue ? 1 : 0)
+  const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0)
 
   return (
     <Page>
@@ -70,6 +73,16 @@ export default function Reports() {
                 eyebrow={<ReportBadge icon={AlarmClock} accent="from-rose-500 to-pink-600" />}
                 title={TODOS_DUE.title}
                 meta={TODOS_DUE.desc}
+              />
+            </div>
+          )}
+          {showLastSeen && (
+            <div {...rise(1)}>
+              <Card
+                onClick={() => navigate('/reports/last-seen')}
+                eyebrow={<ReportBadge icon={UserRoundCheck} accent="from-emerald-500 to-teal-600" />}
+                title="Last Seen"
+                meta="When each teammate was last active"
               />
             </div>
           )}

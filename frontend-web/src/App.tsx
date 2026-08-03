@@ -39,6 +39,7 @@ import Reports from '@web/pages/Reports'
 import DataHealth from '@web/pages/DataHealth'
 import ReportPage from '@web/pages/ReportPage'
 import TodosDue from '@web/pages/TodosDue'
+import LastSeen from '@web/pages/LastSeen'
 import Income from '@web/pages/Income'
 import IncomeAdmin from '@web/pages/IncomeAdmin'
 import Companies from '@web/pages/Companies'
@@ -82,6 +83,8 @@ import GrantPoints from '@web/pages/GrantPoints'
 import TransferTasks from '@web/pages/TransferTasks'
 import CloneMemberships from '@web/pages/CloneMemberships'
 import Onboarding from '@web/pages/Onboarding'
+import GetStarted from '@web/pages/GetStarted'
+import { shouldAutoShowGetStarted, markGetStartedSeen } from '@/lib/getStarted'
 import SuperpowerGate from '@/components/SuperpowerGate'
 import DailyRecognitionGate from '@/components/DailyRecognitionGate'
 import PhotoGate from '@/components/PhotoGate'
@@ -169,7 +172,17 @@ export default function App() {
   const closeDrawer = () => navigate((bgRef.current?.pathname ?? '/') + (bgRef.current?.search ?? ''))
 
   useEffect(() => {
-    if (boot.data && !localStorage.getItem(ONBOARDED_KEY)) setShowOnboarding(true)
+    const b = boot.data
+    if (!b) return
+    if (!localStorage.getItem(ONBOARDED_KEY)) {
+      setShowOnboarding(true)
+      return
+    }
+    // Tour already done — surface the setup checklist once, on a fresh landing.
+    if (location.pathname === '/' && shouldAutoShowGetStarted(b)) {
+      markGetStartedSeen()
+      navigate('/get-started')
+    }
   }, [boot.data])
 
   // Daily recognition gate — shown only after the self-claim gate is satisfied.
@@ -179,6 +192,11 @@ export default function App() {
   const finishOnboarding = () => {
     localStorage.setItem(ONBOARDED_KEY, '1')
     setShowOnboarding(false)
+    // Right after the intro tour, take unfinished new users to the setup checklist.
+    if (shouldAutoShowGetStarted(boot.data)) {
+      markGetStartedSeen()
+      navigate('/get-started')
+    }
   }
 
   // Kiosk runs on unattended (often logged-out) station screens; it only needs
@@ -255,6 +273,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />
           <Route path="/reports/todos-due" element={<TodosDue />} />
+          <Route path="/reports/last-seen" element={<LastSeen />} />
           <Route path="/logbook" element={<Logbook />} />
           {canManageGroups(b) && (
             <Route path="/data-health" element={<DataHealth />} />
@@ -358,6 +377,7 @@ export default function App() {
           {canHrApprove(b) && <Route path="/attendance/leave-types" element={<LeaveTypesAdmin />} />}
           {canHrApprove(b) && <Route path="/attendance/cuti-admin" element={<CutiLedgerAdmin />} />}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
+          <Route path="/get-started" element={<GetStarted />} />
           <Route path="/me/info" element={<MyInfo />} />
           <Route path="/income" element={<Income />} />
           {canManageIncome(b) && <Route path="/income-admin" element={<IncomeAdmin />} />}
@@ -385,6 +405,7 @@ export default function App() {
           {canManageBadges(b) && (
             <Route path="/recognition-test" element={<RecognitionGateTest />} />
           )}
+          <Route path="/onboarding-test" element={<Onboarding onDone={() => navigate('/')} />} />
           <Route path="/avatar" element={<AvatarCustomizer />} />
           <Route path="/papan-iklan" element={<PapanIklan />} />
           <Route path="/papan-iklan/new" element={<PapanIklanForm />} />
