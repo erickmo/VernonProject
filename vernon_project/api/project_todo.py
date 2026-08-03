@@ -1,5 +1,8 @@
 import frappe
 
+from vernon_project.vernon_project.doctype.project.project import get_project_admins
+
+
 @frappe.whitelist()
 def get_notes(todo_id):
 	"""Fetch notes for a specific Project Todo (accessible by all logged-in users)."""
@@ -59,10 +62,11 @@ def update_status(todo_id):
 		user = frappe.session.user
 		project_leader = project.project_leader
 		project_owner = project.project_owner
-		project_admin = project.project_admin
 
-		# Validasi: Project Admin TIDAK boleh update status
-		if project_admin and user == project_admin:
+		# Validasi: Project Admin TIDAK boleh update status — kecuali todo yang
+		# ditugaskan ke dirinya sendiri (dia boleh menandainya selesai; gate
+		# leader/owner di bawah tetap menghalangi approve pekerjaan sendiri).
+		if user in get_project_admins(project) and user != todo.assigned_to:
 			return {"status": "error", "message": f"Project Admin tidak memiliki izin untuk mengupdate status todo. Silakan hubungi Project Owner atau Project Leader."}
 
 		# Check if todo is in 'Scheduled' status
@@ -246,10 +250,9 @@ def reject_status(todo_id, reason=None):
 		user = frappe.session.user
 		project_leader = project.project_leader
 		project_owner = project.project_owner
-		project_admin = project.project_admin
 
 		# Project Admin cannot change status (mirrors update_status).
-		if project_admin and user == project_admin:
+		if user in get_project_admins(project):
 			return {"status": "error", "message": "Project Admin tidak memiliki izin untuk menolak todo."}
 
 		# Reject is only meaningful at the review stages.

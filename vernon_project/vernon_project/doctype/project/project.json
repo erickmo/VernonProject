@@ -20,7 +20,7 @@
   "section_break_gwge",
   "project_owner",
   "project_leader",
-  "project_admin",
+  "project_admins",
   "column_break_zwia",
   "team_members",
   "section_break_madv",
@@ -94,12 +94,10 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "project_admin",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Project Admin",
-   "options": "User",
-   "search_index": 1
+   "fieldname": "project_admins",
+   "fieldtype": "Table MultiSelect",
+   "label": "Project Admins",
+   "options": "Project Admin User"
   },
   {
    "fieldname": "column_break_ywxo",

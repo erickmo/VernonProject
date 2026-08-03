@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate
+from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
 
 class ProjectDetail(Document):
@@ -137,7 +138,7 @@ def get_permission_query_conditions(user):
 	# Hanya tampilkan Project Detail yang project-nya:
 	# - project_owner = user
 	# - project_leader = user
-	# - project_admin = user
+	# - user is one of the project admins
 	# - ATAU user ada di Project Team
 	return f"""
 		EXISTS (
@@ -147,7 +148,10 @@ def get_permission_query_conditions(user):
 				AND (
 					p.project_owner = {user_esc}
 					OR p.project_leader = {user_esc}
-					OR p.project_admin = {user_esc}
+					OR EXISTS (
+						SELECT 1 FROM `tabProject Admin User` pa
+						WHERE pa.parent = p.name AND pa.parentfield = 'project_admins' AND pa.user = {user_esc}
+					)
 					OR EXISTS (
 						SELECT 1
 						FROM `tabProject Team` pt
@@ -174,7 +178,7 @@ def has_permission(doc, ptype, user):
 	if user == project.project_leader:
 		return True
 
-	if user == project.project_admin:
+	if user in get_project_admins(project):
 		return True
 
 	if any(t.user == user for t in project.team_members):

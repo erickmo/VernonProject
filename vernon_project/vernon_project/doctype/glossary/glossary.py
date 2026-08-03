@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
 
 class Glossary(Document):
@@ -26,7 +27,7 @@ def has_permission(doc, ptype, user):
 	if is_lead:
 		return True
 	project = frappe.get_doc("Project", doc.project)
-	if user == project.project_admin:
+	if user in get_project_admins(project):
 		return True
 	return any(t.user == user for t in project.team_members)
 
@@ -44,7 +45,10 @@ def get_permission_query_conditions(user):
 				AND (
 					p.project_owner = {user_esc}
 					OR p.project_leader = {user_esc}
-					OR p.project_admin = {user_esc}
+					OR EXISTS (
+						SELECT 1 FROM `tabProject Admin User` pa
+						WHERE pa.parent = p.name AND pa.parentfield = 'project_admins' AND pa.user = {user_esc}
+					)
 					OR EXISTS (
 						SELECT 1 FROM `tabProject Team` pt
 						WHERE pt.parent = p.name AND pt.user = {user_esc}

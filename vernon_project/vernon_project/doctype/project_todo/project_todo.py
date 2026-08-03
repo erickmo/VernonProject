@@ -8,6 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_days, add_months, getdate, nowdate, now_datetime, get_datetime
 from datetime import datetime
+from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
 
 # The one Planned status string, shared by the controller. `api/mobile.py` keeps
@@ -176,7 +177,7 @@ class ProjectTodo(Document):
 		return frappe.get_doc("Project Todo", self.name)
 
 	def validate_create_permission(self):
-		"""Only the Project Owner or Project Leader may create a task (new row)."""
+		"""Only the Project Owner, Leader, or an Admin may create a task (new row)."""
 		if not self.is_new():
 			return
 		user = frappe.session.user
@@ -190,9 +191,9 @@ class ProjectTodo(Document):
 		owner, leader = frappe.get_value(
 			"Project", project_name, ["project_owner", "project_leader"]
 		)
-		if user not in (owner, leader):
+		if user != owner and user != leader and user not in get_project_admins(project_name):
 			frappe.throw(
-				_("Only the Project Owner or Project Leader can create tasks."),
+				_("Only the Project Owner, Leader or Admin can create tasks."),
 				frappe.PermissionError,
 			)
 
@@ -218,7 +219,7 @@ class ProjectTodo(Document):
 		if self.status == old_doc.status:
 			return
 
-		# Get project to check if user is project_admin
+		# Get project to check if user is one of the project admins
 		if not self.project_detail:
 			return
 
@@ -228,8 +229,10 @@ class ProjectTodo(Document):
 
 		project = frappe.get_doc("Project", parent_detail.project)
 
-		# If user is project_admin, prevent status update
-		if project.project_admin and user == project.project_admin:
+		# If user is a project admin, prevent status update — unless the todo is
+		# assigned to them (they're treated like a normal assignee; the API
+		# update_status ladder still gates which transitions are allowed).
+		if user in get_project_admins(project) and self.assigned_to != user:
 			frappe.throw(
 				"Project Admin tidak memiliki izin untuk mengupdate status todo. "
 				"Silakan hubungi Project Owner atau Project Leader.",
@@ -957,7 +960,10 @@ def get_permission_query_conditions(user):
 				AND (
 					p.project_owner = {user_esc}
 					OR p.project_leader = {user_esc}
-					OR p.project_admin = {user_esc}
+					OR EXISTS (
+						SELECT 1 FROM `tabProject Admin User` pa
+						WHERE pa.parent = p.name AND pa.parentfield = 'project_admins' AND pa.user = {user_esc}
+					)
 					OR EXISTS (
 						SELECT 1 FROM `tabProject Team` pt
 						WHERE pt.parent = p.name AND pt.user = {user_esc}
@@ -976,7 +982,7 @@ def has_permission(doc, ptype, user):
 	if not parent_detail.project:
 		return False
 	project = frappe.get_doc("Project", parent_detail.project)
-	if user in (project.project_owner, project.project_leader, project.project_admin):
+	if user == project.project_owner or user == project.project_leader or user in get_project_admins(project):
 		return True
 	if any(t.user == user for t in project.team_members):
 		return True

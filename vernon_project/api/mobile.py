@@ -126,8 +126,10 @@ def _can_advance(status_key, project, user, assigned_to):
 	leader = project.get("project_leader")
 	admins = project.get("admins") or []
 
-	# Project Admins may never advance status.
-	if user in admins:
+	# Project Admins may not advance others' work — but a todo assigned to the
+	# admin is treated like any team member's (they get the mark-as-done step;
+	# the leader/owner gates below still block self-approval).
+	if user in admins and user != assigned_to:
 		return False
 
 	if status_key == "planned":
@@ -585,6 +587,16 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 	}
 	can_advance = skey != "completed" and _can_advance(skey, project, user, row["assigned_to"])
 	can_reject = _can_reject(skey, project, user)
+	# Who may create a todo in this project (mirrors can_create on Project Detail +
+	# validate_create_permission): SM / owner / leader / project admin. Drives the
+	# Duplicate / Add-follow-up affordances so non-admin team members don't see a
+	# create button that the backend will 403. get_roles is memoized per-request.
+	can_create = (
+		"System Manager" in frappe.get_roles(user)
+		or row["project_owner"] == user
+		or row["project_leader"] == user
+		or user in (admins or [])
+	)
 	overdue = bool(
 		row["deadline"]
 		and skey != "completed"
@@ -613,6 +625,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"next_status_label": NEXT_LABEL.get(skey),
 		"can_advance": can_advance,
 		"can_reject": can_reject,
+		"can_create": can_create,
 		"auto_approve_mode": _auto_approve_fields(row)[0],
 		"auto_approve_effective": _auto_approve_fields(row)[1],
 		"can_set_auto_approve": _can_set_auto_approve(project, user),

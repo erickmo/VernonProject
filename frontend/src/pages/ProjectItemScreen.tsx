@@ -1133,7 +1133,7 @@ const [followOpen, setFollowOpen] = useState(false)
       {editBtn}
       <TopMenu
         items={[
-          ...(data.can_edit
+          ...(data.can_create
             ? [
                 { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
                 { label: 'Add follow-up todo', icon: CornerDownRight, onClick: () => setFollowOpen(true) },

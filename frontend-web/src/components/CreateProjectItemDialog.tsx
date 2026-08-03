@@ -200,7 +200,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
               <SearchableSelect
                 value={pickProject}
                 onChange={(v) => { setPickProject(v); setPickDetail('') }}
-                options={(projectsQ.data ?? []).filter((p) => p.status !== 'Closed').map((p) => ({ value: p.name, label: p.project_name ?? p.name }))}
+                options={(projectsQ.data ?? []).filter((p) => p.status !== 'Closed' && (p.is_owner || p.is_leader || p.is_admin)).map((p) => ({ value: p.name, label: p.project_name ?? p.name }))}
                 placeholder="Select a project…"
               />
             </label>

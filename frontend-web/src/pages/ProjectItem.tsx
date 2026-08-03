@@ -1325,7 +1325,7 @@ const [followOpen, setFollowOpen] = useState(false)
               size="sm"
               items={[
                 { label: focus.note ? 'Edit focus note' : 'Add focus note', icon: StickyNote, onClick: () => setShowFocusNote(true) },
-                ...(data.can_edit
+                ...(data.can_create
                   ? [
                       { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
                       { label: 'Add follow-up todo', icon: CornerDownRight, onClick: () => setFollowOpen(true) },

@@ -6,6 +6,23 @@ from frappe.model.document import Document
 from frappe.utils import getdate, cint
 
 
+def get_project_admins(project):
+	"""Admin user-ids for a Project. Accepts a Project name (str) or a doc/dict.
+
+	A project may have many admins (the `project_admins` child table). This is the
+	single source of truth every "is this user an admin of the project?" check funnels
+	through, replacing the old scalar `project_admin` Link.
+	"""
+	if isinstance(project, str):
+		return frappe.get_all(
+			"Project Admin User",
+			filters={"parent": project, "parentfield": "project_admins"},
+			pluck="user",
+		)
+	rows = project.get("project_admins") or []
+	return [r.user if hasattr(r, "user") else r["user"] for r in rows]
+
+
 class Project(Document):
 	# --------------------------------------------------------------------------------
 	# HOOKS
@@ -56,8 +73,10 @@ class Project(Document):
 		if self.project_leader and self.project_leader not in team_users:
 			self.append("team_members", {"user": self.project_leader})
 
-		if self.project_admin and self.project_admin not in team_users:
-			self.append("team_members", {"user": self.project_admin})
+		for admin in get_project_admins(self):
+			if admin and admin not in team_users:
+				self.append("team_members", {"user": admin})
+				team_users.append(admin)
 
 	def remove_duplicate_team_members(self):
 		seen_users = set()
@@ -196,7 +215,13 @@ def get_permission_query_conditions(user):
 		(
 				`tabProject`.project_owner = {user_esc}
 				OR `tabProject`.project_leader = {user_esc}
-				OR `tabProject`.project_admin = {user_esc}
+				OR EXISTS (
+					SELECT 1
+					FROM `tabProject Admin User` pa
+					WHERE pa.parent = `tabProject`.name
+						AND pa.parentfield = 'project_admins'
+						AND pa.user = {user_esc}
+				)
 				OR EXISTS (
 					SELECT 1
 					FROM `tabProject Team` pt
@@ -215,7 +240,7 @@ def has_permission(doc, ptype, user):
 	if ptype == "create":
 		return any(r in roles for r in ("Project Owner", "Project Leader"))
 
-	if user in (doc.project_owner, doc.project_leader, doc.project_admin):
+	if user == doc.project_owner or user == doc.project_leader or user in get_project_admins(doc):
 		return True
 
 	if any(t.user == user for t in doc.team_members):

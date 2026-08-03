@@ -37,3 +37,4 @@ vernon_project.patches.v1_0.seed_superpowers_character
 vernon_project.patches.v1_0.brand_weekday_minimums
 vernon_project.patches.backfill_recurring_anchor_date
 vernon_project.patches.v1_0.backfill_cuti_ledger
+vernon_project.patches.v1_0.multi_project_admin

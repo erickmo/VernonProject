@@ -115,6 +115,7 @@ export interface ProjectItem {
   next_status_label: string | null
   can_advance: boolean
   can_reject: boolean
+  can_create: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'
   auto_approve_effective: boolean
   can_set_auto_approve: boolean
