@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Users as UsersIcon, Search, Sparkles } from 'lucide-react'
-import { Spinner, EmptyState, Avatar } from '@/components/ui'
+import { Spinner, EmptyState, PresenceAvatar } from '@/components/ui'
 import { Button, ErrorState } from '@web/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
@@ -89,7 +89,7 @@ export default function Users() {
       sortValue: (u) => u.full_name || u.name,
       render: (u) => (
         <div className="flex items-center gap-3">
-          <Avatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={32} />
+          <PresenceAvatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={32} online={presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15).online} />
           <div className="min-w-0">
             <p className="truncate font-medium text-ink">{u.full_name || u.name}</p>
             <p className="truncate text-xs text-muted">{u.name}</p>

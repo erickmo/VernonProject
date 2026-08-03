@@ -1,5 +1,5 @@
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState, Avatar } from '@/components/ui'
+import { Spinner, EmptyState, PresenceAvatar } from '@/components/ui'
 import { UserRoundCheck } from 'lucide-react'
 import { useLastSeenReport, useBoot } from '@/hooks/useData'
 import { presenceOf } from '@/lib/presence'
@@ -11,21 +11,31 @@ export default function LastSeenScreen() {
   const { data: boot } = useBoot()
   const win = boot?.settings?.online_window_minutes ?? 15
   const rows = data?.rows ?? []
-  const onlineCount = rows.filter((r) => presenceOf(r.last_active, win).online).length
+  const active = rows.filter((r) => presenceOf(r.last_active, win).online)
 
   return (
     <DetailScreen title="Last Seen">
       <div className="flex flex-col gap-4">
+        {/* Everyone active right now, as avatars. */}
         {data && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className={`${card} text-center`}>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{onlineCount}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Online now</p>
-            </div>
-            <div className={`${card} text-center`}>
-              <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{rows.length}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">People</p>
-            </div>
+          <div className={`${card} flex flex-col gap-2.5`}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Online now · {active.length}
+            </p>
+            {active.length === 0 ? (
+              <p className="text-sm text-slate-400 dark:text-slate-500">Nobody online right now.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {active.map((r) => (
+                  <div key={r.name} className="flex w-14 flex-col items-center gap-1">
+                    <PresenceAvatar name={r.full_name || r.name} image={r.user_image} size={44} online />
+                    <span className="w-full truncate text-center text-[10px] text-slate-500 dark:text-slate-400">
+                      {(r.full_name || r.name).split(' ')[0]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -39,15 +49,12 @@ export default function LastSeenScreen() {
               const p = presenceOf(r.last_active, win)
               return (
                 <div key={r.name} className={`${card} flex items-center gap-3`}>
-                  <Avatar name={r.full_name || r.name} image={r.user_image} size={40} />
+                  <PresenceAvatar name={r.full_name || r.name} image={r.user_image} size={40} online={p.online} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-stone-800 dark:text-slate-100">{r.full_name || r.name}</p>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">{r.member_type || r.name}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <span className={`h-2.5 w-2.5 rounded-full ${p.online ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{p.label}</span>
-                  </div>
+                  <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{p.label}</span>
                 </div>
               )
             })}

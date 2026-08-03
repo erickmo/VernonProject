@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Pencil, Sparkles, Coins, ChevronRight, CalendarCheck, CalendarOff, ScrollText, Award, ArrowLeftRight, CalendarClock, ShoppingBag, type LucideIcon } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, Avatar } from '@/components/ui'
+import { Spinner, PresenceAvatar } from '@/components/ui'
 import { LeaderNotesSection } from '@/components/LeaderNotesSection'
 import { PsychometricCard } from '@/components/PsychometricCard'
 import { presenceOf } from '@/lib/presence'
@@ -117,7 +117,7 @@ export default function UserDashboardScreen() {
         {/* Identity card */}
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:bg-slate-800 dark:border-slate-700">
           <div className="shrink-0 rounded-full ring-2 ring-sky-200 dark:ring-sky-500/30">
-            <Avatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={48} />
+            <PresenceAvatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={48} online={presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15).online} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold text-slate-800 dark:text-slate-100">{u.full_name || u.name}</p>

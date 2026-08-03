@@ -4,7 +4,7 @@ import {
   ArrowLeft, Pencil, Sparkles, Coins, ChevronRight, Briefcase, CalendarCheck, CalendarOff,
   ScrollText, Award, ArrowLeftRight, CalendarClock, ShoppingBag,
 } from 'lucide-react'
-import { Spinner, Avatar } from '@/components/ui'
+import { Spinner, PresenceAvatar } from '@/components/ui'
 import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import PsychometricTile from '@web/components/PsychometricTile'
@@ -123,7 +123,7 @@ export default function UserDashboard() {
             <ArrowLeft className="h-3.5 w-3.5" /> Users
           </button>
           <div className="flex items-center gap-4">
-            <Avatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={56} />
+            <PresenceAvatar name={u.full_name || u.name} image={u.user_image ?? undefined} config={u.avatar_config} size={56} online={presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15).online} />
             <div className="min-w-0">
               <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">{u.full_name || u.name}</h1>
               <p className="truncate text-sm text-muted">{u.name}</p>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Users, ChevronRight, Search } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState, Avatar } from '@/components/ui'
+import { Spinner, EmptyState, PresenceAvatar } from '@/components/ui'
 import { useUsers, useBoot, canManageUsers, VERNON_ROLE_OPTIONS, MEMBER_TYPE_OPTIONS } from '@/hooks/useData'
 import type { ManagedUser } from '@/lib/types'
 import { presenceOf } from '@/lib/presence'
@@ -210,7 +210,13 @@ function UsersBody({
               className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm active:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:active:bg-slate-700/50"
             >
               <div className="shrink-0 rounded-full ring-2 ring-sky-200 dark:ring-sky-500/30">
-                <Avatar name={u.full_name || u.name} image={u.user_image} config={u.avatar_config} size={40} />
+                <PresenceAvatar
+                  name={u.full_name || u.name}
+                  image={u.user_image}
+                  config={u.avatar_config}
+                  size={40}
+                  online={presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15).online}
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -239,14 +245,6 @@ function UsersBody({
                   </div>
                 )}
               </div>
-              <span
-                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15).online
-                    ? 'bg-emerald-500'
-                    : 'bg-slate-300 dark:bg-slate-600'
-                }`}
-                title={presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15).label}
-              />
               {!u.enabled && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                   Disabled

@@ -83,6 +83,36 @@ export function Avatar({
   )
 }
 
+// Avatar with an online-status corner dot. `online` undefined/null = no dot,
+// true = emerald, false = slate. Dot scales with avatar size.
+export function PresenceAvatar({
+  online,
+  size = 36,
+  ...props
+}: {
+  name: string
+  image?: string | null
+  config?: AvatarConfig | null
+  size?: number
+  online?: boolean | null
+}) {
+  const dot = Math.max(9, Math.round(size * 0.3))
+  return (
+    <span className="relative inline-flex shrink-0">
+      <Avatar size={size} {...props} />
+      {online != null && (
+        <span
+          style={{ width: dot, height: dot }}
+          className={clsx(
+            'absolute bottom-0 right-0 rounded-full ring-2 ring-white dark:ring-slate-800',
+            online ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-500',
+          )}
+        />
+      )}
+    </span>
+  )
+}
+
 export function ProgressBar({ value, className }: { value: number; className?: string }) {
   return (
     <div className={clsx('h-1.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700', className)}>
