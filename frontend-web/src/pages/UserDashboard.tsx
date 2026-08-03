@@ -9,6 +9,7 @@ import { ErrorState } from '@web/components/ui'
 import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import PsychometricTile from '@web/components/PsychometricTile'
 import LeaderNotesSection from '@web/components/LeaderNotesSection'
+import { presenceOf } from '@/lib/presence'
 import { useUsers, useEmployeeProfile, useUserPointsLog, useBoot, canManageUsers, canManageAttendance, canHrApprove, canGrantPoints, canManageMarketplace, VERNON_ROLE_OPTIONS } from '@/hooks/useData'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
@@ -136,6 +137,15 @@ export default function UserDashboard() {
                 >
                   {u.enabled ? 'Active' : 'Disabled'}
                 </span>
+                {(() => {
+                  const p = presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15)
+                  return (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-muted">
+                      <span className={`h-2 w-2 rounded-full ${p.online ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                      {p.label}
+                    </span>
+                  )
+                })()}
                 {u.member_type && (
                   <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${MEMBER_BADGE[u.member_type] ?? 'bg-surface text-muted'}`}>
                     {u.member_type}

@@ -8,6 +8,7 @@ import { BentoGrid, BentoTile, BentoStat } from '@web/components/bento'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
 import type { Column } from '@web/components/DataTable'
+import { presenceOf } from '@/lib/presence'
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(
   VERNON_ROLE_OPTIONS.map((o) => [o.value, o.label]),
@@ -135,6 +136,20 @@ export default function Users() {
             Disabled
           </span>
         ),
+    },
+    {
+      key: 'lastSeen',
+      header: 'Last seen',
+      sortValue: (u) => (u.last_active ? new Date(u.last_active.replace(' ', 'T')).getTime() : 0),
+      render: (u) => {
+        const p = presenceOf(u.last_active, boot?.settings?.online_window_minutes ?? 15)
+        return (
+          <span className="inline-flex items-center gap-1.5 text-sm text-ink">
+            <span className={`h-2.5 w-2.5 rounded-full ${p.online ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+            {p.label}
+          </span>
+        )
+      },
     },
     {
       key: 'superpower',
