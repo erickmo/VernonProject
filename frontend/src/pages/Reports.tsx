@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen } from 'lucide-react'
+import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
+import { useLastSeenAccess } from '@/hooks/useData'
 
 // Bespoke reports with their own screens (not the generic /report/:name engine).
 const BESPOKE = [
@@ -26,8 +27,22 @@ const BESPOKE = [
 
 export default function Reports() {
   const navigate = useNavigate()
+  const { data: lastSeenAccess } = useLastSeenAccess()
+  const bespoke = [
+    ...(lastSeenAccess?.can
+      ? [{
+          key: 'last-seen',
+          title: 'Last Seen',
+          desc: 'When each teammate was last active',
+          icon: UserRoundCheck,
+          accent: 'from-emerald-500 to-teal-600',
+          to: '/reports/last-seen',
+        }]
+      : []),
+    ...BESPOKE,
+  ]
   const tiles = [
-    ...BESPOKE.map((b) => ({
+    ...bespoke.map((b) => ({
       key: b.key, title: b.title, desc: b.desc, icon: b.icon, accent: b.accent,
       go: () => navigate(b.to),
     })),

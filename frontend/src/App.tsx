@@ -24,6 +24,8 @@ import CultureHubScreen from './pages/CultureHubScreen'
 import WebManagementScreen from './pages/WebManagementScreen'
 import MyInfoScreen from '@/pages/MyInfoScreen'
 import Onboarding from './pages/Onboarding'
+import GetStarted from './pages/GetStarted'
+import { shouldAutoShowGetStarted, markGetStartedSeen } from './lib/getStarted'
 import SuperpowerGate from './components/SuperpowerGate'
 import DailyRecognitionGate from './components/DailyRecognitionGate'
 import PhotoGate from './components/PhotoGate'
@@ -101,6 +103,7 @@ import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
 import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import TodosDueScreen from './pages/TodosDueScreen'
+import LastSeenScreen from './pages/LastSeenScreen'
 import LogbookScreen from './pages/LogbookScreen'
 import MeetingRoomsScreen from './pages/MeetingRoomsScreen'
 import MeetingRoomFormScreen from './pages/MeetingRoomFormScreen'
@@ -149,7 +152,16 @@ export default function App() {
   const confirm = useConfirm()
 
   useEffect(() => {
-    if (boot && !localStorage.getItem(ONBOARDED_KEY)) setShowOnboarding(true)
+    if (!boot) return
+    if (!localStorage.getItem(ONBOARDED_KEY)) {
+      setShowOnboarding(true)
+      return
+    }
+    // Tour already done — surface the setup checklist once, on a fresh landing.
+    if (location.pathname === '/' && shouldAutoShowGetStarted(boot)) {
+      markGetStartedSeen()
+      navigate('/get-started')
+    }
   }, [boot])
 
   useEffect(() => {
@@ -178,6 +190,11 @@ export default function App() {
   const finishOnboarding = () => {
     localStorage.setItem(ONBOARDED_KEY, '1')
     setShowOnboarding(false)
+    // Right after the intro tour, take unfinished new users to the setup checklist.
+    if (shouldAutoShowGetStarted(boot)) {
+      markGetStartedSeen()
+      navigate('/get-started')
+    }
   }
 
   if (isLoading && !boot) return <Splash />
@@ -205,6 +222,7 @@ export default function App() {
         <Route path="/review" element={<Review />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/todos-due" element={<TodosDueScreen />} />
+        <Route path="/reports/last-seen" element={<LastSeenScreen />} />
         <Route path="/logbook" element={<LogbookScreen />} />
         <Route path="/report/:name" element={<ReportPage />} />
         <Route path="/projects" element={<Projects />} />
@@ -357,10 +375,12 @@ export default function App() {
         {boot?.roles.includes('System Manager') && (
           <Route path="/recognition-test" element={<RecognitionGateTest />} />
         )}
+        <Route path="/onboarding-test" element={<Onboarding onDone={() => navigate('/')} />} />
         <Route path="/team-wall" element={<TeamWallScreen />} />
         <Route path="/team-wall/nametags" element={<NametagSheet />} />
         <Route path="/marketplace" element={<MarketplaceScreen />} />
         <Route path="/me" element={<Profile onReplayOnboarding={() => setShowOnboarding(true)} />} />
+        <Route path="/get-started" element={<GetStarted />} />
         <Route path="/me/info" element={<MyInfoScreen />} />
         <Route path="/hr" element={<HrHubScreen />} />
         <Route path="/culture" element={<CultureHubScreen />} />
