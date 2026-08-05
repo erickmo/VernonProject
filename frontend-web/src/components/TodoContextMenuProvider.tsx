@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useTodoMenu'
 import { CreateMeetingDialog } from '@web/components/CreateMeetingDialog'
 import { FocusNoteDialog } from '@web/components/FocusNoteDialog'
+import { MoveTodosDialog } from '@web/components/MoveTodosDialog'
 
 // Desktop (/w) mount of the shared todo context menu: a cursor-anchored popover
 // with a fly-out submenu per group. Action wiring is shared (useTodoMenuGroups);
@@ -29,6 +30,8 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
   const [meetingProject, setMeetingProject] = useState<string | undefined>(undefined)
   const [noteOpen, setNoteOpen] = useState(false)
   const [note, setNote] = useState<{ todoId: string; title: string } | null>(null)
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [moveSeed, setMoveSeed] = useState<ProjectItem | null>(null)
 
   const closeMenu = () => {
     setCoords(null)
@@ -48,6 +51,12 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
       setNote(t ? { todoId: t.name, title: t.to_do } : null)
       closeMenu()
       setNoteOpen(true)
+    },
+    onMove: () => {
+      const t = targetRef.current
+      setMoveSeed(t)
+      closeMenu()
+      setMoveOpen(true)
     },
   })
 
@@ -155,6 +164,7 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
         todoId={note?.todoId ?? ''}
         title={note?.title ?? ''}
       />
+      <MoveTodosDialog open={moveOpen} onClose={() => setMoveOpen(false)} seed={moveSeed} />
     </TodoMenuContextProvider>
   )
 }

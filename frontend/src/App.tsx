@@ -30,6 +30,7 @@ import SuperpowerGate from './components/SuperpowerGate'
 import DailyRecognitionGate from './components/DailyRecognitionGate'
 import PhotoGate from './components/PhotoGate'
 import DiscReminderPopup from './components/DiscReminderPopup'
+import PrankPopup from './components/PrankPopup'
 import RecognitionGateTest from './pages/RecognitionGateTest'
 import GroupsScreen from './pages/GroupsScreen'
 import DataHealthScreen from './pages/DataHealthScreen'
@@ -215,6 +216,8 @@ export default function App() {
       {!superpowerBlocked && !recognitionGate?.owed && <PhotoGate />}
       {/* DISC reminder: dismissible, self-gates via localStorage. Behind the blocking gates. */}
       {!superpowerBlocked && !recognitionGate?.owed && <DiscReminderPopup />}
+      {/* Photo prank: self-gates on boot.settings.prank_enabled, ticks its own timer. */}
+      <PrankPopup />
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />

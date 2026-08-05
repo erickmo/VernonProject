@@ -812,9 +812,8 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
       toast('error', 'Add a date to every allocation row')
       return
     }
-    if (data.estimated > 0 && total !== data.estimated) {
-      const diff = data.estimated - total
-      toast('error', diff > 0 ? `${diff}m short of the ${data.estimated}m estimate` : `${-diff}m over the ${data.estimated}m estimate`)
+    if (data.estimated > 0 && total > data.estimated) {
+      toast('error', `${total - data.estimated}m over the ${data.estimated}m estimate`)
       return
     }
     const clean = rows.filter((r) => r.date)
@@ -837,7 +836,7 @@ function AssignedAllocationCard({ data }: { data: ProjectItemDetail }) {
             'rounded-full px-2 py-0.5 text-[11px] font-bold ' +
             (!data.estimated
               ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300'
-              : total === data.estimated
+              : total <= data.estimated
                 ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
                 : 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300')
           }

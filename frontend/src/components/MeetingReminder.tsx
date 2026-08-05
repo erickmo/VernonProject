@@ -89,7 +89,8 @@ export function MeetingReminder({
         </div>
       </button>
 
-      <ul className="relative flex flex-col gap-1.5">
+      {/* ponytail: scroll past ~5 rows so a 10-meeting day can't stretch the /w glance grid or push /m content off-screen */}
+      <ul className="relative flex max-h-64 flex-col gap-1.5 overflow-y-auto">
         {meetings.map((m) => (
           <li key={m.name}>
             <button

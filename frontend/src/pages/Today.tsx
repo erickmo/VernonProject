@@ -283,8 +283,8 @@ export default function Today() {
   // Plan view groups by allocation date: today / past (slipped, still planned) /
   // upcoming. A todo allocated across several days appears under each it touches.
   const todayStr = todayISO()
-  // next 5 un-done meetings (today or later) you organize or are invited to → vibrant top reminder
-  const upcoming = upcomingMeetings(meetingsData?.meetings ?? [], 5, boot?.user)
+  // next 10 un-done meetings (today or later) you organize or are invited to → vibrant top reminder
+  const upcoming = upcomingMeetings(meetingsData?.meetings ?? [], 10, boot?.user)
   const allocOn = (t: ProjectItem, pred: (d: string) => boolean) =>
     (t.allocations ?? []).some((a) => a.date != null && pred(a.date))
   // Mutually exclusive buckets, precedence Today > Past > Upcoming — a todo

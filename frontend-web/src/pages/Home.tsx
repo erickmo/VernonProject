@@ -484,8 +484,8 @@ export default function Home() {
   }
 
   const today = todayISO()
-  // next 5 un-done meetings (today or later) you organize or are invited to drive the vibrant top reminder
-  const upcoming = upcomingMeetings(meetings.data?.meetings ?? [], 5, boot.data?.user)
+  // next 10 un-done meetings (today or later) you organize or are invited to drive the vibrant top reminder
+  const upcoming = upcomingMeetings(meetings.data?.meetings ?? [], 10, boot.data?.user)
 
   // attendance — only surfaces when the module is actually in use for this user
   const attRows = attendance.data?.rows ?? []

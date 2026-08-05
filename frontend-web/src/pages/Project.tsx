@@ -4,9 +4,9 @@ import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy, FolderInput, AlarmClock,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy, FolderInput, FolderPlus, AlarmClock,
 } from 'lucide-react'
-import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, useMeetings } from '@/hooks/useData'
+import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, usePromoteProjectDetail, useMeetings } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
@@ -89,6 +89,7 @@ export default function Project() {
   const del = useDeleteProject()
   const dup = useDuplicateProject()
   const delDetail = useDeleteProjectDetail()
+  const promote = usePromoteProjectDetail()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const confirm = useConfirm()
   const toast = useToast()
@@ -191,6 +192,22 @@ export default function Project() {
     }
   }
 
+  const doPromoteDetail = async (w: ProjectDetailSummary) => {
+    if (!(await confirm({
+      title: 'Jadikan proyek?',
+      message: `Proyek baru "${w.title}" dibuat dengan owner, leader & admin yang sama, mulai hari ini. Detail ini beserta ${w.total} todo-nya pindah ke sana.`,
+      confirmLabel: 'Buat proyek',
+      cancelLabel: 'Batal',
+    }))) return
+    try {
+      const res = await promote.mutateAsync(w.name)
+      toast('success', `Proyek dibuat: "${res.project_name}" (${res.moved_todos} todo dipindahkan)`)
+      nav(`/project/${encodeURIComponent(res.name)}`)
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
+  }
+
   const doDeleteDetail = async (w: ProjectDetailSummary) => {
     if (w.total > 0) return
     if (!(await confirm({ title: 'Delete this detail?', message: `"${w.title}" will be removed.`, confirmLabel: 'Delete', destructive: true }))) return
@@ -252,6 +269,7 @@ export default function Project() {
                 { label: 'Edit', icon: Pencil, onClick: () => setEditDetail(r.name) },
                 { label: 'Postpone', icon: CalendarClock, onClick: () => setPostpone({ type: 'Project Detail', name: r.name, label: r.title, anchor: '' }) },
                 { label: 'Pindahkan ke proyek lain', icon: FolderInput, onClick: () => setMoveDetail({ name: r.name, title: r.title }) },
+                { label: 'Jadikan proyek', icon: FolderPlus, onClick: () => doPromoteDetail(r) },
               ] : []),
               ...(perms.can_delete ? [
                 { divider: true },

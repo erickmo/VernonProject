@@ -6,6 +6,7 @@ import { Field } from '@web/components/ui'
 import { useToast } from '@/components/Toast'
 import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings, useSuperpowerSettings, useSaveSuperpowerSettings } from '@/hooks/useData'
 import { uploadBannerImage } from '@/lib/api'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import type { HomeBanner } from '@/lib/types'
 
 const field =
@@ -39,6 +40,11 @@ export default function Settings() {
   const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
   const [discReminderHours, setDiscReminderHours] = useState<string>('24')
   const [forcePhotoUpload, setForcePhotoUpload] = useState<boolean>(false)
+  const [prankEnabled, setPrankEnabled] = useState<boolean>(false)
+  const [prankTargets, setPrankTargets] = useState<string[]>([])
+  const [prankStartHour, setPrankStartHour] = useState<string>('9')
+  const [prankEndHour, setPrankEndHour] = useState<string>('17')
+  const [prankInterval, setPrankInterval] = useState<string>('60')
   const [sweepStalePlans, setSweepStalePlans] = useState<boolean>(false)
   const [sweepAfterDays, setSweepAfterDays] = useState<string>('1')
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
@@ -73,6 +79,11 @@ export default function Settings() {
     setForceDiscReminder(!!loaded.force_disc_reminder)
     setDiscReminderHours(String(loaded.disc_reminder_hours))
     setForcePhotoUpload(!!loaded.force_photo_upload)
+    setPrankEnabled(!!loaded.prank_photo_enabled)
+    setPrankTargets(loaded.prank_target_users ?? [])
+    setPrankStartHour(String(loaded.prank_start_hour ?? 9))
+    setPrankEndHour(String(loaded.prank_end_hour ?? 17))
+    setPrankInterval(String(loaded.prank_interval_minutes ?? 60))
     setSweepStalePlans(!!loaded.sweep_stale_plans)
     setSweepAfterDays(String(loaded.sweep_stale_plan_after_days))
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
@@ -143,6 +154,11 @@ export default function Settings() {
         force_disc_reminder: forceDiscReminder ? 1 : 0,
         disc_reminder_hours: Math.max(1, n(discReminderHours)),
         force_photo_upload: forcePhotoUpload ? 1 : 0,
+        prank_photo_enabled: prankEnabled ? 1 : 0,
+        prank_target_users: prankTargets,
+        prank_start_hour: Math.max(0, Math.min(23, n(prankStartHour))),
+        prank_end_hour: Math.max(0, Math.min(23, n(prankEndHour))),
+        prank_interval_minutes: Math.max(1, n(prankInterval)),
         sweep_stale_plans: sweepStalePlans ? 1 : 0,
         sweep_stale_plan_after_days: Math.max(0, n(sweepAfterDays)),
         qr_validity_seconds: n(qrValiditySeconds),
@@ -564,6 +580,86 @@ export default function Settings() {
               Skor rata-rata rekan harus melebihi angka ini agar tampil di Team Wall (dan memberi skor pada
               superpower yang dipilih sendiri). Default 3,25.
             </p>
+          </div>
+        </BentoTile>
+
+        <BentoTile span="md" tone="tint" accent="brand" title="Kejutan Foto 🤪">
+          <div className="mt-3 space-y-3">
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5 dark:border-slate-700">
+              <span className="text-sm font-semibold text-ink dark:text-slate-200">Aktifkan Kejutan Foto</span>
+              <input
+                type="checkbox"
+                className="h-5 w-5 accent-brand-600"
+                checked={prankEnabled}
+                onChange={(e) => setPrankEnabled(e.target.checked)}
+              />
+            </label>
+            <p className="text-xs text-muted">
+              Buat seru-seruan: pada jam yang dipilih, tiap N menit, pengguna terpilih dapat kejutan foto
+              dirinya sendiri yang muncul menari-nari dengan celetukan lucu + bunyi “boing”. Muncul saat
+              aplikasi terbuka, lalu hilang sendiri. Default nonaktif; kosongkan daftar = tidak ada yang kena.
+            </p>
+            {prankEnabled && (
+              <>
+                <Field label="Kena ke pengguna">
+                  {() => (
+                    <MultiSelectSearch
+                      options={loaded?.all_users ?? []}
+                      value={prankTargets}
+                      onChange={setPrankTargets}
+                      placeholder="Pilih pengguna…"
+                      emptyText="Tidak ada pengguna"
+                    />
+                  )}
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Jam mulai (0–23)">
+                    {(id) => (
+                      <input
+                        id={id}
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={23}
+                        className={field}
+                        value={prankStartHour}
+                        onChange={(e) => setPrankStartHour(e.target.value)}
+                        onBlur={() => setPrankStartHour((h) => String(Math.max(0, Math.min(23, n(h)))))}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Jam selesai (0–23)">
+                    {(id) => (
+                      <input
+                        id={id}
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={23}
+                        className={field}
+                        value={prankEndHour}
+                        onChange={(e) => setPrankEndHour(e.target.value)}
+                        onBlur={() => setPrankEndHour((h) => String(Math.max(0, Math.min(23, n(h)))))}
+                      />
+                    )}
+                  </Field>
+                </div>
+                <Field label="Selang waktu (menit)">
+                  {(id) => (
+                    <input
+                      id={id}
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      className={field}
+                      value={prankInterval}
+                      onChange={(e) => setPrankInterval(e.target.value)}
+                      onBlur={() => setPrankInterval((m) => String(Math.max(1, n(m))))}
+                    />
+                  )}
+                </Field>
+              </>
+            )}
           </div>
         </BentoTile>
 

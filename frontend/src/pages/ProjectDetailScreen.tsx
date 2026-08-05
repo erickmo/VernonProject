@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban } from 'lucide-react'
+import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban, Play, Timer, Check } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { BulkAddSheet } from '@/components/BulkAddSheet'
@@ -12,9 +12,14 @@ import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
-import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
-import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimateRatio } from '@/lib/format'
+import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useSetTodoAllocations, useBoot } from '@/hooks/useData'
+import { useFocusPill } from '@/hooks/useFocusPill'
+import { useTodoContextMenu } from '@/hooks/useTodoMenu'
+import { useHoldFeedback } from '@/hooks/useHoldFeedback'
+import { buildNext } from '@/lib/planDay'
+import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
 import { STATUS } from '@/lib/status'
+import type { ProjectItem } from '@/lib/types'
 
 export default function ProjectDetailScreen() {
   const { name = '' } = useParams()
@@ -23,7 +28,6 @@ export default function ProjectDetailScreen() {
   const [showCancelled, setShowCancelled] = useState(false)
   const { data, isLoading } = useProjectDetail(id, showCancelled)
   const { data: boot } = useBoot()
-  const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const toast = useToast()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -200,71 +204,9 @@ export default function ProjectDetailScreen() {
               <div key={s.label}>
                 <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{s.label} ({s.items.length})</p>
                 <div className="flex flex-col gap-1.5">
-                  {s.items.map((t) => {
-                    const isCancelled = t.status_key === 'cancelled'
-                    const statusMeta = STATUS[t.status_key as keyof typeof STATUS]
-                    return (
-              <Link
-                key={t.name}
-                to={`/project-item/${encodeURIComponent(t.name)}`}
-                className={`flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm transition active:scale-[0.99] ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 opacity-60' : 'bg-white dark:bg-slate-800'}`}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
-                  <FolderKanban className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`truncate text-sm font-medium ${isCancelled ? 'text-slate-400 dark:text-slate-500 line-through' : t.is_overdue ? 'text-rose-700' : 'text-slate-800 dark:text-slate-100'}`}>
-                    {t.to_do}
-                  </p>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                    {statusMeta ? (
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}>
-                        {statusMeta.emoji} {statusMeta.label}
-                      </span>
-                    ) : (
-                      <span>{t.status}</span>
-                    )}
-                    {t.deadline_human && (
-                      <>
-                        <span>·</span>
-                        <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
-                          {t.deadline_human}
-                        </span>
-                      </>
-                    )}
-                    {t.assigned_to_name && (
-                      <>
-                        <span>·</span>
-                        <span>{t.assigned_to_name}</span>
-                      </>
-                    )}
-                  </div>
-                  {isCancelled && (
-                    <div className="mt-1">
-                      <CancelledNote item={t} variant="line" />
-                    </div>
-                  )}
-                  {t.can_set_auto_approve && !!boot?.settings?.show_auto_approve && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <AutoApproveSegment
-                        mode={t.auto_approve_mode}
-                        effective={t.auto_approve_effective}
-                        projectDefault={data.auto_approve}
-                        disabled={setAutoApprove.isPending}
-                        onChange={(mode) =>
-                          setAutoApprove.mutate(
-                            { todoId: t.name, mode },
-                            { onError: (e) => toast('error', (e as Error).message) },
-                          )
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
-              </Link>
-                    )
-                  })}
+                  {s.items.map((t) => (
+                    <TodoRow key={t.name} item={t} projectAutoApprove={data.auto_approve} />
+                  ))}
                 </div>
               </div>
             ))}
@@ -300,5 +242,141 @@ export default function ProjectDetailScreen() {
         />
       )}
     </DetailScreen>
+  )
+}
+
+// One todo link-row. A component (not inline JSX) because the Today + Focus
+// quick-actions need per-row hooks — same pair the web todo table already shows.
+// ponytail: each row subscribes to the 1s focus tick (via useFocusPill); fine for
+// one detail's todo list, revisit if a screen ever renders hundreds of rows.
+function TodoRow({
+  item: t,
+  projectAutoApprove,
+}: {
+  // The cancel fields aren't in the lightweight row shape — optional so CancelledNote still takes it.
+  item: ProjectItem & { cancelled_on?: string | null; cancellation_reason?: string | null }
+  projectAutoApprove: boolean
+}) {
+  const { data: boot } = useBoot()
+  const setAutoApprove = useSetAutoApprove()
+  const setAlloc = useSetTodoAllocations(t.name)
+  const { focusActive, focusMode, onFocusPill } = useFocusPill(t)
+  const toast = useToast()
+  // Long-press (touch) / right-click opens the shared todo context menu — same
+  // one the cards elsewhere use, so "Move to detail…" etc. are reachable here too.
+  const menu = useTodoContextMenu()
+  const { holding, longFired, bind } = useHoldFeedback((pt) => menu?.open(t, pt))
+  const isCancelled = t.status_key === 'cancelled'
+  // Planning or focusing a done/cancelled task is meaningless — open todos only.
+  const isOpen = !isCancelled && t.status_key !== 'completed'
+  const planned = t.today_allocation > 0
+  const statusMeta = STATUS[t.status_key as keyof typeof STATUS]
+
+  return (
+    <Link
+      to={`/project-item/${encodeURIComponent(t.name)}`}
+      {...bind}
+      onClick={(e) => { if (longFired.current) { e.preventDefault(); longFired.current = false } }}
+      onContextMenu={(e) => { if (!menu) return; e.preventDefault(); menu.open(t, { x: e.clientX, y: e.clientY }) }}
+      className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-sm transition active:scale-[0.99] ${holding ? 'border-brand-400 ring-2 ring-brand-400/60' : 'border-slate-200 dark:border-slate-700'} ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 opacity-60' : 'bg-white dark:bg-slate-800'}`}
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+        <FolderKanban className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-sm font-medium ${isCancelled ? 'text-slate-400 dark:text-slate-500 line-through' : t.is_overdue ? 'text-rose-700' : 'text-slate-800 dark:text-slate-100'}`}>
+          {t.to_do}
+        </p>
+        <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+          {statusMeta ? (
+            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusMeta.pill}`}>
+              {statusMeta.emoji} {statusMeta.label}
+            </span>
+          ) : (
+            <span>{t.status}</span>
+          )}
+          {t.deadline_human && (
+            <>
+              <span>·</span>
+              <span className={t.is_overdue ? 'font-semibold text-rose-500' : ''}>
+                {t.deadline_human}
+              </span>
+            </>
+          )}
+          {t.assigned_to_name && (
+            <>
+              <span>·</span>
+              <span>{t.assigned_to_name}</span>
+            </>
+          )}
+        </div>
+        {isOpen && (
+          // Each pill preventDefaults: stopPropagation alone still lets the
+          // browser follow the row's <a> href (full page load).
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+            {/* Only the assignee sets the day-plan (backend enforces it too). */}
+            {t.is_mine && (
+              <button
+                type="button"
+                disabled={setAlloc.isPending}
+                title={planned ? 'Remove from today' : 'Add to today'}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (setAlloc.isPending) return
+                  const minutes = planned ? 0 : t.estimated > 0 ? t.estimated : 30
+                  setAlloc.mutate(buildNext(t.allocations ?? [], todayISO(), minutes), {
+                    onError: (err) => toast('error', (err as Error).message),
+                  })
+                }}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95 ${setAlloc.isPending ? 'opacity-50' : ''} ${
+                  planned
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                    : 'bg-stone-100 text-stone-600 dark:bg-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {planned ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                {planned ? `${formatEstimate(t.today_allocation)} today` : 'Today'}
+              </button>
+            )}
+            <button
+              type="button"
+              title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Stop focus timer') : 'Start focus timer'}
+              onClick={(e) => { e.preventDefault(); onFocusPill(e) }}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95 ${
+                focusActive
+                  ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300'
+                  : 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300'
+              }`}
+            >
+              {focusActive ? <Timer className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {focusActive ? 'Focusing' : 'Focus'}
+            </button>
+          </div>
+        )}
+        {isCancelled && (
+          <div className="mt-1">
+            <CancelledNote item={t} variant="line" />
+          </div>
+        )}
+        {t.can_set_auto_approve && !!boot?.settings?.show_auto_approve && (
+          <div onClick={(e) => { e.preventDefault(); e.stopPropagation() }}>
+            <AutoApproveSegment
+              mode={t.auto_approve_mode}
+              effective={t.auto_approve_effective}
+              projectDefault={projectAutoApprove}
+              disabled={setAutoApprove.isPending}
+              onChange={(mode) =>
+                setAutoApprove.mutate(
+                  { todoId: t.name, mode },
+                  { onError: (e) => toast('error', (e as Error).message) },
+                )
+              }
+            />
+          </div>
+        )}
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" />
+    </Link>
   )
 }

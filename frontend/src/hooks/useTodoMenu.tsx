@@ -10,6 +10,7 @@ import {
   StickyNote,
   CalendarCheck,
   Copy,
+  FolderInput,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
@@ -60,7 +61,7 @@ const EMPTY = { name: '', to_do: '', estimated: 0, today_allocation: 0, allocati
 // platform-specific (sheet vs dialog); everything else is navigation / shared hooks.
 export function useTodoMenuGroups(
   target: TodoMenuTarget | null,
-  overlays: { onAddMeeting: () => void; onAddFocusNote: () => void },
+  overlays: { onAddMeeting: () => void; onAddFocusNote: () => void; onMove: () => void },
 ): TodoMenuGroup[] {
   const navigate = useNavigate()
   const t = target ?? EMPTY
@@ -115,6 +116,8 @@ export function useTodoMenuGroups(
       // Only the assignee sets the day-plan (backend enforces it too).
       ...(t.is_mine ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
       { key: 't-duplicate', label: 'Duplicate', icon: Copy, onClick: go(`/project-item/${item}?duplicate=1`) },
+      // Move this todo (and optionally its detail-siblings) to another detail of the same project.
+      ...(t.project_detail ? [{ key: 't-move', label: 'Move to detail…', icon: FolderInput, onClick: overlays.onMove }] : []),
     ],
   })
 

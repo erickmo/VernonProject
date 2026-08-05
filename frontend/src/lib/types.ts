@@ -23,6 +23,10 @@ export interface Boot {
     force_superpower?: 0 | 1
     has_superpower?: 0 | 1
     online_window_minutes?: number
+    prank_enabled?: 0 | 1
+    prank_interval_minutes?: number
+    prank_start_hour?: number
+    prank_end_hour?: number
   }
   leave?: LeaveBalance | null
   leave_rules?: LeaveRulesStatus | null
@@ -824,6 +828,12 @@ export interface AppSettings {
   lateness_deduction_threshold_minutes: number
   overtime_bonus_enabled: number
   overtime_bonus_threshold_minutes: number
+  prank_photo_enabled: number
+  prank_target_users: string[]
+  prank_start_hour: number
+  prank_end_hour: number
+  prank_interval_minutes: number
+  all_users: Opt2[]
   home_banners: HomeBanner[]
 }
 

@@ -262,6 +262,11 @@ export const mobileApi = {
     api.post<{ name: string; project_name: string }>(M + 'duplicate_project', { project }),
   deleteProject: (project: string) =>
     api.post<{ ok: boolean }>(M + 'delete_project', { project }),
+  promoteProjectDetail: (project_detail: string) =>
+    api.post<{ name: string; project_name: string; moved_todos: number }>(
+      M + 'promote_project_detail',
+      { project_detail },
+    ),
   deleteProjectDetail: (project_detail: string) =>
     api.post<{ ok: boolean }>(M + 'delete_project_detail', { project_detail }),
   moveDestinations: (project_detail: string) =>
@@ -271,6 +276,12 @@ export const mobileApi = {
       M + 'move_project_detail',
       { project_detail, destination_project },
     ),
+  // Move one or more todos into another detail of the SAME project.
+  moveTodos: (destination_detail: string, todo_ids: string[]) =>
+    api.post<{ ok: boolean; moved: number }>(M + 'move_todos', {
+      destination_detail,
+      todo_ids: JSON.stringify(todo_ids),
+    }),
   createUser: (payload: {
     email: string
     full_name: string

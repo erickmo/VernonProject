@@ -208,6 +208,48 @@
    "default": "0",
    "description": "When on, ANY user with no real profile photo is shown a blocking modal on app open and must upload one before using the app. 0 = off (no gate)."
   },
+  {"fieldname": "prank_section", "fieldtype": "Section Break", "label": "Photo Prank"},
+  {
+   "fieldname": "prank_photo_enabled",
+   "fieldtype": "Check",
+   "label": "Photo Prank Enabled",
+   "default": "0",
+   "description": "For fun: at the hours below, every N minutes, the selected users get a full-screen pop of THEIR OWN profile photo bouncing with a silly Bahasa caption + a boing sound. Auto-dismisses. 0 = off. Only fires for users listed in Prank Target Users."
+  },
+  {
+   "fieldname": "prank_target_users",
+   "fieldtype": "Small Text",
+   "label": "Prank Target Users",
+   "depends_on": "prank_photo_enabled",
+   "description": "JSON list of user emails who get the photo prank. Managed from the app Settings picker. Empty = nobody."
+  },
+  {
+   "fieldname": "prank_start_hour",
+   "fieldtype": "Int",
+   "label": "Prank Start Hour (0-23)",
+   "non_negative": 1,
+   "default": "9",
+   "depends_on": "prank_photo_enabled",
+   "description": "Earliest hour of day (server time) the prank may pop."
+  },
+  {
+   "fieldname": "prank_end_hour",
+   "fieldtype": "Int",
+   "label": "Prank End Hour (0-23)",
+   "non_negative": 1,
+   "default": "17",
+   "depends_on": "prank_photo_enabled",
+   "description": "Latest hour of day (server time) the prank may pop. Inclusive of that hour."
+  },
+  {
+   "fieldname": "prank_interval_minutes",
+   "fieldtype": "Int",
+   "label": "Prank Interval (minutes)",
+   "non_negative": 1,
+   "default": "60",
+   "depends_on": "prank_photo_enabled",
+   "description": "Minutes between pops while within the hour window."
+  },
   {"fieldname": "plan_housekeeping_section", "fieldtype": "Section Break", "label": "Plan Housekeeping"},
   {
    "fieldname": "sweep_stale_plans",

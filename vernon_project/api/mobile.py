@@ -731,6 +731,13 @@ def _shape_item_row(row, user, name_map, alloc_map=None):
 		"to_do": row["to_do"],
 		"status": row["status"],
 		"status_key": skey,
+		# Carry the project/detail refs so the shared todo context menu can offer
+		# "Move to detail…" (gated on project_detail) and its dialog can resolve the
+		# source detail + destination options from these link rows.
+		"project": row.get("project"),
+		"project_name": row.get("project_name"),
+		"project_detail": row.get("project_detail"),
+		"project_detail_title": row.get("project_detail_title"),
 		"estimated": row["estimated"] or 0,
 		"deadline": str(row["deadline"]) if row["deadline"] else None,
 		"deadline_human": _humanize_date(row["deadline"]),
@@ -810,6 +817,15 @@ def bootstrap():
 			"force_superpower": int(frappe.db.get_single_value("Vernon Settings", "force_superpower_onboarding") or 0),
 			"has_superpower": 1 if frappe.db.exists("User Superpower", {"user": user}) else 0,
 			"online_window_minutes": int(frappe.db.get_single_value("Vernon Settings", "online_window_minutes") or 15),
+			# Photo prank: enabled for THIS user only if the master toggle is on AND
+			# they're in the target list. Timing rides along; the frontend ticks it.
+			"prank_enabled": 1 if (
+				int(frappe.db.get_single_value("Vernon Settings", "prank_photo_enabled") or 0)
+				and user in (frappe.parse_json(frappe.db.get_single_value("Vernon Settings", "prank_target_users") or "[]") or [])
+			) else 0,
+			"prank_interval_minutes": int(frappe.db.get_single_value("Vernon Settings", "prank_interval_minutes") or 60),
+			"prank_start_hour": int(frappe.db.get_single_value("Vernon Settings", "prank_start_hour") or 9),
+			"prank_end_hour": int(frappe.db.get_single_value("Vernon Settings", "prank_end_hour") or 17),
 		},
 		"leave": _leave_balance(user),
 		"leave_rules": _leave_rules_status(user),
@@ -1961,17 +1977,15 @@ def delete_todo(project_item):
 
 
 def _alloc_sum_error(rows, estimated):
-	"""Return a friendly message if the rows' minutes don't sum to `estimated`
-	(only enforced when estimated > 0), else None."""
+	"""Return a friendly message if the assigned split's minutes go OVER `estimated`
+	(only enforced when estimated > 0), else None. Under-allocating is allowed."""
 	estimated = int(estimated or 0)
 	if estimated <= 0:
 		return None
 	total = sum(int(r.get("minutes") or r.get("estimated_minutes") or 0) for r in (rows or []))
-	if total == estimated:
+	if total <= estimated:
 		return None
-	diff = estimated - total
-	short = f"{diff}m short of" if diff > 0 else f"{-diff}m over"
-	return f"Assigned split is {short} the {estimated}m estimate."
+	return f"Assigned split is {total - estimated}m over the {estimated}m estimate."
 
 
 def _assigned_allocation_for(allocs, deadline, estimated):
@@ -2598,6 +2612,23 @@ def get_app_settings():
 		"lateness_deduction_threshold_minutes": int(g("lateness_deduction_threshold_minutes") or 0),
 		"overtime_bonus_enabled": int(g("overtime_bonus_enabled") or 0),
 		"overtime_bonus_threshold_minutes": int(g("overtime_bonus_threshold_minutes") or 0),
+		"prank_photo_enabled": int(g("prank_photo_enabled") or 0),
+		"prank_target_users": frappe.parse_json(g("prank_target_users") or "[]") or [],
+		"prank_start_hour": int(g("prank_start_hour") or 9),
+		"prank_end_hour": int(g("prank_end_hour") or 17),
+		"prank_interval_minutes": int(g("prank_interval_minutes") or 60),
+		# Options for the prank target picker: every enabled user — System AND Website
+		# users (most app members are Website users), minus the built-in accounts.
+		"all_users": [
+			{"value": u.name, "label": u.full_name or u.name}
+			for u in frappe.get_all(
+				"User",
+				filters={"enabled": 1},
+				fields=["name", "full_name"],
+				order_by="full_name asc",
+			)
+			if u.name not in ("Administrator", "Guest")
+		],
 		"home_banners": [
 			{"image": b.image, "link": b.link or "", "is_active": int(b.is_active or 0)}
 			for b in frappe.get_single("Vernon Settings").get("home_banners") or []
@@ -2683,6 +2714,11 @@ def save_app_settings(
 	lateness_deduction_threshold_minutes=None,
 	overtime_bonus_enabled=None,
 	overtime_bonus_threshold_minutes=None,
+	prank_photo_enabled=None,
+	prank_target_users=None,
+	prank_start_hour=None,
+	prank_end_hour=None,
+	prank_interval_minutes=None,
 	home_banners=None,
 ):
 	_require_settings_manager()
@@ -2722,6 +2758,10 @@ def save_app_settings(
 		"lateness_deduction_threshold_minutes": lateness_deduction_threshold_minutes,
 		"overtime_bonus_enabled": overtime_bonus_enabled,
 		"overtime_bonus_threshold_minutes": overtime_bonus_threshold_minutes,
+		"prank_photo_enabled": prank_photo_enabled,
+		"prank_start_hour": prank_start_hour,
+		"prank_end_hour": prank_end_hour,
+		"prank_interval_minutes": prank_interval_minutes,
 	}
 	float_fields = {
 		"late_penalty_per_minute": late_penalty_per_minute,
@@ -2735,6 +2775,10 @@ def save_app_settings(
 				ival = 1  # nudge interval floored to 1h
 			if field == "online_window_minutes" and ival < 10:
 				ival = 10  # server writes last_active at most every ~10 min; lower flickers
+			if field == "prank_interval_minutes" and ival < 1:
+				ival = 1  # at least 1 min between pops
+			if field in ("prank_start_hour", "prank_end_hour"):
+				ival = max(0, min(23, ival))
 			if ival < 0:
 				frappe.throw(f"{field} cannot be negative.")
 			settings.set(field, ival)
@@ -2744,6 +2788,12 @@ def save_app_settings(
 			if fval < 0:
 				frappe.throw(f"{field} cannot be negative.")
 			settings.set(field, fval)
+	# Prank targets: store as a JSON list of user emails. Accepts a list or a JSON string.
+	if prank_target_users is not None:
+		if isinstance(prank_target_users, str):
+			prank_target_users = frappe.parse_json(prank_target_users or "[]")
+		emails = [str(u).strip() for u in (prank_target_users or []) if str(u).strip()]
+		settings.set("prank_target_users", frappe.as_json(emails))
 	# Home banners: full replace when provided (JSON list of {image, link, is_active}).
 	if home_banners is not None:
 		if isinstance(home_banners, str):
@@ -4582,6 +4632,9 @@ def list_meetings(project=None):
 				"recurring_exception_weekdays", "recurring_exception_monthdays",
 				"recurring_exception_dates", "recurring_exception_behavior", "original_meeting"],
 		order_by="scheduled_at desc",
+		# No page cap: desc order puts the FARTHEST-future meetings first, so the
+		# default 20 would silently drop the nearest ones the home reminder needs.
+		limit_page_length=0,
 	)
 	user = frappe.session.user
 	roles = frappe.get_roles(user)
@@ -6191,6 +6244,70 @@ def duplicate_project(project):
 	return {"name": new.name, "project_name": new.project_name}
 
 
+def _reparent_detail(detail, destination_project, children):
+	"""Point a Project Detail — and its todos plus their point history — at
+	another project. grouping/glossaries reference the OLD project's Glossary
+	rows, so they are cleared to keep Project Detail.validate() happy under the
+	new parent. Callers are responsible for the permission + team checks."""
+	detail.project = destination_project
+	detail.grouping = None
+	detail.glossaries = []
+	detail.save(ignore_permissions=True)
+	for c in children:
+		frappe.db.set_value("Project Todo", c.name, "project", destination_project, update_modified=False)
+		frappe.db.set_value("Point Ledger", {"todo": c.name}, "project", destination_project)
+
+
+@frappe.whitelist()
+def promote_project_detail(project_detail):
+	"""Turn a Project Detail into a Project of its own.
+
+	The new project is named after the detail's title and copies owner, leader
+	and admins (plus brand) from the detail's current project. It starts today
+	and runs for the same span as the original project, so a 30-day project
+	yields a 30-day child. The detail is then MOVED into it, which carries its
+	todos (and their point history) along. Returns {name, project_name}."""
+	detail = frappe.get_doc("Project Detail", project_detail)
+	src = frappe.get_doc("Project", detail.project)
+	if not _can_duplicate_project(src, frappe.session.user):
+		frappe.throw(
+			"Only the project owner, leader, admin or a System Manager may promote this detail.",
+			frappe.PermissionError,
+		)
+
+	children = frappe.get_all(
+		"Project Todo", filters={"project_detail": project_detail}, fields=["name", "assigned_to"]
+	)
+
+	# Same duration as the original project, restarted from today.
+	span = date_diff(src.deadline, src.start_date) if (src.deadline and src.start_date) else 0
+	start = nowdate()
+
+	# Todo.validate_assigned_to_team_member() requires every assignee to be on
+	# the project team, so the assignees of the todos coming along must be
+	# seeded here or their next save would fail. Owner/leader/admins are added
+	# by Project.before_save.
+	assignees = {c.assigned_to for c in children if c.assigned_to}
+
+	new = frappe.get_doc({
+		"doctype": "Project",
+		"project_name": detail.title,
+		"brand": src.brand,
+		"project_owner": src.project_owner,
+		"project_leader": src.project_leader,
+		"project_admins": [{"user": u} for u in get_project_admins(src)],
+		"team_members": [{"user": u} for u in sorted(assignees)],
+		"start_date": start,
+		"deadline": add_days(start, max(span, 0)),
+		"status": "Ongoing",
+	}).insert(ignore_permissions=True)
+
+	_reparent_detail(detail, new.name, children)
+
+	frappe.db.commit()
+	return {"name": new.name, "project_name": new.project_name, "moved_todos": len(children)}
+
+
 def _require_project_manager(project_doc):
 	"""Delete gate: owner / leader / admin of the project, or a System Manager."""
 	user = frappe.session.user
@@ -6272,17 +6389,55 @@ def move_project_detail(project_detail, destination_project):
 	if blocked:
 		return {"ok": False, "blocked": blocked}
 
-	# grouping/glossaries point at the source project's Glossary rows; clearing
-	# them lets validate() pass under the destination project.
-	detail.project = destination_project
-	detail.grouping = None
-	detail.glossaries = []
-	detail.save(ignore_permissions=True)
-	for c in children:
-		frappe.db.set_value("Project Todo", c.name, "project", destination_project, update_modified=False)
-		frappe.db.set_value("Point Ledger", {"todo": c.name}, "project", destination_project)
+	_reparent_detail(detail, destination_project, children)
 	frappe.db.commit()
 	return {"ok": True, "moved_todos": len(children)}
+
+
+@frappe.whitelist()
+def move_todos(destination_detail, todo_ids):
+	"""Move one or more Project Todos into another Project Detail *within the same
+	project*. Same guard as update_todo (System Manager / project owner / leader /
+	the todo's assignee). Two-pass: everything is validated before any write, so a
+	single bad todo aborts the whole batch with nothing moved. Todos already in the
+	destination are skipped. Cross-project moves are refused here — that is what
+	move_project_detail (whole detail, cross-project) is for."""
+	ids = frappe.parse_json(todo_ids) or []
+	if not ids:
+		frappe.throw("No tasks selected.")
+	dest_project = frappe.db.get_value("Project Detail", destination_detail, "project")
+	if not dest_project:
+		frappe.throw("Destination detail not found.")
+
+	user = frappe.session.user
+	is_sm = "System Manager" in frappe.get_roles(user)
+	owner, leader = frappe.db.get_value("Project", dest_project, ["project_owner", "project_leader"])
+
+	# Pass 1 — validate every id; collect the ones that actually change detail.
+	to_move = []
+	for tid in ids:
+		row = frappe.db.get_value(
+			"Project Todo", tid, ["project_detail", "assigned_to"], as_dict=True
+		)
+		if not row or not row.project_detail:
+			frappe.throw("Task not found.")
+		# Compare the source detail's project (authoritative) to the destination's —
+		# not the todo's denormalized `project` field.
+		src_project = frappe.db.get_value("Project Detail", row.project_detail, "project")
+		if src_project != dest_project:
+			frappe.throw("Tasks can only be moved within the same project.")
+		if not (is_sm or user in (owner, leader, row.assigned_to)):
+			frappe.throw("You don't have permission to move one of these tasks.", frappe.PermissionError)
+		if row.project_detail != destination_detail:
+			to_move.append(tid)
+
+	# Pass 2 — write. db.set_value skips the Project Todo controller on purpose: a
+	# same-project reparent leaves `project`, points and scoring untouched, so there
+	# is nothing to recompute and no locked-field guard to fight.
+	for tid in to_move:
+		frappe.db.set_value("Project Todo", tid, "project_detail", destination_detail)
+	frappe.db.commit()
+	return {"ok": True, "moved": len(to_move)}
 
 
 @frappe.whitelist()

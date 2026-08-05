@@ -249,12 +249,13 @@ def notify_overdue_courses():
 def _stale_plan_cutoff(today_date, grace_days):
     """Latest allocation_date that still gets swept: slots with allocation_date <= cutoff are stale.
 
-    grace_days=1 -> cutoff is yesterday (today's slot kept). grace floored at 0 so a
-    negative setting can't reach into the future.
+    grace_days=1 -> cutoff is yesterday. grace floored at 1 (not 0) so the cutoff is
+    always <= yesterday: a slot due today isn't past-due, and today's / future plans are
+    never deleted at the midnight sweep no matter what grace an admin sets.
     """
     from datetime import timedelta
 
-    return today_date - timedelta(days=max(0, int(grace_days)))
+    return today_date - timedelta(days=max(1, int(grace_days)))
 
 
 def sweep_stale_plans():

@@ -7,6 +7,7 @@ import {
 } from '@/hooks/useTodoMenu'
 import { CreateMeetingSheet } from './CreateMeetingSheet'
 import { FocusNoteSheet } from './FocusNoteSheet'
+import { MoveTodosSheet } from './MoveTodosSheet'
 
 // Mobile provider for the shared todo context menu (long-press on /m). Renders the
 // grouped model from useTodoMenuGroups as a bottom action-sheet and hosts the two
@@ -20,6 +21,8 @@ export function TodoContextMenuProvider({ children }: { children: React.ReactNod
   const [meetingProject, setMeetingProject] = useState<string | undefined>()
   const [noteOpen, setNoteOpen] = useState(false)
   const [note, setNote] = useState<{ todoId: string; title: string } | null>(null)
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [moveSeed, setMoveSeed] = useState<ProjectItem | null>(null)
 
   const closeMenu = () => {
     setMenuOpen(false)
@@ -38,6 +41,12 @@ export function TodoContextMenuProvider({ children }: { children: React.ReactNod
       setNote(t ? { todoId: t.name, title: t.to_do } : null)
       closeMenu()
       setNoteOpen(true)
+    },
+    onMove: () => {
+      const t = targetRef.current
+      setMoveSeed(t)
+      closeMenu()
+      setMoveOpen(true)
     },
   })
 
@@ -93,6 +102,7 @@ export function TodoContextMenuProvider({ children }: { children: React.ReactNod
         todoId={note?.todoId ?? ''}
         title={note?.title ?? ''}
       />
+      <MoveTodosSheet open={moveOpen} onClose={() => setMoveOpen(false)} seed={moveSeed} />
     </TodoMenuContextProvider>
   )
 }

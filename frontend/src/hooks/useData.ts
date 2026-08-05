@@ -866,6 +866,22 @@ export function useDeleteProjectDetail() {
   })
 }
 
+// Promote a Project Detail into its own Project (owner/leader/admins copied)
+// and move the detail — with its todos — into it. Returns the new project name
+// so the caller can navigate.
+export function usePromoteProjectDetail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (project_detail: string) => mobileApi.promoteProjectDetail(project_detail),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
 export function useMoveDestinations(project_detail: string) {
   return useQuery({
     queryKey: ['move-destinations', project_detail],
@@ -881,6 +897,22 @@ export function useMoveProjectDetail() {
       mobileApi.moveProjectDetail(vars.project_detail, vars.destination_project),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+// Move todos into another detail of the same project. Broad invalidation: the
+// source + destination details and the project board all shift at once.
+export function useMoveTodos() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { destination: string; todoIds: string[] }) =>
+      mobileApi.moveTodos(vars.destination, vars.todoIds),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: keys.dashboard })
     },
   })

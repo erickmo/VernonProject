@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, FolderInput, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, FolderInput, FolderPlus, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -17,7 +17,7 @@ import { ProjectMeetings } from '@/components/ProjectMeetings'
 import { ProjectAutoApproveSwitch } from '@/components/ProjectAutoApproveSwitch'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, permFlags } from '@/hooks/useData'
+import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, usePromoteProjectDetail, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
 import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
@@ -34,6 +34,7 @@ export default function ProjectScreen() {
   const del = useDeleteProject()
   const delDetail = useDeleteProjectDetail()
   const dup = useDuplicateProject()
+  const promote = usePromoteProjectDetail()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const [editOpen, setEditOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
@@ -390,6 +391,27 @@ export default function ProjectScreen() {
                           className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700"
                         >
                           <FolderInput className="h-4 w-4" />
+                        </button>
+                      )}
+                      {flags.can_edit && (
+                        <button
+                          title="Jadikan proyek"
+                          disabled={promote.isPending}
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!(await confirm({
+                              title: 'Jadikan proyek?',
+                              message: `Proyek baru "${w.title}" dibuat dengan owner, leader & admin yang sama, mulai hari ini. Detail ini beserta ${w.total} todo-nya pindah ke sana.`,
+                              confirmLabel: 'Buat proyek',
+                            }))) return
+                            promote.mutate(w.name, {
+                              onSuccess: (res) => { toast('success', `Proyek dibuat: "${res.project_name}" (${res.moved_todos} todo dipindahkan)`); navigate(`/project/${encodeURIComponent(res.name)}`) },
+                              onError: (err) => toast('error', (err as Error).message),
+                            })
+                          }}
+                          className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-700 disabled:opacity-50"
+                        >
+                          <FolderPlus className="h-4 w-4" />
                         </button>
                       )}
                       {flags.can_delete && (

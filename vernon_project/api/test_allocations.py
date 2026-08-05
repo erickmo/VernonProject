@@ -30,9 +30,9 @@ class TestAllocationHelpers(unittest.TestCase):
 	def test_sum_error_none_when_estimate_zero(self):
 		self.assertIsNone(_alloc_sum_error([{"minutes": 5}], 0))
 
-	def test_sum_error_short(self):
-		msg = _alloc_sum_error([{"minutes": 30}], 60)
-		self.assertIn("30m short of", msg)
+	def test_sum_error_short_allowed(self):
+		# Under-allocating the assigned split is allowed now — no error.
+		self.assertIsNone(_alloc_sum_error([{"minutes": 30}], 60))
 
 	def test_sum_error_over(self):
 		msg = _alloc_sum_error([{"minutes": 90}], 60)
@@ -114,12 +114,18 @@ class TestAssignedAllocation(_AllocFixture):
 		self.assertEqual(res["status"], "ok")
 		self.assertEqual(len(res["allocations"]), 1)
 
-	def test_sum_mismatch_rejected(self):
+	def test_over_rejected(self):
+		from vernon_project.api.mobile import set_assigned_allocation
+		frappe.set_user("Administrator")
+		res = set_assigned_allocation(self.todo.name, self._rows((1, 90)))
+		self.assertEqual(res["status"], "error")
+		self.assertIn("over", res["message"])
+
+	def test_under_allowed(self):
 		from vernon_project.api.mobile import set_assigned_allocation
 		frappe.set_user("Administrator")
 		res = set_assigned_allocation(self.todo.name, self._rows((1, 10)))
-		self.assertEqual(res["status"], "error")
-		self.assertIn("short of", res["message"])
+		self.assertEqual(res["status"], "ok")  # under-allocating assigned split is allowed
 
 	def test_assignee_cannot_set_assigned(self):
 		from vernon_project.api.mobile import set_assigned_allocation

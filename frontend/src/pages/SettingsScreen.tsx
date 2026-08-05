@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
 import { useBoot, canManageGroups, useAppSettings, useSaveAppSettings, useSuperpowerSettings, useSaveSuperpowerSettings } from '@/hooks/useData'
 import { uploadBannerImage } from '@/lib/api'
+import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import type { HomeBanner } from '@/lib/types'
 
 const field =
@@ -44,6 +45,11 @@ export default function SettingsScreen() {
   const [forceDiscReminder, setForceDiscReminder] = useState<boolean>(false)
   const [discReminderHours, setDiscReminderHours] = useState<number>(24)
   const [forcePhotoUpload, setForcePhotoUpload] = useState<boolean>(false)
+  const [prankEnabled, setPrankEnabled] = useState<boolean>(false)
+  const [prankTargets, setPrankTargets] = useState<string[]>([])
+  const [prankStartHour, setPrankStartHour] = useState<number>(9)
+  const [prankEndHour, setPrankEndHour] = useState<number>(17)
+  const [prankInterval, setPrankInterval] = useState<number>(60)
   const [sweepStalePlans, setSweepStalePlans] = useState<boolean>(false)
   const [sweepAfterDays, setSweepAfterDays] = useState<number>(1)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
@@ -75,6 +81,11 @@ export default function SettingsScreen() {
     setForceDiscReminder(!!loaded.force_disc_reminder)
     setDiscReminderHours(loaded.disc_reminder_hours || 24)
     setForcePhotoUpload(!!loaded.force_photo_upload)
+    setPrankEnabled(!!loaded.prank_photo_enabled)
+    setPrankTargets(loaded.prank_target_users ?? [])
+    setPrankStartHour(loaded.prank_start_hour ?? 9)
+    setPrankEndHour(loaded.prank_end_hour ?? 17)
+    setPrankInterval(loaded.prank_interval_minutes ?? 60)
     setSweepStalePlans(!!loaded.sweep_stale_plans)
     setSweepAfterDays(loaded.sweep_stale_plan_after_days)
     setQrValiditySeconds(loaded.qr_validity_seconds)
@@ -131,6 +142,11 @@ export default function SettingsScreen() {
         force_disc_reminder: forceDiscReminder ? 1 : 0,
         disc_reminder_hours: discReminderHours,
         force_photo_upload: forcePhotoUpload ? 1 : 0,
+        prank_photo_enabled: prankEnabled ? 1 : 0,
+        prank_target_users: prankTargets,
+        prank_start_hour: prankStartHour,
+        prank_end_hour: prankEndHour,
+        prank_interval_minutes: prankInterval,
         sweep_stale_plans: sweepStalePlans ? 1 : 0,
         sweep_stale_plan_after_days: Math.max(0, sweepAfterDays),
         qr_validity_seconds: qrValiditySeconds,
@@ -479,6 +495,52 @@ export default function SettingsScreen() {
               onChange={(e) => setForcePhotoUpload(e.target.checked)}
             />
           </label>
+        </div>
+
+        <div className={card}>
+          <p className="mb-1 text-sm font-bold text-stone-800 dark:text-slate-100">Kejutan Foto 🤪</p>
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            Buat seru-seruan: pada jam yang dipilih, tiap N menit, pengguna terpilih dapat kejutan foto
+            dirinya sendiri yang muncul menari-nari dengan celetukan lucu + bunyi “boing”. Muncul saat
+            aplikasi terbuka, lalu hilang sendiri. Default nonaktif; kosongkan daftar = tidak ada yang kena.
+          </p>
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2.5 shadow-card dark:bg-slate-900/40">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Aktifkan Kejutan Foto</span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-600"
+              checked={prankEnabled}
+              onChange={(e) => setPrankEnabled(e.target.checked)}
+            />
+          </label>
+          {prankEnabled && (
+            <div className="mt-3 flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Kena ke pengguna</label>
+                <MultiSelectSearch
+                  options={loaded?.all_users ?? []}
+                  value={prankTargets}
+                  onChange={setPrankTargets}
+                  placeholder="Pilih pengguna…"
+                  emptyText="Tidak ada pengguna"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Jam mulai (0–23)</label>
+                  {num(prankStartHour, setPrankStartHour, '9')}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Jam selesai (0–23)</label>
+                  {num(prankEndHour, setPrankEndHour, '17')}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Selang waktu (menit)</label>
+                {num(prankInterval, setPrankInterval, '60')}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className={card}>
