@@ -4,7 +4,7 @@ import { Minus, Plus } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { TodoCard } from '@/components/TodoCard'
 import type { ProjectItem } from '@/lib/types'
-import { groupByDetail, detailPickerOptions, MIN_COLS, MAX_COLS } from '@/lib/filters'
+import { groupByDetail, detailPickerOptions, availableDetailOptions, MIN_COLS, MAX_COLS } from '@/lib/filters'
 
 function Cards({ todos }: { todos: ProjectItem[] }) {
   return (
@@ -133,6 +133,9 @@ export function SwipeProjectLists({
   const multi = groups.length >= 2
 
   const options = detailPickerOptions(groups)
+  // Hide details picked in other panes so one detail can't fill two panes.
+  const optsFor = (self: number) =>
+    availableDetailOptions(options, new Set(picks.filter((p, k) => p && k !== self)), picks[self] || '')
   const setPick = (i: number, v: string) => setPicks((p) => p.map((x, k) => (k === i ? v : x)))
   const paneTodos = (i: number) => groups.find((g) => g.key === picks[i])?.todos
 
@@ -186,7 +189,7 @@ export function SwipeProjectLists({
             <SearchableSelect
               value={picks[idx - 1]}
               onChange={(v) => setPick(idx - 1, v)}
-              options={options}
+              options={optsFor(idx - 1)}
               allowClear
               placeholder="Pick a project"
             />

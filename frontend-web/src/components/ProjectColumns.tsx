@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { SearchableSelect, type SelectOption } from '@/components/SearchableSelect'
 import type { ProjectItem } from '@/lib/types'
-import { groupByDetail, detailPickerOptions, MIN_COLS, MAX_COLS, type DetailGroup } from '@/lib/filters'
+import { groupByDetail, detailPickerOptions, availableDetailOptions, MIN_COLS, MAX_COLS, type DetailGroup } from '@/lib/filters'
 
 // One scroll only: columns grow to their content and the WINDOW scrolls. The
 // per-column viewport-tall scroll region was removed — nesting a scroll inside
@@ -118,15 +118,18 @@ export function ThreeColProjectList({
   const groups = groupByDetail(items)
   const options = detailPickerOptions(groups)
   const colFor = (pick: string) => groups.find((g) => g.key === pick)
+  // Details picked in any OTHER column, so each picker hides them → no duplicate columns.
+  const optsFor = (self: number) =>
+    availableDetailOptions(options, new Set(picks.filter((p, i) => p && i !== self)), picks[self] || '')
   return (
     <div className="flex flex-col gap-3">
       <ColStepper count={count} setCount={setCount} />
       <div className="grid grid-cols-1 gap-4 overflow-x-auto md:grid-cols-none md:auto-cols-[minmax(220px,1fr)] md:grid-flow-col">
         {/* Column 1 — full list by default; picker narrows it to one project */}
-        <ProjectPickCol pick={picks[0] || ''} setPick={(v) => setPick(0, v)} options={options} group={colFor(picks[0] || '')} renderCard={renderCard} fallbackTodos={items} />
+        <ProjectPickCol pick={picks[0] || ''} setPick={(v) => setPick(0, v)} options={optsFor(0)} group={colFor(picks[0] || '')} renderCard={renderCard} fallbackTodos={items} />
         {/* Remaining columns — each a separate project you pick */}
         {Array.from({ length: count - 1 }, (_, k) => k + 1).map((i) => (
-          <ProjectPickCol key={i} pick={picks[i] || ''} setPick={(v) => setPick(i, v)} options={options} group={colFor(picks[i] || '')} renderCard={renderCard} />
+          <ProjectPickCol key={i} pick={picks[i] || ''} setPick={(v) => setPick(i, v)} options={optsFor(i)} group={colFor(picks[i] || '')} renderCard={renderCard} />
         ))}
       </div>
     </div>

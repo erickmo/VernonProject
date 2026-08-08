@@ -223,6 +223,19 @@ export function detailPickerOptions(groups: DetailGroup[]): SelectOption[] {
     ])
 }
 
+/**
+ * One focus picker's options, with details already picked in OTHER columns
+ * removed so the same detail can't fill two columns (no duplicate columns).
+ * `taken` = every other column's current pick; `own` stays so this column's
+ * selected value still renders. Project headers left with no detail rows under
+ * them are dropped so no empty heading dangles.
+ */
+export function availableDetailOptions(all: SelectOption[], taken: Set<string>, own: string): SelectOption[] {
+  const kept = all.filter((o) => o.header || o.value === own || !taken.has(o.value))
+  // A header is orphaned if the next kept row is another header (or nothing).
+  return kept.filter((o, i) => !o.header || (!!kept[i + 1] && !kept[i + 1].header))
+}
+
 /** Apply the standard project/brand/owner/leader/estimate filters to todos. */
 export function applyProjectItemFilters(list: ProjectItem[], f: Record<string, string>): ProjectItem[] {
   return list.filter(

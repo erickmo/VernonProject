@@ -1,6 +1,6 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert/strict'
-import { buildOptions, groupByDetail, detailPickerOptions } from './filters'
+import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions } from './filters'
 
 const todos = [
   { project: 'P1', project_name: 'Alpha', detail: 'Login screen' },
@@ -46,5 +46,17 @@ const login = picks.find((o) => o.value === 'D1')
 assert.equal(login.indent, true)
 assert.equal(login.keywords, 'Alpha') // search-by-project still hits the detail
 assert.equal(picks.find((o) => o.header).indent, undefined) // headings aren't indented rows
+
+// --- availableDetailOptions (no duplicate columns) ---
+// D1 taken elsewhere → hidden here, but this column's own D2 stays; Beta's lone
+// detail is taken → its header drops (no orphan heading).
+const avail = availableDetailOptions(picks, new Set(['D1', 'P2']), 'D2')
+assert.deepEqual(
+  avail.map((o) => (o.header ? `#${o.label}` : o.label)),
+  ['#Alpha', 'Signup (1)'],
+)
+// Own pick always survives even if it's also (staler) in `taken`.
+const ownKept = availableDetailOptions(picks, new Set(['D1']), 'D1')
+assert.ok(ownKept.some((o) => o.value === 'D1'))
 
 console.log('buildOptions.selfcheck: all assertions passed')
