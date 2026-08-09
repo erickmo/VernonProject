@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
-import { Search, AlertCircle, CheckCheck, ChevronDown, Layers, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
-import { useProjects } from '@/hooks/useData'
+import { Search, AlertCircle, CheckCheck, ChevronDown, Layers, ChevronsDownUp, ChevronsUpDown, UserCog } from 'lucide-react'
+import { useProjects, useBoot, canCreateProject } from '@/hooks/useData'
 import { ProgressBar, Spinner, Segmented } from '@/components/ui'
 import { buildOptions } from '@/lib/filters'
 import { FilterButton, activeFilterCount } from '@/components/FilterSheet'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { Popover } from '@web/components/overlays/Popover'
+import { BulkAssignRolesDialog } from '@web/components/BulkAssignRolesDialog'
 import type { ProjectCard } from '@/lib/types'
 
 type StatusFilter = 'Ongoing' | 'Inbox' | 'Closed' | 'all'
@@ -72,6 +73,9 @@ export function ProjectRail() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const filterRef = useRef<HTMLSpanElement>(null)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const boot = useBoot()
+  const canBulk = canCreateProject(boot.data)
 
   const all = projects.data ?? []
 
@@ -191,8 +195,20 @@ export function ProjectRail() {
             <Layers className="h-4 w-4" />
             Group
           </button>
+          {canBulk && (
+            <button
+              onClick={() => setBulkOpen(true)}
+              title="Bulk assign leader & admins"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-hover/[0.04]"
+            >
+              <UserCog className="h-4 w-4" />
+              Bulk roles
+            </button>
+          )}
         </div>
       </div>
+
+      {canBulk && <BulkAssignRolesDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {projects.isLoading ? (

@@ -92,6 +92,17 @@ def test_monthly_nth_weekday():
     assert next_occurrence(date(2026, 1, 23), _r(frequency="Monthly", monthly_mode="Nth Weekday", weekdays=(FRI,), nth="Fourth")) == date(2026, 2, 27)
 
 
+def test_annually():
+    r = _r(frequency="Annually")
+    assert next_occurrence(date(2026, 3, 15), r) == date(2027, 3, 15)
+    # interval > 1
+    assert next_occurrence(date(2026, 3, 15), _r(frequency="Annually", interval=2)) == date(2028, 3, 15)
+    # Feb 29 anchor clamps to Feb 28 in a common year, then stays 28 (derives from deadline).
+    r29 = _r(frequency="Annually")
+    d = next_occurrence(date(2024, 2, 29), r29); assert d == date(2025, 2, 28)
+    d = next_occurrence(d, r29); assert d == date(2026, 2, 28)
+
+
 def test_first_on_or_after():
     r = _r(frequency="Weekly", weekdays=(MON, THU))
     assert first_on_or_after(date(2026, 7, 7), r) == date(2026, 7, 9)  # Tue -> Thu

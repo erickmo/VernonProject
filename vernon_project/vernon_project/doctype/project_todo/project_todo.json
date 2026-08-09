@@ -415,7 +415,7 @@
          "fieldname": "recurring_frequency",
          "fieldtype": "Select",
          "label": "Recurring Frequency",
-         "options": "\nDaily\nWeekly\nMonthly"
+         "options": "\nDaily\nWeekly\nMonthly\nAnnually"
       },
       {
          "depends_on": "eval:doc.is_recurring==1",
@@ -515,7 +515,8 @@
          "label": "Original Todo",
          "options": "Project Todo",
          "read_only": 1,
-         "hidden": 1
+         "hidden": 1,
+         "search_index": 1
       },
       {
          "fieldname": "allocations_section",

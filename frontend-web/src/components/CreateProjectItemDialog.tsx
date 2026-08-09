@@ -9,9 +9,22 @@ import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { DatePicker } from '@web/components/DatePicker'
-import { RecurrenceExceptions } from '@web/components/RecurrenceExceptions'
+import { RecurrenceEditor } from '@web/components/RecurrenceEditor'
+import { emptyRecurrence, serializeRecurrence, type Recurrence, type Frequency, type MonthlyMode, type Nth } from '@/lib/recurrence'
 import { computeTodoPoints } from '@/lib/points'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
+
+const initialRecurrence = (i?: CreateTodoInitial): Recurrence => ({
+  ...emptyRecurrence,
+  isRecurring: i?.isRecurring ?? false,
+  frequency: (i?.frequency as Frequency) || 'Daily',
+  interval: i?.interval ?? 1,
+  weekdays: i?.weekdays ?? '',
+  monthlyMode: (i?.monthlyMode as MonthlyMode) || 'Day of Month',
+  dayOfMonth: i?.dayOfMonth ?? null,
+  nth: (i?.nth as Nth) || 'First',
+  until: i?.until ?? '',
+})
 
 interface Props {
   open: boolean
@@ -59,13 +72,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const [leaderEstimated, setLeaderEstimated] = useState(initial?.leaderEstimated ?? '')
   const [ownerEstimated, setOwnerEstimated] = useState(initial?.ownerEstimated ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
-  const [isRecurring, setIsRecurring] = useState(initial?.isRecurring ?? false)
-  const [frequency, setFrequency] = useState(initial?.frequency ?? 'Daily')
-  const [until, setUntil] = useState(initial?.until ?? '')
-  const [excWeekdays, setExcWeekdays] = useState('')
-  const [excMonthdays, setExcMonthdays] = useState('')
-  const [excDates, setExcDates] = useState<{ from: string; to: string }[]>([])
-  const [excBehavior, setExcBehavior] = useState<'Skip' | 'Shift'>('Skip')
+  const [rec, setRec] = useState<Recurrence>(() => initialRecurrence(initial))
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
   const [typeName, setTypeName] = useState(initial?.typeName ?? '')
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
@@ -99,8 +106,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
-    setNotes(''); setIsRecurring(false); setFrequency('Daily'); setUntil('')
-    setExcWeekdays(''); setExcMonthdays(''); setExcDates([]); setExcBehavior('Skip')
+    setNotes(''); setRec({ ...emptyRecurrence })
     setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
@@ -108,7 +114,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   // dates, and group/type/level so adding several similar todos is fast.
   const resetForNext = () => {
     setToDo(''); setEstimated(''); setNotes(''); setBlockedBy([]); setBlocking([])
-    setExcWeekdays(''); setExcMonthdays(''); setExcDates([]); setExcBehavior('Skip')
+    setRec((r) => ({ ...r, exceptionWeekdays: '', exceptionMonthdays: '', exceptionDates: [], exceptionBehavior: 'Skip' }))
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     firstFieldRef.current?.focus()
   }
@@ -149,15 +155,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
     if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
-    if (isRecurring) {
-      fields.is_recurring = 1
-      fields.recurring_frequency = frequency
-      if (until) fields.recurring_until = until
-      fields.recurring_exception_weekdays = excWeekdays
-      fields.recurring_exception_monthdays = excMonthdays
-      fields.recurring_exception_dates = JSON.stringify(excDates)
-      fields.recurring_exception_behavior = excBehavior
-    }
+    Object.assign(fields, serializeRecurrence(rec))
     create.mutate(fields, {
       onSuccess: (doc) => {
         onCreated?.((doc as { name?: string })?.name ?? '')
@@ -349,38 +347,11 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
         </label>
 
         <label className="flex items-center gap-2 text-sm font-medium text-muted">
-          <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+          <input type="checkbox" checked={rec.isRecurring} onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })} />
           Recurring
         </label>
 
-        {isRecurring && (
-          <div className="flex flex-col gap-3 rounded-xl bg-canvas p-3">
-            <label className="text-sm font-medium text-muted">
-              Frequency
-              <SearchableSelect
-                value={frequency}
-                onChange={setFrequency}
-                options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))}
-              />
-            </label>
-            <label className="text-sm font-medium text-muted">
-              Until
-              <DatePicker className={field + ' mt-1'} value={until} onChange={(v) => setUntil(v)} />
-            </label>
-            <RecurrenceExceptions
-              weekdays={excWeekdays}
-              monthdays={excMonthdays}
-              dates={excDates}
-              behavior={excBehavior}
-              onChange={(p) => {
-                if (p.weekdays !== undefined) setExcWeekdays(p.weekdays)
-                if (p.monthdays !== undefined) setExcMonthdays(p.monthdays)
-                if (p.dates !== undefined) setExcDates(p.dates)
-                if (p.behavior !== undefined) setExcBehavior(p.behavior)
-              }}
-            />
-          </div>
-        )}
+        {rec.isRecurring && <RecurrenceEditor value={rec} onChange={setRec} />}
       </div>
     </Drawer>
   )

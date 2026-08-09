@@ -1053,3 +1053,65 @@ class TestOnlineWindowSetting(unittest.TestCase):
 		out = get_app_settings()
 		self.assertIn("online_window_minutes", out)
 		self.assertGreaterEqual(int(out["online_window_minutes"]), 10)
+
+
+class TestMobileGetProjectBlueprint(FrappeTestCase):
+	"""get_project_blueprint: goal + subgoals + actions (incl. undated) + edges."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Blueprint Test Project", "brand": "Test Customer",
+			"project_owner": "Administrator", "project_leader": "Administrator", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30), "goal": "Ship the map",
+		}).insert(ignore_permissions=True)
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "Sub 1",
+			"project_deadline": add_days(nowdate(), 20),
+		}).insert(ignore_permissions=True)
+		self.dated = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.detail.name, "to_do": "Dated action",
+			"deadline": add_days(nowdate(), 10),
+		}).insert(ignore_permissions=True)
+		self.undated = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.detail.name, "to_do": "Undated action",
+		}).insert(ignore_permissions=True)
+		# dated blocks undated → one dependency edge (controller mirrors both sides).
+		self.dated.append("blocking", {"todo": self.undated.name})
+		self.dated.save(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for dt, nm in (("Project Todo", self.undated.name), ("Project Todo", self.dated.name),
+			("Project Detail", self.detail.name), ("Project", self.project.name)):
+			if frappe.db.exists(dt, nm):
+				frappe.delete_doc(dt, nm, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_shape_includes_undated_and_edges(self):
+		from vernon_project.api.mobile import get_project_blueprint
+		r = get_project_blueprint(self.project.name)
+		self.assertEqual(r["goal"]["goal"], "Ship the map")
+		self.assertTrue(any(d["name"] == self.detail.name for d in r["details"]))
+		ids = {t["id"] for t in r["todos"]}
+		self.assertIn(self.dated.name, ids)
+		self.assertIn(self.undated.name, ids, "undated todo must be kept (unlike gantt)")
+		dated = next(t for t in r["todos"] if t["id"] == self.dated.name)
+		self.assertIn(self.undated.name, dated["blocking"], "dependency edge emitted from blocking side")
+		self.assertNotIn(self.dated.name, dated["blocking"], "no self-edge")
+
+	def test_permission_throws_for_non_visible_project(self):
+		from vernon_project.api.mobile import get_project_blueprint
+		if not frappe.db.exists("User", "bp_outsider@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "bp_outsider@example.com",
+				"first_name": "BP", "send_welcome_email": 0}).insert(ignore_permissions=True)
+			frappe.db.commit()
+		frappe.set_user("bp_outsider@example.com")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				get_project_blueprint(self.project.name)
+		finally:
+			frappe.set_user("Administrator")

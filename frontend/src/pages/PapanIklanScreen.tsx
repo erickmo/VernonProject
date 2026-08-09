@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Tag, ShoppingBag, Search } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
@@ -11,6 +11,7 @@ const TYPE_TABS = [
   { value: 'Sell', label: 'Jual' },
   { value: 'Buy', label: 'Beli' },
   { value: 'Rent', label: 'Sewa' },
+  { value: 'mine', label: 'Iklan Saya' },
 ] as const
 
 const TYPE_LABEL: Record<AdType, string> = { Sell: 'Jual', Buy: 'Beli', Rent: 'Sewa' }
@@ -30,9 +31,14 @@ export default function PapanIklanScreen() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<string>('all')
   const [q, setQ] = useState('')
-  const list = useAds(tab === 'all' ? undefined : tab, q.trim() || undefined)
+  const [dq, setDq] = useState('')
+  // Debounce the search box so a query fires once the user pauses, not per keystroke.
+  useEffect(() => { const t = setTimeout(() => setDq(q.trim()), 300); return () => clearTimeout(t) }, [q])
+  const mine = tab === 'mine'
+  // "Iklan Saya" = caller's own ads of any status (Fulfilled ads leave the Active board).
+  const list = useAds(mine || tab === 'all' ? undefined : tab, dq || undefined, mine)
 
-  const items = list.data ?? []
+  const items = list.items
 
   return (
     <DetailScreen title="Papan Iklan">
@@ -52,7 +58,7 @@ export default function PapanIklanScreen() {
         {list.isLoading ? (
           <div className="py-16 text-center"><Spinner className="mx-auto h-5 w-5 text-slate-400" /></div>
         ) : items.length === 0 ? (
-          <EmptyState icon={ShoppingBag} title="Belum ada iklan" subtitle="Jadilah yang pertama pasang iklan." />
+          <EmptyState icon={ShoppingBag} title={mine ? 'Kamu belum pasang iklan' : 'Belum ada iklan'} subtitle={mine ? 'Iklan yang kamu pasang muncul di sini.' : 'Jadilah yang pertama pasang iklan.'} />
         ) : (
           <div className="flex flex-col gap-3">
             {items.map((a) => (
@@ -79,6 +85,16 @@ export default function PapanIklanScreen() {
               </button>
             ))}
           </div>
+        )}
+
+        {items.length > 0 && list.hasNextPage && (
+          <button
+            onClick={() => list.fetchNextPage()}
+            disabled={list.isFetchingNextPage}
+            className="w-full rounded-xl border border-paper-edge py-2.5 text-sm font-semibold text-brand-600 active:scale-[0.99] disabled:opacity-50 dark:border-slate-700"
+          >
+            {list.isFetchingNextPage ? 'Memuat…' : 'Muat lagi'}
+          </button>
         )}
       </div>
     </DetailScreen>

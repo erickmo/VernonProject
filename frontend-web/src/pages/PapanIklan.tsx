@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Megaphone, Plus, Search } from 'lucide-react'
 import clsx from 'clsx'
@@ -13,6 +13,7 @@ const TABS = [
   { value: 'Sell', label: 'Jual' },
   { value: 'Buy', label: 'Beli' },
   { value: 'Rent', label: 'Sewa' },
+  { value: 'mine', label: 'Iklan Saya' },
 ] as const
 const TYPE_LABEL: Record<AdType, string> = { Sell: 'Jual', Buy: 'Beli', Rent: 'Sewa' }
 // Type badge tint — one hue per intent so the board scans at a glance.
@@ -94,8 +95,13 @@ export default function PapanIklan() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<string>('all')
   const [q, setQ] = useState('')
-  const list = useAds(tab === 'all' ? undefined : tab, q.trim() || undefined)
-  const ads = list.data ?? []
+  const [dq, setDq] = useState('')
+  // Debounce the search box so a query fires once the user pauses, not per keystroke.
+  useEffect(() => { const t = setTimeout(() => setDq(q.trim()), 300); return () => clearTimeout(t) }, [q])
+  const mine = tab === 'mine'
+  // "Iklan Saya" = caller's own ads of any status (Fulfilled ads leave the Active board).
+  const list = useAds(mine || tab === 'all' ? undefined : tab, dq || undefined, mine)
+  const ads = list.items
 
   return (
     <Page>
@@ -143,7 +149,7 @@ export default function PapanIklan() {
       ) : list.isError ? (
         <ErrorState onRetry={() => list.refetch()} />
       ) : ads.length === 0 ? (
-        <EmptyState icon={Megaphone} title="Belum ada iklan" subtitle={q ? `Tidak ada hasil untuk "${q.trim()}".` : 'Jadilah yang pertama pasang iklan.'} />
+        <EmptyState icon={Megaphone} title={mine && !q ? 'Kamu belum pasang iklan' : 'Belum ada iklan'} subtitle={q ? `Tidak ada hasil untuk "${q.trim()}".` : mine ? 'Iklan yang kamu pasang muncul di sini.' : 'Jadilah yang pertama pasang iklan.'} />
       ) : (
         <>
           <p className="mb-3 px-1 text-xs font-medium text-muted">{ads.length} iklan</p>
@@ -154,6 +160,13 @@ export default function PapanIklan() {
               </div>
             ))}
           </div>
+          {list.hasNextPage && (
+            <div className="mt-5 flex justify-center">
+              <Button variant="secondary" onClick={() => list.fetchNextPage()} disabled={list.isFetchingNextPage}>
+                {list.isFetchingNextPage ? 'Memuat…' : 'Muat lagi'}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </Page>

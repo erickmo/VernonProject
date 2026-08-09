@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, FolderKanban, FolderInput, FolderPlus, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, Network, FolderKanban, FolderInput, FolderPlus, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -19,6 +19,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useProject, useProjectDetail, useProjectGantt, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, usePromoteProjectDetail, permFlags } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
+import { BlueprintView } from '@/components/BlueprintView'
 import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import type { TeamMember } from '@/lib/types'
 
@@ -44,7 +45,7 @@ export default function ProjectScreen() {
   const [postpone, setPostpone] = useState<{ type: 'Project' | 'Project Detail'; name: string; label: string; anchor: string } | null>(null)
   const [itemFor, setItemFor] = useState<string | null>(null)
   const [workloadMember, setWorkloadMember] = useState<TeamMember | null>(null)
-  const [view, setView] = useState<'list' | 'gantt'>('list')
+  const [view, setView] = useState<'list' | 'gantt' | 'blueprint'>('list')
   const [detailFilter, setDetailFilter] = useState<'all' | 'open' | 'completed'>('all')
   const { data: gantt, isLoading: ganttLoading } = useProjectGantt(id, view === 'gantt')
   // Quick-add targets a single detail; load it so the create form can offer
@@ -300,6 +301,12 @@ export default function ProjectScreen() {
               >
                 <BarChart3 className="h-3.5 w-3.5" /> Gantt
               </button>
+              <button
+                onClick={() => setView('blueprint')}
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'blueprint' ? 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
+              >
+                <Network className="h-3.5 w-3.5" /> Peta
+              </button>
             </div>
             {flags.can_edit && (
               <>
@@ -317,7 +324,11 @@ export default function ProjectScreen() {
             )}
           </div>
         </div>
-        {view === 'gantt' ? (
+        {view === 'blueprint' ? (
+          <div className="h-[72vh] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <BlueprintView project={id} />
+          </div>
+        ) : view === 'gantt' ? (
           ganttLoading ? (
             <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm">Loading timeline…</div>
           ) : (

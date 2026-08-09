@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronsDownUp, ChevronsUpDown, FolderKanban, Plus, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, FolderKanban, Plus, Search, UserCog, X } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader, Segmented } from '@/components/ui'
 import { ProjectCard } from '@/components/ProjectCard'
 import { FilterButton, FilterSheet } from '@/components/FilterSheet'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
+import { BulkAssignRolesSheet } from '@/components/BulkAssignRolesSheet'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useProjects, useBoot, canCreateProject } from '@/hooks/useData'
 import { buildOptions } from '@/lib/filters'
@@ -15,6 +16,7 @@ export default function Projects() {
   const { data, isLoading, refetch } = useProjects()
   const { data: boot } = useBoot()
   const [formOpen, setFormOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [status, setStatus] = useState<StatusFilter>('Ongoing')
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
@@ -106,12 +108,18 @@ export default function Projects() {
   return (
     <TabScreen title="Projects" subtitle={`${list.length} of ${projects.length}`} right={<NotificationBell />}>
       {canCreateProject(boot) && (
-        <div className="mb-3">
+        <div className="mb-3 flex gap-2">
           <button
             onClick={() => setFormOpen(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-2.5 text-sm font-semibold text-white active:scale-95"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-2.5 text-sm font-semibold text-white active:scale-95"
           >
             <Plus className="h-4 w-4" /> New project
+          </button>
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="flex items-center justify-center gap-1.5 rounded-2xl border border-brand-600 px-4 py-2.5 text-sm font-semibold text-brand-600 dark:text-brand-300 active:scale-95"
+          >
+            <UserCog className="h-4 w-4" /> Bulk roles
           </button>
         </div>
       )}
@@ -222,6 +230,7 @@ export default function Projects() {
       />
 
       <ProjectFormSheet open={formOpen} onClose={() => setFormOpen(false)} />
+      <BulkAssignRolesSheet open={bulkOpen} onClose={() => setBulkOpen(false)} />
     </TabScreen>
   )
 }

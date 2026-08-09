@@ -4,12 +4,14 @@ import { ClipboardList, ChevronLeft, ChevronRight, Save, CalendarRange, Filter, 
 import { Page, PageHeader } from '@web/components/Page'
 import { DatePicker } from '@web/components/DatePicker'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { BlueprintView } from '@web/components/BlueprintView'
 import { PlanRow } from '@/components/PlanRow'
 import { PlanProjectBoard } from '@web/components/PlanProjectBoard'
 import { PlanDeadlineDay } from '@web/components/PlanDeadlineDay'
 import { EmptyState, Spinner } from '@/components/ui'
 import { usePlanDate } from '@/hooks/usePlanDay'
 import { useCalendar, useDailyTargets } from '@/hooks/useData'
+import { projectDetailOptions } from '@/lib/blueprint'
 import { weekLoad, sortForPlanning } from '@/lib/planDay'
 import { todoIsOpen } from '@/lib/filters'
 import { todayISO, addDaysISO, formatEstimate, formatDate } from '@/lib/format'
@@ -38,7 +40,8 @@ function relLabel(iso: string): string {
 // targets. Web sibling of the mobile PlanScreen; shares usePlanDate + PlanRow.
 export default function Plan() {
   const [scope, setScope] = useState<'work' | 'project'>('work')
-  const [mode, setMode] = useState<'date' | 'project'>('project')
+  const [mode, setMode] = useState<'date' | 'project' | 'peta'>('project')
+  const [petaDetail, setPetaDetail] = useState('')
   const [selected, setSelected] = useState(todayISO())
   const today = todayISO()
 
@@ -58,6 +61,12 @@ export default function Plan() {
   )
 
   const plan = usePlanDate(scoped, selected)
+
+  // Peta mode: pick a sub-goal (Project Detail); the map opens its project focused there.
+  const peta = useMemo(() => projectDetailOptions(cal.data?.todos ?? []), [cal.data])
+  const firstDetail = peta.options[0]?.value ?? ''
+  const selDetail = petaDetail || firstDetail
+  const selProject = peta.projectOf.get(selDetail) ?? ''
 
   const weekDates = useMemo(() => {
     const start = weekStart(selected)
@@ -140,6 +149,7 @@ export default function Plan() {
             [
               ['date', 'By date'],
               ['project', 'By project'],
+              ['peta', 'Peta'],
             ] as const
           ).map(([m, label]) => (
             <button
@@ -156,7 +166,26 @@ export default function Plan() {
         </div>
       </div>
 
-      {mode === 'project' ? (
+      {mode === 'peta' ? (
+        // Peta: begin-with-the-end backward whiteboard for one picked project.
+        <div className="space-y-3">
+          <div className="max-w-sm">
+            <SearchableSelect
+              value={selDetail}
+              onChange={setPetaDetail}
+              options={peta.options}
+              placeholder="Pilih sub-tujuan…"
+            />
+          </div>
+          {selProject ? (
+            <div className="h-[74vh] overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+              <BlueprintView project={selProject} detailScope={selDetail} />
+            </div>
+          ) : (
+            <EmptyState icon={ClipboardList} title="Tidak ada sub-tujuan" />
+          )}
+        </div>
+      ) : mode === 'project' ? (
         // By project: my-work moves the day-plan; my-project moves the deadline.
         <PlanProjectBoard candidates={scoped} mode={scope === 'project' ? 'deadline' : 'alloc'} />
       ) : scope === 'project' ? (

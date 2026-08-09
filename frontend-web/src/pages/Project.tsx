@@ -4,10 +4,11 @@ import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Tag, MousePointerClick, Gift, Copy, FolderInput, FolderPlus, AlarmClock,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Network, Tag, MousePointerClick, Gift, Copy, FolderInput, FolderPlus, AlarmClock,
 } from 'lucide-react'
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, usePromoteProjectDetail, useMeetings } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
+import { BlueprintView } from '@web/components/BlueprintView'
 import { ProgressBar, Spinner, EmptyState } from '@/components/ui'
 import { Button, OverflowMenu, ErrorState } from '@web/components/ui'
 import CommentThread from '@/components/CommentThread'
@@ -29,7 +30,7 @@ import { ProjectMeetings } from '@web/components/ProjectMeetings'
 import { upcomingMeetings, slot } from '@/components/MeetingReminder'
 import type { TeamMember, ProjectDetailSummary } from '@/lib/types'
 
-type View = 'list' | 'gantt'
+type View = 'list' | 'gantt' | 'blueprint'
 type DetailFilter = 'all' | 'open' | 'completed'
 
 // ponytail: pure predicate, stable outside render
@@ -477,6 +478,13 @@ export default function Project() {
                   >
                     <BarChart3 className="h-3.5 w-3.5" /> Gantt
                   </button>
+                  <button
+                    onClick={() => setView('blueprint')}
+                    aria-pressed={view === 'blueprint'}
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${view === 'blueprint' ? 'bg-surface text-ink dark:text-slate-200 shadow-sm' : 'text-muted dark:text-slate-500'}`}
+                  >
+                    <Network className="h-3.5 w-3.5" /> Peta
+                  </button>
                 </div>
                 {perms.can_edit && (
                   <button
@@ -489,7 +497,11 @@ export default function Project() {
               </div>
             </div>
 
-            {view === 'gantt' ? (
+            {view === 'blueprint' ? (
+              <div className="h-[74vh] overflow-hidden rounded-2xl border border-line shadow-card">
+                <BlueprintView project={id} />
+              </div>
+            ) : view === 'gantt' ? (
               gantt.isError ? (
                 <ErrorState onRetry={() => gantt.refetch()} />
               ) : gantt.isLoading ? (

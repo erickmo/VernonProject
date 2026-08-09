@@ -276,9 +276,14 @@ def _notify(recipient, type, title, body, reference_doctype=None, reference_name
 			"is_read": 0,
 		}).insert(ignore_permissions=True)
 		frappe.db.commit()
-		_push_to_subscriptions(
-			recipient,
-			{
+		# Web Push is a blocking HTTPS POST per subscription — run it on a worker so
+		# the triggering mutation (mark-done, approve, reject) returns without waiting
+		# on the push service. ponytail: frappe queue, no custom async needed.
+		frappe.enqueue(
+			_push_to_subscriptions,
+			queue="short",
+			recipient=recipient,
+			payload={
 				"title": title,
 				"body": body,
 				"reference_doctype": reference_doctype,
@@ -533,6 +538,70 @@ def get_project_gantt(project):
 		out.append(g)
 	out.sort(key=lambda g: g["title"] or "")
 	return out
+
+
+@frappe.whitelist()
+def get_project_blueprint(project):
+	"""Backward "begin with the end in mind" map for one project.
+
+	goal (Project) -> subgoals (Project Detail) -> actions (Project Todo), plus
+	todo->todo dependency edges. Unlike the gantt, undated todos are kept (they park
+	in a left "no deadline" lane on the client). Dependency edges are emitted once,
+	from the `blocking` side — the controller mirrors both sides so this never
+	double-counts. Reused by both the project page and the plan-page picker.
+	"""
+	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	goal = frappe.db.get_value(
+		"Project", project,
+		["name", "project_name", "goal", "deadline", "status"],
+		as_dict=True,
+	)
+
+	details = frappe.get_all(
+		"Project Detail",
+		filters={"project": project},
+		fields=["name", "title", "project_deadline", "latest_deadline", "expected_outcome", "status"],
+		limit_page_length=0,
+	)
+	for d in details:
+		d["deadline"] = str(d["project_deadline"] or d["latest_deadline"]) if (d["project_deadline"] or d["latest_deadline"]) else None
+		d.pop("project_deadline", None)
+		d.pop("latest_deadline", None)
+		d["expected_outcome"] = (frappe.utils.strip_html_tags(d["expected_outcome"] or "") or "").strip()[:280]
+
+	rows = _fetch_todos([project])
+	# One batched dependency query for every todo in the project (blocking side only).
+	names = [r["name"] for r in rows]
+	blocking_map = {}
+	if names:
+		for dep in frappe.get_all(
+			"Project Todo Dependency",
+			filters={"parent": ["in", names], "parentfield": "blocking"},
+			fields=["parent", "todo"],
+			limit_page_length=0,
+		):
+			blocking_map.setdefault(dep["parent"], []).append(dep["todo"])
+
+	name_map = _user_name_map({r["assigned_to"] for r in rows if r.get("assigned_to")})
+	today = getdate(nowdate())
+	todos = []
+	for r in rows:
+		dl = str(r["deadline"]) if r["deadline"] else None
+		skey = _status_key(r["status"])
+		todos.append({
+			"id": r["name"],
+			"label": r["to_do"],
+			"detail": r["project_detail"],
+			"deadline": dl,
+			"statusKey": skey,
+			"overdue": bool(dl and skey != "completed" and not r.get("is_waiting") and getdate(dl) < today),
+			"assignee": (name_map.get(r["assigned_to"]) or {}).get("full_name") or r.get("assigned_to"),
+			"blocking": blocking_map.get(r["name"], []),
+		})
+
+	return {"goal": goal, "details": details, "todos": todos}
 
 
 def _allocations_map(todo_names):
@@ -2669,7 +2738,7 @@ def upload_banner_image():
 	if ext not in ALLOWED_IMAGE_EXT:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	mimetype = (getattr(f, "mimetype", "") or "").lower()
-	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+	if not mimetype or mimetype not in ALLOWED_IMAGE_MIME:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 
 	content = f.stream.read()
@@ -3547,7 +3616,7 @@ def upload_reward_image():
 	if ext not in ALLOWED_IMAGE_EXT:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	mimetype = (getattr(f, "mimetype", "") or "").lower()
-	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+	if not mimetype or mimetype not in ALLOWED_IMAGE_MIME:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 
 	content = f.stream.read()
@@ -3617,7 +3686,7 @@ def upload_profile_photo():
 	if ext not in ALLOWED_IMAGE_EXT:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	mimetype = (getattr(f, "mimetype", "") or "").lower()
-	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+	if not mimetype or mimetype not in ALLOWED_IMAGE_MIME:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 
 	content = f.stream.read()
@@ -3673,7 +3742,7 @@ def upload_business_unit_image():
 	if ext not in ALLOWED_IMAGE_EXT:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	mimetype = (getattr(f, "mimetype", "") or "").lower()
-	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+	if not mimetype or mimetype not in ALLOWED_IMAGE_MIME:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 
 	content = f.stream.read()
@@ -3707,7 +3776,7 @@ def upload_comment_image(reference_doctype=None, reference_name=None):
 	if ext not in ALLOWED_IMAGE_EXT:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 	mimetype = (getattr(f, "mimetype", "") or "").lower()
-	if mimetype and mimetype not in ALLOWED_IMAGE_MIME:
+	if not mimetype or mimetype not in ALLOWED_IMAGE_MIME:
 		frappe.throw("Unsupported image type. Use PNG, JPG, WEBP, or GIF.")
 
 	content = f.stream.read()

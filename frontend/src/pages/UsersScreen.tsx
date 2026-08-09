@@ -94,6 +94,7 @@ function UsersBody({
   setRoleFilter,
   onSelect,
 }: UsersBodyProps) {
+  const { data: boot } = useBoot()
   const [memberFilter, setMemberFilter] = useState('')
 
   const filtered = useMemo(() => {

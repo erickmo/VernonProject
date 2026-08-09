@@ -6,10 +6,12 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query'
-import { mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi } from '@/lib/api'
+import { api, mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { enrollPasskey } from '@/lib/webauthn'
 import { allocTotal } from '@/lib/planDay'
+import { todayISO } from '@/lib/format'
+import { patchTodoInCache } from '@/lib/patchTodoCache'
 import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
 import type {
   AppSettings,
@@ -77,6 +79,7 @@ export const keys = {
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
   projectGantt: (n: string) => ['project-gantt', n] as const,
+  projectBlueprint: (n: string) => ['project-blueprint', n] as const,
   projectDetail: (n: string) => ['project-detail', n] as const,
   projectItem: (n: string) => ['project-item', n] as const,
   memberWorkload: (p: string, u: string, c: boolean) =>
@@ -220,6 +223,13 @@ export const useProjectGantt = (name: string, enabled = true) =>
     enabled: !!name && enabled,
   })
 
+export const useProjectBlueprint = (name: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.projectBlueprint(name),
+    queryFn: () => mobileApi.projectBlueprint(name) as Promise<import('@/lib/blueprint').BlueprintData>,
+    enabled: !!name && enabled,
+  })
+
 export const useMemberWorkload = (
   project: string,
   user: string | null,
@@ -257,18 +267,30 @@ export function useAdvanceStatus() {
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
-    // Return the invalidation promise so the mutation stays `isPending` until the
-    // refetch lands — the AdvanceProvider spinner then covers the whole op and the
-    // card is fresh before the dialog closes (no stale "stuck" window after confirm).
-    onSettled: () =>
-      Promise.all([
-        qc.invalidateQueries({ queryKey: keys.calendar }),
-        qc.invalidateQueries({ queryKey: keys.dashboard }),
-        qc.invalidateQueries({ queryKey: keys.projects }),
-        qc.invalidateQueries({ queryKey: ['project'] }),
-        qc.invalidateQueries({ queryKey: ['project-detail'] }),
-        qc.invalidateQueries({ queryKey: ['project-item'] }),
-      ]),
+    // Flip the acted card immediately from the server's authoritative result, so it's
+    // already fresh when the dialog closes — no stale "stuck" window, and no waiting
+    // on the six refetches below (which were the real perceived latency).
+    onSuccess: (res, todoId) => {
+      if (!res.status_key) return
+      qc.setQueriesData({ predicate: () => true }, (old: unknown) =>
+        patchTodoInCache(old, todoId, {
+          status_key: res.status_key,
+          next_status_label: res.next_status_label ?? null,
+          can_advance: res.can_advance ?? false,
+        }),
+      )
+    },
+    // Reconcile rollups/siblings in the background. Deliberately NOT awaited: the card
+    // is already correct from onSuccess, so `isPending` clears right after the write
+    // instead of after the refetch round-trips.
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
   })
 }
 
@@ -507,6 +529,24 @@ export function useUpdateTodo(todoId: string) {
   })
 }
 
+// Set a todo's `blocking` list (dependency edges). The controller mirrors the
+// other side, so one write suffices. Used by the blueprint whiteboard's
+// drag-to-connect / edge-remove. Invalidates the blueprint + calendar caches.
+export function useSetTodoBlocking() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ todo, blocking }: { todo: string; blocking: string[] }) => {
+      const res = await mobileApi.updateTodo(todo, { blocking })
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['project-blueprint'] })
+      qc.invalidateQueries({ queryKey: keys.calendar })
+    },
+  })
+}
+
 // Postpone (or pull earlier) a Project or single Project Detail by picking a
 // new deadline date. The server shifts every date field of every active todo
 // under the target by the same delta. Invalidates the same broad query set as
@@ -536,12 +576,23 @@ export function usePostpone() {
 
 export function useSetTodoAllocations(todoId: string) {
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: async (allocations: { date: string; minutes: number; note?: string }[]) => {
       const res = await mobileApi.setTodoAllocations(todoId, allocations)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
+    // Flip the "Today" chip instantly across every cache shape instead of waiting on
+    // the ~200ms save AND the calendar/dashboard refetches below — that round-trip was
+    // the "clicking Today is very slow". Mirrors useAdvanceStatus's optimistic patch.
+    onMutate: (allocations) => {
+      const todayMin = allocations.find((a) => a.date === todayISO())?.minutes ?? 0
+      qc.setQueriesData({ predicate: () => true }, (old: unknown) =>
+        patchTodoInCache(old, todoId, { today_allocation: todayMin }),
+      )
+    },
+    onError: (e) => toast('error', (e as Error).message || 'Could not update today’s plan'),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projectItem(todoId) })
       qc.invalidateQueries({ queryKey: keys.calendar })
@@ -818,6 +869,34 @@ export function useDeleteProject() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+export interface BulkAssignProjectRolesArgs {
+  projects: string[]
+  set_leader?: boolean
+  leader?: string | null
+  admins?: string[]
+  admin_mode?: 'add' | 'replace'
+}
+
+export function useBulkAssignProjectRoles() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: BulkAssignProjectRolesArgs) =>
+      api.post<{ updated: string[]; skipped: { name: string; reason: string }[] }>(
+        'vernon_project.api.project_roles.bulk_assign_project_roles',
+        {
+          projects: JSON.stringify(args.projects),
+          set_leader: args.set_leader ? 1 : 0,
+          ...(args.leader ? { leader: args.leader } : {}),
+          admins: JSON.stringify(args.admins ?? []),
+          admin_mode: args.admin_mode ?? 'add',
+        },
+      ),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.projects })
     },
   })
 }
@@ -2467,8 +2546,16 @@ export function useSaveMyProfile() {
   })
 }
 
-export const useAds = (adType?: string, q?: string, mine?: boolean) =>
-  useQuery({ queryKey: keys.ads(adType, q, mine), queryFn: () => papanApi.list(adType, q, mine) })
+export const ADS_PAGE_SIZE = 30
+export const useAds = (adType?: string, q?: string, mine?: boolean) => {
+  const query = useInfiniteQuery({
+    queryKey: keys.ads(adType, q, mine),
+    queryFn: ({ pageParam }) => papanApi.list(adType, q, mine, pageParam, ADS_PAGE_SIZE),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.has_more ? pages.length * ADS_PAGE_SIZE : undefined),
+  })
+  return { ...query, items: query.data?.pages.flatMap((p) => p.items) ?? [] }
+}
 
 export const useAd = (name: string) =>
   useQuery({ queryKey: keys.ad(name), queryFn: () => papanApi.get(name), enabled: !!name })

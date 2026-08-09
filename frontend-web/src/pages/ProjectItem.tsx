@@ -71,7 +71,8 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
-import { RecurrenceExceptions } from '@web/components/RecurrenceExceptions'
+import { RecurrenceEditor } from '@web/components/RecurrenceEditor'
+import { serializeRecurrence, recurrenceFromDetail, type Recurrence } from '@/lib/recurrence'
 import { FocusNoteDialog } from '@web/components/FocusNoteDialog'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { DatePicker } from '@web/components/DatePicker'
@@ -676,19 +677,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [estimated, setEstimated] = useState(String(data.estimated || ''))
   const [pDC, setPDC] = useState(String(data.phase_estimates.done_to_checked || ''))
   const [pCC, setPCC] = useState(String(data.phase_estimates.checked_to_completed || ''))
-  const [recurring, setRecurring] = useState(data.recurring.is_recurring)
-  const [freq, setFreq] = useState(data.recurring.frequency || 'Weekly')
-  const [until, setUntil] = useState(data.recurring.until ?? '')
   // Exception fields aren't in the shared `recurring` type yet (added on the API
   // side by a sibling change); read them through a local view.
-  const rec = data.recurring as typeof data.recurring & {
+  const recDetail = data.recurring as typeof data.recurring & {
     exception_weekdays?: string; exception_monthdays?: string
     exception_dates?: { from: string; to: string }[]; exception_behavior?: string
   }
-  const [excWeekdays, setExcWeekdays] = useState(rec.exception_weekdays ?? '')
-  const [excMonthdays, setExcMonthdays] = useState(rec.exception_monthdays ?? '')
-  const [excDates, setExcDates] = useState<{ from: string; to: string }[]>(rec.exception_dates ?? [])
-  const [excBehavior, setExcBehavior] = useState<'Skip' | 'Shift'>(rec.exception_behavior === 'Shift' ? 'Shift' : 'Skip')
+  const [rec, setRec] = useState<Recurrence>(() => recurrenceFromDetail(recDetail))
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
@@ -753,15 +748,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     }
     fields.estimated_done_to_checked = Number(pDC) || 0
     fields.estimated_checked_to_completed = Number(pCC) || 0
-    fields.is_recurring = recurring ? 1 : 0
-    if (recurring) {
-      fields.recurring_frequency = freq
-      fields.recurring_until = until || ''
-      fields.recurring_exception_weekdays = excWeekdays
-      fields.recurring_exception_monthdays = excMonthdays
-      fields.recurring_exception_dates = JSON.stringify(excDates)
-      fields.recurring_exception_behavior = excBehavior
-    }
+    Object.assign(fields, serializeRecurrence(rec))
     fields.leader_deadline = leaderDeadline || ''
     fields.owner_deadline = ownerDeadline || ''
     fields.group = group
@@ -937,39 +924,14 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           </span>
           <input
             type="checkbox"
-            checked={recurring}
-            onChange={(e) => setRecurring(e.target.checked)}
+            checked={rec.isRecurring}
+            onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })}
             className="h-5 w-5 accent-brand-600"
           />
         </label>
-        {recurring && (
-          <div className="mt-3 flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-muted">Frequency</label>
-              <SearchableSelect value={freq} onChange={(v) => setFreq(v)} options={[{ value: 'Daily', label: 'Daily' }, { value: 'Weekly', label: 'Weekly' }, { value: 'Monthly', label: 'Monthly' }]} />
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-muted">
-                Until (optional)
-              </label>
-              <DatePicker value={until} onChange={(v) => setUntil(v)} className={fieldCls} />
-            </div>
-          </div>
-        )}
-        {recurring && (
+        {rec.isRecurring && (
           <div className="mt-3">
-            <RecurrenceExceptions
-              weekdays={excWeekdays}
-              monthdays={excMonthdays}
-              dates={excDates}
-              behavior={excBehavior}
-              onChange={(p) => {
-                if (p.weekdays !== undefined) setExcWeekdays(p.weekdays)
-                if (p.monthdays !== undefined) setExcMonthdays(p.monthdays)
-                if (p.dates !== undefined) setExcDates(p.dates)
-                if (p.behavior !== undefined) setExcBehavior(p.behavior)
-              }}
-            />
+            <RecurrenceEditor value={rec} onChange={setRec} />
           </div>
         )}
       </div>

@@ -136,10 +136,13 @@ PUBLIC_FIELDS = [
 
 
 @frappe.whitelist()
-def list_ads(ad_type=None, q=None, mine=0):
-	"""Active ads newest-first (or the caller's own ads of any status when mine=1)."""
+def list_ads(ad_type=None, q=None, mine=0, limit_start=0, limit_page_length=30):
+	"""One page of Active ads newest-first (or the caller's own ads of any status
+	when mine=1). Returns {items, has_more} — has_more drives the "Muat lagi" button."""
 	user = _require_user()
 	mine = frappe.utils.cint(mine)
+	start = frappe.utils.cint(limit_start)
+	page = frappe.utils.cint(limit_page_length) or 30
 	filters = {"author": user} if mine else {"status": "Active"}
 	if ad_type and ad_type in AD_TYPES:
 		filters["ad_type"] = ad_type
@@ -155,10 +158,13 @@ def list_ads(ad_type=None, q=None, mine=0):
 		or_filters=or_filters,
 		fields=PUBLIC_FIELDS,
 		order_by="creation desc",
-		limit_page_length=0,
+		limit_start=start,
+		limit_page_length=page + 1,  # +1 sentinel row → detect a next page without a count query
 	)
+	has_more = len(rows) > page
+	rows = rows[:page]
 	if not rows:
-		return []
+		return {"items": [], "has_more": False}
 
 	names = [r["name"] for r in rows]
 	thumbs = {}
@@ -179,7 +185,7 @@ def list_ads(ad_type=None, q=None, mine=0):
 		):
 			name_map[u["name"]] = u["full_name"] or u["name"]
 
-	return [
+	items = [
 		{
 			"name": r["name"],
 			"title": r["title"],
@@ -194,6 +200,7 @@ def list_ads(ad_type=None, q=None, mine=0):
 		}
 		for r in rows
 	]
+	return {"items": items, "has_more": has_more}
 
 
 @frappe.whitelist()

@@ -8,6 +8,8 @@ import { PlanDeadlineDay } from '@/components/PlanDeadlineDay'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useCalendar, useDailyTargets } from '@/hooks/useData'
+import { BlueprintView } from '@/components/BlueprintView'
+import { projectDetailOptions } from '@/lib/blueprint'
 import { usePlanDate } from '@/hooks/usePlanDay'
 import { weekLoad } from '@/lib/planDay'
 import { todoIsOpen } from '@/lib/filters'
@@ -30,7 +32,8 @@ export function weekStartISO(iso: string): string {
 export default function PlanScreen() {
   const today = todayISO()
   const [scope, setScope] = useState<'work' | 'project'>('work')
-  const [mode, setMode] = useState<'date' | 'project'>('project')
+  const [mode, setMode] = useState<'date' | 'project' | 'peta'>('project')
+  const [petaDetail, setPetaDetail] = useState('')
   const [selected, setSelected] = useState(today)
   const { data, isLoading } = useCalendar()
 
@@ -46,6 +49,12 @@ export default function PlanScreen() {
   )
 
   const plan = usePlanDate(scoped, selected)
+
+  // Peta mode: pick a sub-goal (Project Detail); the map opens its project focused there.
+  const peta = useMemo(() => projectDetailOptions(data?.todos ?? []), [data])
+  const firstDetail = peta.options[0]?.value ?? ''
+  const selDetail = petaDetail || firstDetail
+  const selProject = peta.projectOf.get(selDetail) ?? ''
 
   const weekStart = weekStartISO(selected)
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysISO(weekStart, i)), [weekStart])
@@ -139,11 +148,27 @@ export default function PlanScreen() {
               options={[
                 { value: 'date', label: 'By date' },
                 { value: 'project', label: 'By project' },
+                { value: 'peta', label: 'Peta' },
               ]}
             />
           </div>
 
-          {mode === 'project' ? (
+          {mode === 'peta' ? (
+            // Peta: begin-with-the-end backward whiteboard for one picked project.
+            <div className="mt-5 space-y-3">
+              <SearchableSelect
+                value={selDetail}
+                onChange={setPetaDetail}
+                options={peta.options}
+                placeholder="Pilih sub-tujuan…"
+              />
+              {selProject && (
+                <div className="h-[70vh] overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-700">
+                  <BlueprintView project={selProject} detailScope={selDetail} />
+                </div>
+              )}
+            </div>
+          ) : mode === 'project' ? (
             // By project: my-work moves the day-plan; my-project moves the deadline.
             <div className="mt-5">
               <PlanProjectBoard candidates={scoped} mode={scope === 'project' ? 'deadline' : 'alloc'} />

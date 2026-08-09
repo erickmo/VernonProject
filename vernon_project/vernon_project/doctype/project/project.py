@@ -141,6 +141,10 @@ class Project(Document):
 			current = frappe.db.get_value("Project", current, "blocked_by")
 
 	def validate_edit_permission(self):
+		# Trusted server code (e.g. bulk role assignment) sets ignore_permissions
+		# and has already gated the caller — skip the owner-only edit check.
+		if self.flags.get("ignore_permissions"):
+			return
 		if self.is_new():
 			return
 		user = frappe.session.user

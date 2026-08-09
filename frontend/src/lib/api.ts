@@ -145,6 +145,7 @@ export const mobileApi = {
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),
+  projectBlueprint: (project: string) => api.get(M + 'get_project_blueprint', { project }),
   projectDetail: (projectDetail: string, includeCancelled = false) =>
     api.get(M + 'get_project_detail', {
       project_detail: projectDetail,
@@ -1020,11 +1021,13 @@ export function todoFileHref(
 const PI = 'vernon_project.api.papan_iklan.'
 
 export const papanApi = {
-  list: (ad_type?: string, q?: string, mine?: boolean) =>
-    api.get<AdListItem[]>(PI + 'list_ads', {
+  list: (ad_type?: string, q?: string, mine?: boolean, start = 0, pageSize = 30) =>
+    api.get<{ items: AdListItem[]; has_more: boolean }>(PI + 'list_ads', {
       ...(ad_type ? { ad_type } : {}),
       ...(q ? { q } : {}),
       ...(mine ? { mine: 1 } : {}),
+      limit_start: start,
+      limit_page_length: pageSize,
     }),
   get: (name: string) => api.get<AdDetail>(PI + 'get_ad', { name }),
   create: (payload: AdPayload) =>

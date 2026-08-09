@@ -1,4 +1,4 @@
-export type Frequency = 'Daily' | 'Weekly' | 'Monthly'
+export type Frequency = 'Daily' | 'Weekly' | 'Monthly' | 'Annually'
 export type MonthlyMode = 'Day of Month' | 'Nth Weekday'
 export type Nth = 'First' | 'Second' | 'Third' | 'Fourth' | 'Last'
 
@@ -71,6 +71,7 @@ export function summarizeRecurrence(r: Recurrence): string {
   const exc = summarizeExceptions(r)
   let base: string
   if (r.frequency === 'Daily') base = every('day')
+  else if (r.frequency === 'Annually') base = every('year')
   else if (r.frequency === 'Weekly') {
     const days = r.weekdays ? r.weekdays.split(',').map((d) => WD_LABEL[d] ?? d).join(', ') : ''
     base = days ? `${every('week')} on ${days}` : every('week')

@@ -38,7 +38,7 @@ export function RecurrenceEditor({ value, onChange }: { value: Recurrence; onCha
           <div className="grid grid-cols-2 gap-2">
             <label className="text-sm text-slate-600 dark:text-slate-300">Frequency
               <SearchableSelect value={value.frequency} onChange={(v) => set({ frequency: v as Recurrence['frequency'] })}
-                options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))} />
+                options={['Daily', 'Weekly', 'Monthly', 'Annually'].map((s) => ({ value: s, label: s }))} />
             </label>
             <label className="text-sm text-slate-600 dark:text-slate-300">Every (N)
               <input type="number" min={1} className={field + ' mt-1'} value={value.interval}

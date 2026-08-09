@@ -150,6 +150,14 @@ def _monthly_nth(frm, r):
     return _nth_weekday(y, m, wd, r.nth)
 
 
+def _annually(frm, r):
+    # Same month+day as the previous occurrence, `interval` years on.
+    # ponytail: Feb 29 clamps to Feb 28 in common years (min-day clamp); a
+    # true leap-day-only cadence would need its own field — not built.
+    y = frm.year + r.interval
+    return date(y, frm.month, min(frm.day, _dim(y, frm.month)))
+
+
 def next_occurrence(from_deadline, rule):
     r = rule.normalized()
     if r.frequency == "Daily":
@@ -158,6 +166,8 @@ def next_occurrence(from_deadline, rule):
         return _weekly(from_deadline, r)
     if r.frequency == "Monthly":
         return _monthly_nth(from_deadline, r) if r.monthly_mode == "Nth Weekday" else _monthly_day(from_deadline, r)
+    if r.frequency == "Annually":
+        return _annually(from_deadline, r)
     return None
 
 

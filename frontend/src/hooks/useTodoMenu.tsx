@@ -18,6 +18,7 @@ import { useFocusPill } from '@/hooks/useFocusPill'
 import { useSetTodoAllocations } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { todayISO } from '@/lib/format'
+import { useConfirm } from '@/components/Confirm'
 
 // Shared contract for the todo context menu (right-click on /w, long-press on /m).
 // Lives in shared frontend/src so the shared TodoCard imports ONE hook that works in
@@ -67,12 +68,23 @@ export function useTodoMenuGroups(
   const t = target ?? EMPTY
   const { onFocusPill } = useFocusPill(t)
   const setAlloc = useSetTodoAllocations(t.name)
+  const confirm = useConfirm()
 
   if (!target) return []
 
   const planned = t.today_allocation > 0
-  const toggleToday = () => {
+  const toggleToday = async () => {
     if (setAlloc.isPending) return
+    // Removing is easy to hit by accident and silently drops the day-plan slot — confirm it.
+    if (planned) {
+      const ok = await confirm({
+        title: 'Remove from Today?',
+        message: `“${t.to_do}” will be taken off today's plan.`,
+        confirmLabel: 'Remove',
+        destructive: true,
+      })
+      if (!ok) return
+    }
     const minutes = planned ? 0 : t.estimated > 0 ? t.estimated : 30
     setAlloc.mutate(buildNext(t.allocations ?? [], todayISO(), minutes))
   }

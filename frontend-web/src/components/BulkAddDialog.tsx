@@ -9,7 +9,8 @@ import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { DatePicker } from '@web/components/DatePicker'
-import { RecurrenceExceptions } from '@web/components/RecurrenceExceptions'
+import { RecurrenceEditor } from '@web/components/RecurrenceEditor'
+import { emptyRecurrence, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
 import { computeTodoPoints } from '@/lib/points'
 
 interface Props {
@@ -49,13 +50,7 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
   const [group, setGroup] = useState(defaultGroup ?? '')
   const [typeName, setTypeName] = useState('')
   const [levelId, setLevelId] = useState('')
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [frequency, setFrequency] = useState('Daily')
-  const [until, setUntil] = useState('')
-  const [excWeekdays, setExcWeekdays] = useState('')
-  const [excMonthdays, setExcMonthdays] = useState('')
-  const [excDates, setExcDates] = useState<{ from: string; to: string }[]>([])
-  const [excBehavior, setExcBehavior] = useState<'Skip' | 'Shift'>('Skip')
+  const [rec, setRec] = useState<Recurrence>({ ...emptyRecurrence })
   const [rows, setRows] = useState<Row[]>([emptyRow(), emptyRow()])
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null)
 
@@ -77,8 +72,7 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
     setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId('')
-    setIsRecurring(false); setFrequency('Daily'); setUntil('')
-    setExcWeekdays(''); setExcMonthdays(''); setExcDates([]); setExcBehavior('Skip')
+    setRec({ ...emptyRecurrence })
     setRows([emptyRow(), emptyRow()]); setProg(null)
   }
   const close = () => { reset(); onClose() }
@@ -108,16 +102,8 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
     if (ownerDeadline) shared.owner_deadline = ownerDeadline
     if (leaderEstimated) shared.estimated_done_to_checked = Number(leaderEstimated)
     if (ownerEstimated) shared.estimated_checked_to_completed = Number(ownerEstimated)
-    if (isRecurring) {
-      // Same recurrence rule applied to every task in the batch.
-      shared.is_recurring = 1
-      shared.recurring_frequency = frequency
-      if (until) shared.recurring_until = until
-      shared.recurring_exception_weekdays = excWeekdays
-      shared.recurring_exception_monthdays = excMonthdays
-      shared.recurring_exception_dates = JSON.stringify(excDates)
-      shared.recurring_exception_behavior = excBehavior
-    }
+    // Same recurrence rule applied to every task in the batch.
+    Object.assign(shared, serializeRecurrence(rec))
 
     // Renumber batch refs against the filtered (non-empty) rows we actually send.
     const keptIndex = new Map<number, number>()
@@ -235,33 +221,10 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
         )}
 
         <label className="flex items-center gap-2 text-sm font-medium text-muted">
-          <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+          <input type="checkbox" checked={rec.isRecurring} onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })} />
           Recurring (same rule for every task)
         </label>
-        {isRecurring && (
-          <div className="flex flex-col gap-3 rounded-xl bg-canvas p-3">
-            <label className="text-sm font-medium text-muted">
-              Frequency
-              <SearchableSelect value={frequency} onChange={setFrequency} options={['Daily', 'Weekly', 'Monthly'].map((s) => ({ value: s, label: s }))} />
-            </label>
-            <label className="text-sm font-medium text-muted">
-              Until
-              <DatePicker className={field + ' mt-1'} value={until} onChange={(v) => setUntil(v)} />
-            </label>
-            <RecurrenceExceptions
-              weekdays={excWeekdays}
-              monthdays={excMonthdays}
-              dates={excDates}
-              behavior={excBehavior}
-              onChange={(p) => {
-                if (p.weekdays !== undefined) setExcWeekdays(p.weekdays)
-                if (p.monthdays !== undefined) setExcMonthdays(p.monthdays)
-                if (p.dates !== undefined) setExcDates(p.dates)
-                if (p.behavior !== undefined) setExcBehavior(p.behavior)
-              }}
-            />
-          </div>
-        )}
+        {rec.isRecurring && <RecurrenceEditor value={rec} onChange={setRec} />}
 
         {prog && create.isPending && (
           <div>
