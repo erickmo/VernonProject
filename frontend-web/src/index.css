@@ -126,3 +126,12 @@ html.dark .prose-notes { color: #cbd5e1; } /* slate-300 */
     animation: none !important;
   }
 }
+
+/* Announcement ticker (AnnouncementTicker.tsx): reserve space for the fixed top
+   bar and drive its marquee. --tk-h is set by the bar to its own height (0 when
+   no announcements), so nothing shifts when there's nothing to show. */
+body { padding-top: var(--tk-h, 0px); }
+@keyframes tk-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.tk-marquee { animation: tk-marquee linear infinite; }
+.tk-track:hover .tk-marquee { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .tk-marquee { animation: none; } }

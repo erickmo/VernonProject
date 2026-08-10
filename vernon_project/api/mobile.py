@@ -3474,18 +3474,32 @@ def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 # --------------------------------------------------------------------------------
 
 
+def _effective_points(point_cost, discounted_points):
+	"""Price a shopper actually pays: the promo price when one is set (a value
+	strictly between 0 and point_cost), otherwise the full point cost."""
+	pc = float(point_cost or 0)
+	d = float(discounted_points or 0)
+	return d if (0 < d < pc) else pc
+
+
 @frappe.whitelist()
 def get_marketplace():
-	"""Active catalog + the caller's spendable balance."""
+	"""Active catalog + the caller's spendable balance. Sorted cheapest-first by
+	the effective (promo-aware) price."""
 	_, _, balance = _user_balance(frappe.session.user)
 	rewards = frappe.get_all(
 		"Marketplace Reward",
 		filters={"active": 1, "avatar_item": ["is", "not set"]},
-		fields=["name", "reward_name", "point_cost", "image", "description", "stock_quantity"],
-		order_by="point_cost asc, reward_name asc",
+		fields=[
+			"name", "reward_name", "point_cost", "discounted_points",
+			"image", "description", "stock_quantity",
+		],
 	)
 	for r in rewards:
 		r["point_cost"] = float(r["point_cost"] or 0)
+		r["discounted_points"] = float(r["discounted_points"] or 0)
+		r["effective_points"] = _effective_points(r["point_cost"], r["discounted_points"])
+	rewards.sort(key=lambda r: (r["effective_points"], r["reward_name"]))
 	return {"balance": balance, "rewards": rewards}
 
 
@@ -3505,7 +3519,7 @@ def redeem_reward(reward):
 	try:
 		# Lock the catalog row for the duration of the transaction.
 		row = frappe.db.sql(
-			"""select name, reward_name, point_cost, stock_quantity, active
+			"""select name, reward_name, point_cost, discounted_points, stock_quantity, active
 			from `tabMarketplace Reward` where name = %s for update""",
 			reward,
 			as_dict=True,
@@ -3518,7 +3532,9 @@ def redeem_reward(reward):
 		if (r["stock_quantity"] or 0) <= 0:
 			frappe.throw("Out of stock", frappe.ValidationError)
 
-		cost = float(r["point_cost"] or 0)
+		# Charge the promo price when one is active; the redemption row records
+		# what was actually spent.
+		cost = _effective_points(r["point_cost"], r.get("discounted_points"))
 		_, _, balance = _user_balance(user)
 		if cost > balance:
 			frappe.throw("Insufficient balance", frappe.ValidationError)
@@ -3557,6 +3573,48 @@ def _require_marketplace_manager():
 	roles = frappe.get_roles(frappe.session.user)
 	if "System Manager" not in roles and "Marketplace Manager" not in roles:
 		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+@frappe.whitelist()
+def save_reward(payload, name=None):
+	"""Create or update a Marketplace Reward in one request.
+
+	Marketplace Reward is field-autonamed (name = reward_name), so a plain
+	/api/resource PUT silently ignores a name change. Renaming needs
+	frappe.rename_doc — and running it in the *same* transaction as the field
+	update makes the whole save atomic: rename_doc uses savepoints and does not
+	self-commit, so if validation on save() fails the rename rolls back too.
+	That removes the half-renamed / broken-retry state a two-call client flow had.
+	"""
+	_require_marketplace_manager()
+	if isinstance(payload, str):
+		payload = frappe.parse_json(payload)
+
+	fields = {
+		"reward_name": (payload.get("reward_name") or "").strip(),
+		"point_cost": payload.get("point_cost") or 0,
+		"discounted_points": payload.get("discounted_points") or 0,
+		"stock_quantity": payload.get("stock_quantity") or 0,
+		"active": 1 if payload.get("active") else 0,
+		"description": (payload.get("description") or "").strip(),
+		"image": payload.get("image") or None,
+	}
+	if not fields["reward_name"]:
+		frappe.throw("Reward name is required")
+
+	if name:
+		new_name = fields["reward_name"]
+		if new_name != name:
+			# Permission already gated above; rename_doc still enforces write perm.
+			frappe.rename_doc("Marketplace Reward", name, new_name)
+			name = new_name
+		doc = frappe.get_doc("Marketplace Reward", name)
+		doc.update(fields)
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc({"doctype": "Marketplace Reward", **fields})
+		doc.insert(ignore_permissions=True)
+	return {"name": doc.name}
 
 
 @frappe.whitelist()

@@ -10,7 +10,7 @@ import { api, mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdmin
 import { useToast } from '@/components/Toast'
 import { enrollPasskey } from '@/lib/webauthn'
 import { allocTotal } from '@/lib/planDay'
-import { todayISO } from '@/lib/format'
+import { todayISO, effectivePoints } from '@/lib/format'
 import { patchTodoInCache } from '@/lib/patchTodoCache'
 import { BRAND_WEEKDAY_KEYS } from '@/lib/types'
 import type {
@@ -102,6 +102,8 @@ export const keys = {
   marketplace: ['marketplace'] as const,
   income: ['income'] as const,
   incomeManage: ['income-manage'] as const,
+  announcements: ['announcements'] as const,
+  announcementsManage: ['announcements-manage'] as const,
   rewardsAdmin: ['rewards-admin'] as const,
   rewardAdmin: (n: string) => ['reward-admin', n] as const,
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
@@ -1587,6 +1589,46 @@ export function useReviewIncomeClaim() {
   })
 }
 
+/** Who may create/manage the top-of-page announcement ticker. Mirrors MANAGE_ROLES
+ *  in api/announcement.py. */
+export function canManageAnnouncements(boot: Boot | undefined): boolean {
+  return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('HR Manager'))
+}
+
+/** Active announcements for the ticker. Polls so a long-open tab picks up newly
+ *  published / expired ones without a reload. */
+export const useActiveAnnouncements = () =>
+  useQuery({
+    queryKey: keys.announcements,
+    queryFn: () => mobileApi.activeAnnouncements(),
+    refetchInterval: 5 * 60_000,
+  })
+
+export const useAnnouncementsAdmin = () =>
+  useQuery({ queryKey: keys.announcementsManage, queryFn: () => mobileApi.listAnnouncements() })
+
+export function useSaveAnnouncement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: Parameters<typeof mobileApi.saveAnnouncement>[0]) => mobileApi.saveAnnouncement(v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.announcementsManage })
+      qc.invalidateQueries({ queryKey: keys.announcements })
+    },
+  })
+}
+
+export function useDeleteAnnouncement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => mobileApi.deleteAnnouncement(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.announcementsManage })
+      qc.invalidateQueries({ queryKey: keys.announcements })
+    },
+  })
+}
+
 export function useRedeemReward() {
   const qc = useQueryClient()
   return useMutation({
@@ -1620,11 +1662,14 @@ export function canGrantPoints(boot: Boot | undefined): boolean {
 export function useRewardsAdmin() {
   return useQuery({
     queryKey: keys.rewardsAdmin,
-    queryFn: () =>
-      resource.list<AdminReward[]>('Marketplace Reward', {
-        fields: ['name', 'reward_name', 'point_cost', 'stock_quantity', 'active', 'image'],
+    queryFn: async () => {
+      const rows = await resource.list<AdminReward[]>('Marketplace Reward', {
+        fields: ['name', 'reward_name', 'point_cost', 'discounted_points', 'stock_quantity', 'active', 'image'],
         limit: 0,
-      }),
+      })
+      // Default the admin list cheapest-first by effective (promo-aware) price.
+      return [...rows].sort((a, b) => effectivePoints(a) - effectivePoints(b))
+    },
   })
 }
 
@@ -1639,8 +1684,8 @@ export function useReward(name: string, enabled = true) {
 export function useCreateReward() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: RewardFormPayload) =>
-      resource.create<{ name: string }>('Marketplace Reward', payload as unknown as Record<string, unknown>),
+    // save_reward owns create + update+rename atomically server-side.
+    mutationFn: (payload: RewardFormPayload) => mobileApi.saveReward(payload),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.rewardsAdmin })
       qc.invalidateQueries({ queryKey: keys.marketplace })
@@ -1652,7 +1697,7 @@ export function useUpdateReward() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ name, payload }: { name: string; payload: RewardFormPayload }) =>
-      resource.update<{ name: string }>('Marketplace Reward', name, payload as unknown as Record<string, unknown>),
+      mobileApi.saveReward(payload, name),
     onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: keys.rewardsAdmin })
       qc.invalidateQueries({ queryKey: keys.rewardAdmin(vars.name) })

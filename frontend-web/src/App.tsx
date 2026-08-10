@@ -18,6 +18,7 @@ import {
   canManageCompanies,
   canManageBusinessUnits,
   canManageRecruitment,
+  canManageAnnouncements,
   useRecognitionGate,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
@@ -42,6 +43,7 @@ import TodosDue from '@web/pages/TodosDue'
 import LastSeen from '@web/pages/LastSeen'
 import Income from '@web/pages/Income'
 import IncomeAdmin from '@web/pages/IncomeAdmin'
+import Announcements from '@web/pages/Announcements'
 import Companies from '@web/pages/Companies'
 import CompanyForm from '@web/pages/CompanyForm'
 import BusinessUnits from '@web/pages/BusinessUnits'
@@ -384,6 +386,7 @@ export default function App() {
           <Route path="/me/info" element={<MyInfo />} />
           <Route path="/income" element={<Income />} />
           {canManageIncome(b) && <Route path="/income-admin" element={<IncomeAdmin />} />}
+          {canManageAnnouncements(b) && <Route path="/announcements" element={<Announcements />} />}
           <Route path="/activity" element={<Activity />} />
           {canManageCompanies(b) && (
             <>

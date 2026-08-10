@@ -1,5 +1,5 @@
 import { Spinner } from '@/components/ui'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, effectivePoints } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 
 export function RedeemSheet({
@@ -16,7 +16,8 @@ export function RedeemSheet({
   onClose: () => void
 }) {
   if (!reward) return null
-  const after = balance - reward.point_cost
+  const price = effectivePoints(reward)
+  const after = balance - price
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
@@ -27,7 +28,7 @@ export function RedeemSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-600" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Redeem {reward.reward_name}?</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          This spends <span className="font-semibold">{formatNumber(reward.point_cost)}</span> points. Balance after:{' '}
+          This spends <span className="font-semibold">{formatNumber(price)}</span> points. Balance after:{' '}
           <span className="font-semibold">{after.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>.
         </p>
         <div className="mt-5 flex gap-2">

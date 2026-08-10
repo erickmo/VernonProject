@@ -47,7 +47,7 @@ export function TopBar({
   const doLogout = async () => { try { await logout() } finally { window.location.href = '/w' } }
 
   return (
-    <header className="sticky top-0 z-20 bg-gradient-to-br from-indigo-700 via-violet-600 to-indigo-600 shadow-[0_10px_30px_-10px_rgb(79_70_229/0.55),0_2px_6px_-3px_rgb(0_0_0/0.25)] ring-1 ring-black/10">
+    <header className="sticky top-[var(--tk-h,0px)] z-20 bg-gradient-to-br from-indigo-700 via-violet-600 to-indigo-600 shadow-[0_10px_30px_-10px_rgb(79_70_229/0.55),0_2px_6px_-3px_rgb(0_0_0/0.25)] ring-1 ring-black/10">
       {/* slow ambient light sweep — clipped to the bar so it never bleeds onto dropdowns */}
       <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <span className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-sheen" />

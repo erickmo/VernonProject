@@ -11,6 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import FocusOverlay from './components/FocusOverlay'
 import { Fab } from './components/Fab'
 import UpdateBanner from './components/UpdateBanner'
+import { AnnouncementTicker } from './components/AnnouncementTicker'
 import { useBoot } from './hooks/useData'
 import './index.css'
 import { initTheme } from './lib/theme'
@@ -69,6 +70,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <App />
                 </ErrorBoundary>
                 <AuthedOnly>
+                  <AnnouncementTicker />
                   <Fab />
                   <UpdateBanner />
                   <FocusOverlay />

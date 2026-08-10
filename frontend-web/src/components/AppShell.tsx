@@ -13,6 +13,7 @@ import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog
 import { useShortcuts, ShortcutsHelp } from '@web/components/ShortcutsHelp'
 import { FocusHost } from '@web/components/FocusHost'
 import UpdateBanner from '@web/components/UpdateBanner'
+import { AnnouncementTicker } from '@/components/AnnouncementTicker'
 
 // Every page is full-bleed (per request). The shell no longer caps width.
 function mainWidth(_path: string): string {
@@ -44,6 +45,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-canvas font-sans text-ink">
+      <AnnouncementTicker />
       <TopBar
         onOpenPalette={() => setPaletteOpen(true)}
         onQuickCreate={() => setQuickOpen(true)}

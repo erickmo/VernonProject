@@ -4,7 +4,7 @@ import { Plus, Store, ChevronRight, Check, Gift } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { useToast } from '@/components/Toast'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
 import {
   useBoot,
   canManageMarketplace,
@@ -82,8 +82,10 @@ function RewardsList() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{r.reward_name}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              {formatNumber(r.point_cost)} pts · stock {formatNumber(r.stock_quantity)}
+            <p className="flex flex-wrap items-baseline gap-x-1 text-xs text-slate-400 dark:text-slate-500">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">{formatNumber(effectivePoints(r))} pts</span>
+              {hasPromo(r) && <span className="text-slate-400 line-through dark:text-slate-500">{formatNumber(r.point_cost)}</span>}
+              <span>· stock {formatNumber(r.stock_quantity)}</span>
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

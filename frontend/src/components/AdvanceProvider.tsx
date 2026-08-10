@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { useAdvanceStatus } from '@/hooks/useData'
 import { stopTimer } from '@/hooks/useFocusTimer'
 import { Spinner } from './ui'
+import DonePop from './DonePop'
 
 // Opens a confirm dialog for a Project Todo status advance. After a successful
 // advance, if the SAME user is permitted to advance again, the dialog stays open
@@ -25,6 +26,7 @@ interface State {
 export function AdvanceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [celebrate, setCelebrate] = useState(0) // token: each bump restarts DonePop
   const advance = useAdvanceStatus()
 
   const open = useCallback<AdvanceFn>((todoId, label, title = '', onAdvanced) => {
@@ -53,6 +55,11 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
       // advance), so this never fires on a "start".
       stopTimer(state.todoId)
       state.onAdvanced?.()
+      // Celebrate the two "work finished" milestones: the initial Mark Done and the
+      // final approval. Not the intermediate approval steps (checked).
+      if (res.status_key === 'done' || res.status_key === 'completed') {
+        setCelebrate((n) => n + 1)
+      }
       if (res.can_advance && res.next_status_label) {
         // chain: relabel and keep the dialog open for the next step
         const nextLabel = res.next_status_label
@@ -86,6 +93,7 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
   return (
     <AdvanceCtx.Provider value={open}>
       {children}
+      <DonePop token={celebrate} />
       {state && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center px-6">
           <div className="absolute inset-0 bg-slate-900/40 animate-fade-in" onClick={close} />

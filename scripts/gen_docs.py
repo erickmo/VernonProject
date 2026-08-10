@@ -82,7 +82,7 @@ CLUSTERS = {
     }),
     "platform": ("Platform", "Platform", "2x1", {
         "Vernon Settings", "Vernon Notification", "Vernon Banner", "App Release",
-        "Push Subscription", "User Passkey", "Daily Verse", "Company Feedback",
+        "Announcement", "Push Subscription", "User Passkey", "Daily Verse", "Company Feedback",
     }),
     "org": ("Organisasi", "Organization", "1x1", {"Brand", "Company", "Business Unit"}),
     "superpowers": ("Kekuatan Super", "Superpowers", "1x1", {

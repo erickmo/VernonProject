@@ -60,6 +60,7 @@ import CloneMembershipsScreen from './pages/CloneMembershipsScreen'
 import GiftPointsScreen from './pages/GiftPointsScreen'
 import IncomeScreen from './pages/IncomeScreen'
 import IncomeAdminScreen from './pages/IncomeAdminScreen'
+import AnnouncementsScreen from './pages/AnnouncementsScreen'
 import LearnScreen from './pages/LearnScreen'
 import CourseScreen from './pages/CourseScreen'
 import LmsAdminScreen from './pages/LmsAdminScreen'
@@ -118,7 +119,7 @@ import EventDetailScreen from './pages/EventDetailScreen'
 import MyRegistrationsScreen from './pages/MyRegistrationsScreen'
 import EventFormScreen from './pages/EventFormScreen'
 import EventRosterScreen from './pages/EventRosterScreen'
-import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms, canHrApprove, canManageRecruitment } from './hooks/useData'
+import { canManageGroups, canManageBrands, canManageUsers, canManageMarketplace, canGrantPoints, canManageBadges, canManageAttendance, canManageResources, canModerateAds, canManageIncome, canManageLms, canHrApprove, canManageRecruitment, canManageAnnouncements } from './hooks/useData'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
 const PUSH_ASKED_KEY = 'vernon-push-asked-v1'
@@ -308,6 +309,9 @@ export default function App() {
         <Route path="/income" element={<IncomeScreen />} />
         {canManageIncome(boot) && (
           <Route path="/income-admin" element={<IncomeAdminScreen />} />
+        )}
+        {canManageAnnouncements(boot) && (
+          <Route path="/announcements" element={<AnnouncementsScreen />} />
         )}
         <Route path="/learn" element={<LearnScreen />} />
         <Route path="/learn/:course" element={<CourseScreen />} />

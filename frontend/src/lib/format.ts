@@ -10,6 +10,18 @@ export function formatNumber(num: number): string {
   return (num || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
+// Marketplace promo pricing. A promo is active only when discounted_points sits
+// strictly between 0 and point_cost (0/empty = no promo). Mirrors the server's
+// _effective_points in api/mobile.py — keep the two in sync.
+export function hasPromo(r: { point_cost: number; discounted_points?: number | null }): boolean {
+  const d = r.discounted_points || 0
+  return d > 0 && d < r.point_cost
+}
+
+export function effectivePoints(r: { point_cost: number; discounted_points?: number | null }): number {
+  return hasPromo(r) ? (r.discounted_points as number) : r.point_cost
+}
+
 // Net reward for a project detail. Mirrors server calc (project_detail.py):
 // Point rewards carry no discount; Rupiah net = bonus - discount.
 export function rewardNet(rewardType: string | null, bonus: number | null, discount: number | null): number {

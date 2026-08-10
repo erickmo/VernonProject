@@ -4,7 +4,7 @@ import { Store, Coins, Wallet, Trophy, Settings, TrendingUp, TrendingDown, Minus
 import { EmptyState, Spinner } from '@/components/ui'
 import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace, useWallet } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 import { Sheet } from '@web/components/Sheet'
 import { ErrorState, rowButtonProps, CardGridSkeleton, Button } from '@web/components/ui'
@@ -25,9 +25,11 @@ function RewardDetailDialog({
   onClose: () => void
 }) {
   const soldOut = !!reward && reward.stock_quantity <= 0
-  const tooPricey = !!reward && reward.point_cost > balance
+  const price = reward ? effectivePoints(reward) : 0
+  const promo = !!reward && hasPromo(reward)
+  const tooPricey = !!reward && price > balance
   const disabled = soldOut || tooPricey || pending
-  const after = reward ? balance - reward.point_cost : 0
+  const after = reward ? balance - price : 0
   return (
     <Sheet open={!!reward} onClose={() => !pending && onClose()} title={reward?.reward_name ?? ''} size="sm">
       {reward && (
@@ -43,8 +45,16 @@ function RewardDetailDialog({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-xl font-bold text-brand-700 dark:text-brand-300">
-              {formatNumber(reward.point_cost)} pts
+            <span className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-brand-700 dark:text-brand-300">
+                {formatNumber(price)} pts
+              </span>
+              {promo && (
+                <>
+                  <span className="text-sm font-medium text-muted line-through">{formatNumber(reward.point_cost)}</span>
+                  <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Promo</span>
+                </>
+              )}
             </span>
             <span
               className={
@@ -63,7 +73,7 @@ function RewardDetailDialog({
 
           {!disabled && (
             <p className="text-sm text-muted">
-              This spends <span className="font-semibold">{formatNumber(reward.point_cost)}</span> points. Balance
+              This spends <span className="font-semibold">{formatNumber(price)}</span> points. Balance
               after:{' '}
               <span className="font-semibold">
                 {after.toLocaleString(undefined, { maximumFractionDigits: 1 })}
@@ -184,6 +194,7 @@ export default function Marketplace() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
               {data.rewards.map((r) => {
                 const soldOut = r.stock_quantity <= 0
+                const promo = hasPromo(r)
                 return (
                   <div
                     key={r.name}
@@ -191,7 +202,7 @@ export default function Marketplace() {
                     aria-label={`View reward ${r.reward_name}`}
                     className="flex flex-col overflow-hidden rounded-2xl bg-surface border border-line cursor-pointer hover:border-brand-300 dark:hover:border-brand-500/40 active:scale-[0.99] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                   >
-                    <div className="aspect-square w-full bg-canvas">
+                    <div className="relative aspect-square w-full bg-canvas">
                       {r.image ? (
                         <img src={r.image} alt={r.reward_name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : (
@@ -199,15 +210,25 @@ export default function Marketplace() {
                           <Store className="h-8 w-8" />
                         </div>
                       )}
+                      {promo && (
+                        <span className="absolute left-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+                          Promo
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-1 flex-col p-3">
                       <p className="text-sm font-semibold text-ink">{r.reward_name}</p>
                       {r.description && (
                         <p className="mt-0.5 line-clamp-2 text-xs text-muted">{r.description}</p>
                       )}
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
-                          {formatNumber(r.point_cost)} pts
+                      <div className="mt-2 flex items-center justify-between gap-1">
+                        <span className="flex items-baseline gap-1">
+                          <span className="text-sm font-bold text-brand-700 dark:text-brand-300">
+                            {formatNumber(effectivePoints(r))} pts
+                          </span>
+                          {promo && (
+                            <span className="text-xs font-medium text-muted line-through">{formatNumber(r.point_cost)}</span>
+                          )}
                         </span>
                         {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
                       </div>

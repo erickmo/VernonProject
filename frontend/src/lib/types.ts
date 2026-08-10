@@ -670,6 +670,8 @@ export interface MarketplaceReward {
   name: string
   reward_name: string
   point_cost: number
+  discounted_points: number
+  effective_points: number
   image: string | null
   description: string | null
   stock_quantity: number
@@ -684,6 +686,7 @@ export interface AdminReward {
   name: string
   reward_name: string
   point_cost: number
+  discounted_points?: number | null
   stock_quantity: number
   active: 0 | 1
   image: string | null
@@ -705,6 +708,7 @@ export interface AdminRedemption {
 export interface RewardFormPayload {
   reward_name: string
   point_cost: number
+  discounted_points?: number | null
   stock_quantity: number
   active: 0 | 1
   description?: string
@@ -1538,4 +1542,19 @@ export interface HabitsResponse {
   habits: Habit[]
   suggestions: HabitSuggestion[]
   disc_type: string
+}
+
+// --- Announcements (top-of-page ticker) ---
+export interface ActiveAnnouncement {
+  name: string
+  message: string
+  link?: string | null
+}
+export interface AdminAnnouncement {
+  name: string
+  message: string
+  link?: string | null
+  start_date: string
+  end_date: string
+  published: 0 | 1
 }

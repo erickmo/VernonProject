@@ -13,7 +13,7 @@ import {
   canManageGroups, canManageBrands, canManageUsers,
   canManageAttendance, canHrApprove, canManageResources,
   canModerateAds, canManageLms, canManageCompanies,
-  canManageBusinessUnits, canManageRecruitment, isSystemManager,
+  canManageBusinessUnits, canManageRecruitment, canManageAnnouncements, isSystemManager,
 } from '@/hooks/useData'
 
 // `href` marks an off-SPA / external destination (a Frappe www page or another
@@ -112,6 +112,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
 
   // Admin group — nav.ts is the single source of truth; gated per capability
   const admin: NavLeaf[] = [
+    ...(canManageAnnouncements(b) ? [{ to: '/announcements', label: 'Announcements', sub: 'Top-of-page ticker', icon: Megaphone } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/users', label: 'Users', sub: 'People & roles', icon: UsersIcon } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/transfer-tasks', label: 'Transfer Tasks', sub: 'Reassign a user’s tasks', icon: ArrowLeftRight } as NavLeaf] : []),
     ...(canManageUsers(b) ? [{ to: '/clone-memberships', label: 'Salin Keanggotaan Proyek', sub: 'Tambah karyawan baru ke proyek karyawan lain', icon: Copy } as NavLeaf] : []),

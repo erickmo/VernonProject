@@ -1,5 +1,5 @@
 import { Store, X } from 'lucide-react'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 
 export function RewardDetailSheet({
@@ -15,7 +15,9 @@ export function RewardDetailSheet({
 }) {
   if (!reward) return null
   const soldOut = reward.stock_quantity <= 0
-  const tooPricey = reward.point_cost > balance
+  const price = effectivePoints(reward)
+  const promo = hasPromo(reward)
+  const tooPricey = price > balance
   const disabled = soldOut || tooPricey
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
@@ -43,7 +45,15 @@ export function RewardDetailSheet({
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <span className="text-xl font-bold text-brand-700 dark:text-brand-300">{formatNumber(reward.point_cost)} pts</span>
+          <span className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-brand-700 dark:text-brand-300">{formatNumber(price)} pts</span>
+            {promo && (
+              <>
+                <span className="text-sm font-medium text-slate-400 line-through dark:text-slate-500">{formatNumber(reward.point_cost)}</span>
+                <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Promo</span>
+              </>
+            )}
+          </span>
           <span
             className={
               soldOut

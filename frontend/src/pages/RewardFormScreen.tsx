@@ -23,6 +23,7 @@ const field =
 const empty: RewardFormPayload = {
   reward_name: '',
   point_cost: 0,
+  discounted_points: 0,
   stock_quantity: 0,
   active: 1,
   description: '',
@@ -52,6 +53,7 @@ export default function RewardFormScreen() {
       setForm({
         reward_name: existing.reward_name,
         point_cost: existing.point_cost,
+        discounted_points: existing.discounted_points ?? 0,
         stock_quantity: existing.stock_quantity,
         active: existing.active,
         description: existing.description ?? '',
@@ -93,6 +95,9 @@ export default function RewardFormScreen() {
   const validate = (): string | null => {
     if (!form.reward_name.trim()) return 'Reward name is required'
     if (form.point_cost < 0) return 'Point cost must be zero or more'
+    const promo = form.discounted_points ?? 0
+    if (promo < 0) return 'Discounted points cannot be negative'
+    if (promo > 0 && promo >= form.point_cost) return 'Discounted points must be less than the point cost'
     if (form.stock_quantity < 0) return 'Stock must be zero or more'
     return null
   }
@@ -106,6 +111,7 @@ export default function RewardFormScreen() {
     const payload: RewardFormPayload = {
       reward_name: form.reward_name.trim(),
       point_cost: Number(form.point_cost),
+      discounted_points: Number(form.discounted_points ?? 0),
       stock_quantity: Number(form.stock_quantity),
       active: form.active,
       description: (form.description ?? '').trim(),
@@ -194,6 +200,20 @@ export default function RewardFormScreen() {
               onChange={(e) => setForm((f) => ({ ...f, stock_quantity: Number(e.target.value.replace(/[^\d]/g, '')) }))}
             />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Discounted points (promo)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            className={field}
+            value={formatNumber(form.discounted_points ?? 0)}
+            onChange={(e) => setForm((f) => ({ ...f, discounted_points: Number(e.target.value.replace(/[^\d]/g, '')) }))}
+          />
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            Optional promo price. Leave 0 for no promo. Must be less than the point cost.
+          </p>
         </div>
 
         <label className="flex items-center justify-between rounded-xl bg-white px-3 py-3 shadow-sm dark:bg-slate-800">

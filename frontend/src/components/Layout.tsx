@@ -35,7 +35,7 @@ export function TabScreen({
 
   return (
     <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
-      <header ref={hdr} className="sticky top-0 z-20 bg-paper/95 dark:bg-slate-900 backdrop-blur-sm px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
+      <header ref={hdr} className="sticky top-[var(--tk-h,0px)] z-20 bg-paper/95 dark:bg-slate-900 backdrop-blur-sm px-5 pb-3 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <div className="flex items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-[1.7rem] font-semibold tracking-tight text-stone-800 dark:text-slate-50">{title}</h1>
@@ -73,7 +73,7 @@ export function DetailScreen({
   const navigate = useNavigate()
   return (
     <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+      <header className="sticky top-[var(--tk-h,0px)] z-20 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
         <button
           onClick={() => navigate(-1)}
           className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-100 dark:active:bg-slate-700"

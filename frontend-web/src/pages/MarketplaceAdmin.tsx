@@ -8,7 +8,7 @@ import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
 import {
   useBoot,
   canManageMarketplace,
@@ -121,10 +121,19 @@ function RewardsTable() {
         },
         {
           key: 'cost',
-          header: 'Point cost',
+          header: 'Price',
           align: 'right',
-          sortValue: (r) => r.point_cost,
-          render: (r) => <span className="whitespace-nowrap text-muted">{formatNumber(r.point_cost)}</span>,
+          sortValue: (r) => effectivePoints(r),
+          render: (r) =>
+            hasPromo(r) ? (
+              <span className="flex items-baseline justify-end gap-1.5 whitespace-nowrap">
+                <span className="font-semibold text-ink">{formatNumber(effectivePoints(r))}</span>
+                <span className="text-xs text-muted line-through">{formatNumber(r.point_cost)}</span>
+                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">Promo</span>
+              </span>
+            ) : (
+              <span className="whitespace-nowrap text-muted">{formatNumber(r.point_cost)}</span>
+            ),
         },
         {
           key: 'stock',

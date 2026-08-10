@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Users, ArrowLeftRight, Briefcase, FileText, Ban, ClipboardList, ClipboardCheck,
-  Building2, Store, BookOpen, DoorOpen, ShieldAlert, ChevronRight, Copy,
+  Building2, Store, BookOpen, DoorOpen, ShieldAlert, ChevronRight, Copy, Megaphone,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import {
   useBoot, canManageUsers, canManageAttendance, canManageRecruitment,
   canManageCompanies, canManageBrands,
-  canManageLms, canManageGroups, canManageResources,
+  canManageLms, canManageGroups, canManageResources, canManageAnnouncements,
 } from '@/hooks/useData'
 
 const HUE: Record<string, string> = {
@@ -63,6 +63,7 @@ export default function HrHubScreen() {
     {
       title: 'Other',
       rows: [
+        ...(canManageAnnouncements(boot) ? [{ icon: Megaphone, label: 'Pengumuman', hue: 'violet', to: '/announcements' }] : []),
         ...(canManageLms(boot) ? [{ icon: BookOpen, label: 'Manage Learning', hue: 'indigo', to: '/learn-admin' }] : []),
         ...(canManageResources(boot) ? [{ icon: DoorOpen, label: 'Resources', hue: 'indigo', to: '/meeting-rooms' }] : []),
         ...(canManageGroups(boot) ? [{ icon: ShieldAlert, label: 'Data Health', hue: 'rose', to: '/data-health' }] : []),

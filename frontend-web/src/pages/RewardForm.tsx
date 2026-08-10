@@ -8,7 +8,7 @@ import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { uploadRewardImage } from '@/lib/api'
-import { deleteErrorMessage, formatNumber } from '@/lib/format'
+import { deleteErrorMessage, formatNumber, effectivePoints, hasPromo } from '@/lib/format'
 import {
   useReward,
   useCreateReward,
@@ -25,13 +25,14 @@ const field =
 const empty: RewardFormPayload = {
   reward_name: '',
   point_cost: 0,
+  discounted_points: 0,
   stock_quantity: 0,
   active: 1,
   description: '',
   image: null,
 }
 
-type Errors = { reward_name?: string; point_cost?: string; stock_quantity?: string }
+type Errors = { reward_name?: string; point_cost?: string; discounted_points?: string; stock_quantity?: string }
 
 export default function RewardForm() {
   const navigate = useNavigate()
@@ -54,6 +55,7 @@ export default function RewardForm() {
   const fileRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const costRef = useRef<HTMLInputElement>(null)
+  const discountRef = useRef<HTMLInputElement>(null)
   const stockRef = useRef<HTMLInputElement>(null)
 
   const patch = (p: Partial<RewardFormPayload>) => {
@@ -66,6 +68,7 @@ export default function RewardForm() {
       setForm({
         reward_name: existing.reward_name,
         point_cost: existing.point_cost,
+        discounted_points: existing.discounted_points ?? 0,
         stock_quantity: existing.stock_quantity,
         active: existing.active,
         description: existing.description ?? '',
@@ -123,6 +126,10 @@ export default function RewardForm() {
     const errs: Errors = {}
     if (!form.reward_name.trim()) errs.reward_name = 'Reward name is required'
     if (form.point_cost < 0) errs.point_cost = 'Point cost must be zero or more'
+    const promo = form.discounted_points ?? 0
+    if (promo < 0) errs.discounted_points = 'Discounted points cannot be negative'
+    else if (promo > 0 && promo >= form.point_cost)
+      errs.discounted_points = 'Discounted points must be less than the point cost'
     if (form.stock_quantity < 0) errs.stock_quantity = 'Stock must be zero or more'
     return errs
   }
@@ -130,16 +137,18 @@ export default function RewardForm() {
   const save = () => {
     const errs = validate()
     setErrors(errs)
-    if (errs.reward_name || errs.point_cost || errs.stock_quantity) {
-      toast('error', errs.reward_name || errs.point_cost || errs.stock_quantity!)
+    if (errs.reward_name || errs.point_cost || errs.discounted_points || errs.stock_quantity) {
+      toast('error', errs.reward_name || errs.point_cost || errs.discounted_points || errs.stock_quantity!)
       if (errs.reward_name) nameRef.current?.focus()
       else if (errs.point_cost) costRef.current?.focus()
+      else if (errs.discounted_points) discountRef.current?.focus()
       else stockRef.current?.focus()
       return
     }
     const payload: RewardFormPayload = {
       reward_name: form.reward_name.trim(),
       point_cost: Number(form.point_cost),
+      discounted_points: Number(form.discounted_points ?? 0),
       stock_quantity: Number(form.stock_quantity),
       active: form.active,
       description: (form.description ?? '').trim(),
@@ -257,6 +266,27 @@ export default function RewardForm() {
               </Field>
             </div>
 
+            <Field
+              label="Discounted points (promo)"
+              error={errors.discounted_points}
+              hint="Optional promo price. Leave 0 for no promo. Must be less than the point cost."
+            >
+              {(id) => (
+                <input
+                  id={id}
+                  ref={discountRef}
+                  type="text"
+                  inputMode="numeric"
+                  className={field}
+                  value={formatNumber(form.discounted_points ?? 0)}
+                  onChange={(e) => {
+                    patch({ discounted_points: Number(e.target.value.replace(/[^\d]/g, '')) })
+                    if (errors.discounted_points) setErrors((s) => ({ ...s, discounted_points: undefined }))
+                  }}
+                />
+              )}
+            </Field>
+
             <label className="flex items-center justify-between rounded-xl border border-line px-3 py-3 dark:border-slate-700">
               <span className="text-sm font-medium text-ink dark:text-slate-200">Active</span>
               <input
@@ -344,7 +374,12 @@ export default function RewardForm() {
               <p className="truncate font-semibold text-ink">
                 {form.reward_name || 'Untitled reward'}
               </p>
-              <p className="mt-0.5 text-sm font-semibold text-brand-600">{formatNumber(form.point_cost)} pts</p>
+              <p className="mt-0.5 flex items-baseline gap-1.5 text-sm font-semibold text-brand-600">
+                <span>{formatNumber(effectivePoints(form))} pts</span>
+                {hasPromo(form) && (
+                  <span className="text-xs font-medium text-muted line-through">{formatNumber(form.point_cost)}</span>
+                )}
+              </p>
               <span
                 className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
                   form.active === 1

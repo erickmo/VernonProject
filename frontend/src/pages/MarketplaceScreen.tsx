@@ -7,7 +7,7 @@ import { RedeemSheet } from '@/components/RedeemSheet'
 import { RewardDetailSheet } from '@/components/RewardDetailSheet'
 import { useMarketplace, useRedeemReward, useBoot, canManageMarketplace, useWallet } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
 import type { MarketplaceReward } from '@/lib/types'
 
 export default function MarketplaceScreen() {
@@ -100,11 +100,10 @@ export default function MarketplaceScreen() {
         <div className="grid grid-cols-2 gap-3">
           {data.rewards.map((r) => {
             const soldOut = r.stock_quantity <= 0
-            const tooPricey = r.point_cost > balance
-            const disabled = soldOut || tooPricey
+            const promo = hasPromo(r)
             return (
               <div key={r.name} className="flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="aspect-square w-full bg-amber-50 dark:bg-amber-500/15">
+                <div className="relative aspect-square w-full bg-amber-50 dark:bg-amber-500/15">
                   {r.image ? (
                     <img src={r.image} alt={r.reward_name} className="h-full w-full object-cover" />
                   ) : (
@@ -112,14 +111,24 @@ export default function MarketplaceScreen() {
                       <Store className="h-8 w-8" />
                     </div>
                   )}
+                  {promo && (
+                    <span className="absolute left-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+                      Promo
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-1 flex-col p-3">
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.reward_name}</p>
                   {r.description && (
                     <p className="mt-0.5 line-clamp-2 text-xs text-slate-400 dark:text-slate-500">{r.description}</p>
                   )}
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-bold text-brand-700 dark:text-brand-300">{formatNumber(r.point_cost)} pts</span>
+                  <div className="mt-2 flex items-center justify-between gap-1">
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-sm font-bold text-brand-700 dark:text-brand-300">{formatNumber(effectivePoints(r))} pts</span>
+                      {promo && (
+                        <span className="text-xs font-medium text-slate-400 line-through dark:text-slate-500">{formatNumber(r.point_cost)}</span>
+                      )}
+                    </span>
                     {soldOut && <span className="text-[11px] font-semibold text-rose-500">Sold out</span>}
                   </div>
                   <button

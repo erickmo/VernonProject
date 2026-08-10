@@ -118,6 +118,7 @@ const SP = 'vernon_project.api.superpowers.'
 const DT = 'vernon_project.api.disc_test.'
 const OV = 'vernon_project.api.overtime.'
 const H = 'vernon_project.api.habit.'
+const AN = 'vernon_project.api.announcement.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -348,6 +349,11 @@ export const mobileApi = {
   getMarketplace: () => api.get(M + 'get_marketplace'),
   redeemReward: (reward: string) =>
     api.post<{ balance: number; redemption: string }>(M + 'redeem_reward', { reward }),
+  // Create (name omitted) or update+rename a reward atomically server-side. A
+  // plain /api/resource PUT can't rename a field-autonamed doc, so this endpoint
+  // owns both create and update to keep the flow single-request and consistent.
+  saveReward: (payload: import('./types').RewardFormPayload, name?: string) =>
+    api.post<{ name: string }>(M + 'save_reward', { name: name ?? '', payload }),
   listRedemptions: (status: string) => api.get(M + 'list_redemptions', { status }),
   grantPoints: (user: string, amount: number, note?: string) =>
     api.post<{ balance: number; granted: number }>(M + 'grant_points', {
@@ -380,6 +386,20 @@ export const mobileApi = {
     }),
   getTeamWall: () => api.get<import('./types').TeamWallResponse>(M + 'get_team_wall'),
   hrRemovePhoto: (user: string) => api.post<{ ok: boolean }>(M + 'hr_remove_photo', { user }),
+  activeAnnouncements: () =>
+    api.get<import('./types').ActiveAnnouncement[]>(AN + 'get_active_announcements'),
+  listAnnouncements: () =>
+    api.get<import('./types').AdminAnnouncement[]>(AN + 'list_announcements'),
+  saveAnnouncement: (v: {
+    name?: string
+    message: string
+    link?: string
+    start_date: string
+    end_date: string
+    published: 0 | 1
+  }) => api.post<{ ok: boolean; name: string }>(AN + 'save_announcement', v),
+  deleteAnnouncement: (name: string) =>
+    api.post<{ ok: boolean }>(AN + 'delete_announcement', { name }),
   income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
   submitIncomeClaim: (opportunity: string, details: string) =>
     api.post<{ ok: boolean; name: string }>(IN + 'submit_claim', { opportunity, details }),
