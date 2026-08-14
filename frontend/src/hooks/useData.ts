@@ -1073,6 +1073,16 @@ export function useScoringGroups() {
   })
 }
 
+// Flat catalog of every Group Level row across all groups — powers the combined
+// "[Group] Type - Level" single-select picker. One cached fetch for all forms.
+export function useGroupLevels() {
+  return useQuery({
+    queryKey: ['group-levels'],
+    queryFn: () => mobileApi.getGroupLevels(),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useScoringGroup(name: string, enabled = true) {
   return useQuery({
     queryKey: keys.scoringGroup(name),

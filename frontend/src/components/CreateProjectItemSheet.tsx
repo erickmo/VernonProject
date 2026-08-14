@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, X, Plus } from 'lucide-react'
-import { useCreateProjectItem, useScoringGroups, useScoringGroup } from '@/hooks/useData'
+import { useCreateProjectItem } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
-import { computeTodoPoints } from '@/lib/points'
+import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 import { emptyRecurrence, recurrenceFromDetail, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
 import { RecurrenceEditor } from '@/components/RecurrenceEditor'
@@ -44,45 +44,22 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
       interval: initial.interval, weekdays: initial.weekdays, monthly_mode: initial.monthlyMode,
       day_of_month: initial.dayOfMonth, nth: initial.nth, until: initial.until }) : emptyRecurrence)
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
-  const [typeName, setTypeName] = useState(initial?.typeName ?? '')
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(initial?.blockedBy ?? [])
   const [blocking, setBlocking] = useState<string[]>(initial?.blocking ?? [])
-
-  const { data: groups } = useScoringGroups()
-  const { data: groupDoc } = useScoringGroup(group, !!group)
-
-  // Reset type/level when the user actually changes group — but not on the
-  // initial (possibly prefilled) group, or a duplicate's seeded level is wiped.
-  const seededGroup = initial?.group ?? defaultGroup ?? ''
-  useEffect(() => {
-    if (group !== seededGroup) {
-      setTypeName('')
-      setLevelId('')
-    }
-  }, [group]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // If prefilled with a level but no type name, recover the type once the
-  // group's levels load (level_type may be missing on older todos).
-  useEffect(() => {
-    if (!typeName && levelId && groupDoc) {
-      const row = groupDoc.levels.find((l) => l.level_id === levelId)
-      if (row) setTypeName(row.type_name)
-    }
-  }, [groupDoc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setRecurrence(emptyRecurrence)
-    setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
+    setGroup(defaultGroup ?? ''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
   const close = () => { reset(); onClose() }
 
   const submit = () => {
-    if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !typeName || !levelId) {
-      toast('error', 'Name, assignee, start date, deadline, group, type and level are required')
+    if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !levelId) {
+      toast('error', 'Name, assignee, start date, deadline, group and level are required')
       return
     }
     if (startDate > deadline) {
@@ -184,47 +161,11 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             </label>
           </div>
 
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Group<span className="text-red-500"> *</span>
-            <SearchableSelect
-              value={group}
-              onChange={setGroup}
-              options={(groups ?? []).map((g) => ({ value: g.name, label: g.group_name }))}
-              placeholder="Select a group…"
-            />
-          </label>
-
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Type<span className="text-red-500"> *</span>
-            <SearchableSelect
-              value={typeName}
-              onChange={(t) => { setTypeName(t); setLevelId('') }}
-              options={[...new Set((groupDoc?.levels ?? []).map((l) => l.type_name))].map((t) => ({ value: t, label: t }))}
-              placeholder={group ? 'Select a type…' : 'Pick a group first…'}
-              disabled={!group}
-            />
-          </label>
-
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Level<span className="text-red-500"> *</span>
-            <SearchableSelect
-              value={levelId}
-              onChange={setLevelId}
-              options={(groupDoc?.levels ?? []).filter((l) => l.type_name === typeName).map((l) => ({ value: l.level_id!, label: `${l.level_name} (${l.difficulty_percent}%)` }))}
-              placeholder={typeName ? 'Select a level…' : 'Pick a type first…'}
-              disabled={!typeName}
-            />
-          </label>
-          {group && levelId && (() => {
-            const lvl = (groupDoc?.levels ?? []).find((l) => l.level_id === levelId)
-            const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
-            return (
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                Estimated points: <span className="font-medium">{pts}</span>
-                {!estimated && ' (set estimated minutes)'}
-              </div>
-            )
-          })()}
+          <GroupLevelPicker
+            value={{ group, typeName: '', levelId }}
+            onChange={(v) => { setGroup(v.group); setLevelId(v.levelId) }}
+            estimated={estimated}
+          />
 
           {siblings.length > 0 && (
             <div className="flex flex-col gap-3">

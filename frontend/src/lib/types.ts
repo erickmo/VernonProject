@@ -465,6 +465,18 @@ export interface ScoringGroup {
   levels: GroupLevel[]
 }
 
+/** One flattened Group Level row across all groups — feeds the combined
+ *  "[Group] Type - Level" picker (api.project_todo.get_group_levels). */
+export interface GroupLevelOption {
+  level_id: string
+  type_name: string
+  level_name: string
+  difficulty_percent: number
+  group: string
+  group_name: string
+  base_rate: number
+}
+
 export interface GroupTodo {
   name: string
   to_do: string

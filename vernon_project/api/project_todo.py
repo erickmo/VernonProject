@@ -9,6 +9,45 @@ def get_notes(todo_id):
 	notes = frappe.db.get_value('Project Todo', todo_id, 'notes')
 	return {'notes': notes or ''}
 
+
+@frappe.whitelist()
+def get_group_levels():
+	"""Flat scoring catalog for the single-select picker: one row per Group Level.
+
+	Powers the combined "[Group] Type - Level" select in the todo + meeting forms. Each
+	row's ``level_id`` fully identifies group + type + level, so the client sends only
+	``group`` + ``level_id`` and the controller derives the rest. Read straight off the
+	Group Level child table (no client perms on it) joined to each parent Group's name and
+	base rate for the points preview.
+	"""
+	groups = {
+		g.name: g
+		for g in frappe.get_all('Group', fields=['name', 'group_name', 'base_rate_per_minute'])
+	}
+	rows = frappe.get_all(
+		'Group Level',
+		filters={'parenttype': 'Group'},
+		fields=['level_id', 'type_name', 'level_name', 'difficulty_percent', 'parent'],
+		order_by='parent asc, type_name asc, difficulty_percent asc',
+	)
+	out = []
+	for r in rows:
+		g = groups.get(r.parent)
+		if not g or not r.level_id:
+			continue
+		out.append(
+			{
+				'level_id': r.level_id,
+				'type_name': r.type_name,
+				'level_name': r.level_name,
+				'difficulty_percent': r.difficulty_percent,
+				'group': r.parent,
+				'group_name': g.group_name,
+				'base_rate': g.base_rate_per_minute,
+			}
+		)
+	return out
+
 def _auto_advance(todo, project_leader, project_owner, project_auto_approve=0):
 	"""Collapse redundant self-approval gates in place (mutates todo, no save).
 

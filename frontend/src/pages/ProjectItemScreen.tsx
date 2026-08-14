@@ -43,8 +43,8 @@ import { openFocusOverlay } from '@/lib/focusUI'
 import { todoFileHref } from '@/lib/api'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, dateSub, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useScoringGroups, useScoringGroup, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
-import { computeTodoPoints } from '@/lib/points'
+import { useProjectItem, useSaveNotes, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
+import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useAdvance } from '@/components/AdvanceProvider'
@@ -119,29 +119,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
-
-  const { data: groups } = useScoringGroups()
-  const { data: groupDoc } = useScoringGroup(group, !!group)
-
-  // Seed typeName from the current level's row; clear on group change.
-  const [typeName, setTypeName] = useState<string>(() => {
-    return data.level_type ?? ''
-  })
-
-  useEffect(() => {
-    if (group !== (data.group ?? '')) {
-      setLevel('')
-      setTypeName('')
-    }
-  }, [group]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // When groupDoc loads, re-seed typeName if not yet set but level_id is known.
-  useEffect(() => {
-    if (!typeName && level && groupDoc) {
-      const row = groupDoc.levels.find((l) => l.level_id === level)
-      if (row) setTypeName(row.type_name)
-    }
-  }, [groupDoc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
@@ -356,49 +333,12 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Group <span className="text-red-500">*</span></label>
       <div className="mb-3">
-        <SearchableSelect
-          value={group}
-          onChange={setGroup}
-          options={(groups ?? []).map((g) => ({ value: g.name, label: g.group_name }))}
-          placeholder="Select a group…"
+        <GroupLevelPicker
+          value={{ group, typeName: '', levelId: level }}
+          onChange={(v) => { setGroup(v.group); setLevel(v.levelId) }}
+          estimated={estimated}
         />
-      </div>
-
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Type <span className="text-red-500">*</span></label>
-      <div className="mb-3">
-        <SearchableSelect
-          value={typeName}
-          onChange={(t) => { setTypeName(t); setLevel('') }}
-          options={[...new Set((groupDoc?.levels ?? []).map((l) => l.type_name))].map((t) => ({ value: t, label: t }))}
-          placeholder={group ? 'Select a type…' : 'Pick a group first…'}
-          disabled={!group}
-        />
-      </div>
-
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Level <span className="text-red-500">*</span></label>
-      <div className="mb-3">
-        <SearchableSelect
-          value={level}
-          onChange={setLevel}
-          options={(groupDoc?.levels ?? []).filter((l) => l.type_name === typeName).map((l) => ({
-            value: l.level_id ?? '',
-            label: `${l.level_name} (${l.difficulty_percent}%)`,
-          }))}
-          placeholder={typeName ? 'Select a level…' : 'Pick a type first…'}
-          disabled={!typeName}
-        />
-        {group && level && (() => {
-          const lvl = (groupDoc?.levels ?? []).find((l) => (l.level_id ?? '') === level)
-          const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
-          return (
-            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Estimated points: <span className="font-medium">{pts}</span>
-              {!estimated && ' (set estimated minutes)'}
-            </div>
-          )
-        })()}
       </div>
 
       {data.detail_todos.length > 0 && (

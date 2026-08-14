@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
-import { useCreateProjectItem, useScoringGroups, useScoringGroup, useProjects, useProject, useProjectDetail } from '@/hooks/useData'
+import { useCreateProjectItem, useProjects, useProject, useProjectDetail } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { Button } from '@web/components/ui'
@@ -11,7 +11,7 @@ import { Drawer } from '@web/components/overlays/Drawer'
 import { DatePicker } from '@web/components/DatePicker'
 import { RecurrenceEditor } from '@web/components/RecurrenceEditor'
 import { emptyRecurrence, serializeRecurrence, type Recurrence, type Frequency, type MonthlyMode, type Nth } from '@/lib/recurrence'
-import { computeTodoPoints } from '@/lib/points'
+import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 
 const initialRecurrence = (i?: CreateTodoInitial): Recurrence => ({
@@ -74,32 +74,9 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [rec, setRec] = useState<Recurrence>(() => initialRecurrence(initial))
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
-  const [typeName, setTypeName] = useState(initial?.typeName ?? '')
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(initial?.blockedBy ?? [])
   const [blocking, setBlocking] = useState<string[]>(initial?.blocking ?? [])
-
-  const { data: groups } = useScoringGroups()
-  const { data: groupDoc } = useScoringGroup(group, !!group)
-
-  // Reset type/level when the user actually changes group — but not on the
-  // initial (possibly prefilled) group, or a duplicate's seeded level is wiped.
-  const seededGroup = initial?.group ?? defaultGroup ?? ''
-  useEffect(() => {
-    if (group !== seededGroup) {
-      setTypeName('')
-      setLevelId('')
-    }
-  }, [group]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // If prefilled with a level but no type name, recover the type once the
-  // group's levels load (level_type may be missing on older todos).
-  useEffect(() => {
-    if (!typeName && levelId && groupDoc) {
-      const row = groupDoc.levels.find((l) => l.level_id === levelId)
-      if (row) setTypeName(row.type_name)
-    }
-  }, [groupDoc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const firstFieldRef = useRef<HTMLInputElement>(null)
 
@@ -107,7 +84,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setRec({ ...emptyRecurrence })
-    setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId(''); setBlockedBy([]); setBlocking([])
+    setGroup(defaultGroup ?? ''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
   // After "Save & add another": clear only the per-todo fields, keep assignee,
@@ -126,8 +103,8 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
       toast('error', 'Pick a project and a project detail')
       return
     }
-    if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !typeName || !levelId) {
-      toast('error', 'Name, assignee, start date, deadline, group, type and level are required')
+    if (!toDo.trim() || !assignedTo || !startDate || !deadline || !group || !levelId) {
+      toast('error', 'Name, assignee, start date, deadline, group and level are required')
       return
     }
     if (startDate > deadline) {
@@ -274,47 +251,11 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
           </label>
         </div>
 
-        <label className="text-sm font-medium text-muted">
-          Group<span className="text-red-500"> *</span>
-          <SearchableSelect
-            value={group}
-            onChange={setGroup}
-            options={(groups ?? []).map((g) => ({ value: g.name, label: g.group_name }))}
-            placeholder="Select a group…"
-          />
-        </label>
-
-        <label className="text-sm font-medium text-muted">
-          Type<span className="text-red-500"> *</span>
-          <SearchableSelect
-            value={typeName}
-            onChange={(t) => { setTypeName(t); setLevelId('') }}
-            options={[...new Set((groupDoc?.levels ?? []).map((l) => l.type_name))].map((t) => ({ value: t, label: t }))}
-            placeholder={group ? 'Select a type…' : 'Pick a group first…'}
-            disabled={!group}
-          />
-        </label>
-
-        <label className="text-sm font-medium text-muted">
-          Level<span className="text-red-500"> *</span>
-          <SearchableSelect
-            value={levelId}
-            onChange={setLevelId}
-            options={(groupDoc?.levels ?? []).filter((l) => l.type_name === typeName).map((l) => ({ value: l.level_id!, label: `${l.level_name} (${l.difficulty_percent}%)` }))}
-            placeholder={typeName ? 'Select a level…' : 'Pick a type first…'}
-            disabled={!typeName}
-          />
-        </label>
-        {group && levelId && (() => {
-          const lvl = (groupDoc?.levels ?? []).find((l) => l.level_id === levelId)
-          const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
-          return (
-            <div className="text-sm text-muted">
-              Estimated points: <span className="font-medium">{pts}</span>
-              {!estimated && ' (set estimated minutes)'}
-            </div>
-          )
-        })()}
+        <GroupLevelPicker
+          value={{ group, typeName: '', levelId }}
+          onChange={(v) => { setGroup(v.group); setLevelId(v.levelId) }}
+          estimated={estimated}
+        />
 
         {siblings.length > 0 && (
           <div className="flex flex-col gap-3">
