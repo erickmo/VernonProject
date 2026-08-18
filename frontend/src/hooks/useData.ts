@@ -109,6 +109,8 @@ export const keys = {
   redemptionsAdmin: (s: string) => ['redemptions-admin', s] as const,
   giftRecipients: ['gift-recipients'] as const,
   notifications: ['notifications'] as const,
+  redemptionNotice: ['redemption-notice'] as const,
+  unreadMentions: ['unread-mentions'] as const,
   notificationFeed: ['notification-feed'] as const,
   personalNotes: ['personalNotes'] as const,
   meetings: ['meetings'] as const,
@@ -1806,6 +1808,28 @@ export function useNotifications() {
   })
 }
 
+/** Manager-only badge: unresolved marketplace redemptions. Poll-safe for all
+ * users (non-managers get count 0), so every bell can mount it. */
+export function useRedemptionNotice() {
+  return useQuery({
+    queryKey: keys.redemptionNotice,
+    queryFn: () => mobileApi.redemptionNotice(),
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
+  })
+}
+
+/** Home-screen surface: the session user's unread @-mentions, so a mention
+ * can't hide behind the notification wall. Poll-safe for everyone (no mentions → count 0). */
+export function useUnreadMentions() {
+  return useQuery({
+    queryKey: keys.unreadMentions,
+    queryFn: () => mobileApi.unreadMentions(),
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
+  })
+}
+
 export const NOTIFICATION_PAGE_SIZE = 150
 
 /**
@@ -1863,6 +1887,7 @@ export function useMarkAllRead() {
 function invalidateNotifications(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: keys.notifications })
   qc.invalidateQueries({ queryKey: keys.notificationFeed })
+  qc.invalidateQueries({ queryKey: keys.unreadMentions })
 }
 
 export function useDataHealth() {

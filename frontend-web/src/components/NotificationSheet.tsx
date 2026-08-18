@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, Sparkles } from 'lucide-react'
-import { useNotificationFeed, useMarkRead, useMarkAllRead } from '@/hooks/useData'
+import { Bell, CheckCheck, Gift, Sparkles } from 'lucide-react'
+import { useNotificationFeed, useMarkRead, useMarkAllRead, useRedemptionNotice } from '@/hooks/useData'
 import { useAppUpdate } from '@/lib/appUpdate'
 import {
   TYPE_ICON,
@@ -59,6 +59,8 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
   const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
+  const redemptionNotice = useRedemptionNotice()
+  const noticeCount = redemptionNotice.data?.count ?? 0
   const navigate = useNavigate()
   const [tab, setTab] = useState<NotificationType | null>(null)
 
@@ -107,6 +109,22 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
           </span>
         </button>
       )}
+      {noticeCount > 0 && (
+        <button
+          onClick={() => { onClose(); navigate('/marketplace-admin') }}
+          className="-mx-5 mb-1 flex w-[calc(100%+2.5rem)] items-start gap-3 border-b border-line bg-amber-50 px-5 py-3 text-left hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25"
+        >
+          <Gift className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-amber-700 dark:text-amber-300">
+              {noticeCount} penukaran belum diproses
+            </span>
+            <span className="block text-sm text-muted dark:text-slate-400">
+              Klik untuk proses penukaran hadiah
+            </span>
+          </span>
+        </button>
+      )}
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -115,7 +133,7 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
         </div>
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && noticeCount === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted dark:text-slate-500">
           <Bell className="h-8 w-8" />
           <p className="text-sm">No notifications yet</p>

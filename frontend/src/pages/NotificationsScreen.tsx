@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, Sparkles } from 'lucide-react'
+import { Bell, CheckCheck, Gift, Sparkles } from 'lucide-react'
 import { DetailScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
-import { useNotificationFeed, useMarkRead, useMarkAllRead } from '@/hooks/useData'
+import { useNotificationFeed, useMarkRead, useMarkAllRead, useRedemptionNotice } from '@/hooks/useData'
 import { useAppUpdate } from '@/lib/appUpdate'
 import {
   TYPE_ICON,
@@ -53,6 +53,8 @@ export default function NotificationsScreen() {
   const { updateAvailable, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
+  const redemptionNotice = useRedemptionNotice()
+  const noticeCount = redemptionNotice.data?.count ?? 0
   const [tab, setTab] = useState<NotificationType | null>(null)
 
   const groups = useMemo(() => groupNotifications(rows), [rows])
@@ -103,7 +105,28 @@ export default function NotificationsScreen() {
               ))}
             </div>
           )}
-          {items.length === 0 && !updateAvailable ? (
+          {noticeCount > 0 && (
+            <button
+              onClick={() => navigate('/marketplace-admin')}
+              className="mb-2 flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-3 py-3 text-left active:scale-[0.99] dark:bg-amber-500/15"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/25 dark:text-amber-300">
+                <Gift className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                  Marketplace
+                </span>
+                <span className="block text-sm font-semibold text-stone-800 dark:text-slate-50">
+                  {noticeCount} penukaran belum diproses
+                </span>
+                <span className="mt-0.5 block text-sm text-stone-500 dark:text-slate-400">
+                  Ketuk untuk proses penukaran hadiah
+                </span>
+              </span>
+            </button>
+          )}
+          {items.length === 0 && !updateAvailable && noticeCount === 0 ? (
             <EmptyState icon={Bell} title="No notifications yet" />
           ) : (
             <ul className="divide-y divide-paper-edge dark:divide-slate-700">

@@ -355,6 +355,10 @@ export const mobileApi = {
   saveReward: (payload: import('./types').RewardFormPayload, name?: string) =>
     api.post<{ name: string }>(M + 'save_reward', { name: name ?? '', payload }),
   listRedemptions: (status: string) => api.get(M + 'list_redemptions', { status }),
+  redemptionNotice: () =>
+    api.get<import('./types').RedemptionNotice>(M + 'marketplace_redemption_notice'),
+  unreadMentions: () =>
+    api.get<import('./types').UnreadMentions>(M + 'unread_mentions'),
   grantPoints: (user: string, amount: number, note?: string) =>
     api.post<{ balance: number; granted: number }>(M + 'grant_points', {
       user,

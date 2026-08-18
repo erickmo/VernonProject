@@ -57,6 +57,8 @@ export interface AppNotification {
   reference_name: string | null
   actor: string | null
   actor_name: string | null
+  /** Human "Project · Todo" label for the commented doc — set by unread_mentions. */
+  subject?: string | null
   is_read: boolean
   at: string
   at_human: string | null
@@ -66,6 +68,12 @@ export interface NotificationsResponse {
   items: AppNotification[]
   unread: number
   has_more: boolean
+}
+
+/** Unread @-mentions surfaced on the home screen. `count` is the true total; `items` is the newest few. */
+export interface UnreadMentions {
+  count: number
+  items: AppNotification[]
 }
 
 export interface AppRelease {
@@ -715,6 +723,12 @@ export interface AdminRedemption {
   redeemed_on: string | null
   redeemed_on_human: string | null
   fulfilled_on: string | null
+}
+
+/** Manager-only notification badge: marketplace redemptions still unresolved. */
+export interface RedemptionNotice {
+  count: number
+  items: AdminRedemption[]
 }
 
 export interface RewardFormPayload {

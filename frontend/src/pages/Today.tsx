@@ -24,6 +24,7 @@ import {
   X,
   AlertTriangle,
   Heart,
+  AtSign,
 } from 'lucide-react'
 import { valueOfDay } from '@/lib/values'
 import { verseTheme, verseCardStyle } from '@/lib/verseTheme'
@@ -42,7 +43,8 @@ import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
-import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings } from '@/hooks/useData'
+import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead } from '@/hooks/useData'
+import { deepLink } from '@/lib/notifications'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MeetingSheet } from '@/components/MeetingSheet'
 import CheerPop from '@/components/CheerPop'
@@ -58,6 +60,14 @@ function greeting() {
   if (h < 12) return 'Good morning'
   if (h < 18) return 'Good afternoon'
   return 'Good evening'
+}
+
+// deepLink routes for /m (mirrors NotificationsScreen). Mentions resolve to the
+// commented doc; the cuti routes are only here to satisfy the shared signature.
+const ROUTES = {
+  exceptionApprovals: '/attendance/approvals',
+  myExceptions: '/attendance/my-requests',
+  hrExceptions: '/attendance/manage/exceptions',
 }
 
 // Friendly label for the shortfall banner's day (ISO 'YYYY-MM-DD').
@@ -222,6 +232,8 @@ export default function Today() {
   const { data: banners } = useHomeBanners()
   const { data: shortfall } = usePreviousShiftShortfall()
   const { data: meetingsData } = useMeetings()
+  const { data: mentions } = useUnreadMentions()
+  const markRead = useMarkRead()
   const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
   // Free-text search over the to-do lists (all axes), matched on todo text + project.
   const [query, setQuery] = useState('')
@@ -502,8 +514,51 @@ export default function Today() {
                 </div>
               )}
 
+              {/* Unread @-mentions — surfaced here so a mention can't be missed */}
+              {mentions && mentions.count > 0 && (
+                <div className="mt-4 rounded-3xl border border-brand-200 bg-brand-50 p-3.5 dark:border-brand-500/30 dark:bg-brand-500/10">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white">
+                      <AtSign className="h-[18px] w-[18px]" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Mentions</p>
+                      <p className="text-sm font-bold text-stone-800 dark:text-slate-50">
+                        {mentions.count} unread mention{mentions.count === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {mentions.items.map((m) => (
+                      <li key={m.name}>
+                        <button
+                          onClick={() => { markRead.mutate(m.name); navigate(deepLink(m, ROUTES)) }}
+                          className="flex w-full items-start gap-2 rounded-2xl bg-paper-card px-3 py-2.5 text-left active:scale-[0.99] dark:bg-slate-800"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold text-stone-800 dark:text-slate-100">{m.title}</span>
+                            {m.subject && (
+                              <span className="mt-0.5 block truncate text-xs text-stone-500 dark:text-slate-400">{m.subject}</span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-stone-400 dark:text-slate-500">{m.at_human}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {mentions.count > mentions.items.length && (
+                    <button
+                      onClick={() => navigate('/notifications')}
+                      className="mt-2 w-full text-center text-xs font-semibold text-brand-600 dark:text-brand-400"
+                    >
+                      +{mentions.count - mentions.items.length} more · See all
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Vibrant meeting reminder — impossible to miss when meetings are on today */}
-              <div className={clsx((banners?.length ?? 0) > 0 && 'mt-4')}>
+              <div className={clsx(((banners?.length ?? 0) > 0 || (mentions?.count ?? 0) > 0) && 'mt-4')}>
                 <MeetingReminder
                   meetings={upcoming}
                   onOpen={() => navigate('/meetings')}

@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { ArrowDownLeft, Plus, Trash2 } from 'lucide-react'
-import { useCreateProjectItems, useScoringGroups, useScoringGroup } from '@/hooks/useData'
+import { useCreateProjectItems } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
 import { Button } from '@web/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
+import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { DatePicker } from '@web/components/DatePicker'
 import { RecurrenceEditor } from '@web/components/RecurrenceEditor'
 import { emptyRecurrence, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
-import { computeTodoPoints } from '@/lib/points'
 
 interface Props {
   open: boolean
@@ -48,14 +48,10 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
   const [leaderEstimated, setLeaderEstimated] = useState('')
   const [ownerEstimated, setOwnerEstimated] = useState('')
   const [group, setGroup] = useState(defaultGroup ?? '')
-  const [typeName, setTypeName] = useState('')
   const [levelId, setLevelId] = useState('')
   const [rec, setRec] = useState<Recurrence>({ ...emptyRecurrence })
   const [rows, setRows] = useState<Row[]>([emptyRow(), emptyRow()])
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null)
-
-  const { data: groups } = useScoringGroups()
-  const { data: groupDoc } = useScoringGroup(group, !!group)
 
   const setRow = (i: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)))
@@ -71,15 +67,15 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
   const reset = () => {
     setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
     setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
-    setGroup(defaultGroup ?? ''); setTypeName(''); setLevelId('')
+    setGroup(defaultGroup ?? ''); setLevelId('')
     setRec({ ...emptyRecurrence })
     setRows([emptyRow(), emptyRow()]); setProg(null)
   }
   const close = () => { reset(); onClose() }
 
   const submit = () => {
-    if (!assignedTo || !startDate || !deadline || !group || !typeName || !levelId) {
-      toast('error', 'Assignee, start date, deadline, group, type and level are required')
+    if (!assignedTo || !startDate || !deadline || !group || !levelId) {
+      toast('error', 'Assignee, start date, deadline, group and level are required')
       return
     }
     if (startDate > deadline) { toast('error', 'Start date cannot be after the deadline'); return }
@@ -132,8 +128,6 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
   }
 
   const field = 'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
-  const lvl = (groupDoc?.levels ?? []).find((l) => l.level_id === levelId)
-  const pts = computeTodoPoints(groupDoc?.base_rate_per_minute, Number(estimated), lvl?.difficulty_percent)
 
   return (
     <Drawer
@@ -200,25 +194,11 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
           </label>
         </div>
 
-        <label className="text-sm font-medium text-muted">
-          Group<span className="text-red-500"> *</span>
-          <SearchableSelect value={group} onChange={(g) => { setGroup(g); setTypeName(''); setLevelId('') }} options={(groups ?? []).map((g) => ({ value: g.name, label: g.group_name }))} placeholder="Select a group…" />
-        </label>
-
-        <label className="text-sm font-medium text-muted">
-          Type<span className="text-red-500"> *</span>
-          <SearchableSelect value={typeName} onChange={(t) => { setTypeName(t); setLevelId('') }} options={[...new Set((groupDoc?.levels ?? []).map((l) => l.type_name))].map((t) => ({ value: t, label: t }))} placeholder={group ? 'Select a type…' : 'Pick a group first…'} disabled={!group} />
-        </label>
-
-        <label className="text-sm font-medium text-muted">
-          Level<span className="text-red-500"> *</span>
-          <SearchableSelect value={levelId} onChange={setLevelId} options={(groupDoc?.levels ?? []).filter((l) => l.type_name === typeName).map((l) => ({ value: l.level_id!, label: `${l.level_name} (${l.difficulty_percent}%)` }))} placeholder={typeName ? 'Select a level…' : 'Pick a type first…'} disabled={!typeName} />
-        </label>
-        {group && levelId && (
-          <div className="text-sm text-muted">
-            Estimated points each: <span className="font-medium">{pts}</span>{!estimated && ' (set estimated minutes)'}
-          </div>
-        )}
+        <GroupLevelPicker
+          value={{ group, typeName: '', levelId }}
+          onChange={(v) => { setGroup(v.group); setLevelId(v.levelId) }}
+          estimated={estimated}
+        />
 
         <label className="flex items-center gap-2 text-sm font-medium text-muted">
           <input type="checkbox" checked={rec.isRecurring} onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })} />

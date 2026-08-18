@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import {
   Sparkles, Plus, Gift, ShieldCheck, CheckCheck, CalendarClock,
   Flame, QrCode, Pause, Search, X, Clock, CalendarDays, CalendarOff,
-  SearchX, AlertTriangle, Wand2, ChevronRight, Heart, LayoutList,
+  SearchX, AlertTriangle, Wand2, ChevronRight, Heart, LayoutList, AtSign,
 } from 'lucide-react'
 import { valueOfDay } from '@/lib/values'
 import { verseTheme, verseCardStyle } from '@/lib/verseTheme'
@@ -13,8 +13,9 @@ import CheerPop from '@/components/CheerPop'
 import {
   useBoot, useDashboard, useWallet, useGamification, useMyAttendance,
   useMeetings, useWeeklyRecap, useClaimDaily, useDailyVerse, useHomeBanners,
-  usePreviousShiftShortfall,
+  usePreviousShiftShortfall, useUnreadMentions, useMarkRead,
 } from '@/hooks/useData'
+import { deepLink } from '@/lib/notifications'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
@@ -54,6 +55,14 @@ const TINT: Record<string, { tile: string; chip: string }> = {
   violet: { tile: 'bg-violet-50 dark:bg-violet-500/10', chip: 'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300' },
   brand: { tile: 'bg-brand-50 dark:bg-brand-500/10', chip: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300' },
   ink: { tile: 'bg-surface', chip: 'bg-paper-line text-muted dark:bg-slate-800 dark:text-slate-300' },
+}
+
+// deepLink routes for /w (mirrors NotificationSheet). Mentions resolve to the
+// commented doc; the cuti routes only satisfy the shared signature.
+const ROUTES = {
+  exceptionApprovals: '/attendance/my-approvals',
+  myExceptions: '/attendance/my-requests',
+  hrExceptions: '/attendance/exceptions',
 }
 
 // Small uppercase zone label — gives the long dashboard scannable rhythm.
@@ -355,6 +364,8 @@ export default function Home() {
   const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
   const banners = useHomeBanners()
   const shortfall = usePreviousShiftShortfall()
+  const mentions = useUnreadMentions()
+  const markRead = useMarkRead()
   const navigate = useNavigate()
 
   const [axis, setAxis] = useState<Axis>('plan')
@@ -608,6 +619,43 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Unread @-mentions — surfaced here so a mention can't be missed */}
+      {mentions.data && mentions.data.count > 0 && (
+        <div className="rounded-3xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-500/30 dark:bg-brand-500/10">
+          <div className="mb-3 flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white">
+              <AtSign className="h-[18px] w-[18px]" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Mentions</p>
+              <p className="text-sm font-semibold text-ink">
+                {mentions.data.count} unread mention{mentions.data.count === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {mentions.data.items.map((m) => (
+              <button
+                key={m.name}
+                onClick={() => { markRead.mutate(m.name); navigate(deepLink(m, ROUTES)) }}
+                className="flex items-start gap-2 rounded-2xl border border-line bg-surface px-3 py-2.5 text-left transition hover:border-brand-300 hover:bg-brand-50/50 dark:hover:bg-brand-500/10"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-ink">{m.title}</span>
+                  {m.subject && <span className="mt-0.5 block truncate text-xs text-muted">{m.subject}</span>}
+                </span>
+                <span className="shrink-0 text-[11px] text-muted">{m.at_human}</span>
+              </button>
+            ))}
+          </div>
+          {mentions.data.count > mentions.data.items.length && (
+            <p className="mt-2.5 text-xs font-medium text-muted">
+              +{mentions.data.count - mentions.data.items.length} more in the bell
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Managed promo banners — from Settings → Home Banners */}
       <WebBanners slides={banners.data ?? []} />

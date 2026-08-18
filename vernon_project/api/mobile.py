@@ -365,6 +365,73 @@ def mark_all_read():
 
 
 @frappe.whitelist()
+def unread_mentions(limit=5):
+	"""The session user's unread @-mentions, newest first — surfaced on the home
+	screen so a mention can't hide behind a wall of other notifications. Filtered
+	server-side (type=Mention, is_read=0), so a mention is never buried past the
+	feed's first page. Poll-safe for everyone. `count` is the true total unread
+	mentions; `items` is the newest `limit`, shaped like get_notifications rows."""
+	user = frappe.session.user
+	if user == "Guest":
+		return {"count": 0, "items": []}
+	limit = min(frappe.utils.cint(limit) or 5, 50)
+	flt = {"recipient": user, "type": "Mention", "is_read": 0}
+	count = frappe.db.count("Vernon Notification", flt)
+	rows = frappe.get_all(
+		"Vernon Notification",
+		filters=flt,
+		fields=[
+			"name", "type", "title", "body", "reference_doctype",
+			"reference_name", "actor", "is_read", "creation",
+		],
+		order_by="creation desc",
+		limit_page_length=limit,
+	)
+	actor_map = _user_name_map({r["actor"] for r in rows})
+	subj_map = _mention_subjects(rows)
+	items = [
+		{
+			"name": r["name"], "type": r["type"], "title": r["title"], "body": r["body"],
+			"reference_doctype": r["reference_doctype"], "reference_name": r["reference_name"],
+			"actor": r["actor"],
+			"actor_name": (actor_map.get(r["actor"]) or {}).get("full_name") or r["actor"],
+			"subject": subj_map.get((r["reference_doctype"], r["reference_name"])),
+			"is_read": bool(r["is_read"]),
+			"at": str(r["creation"]), "at_human": _humanize_datetime(r["creation"]),
+		}
+		for r in rows
+	]
+	return {"count": count, "items": items}
+
+
+def _mention_subjects(rows):
+	"""Readable "Project · Todo text" per mention — reference_name is a hash, so
+	resolve the commented doc to something a human recognises. Keyed by
+	(reference_doctype, reference_name). Covers the doctypes comments attach to
+	(Project Todo / Project Detail / Project); anything else gets no subject."""
+	todo_names = [r["reference_name"] for r in rows if r["reference_doctype"] == "Project Todo" and r["reference_name"]]
+	detail_names = [r["reference_name"] for r in rows if r["reference_doctype"] == "Project Detail" and r["reference_name"]]
+	proj_names = [r["reference_name"] for r in rows if r["reference_doctype"] == "Project" and r["reference_name"]]
+	todos = {t["name"]: t for t in frappe.get_all("Project Todo", filters={"name": ["in", todo_names]}, fields=["name", "to_do", "project"])} if todo_names else {}
+	details = {d["name"]: d for d in frappe.get_all("Project Detail", filters={"name": ["in", detail_names]}, fields=["name", "title", "project"])} if detail_names else {}
+	need_proj = set(proj_names) | {t["project"] for t in todos.values()} | {d["project"] for d in details.values()}
+	need_proj.discard(None)
+	pname = {p["name"]: p["project_name"] for p in frappe.get_all("Project", filters={"name": ["in", list(need_proj)]}, fields=["name", "project_name"])} if need_proj else {}
+	out = {}
+	for r in rows:
+		rd, rn = r["reference_doctype"], r["reference_name"]
+		parts = None
+		if rd == "Project Todo" and rn in todos:
+			parts = [pname.get(todos[rn]["project"]), todos[rn]["to_do"]]
+		elif rd == "Project Detail" and rn in details:
+			parts = [pname.get(details[rn]["project"]), details[rn]["title"]]
+		elif rd == "Project" and rn in pname:
+			parts = [pname[rn]]
+		out[(rd, rn)] = " · ".join(x for x in parts if x) if parts else None
+	return out
+
+
+@frappe.whitelist()
 def register_push_subscription(subscription):
 	"""Upsert a Push Subscription (by endpoint) for the session user."""
 	user = frappe.session.user
@@ -474,7 +541,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None):
 	return frappe.db.sql(
 		f"""
 		SELECT
-			t.name, t.to_do, t.status, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
+			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
 			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out,
@@ -770,6 +837,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		out["timeline"] = [
 			t
 			for t in [
+				_event("Created", row.get("owner"), row.get("creation"), name_map),
 				_event("Marked Done", row.get("developed_by"), row.get("developed_at"), name_map),
 				_event("Approved by Leader", row.get("tested_by"), row.get("tested_at"), name_map),
 				_event("Approved by Owner", row.get("completed_by"), row.get("completed_at"), name_map),
@@ -1600,7 +1668,7 @@ def get_project_item(project_item):
 		"Project Team", filters={"parent": r["project"]}, fields=["user"], limit_page_length=0
 	)
 	team_emails = {tr["user"] for tr in team_rows}
-	emails = {r["assigned_to"], r["developed_by"], r["tested_by"], r["completed_by"], r.get("waiting_by")} | team_emails
+	emails = {r["assigned_to"], r["developed_by"], r["tested_by"], r["completed_by"], r.get("waiting_by"), r.get("owner")} | team_emails
 	name_map = _user_name_map(emails)
 	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=get_project_admins(r["project"]))
 	shaped["can_edit_notes"] = user in (
@@ -3648,6 +3716,35 @@ def list_redemptions(status="all"):
 		r["redeemed_on"] = str(r["redeemed_on"]) if r.get("redeemed_on") else None
 		r["fulfilled_on"] = str(r["fulfilled_on"]) if r.get("fulfilled_on") else None
 	return rows
+
+
+@frappe.whitelist()
+def marketplace_redemption_notice(limit=20):
+	"""Notification-bell badge for managers: marketplace redemptions still
+	unresolved (status Pending). Poll-safe for EVERY caller — a non-manager gets
+	{"count": 0, "items": []} instead of a 403, so the bell can call it on every
+	mount without gating client-side. Managers get the count plus the newest
+	`limit` pending rows for an inline list. Separate from list_redemptions, which
+	throws for non-managers and returns the full 200-row admin table."""
+	roles = frappe.get_roles(frappe.session.user)
+	if "System Manager" not in roles and "Marketplace Manager" not in roles:
+		return {"count": 0, "items": []}
+	limit = min(frappe.utils.cint(limit) or 20, 100)
+	count = frappe.db.count("Reward Redemption", {"status": "Pending"})
+	rows = frappe.get_all(
+		"Reward Redemption",
+		filters={"status": "Pending"},
+		fields=["name", "user", "reward_name", "point_cost", "redeemed_on"],
+		order_by="redeemed_on desc",
+		limit=limit,
+	)
+	name_map = _user_name_map([r["user"] for r in rows])
+	for r in rows:
+		r["user_name"] = (name_map.get(r["user"]) or {}).get("full_name") or r["user"]
+		r["point_cost"] = float(r["point_cost"] or 0)
+		r["redeemed_on_human"] = _humanize_datetime(r.get("redeemed_on"))
+		r["redeemed_on"] = str(r["redeemed_on"]) if r.get("redeemed_on") else None
+	return {"count": count, "items": rows}
 
 
 ALLOWED_IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
