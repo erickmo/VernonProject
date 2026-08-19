@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2 } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
+import { useUndo } from '@/components/UndoProvider'
 import { useFocusPill } from '@/hooks/useFocusPill'
 import { useSetTodoAllocations } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
@@ -26,6 +27,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const navigate = useNavigate()
   const advanceConfirm = useAdvance()
   const rejectConfirm = useReject()
+  const undoConfirm = useUndo()
   const meta = STATUS[todo.status_key]
   // ponytail: this subscribes the card to the per-second timer tick, so every
   // visible card re-renders ~1×/s while a timer runs. Fine for the Today list's
@@ -85,6 +87,11 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
   const onReject = (e: React.MouseEvent) => {
     e.stopPropagation()
     rejectConfirm(todo.name, todo.to_do)
+  }
+
+  const onUndo = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    undoConfirm(todo.name, todo.to_do)
   }
 
   const setAlloc = useSetTodoAllocations(todo.name)
@@ -232,7 +239,7 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
         )}
       </div>
 
-      {((todo.can_advance && todo.next_status_label) || todo.can_reject) && (
+      {((todo.can_advance && todo.next_status_label) || todo.can_reject || todo.can_undo) && (
         <div className="mt-3 flex gap-2 border-t border-paper-edge dark:border-slate-800 pt-3">
           {todo.can_reject && (
             <span
@@ -242,6 +249,16 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
             >
               <X className="h-4 w-4" />
               Reject
+            </span>
+          )}
+          {todo.can_undo && (
+            <span
+              onClick={onUndo}
+              role="button"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 py-2.5 text-sm font-semibold text-amber-700 dark:text-amber-300 transition active:bg-amber-100 dark:active:bg-amber-500/20"
+            >
+              <Undo2 className="h-4 w-4" />
+              Undo approval
             </span>
           )}
           {todo.can_advance && todo.next_status_label && (

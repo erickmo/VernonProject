@@ -166,6 +166,7 @@ export const keys = {
   myDisc: ['my-disc'] as const,
   photoGate: ['photo-gate'] as const,
   habits: ['habits'] as const,
+  myApprovals: ['my-approvals'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -352,6 +353,36 @@ export function useRejectStatus() {
       qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project'] })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+      qc.invalidateQueries({ queryKey: ['project-item'] })
+    },
+  })
+}
+
+// Approvals the current user has personally granted (Leader/Owner gate),
+// newest first — powers the "My Approvals" history screen.
+export const useMyApprovals = () =>
+  useQuery({
+    queryKey: keys.myApprovals,
+    queryFn: () => mobileApi.myApprovals(),
+  })
+
+// Undo the current user's own most recent approval gate, one step back.
+// Invalidates the same queries as a reject so every affected list refreshes.
+export function useUndoApproval() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (todoId: string) => {
+      const res = await mobileApi.undoApproval(todoId)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: keys.myApprovals })
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project-item'] })

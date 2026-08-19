@@ -159,6 +159,18 @@ def _can_reject(status_key, project, user):
 	return False
 
 
+def _can_undo(status_key, row, user):
+	"""Mirror vernon_project.api.project_todo.undo_approval: only the person who
+	personally cleared the gate that left the todo in this exact state may undo
+	it — Leader's Done->Checked while still "checked", or Owner's Checked->
+	Completed while still "completed". Moot once the todo has moved further."""
+	if status_key == "checked":
+		return row.get("tested_by") == user
+	if status_key == "completed":
+		return row.get("completed_by") == user
+	return False
+
+
 def _can_set_auto_approve(project, user):
 	"""Mirror vernon_project.api.project_todo.set_auto_approve. Only the project
 	owner who also holds the Partner role may toggle auto-approve."""
@@ -723,6 +735,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 	}
 	can_advance = skey != "completed" and _can_advance(skey, project, user, row["assigned_to"])
 	can_reject = _can_reject(skey, project, user)
+	can_undo = _can_undo(skey, row, user)
 	# Who may create a todo in this project (mirrors can_create on Project Detail +
 	# validate_create_permission): SM / owner / leader / project admin. Drives the
 	# Duplicate / Add-follow-up affordances so non-admin team members don't see a
@@ -761,6 +774,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"next_status_label": NEXT_LABEL.get(skey),
 		"can_advance": can_advance,
 		"can_reject": can_reject,
+		"can_undo": can_undo,
 		"can_create": can_create,
 		"auto_approve_mode": _auto_approve_fields(row)[0],
 		"auto_approve_effective": _auto_approve_fields(row)[1],

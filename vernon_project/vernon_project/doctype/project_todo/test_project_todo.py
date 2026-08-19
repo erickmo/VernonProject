@@ -101,11 +101,13 @@ class TestProjectTodo(unittest.TestCase):
 			})
 			test_user2.insert(ignore_permissions=True)
 
-		# Create test brand if not exists
+		# Create test brand if not exists. company is mandatory on Brand (schema
+		# added it after this fixture was written); any existing Company will do.
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({
 				"doctype": "Brand",
 				"brand_name": "Test Customer",
+				"company": frappe.db.get_value("Company", {}, "name"),
 			}).insert(ignore_permissions=True)
 
 		# Create test project with team members so validate_assigned_to_team_member passes
@@ -1162,12 +1164,200 @@ class TestProjectTodoFiles(FrappeTestCase):
 		frappe.delete_doc("File", foreign.name, force=True, ignore_permissions=True)
 
 
+class TestUndoApproval(unittest.TestCase):
+	"""undo_approval: self-service one-step-back on the approval gates, plus the
+	Completed branch's point/recurrence reversal.
+
+	Own fixture (not TestProjectTodo's) because owner MUST differ from leader
+	here: TestProjectTodo's shared project has leader==owner==Administrator,
+	which makes _auto_advance collapse Done straight through to Completed in
+	one hop (leader-is-owner auto-clears the Owner gate too) — that's correct
+	product behavior, but it leaves no "Checked" state to undo independently.
+	"""
+
+	OWNER = "Administrator"
+	LEADER = "undo_leader@example.com"
+	ASSIGNEE = "undo_assignee@example.com"
+
+	def setUp(self):
+		for email, first in ((self.LEADER, "UndoLeader"), (self.ASSIGNEE, "UndoAssignee")):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({
+					"doctype": "User", "email": email, "first_name": first, "send_welcome_email": 0,
+				}).insert(ignore_permissions=True)
+		frappe.get_doc("User", self.LEADER).add_roles("Project Leader")
+
+		if not frappe.db.exists("Brand", "Undo Test Brand"):
+			frappe.get_doc({
+				"doctype": "Brand",
+				"brand_name": "Undo Test Brand",
+				"company": frappe.db.get_value("Company", {}, "name"),
+			}).insert(ignore_permissions=True)
+
+		self.project = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": "Undo Approval Test Project",
+			"brand": "Undo Test Brand",
+			"project_owner": self.OWNER,
+			"project_leader": self.LEADER,
+			"status": "Ongoing",
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": self.OWNER}, {"user": self.LEADER}, {"user": self.ASSIGNEE}],
+		}).insert(ignore_permissions=True)
+
+		self.group, self.level_id = _ensure_test_group()
+		self.grouping = frappe.get_doc({
+			"doctype": "Glossary", "glossary": "Undo Test Grouping", "project": self.project.name,
+		}).insert(ignore_permissions=True).name
+		self.project_detail = frappe.get_doc({
+			"doctype": "Project Detail",
+			"project": self.project.name,
+			"title": "Undo Test Detail",
+			"grouping": self.grouping,
+			"project_deadline": add_days(nowdate(), 30),
+			"estimated": 100,
+		}).insert(ignore_permissions=True)
+
+		self.todo = self._make_todo()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for name in frappe.get_all(
+			"Project Todo", filters={"project_detail": self.project_detail.name}, pluck="name"
+		):
+			frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
+			frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True)
+		frappe.delete_doc("Project Detail", self.project_detail.name, ignore_permissions=True, force=True)
+		frappe.delete_doc("Glossary", self.grouping, ignore_permissions=True, force=True)
+		frappe.delete_doc("Project", self.project.name, ignore_permissions=True, force=True)
+		frappe.db.commit()
+
+	def _make_todo(self, **overrides):
+		fields = {
+			"doctype": "Project Todo",
+			"project_detail": self.project_detail.name,
+			"to_do": "undo test task",
+			"assigned_to": self.ASSIGNEE,
+			"deadline": add_days(nowdate(), 5),
+			"estimated": 60,
+			"status": "⚪️ Planned",
+			"group": self.group,
+			"level_id": self.level_id,
+		}
+		fields.update(overrides)
+		fields.setdefault("start_date", fields["deadline"])
+		return frappe.get_doc(fields).insert(ignore_permissions=True)
+
+	def _make_recurring_todo(self, frequency=None, **over):
+		fields = {"is_recurring": 1}
+		if frequency is not None:
+			fields["recurring_frequency"] = frequency
+		fields.update(over)
+		return self._make_todo(**fields)
+
+	def _advance(self, as_user, todo_name=None):
+		from vernon_project.api.project_todo import update_status
+		frappe.set_user(as_user)
+		res = update_status(todo_name or self.todo.name)
+		frappe.set_user("Administrator")
+		self.assertNotEqual(res.get("status"), "error", res.get("message"))
+		return res
+
+	def test_undo_reverts_leader_gate_to_done(self):
+		from vernon_project.api.project_todo import undo_approval
+		self._advance(self.ASSIGNEE)  # Planned -> Done
+		self._advance(self.LEADER)  # Done -> Checked (Leader gate only, owner differs)
+		self.todo.reload()
+		self.assertEqual(self.todo.status, "🔷 Checked By PL")
+		self.assertEqual(self.todo.tested_by, self.LEADER)
+
+		res = undo_approval(self.todo.name)  # as Administrator, but only tested_by may undo
+		self.assertEqual(res.get("status"), "error", "Administrator never cleared this gate, so undo must refuse")
+
+		frappe.set_user(self.LEADER)
+		res = undo_approval(self.todo.name)
+		frappe.set_user("Administrator")
+		self.assertEqual(res.get("status"), "info", res.get("message"))
+		self.todo.reload()
+		self.assertEqual(self.todo.status, "🟠 Done")
+		self.assertIsNone(self.todo.tested_by)
+		self.assertIsNone(self.todo.tested_at)
+
+	def test_undo_reverts_owner_gate_and_unmints_points(self):
+		from vernon_project.api.project_todo import undo_approval
+		self._advance(self.ASSIGNEE)  # Planned -> Done
+		self._advance(self.LEADER)  # Done -> Checked
+		self._advance(self.OWNER)  # Checked -> Completed (mints points)
+		self.todo.reload()
+		self.assertEqual(self.todo.status, "✅ Completed")
+		self.assertTrue(
+			frappe.db.exists("Point Ledger", {"todo": self.todo.name, "role": "Assignee"}),
+			"Completing should mint an Assignee Point Ledger row",
+		)
+
+		frappe.set_user(self.OWNER)
+		res = undo_approval(self.todo.name)
+		self.assertEqual(res.get("status"), "info", res.get("message"))
+		self.todo.reload()
+		self.assertEqual(self.todo.status, "🔷 Checked By PL")
+		self.assertIsNone(self.todo.completed_by)
+		self.assertIsNone(self.todo.completed_at)
+		self.assertFalse(
+			frappe.db.exists("Point Ledger", {"todo": self.todo.name, "role": "Assignee"}),
+			"Undoing the Completion should un-mint the ledger row (on_change's prev_state handling)",
+		)
+
+	def test_undo_deletes_pristine_auto_generated_recurrence(self):
+		from vernon_project.api.project_todo import undo_approval
+		orig_name = self._make_recurring_todo(frequency="Daily").name
+
+		self._advance(self.ASSIGNEE, orig_name)  # Planned -> Done
+		self._advance(self.LEADER, orig_name)  # Done -> Checked
+		self._advance(self.OWNER, orig_name)  # Checked -> Completed
+
+		next_occurrence = frappe.get_all(
+			"Project Todo", filters={"original_todo": orig_name, "status": "⚪️ Planned"}, pluck="name"
+		)
+		self.assertEqual(len(next_occurrence), 1, "Completing a recurring todo should queue exactly one successor")
+
+		frappe.set_user(self.OWNER)
+		res = undo_approval(orig_name)
+		frappe.set_user("Administrator")
+		self.assertEqual(res.get("status"), "info", res.get("message"))
+		self.assertFalse(
+			frappe.db.exists("Project Todo", next_occurrence[0]),
+			"Undo should delete the still-pristine auto-generated successor",
+		)
+
+	def test_undo_refuses_when_not_your_approval(self):
+		"""Someone other than the approver can't undo it, even the Owner."""
+		from vernon_project.api.project_todo import undo_approval
+		self._advance(self.ASSIGNEE)  # Planned -> Done
+		self._advance(self.LEADER)  # Done -> Checked, tested_by=LEADER
+
+		frappe.set_user(self.OWNER)
+		res = undo_approval(self.todo.name)
+		self.assertEqual(res.get("status"), "error")
+
+		self.todo.reload()
+		self.assertEqual(self.todo.status, "🔷 Checked By PL", "status must be untouched by the refused undo")
+
+	def test_undo_refuses_on_planned_todo(self):
+		from vernon_project.api.project_todo import undo_approval
+		self.todo.reload()
+		self.assertEqual(self.todo.status, "⚪️ Planned")
+		res = undo_approval(self.todo.name)
+		self.assertEqual(res.get("status"), "error")
+
+
 def run_tests():
 	"""Helper function to run all tests"""
 	loader = unittest.TestLoader()
 	suite = unittest.TestSuite()
 
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodo))
+	suite.addTests(loader.loadTestsFromTestCase(TestUndoApproval))
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodoPhaseTracking))
 	suite.addTests(loader.loadTestsFromTestCase(TestProjectTodoFiles))
 

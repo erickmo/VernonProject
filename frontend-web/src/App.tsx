@@ -34,6 +34,7 @@ import ProjectDetailPane from '@web/pages/ProjectDetailPane'
 import ProjectItem from '@web/pages/ProjectItem'
 import ProjectDetail from '@web/pages/ProjectDetail'
 import Review from '@web/pages/Review'
+import MyApprovals from '@web/pages/MyApprovals'
 import Me from '@web/pages/Me'
 import MyInfo from '@web/pages/MyInfo'
 import Reports from '@web/pages/Reports'
@@ -265,6 +266,7 @@ export default function App() {
             <Route path="item/:itemName" element={<ProjectItem />} />
           </Route>
           <Route path="/review" element={<Review />} />
+<Route path="/my-approvals" element={<MyApprovals />} />
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/habits" element={<Habits />} />

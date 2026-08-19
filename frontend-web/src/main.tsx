@@ -9,6 +9,7 @@ import { ToastProvider } from '@/components/Toast'
 import { ConfirmProvider } from '@/components/Confirm'
 import { AdvanceProvider } from '@/components/AdvanceProvider'
 import { RejectProvider } from '@/components/RejectProvider'
+import { UndoProvider } from '@/components/UndoProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import './index.css'
 import { initTheme } from '@/lib/theme'
@@ -55,9 +56,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <ConfirmProvider>
             <AdvanceProvider>
               <RejectProvider>
-                <ErrorBoundary>
-                  <App />
-                </ErrorBoundary>
+                <UndoProvider>
+                  <ErrorBoundary>
+                    <App />
+                  </ErrorBoundary>
+                </UndoProvider>
               </RejectProvider>
             </AdvanceProvider>
           </ConfirmProvider>

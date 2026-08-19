@@ -7,6 +7,7 @@ import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/Confirm'
 import { AdvanceProvider } from './components/AdvanceProvider'
 import { RejectProvider } from './components/RejectProvider'
+import { UndoProvider } from './components/UndoProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import FocusOverlay from './components/FocusOverlay'
 import { Fab } from './components/Fab'
@@ -66,15 +67,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <ConfirmProvider>
             <AdvanceProvider>
               <RejectProvider>
-                <ErrorBoundary>
-                  <App />
-                </ErrorBoundary>
-                <AuthedOnly>
-                  <AnnouncementTicker />
-                  <Fab />
-                  <UpdateBanner />
-                  <FocusOverlay />
-                </AuthedOnly>
+                <UndoProvider>
+                  <ErrorBoundary>
+                    <App />
+                  </ErrorBoundary>
+                  <AuthedOnly>
+                    <AnnouncementTicker />
+                    <Fab />
+                    <UpdateBanner />
+                    <FocusOverlay />
+                  </AuthedOnly>
+                </UndoProvider>
               </RejectProvider>
             </AdvanceProvider>
           </ConfirmProvider>

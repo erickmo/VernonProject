@@ -127,6 +127,7 @@ export interface ProjectItem {
   next_status_label: string | null
   can_advance: boolean
   can_reject: boolean
+  can_undo: boolean
   can_create: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'
   auto_approve_effective: boolean
@@ -171,6 +172,13 @@ export interface ProjectItem {
   is_owner: boolean
   is_leader: boolean
   notes: string
+}
+
+// A row from get_my_approvals: a ProjectItem the current user personally
+// approved, plus when (their own stamp) and in which role.
+export interface MyApprovalItem extends ProjectItem {
+  approved_at: string | null
+  approval_role: 'Leader' | 'Owner'
 }
 
 export interface TodoFile {

@@ -42,6 +42,7 @@ const WORK: NavLeaf[] = [
   { to: '/plan', label: 'Plan', sub: 'Allocate minutes by date', icon: ClipboardList },
   { to: '/projects', label: 'Projects', sub: 'All projects & details', icon: FolderKanban, match: '/project' },
   { to: '/review', label: 'Review', sub: 'Approve completed work', icon: CheckCircle2, badge: 'review' },
+  { to: '/my-approvals', label: 'My Approvals', sub: 'Approvals you’ve granted · undo', icon: History },
   { to: '/meetings', label: 'Meetings', sub: 'Schedule & notes', icon: Video },
   { to: '/notes', label: 'Notes', sub: 'Personal docs', icon: StickyNote },
   { to: '/habits', label: 'Kebiasaan', sub: 'Pelacak kebiasaan pribadi', icon: Flame },

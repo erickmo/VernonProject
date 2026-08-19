@@ -182,6 +182,13 @@ export const mobileApi = {
       'vernon_project.api.project_todo.reject_status',
       { todo_id: todoId, reason },
     ),
+  undoApproval: (todoId: string) =>
+    api.post<{ status: string; message: string; status_key?: string }>(
+      'vernon_project.api.project_todo.undo_approval',
+      { todo_id: todoId },
+    ),
+  myApprovals: () =>
+    api.get<import('./types').MyApprovalItem[]>('vernon_project.api.project_todo.get_my_approvals'),
   setAutoApprove: (todoId: string, mode: 'on' | 'off' | 'inherit') =>
     api.post<{ status: string; message?: string; mode?: 'on' | 'off' | 'inherit' }>(
       'vernon_project.api.project_todo.set_auto_approve',
