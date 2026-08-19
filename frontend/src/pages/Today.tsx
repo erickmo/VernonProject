@@ -9,6 +9,7 @@ import {
   CheckCheck,
   CalendarDays,
   CalendarOff,
+  CalendarArrowUp,
   Clock,
   Coins,
   TrendingDown,
@@ -39,7 +40,7 @@ import type { AvatarConfig } from '@/lib/types'
 import { NotesButton } from '@/components/NotesButton'
 import { RecapCard } from '@/components/RecapCard'
 import { AutoPlanProgress } from '@/components/AutoPlanProgress'
-import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
+import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/hooks/usePlanDay'
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
@@ -238,6 +239,7 @@ export default function Today() {
   // Free-text search over the to-do lists (all axes), matched on todo text + project.
   const [query, setQuery] = useState('')
   const autoFill = useAutoFillPlan()
+  const moveYesterday = useMoveYesterdayToToday()
   // Home work view: axis (Plan/Deadline/Waiting) + sub-tab within Plan/Deadline.
   const [axis, setAxis] = useState<Axis>('plan')
   const [planSub, setPlanSub] = useState<PlanSub>('today')
@@ -611,6 +613,15 @@ export default function Today() {
                     >
                       <Wand2 className={clsx('h-5 w-5', autoFill.saving && 'animate-pulse')} />
                       <span className="text-[11px] font-semibold">{autoFill.saving ? 'Planning…' : 'Auto-plan'}</span>
+                    </button>
+                    <button
+                      onClick={() => moveYesterday.run(filteredActive)}
+                      disabled={moveYesterday.saving}
+                      aria-label="Move yesterday's plan to today"
+                      className="flex w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-brand-200 bg-paper-card text-brand-700 transition active:scale-95 disabled:opacity-50 dark:border-brand-500/30 dark:bg-slate-800 dark:text-brand-300"
+                    >
+                      <CalendarArrowUp className={clsx('h-5 w-5', moveYesterday.saving && 'animate-pulse')} />
+                      <span className="text-[11px] font-semibold">{moveYesterday.saving ? 'Moving…' : 'Carry over'}</span>
                     </button>
                   </div>
                   <div id="today-groups" className="mt-5 scroll-mt-4">

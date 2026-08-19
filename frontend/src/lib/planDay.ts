@@ -60,6 +60,17 @@ export function buildNext(allocations: Alloc[], today: string, minutes: number):
   ]
 }
 
+// "Carry over" button: move a todo's yesterday-dated allocation row onto today's
+// row, merged with whatever's already planned today. Other rows (today, future,
+// older-than-yesterday leftovers) untouched. No-op if there's no yesterday row.
+export function moveYesterdayToToday(allocations: Alloc[], yesterday: string, today: string): Alloc[] {
+  const y = allocations.find((a) => a.date === yesterday)
+  if (!y || !(y.minutes > 0)) return allocations
+  const rest = allocations.filter((a) => a.date !== yesterday && a.date !== today)
+  const todayMinutes = (allocations.find((a) => a.date === today)?.minutes || 0) + y.minutes
+  return [...rest, { date: today, minutes: todayMinutes }]
+}
+
 // ponytail: pure partition; runnable test deferred — no test infra in this repo
 // (project convention: defer tests to final phase). Add a vitest case when infra
 // lands. Behaviour: focused todos float to the very top, preserving input order

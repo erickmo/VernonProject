@@ -3,8 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { mobileApi } from '@/lib/api'
 import { keys } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
-import { todayISO, formatEstimate } from '@/lib/format'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes } from '@/lib/planDay'
+import { todayISO, addDaysISO, formatEstimate } from '@/lib/format'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes, moveYesterdayToToday } from '@/lib/planDay'
 import { usePreviousShiftShortfall } from '@/hooks/useData'
 import type { ProjectItem } from '@/lib/types'
 
@@ -188,4 +188,40 @@ export function useAutoFillPlan() {
   }
 
   return { run, saving, summary }
+}
+
+// "Carry over" button: move every candidate's yesterday-dated allocation onto
+// today (merged with today's existing minutes), for todos still active (i.e.
+// not yet Done — candidates come from the dashboard's active-todo set, same as
+// Auto-plan). Same write path as Auto-plan/Plan-my-day: mobileApi.setTodoAllocations.
+export function useMoveYesterdayToToday() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const today = todayISO()
+  const yesterday = addDaysISO(today, -1)
+  const [saving, setSaving] = useState(false)
+
+  const run = async (candidates: ProjectItem[]) => {
+    const todos = candidates.filter((t) => allocMinutes(t, yesterday) > 0)
+    if (!todos.length) {
+      toast('success', 'No leftover plan from yesterday')
+      return
+    }
+    setSaving(true)
+    try {
+      await Promise.all(
+        todos.map((t) => mobileApi.setTodoAllocations(t.name, moveYesterdayToToday(t.allocations ?? [], yesterday, today))),
+      )
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      for (const t of todos) qc.invalidateQueries({ queryKey: keys.projectItem(t.name) })
+      toast('success', `Moved ${todos.length} task${todos.length === 1 ? '' : 's'} to today`)
+    } catch (e) {
+      toast('error', (e as Error).message || 'Could not move plan')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return { run, saving }
 }

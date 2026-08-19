@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   Sparkles, Plus, Gift, ShieldCheck, CheckCheck, CalendarClock,
-  Flame, QrCode, Pause, Search, X, Clock, CalendarDays, CalendarOff,
+  Flame, QrCode, Pause, Search, X, Clock, CalendarDays, CalendarOff, CalendarArrowUp,
   SearchX, AlertTriangle, Wand2, ChevronRight, Heart, LayoutList, AtSign,
 } from 'lucide-react'
 import { valueOfDay } from '@/lib/values'
@@ -29,7 +29,7 @@ import { Segmented, EmptyState } from '@/components/ui'
 import { Page, rise } from '@web/components/Page'
 import { Button, ErrorState, Skeleton } from '@web/components/ui'
 import { AutoPlanProgress } from '@/components/AutoPlanProgress'
-import { useAutoPlanToday, useAutoFillPlan } from '@/hooks/usePlanDay'
+import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/hooks/usePlanDay'
 import { QuickCreate } from '@web/components/QuickCreate'
 import { DatePicker } from '@web/components/DatePicker'
 import { ThreeColProjectList } from '@web/components/ProjectColumns'
@@ -375,6 +375,7 @@ export default function Home() {
   const [query, setQuery] = useState('')
   const [quickOpen, setQuickOpen] = useState(false)
   const autoFill = useAutoFillPlan()
+  const moveYesterday = useMoveYesterdayToToday()
 
   const allTasks: ProjectItem[] = useMemo(() => {
     const d = dash.data
@@ -803,6 +804,16 @@ export default function Home() {
                     >
                       <Wand2 className={clsx('h-5 w-5', autoFill.saving && 'animate-pulse')} />
                       <span className="text-xs font-semibold">{autoFill.saving ? 'Planning…' : 'Auto-plan'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveYesterday.run(filteredActive)}
+                      disabled={moveYesterday.saving}
+                      aria-label="Move yesterday's plan to today"
+                      className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-surface text-brand-700 transition active:scale-95 disabled:opacity-50 dark:text-brand-300"
+                    >
+                      <CalendarArrowUp className={clsx('h-5 w-5', moveYesterday.saving && 'animate-pulse')} />
+                      <span className="text-xs font-semibold">{moveYesterday.saving ? 'Moving…' : 'Carry over'}</span>
                     </button>
                   </div>
 
