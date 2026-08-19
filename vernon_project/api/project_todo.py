@@ -328,6 +328,133 @@ def reject_status(todo_id, reason=None):
 		return {"status": "error", "message": str(e)}
 
 
+def _undo_recurring_followup(todo, since):
+	"""Delete the next recurrence occurrence a just-undone Completion auto-generated
+	(on_change's generate_next(force=True)) — but ONLY if it is still exactly as
+	generated: still Planned, never marked Done. Best-effort cleanup; a next
+	occurrence someone has already started on is left alone. Returns the deleted
+	todo's name, or None if nothing matched."""
+	if not todo.is_recurring or not since:
+		return None
+	from vernon_project.vernon_project.doctype.project_todo.project_todo import series_root
+
+	root = series_root(todo.name, todo.original_todo)
+	candidates = frappe.get_all(
+		"Project Todo",
+		filters={
+			"original_todo": root,
+			"status": "⚪️ Planned",
+			"developed_at": ["is", "not set"],
+			"creation": [">=", since],
+		},
+		fields=["name"],
+		order_by="creation desc",
+		limit_page_length=1,
+	)
+	if not candidates:
+		return None
+	frappe.delete_doc("Project Todo", candidates[0]["name"], ignore_permissions=True)
+	return candidates[0]["name"]
+
+
+@frappe.whitelist()
+def undo_approval(todo_id):
+	"""Undo the most recent approval gate the CURRENT user personally cleared on
+	this todo — Leader's Done->Checked or Owner's Checked->Completed — one step
+	back. Self-service only, and only while the todo is still exactly where that
+	action left it, so a leader/owner can never undo out from under someone who
+	already advanced past them.
+
+	Reverting away from "✅ Completed" re-triggers the controller's own
+	prev_state handling (on_change -> _remove_ledger), so any Point Ledger rows
+	minted on approval un-mint for free. If that Completion had auto-generated
+	the next recurrence, it is deleted too — but only while still untouched (see
+	_undo_recurring_followup); one someone has already started on is left alone.
+	"""
+	from vernon_project.api.mobile import _status_key
+
+	try:
+		todo = frappe.get_doc("Project Todo", todo_id)
+		user = frappe.session.user
+
+		if todo.status == "🔷 Checked By PL" and todo.tested_by == user:
+			target_status, clear_fields, since = "🟠 Done", ("tested_at", "tested_by"), None
+		elif todo.status == "✅ Completed" and todo.completed_by == user:
+			target_status, clear_fields, since = "🔷 Checked By PL", ("completed_at", "completed_by"), todo.completed_at
+		else:
+			return {"status": "error", "message": "Tidak ada approval milik Anda yang bisa dibatalkan pada todo ini."}
+
+		todo.status = target_status
+		for f in clear_fields:
+			todo.set(f, None)
+		# Notification to the relevant party is fired from the controller's on_change,
+		# same mechanism reject_status relies on.
+		todo.save(ignore_permissions=True)
+
+		removed_next = _undo_recurring_followup(todo, since)
+
+		new_key = _status_key(todo.status)
+		message = f"Approval dibatalkan, {todo.to_do} kembali ke {todo.status}."
+		if removed_next:
+			message += " Kejadian berulang berikutnya (belum disentuh) ikut dihapus."
+		return {"status": "info", "message": message, "status_key": new_key}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Todo {todo_id} does not exist."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def get_my_approvals():
+	"""Every Project Todo the current user has personally approved — Leader's
+	Done->Checked or Owner's Checked->Completed — newest approval first. Powers
+	the "My Approvals" history screen. Each row carries can_undo (see
+	undo_approval) so the UI only offers Undo while it is still valid.
+
+	Scoped to the Checked/Completed statuses only (mirrors get_dashboard's
+	backlog-avoidance) — a todo that was rejected has its tested_by/at cleared by
+	reject_status, so it can never appear here; that's the desired behavior.
+	"""
+	from vernon_project.api.mobile import (
+		STATUS_CHECKED,
+		STATUS_COMPLETED,
+		_admins_by_project,
+		_allocations_map,
+		_fetch_todos,
+		_shape_todo,
+		_user_name_map,
+		_visible_projects,
+	)
+
+	user = frappe.session.user
+	rows = _fetch_todos(_visible_projects(), statuses=[STATUS_CHECKED, STATUS_COMPLETED])
+	mine = [r for r in rows if r.get("tested_by") == user or r.get("completed_by") == user]
+	if not mine:
+		return []
+
+	emails = {r["assigned_to"] for r in mine}
+	for r in mine:
+		emails.update([r["project_owner"], r["project_leader"]])
+	name_map = _user_name_map(emails)
+	alloc_map = _allocations_map([r["name"] for r in mine])
+	admins_map = _admins_by_project(mine)
+
+	out = []
+	for r in mine:
+		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
+		if r.get("completed_by") == user:
+			shaped["approved_at"] = str(r["completed_at"]) if r.get("completed_at") else None
+			shaped["approval_role"] = "Owner"
+		else:
+			shaped["approved_at"] = str(r["tested_at"]) if r.get("tested_at") else None
+			shaped["approval_role"] = "Leader"
+		out.append(shaped)
+
+	out.sort(key=lambda t: t["approved_at"] or "", reverse=True)
+	return out
+
+
 @frappe.whitelist()
 def save_notes(todo_id, notes):
 	"""

@@ -187,6 +187,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
           title: 'Work',
           rows: [
             { icon: ClipboardList, label: 'Plan', hue: 'indigo', onClick: () => navigate('/plan') },
+            { icon: History, label: 'My Approvals', hue: 'amber', onClick: () => navigate('/my-approvals') },
             { icon: CalendarClock, label: 'Meetings', hue: 'sky', onClick: () => navigate('/meetings') },
             { icon: CalendarClock, label: 'Bookings', hue: 'sky', onClick: () => navigate('/bookings') },
             { icon: QrCode, label: 'Attendance', hue: 'sky', onClick: () => navigate('/attendance') },

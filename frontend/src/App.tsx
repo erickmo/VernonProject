@@ -14,6 +14,7 @@ import PlanScreen from './pages/PlanScreen'
 import Reports from './pages/Reports'
 import ReportPage from './pages/ReportPage'
 import Review from './pages/Review'
+import MyApprovals from './pages/MyApprovals'
 import Projects from './pages/Projects'
 import ProjectScreen from './pages/ProjectScreen'
 import ProjectDetailScreen from './pages/ProjectDetailScreen'
@@ -224,6 +225,7 @@ export default function App() {
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/plan" element={<PlanScreen />} />
         <Route path="/review" element={<Review />} />
+<Route path="/my-approvals" element={<MyApprovals />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/todos-due" element={<TodosDueScreen />} />
         <Route path="/reports/last-seen" element={<LastSeenScreen />} />
