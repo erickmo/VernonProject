@@ -44,7 +44,7 @@ import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/ho
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
-import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead } from '@/hooks/useData'
+import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead, useRecentlyDone } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MeetingSheet } from '@/components/MeetingSheet'
@@ -54,7 +54,7 @@ import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import { focusedFirst } from '@/lib/planDay'
 import { matchProjectItem } from '@/lib/filters'
 import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
-import type { ProjectItem } from '@/lib/types'
+import type { ProjectItem, DoneItem } from '@/lib/types'
 
 function greeting() {
   const h = new Date().getHours()
@@ -104,7 +104,7 @@ function Ring({ pct }: { pct: number }) {
 }
 
 // Home work view: which axis, and the sub-tab within Plan / Deadline.
-type Axis = 'plan' | 'deadline' | 'waiting'
+type Axis = 'plan' | 'deadline' | 'waiting' | 'done'
 type PlanSub = 'today' | 'past' | 'upcoming'
 type DeadlineSub = 'today' | 'overdue' | 'upcoming'
 
@@ -234,6 +234,7 @@ export default function Today() {
   const { data: shortfall } = usePreviousShiftShortfall()
   const { data: meetingsData } = useMeetings()
   const { data: mentions } = useUnreadMentions()
+  const { data: doneTodos = [] } = useRecentlyDone()
   const markRead = useMarkRead()
   const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
   // Free-text search over the to-do lists (all axes), matched on todo text + project.
@@ -325,7 +326,7 @@ export default function Today() {
 
   // Shared list renderer: cards, or a contextual empty state. Applies the
   // free-text search (todo text + project) so every axis is searchable at once.
-  const renderList = (list: ProjectItem[], emptyTitle: string, swipe = true) => {
+  const renderList = (list: ProjectItem[], emptyTitle: string, swipe = true, doneAt?: (t: ProjectItem) => string | null | undefined) => {
     const q = query.trim().toLowerCase()
     const shown = list.filter((t) => matchProjectItem(t, query))
     const empty = q ? (
@@ -338,11 +339,11 @@ export default function Today() {
     // Swipe axes: SwipeProjectLists owns the sticky search + project-picker header
     // and stays mounted even when empty, so the search input keeps focus while typing.
     if (swipe) return <SwipeProjectLists items={shown} search={searchBox} emptyState={empty} />
-    // Non-swipe (Waiting): search is rendered inline by the caller, above this list.
+    // Non-swipe (Waiting, Done): search is rendered inline by the caller, above this list.
     return shown.length ? (
       <div className="mt-3 flex flex-col gap-3">
         {shown.map((t) => (
-          <TodoCard key={t.name} todo={t} />
+          <TodoCard key={t.name} todo={t} doneAt={doneAt?.(t)} />
         ))}
       </div>
     ) : (
@@ -625,12 +626,13 @@ export default function Today() {
                     </button>
                   </div>
                   <div id="today-groups" className="mt-5 scroll-mt-4">
-                    {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) */}
+                    {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) · Done (recently finished) */}
                     <PillTabs<Axis>
                       tabs={[
                         { key: 'plan', label: 'Plan' },
                         { key: 'deadline', label: 'Deadline' },
                         { key: 'waiting', label: 'Waiting', count: waitingTodos.length },
+                        { key: 'done', label: 'Done', count: doneTodos.length },
                       ]}
                       value={axis}
                       onChange={setAxis}
@@ -685,6 +687,13 @@ export default function Today() {
                       <>
                         {searchBox}
                         {renderList(waitingTodos, 'Nothing waiting', false)}
+                      </>
+                    )}
+
+                    {axis === 'done' && (
+                      <>
+                        {searchBox}
+                        {renderList(doneTodos, 'Nothing done yet', false, (t) => (t as DoneItem).done_at_human)}
                       </>
                     )}
                   </div>
