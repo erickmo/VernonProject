@@ -167,6 +167,7 @@ export const keys = {
   photoGate: ['photo-gate'] as const,
   habits: ['habits'] as const,
   myApprovals: ['my-approvals'] as const,
+  recentlyDone: ['recently-done'] as const,
 }
 
 const VERSE_SUPPORTED = new Set(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha'])
@@ -366,6 +367,16 @@ export const useMyApprovals = () =>
   useQuery({
     queryKey: keys.myApprovals,
     queryFn: () => mobileApi.myApprovals(),
+  })
+
+// The current user's own last 30 completed todos, newest first — powers the
+// Home "Done" tab. No invalidation wiring needed elsewhere: nothing on Home
+// currently mutates a todo INTO Completed status without a full page action
+// that already triggers a dashboard refetch on its own query keys.
+export const useRecentlyDone = () =>
+  useQuery({
+    queryKey: keys.recentlyDone,
+    queryFn: () => mobileApi.recentlyDone(),
   })
 
 // Undo the current user's own most recent approval gate, one step back.

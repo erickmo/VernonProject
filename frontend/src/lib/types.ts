@@ -181,6 +181,13 @@ export interface MyApprovalItem extends ProjectItem {
   approval_role: 'Leader' | 'Owner'
 }
 
+// A row from get_recently_done: a ProjectItem the current user completed
+// themself, plus when. Powers the Home "Done" tab.
+export interface DoneItem extends ProjectItem {
+  done_at: string | null
+  done_at_human: string | null
+}
+
 export interface TodoFile {
   name: string
   file_name: string

@@ -189,6 +189,8 @@ export const mobileApi = {
     ),
   myApprovals: () =>
     api.get<import('./types').MyApprovalItem[]>('vernon_project.api.project_todo.get_my_approvals'),
+  recentlyDone: () =>
+    api.get<import('./types').DoneItem[]>('vernon_project.api.project_todo.get_recently_done'),
   setAutoApprove: (todoId: string, mode: 'on' | 'off' | 'inherit') =>
     api.post<{ status: string; message?: string; mode?: 'on' | 'off' | 'inherit' }>(
       'vernon_project.api.project_todo.set_auto_approve',
