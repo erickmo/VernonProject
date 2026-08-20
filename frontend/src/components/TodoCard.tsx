@@ -21,9 +21,12 @@ interface Props {
   // show the assignee avatar (review/team contexts) vs. hide (my own lists)
   showAssignee?: boolean
   showProject?: boolean
+  // relative-time string ("2 hours ago") for the Home "Done" tab — not part of
+  // ProjectItem itself since only that one list carries it. undefined elsewhere.
+  doneAt?: string | null
 }
 
-export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
+export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Props) {
   const navigate = useNavigate()
   const advanceConfirm = useAdvance()
   const rejectConfirm = useReject()
@@ -170,6 +173,12 @@ export function TodoCard({ todo, showAssignee, showProject = true }: Props) {
               <span>{meta.emoji}</span>
               {meta.label}
             </Pill>
+            {doneAt && (
+              <span className="inline-flex items-center gap-1 text-stone-500 dark:text-slate-400">
+                <Check className="h-3.5 w-3.5" />
+                {doneAt}
+              </span>
+            )}
             {todo.is_waiting && (
               <Pill className="bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300">
                 <Pause className="h-3.5 w-3.5" />
