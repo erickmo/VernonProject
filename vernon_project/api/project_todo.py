@@ -456,6 +456,51 @@ def get_my_approvals():
 
 
 @frappe.whitelist()
+def get_recently_done(limit=30):
+	"""The current user's own recently-completed todos (assignee's Done list),
+	newest completed_at first, capped at `limit`. Powers the Home 'Done' tab.
+
+	Scoped to assigned_to == me (not tested_by/completed_by like get_my_approvals —
+	this is "what I finished," not "what I approved for someone else") and to the
+	final Completed status only (mirrors the completed_today aggregate in
+	get_dashboard, which already treats Completed as "done" in the Home UI).
+	"""
+	from vernon_project.api.mobile import (
+		STATUS_COMPLETED,
+		_admins_by_project,
+		_allocations_map,
+		_fetch_todos,
+		_shape_todo,
+		_user_name_map,
+		_visible_projects,
+	)
+	from frappe.utils import pretty_date, get_datetime
+
+	user = frappe.session.user
+	rows = _fetch_todos(_visible_projects(), statuses=[STATUS_COMPLETED])
+	mine = [r for r in rows if r.get("assigned_to") == user]
+	if not mine:
+		return []
+
+	emails = {r["assigned_to"] for r in mine}
+	for r in mine:
+		emails.update([r["project_owner"], r["project_leader"]])
+	name_map = _user_name_map(emails)
+	alloc_map = _allocations_map([r["name"] for r in mine])
+	admins_map = _admins_by_project(mine)
+
+	out = []
+	for r in mine:
+		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
+		shaped["done_at"] = str(r["completed_at"]) if r.get("completed_at") else None
+		shaped["done_at_human"] = pretty_date(get_datetime(r["completed_at"])) if r.get("completed_at") else None
+		out.append(shaped)
+
+	out.sort(key=lambda t: t["done_at"] or "", reverse=True)
+	return out[: int(limit)]
+
+
+@frappe.whitelist()
 def save_notes(todo_id, notes):
 	"""
 	Save notes for a project todo item.
@@ -468,6 +513,7 @@ def save_notes(todo_id, notes):
 
 		user = frappe.session.user
 		allowed = [todo.assigned_to, project.project_owner, project.project_leader]
+		allowed += list(get_project_admins(project))
 
 		if user not in allowed:
 			return {
