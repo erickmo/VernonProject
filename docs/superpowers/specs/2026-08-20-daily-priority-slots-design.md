@@ -154,9 +154,12 @@ Placed above the todo feed. Renders nothing at all when `slots === 0`.
 
 ## Component 5 — leader control
 
-Priority toggle on the todo detail screen (`ProjectItemScreen.tsx` /m, `ProjectItem.tsx` /w),
-visible only to leader / owner / SM / project admin, showing live "2/3 slot terpakai" for that
-assignee and date. The backend guard remains the authority; the counter is a courtesy.
+Priority toggle in the todo detail overflow menu (`ProjectItemScreen.tsx` /m, `ProjectItem.tsx` /w),
+visible only to leader / owner / SM / project admin.
+
+No live "2/3 slot terpakai" counter: the backend's refusal message already names the assignee, the
+date and the counts, so a counter would buy a separate endpoint and its own staleness story for
+information the user gets anyway at the moment it matters.
 
 ## Component 6 — settings screens
 
