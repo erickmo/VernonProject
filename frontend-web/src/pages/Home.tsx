@@ -13,7 +13,7 @@ import CheerPop from '@/components/CheerPop'
 import {
   useBoot, useDashboard, useWallet, useGamification, useMyAttendance,
   useMeetings, useWeeklyRecap, useClaimDaily, useDailyVerse, useHomeBanners,
-  usePreviousShiftShortfall, useUnreadMentions, useMarkRead,
+  usePreviousShiftShortfall, useUnreadMentions, useMarkRead, useRecentlyDone,
 } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
@@ -33,7 +33,7 @@ import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/ho
 import { QuickCreate } from '@web/components/QuickCreate'
 import { DatePicker } from '@web/components/DatePicker'
 import { ThreeColProjectList } from '@web/components/ProjectColumns'
-import type { ProjectItem, BannerSlide, MeetingListItem } from '@/lib/types'
+import type { ProjectItem, BannerSlide, MeetingListItem, DoneItem } from '@/lib/types'
 
 // ── small building blocks ─────────────────────────────────────────────────────
 
@@ -160,7 +160,7 @@ function Card({
 }
 
 // Home work view: axis (Plan/Deadline/Waiting) + sub-tab within Plan/Deadline. Mobile Today parity.
-type Axis = 'plan' | 'deadline' | 'waiting'
+type Axis = 'plan' | 'deadline' | 'waiting' | 'done'
 type PlanSub = 'today' | 'past' | 'upcoming'
 type DeadlineSub = 'today' | 'overdue' | 'upcoming'
 
@@ -365,6 +365,7 @@ export default function Home() {
   const banners = useHomeBanners()
   const shortfall = usePreviousShiftShortfall()
   const mentions = useUnreadMentions()
+  const recentlyDone = useRecentlyDone()
   const markRead = useMarkRead()
   const navigate = useNavigate()
 
@@ -432,6 +433,7 @@ export default function Home() {
   const dueTodayActive = d.due_today.filter((t) => !t.is_waiting)
   const upcomingActive = d.upcoming.filter((t) => !t.is_waiting)
   const waiting = allTasks.filter((t) => t.is_waiting)
+  const doneList = recentlyDone.data ?? []
 
   // Deadline-axis lists (filter → sort). Overdue newest-first (byDeadlineDesc); the
   // rest nearest-first. Waiting parked list sorted by deadline.
@@ -446,7 +448,12 @@ export default function Home() {
   // the same todos re-grouped by project (a SearchableSelect focuses one project)
   // so you can work a single project at once. Free-text search applies to both.
   const q = query.trim().toLowerCase()
-  const renderList = (list: ProjectItem[], emptyTitle: string, emptySub?: string) => {
+  const renderList = (
+    list: ProjectItem[],
+    emptyTitle: string,
+    emptySub?: string,
+    doneAt?: (t: ProjectItem) => string | null | undefined,
+  ) => {
     const shown = q
       ? list.filter((t) => `${t.to_do} ${t.project_name} ${t.project_detail_title}`.toLowerCase().includes(q))
       : list
@@ -467,7 +474,7 @@ export default function Home() {
           storageKey="home"
           renderCard={(t, i) => (
             <div key={t.name} {...rise(i)}>
-              <TodoCard todo={t} />
+              <TodoCard todo={t} doneAt={doneAt?.(t)} />
             </div>
           )}
         />
@@ -698,6 +705,7 @@ export default function Home() {
                         { value: 'plan', label: 'Plan' },
                         { value: 'deadline', label: 'Deadline' },
                         { value: 'waiting', label: 'Waiting', badge: waitingList.length || undefined },
+                        { value: 'done', label: 'Done', badge: doneList.length || undefined },
                       ]}
                       value={axis}
                       onChange={(k) => {
@@ -731,7 +739,7 @@ export default function Home() {
 
                 {/* Refine row — sub-tabs live only on Plan/Deadline; also hosts Pick (Plan) + the
                     filter, which acts on exactly these two lists (Waiting is unfiltered). */}
-                {axis !== 'waiting' && (
+                {(axis === 'plan' || axis === 'deadline') && (
                   <div className="flex items-center gap-2 border-t border-line p-2">
                     <div className="min-w-0 flex-1">
                       {axis === 'plan' ? (
@@ -857,6 +865,13 @@ export default function Home() {
                 <>
                   <ListSummary count={waitingList.length} minutes={sumEst(waitingList)} label={waitingList.length === 1 ? 'task parked' : 'tasks parked'} />
                   {renderList(waitingList, 'Nothing waiting', 'No parked tasks.')}
+                </>
+              )}
+
+              {axis === 'done' && (
+                <>
+                  <ListSummary count={doneList.length} minutes={sumEst(doneList)} label={doneList.length === 1 ? 'task done' : 'tasks done'} />
+                  {renderList(doneList, 'Nothing done yet', 'Nothing completed recently.', (t) => (t as DoneItem).done_at_human)}
                 </>
               )}
               </div>
