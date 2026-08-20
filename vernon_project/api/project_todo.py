@@ -513,7 +513,6 @@ def save_notes(todo_id, notes):
 
 		user = frappe.session.user
 		allowed = [todo.assigned_to, project.project_owner, project.project_leader]
-		allowed += list(get_project_admins(project))
 
 		if user not in allowed:
 			return {
