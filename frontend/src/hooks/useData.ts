@@ -296,6 +296,7 @@ export function useAdvanceStatus() {
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project-item'] })
+      qc.invalidateQueries({ queryKey: keys.recentlyDone })
     },
   })
 }
@@ -357,6 +358,7 @@ export function useRejectStatus() {
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project-item'] })
+      qc.invalidateQueries({ queryKey: keys.recentlyDone })
     },
   })
 }
@@ -370,9 +372,9 @@ export const useMyApprovals = () =>
   })
 
 // The current user's own last 30 completed todos, newest first — powers the
-// Home "Done" tab. No invalidation wiring needed elsewhere: nothing on Home
-// currently mutates a todo INTO Completed status without a full page action
-// that already triggers a dashboard refetch on its own query keys.
+// Home "Done" tab. Invalidated by useAdvanceStatus/useRejectStatus/useUndoApproval
+// (all three can move a todo into or out of Completed) so the tab and its badge
+// count stay live.
 export const useRecentlyDone = () =>
   useQuery({
     queryKey: keys.recentlyDone,
@@ -397,6 +399,7 @@ export function useUndoApproval() {
       qc.invalidateQueries({ queryKey: ['project'] })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
       qc.invalidateQueries({ queryKey: ['project-item'] })
+      qc.invalidateQueries({ queryKey: keys.recentlyDone })
     },
   })
 }

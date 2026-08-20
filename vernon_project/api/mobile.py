@@ -538,11 +538,13 @@ def _visible_projects(status=None):
 	return [n for n in allowed if n in involved]
 
 
-def _fetch_todos(project_names, include_cancelled=False, statuses=None):
+def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None):
 	"""All todos (with project + work-item context) for the given projects.
 	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
 	(full status strings) to fetch only those — lets status-scoped callers like the
-	dashboard skip pulling + shaping the whole completed backlog."""
+	dashboard skip pulling + shaping the whole completed backlog. Pass `assigned_to`
+	to scope to one user's own todos in SQL — avoids pulling the whole org's rows
+	just to filter them in Python (see get_recently_done)."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
@@ -550,6 +552,9 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None):
 	if statuses:
 		cond += " AND t.status IN %(statuses)s"
 		params["statuses"] = tuple(statuses)
+	if assigned_to:
+		cond += " AND t.assigned_to = %(assigned_to)s"
+		params["assigned_to"] = assigned_to
 	return frappe.db.sql(
 		f"""
 		SELECT

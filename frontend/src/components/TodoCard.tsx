@@ -154,21 +154,23 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
           )}
 
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={onFocusPill}
-              title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Stop focus timer') : 'Start focus timer'}
-              className={clsx(
-                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95',
-                focusActive
-                  ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300'
-                  : 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300',
-              )}
-            >
-              {focusActive ? <Timer className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-              {focusActive ? 'Focusing' : 'Focus'}
-            </span>
+            {todo.status_key !== 'completed' && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={onFocusPill}
+                title={focusActive ? (focusMode === 'fullscreen' ? 'Open focus timer' : 'Stop focus timer') : 'Start focus timer'}
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold transition active:scale-95',
+                  focusActive
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300'
+                    : 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300',
+                )}
+              >
+                {focusActive ? <Timer className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                {focusActive ? 'Focusing' : 'Focus'}
+              </span>
+            )}
             <Pill className={meta.pill}>
               <span>{meta.emoji}</span>
               {meta.label}
@@ -218,7 +220,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
             )}
             {/* ponytail: span role=button inside the card <button> mirrors the existing Focus/advance controls; known HTML5 nesting ceiling — fix when the card is refactored to div+role. */}
             {/* Only the assignee sets the day-plan (backend enforces set_todo_allocations too). */}
-            {!showAssignee && todo.is_mine && (
+            {!showAssignee && todo.is_mine && todo.status_key !== 'completed' && (
               <span
                 role="button"
                 tabIndex={0}

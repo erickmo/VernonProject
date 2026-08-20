@@ -234,7 +234,7 @@ export default function Today() {
   const { data: shortfall } = usePreviousShiftShortfall()
   const { data: meetingsData } = useMeetings()
   const { data: mentions } = useUnreadMentions()
-  const { data: doneTodos = [] } = useRecentlyDone()
+  const { data: doneTodos = [], refetch: refetchDone } = useRecentlyDone()
   const markRead = useMarkRead()
   const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
   // Free-text search over the to-do lists (all axes), matched on todo text + project.
@@ -484,7 +484,7 @@ export default function Today() {
       {isLoading && !data ? (
         <FullScreenLoader label="Loading your work…" />
       ) : (
-        <PullToRefresh onRefresh={refetch}>
+        <PullToRefresh onRefresh={() => Promise.all([refetch(), refetchDone()])}>
           {data && (
             <>
               {/* Managed promo banners — full-bleed strip, flush to the top. */}

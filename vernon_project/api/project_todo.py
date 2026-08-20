@@ -460,10 +460,12 @@ def get_recently_done(limit=30):
 	"""The current user's own recently-completed todos (assignee's Done list),
 	newest completed_at first, capped at `limit`. Powers the Home 'Done' tab.
 
-	Scoped to assigned_to == me (not tested_by/completed_by like get_my_approvals —
-	this is "what I finished," not "what I approved for someone else") and to the
-	final Completed status only (mirrors the completed_today aggregate in
-	get_dashboard, which already treats Completed as "done" in the Home UI).
+	Scoped to assigned_to == me in SQL (not the get_my_approvals broad-fetch-then-
+	filter pattern) — this endpoint runs on the Home landing page on every mount
+	and window focus, so an org-wide backlog scan here is the same cost
+	get_dashboard deliberately avoids (see its docstring). Sort+slice happens
+	before shaping so only the rows actually returned get the expensive
+	name_map/alloc_map/admins_map treatment.
 	"""
 	from vernon_project.api.mobile import (
 		STATUS_COMPLETED,
@@ -474,13 +476,15 @@ def get_recently_done(limit=30):
 		_user_name_map,
 		_visible_projects,
 	)
-	from frappe.utils import pretty_date, get_datetime
+	from frappe.utils import pretty_date, get_datetime, cint
 
 	user = frappe.session.user
-	rows = _fetch_todos(_visible_projects(), statuses=[STATUS_COMPLETED])
-	mine = [r for r in rows if r.get("assigned_to") == user]
-	if not mine:
+	limit = cint(limit) or 30
+	rows = _fetch_todos(_visible_projects(), statuses=[STATUS_COMPLETED], assigned_to=user)
+	if not rows:
 		return []
+
+	mine = sorted(rows, key=lambda r: str(r.get("completed_at") or ""), reverse=True)[:limit]
 
 	emails = {r["assigned_to"] for r in mine}
 	for r in mine:
@@ -496,8 +500,7 @@ def get_recently_done(limit=30):
 		shaped["done_at_human"] = pretty_date(get_datetime(r["completed_at"])) if r.get("completed_at") else None
 		out.append(shaped)
 
-	out.sort(key=lambda t: t["done_at"] or "", reverse=True)
-	return out[: int(limit)]
+	return out
 
 
 @frappe.whitelist()
