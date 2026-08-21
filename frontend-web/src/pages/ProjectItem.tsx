@@ -34,6 +34,7 @@ import {
   Timer,
   Trash2,
   X,
+  Zap,
 } from 'lucide-react'
 import {
   useProjectItem,
@@ -988,6 +989,7 @@ export default function ProjectItem() {
   const setAutoApprove = useSetAutoApprove()
   const setDeadlineToday = useUpdateTodo(todoName)
   const setWaiting = useUpdateTodo(todoName)
+  const setPriority = useUpdateTodo(todoName)
   const confirm = useConfirm()
   const navigate = useNavigate()
   const toast = useToast()
@@ -1102,6 +1104,20 @@ const [followOpen, setFollowOpen] = useState(false)
   }
   const canSetDeadlineToday =
     data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
+
+  // Leaders spend one of the assignee's daily priority slots. The controller owns
+  // the caps; a refusal comes back as a Bahasa message naming the person and date.
+  const onTogglePriority = () => {
+    if (setPriority.isPending) return
+    const next = data.is_priority ? 0 : 1
+    setPriority.mutate(
+      { is_priority: next },
+      {
+        onSuccess: () => toast('success', next ? 'Dijadikan prioritas hari itu' : 'Prioritas dilepas'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
 
   const onMarkWaiting = () => {
     if (setWaiting.isPending || !waitingReason.trim()) return
@@ -1222,6 +1238,16 @@ const [followOpen, setFollowOpen] = useState(false)
               size="sm"
               items={[
                 { label: focus.note ? 'Edit focus note' : 'Add focus note', icon: StickyNote, onClick: () => setShowFocusNote(true) },
+                ...(data.can_prioritize && data.status_key !== 'cancelled'
+                  ? [
+                      {
+                        label: data.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas',
+                        icon: Zap,
+                        onClick: onTogglePriority,
+                        disabled: setPriority.isPending,
+                      },
+                    ]
+                  : []),
                 ...(data.can_create
                   ? [
                       { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },

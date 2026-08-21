@@ -33,6 +33,7 @@ import {
   Timer,
   StickyNote,
   X,
+  Zap,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -931,6 +932,7 @@ export default function ProjectItemScreen() {
   const setAutoApprove = useSetAutoApprove()
   const setDeadlineToday = useUpdateTodo(id)
   const setWaiting = useUpdateTodo(id)
+  const setPriority = useUpdateTodo(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -1040,6 +1042,20 @@ const [followOpen, setFollowOpen] = useState(false)
   const canSetDeadlineToday =
     data.can_edit && !data.fields_locked && data.status_key !== 'cancelled' && data.deadline !== todayISO()
 
+  // Leaders spend one of the assignee's daily priority slots. The controller owns
+  // the caps; a refusal comes back as a Bahasa message naming the person and date.
+  const onTogglePriority = () => {
+    if (setPriority.isPending) return
+    const next = data.is_priority ? 0 : 1
+    setPriority.mutate(
+      { is_priority: next },
+      {
+        onSuccess: () => toast('success', next ? 'Dijadikan prioritas hari itu' : 'Prioritas dilepas'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+
   const onMarkWaiting = () => {
     if (setWaiting.isPending || !waitingReason.trim()) return
     setWaiting.mutate(
@@ -1078,6 +1094,16 @@ const [followOpen, setFollowOpen] = useState(false)
       {editBtn}
       <TopMenu
         items={[
+          ...(data.can_prioritize && data.status_key !== 'cancelled'
+            ? [
+                {
+                  label: data.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas',
+                  icon: Zap,
+                  onClick: onTogglePriority,
+                  disabled: setPriority.isPending,
+                },
+              ]
+            : []),
           ...(data.can_create
             ? [
                 { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
