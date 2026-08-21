@@ -17,6 +17,7 @@
       "deadline",
       "leader_deadline",
       "owner_deadline",
+      "is_priority",
       "auto_approve",
       "auto_approve_opt_out",
       "estimated",
@@ -173,6 +174,13 @@
          "fieldtype": "Date",
          "label": "Owner Approval Deadline",
          "description": "Optional target date for Owner approval (status Completed). For long tasks."
+      },
+      {
+         "default": "0",
+         "fieldname": "is_priority",
+         "fieldtype": "Check",
+         "label": "Priority Slot",
+         "description": "Claims one of the assignee's daily priority slots for this todo's deadline date."
       },
       {
          "default": "0",
