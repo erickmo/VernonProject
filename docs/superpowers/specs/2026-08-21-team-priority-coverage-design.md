@@ -108,13 +108,11 @@ Tapping a dot that is NOT green (room left — either this project or another co
 priority that day) navigates to Plan → **By date**, pre-set to that date. Tapping a green
 (fully-full) dot does nothing — there's no action left to take on an already-full day.
 
-This needs one small, additive change to `PlanScreen.tsx` (mobile) and `Plan.tsx` (web): both
-currently hold `scope`/`mode`/`selected` as pure local `useState` with no way to arrive pre-set.
-Add an optional read of `location.state` (React Router's `navigate(path, {state})` mechanism,
-already available via `useLocation` elsewhere in both apps' `App.tsx`) to initialize those three
-pieces of state when present, falling back to today's existing defaults (today's date, `mode:
-'project'`, `scope: 'work'`) when absent. `TeamPriorityCoverage` navigates via
-`navigate('/plan', {state: {scope: 'project', mode: 'date', selected: thatDate}})`.
+`TeamPriorityCoverage` is mounted inside the same `PlanScreen`/`Plan` component instance that
+already owns `scope`/`mode`/`selected` as local state — so this needs no route navigation or
+deep-link mechanism at all. The tap handler just calls the existing `setScope('project')`,
+`setMode('date')`, `setSelected(thatDate)` setters directly, landing on `PlanDeadlineDay` in the
+same render tree.
 
 ## Testing
 
