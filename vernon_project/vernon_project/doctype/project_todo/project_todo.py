@@ -6,7 +6,7 @@ import json
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_days, add_months, getdate, nowdate, now_datetime, get_datetime
+from frappe.utils import add_days, add_months, cint, getdate, nowdate, now_datetime, get_datetime
 from datetime import datetime
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
@@ -57,6 +57,7 @@ class ProjectTodo(Document):
 		self.validate_block_links()
 		self.validate_recurrence_rule()
 		self._ensure_today_allocation()
+		self.validate_priority_slot()
 
 	def validate_block_links(self):
 		"""A task can't block or depend on itself; drop duplicate rows."""
@@ -271,6 +272,45 @@ class ProjectTodo(Document):
 			)
 		)
 
+	def validate_priority_slot(self):
+		"""A priority claims one of the assignee's daily slots for its deadline date.
+
+		Enforced in the controller rather than the API so every write path shares the
+		cap: update_todo, the desk form, bulk add, move-todos, a deadline change and a
+		reassignment all land here. Slots are derived, never stored — occupancy is just
+		the count of non-cancelled priority todos on that (assignee, date).
+		"""
+		if not self.is_priority:
+			return
+		slots = cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots"))
+		if not slots:
+			return  # feature off
+		if not self.deadline or not self.assigned_to:
+			frappe.throw(_("A priority needs both an assignee and a deadline."))
+
+		peers = frappe.get_all(
+			"Project Todo",
+			filters={
+				"is_priority": 1,
+				"assigned_to": self.assigned_to,
+				"deadline": self.deadline,
+				"status": ["!=", "🚫 Cancelled"],
+				"name": ["!=", self.name or ""],
+			},
+			fields=["name", "project"],
+			limit_page_length=0,
+		)
+		who = frappe.db.get_value("User", self.assigned_to, "full_name") or self.assigned_to
+		if len(peers) >= slots:
+			frappe.throw(
+				_("Slot prioritas {0} pada {1} sudah penuh ({2}/{2}).").format(who, self.deadline, slots)
+			)
+		cap = cint(frappe.db.get_single_value("Vernon Settings", "max_project_priorities_per_day"))
+		if cap and self.project and len([p for p in peers if p.project == self.project]) >= cap:
+			frappe.throw(
+				_("Proyek ini sudah memakai {0} slot prioritas {1} pada {2}.").format(cap, who, self.deadline)
+			)
+
 	def validate_done_todo_fields(self):
 		"""Prevent editing assigned_to, estimated, and deadline when status is Done or Completed"""
 		# Skip validation for new documents
@@ -421,9 +461,15 @@ class ProjectTodo(Document):
 				frappe.delete_doc("Point Ledger", stale, ignore_permissions=True, force=True)
 
 	def _remove_ledger(self):
-		"""Delete this todo's ledger rows and clear earned snapshots."""
+		"""Delete this todo's earning rows and clear earned snapshots.
+
+		Priority-miss penalties are excluded: they are a record of a day that was
+		already missed, so un-completing a todo must not refund them.
+		"""
 		for name in frappe.get_all(
-			"Point Ledger", filters={"todo": self.name}, pluck="name"
+			"Point Ledger",
+			filters={"todo": self.name, "source": ["!=", "Priority"]},
+			pluck="name",
 		):
 			frappe.delete_doc("Point Ledger", name, ignore_permissions=True, force=True)
 		self._set_earned("assignee_earned", 0)
