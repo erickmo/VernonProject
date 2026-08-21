@@ -12,7 +12,8 @@
 // v18: flush stale shell for the interview-assessment feature (DISC/personality/logical tests + fit).
 // v19: assessment follow-up fixes (interview-date round-trip, brand preserve, dark pill).
 // v20: proctored timed application wizard (per-test timers, ketelitian, apply-once, anti-cheat).
-const ASSET_CACHE = 'vernon-assets-v21'
+// v22: flush stale /m shell + assets so the Team Priority Coverage ("Tim" mode) deploy lands.
+const ASSET_CACHE = 'vernon-assets-v22'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
