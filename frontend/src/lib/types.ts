@@ -129,6 +129,8 @@ export interface ProjectItem {
   can_reject: boolean
   can_undo: boolean
   can_create: boolean
+  is_priority: boolean
+  can_prioritize: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'
   auto_approve_effective: boolean
   can_set_auto_approve: boolean
@@ -283,6 +285,7 @@ export interface Dashboard {
   due_today: ProjectItem[]
   upcoming: ProjectItem[]
   review: ProjectItem[]
+  priority: { slots: number; items: ProjectItem[] }
 }
 
 export interface ProjectCard {

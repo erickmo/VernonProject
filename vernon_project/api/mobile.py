@@ -1020,7 +1020,7 @@ def get_dashboard():
 	admins_map = _admins_by_project(rows)
 
 	today = getdate(nowdate())
-	overdue, due_today, upcoming, review = [], [], [], []
+	overdue, due_today, upcoming, review, priority = [], [], [], [], []
 
 	for r in rows:
 		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
@@ -1029,6 +1029,17 @@ def get_dashboard():
 		# Review queue: items awaiting an action *I* am allowed to take.
 		if shaped["can_advance"] and skey in ("done", "checked"):
 			review.append(shaped)
+
+		# Today's priority slots — mine, deadline today, any status. This cannot be
+		# read off due_today: that list is Planned-only, so a priority already marked
+		# Done would vanish from the rail and "1/3 selesai" would be uncomputable.
+		if (
+			shaped["is_mine"]
+			and shaped["is_priority"]
+			and shaped["deadline"]
+			and getdate(shaped["deadline"]) == today
+		):
+			priority.append(shaped)
 
 		# My personal work = my Planned tasks (own to-do). Once I mark a task
 		# Done it leaves my queue and becomes the Leader's to-do (see Review).
@@ -1057,6 +1068,23 @@ def get_dashboard():
 	completed_today = _c["cnt"]
 	completed_minutes_today = _c["mins"]
 
+	# Completed priorities dated today, so a finished slot still renders on the rail.
+	# Scoped to this user in SQL — much narrower than widening the dashboard's status
+	# filter, which would pull every finished todo in every visible project.
+	done_rows = [
+		r for r in _fetch_todos(projects, statuses=[STATUS_COMPLETED], assigned_to=user)
+		if r.get("is_priority") and r.get("deadline") and getdate(r["deadline"]) == today
+	]
+	if done_rows:
+		_dn = _user_name_map({r["assigned_to"] for r in done_rows})
+		_da = _allocations_map([r["name"] for r in done_rows])
+		priority += [
+			_shape_todo(r, user, _dn, alloc_map=_da, admins=admins_map.get(r["project"], []))
+			for r in done_rows
+		]
+	# Unfinished slots first so the rail leads with what still needs doing.
+	priority.sort(key=lambda t: (t["status_key"] == "completed", t["name"]))
+
 	return {
 		"counts": {
 			"overdue": len(overdue),
@@ -1070,6 +1098,10 @@ def get_dashboard():
 		"due_today": due_today,
 		"upcoming": upcoming,
 		"review": review,
+		"priority": {
+			"slots": cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots")),
+			"items": priority,
+		},
 	}
 
 
