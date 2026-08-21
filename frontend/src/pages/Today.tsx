@@ -44,6 +44,7 @@ import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/ho
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
+import { PriorityRail } from '@/components/PriorityRail'
 import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead, useRecentlyDone } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
@@ -489,6 +490,13 @@ export default function Today() {
             <>
               {/* Managed promo banners — full-bleed strip, flush to the top. */}
               <BannerCarousel slides={banners ?? []} />
+
+              {/* Today's priority slots — vibrant, above everything else in the feed. */}
+              <PriorityRail
+                slots={data.priority?.slots ?? 0}
+                items={data.priority?.items ?? []}
+                onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
+              />
 
               {/* VernonCorp value of the day — quiet reminder of why we're here. */}
               <div className="mt-3 flex items-center justify-center gap-1.5 text-center">

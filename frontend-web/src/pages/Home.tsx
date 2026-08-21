@@ -9,6 +9,7 @@ import {
 import { valueOfDay } from '@/lib/values'
 import { verseTheme, verseCardStyle } from '@/lib/verseTheme'
 import { ValuesWelcome } from '@web/components/ValuesWelcome'
+import { PriorityRail } from '@/components/PriorityRail'
 import CheerPop from '@/components/CheerPop'
 import {
   useBoot, useDashboard, useWallet, useGamification, useMyAttendance,
@@ -531,6 +532,12 @@ export default function Home() {
     <Page className="space-y-6">
       <CheerPop />
       <ValuesWelcome />
+      {/* Today's priority slots — same rail as /m, above the bento grid. */}
+      <PriorityRail
+        slots={d.priority?.slots ?? 0}
+        items={d.priority?.items ?? []}
+        onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
+      />
       {/* First row — 4 columns: Hello + Ayat · Meetings · This week · Queues */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-stretch">
         {/* 1 · Hello + Ayat */}
