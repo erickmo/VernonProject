@@ -53,6 +53,7 @@ import type {
   ActivityItem,
   ReactionKey,
   TeamWallResponse,
+  TeamPriorityCoverage,
   EventFormPayload,
   Booking,
   MeetingRoom,
@@ -78,6 +79,8 @@ export const keys = {
   dailyTargets: (from: string, to: string) => ['daily-targets', from, to] as const,
   priorityOccupancy: (users: string[], date: string) =>
     ['priority-occupancy', date, [...users].sort().join(',')] as const,
+  teamPriorityCoverage: (project: string, weekStart: string) =>
+    ['team-priority-coverage', project, weekStart] as const,
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
   projectGantt: (n: string) => ['project-gantt', n] as const,
@@ -223,6 +226,15 @@ export const usePriorityOccupancy = (users: string[], date: string, enabled: boo
     queryKey: keys.priorityOccupancy(users, date),
     queryFn: () => mobileApi.priorityOccupancy(users, date),
     enabled: enabled && users.length > 0 && !!date,
+  })
+
+// A project's whole team, one week's priority-slot fill status per person per day —
+// powers the Plan screen's "Tim" mode. Disabled until a project is actually selected.
+export const useTeamPriorityCoverage = (project: string, weekStart: string) =>
+  useQuery({
+    queryKey: keys.teamPriorityCoverage(project, weekStart),
+    queryFn: () => mobileApi.teamPriorityCoverage(project, weekStart),
+    enabled: !!project && !!weekStart,
   })
 
 export const useProjects = () =>

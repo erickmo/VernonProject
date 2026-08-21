@@ -148,6 +148,11 @@ export const mobileApi = {
       M + 'get_priority_occupancy',
       { users: JSON.stringify(users), date },
     ),
+  teamPriorityCoverage: (project: string, weekStart: string) =>
+    api.get<import('./types').TeamPriorityCoverage>(
+      M + 'get_team_priority_coverage',
+      { project, week_start: weekStart },
+    ),
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),

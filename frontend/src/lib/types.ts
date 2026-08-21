@@ -289,6 +289,23 @@ export interface Dashboard {
   priority: { slots: number; items: ProjectItem[] }
 }
 
+export interface TeamPriorityCoverageDay {
+  date: string
+  used: number
+  slots: number
+  contributed: boolean
+}
+
+export interface TeamPriorityCoverageMember {
+  user: string
+  full_name: string
+  days: TeamPriorityCoverageDay[]
+}
+
+export interface TeamPriorityCoverage {
+  members: TeamPriorityCoverageMember[]
+}
+
 export interface ProjectCard {
   name: string
   project_name: string
