@@ -561,7 +561,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out,
+			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
@@ -802,6 +802,10 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"estimated": row["estimated"] or 0,
 		"ongoing": bool(row.get("ongoing")),
 		"is_recurring": bool(row.get("is_recurring")),
+		"is_priority": bool(row.get("is_priority")),
+		# Same set as can_create (SM / owner / leader / project admin) — who may spend
+		# one of the assignee's daily priority slots.
+		"can_prioritize": can_create,
 		"assigned_to": row["assigned_to"],
 		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
 		"assigned_to_image": assignee.get("user_image"),
@@ -1868,6 +1872,7 @@ def update_todo(
 	blocking=None,
 	mentor=None,
 	is_waiting=None,
+	is_priority=None,
 	waiting_reason=None,
 	recurring_interval=None,
 	recurring_weekdays=None,
@@ -1933,6 +1938,13 @@ def update_todo(
 			if not (is_sm or user in (project.project_owner, project.project_leader)):
 				return {"status": "error", "message": "Only the project leader or owner can set the mentor."}
 			row.mentor = mentor or None
+		# Priority slots are a leadership tool: the assignee receives them, they don't
+		# grant themselves one (and one costs them points if missed). Same gate the
+		# `estimated` field uses, plus project admins. The controller owns the caps.
+		if is_priority is not None:
+			if not (is_sm or user in (project.project_owner, project.project_leader) or user in get_project_admins(project)):
+				return {"status": "error", "message": "Only the project leader or owner can set a priority slot."}
+			row.is_priority = 1 if str(is_priority) in ("1", "true", "True") else 0
 		if group is not None and group:
 			row.group = group
 		# `level_id` is the stable reference (truth); the controller's
