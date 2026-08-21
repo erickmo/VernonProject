@@ -2,7 +2,8 @@
 
 import frappe
 import unittest
-from frappe.utils import add_days, nowdate
+from frappe.utils import add_days, getdate, nowdate
+from datetime import timedelta
 
 
 def _set(**kw):
@@ -265,3 +266,61 @@ class TestPriorityOccupancy(_PriorityFixture):
 			as_user="prio_assignee@example.com",
 		)
 		self.assertEqual(out["prio_assignee@example.com"]["items"], [])
+
+
+class TestTeamPriorityCoverage(_PriorityFixture):
+	def _coverage(self, project, week_start, as_user="Administrator"):
+		from vernon_project.api.mobile import get_team_priority_coverage
+		frappe.set_user(as_user)
+		try:
+			return get_team_priority_coverage(project, week_start)
+		finally:
+			frappe.set_user("Administrator")
+
+	def _week_start_for_day(self):
+		# Monday on/before self.day, so self.day's priority always lands inside the window.
+		d = getdate(self.day)
+		return str(d - timedelta(days=d.weekday()))
+
+	def test_non_sm_leader_can_view_their_own_project(self):
+		self._todo(0)  # priority todo for prio_assignee in Prio Project 1, on self.day
+		p1, _g1 = self.projects[0]
+		out = self._coverage(p1.name, self._week_start_for_day(), as_user="prio_leader@example.com")
+		member = next(m for m in out["members"] if m["user"] == "prio_assignee@example.com")
+		day = next(d for d in member["days"] if d["date"] == self.day)
+		self.assertEqual(day["used"], 1)
+		self.assertEqual(day["slots"], 3)
+		self.assertTrue(day["contributed"])
+
+	def test_unrelated_user_cannot_view_project_coverage(self):
+		p1, _g1 = self.projects[0]
+		with self.assertRaises(frappe.PermissionError):
+			self._coverage(p1.name, self._week_start_for_day(), as_user="prio_assignee@example.com")
+
+	def test_contributed_is_false_when_slot_filled_by_a_different_project(self):
+		# prio_assignee is on BOTH projects' teams. Flag their priority via Project 2 (owned/led
+		# by Administrator) — Project 1's leader should see `used=1` (true site-wide count) but
+		# `contributed=False` (Project 1 itself claimed nothing that day).
+		self._todo(1)  # detail_idx=1 -> Prio Project 2
+		p1, _g1 = self.projects[0]
+		out = self._coverage(p1.name, self._week_start_for_day(), as_user="prio_leader@example.com")
+		member = next(m for m in out["members"] if m["user"] == "prio_assignee@example.com")
+		day = next(d for d in member["days"] if d["date"] == self.day)
+		self.assertEqual(day["used"], 1)
+		self.assertFalse(day["contributed"])
+
+	def test_feature_off_returns_zero_days(self):
+		_set(daily_priority_slots=0)
+		p1, _g1 = self.projects[0]
+		out = self._coverage(p1.name, self._week_start_for_day(), as_user="prio_leader@example.com")
+		member = next(m for m in out["members"] if m["user"] == "prio_assignee@example.com")
+		self.assertTrue(all(d["used"] == 0 and d["slots"] == 0 for d in member["days"]))
+
+	def test_week_has_seven_days_in_order(self):
+		p1, _g1 = self.projects[0]
+		ws = self._week_start_for_day()
+		out = self._coverage(p1.name, ws, as_user="prio_leader@example.com")
+		member = out["members"][0]
+		self.assertEqual(len(member["days"]), 7)
+		expected = [str(add_days(ws, i)) for i in range(7)]
+		self.assertEqual([d["date"] for d in member["days"]], expected)

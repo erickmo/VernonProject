@@ -1222,6 +1222,92 @@ def get_priority_occupancy(users, date):
 
 
 @frappe.whitelist()
+def get_team_priority_coverage(project, week_start):
+	"""One project's whole team, one week, priority-slot fill status per person per day.
+
+	Permission: caller must be System Manager, or that project's owner/leader, or a
+	Project Admin User on it — same gate `update_todo`'s `is_priority` param already uses.
+
+	For every Project Team member, for every day Mon-Sun starting at `week_start`, returns
+	{used, slots, contributed}: `used`/`slots` are that person's TRUE site-wide priority
+	occupancy that day (any project, anywhere — the same global count the controller's cap
+	enforces, never scoped down to just this project's visibility), and `contributed` is
+	whether one of that day's priority rows for that person belongs to THIS project. One
+	query for the whole team, whole week — not one call per user per day.
+	"""
+	requester = frappe.session.user
+	if not frappe.db.exists("Project", project):
+		frappe.throw("Project not found.")
+	proj = frappe.db.get_value("Project", project, ["project_owner", "project_leader"], as_dict=True)
+	is_sm = "System Manager" in frappe.get_roles(requester)
+	if not (
+		is_sm
+		or requester in (proj.project_owner, proj.project_leader)
+		or requester in get_project_admins(project)
+	):
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	members = sorted(set(frappe.get_all(
+		"Project Team", filters={"parent": project}, pluck="user", limit_page_length=0
+	)))
+	week_start_date = getdate(week_start)
+	week_dates = [add_days(week_start_date, i) for i in range(7)]
+	week_end_date = week_dates[-1]
+
+	slots = cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots"))
+	name_map = _user_name_map(set(members))
+	empty_days = [{"date": str(d), "used": 0, "slots": 0, "contributed": False} for d in week_dates]
+
+	if not members:
+		return {"members": []}
+	if not slots:
+		return {"members": [
+			{"user": u, "full_name": name_map.get(u, {}).get("full_name") or u, "days": list(empty_days)}
+			for u in members
+		]}
+
+	rows = frappe.db.sql(
+		"""
+		SELECT t.assigned_to, t.deadline, pd.project
+		FROM `tabProject Todo` t
+		JOIN `tabProject Detail` pd ON t.project_detail = pd.name
+		WHERE t.is_priority = 1
+			AND t.assigned_to IN %(members)s
+			AND t.deadline BETWEEN %(start)s AND %(end)s
+			AND t.status != %(cancelled)s
+		""",
+		{
+			"members": tuple(members),
+			"start": week_start_date,
+			"end": week_end_date,
+			"cancelled": STATUS_CANCELLED,
+		},
+		as_dict=True,
+	)
+
+	out_members = []
+	for u in members:
+		days = []
+		for d in week_dates:
+			# getdate()-wrap both sides — frappe.db.sql doesn't guarantee r.deadline comes back
+			# as a clean date object across drivers, matching the safety get_priority_occupancy
+			# already applies to the same comparison.
+			day_rows = [r for r in rows if r.assigned_to == u and getdate(r.deadline) == d]
+			days.append({
+				"date": str(d),
+				"used": len(day_rows),
+				"slots": slots,
+				"contributed": any(r.project == project for r in day_rows),
+			})
+		out_members.append({
+			"user": u,
+			"full_name": name_map.get(u, {}).get("full_name") or u,
+			"days": days,
+		})
+	return {"members": out_members}
+
+
+@frappe.whitelist()
 def get_calendar():
 	"""All visible todos, shaped, for the Calendar view.
 
