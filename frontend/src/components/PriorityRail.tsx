@@ -24,10 +24,12 @@ export function PriorityRail({
   slots,
   items,
   onOpen,
+  label = 'Prioritas Hari Ini',
 }: {
   slots: number
   items: ProjectItem[]
   onOpen: (name: string) => void
+  label?: string
 }) {
   if (!slots) return null
   const filled = items.slice(0, slots)
@@ -35,10 +37,10 @@ export function PriorityRail({
   const doneCount = filled.filter((t) => FINISHED.has(t.status_key)).length
 
   return (
-    <section className="mt-4" aria-label="Prioritas hari ini">
+    <section className="mt-4" aria-label={label}>
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
         <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-slate-400">
-          <Zap className="h-3.5 w-3.5 text-amber-500" fill="currentColor" /> Prioritas Hari Ini
+          <Zap className="h-3.5 w-3.5 text-amber-500" fill="currentColor" /> {label}
         </h2>
         <span className="text-xs font-semibold text-stone-400 dark:text-slate-500">
           {doneCount}/{slots} selesai

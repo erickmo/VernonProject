@@ -228,6 +228,35 @@ class TestPriorityOccupancy(_PriorityFixture):
 			frappe.set_user("Administrator")
 		self.assertEqual(out, {"prio_assignee@example.com": {"slots": 0, "items": []}})
 
+	def test_unrelated_project_priority_not_leaked_to_other_leader(self):
+		# Strengthens the two negative tests above: those target prio_outsider while they
+		# have ZERO priority items, so `out == {}` only proves the KEY gets dropped — not
+		# that a real, data-bearing user's priority todo never leaks to an unauthorized
+		# requester. (prio_assignee won't do for this: the fixture puts them on BOTH
+		# projects' teams, so prio_leader is legitimately allowed to see them regardless
+		# of which project holds the todo — that's Finding 2's fix working as intended,
+		# not a leak.) Give prio_outsider — who has no team/todo tie to Prio Project 1 —
+		# a genuine priority todo in Prio Project 2 (owned/led by Administrator, NOT
+		# prio_leader's project) and confirm prio_leader still gets {} back.
+		if not frappe.db.exists("User", "prio_outsider@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "prio_outsider@example.com",
+				"first_name": "Outsider", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		# A todo's assignee must be a Project Team member of that todo's project — add
+		# prio_outsider to Prio Project 2's team only (never Project 1's), so they stay
+		# unreachable from prio_leader while still a legitimate assignee here.
+		p2, _g2 = self.projects[1]
+		p2.append("team_members", {"user": "prio_outsider@example.com"})
+		p2.save(ignore_permissions=True)
+		frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.details[1].name,
+			"to_do": "Prio Todo", "assigned_to": "prio_outsider@example.com",
+			"start_date": self.day, "deadline": self.day, "estimated": 30,
+			"status": "⚪️ Planned", "is_priority": 1,
+			"group": self.group_name, "level_id": self.level_id,
+		}).insert(ignore_permissions=True)
+		out = self._occ(["prio_outsider@example.com"], self.day, as_user="prio_leader@example.com")
+		self.assertEqual(out, {})
+
 	def test_wrong_date_returns_empty_items(self):
 		self._todo(0)
 		out = self._occ(

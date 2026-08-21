@@ -43,8 +43,7 @@ export function PlanLegend() {
 
 // Site-wide slot occupancy for one assignee on one date — "2/3" — sourced from
 // get_priority_occupancy, not a locally-visible count, so it never undercounts a slot
-// claimed by a project this view can't see. `used` excludes the row being toggled from
-// its own count when the caller passes one (see PlanDeadlineDay).
+// claimed by a project this view can't see.
 export function PriorityBadge({ used, slots }: { used: number; slots: number }) {
   if (!slots) return null
   const full = used >= slots

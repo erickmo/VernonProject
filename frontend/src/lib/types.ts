@@ -23,6 +23,7 @@ export interface Boot {
     force_superpower?: 0 | 1
     has_superpower?: 0 | 1
     online_window_minutes?: number
+    daily_priority_slots?: number
     prank_enabled?: 0 | 1
     prank_interval_minutes?: number
     prank_start_hour?: number

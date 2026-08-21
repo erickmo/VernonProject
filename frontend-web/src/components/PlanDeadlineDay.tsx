@@ -6,7 +6,7 @@ import { DatePicker } from '@web/components/DatePicker'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { AssigneeTag, PriorityBadge } from '@/components/PlanMeta'
-import { useMoveTodoDeadline, usePriorityOccupancy, useSetTodoPriority } from '@/hooks/useData'
+import { useBoot, useMoveTodoDeadline, usePriorityOccupancy, useSetTodoPriority } from '@/hooks/useData'
 import { deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { addDaysISO, formatDate, formatEstimate, todayISO } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
@@ -35,6 +35,7 @@ export function PlanDeadlineDay({
 }) {
   const today = todayISO()
   const navigate = useNavigate()
+  const { data: boot } = useBoot()
   const move = useMoveTodoDeadline()
   const [movingIds, setMovingIds] = useState<Set<string>>(() => new Set())
   const setDeadline = (todo: ProjectItem, date: string | null) => {
@@ -165,7 +166,7 @@ export function PlanDeadlineDay({
                     )}
                   </div>
                 </button>
-                {t.can_prioritize && (
+                {t.can_prioritize && (boot?.settings?.daily_priority_slots ?? 0) > 0 && (
                   <button
                     onClick={() => onTogglePriority(t)}
                     disabled={setPriority.isPending}

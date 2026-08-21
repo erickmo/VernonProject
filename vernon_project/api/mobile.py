@@ -1175,28 +1175,48 @@ def get_priority_occupancy(users, date):
 	if not allowed_users:
 		return {}
 
-	# One shared fetch over the requester's visible projects — a project this requester leads/
-	# owns/admins/is-a-team-member-of is exactly what _allowed() above already required for any
-	# non-self target, so their priority todos are guaranteed to be in this set.
-	projects = _visible_projects()
-	rows = [
-		r for r in _fetch_todos(projects)
-		if r.get("is_priority") and r.get("assigned_to") in allowed_users
-	]
+	# Scoped directly by assigned_to/deadline (not the requester's visible-project set) —
+	# _allowed() above only requires ONE shared led project, not all of them, so a target
+	# user's priority todos can sit in projects the requester can't see. A targeted query
+	# here is also the fix for the old scan-every-visible-project performance cost.
+	rows = frappe.db.sql(
+		"""
+		SELECT
+			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
+			t.estimated, t.assigned_to,
+			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
+			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
+			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
+			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
+			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
+			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
+			p.project_name, p.project_owner, p.project_leader, p.auto_approve AS project_auto_approve,
+			p.brand
+		FROM `tabProject Todo` t
+		JOIN `tabProject Detail` pd ON t.project_detail = pd.name
+		JOIN `tabProject` p ON pd.project = p.name
+		WHERE t.is_priority = 1
+			AND t.assigned_to IN %(users)s
+			AND t.deadline = %(date)s
+			AND t.status != %(cancelled)s
+		""",
+		{"users": tuple(allowed_users), "date": target_date, "cancelled": STATUS_CANCELLED},
+		as_dict=True,
+	)
 	name_map = _user_name_map(set(allowed_users))
 	alloc_map = _allocations_map([r["name"] for r in rows])
 	admins_map = _admins_by_project(rows)
 
 	out = {}
 	for u in allowed_users:
-		u_rows = [
-			r for r in rows
-			if r["assigned_to"] == u and r.get("deadline") and getdate(r["deadline"]) == target_date
-		]
+		u_rows = [r for r in rows if r["assigned_to"] == u]
 		shaped = [
 			_shape_todo(r, requester, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
 			for r in u_rows
 		]
+		# Unfinished first, same as get_dashboard's priority rail — keeps the rail's
+		# relative order stable whether the day is "Today" or any other date.
+		shaped.sort(key=lambda t: (t["status_key"] == "completed", t["name"]))
 		out[u] = {"slots": slots, "items": shaped}
 	return out
 

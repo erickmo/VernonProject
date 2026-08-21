@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { CalendarDays } from 'lucide-react'
 import { PriorityRail } from '@/components/PriorityRail'
 import { usePriorityOccupancy, useBoot } from '@/hooks/useData'
-import { addDaysISO, todayISO } from '@/lib/format'
+import { addDaysISO, formatDate, todayISO } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
 
 /**
@@ -33,8 +33,13 @@ export function PriorityRailPanel({
 
   if (!todaySlots) return null
 
-  const slots = isToday ? todaySlots : (me && occ.data?.[me]?.slots) || 0
+  const slots = isToday ? todaySlots : (occ.data?.[me ?? '']?.slots ?? todaySlots)
   const items = isToday ? todayItems : (me && occ.data?.[me]?.items) || []
+  const label = isToday
+    ? 'Prioritas Hari Ini'
+    : selected === tomorrow
+      ? 'Prioritas Besok'
+      : `Prioritas ${formatDate(selected)}`
 
   const chip = (label: string, iso: string) => (
     <button
@@ -64,7 +69,7 @@ export function PriorityRailPanel({
           )}
         >
           <CalendarDays className="h-3.5 w-3.5" />
-          <span>Pilih</span>
+          <span>Pick</span>
           <input
             type="date"
             value={selected}
@@ -74,7 +79,7 @@ export function PriorityRailPanel({
           />
         </label>
       </div>
-      <PriorityRail slots={slots} items={items} onOpen={onOpen} />
+      <PriorityRail slots={slots} items={items} onOpen={onOpen} label={label} />
     </div>
   )
 }
