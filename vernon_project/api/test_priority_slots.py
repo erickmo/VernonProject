@@ -150,25 +150,7 @@ class TestMissedPriorityCharge(_PriorityFixture):
 		self._todo(0, day=str(add_days(nowdate(), -1)))
 		self.assertEqual(self._charge(), 0)
 
-	@unittest.expectedFailure
 	def test_uncompleting_a_todo_does_not_refund_the_penalty(self):
-		"""Documents a live bug in already-merged code (not this test file).
-
-		charge_missed_priorities() inserts the penalty row without a `role`, meaning
-		to stay off _upsert_ledger_row's (todo, role) dedupe key per that function's
-		own comment ("role is left blank on purpose"). But Point Ledger.role is a
-		Select with no explicit default, and Frappe defaults an omitted Select field
-		to its first option ("Assignee") on insert rather than leaving it blank — so
-		the penalty row's role ends up "Assignee" anyway. The moment the todo is
-		later completed, sync_point_ledger's _upsert_ledger_row("Assignee", ...)
-		finds that same row via (todo, role="Assignee") and overwrites it in place,
-		flipping source from "Priority" to "Todo" — which then defeats
-		_remove_ledger's `source != "Priority"` guard, so un-completing erases the
-		penalty entirely. Fix (out of scope here): exclude source="Priority" from
-		_upsert_ledger_row's dedupe probe, e.g.
-		frappe.db.exists("Point Ledger", {"todo": self.name, "role": role,
-			"source": ["!=", "Priority"]}).
-		"""
 		t = self._todo(0, day=str(add_days(nowdate(), -1)))
 		self.assertEqual(self._charge(), 1)
 		t.reload()

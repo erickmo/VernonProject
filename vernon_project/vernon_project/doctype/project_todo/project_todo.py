@@ -392,7 +392,7 @@ class ProjectTodo(Document):
 		if not user:
 			return
 		existing = frappe.db.exists(
-			"Point Ledger", {"todo": self.name, "role": role}
+			"Point Ledger", {"todo": self.name, "role": role, "source": ["!=", "Priority"]}
 		)
 		values = {
 			"user": user,
