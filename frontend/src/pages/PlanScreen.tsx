@@ -5,6 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { PlanRow } from '@/components/PlanRow'
 import { PlanProjectBoard } from '@/components/PlanProjectBoard'
 import { PlanDeadlineDay } from '@/components/PlanDeadlineDay'
+import { TeamPriorityCoverage } from '@/components/TeamPriorityCoverage'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
 import { useCalendar, useDailyTargets } from '@/hooks/useData'
@@ -32,7 +33,7 @@ export function weekStartISO(iso: string): string {
 export default function PlanScreen() {
   const today = todayISO()
   const [scope, setScope] = useState<'work' | 'project'>('work')
-  const [mode, setMode] = useState<'date' | 'project' | 'peta'>('project')
+  const [mode, setMode] = useState<'date' | 'project' | 'peta' | 'team'>('project')
   const [petaDetail, setPetaDetail] = useState('')
   const [selected, setSelected] = useState(today)
   const { data, isLoading } = useCalendar()
@@ -149,6 +150,7 @@ export default function PlanScreen() {
                 { value: 'date', label: 'By date' },
                 { value: 'project', label: 'By project' },
                 { value: 'peta', label: 'Peta' },
+                ...(scope === 'project' ? [{ value: 'team' as const, label: 'Tim' }] : []),
               ]}
             />
           </div>
@@ -172,6 +174,18 @@ export default function PlanScreen() {
             // By project: my-work moves the day-plan; my-project moves the deadline.
             <div className="mt-5">
               <PlanProjectBoard candidates={scoped} mode={scope === 'project' ? 'deadline' : 'alloc'} />
+            </div>
+          ) : mode === 'team' && scope === 'project' ? (
+            // Team: leader/owner checks the whole team's week at a glance, jumps to any gap.
+            <div className="mt-5">
+              <TeamPriorityCoverage
+                candidates={scoped}
+                onOpenDate={(date) => {
+                  setScope('project')
+                  setMode('date')
+                  setSelected(date)
+                }}
+              />
             </div>
           ) : scope === 'project' ? (
             // My project / by date: the leader/owner sets what's due on this day.

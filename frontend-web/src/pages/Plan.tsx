@@ -8,6 +8,7 @@ import { BlueprintView } from '@web/components/BlueprintView'
 import { PlanRow } from '@/components/PlanRow'
 import { PlanProjectBoard } from '@web/components/PlanProjectBoard'
 import { PlanDeadlineDay } from '@web/components/PlanDeadlineDay'
+import { TeamPriorityCoverage } from '@/components/TeamPriorityCoverage'
 import { EmptyState, Spinner } from '@/components/ui'
 import { usePlanDate } from '@/hooks/usePlanDay'
 import { useCalendar, useDailyTargets } from '@/hooks/useData'
@@ -40,7 +41,7 @@ function relLabel(iso: string): string {
 // targets. Web sibling of the mobile PlanScreen; shares usePlanDate + PlanRow.
 export default function Plan() {
   const [scope, setScope] = useState<'work' | 'project'>('work')
-  const [mode, setMode] = useState<'date' | 'project' | 'peta'>('project')
+  const [mode, setMode] = useState<'date' | 'project' | 'peta' | 'team'>('project')
   const [petaDetail, setPetaDetail] = useState('')
   const [selected, setSelected] = useState(todayISO())
   const today = todayISO()
@@ -150,6 +151,7 @@ export default function Plan() {
               ['date', 'By date'],
               ['project', 'By project'],
               ['peta', 'Peta'],
+              ...(scope === 'project' ? ([['team', 'Tim']] as const) : ([] as const)),
             ] as const
           ).map(([m, label]) => (
             <button
@@ -188,6 +190,16 @@ export default function Plan() {
       ) : mode === 'project' ? (
         // By project: my-work moves the day-plan; my-project moves the deadline.
         <PlanProjectBoard candidates={scoped} mode={scope === 'project' ? 'deadline' : 'alloc'} />
+      ) : mode === 'team' && scope === 'project' ? (
+        // Team: leader/owner checks the whole team's week at a glance, jumps to any gap.
+        <TeamPriorityCoverage
+          candidates={scoped}
+          onOpenDate={(date) => {
+            setScope('project')
+            setMode('date')
+            setSelected(date)
+          }}
+        />
       ) : scope === 'project' ? (
         // My project / by date: the leader/owner sets what's due on this day.
         <PlanDeadlineDay candidates={scoped} selected={selected} onSelect={setSelected} />
