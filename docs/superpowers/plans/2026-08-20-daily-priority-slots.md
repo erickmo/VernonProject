@@ -1246,6 +1246,26 @@ git commit -m "test(priority): slot caps, cancellation, and the nightly charge"
 
 ---
 
+### Fix task (inserted after Task 9, before Task 10): Point Ledger role-collision bug
+
+**Not part of the original plan.** Task 9's tests surfaced a real, independently-reproduced bug
+in already-merged Task 4/2 code: `Point Ledger.role` is a Select field with no explicit
+`default`, and Frappe defaults an *omitted* Select to its first listed option (`"Assignee"`) on
+insert, not to blank. `charge_missed_priorities()` (Task 4) inserts its penalty row without a
+`role`, believing this kept it off `_upsert_ledger_row`'s `(todo, role)` dedupe key — in reality
+the row's role becomes `"Assignee"` anyway, so the very first time the assignee completes that
+todo, `sync_point_ledger()`'s Assignee-award upsert finds and silently overwrites the penalty row
+in place (flipping `source` from `"Priority"` to `"Todo"`), which then defeats `_remove_ledger`'s
+`source != "Priority"` guard on any later un-complete. Fixed with a one-line change to
+`_upsert_ledger_row`'s existence probe (`vernon_project/vernon_project/doctype/project_todo/project_todo.py:403`):
+excludes `source="Priority"` from the dedupe filter outright, verified as a true no-op for both
+existing call sites (Assignee/Leader default to `source="Todo"`, Mentor uses `"Mentoring"`; no
+call site anywhere writes `source="Priority"` through this method — only `charge_missed_priorities`
+does, via a direct insert). Landed before Task 10 so the live `priority_miss_penalty` value never
+ships against the broken dedupe.
+
+---
+
 ### Task 10: Ship — build, docs, live settings, What's New
 
 **Files:**
