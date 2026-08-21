@@ -143,6 +143,11 @@ export const mobileApi = {
   dashboard: () => api.get(M + 'get_dashboard'),
   dailyVerse: () => api.get<import('./types').DailyVerse>('vernon_project.api.verse.get_daily_verse'),
   calendar: () => api.get(M + 'get_calendar'),
+  priorityOccupancy: (users: string[], date: string) =>
+    api.get<Record<string, { slots: number; items: import('./types').ProjectItem[] }>>(
+      M + 'get_priority_occupancy',
+      { users: JSON.stringify(users), date },
+    ),
   projects: () => api.get(M + 'get_projects'),
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),

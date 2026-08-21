@@ -76,6 +76,8 @@ export const keys = {
   dashboard: ['dashboard'] as const,
   calendar: ['calendar'] as const,
   dailyTargets: (from: string, to: string) => ['daily-targets', from, to] as const,
+  priorityOccupancy: (users: string[], date: string) =>
+    ['priority-occupancy', date, [...users].sort().join(',')] as const,
   projects: ['projects'] as const,
   project: (n: string) => ['project', n] as const,
   projectGantt: (n: string) => ['project-gantt', n] as const,
@@ -210,6 +212,17 @@ export const useDailyTargets = (from: string, to: string) =>
     queryKey: keys.dailyTargets(from, to),
     queryFn: () => mobileApi.getDailyTargets(from, to),
     enabled: !!from && !!to,
+  })
+
+// Priority-slot occupancy for one or more users on one date — powers the homepage rail's
+// day filter (self) and the Plan screen's leader occupancy badge (a teammate). `enabled`
+// lets callers skip the request entirely for the common case (today's data is already
+// loaded elsewhere).
+export const usePriorityOccupancy = (users: string[], date: string, enabled: boolean) =>
+  useQuery({
+    queryKey: keys.priorityOccupancy(users, date),
+    queryFn: () => mobileApi.priorityOccupancy(users, date),
+    enabled: enabled && users.length > 0 && !!date,
   })
 
 export const useProjects = () =>
@@ -728,6 +741,28 @@ export function useMoveTodoDeadline() {
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projectItem(vars.todo.name) })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
+// Toggle is_priority on an arbitrary todo. Unlike useUpdateTodo (bound to one todo id at hook
+// call time), this takes the todo name as a mutation variable — needed because
+// PlanDeadlineDay renders a LIST of todos and can't call a hook once per row.
+export function useSetTodoPriority() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: async ({ todoName, isPriority }: { todoName: string; isPriority: boolean }) => {
+      const res = await mobileApi.updateTodo(todoName, { is_priority: isPriority ? 1 : 0 })
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onError: (e) => toast('error', (e as Error).message || 'Could not update priority'),
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoName) })
+      qc.invalidateQueries({ queryKey: ['priority-occupancy'] })
     },
   })
 }
