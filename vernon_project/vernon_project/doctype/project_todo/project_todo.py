@@ -623,6 +623,12 @@ class ProjectTodo(Document):
 		# progressed (Done/Checked) or earned points (Completed).
 		if self.status not in ("⚪️ Planned", "🚫 Cancelled"):
 			frappe.throw("Cannot delete Project Todo unless its status is 'Scheduled' or 'Cancelled'.")
+		# A priority-miss penalty is a record of a day that was already missed — deleting
+		# the todo must not delete that history. Release the dangling link so the todo
+		# itself can be removed; the row's `note` already names the todo by title.
+		frappe.db.set_value(
+			"Point Ledger", {"todo": self.name, "source": "Priority"}, "todo", None
+		)
 		# Drop mirror references from the other side so no dangling links remain.
 		for r in self.blocking:
 			self._remove_block_link(r.todo, "blocked_by")

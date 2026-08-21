@@ -1094,7 +1094,7 @@ const [followOpen, setFollowOpen] = useState(false)
       {editBtn}
       <TopMenu
         items={[
-          ...(data.can_prioritize && data.status_key !== 'cancelled'
+          ...(data.can_prioritize && data.status_key !== 'cancelled' && (boot?.settings?.daily_priority_slots ?? 0) > 0
             ? [
                 {
                   label: data.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas',

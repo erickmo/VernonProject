@@ -288,7 +288,7 @@ def sweep_stale_plans():
     return count
 
 
-def charge_missed_priorities():
+def charge_missed_priorities(todo_names=None):
     """Cron 00:00: deduct points for priority slots that never reached Done.
 
     A claimed slot must reach 🟠 Done by the end of its deadline day. Each night every
@@ -301,6 +301,11 @@ def charge_missed_priorities():
     the deduction lands on the right day in the wallet log and daily points chart.
 
     Gated off entirely when slots or the penalty are 0.
+
+    todo_names: optional iterable of Project Todo names to restrict processing to — used
+    by tests so a suite run can never charge a real, unrelated todo that happens to be
+    overdue at test time. The real nightly cron always calls this with no argument
+    (site-wide).
     """
     from frappe.utils import add_days, cint, flt, getdate
     from vernon_project.api.mobile import STATUS_PLANNED
@@ -312,9 +317,12 @@ def charge_missed_priorities():
         return 0
 
     missed_on = getdate(add_days(nowdate(), -1))
+    filters = {"is_priority": 1, "deadline": ["<=", missed_on], "status": STATUS_PLANNED}
+    if todo_names:
+        filters["name"] = ["in", list(todo_names)]
     rows = frappe.get_all(
         "Project Todo",
-        filters={"is_priority": 1, "deadline": ["<=", missed_on], "status": STATUS_PLANNED},
+        filters=filters,
         fields=["name", "to_do", "assigned_to", "project", "`group` as todo_group"],
         limit_page_length=0,
     )
@@ -328,15 +336,18 @@ def charge_missed_priorities():
             "credited_on": ["between", [f"{missed_on} 00:00:00", f"{missed_on} 23:59:59"]],
         }):
             continue
-        # role is left blank on purpose: Project Todo._upsert_ledger_row dedupes on
-        # (todo, role), so an "Assignee" penalty row would be overwritten by the
-        # todo's own award row when it eventually completes.
+        # role is an explicit, dedicated value ("Priority Miss") so this penalty row
+        # can never collide with a real award row's role (Assignee/Leader/Mentor).
+        # Project Todo._upsert_ledger_row additionally excludes source="Priority" from
+        # its (todo, role) dedupe as a belt-and-suspenders backstop — both protections
+        # stay in place.
         frappe.get_doc({
             "doctype": "Point Ledger",
             "user": r.assigned_to,
             "todo": r.name,
             "project": r.project,
             "group": r.todo_group,
+            "role": "Priority Miss",
             "source": "Priority",
             "point": -penalty,
             "points_earned": -penalty,

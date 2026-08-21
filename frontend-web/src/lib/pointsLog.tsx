@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Wallet, CheckCircle2, Crown, Sparkles, CalendarCheck, Users, Fingerprint,
   GraduationCap, Award, Sun, Heart, MessageSquare, Gift, ShoppingBag, Shirt, Ticket,
+  AlertTriangle,
 } from 'lucide-react'
 import { todayISO, parseISO, fmtISO } from '@web/lib/dateGrid'
 
@@ -30,6 +31,7 @@ export const CATS: Record<string, { icon: LucideIcon; chip: string }> = {
   marketplace: { icon: ShoppingBag,   chip: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400' },
   avatar:      { icon: Shirt,         chip: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400' },
   event:       { icon: Ticket,        chip: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400' },
+  priority_miss: { icon: AlertTriangle, chip: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400' },
 }
 export const CAT_FALLBACK = { icon: Wallet, chip: 'bg-black/[0.04] text-muted dark:bg-white/[0.06]' }
 

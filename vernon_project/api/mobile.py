@@ -977,6 +977,7 @@ def bootstrap():
 			"force_superpower": int(frappe.db.get_single_value("Vernon Settings", "force_superpower_onboarding") or 0),
 			"has_superpower": 1 if frappe.db.exists("User Superpower", {"user": user}) else 0,
 			"online_window_minutes": int(frappe.db.get_single_value("Vernon Settings", "online_window_minutes") or 15),
+			"daily_priority_slots": int(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots") or 0),
 			# Photo prank: enabled for THIS user only if the master toggle is on AND
 			# they're in the target list. Timing rides along; the frontend ticks it.
 			"prank_enabled": 1 if (
@@ -1005,6 +1006,10 @@ def get_dashboard():
 	"""Everything the Today + Review tabs need, in one round-trip."""
 	user = frappe.session.user
 	projects = _visible_projects()
+	# Read once: gates the completed-priority top-up query below and is echoed
+	# back in the returned "priority" block. When the feature is off, that query
+	# must not run at all, not just have its result discarded.
+	slots = cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots"))
 	# Dashboard only surfaces my Planned queue + the review queue (Done/Checked);
 	# completed_today is counted separately below. Skipping the completed/cancelled
 	# backlog avoids fetching + shaping thousands of finished todos on every load.
@@ -1071,19 +1076,21 @@ def get_dashboard():
 	# Completed priorities dated today, so a finished slot still renders on the rail.
 	# Scoped to this user in SQL — much narrower than widening the dashboard's status
 	# filter, which would pull every finished todo in every visible project.
-	done_rows = [
-		r for r in _fetch_todos(projects, statuses=[STATUS_COMPLETED], assigned_to=user)
-		if r.get("is_priority") and r.get("deadline") and getdate(r["deadline"]) == today
-	]
-	if done_rows:
-		_dn = _user_name_map({r["assigned_to"] for r in done_rows})
-		_da = _allocations_map([r["name"] for r in done_rows])
-		priority += [
-			_shape_todo(r, user, _dn, alloc_map=_da, admins=admins_map.get(r["project"], []))
-			for r in done_rows
+	# Skipped entirely when the feature is off — its result would be discarded anyway.
+	if slots:
+		done_rows = [
+			r for r in _fetch_todos(projects, statuses=[STATUS_COMPLETED], assigned_to=user)
+			if r.get("is_priority") and r.get("deadline") and getdate(r["deadline"]) == today
 		]
-	# Unfinished slots first so the rail leads with what still needs doing.
-	priority.sort(key=lambda t: (t["status_key"] == "completed", t["name"]))
+		if done_rows:
+			_dn = _user_name_map({r["assigned_to"] for r in done_rows})
+			_da = _allocations_map([r["name"] for r in done_rows])
+			priority += [
+				_shape_todo(r, user, _dn, alloc_map=_da, admins=admins_map.get(r["project"], []))
+				for r in done_rows
+			]
+		# Unfinished slots first so the rail leads with what still needs doing.
+		priority.sort(key=lambda t: (t["status_key"] == "completed", t["name"]))
 
 	return {
 		"counts": {
@@ -1099,8 +1106,8 @@ def get_dashboard():
 		"upcoming": upcoming,
 		"review": review,
 		"priority": {
-			"slots": cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots")),
-			"items": priority,
+			"slots": slots,
+			"items": priority if slots else [],
 		},
 	}
 
@@ -3265,6 +3272,7 @@ _SOURCE_WHY = {
 	"Meeting": "Meeting", "Attendance": "Attendance", "Learning": "Course completed",
 	"Achievement": "Achievement", "Daily": "Daily bonus", "Recognition": "Recognition",
 	"Feedback": "Feedback", "Mentoring": "Mentoring", "Reward": "Reward",
+	"Priority": "Priority missed",
 }
 
 
@@ -3292,6 +3300,7 @@ _SOURCE_CAT = {
 	"Meeting": "meeting", "Attendance": "attendance", "Learning": "learning",
 	"Achievement": "achievement", "Daily": "daily", "Recognition": "recognition",
 	"Feedback": "feedback", "Mentoring": "mentoring", "Reward": "reward",
+	"Priority": "priority_miss",
 }
 
 

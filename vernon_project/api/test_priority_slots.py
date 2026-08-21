@@ -123,14 +123,14 @@ class TestSlotCap(_PriorityFixture):
 
 
 class TestMissedPriorityCharge(_PriorityFixture):
-	def _charge(self):
+	def _charge(self, *todo_names):
 		from vernon_project.tasks import charge_missed_priorities
-		return charge_missed_priorities()
+		return charge_missed_priorities(todo_names=todo_names or None)
 
 	def test_charges_once_and_is_idempotent(self):
 		t = self._todo(0, day=str(add_days(nowdate(), -1)))
-		self.assertEqual(self._charge(), 1)
-		self.assertEqual(self._charge(), 0)
+		self.assertEqual(self._charge(t.name), 1)
+		self.assertEqual(self._charge(t.name), 0)
 		rows = frappe.get_all("Point Ledger", filters={"todo": t.name, "source": "Priority"},
 			fields=["points_earned", "user"])
 		self.assertEqual(len(rows), 1)
@@ -138,21 +138,21 @@ class TestMissedPriorityCharge(_PriorityFixture):
 		self.assertEqual(rows[0].user, "prio_assignee@example.com")
 
 	def test_done_priority_not_charged(self):
-		self._todo(0, day=str(add_days(nowdate(), -1)), status="🟠 Done")
-		self.assertEqual(self._charge(), 0)
+		t = self._todo(0, day=str(add_days(nowdate(), -1)), status="🟠 Done")
+		self.assertEqual(self._charge(t.name), 0)
 
 	def test_future_priority_not_charged(self):
-		self._todo(0)  # deadline is 3 days out
-		self.assertEqual(self._charge(), 0)
+		t = self._todo(0)  # deadline is 3 days out
+		self.assertEqual(self._charge(t.name), 0)
 
 	def test_penalty_zero_disables_charging(self):
 		_set(priority_miss_penalty=0)
-		self._todo(0, day=str(add_days(nowdate(), -1)))
-		self.assertEqual(self._charge(), 0)
+		t = self._todo(0, day=str(add_days(nowdate(), -1)))
+		self.assertEqual(self._charge(t.name), 0)
 
 	def test_uncompleting_a_todo_does_not_refund_the_penalty(self):
 		t = self._todo(0, day=str(add_days(nowdate(), -1)))
-		self.assertEqual(self._charge(), 1)
+		self.assertEqual(self._charge(t.name), 1)
 		t.reload()
 		t.status = "✅ Completed"
 		t.save(ignore_permissions=True)

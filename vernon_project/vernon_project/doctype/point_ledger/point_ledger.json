@@ -13,7 +13,7 @@
  ],
  "fields": [
   {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1},
-  {"fieldname": "role", "fieldtype": "Select", "label": "Role", "options": "Assignee\nLeader\nParticipant\nMentor", "in_list_view": 1},
+  {"fieldname": "role", "fieldtype": "Select", "label": "Role", "options": "Assignee\nLeader\nParticipant\nMentor\nPriority Miss", "in_list_view": 1},
   {"fieldname": "todo", "fieldtype": "Link", "label": "Todo", "options": "Project Todo", "search_index": 1},
   {"fieldname": "column_break_a", "fieldtype": "Column Break"},
   {"fieldname": "group", "fieldtype": "Link", "label": "Group", "options": "Group"},

@@ -1238,7 +1238,7 @@ const [followOpen, setFollowOpen] = useState(false)
               size="sm"
               items={[
                 { label: focus.note ? 'Edit focus note' : 'Add focus note', icon: StickyNote, onClick: () => setShowFocusNote(true) },
-                ...(data.can_prioritize && data.status_key !== 'cancelled'
+                ...(data.can_prioritize && data.status_key !== 'cancelled' && (boot?.settings?.daily_priority_slots ?? 0) > 0
                   ? [
                       {
                         label: data.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas',
