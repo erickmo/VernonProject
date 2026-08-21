@@ -44,7 +44,7 @@ import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/ho
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
-import { PriorityRail } from '@/components/PriorityRail'
+import { PriorityRailPanel } from '@/components/PriorityRailPanel'
 import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead, useRecentlyDone } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
@@ -626,10 +626,11 @@ export default function Today() {
                       <span className="text-[11px] font-semibold">{moveYesterday.saving ? 'Moving…' : 'Carry over'}</span>
                     </button>
                   </div>
-                  {/* Today's priority slots — vibrant, just above the work tabs. */}
-                  <PriorityRail
-                    slots={data.priority?.slots ?? 0}
-                    items={data.priority?.items ?? []}
+                  {/* Today's priority slots — vibrant, just above the work tabs. Day filter
+                      built in (Today/Tomorrow/Pick). */}
+                  <PriorityRailPanel
+                    todaySlots={data.priority?.slots ?? 0}
+                    todayItems={data.priority?.items ?? []}
                     onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
                   />
                   <div id="today-groups" className="mt-5 scroll-mt-4">

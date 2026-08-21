@@ -9,7 +9,7 @@ import {
 import { valueOfDay } from '@/lib/values'
 import { verseTheme, verseCardStyle } from '@/lib/verseTheme'
 import { ValuesWelcome } from '@web/components/ValuesWelcome'
-import { PriorityRail } from '@/components/PriorityRail'
+import { PriorityRailPanel } from '@/components/PriorityRailPanel'
 import CheerPop from '@/components/CheerPop'
 import {
   useBoot, useDashboard, useWallet, useGamification, useMyAttendance,
@@ -692,10 +692,11 @@ export default function Home() {
       <div className={clsx('space-y-6', attToday && 'xl:grid xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start xl:gap-6 xl:space-y-0')}>
         <div className="min-w-0 space-y-6">
           <SectionHead>Your work</SectionHead>
-          {/* Today's priority slots — same rail as /m, just above the work tabs. */}
-          <PriorityRail
-            slots={d.priority?.slots ?? 0}
-            items={d.priority?.items ?? []}
+          {/* Today's priority slots — same rail as /m, just above the work tabs. Day filter
+              built in (Today/Tomorrow/Pick). */}
+          <PriorityRailPanel
+            todaySlots={d.priority?.slots ?? 0}
+            todayItems={d.priority?.items ?? []}
             onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
           />
           <div id="my-work" className="scroll-mt-4 space-y-4">
