@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Plus, X, Zap } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
-import { useMoveTodoDeadline } from '@/hooks/useData'
+import { AssigneeTag, PriorityBadge } from '@/components/PlanMeta'
+import { useMoveTodoDeadline, usePriorityOccupancy, useSetTodoPriority } from '@/hooks/useData'
 import { deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { addDaysISO, formatDate, formatEstimate } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
@@ -54,6 +55,17 @@ export function PlanDeadlineDay({
   const due = useMemo(() => candidates.filter((t) => t.deadline === selected), [candidates, selected])
   // Everything not already due on this date can be pulled onto it (incl. no-deadline).
   const addPool = useMemo(() => candidates.filter((t) => t.deadline !== selected), [candidates, selected])
+
+  const setPriority = useSetTodoPriority()
+  const assignees = useMemo(
+    () => [...new Set(due.map((t) => t.assigned_to).filter(Boolean))],
+    [due],
+  )
+  const occ = usePriorityOccupancy(assignees, selected, assignees.length > 0)
+
+  const onTogglePriority = (todo: ProjectItem) => {
+    setPriority.mutate({ todoName: todo.name, isPriority: !todo.is_priority })
+  }
 
   const chip = (label: string, iso: string) => (
     <button
@@ -153,7 +165,31 @@ export function PlanDeadlineDay({
                     <p className="mt-0.5 truncate text-[11px] font-medium text-stone-400 dark:text-slate-500">
                       {t.project_name} · {t.project_detail_title} · {formatEstimate(t.estimated)}
                     </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <AssigneeTag name={t.assigned_to_name} />
+                      {t.assigned_to && (
+                        <PriorityBadge
+                          used={occ.data?.[t.assigned_to]?.items.length ?? 0}
+                          slots={occ.data?.[t.assigned_to]?.slots ?? 0}
+                        />
+                      )}
+                    </div>
                   </button>
+                  {t.can_prioritize && (
+                    <button
+                      onClick={() => onTogglePriority(t)}
+                      disabled={setPriority.isPending}
+                      aria-label={t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas'}
+                      className={clsx(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition active:scale-90 disabled:opacity-50',
+                        t.is_priority
+                          ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                          : 'bg-paper-line text-stone-500 dark:bg-slate-700 dark:text-slate-400',
+                      )}
+                    >
+                      <Zap className="h-4 w-4" fill={t.is_priority ? 'currentColor' : 'none'} />
+                    </button>
+                  )}
                   <button
                     onClick={() => setDeadline(t, null)}
                     disabled={moving}
