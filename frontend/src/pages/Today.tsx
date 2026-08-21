@@ -491,13 +491,6 @@ export default function Today() {
               {/* Managed promo banners — full-bleed strip, flush to the top. */}
               <BannerCarousel slides={banners ?? []} />
 
-              {/* Today's priority slots — vibrant, above everything else in the feed. */}
-              <PriorityRail
-                slots={data.priority?.slots ?? 0}
-                items={data.priority?.items ?? []}
-                onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
-              />
-
               {/* VernonCorp value of the day — quiet reminder of why we're here. */}
               <div className="mt-3 flex items-center justify-center gap-1.5 text-center">
                 <Heart className="h-3 w-3 shrink-0 text-brand-400" fill="currentColor" />
@@ -633,6 +626,12 @@ export default function Today() {
                       <span className="text-[11px] font-semibold">{moveYesterday.saving ? 'Moving…' : 'Carry over'}</span>
                     </button>
                   </div>
+                  {/* Today's priority slots — vibrant, just above the work tabs. */}
+                  <PriorityRail
+                    slots={data.priority?.slots ?? 0}
+                    items={data.priority?.items ?? []}
+                    onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
+                  />
                   <div id="today-groups" className="mt-5 scroll-mt-4">
                     {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) · Done (recently finished) */}
                     <PillTabs<Axis>
