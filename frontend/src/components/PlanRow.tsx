@@ -1,5 +1,6 @@
 import { Minus, Plus, Wand2 } from 'lucide-react'
 import { formatEstimate } from '@/lib/format'
+import { AssigneeTag } from '@/components/PlanMeta'
 import type { ProjectItem } from '@/lib/types'
 
 const CHIPS = [15, 30, 60]
@@ -32,6 +33,9 @@ export function PlanRow({
             {todo.project_name}
             {todo.estimated > 0 ? ` · est ${formatEstimate(todo.estimated)}` : ''}
           </p>
+          <div className="mt-1">
+            <AssigneeTag name={todo.assigned_to_name} />
+          </div>
           {floor > 0 && (
             <p className="mt-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400">
               Deadline hari ini — wajib di rencana

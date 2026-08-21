@@ -231,6 +231,13 @@ export default function CheerPop(): JSX.Element | null {
             <h2 className={clsx('mt-3 text-2xl font-extrabold tracking-tight', cfg.headlineColor)}>{cfg.headline}</h2>
             <p className="mt-2 text-base font-semibold text-stone-700 dark:text-slate-200">{sub}</p>
             {detail && <p className="mt-1 text-sm text-stone-500 dark:text-slate-400">{detail}</p>}
+            {cheer.kind === 'thanks' && cheer.todos.length > 0 && (
+              <ul className="mt-2 space-y-0.5 text-sm text-stone-500 dark:text-slate-400">
+                {cheer.todos.map((t, i) => (
+                  <li key={i}>✓ {t}</li>
+                ))}
+              </ul>
+            )}
             <div className="mt-4 flex justify-center gap-1 text-lg" aria-hidden>
               {cfg.emojis.map((e, i) => (
                 <span key={i}>{e}</span>

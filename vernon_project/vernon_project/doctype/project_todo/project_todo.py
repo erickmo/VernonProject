@@ -233,7 +233,12 @@ class ProjectTodo(Document):
 		# If user is a project admin, prevent status update — unless the todo is
 		# assigned to them (they're treated like a normal assignee; the API
 		# update_status ladder still gates which transitions are allowed).
-		if user in get_project_admins(project) and self.assigned_to != user:
+		# Cancel / restore are exempt: cancelling is a reversible clean-up that
+		# mirrors an admin's delete power, and restoring undoes it. The forward
+		# approval ladder (Done/Checked/Completed) stays admin-blocked.
+		is_cancel = self.status == "🚫 Cancelled"
+		is_restore = old_doc.status == "🚫 Cancelled" and self.status == "⚪️ Planned"
+		if user in get_project_admins(project) and self.assigned_to != user and not (is_cancel or is_restore):
 			frappe.throw(
 				"Project Admin tidak memiliki izin untuk mengupdate status todo. "
 				"Silakan hubungi Project Owner atau Project Leader.",
@@ -349,18 +354,22 @@ class ProjectTodo(Document):
 	def _compute_earned(self):
 		"""Return (assignee_earned, leader_earned, mentor_earned, late_days, early_days).
 
-		Lateness clocks at hand-off — when the assignee moved the todo to Done
-		(done_started_at) — NOT at approval (phase_completed_at). A slow leader
-		review must never penalize the assignee or the leader. Fallbacks cover
-		todos that never recorded a Done timestamp. Compared vs deadline.
-		Weights are percentages. No flooring; negatives allowed.
+		Lateness clocks at hand-off — when the assignee moved the todo to Done —
+		NOT at approval (phase_completed_at). A slow leader/owner review must never
+		penalize the assignee or the leader. Anchor priority: done_started_at, then
+		developed_at (the assignee's actual "marked Done" stamp), then the approval
+		stamps as a last resort. developed_at matters because auto-advance (assignee
+		is also the leader) collapses Done→Checked in one save, so the todo never
+		persists in "Done" status and done_started_at is left None — but developed_at
+		is still set by the approve handler. Compared vs deadline. Weights are
+		percentages. No flooring; negatives allowed.
 		"""
 		grp = frappe.get_doc("Group", self.group) if self.group else None
 		point = float(self.point or 0)
 		if not grp:
 			return 0.0, 0.0, 0.0, 0, 0
 
-		completed = self.done_started_at or self.phase_completed_at or self.completed_at or now_datetime()
+		completed = self.done_started_at or self.developed_at or self.phase_completed_at or self.completed_at or now_datetime()
 		completed_date = getdate(completed)
 		deadline = getdate(self.deadline) if self.deadline else completed_date
 		delta = (completed_date - deadline).days

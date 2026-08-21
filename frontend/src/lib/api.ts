@@ -142,7 +142,8 @@ export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),
   dashboard: () => api.get(M + 'get_dashboard'),
   dailyVerse: () => api.get<import('./types').DailyVerse>('vernon_project.api.verse.get_daily_verse'),
-  calendar: () => api.get(M + 'get_calendar'),
+  calendar: (openOnly = false, mine = false) =>
+    api.get(M + 'get_calendar', { ...(openOnly ? { open_only: 1 } : {}), ...(mine ? { mine: 1 } : {}) }),
   priorityOccupancy: (users: string[], date: string) =>
     api.get<Record<string, { slots: number; items: import('./types').ProjectItem[] }>>(
       M + 'get_priority_occupancy',

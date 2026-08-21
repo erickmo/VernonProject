@@ -8,7 +8,7 @@ import { PlanDeadlineDay } from '@/components/PlanDeadlineDay'
 import { TeamPriorityCoverage } from '@/components/TeamPriorityCoverage'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, FullScreenLoader, Segmented, Spinner } from '@/components/ui'
-import { useCalendar, useDailyTargets } from '@/hooks/useData'
+import { usePlanPool, useDailyTargets } from '@/hooks/useData'
 import { BlueprintView } from '@/components/BlueprintView'
 import { projectDetailOptions } from '@/lib/blueprint'
 import { usePlanDate } from '@/hooks/usePlanDay'
@@ -36,7 +36,7 @@ export default function PlanScreen() {
   const [mode, setMode] = useState<'date' | 'project' | 'peta' | 'team'>('project')
   const [petaDetail, setPetaDetail] = useState('')
   const [selected, setSelected] = useState(today)
-  const { data, isLoading } = useCalendar()
+  const { data, isLoading } = usePlanPool()
 
   const candidates = useMemo(
     () => (data?.todos ?? []).filter((t) => todoIsOpen(t) && !t.is_waiting),

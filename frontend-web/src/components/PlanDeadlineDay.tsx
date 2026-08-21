@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, CalendarRange, X, Zap } from 'lucide-react'
 import { DatePicker } from '@web/components/DatePicker'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
-import { AssigneeTag, PriorityBadge } from '@/components/PlanMeta'
+import { AssigneeTag, PlanLegend, PriorityBadge } from '@/components/PlanMeta'
 import { useBoot, useMoveTodoDeadline, usePriorityOccupancy, useSetTodoPriority } from '@/hooks/useData'
 import { deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { addDaysISO, formatDate, formatEstimate, todayISO } from '@/lib/format'
@@ -70,6 +70,7 @@ export function PlanDeadlineDay({
 
   return (
     <div className="space-y-4">
+      <PlanLegend />
       {/* Date controls */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-surface p-3 shadow-card">
         <div className="flex items-center gap-2">

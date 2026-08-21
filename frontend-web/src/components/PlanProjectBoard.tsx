@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, FolderKanban } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
+import { AssigneeTag, PlanLegend } from '@/components/PlanMeta'
 import { useMoveTodoPlan, useMoveTodoDeadline } from '@/hooks/useData'
 import { planColumns, boardDate, deadlineDate, allocMinutes, deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { buildOptions } from '@/lib/filters'
@@ -150,6 +151,11 @@ export function PlanProjectBoard({
             </span>
           )}
         </div>
+        {t.assigned_to_name && (
+          <div className="mt-1">
+            <AssigneeTag name={t.assigned_to_name} />
+          </div>
+        )}
         {moving && (
           <span className="absolute right-1.5 top-1.5">
             <Spinner className="h-3.5 w-3.5 text-brand-500" />
@@ -219,6 +225,7 @@ export function PlanProjectBoard({
         />
       ) : (
         <>
+          <PlanLegend />
           {/* Week nav */}
           <div className="flex items-center justify-between rounded-2xl bg-surface p-3 shadow-card">
             <button

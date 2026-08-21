@@ -122,7 +122,11 @@ export function CreateMeetingDialog({ open, onClose, project }: Props) {
         <GroupLevelPicker value={gl} onChange={setGl} estimated={estimated} />
         <MultiSelectSearch value={participants} onChange={setParticipants} options={options} placeholder="Invite team members…" />
         <textarea className={field} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-        <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
+        <label className="flex items-center gap-2 text-sm font-medium text-muted">
+          <input type="checkbox" checked={recurrence.isRecurring} onChange={(e) => setRecurrence({ ...recurrence, isRecurring: e.target.checked })} />
+          Recurring
+        </label>
+        {recurrence.isRecurring && <RecurrenceEditor value={recurrence} onChange={setRecurrence} />}
         <button onClick={submit} disabled={create.isPending} className="rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white disabled:opacity-40">
           Create
         </button>

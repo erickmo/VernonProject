@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import clsx from 'clsx'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, PresenceAvatar } from '@/components/ui'
 import { UserRoundCheck } from 'lucide-react'
@@ -10,12 +12,34 @@ export default function LastSeenScreen() {
   const { data, isFetching } = useLastSeenReport()
   const { data: boot } = useBoot()
   const win = boot?.settings?.online_window_minutes ?? 15
-  const rows = data?.rows ?? []
+  const [activeOnly, setActiveOnly] = useState(true)
+  const allRows = data?.rows ?? []
+  const rows = activeOnly ? allRows.filter((r) => r.enabled) : allRows
   const active = rows.filter((r) => presenceOf(r.last_active, win).online)
 
   return (
     <DetailScreen title="Last Seen">
       <div className="flex flex-col gap-4">
+        <button
+          onClick={() => setActiveOnly((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-left transition active:scale-[0.99]"
+        >
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Active users only</span>
+          <span
+            className={clsx(
+              'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition',
+              activeOnly ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-600',
+            )}
+          >
+            <span
+              className={clsx(
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow transition',
+                activeOnly ? 'translate-x-5' : 'translate-x-0.5',
+              )}
+            />
+          </span>
+        </button>
+
         {/* Everyone active right now, as avatars. */}
         {data && (
           <div className={`${card} flex flex-col gap-2.5`}>

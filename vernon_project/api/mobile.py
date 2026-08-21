@@ -85,6 +85,24 @@ def _status_key(status):
 	return STATUS_KEY.get(status, "planned")
 
 
+def _today():
+	"""getdate(nowdate()) memoized for the request. nowdate() rebuilds a system-tz
+	datetime (pytz) and getdate() then dateutil-parses the resulting string — ~0.2ms
+	a call. Shaping a big todo list (get_calendar shapes ~6k rows, each hitting this
+	4–5×) turned that into ~4s of pure waste. Today can't change within one request,
+	so cache it on frappe.local (reset per request)."""
+	t = getattr(frappe.local, "_vernon_today", None)
+	if t is None:
+		t = getdate(nowdate())
+		frappe.local._vernon_today = t
+	return t
+
+
+def _today_str():
+	"""ISO 'YYYY-MM-DD' for today (== str(nowdate())), memoized per request (see _today)."""
+	return _today().isoformat()
+
+
 def _pct_minutes(m_done, m_total, c_done, c_total):
 	"""Minutes-based progress %, falling back to todo count when nothing is estimated."""
 	if m_total:
@@ -97,7 +115,7 @@ def _humanize_date(value):
 	used here because it does datetime arithmetic and fails on a plain date."""
 	if not value:
 		return None
-	days = date_diff(getdate(value), getdate(nowdate()))  # value - today
+	days = date_diff(getdate(value), _today())  # value - today
 	if days == 0:
 		return "Today"
 	if days == 1:
@@ -326,6 +344,7 @@ def get_notifications(limit=30, start=0):
 		limit_page_length=limit,
 	)
 	actor_map = _user_name_map({r["actor"] for r in rows})
+	subj_map = _mention_subjects(rows)  # not mention-only despite the name — resolves any Project Todo/Detail/Project ref, e.g. the todo a Kudos cheer landed on
 	items = [
 		{
 			"name": r["name"],
@@ -336,6 +355,7 @@ def get_notifications(limit=30, start=0):
 			"reference_name": r["reference_name"],
 			"actor": r["actor"],
 			"actor_name": (actor_map.get(r["actor"]) or {}).get("full_name") or r["actor"],
+			"subject": subj_map.get((r["reference_doctype"], r["reference_name"])),
 			"is_read": bool(r["is_read"]),
 			"at": str(r["creation"]),
 			"at_human": _humanize_datetime(r["creation"]),
@@ -613,7 +633,7 @@ def get_project_gantt(project):
 			"start": start,
 			"end": end,
 			"statusKey": skey,
-			"overdue": bool(dl and skey != "completed" and not r.get("is_waiting") and getdate(dl) < getdate(nowdate())),
+			"overdue": bool(dl and skey != "completed" and not r.get("is_waiting") and getdate(dl) < _today()),
 			"sub": (name_map.get(r["assigned_to"]) or {}).get("full_name") or r.get("assigned_to"),
 		})
 	out = []
@@ -755,19 +775,19 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		row["deadline"]
 		and skey != "completed"
 		and not row.get("is_waiting")
-		and getdate(row["deadline"]) < getdate(nowdate())
+		and getdate(row["deadline"]) < _today()
 	)
 	# Phase approval deadlines fire as overdue only while the task is actually
 	# waiting in that phase: Done -> awaiting leader, Checked -> awaiting owner.
 	leader_appr_overdue = bool(
 		row.get("leader_deadline")
 		and skey == "done"
-		and getdate(row["leader_deadline"]) < getdate(nowdate())
+		and getdate(row["leader_deadline"]) < _today()
 	)
 	owner_appr_overdue = bool(
 		row.get("owner_deadline")
 		and skey == "checked"
-		and getdate(row["owner_deadline"]) < getdate(nowdate())
+		and getdate(row["owner_deadline"]) < _today()
 	)
 	assignee = name_map.get(row["assigned_to"], {})
 	out = {
@@ -848,7 +868,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		allocs = _allocations_map([row["name"]]).get(row["name"], [])
 	else:
 		allocs = alloc_map.get(row["name"], [])
-	today = str(nowdate())
+	today = _today_str()
 	today_alloc = 0
 	for a in allocs:
 		if a["date"] == today:
@@ -881,7 +901,7 @@ def _shape_item_row(row, user, name_map, alloc_map=None):
 		allocs = _allocations_map([row["name"]]).get(row["name"], [])
 	else:
 		allocs = alloc_map.get(row["name"], [])
-	today = str(nowdate())
+	today = _today_str()
 	today_alloc = sum((a["minutes"] or 0) for a in allocs if a["date"] == today)
 	return {
 		"allocations": allocs,
@@ -904,7 +924,7 @@ def _shape_item_row(row, user, name_map, alloc_map=None):
 		"is_overdue": bool(
 			row["deadline"] and skey != "completed"
 			and not row.get("is_waiting")
-			and getdate(row["deadline"]) < getdate(nowdate())
+			and getdate(row["deadline"]) < _today()
 		),
 		"is_waiting": bool(row.get("is_waiting")),
 		"assigned_to": row["assigned_to"],
@@ -1308,17 +1328,31 @@ def get_team_priority_coverage(project, week_start):
 
 
 @frappe.whitelist()
-def get_calendar():
+def get_calendar(open_only=0, mine=0):
 	"""All visible todos, shaped, for the Calendar view.
 
 	Returns the per-user visible set in one round-trip; the client buckets them
 	onto calendar days and applies scope / date-field / split-schedule toggles.
 	Shapes include deadline, owner_deadline, leader_deadline and per-day
 	allocations (the assignee's day-plan that drives "split schedule").
+
+	open_only=1 drops completed todos server-side; mine=1 keeps only todos relevant
+	to the caller's plan — assigned to them, or in a project they lead/own (exactly
+	the union the Plan screens' "My work" / "My project" toggles filter to). Both are
+	set by the plan pool: a System Manager's full visible set is the WHOLE org (~1.2k
+	open todos) even though the Plan page only ever shows their own — mine=1 cuts that
+	to the caller's involvement server-side. Calendar/search callers keep the defaults
+	(full visible set) since they render/search everyone's completed todos too.
 	"""
 	user = frappe.session.user
 	projects = _visible_projects()
-	rows = _fetch_todos(projects)
+	statuses = [STATUS_PLANNED, STATUS_DONE, STATUS_CHECKED] if int(open_only or 0) else None
+	rows = _fetch_todos(projects, statuses=statuses)
+	if int(mine or 0):
+		rows = [
+			r for r in rows
+			if r["assigned_to"] == user or r["project_leader"] == user or r["project_owner"] == user
+		]
 
 	emails = {r["assigned_to"] for r in rows}
 	for r in rows:
@@ -1927,16 +1961,17 @@ def get_project_item(project_item):
 	team_emails = {tr["user"] for tr in team_rows}
 	emails = {r["assigned_to"], r["developed_by"], r["tested_by"], r["completed_by"], r.get("waiting_by"), r.get("owner")} | team_emails
 	name_map = _user_name_map(emails)
-	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=get_project_admins(r["project"]))
+	_admins = get_project_admins(r["project"])
+	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=_admins)
 	shaped["can_edit_notes"] = user in (
 		r["assigned_to"], r["project_owner"], r["project_leader"]
-	)
+	) or user in _admins
 	# Full-task edit is a lead action; assignee/deadline/estimate are locked once
 	# the task is Done/Completed (enforced by the doctype's validate()).
 	is_sm = "System Manager" in frappe.get_roles(user)
 	shaped["can_edit"] = is_sm or user in (
 		r["project_owner"], r["project_leader"], r["assigned_to"]
-	)
+	) or user in _admins
 	# Attached files ride down with the detail (same edit gate as notes).
 	from vernon_project.api.project_todo import list_todo_files
 	shaped["files"] = list_todo_files(project_item)
@@ -1954,9 +1989,9 @@ def get_project_item(project_item):
 		_assigned, shaped.get("deadline"), shaped.get("estimated") or 0
 	)
 	shaped["assigned_total"] = sum((a["minutes"] or 0) for a in shaped["assigned_allocation"])
-	# Delete is a lead-only action and only while Planned or Cancelled.
+	# Delete is a lead/admin action and only while Planned or Cancelled.
 	shaped["can_delete"] = (
-		(is_sm or user in (r["project_owner"], r["project_leader"]))
+		(is_sm or user in (r["project_owner"], r["project_leader"]) or user in _admins)
 		and shaped["status_key"] in ("planned", "cancelled")
 	)
 
@@ -2136,7 +2171,11 @@ def update_todo(
 		row = frappe.get_doc("Project Todo", project_item)
 
 		is_sm = "System Manager" in frappe.get_roles(user)
-		if not (is_sm or user in (project.project_owner, project.project_leader, row.assigned_to)):
+		if not (
+			is_sm
+			or user in (project.project_owner, project.project_leader, row.assigned_to)
+			or user in get_project_admins(project)
+		):
 			return {
 				"status": "error",
 				"message": "You don't have permission to edit this task.",
@@ -2314,7 +2353,11 @@ def _load_todo_for_edit(project_item):
 		return None, {"status": "error", "message": "Task not found."}
 	project = frappe.get_doc("Project", detail_project)
 	is_sm = "System Manager" in frappe.get_roles(user)
-	if not (is_sm or user in (project.project_owner, project.project_leader, row.assigned_to)):
+	if not (
+		is_sm
+		or user in (project.project_owner, project.project_leader, row.assigned_to)
+		or user in get_project_admins(project)
+	):
 		return None, {"status": "error", "message": "You don't have permission to edit this task."}
 	return row, project
 
@@ -2370,8 +2413,12 @@ def delete_todo(project_item):
 		return {"status": "error", "message": "Task not found."}
 	project = frappe.get_doc("Project", detail_project)
 	is_sm = "System Manager" in frappe.get_roles(user)
-	if not (is_sm or user in (project.project_owner, project.project_leader)):
-		return {"status": "error", "message": "Only the Project Owner or Project Leader can delete a task."}
+	if not (
+		is_sm
+		or user in (project.project_owner, project.project_leader)
+		or user in get_project_admins(project)
+	):
+		return {"status": "error", "message": "Only the Project Owner, Leader or Admin can delete a task."}
 	if row.status not in (STATUS_PLANNED, STATUS_CANCELLED):
 		return {"status": "error", "message": "Only a Scheduled or Cancelled task can be deleted."}
 	frappe.delete_doc("Project Todo", project_item, ignore_permissions=True)

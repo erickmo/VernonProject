@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Plus, X, Zap } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
-import { AssigneeTag, PriorityBadge } from '@/components/PlanMeta'
+import { AssigneeTag, PlanLegend, PriorityBadge } from '@/components/PlanMeta'
 import { useBoot, useMoveTodoDeadline, usePriorityOccupancy, useSetTodoPriority } from '@/hooks/useData'
 import { deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { addDaysISO, formatDate, formatEstimate } from '@/lib/format'
@@ -84,6 +84,9 @@ export function PlanDeadlineDay({
 
   return (
     <div>
+      <div className="mb-3">
+        <PlanLegend />
+      </div>
       {/* Date navigator */}
       <div className="flex items-center gap-2">
         <button

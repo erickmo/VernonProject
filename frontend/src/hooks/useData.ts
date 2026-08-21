@@ -76,6 +76,7 @@ export const keys = {
   boot: ['boot'] as const,
   dashboard: ['dashboard'] as const,
   calendar: ['calendar'] as const,
+  planPool: ['calendar', 'open'] as const,
   dailyTargets: (from: string, to: string) => ['daily-targets', from, to] as const,
   priorityOccupancy: (users: string[], date: string) =>
     ['priority-occupancy', date, [...users].sort().join(',')] as const,
@@ -206,6 +207,16 @@ export const useCalendar = () =>
   useQuery({
     queryKey: keys.calendar,
     queryFn: () => mobileApi.calendar() as Promise<{ todos: ProjectItem[] }>,
+  })
+
+// Plan pool: open todos assigned to me or in a project I lead/own — exactly what
+// the Plan screens' "My work" / "My project" toggles keep. Skips the completed
+// backlog AND everyone else's work server-side (a System Manager's full visible set
+// is the whole org; the plan page never shows it). Much smaller payload.
+export const usePlanPool = () =>
+  useQuery({
+    queryKey: keys.planPool,
+    queryFn: () => mobileApi.calendar(true, true) as Promise<{ todos: ProjectItem[] }>,
   })
 
 // Per-date daily-minimum minutes over an inclusive range — the plan screen's

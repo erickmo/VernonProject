@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import clsx from 'clsx'
 import { UserRoundCheck } from 'lucide-react'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable, type Column } from '@web/components/DataTable'
@@ -10,7 +12,9 @@ export default function LastSeen() {
   const { data, isFetching } = useLastSeenReport()
   const { data: boot } = useBoot()
   const win = boot?.settings?.online_window_minutes ?? 15
-  const rows = data?.rows ?? []
+  const [activeOnly, setActiveOnly] = useState(true)
+  const allRows = data?.rows ?? []
+  const rows = activeOnly ? allRows.filter((u) => u.enabled) : allRows
   const active = rows.filter((u) => presenceOf(u.last_active, win).online)
 
   const cols: Column<LastSeenRow>[] = [
@@ -52,7 +56,32 @@ export default function LastSeen() {
 
   return (
     <Page>
-      <PageHeader icon={UserRoundCheck} title="Last Seen" subtitle="When each teammate was last active" />
+      <PageHeader
+        icon={UserRoundCheck}
+        title="Last Seen"
+        subtitle="When each teammate was last active"
+        actions={
+          <button
+            onClick={() => setActiveOnly((v) => !v)}
+            className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-hover/[0.04]"
+          >
+            <span className="font-medium text-ink">Active only</span>
+            <span
+              className={clsx(
+                'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition',
+                activeOnly ? 'bg-brand-600' : 'bg-line',
+              )}
+            >
+              <span
+                className={clsx(
+                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition',
+                  activeOnly ? 'translate-x-4' : 'translate-x-0.5',
+                )}
+              />
+            </span>
+          </button>
+        }
+      />
       {data && (
         <div className="mb-4 rounded-2xl border border-line bg-surface p-4">
           <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted">Online now · {active.length}</p>

@@ -787,6 +787,18 @@ class TestLastSeenReport(unittest.TestCase):
 		self.assertEqual(out["scope"], "all")
 		self.assertIn(self.OUTSIDER, names)
 
+	def test_disabled_user_still_shown(self):
+		# Bug: report used to hard-filter enabled=1, hiding disabled/inactive users.
+		from vernon_project.api.report import last_seen_report
+		frappe.set_user("Administrator")
+		frappe.db.set_value("User", self.OUTSIDER, "enabled", 0)
+		try:
+			out = last_seen_report()
+			names = {r["name"] for r in out["rows"]}
+			self.assertIn(self.OUTSIDER, names)
+		finally:
+			frappe.db.set_value("User", self.OUTSIDER, "enabled", 1)
+
 	def test_leader_sees_only_team_and_self(self):
 		from vernon_project.api.report import last_seen_report
 		frappe.set_user(self.LEADER)

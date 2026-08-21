@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, FolderKanban, Info, X } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
+import { AssigneeTag, PlanLegend } from '@/components/PlanMeta'
 import { useMoveTodoPlan, useMoveTodoDeadline } from '@/hooks/useData'
 import { weekStartISO } from '@/pages/PlanScreen'
 import { boardDate, deadlineDate, planColumns, allocMinutes, deadlineTone, type DeadlineTone } from '@/lib/planDay'
@@ -149,6 +150,11 @@ export function PlanProjectBoard({
             </span>
           )}
         </div>
+        {t.assigned_to_name && (
+          <div className="mt-1 pr-6">
+            <AssigneeTag name={t.assigned_to_name} />
+          </div>
+        )}
         {/* Open the todo detail without triggering the card's pick-to-move tap. */}
         <span
           role="button"
@@ -247,6 +253,9 @@ export function PlanProjectBoard({
         <EmptyState icon={FolderKanban} title="Pick a project detail" subtitle="Pick a project detail to plan its week." />
       ) : (
         <>
+          <div className="mt-3">
+            <PlanLegend />
+          </div>
           {/* Week nav */}
           <div className="mt-4 flex items-center gap-2">
             <button

@@ -12,7 +12,9 @@ export interface PendingCheer {
   body: string
   from: string
   name: string
+  names: string[] // every notification this popup represents — dismiss clears all at once
   todo: string | null // the buzzed Project Todo, for "add to my plan"
+  todos: string[] // 'thanks': readable label per cheered todo, stacked one popup per cheerer
 }
 
 const noop = () => {}
@@ -85,20 +87,29 @@ export function useCheerPop(): { cheer: PendingCheer | null; dismiss: () => void
     if (!hydrated) return null
     const hit = candidates.find((c) => !seen.has(c.name))
     if (!hit) return null
+    const kind = classifyCheer(hit) as CheerKind
+    // 'thanks' (Kudos) stacks per cheerer: fold every unseen cheer from this
+    // same actor into one popup instead of popping once per todo they cheered.
+    const group =
+      kind === 'thanks'
+        ? candidates.filter((c) => !seen.has(c.name) && c.actor === hit.actor && classifyCheer(c) === 'thanks')
+        : [hit]
     return {
-      kind: classifyCheer(hit) as CheerKind,
+      kind,
       title: hit.title,
       body: hit.body ?? '',
       from: hit.actor_name || hit.actor || '',
       name: hit.name,
+      names: group.map((c) => c.name),
       todo: hit.reference_doctype === 'Project Todo' ? hit.reference_name : null,
+      todos: group.map((c) => c.subject).filter((s): s is string => !!s),
     }
   }, [hydrated, candidates, seen])
 
   const dismiss = useCallback(() => {
     if (!user || !cheer) return
     const next = new Set(seen)
-    next.add(cheer.name)
+    cheer.names.forEach((n) => next.add(n))
     writeSeen(`cheerpop:seen:v1:${user}`, [...next])
     setSeen(next) // re-render surfaces the next candidate immediately
   }, [user, cheer, seen])

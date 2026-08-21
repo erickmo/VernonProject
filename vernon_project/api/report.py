@@ -863,7 +863,7 @@ def _users_on_projects(project_names):
 def _last_seen_rows(name_filter):
 	"""User rows for the last-seen report, stalest-first. name_filter: None = all
 	(minus Guest/Administrator), else an iterable of user-ids to restrict to."""
-	filters = {"enabled": 1, "user_type": "System User"}
+	filters = {"user_type": "System User"}
 	if name_filter is None:
 		filters["name"] = ["not in", ("Guest", "Administrator")]
 	else:

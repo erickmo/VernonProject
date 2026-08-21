@@ -11,7 +11,7 @@ import { PlanDeadlineDay } from '@web/components/PlanDeadlineDay'
 import { TeamPriorityCoverage } from '@/components/TeamPriorityCoverage'
 import { EmptyState, Spinner } from '@/components/ui'
 import { usePlanDate } from '@/hooks/usePlanDay'
-import { useCalendar, useDailyTargets } from '@/hooks/useData'
+import { usePlanPool, useDailyTargets } from '@/hooks/useData'
 import { projectDetailOptions } from '@/lib/blueprint'
 import { weekLoad, sortForPlanning } from '@/lib/planDay'
 import { todoIsOpen } from '@/lib/filters'
@@ -46,7 +46,7 @@ export default function Plan() {
   const [selected, setSelected] = useState(todayISO())
   const today = todayISO()
 
-  const cal = useCalendar()
+  const cal = usePlanPool()
   // Active (open, non-waiting) todos are the whole plan pool — the date-first
   // read source per the spec (getCalendar().todos), not the today-scoped
   // dashboard set the "Plan my day" drawer uses.
