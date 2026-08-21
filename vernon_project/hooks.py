@@ -232,9 +232,11 @@ scheduler_events = {
 		"0 1 1 1 *": [
 			"vernon_project.attendance.cuti_ledger.grant_annual_cuti",
 		],
-		# Every day 00:00 — sweep past-due day-plan slots off still-Planned todos.
+		# Every day 00:00 — sweep past-due day-plan slots off still-Planned todos,
+		# then charge yesterday's missed priority slots.
 		"0 0 * * *": [
 			"vernon_project.tasks.sweep_stale_plans",
+			"vernon_project.tasks.charge_missed_priorities",
 		],
 	},
 }

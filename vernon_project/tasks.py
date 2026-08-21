@@ -288,6 +288,70 @@ def sweep_stale_plans():
     return count
 
 
+def charge_missed_priorities():
+    """Cron 00:00: deduct points for priority slots that never reached Done.
+
+    A claimed slot must reach 🟠 Done by the end of its deadline day. Each night every
+    still-⚪️ Planned priority whose deadline has passed costs the assignee
+    Vernon Settings.priority_miss_penalty points, keyed to the day it missed — so an
+    unfinished priority bleeds one charge per day until it goes Done or is cancelled.
+
+    Idempotent: the (todo, source=Priority, credited_on inside that date) probe means a
+    re-run mints nothing. credited_on is dated to the missed day, not the run time, so
+    the deduction lands on the right day in the wallet log and daily points chart.
+
+    Gated off entirely when slots or the penalty are 0.
+    """
+    from frappe.utils import add_days, cint, flt, getdate
+    from vernon_project.api.mobile import STATUS_PLANNED
+
+    if not cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots")):
+        return 0
+    penalty = flt(frappe.db.get_single_value("Vernon Settings", "priority_miss_penalty"))
+    if penalty <= 0:
+        return 0
+
+    missed_on = getdate(add_days(nowdate(), -1))
+    rows = frappe.get_all(
+        "Project Todo",
+        filters={"is_priority": 1, "deadline": ["<=", missed_on], "status": STATUS_PLANNED},
+        fields=["name", "to_do", "assigned_to", "project", "`group` as todo_group"],
+        limit_page_length=0,
+    )
+    charged = 0
+    for r in rows:
+        if not r.assigned_to:
+            continue
+        if frappe.db.exists("Point Ledger", {
+            "todo": r.name,
+            "source": "Priority",
+            "credited_on": ["between", [f"{missed_on} 00:00:00", f"{missed_on} 23:59:59"]],
+        }):
+            continue
+        # role is left blank on purpose: Project Todo._upsert_ledger_row dedupes on
+        # (todo, role), so an "Assignee" penalty row would be overwritten by the
+        # todo's own award row when it eventually completes.
+        frappe.get_doc({
+            "doctype": "Point Ledger",
+            "user": r.assigned_to,
+            "todo": r.name,
+            "project": r.project,
+            "group": r.todo_group,
+            "source": "Priority",
+            "point": -penalty,
+            "points_earned": -penalty,
+            "credited_on": f"{missed_on} 23:59:59",
+            "note": f"Prioritas belum selesai: {r.to_do}",
+        }).insert(ignore_permissions=True)
+        charged += 1
+    if charged:
+        frappe.db.commit()
+    frappe.logger().info(
+        f"charge_missed_priorities: charged {charged} missed priority slots for {missed_on}"
+    )
+    return charged
+
+
 def notify_habit_checkins():
 	"""Once/day: nudge users who have an active habit scheduled today but no
 	check-in yet. Admin-gated by Vernon Settings.habit_reminders (default off).
