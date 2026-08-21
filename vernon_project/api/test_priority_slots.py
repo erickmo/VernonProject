@@ -161,3 +161,52 @@ class TestMissedPriorityCharge(_PriorityFixture):
 		self.assertEqual(
 			len(frappe.get_all("Point Ledger", filters={"todo": t.name, "source": "Priority"})), 1
 		)
+
+
+class TestPriorityOccupancy(_PriorityFixture):
+	def _occ(self, users, date, as_user="Administrator"):
+		from vernon_project.api.mobile import get_priority_occupancy
+		frappe.set_user(as_user)
+		try:
+			return get_priority_occupancy(users, date)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_self_request_always_allowed(self):
+		self._todo(0)
+		out = self._occ(["prio_assignee@example.com"], self.day, as_user="prio_assignee@example.com")
+		self.assertIn("prio_assignee@example.com", out)
+		self.assertEqual(out["prio_assignee@example.com"]["slots"], 3)
+		self.assertEqual(len(out["prio_assignee@example.com"]["items"]), 1)
+
+	def test_leader_can_view_team_member(self):
+		self._todo(0)
+		out = self._occ(["prio_assignee@example.com"], self.day, as_user="Administrator")
+		self.assertIn("prio_assignee@example.com", out)
+		self.assertEqual(len(out["prio_assignee@example.com"]["items"]), 1)
+
+	def test_unrelated_user_omitted(self):
+		if not frappe.db.exists("User", "prio_outsider@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "prio_outsider@example.com",
+				"first_name": "Outsider", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		out = self._occ(["prio_outsider@example.com"], self.day, as_user="prio_assignee@example.com")
+		self.assertEqual(out, {})
+
+	def test_feature_off_returns_zero_slots_no_items(self):
+		from vernon_project.api.mobile import get_priority_occupancy
+		_set(daily_priority_slots=0)
+		frappe.set_user("prio_assignee@example.com")
+		try:
+			out = get_priority_occupancy(["prio_assignee@example.com"], self.day)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(out, {"prio_assignee@example.com": {"slots": 0, "items": []}})
+
+	def test_wrong_date_returns_empty_items(self):
+		self._todo(0)
+		out = self._occ(
+			["prio_assignee@example.com"],
+			str(add_days(nowdate(), 10)),
+			as_user="prio_assignee@example.com",
+		)
+		self.assertEqual(out["prio_assignee@example.com"]["items"], [])

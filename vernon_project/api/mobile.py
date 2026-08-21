@@ -1113,6 +1113,95 @@ def get_dashboard():
 
 
 @frappe.whitelist()
+def get_priority_occupancy(users, date):
+	"""Priority-slot occupancy for one or more users on one date.
+
+	Same shape as Dashboard.priority ({"slots": int, "items": [...]}), keyed by user — one
+	endpoint serves both the homepage rail's day filter (self, arbitrary day) and a leader's
+	Plan-screen occupancy badge (a teammate, arbitrary day), so both surfaces agree with the
+	same live count the controller's cap actually enforces.
+
+	Permission: the caller may always request themself. Requesting someone else requires the
+	caller to lead/own/administer at least one project that user is involved in (a Project
+	Team member, or has a todo assigned there) — the same trust boundary PlanDeadlineDay
+	already relies on to show a leader their team's todos. A user the caller isn't allowed to
+	see is silently omitted from the result rather than erroring the whole batch.
+	"""
+	requester = frappe.session.user
+	if isinstance(users, str):
+		users = frappe.parse_json(users) or []
+	users = sorted({str(u).strip() for u in (users or []) if str(u).strip()})
+	if not users:
+		return {}
+
+	slots = cint(frappe.db.get_single_value("Vernon Settings", "daily_priority_slots"))
+	if not slots:
+		return {u: {"slots": 0, "items": []} for u in users}
+	target_date = getdate(date)
+
+	is_sm = "System Manager" in frappe.get_roles(requester)
+	leader_projects = set()
+	if not is_sm:
+		leader_projects |= set(
+			frappe.get_all("Project", filters={"project_owner": requester}, pluck="name", limit_page_length=0)
+		)
+		leader_projects |= set(
+			frappe.get_all("Project", filters={"project_leader": requester}, pluck="name", limit_page_length=0)
+		)
+		leader_projects |= set(
+			frappe.get_all(
+				"Project Admin User",
+				filters={"user": requester, "parentfield": "project_admins"},
+				pluck="parent", limit_page_length=0,
+			)
+		)
+
+	def _allowed(u):
+		if u == requester or is_sm:
+			return True
+		if not leader_projects:
+			return False
+		if frappe.db.exists("Project Team", {"parent": ["in", list(leader_projects)], "user": u}):
+			return True
+		detail_names = frappe.get_all(
+			"Project Detail", filters={"project": ["in", list(leader_projects)]},
+			pluck="name", limit_page_length=0,
+		)
+		return bool(detail_names and frappe.db.exists(
+			"Project Todo", {"assigned_to": u, "project_detail": ["in", detail_names]}
+		))
+
+	allowed_users = [u for u in users if _allowed(u)]
+	if not allowed_users:
+		return {}
+
+	# One shared fetch over the requester's visible projects — a project this requester leads/
+	# owns/admins/is-a-team-member-of is exactly what _allowed() above already required for any
+	# non-self target, so their priority todos are guaranteed to be in this set.
+	projects = _visible_projects()
+	rows = [
+		r for r in _fetch_todos(projects)
+		if r.get("is_priority") and r.get("assigned_to") in allowed_users
+	]
+	name_map = _user_name_map(set(allowed_users))
+	alloc_map = _allocations_map([r["name"] for r in rows])
+	admins_map = _admins_by_project(rows)
+
+	out = {}
+	for u in allowed_users:
+		u_rows = [
+			r for r in rows
+			if r["assigned_to"] == u and r.get("deadline") and getdate(r["deadline"]) == target_date
+		]
+		shaped = [
+			_shape_todo(r, requester, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
+			for r in u_rows
+		]
+		out[u] = {"slots": slots, "items": shaped}
+	return out
+
+
+@frappe.whitelist()
 def get_calendar():
 	"""All visible todos, shaped, for the Calendar view.
 
