@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, ArrowUp, Users } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { useTeamPriorityCoverage } from '@/hooks/useData'
-import { addDaysISO, formatDate } from '@/lib/format'
+import { addDaysISO, formatDate, todayISO } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
 
 const DAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
@@ -39,8 +39,7 @@ export function TeamPriorityCoverage({
   const [projectOverride, setProjectOverride] = useState('')
   const project = projectOverride || projectOptions[0]?.value || ''
 
-  const today = new Date().toISOString().slice(0, 10)
-  const [weekStart, setWeekStart] = useState(weekStartOf(today))
+  const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()))
 
   const { data, isLoading } = useTeamPriorityCoverage(project, weekStart)
 
