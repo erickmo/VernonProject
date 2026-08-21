@@ -866,6 +866,9 @@ export interface AppSettings {
   force_photo_upload: number
   sweep_stale_plans: number
   sweep_stale_plan_after_days: number
+  daily_priority_slots: number
+  max_project_priorities_per_day: number
+  priority_miss_penalty: number
   qr_validity_seconds: number
   attendance_grace_minutes: number
   late_penalty_per_minute: number

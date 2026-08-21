@@ -52,6 +52,9 @@ export default function SettingsScreen() {
   const [prankInterval, setPrankInterval] = useState<number>(60)
   const [sweepStalePlans, setSweepStalePlans] = useState<boolean>(false)
   const [sweepAfterDays, setSweepAfterDays] = useState<number>(1)
+  const [prioritySlots, setPrioritySlots] = useState<number>(0)
+  const [priorityPerProject, setPriorityPerProject] = useState<number>(0)
+  const [priorityPenalty, setPriorityPenalty] = useState<number>(0)
   const [qrValiditySeconds, setQrValiditySeconds] = useState<number>(0)
   const [graceMinutes, setGraceMinutes] = useState<number>(0)
   const [lateRate, setLateRate] = useState<number>(0)
@@ -88,6 +91,9 @@ export default function SettingsScreen() {
     setPrankInterval(loaded.prank_interval_minutes ?? 60)
     setSweepStalePlans(!!loaded.sweep_stale_plans)
     setSweepAfterDays(loaded.sweep_stale_plan_after_days)
+    setPrioritySlots(loaded.daily_priority_slots ?? 0)
+    setPriorityPerProject(loaded.max_project_priorities_per_day ?? 0)
+    setPriorityPenalty(loaded.priority_miss_penalty ?? 0)
     setQrValiditySeconds(loaded.qr_validity_seconds)
     setGraceMinutes(loaded.attendance_grace_minutes)
     setLateRate(loaded.late_penalty_per_minute)
@@ -149,6 +155,9 @@ export default function SettingsScreen() {
         prank_interval_minutes: prankInterval,
         sweep_stale_plans: sweepStalePlans ? 1 : 0,
         sweep_stale_plan_after_days: Math.max(0, sweepAfterDays),
+        daily_priority_slots: Math.max(0, prioritySlots),
+        max_project_priorities_per_day: Math.max(0, priorityPerProject),
+        priority_miss_penalty: Math.max(0, priorityPenalty),
         qr_validity_seconds: qrValiditySeconds,
         attendance_grace_minutes: graceMinutes,
         late_penalty_per_minute: lateRate,
@@ -570,6 +579,36 @@ export default function SettingsScreen() {
               </p>
             </div>
           )}
+        </div>
+
+        <div className={card}>
+          <p className="mb-1 text-sm font-bold text-stone-800 dark:text-slate-100">Prioritas Harian</p>
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            Tiap orang punya sejumlah slot prioritas per hari. Ketua proyek mengisi slot yang masih kosong
+            dengan salah satu todo orang itu. Prioritas yang belum “🟠 Done” sampai tengah malam memotong
+            poin, dan memotong lagi tiap hari sampai selesai. Isi 0 untuk mematikan fitur ini.
+          </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Slot prioritas per orang per hari
+              </label>
+              {num(prioritySlots, setPrioritySlots, '3')}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Maksimum slot yang boleh dipakai satu proyek
+              </label>
+              {num(priorityPerProject, setPriorityPerProject, '2')}
+              <p className="text-xs text-slate-500 dark:text-slate-400">0 = tanpa batas per proyek.</p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Potongan poin per hari terlewat
+              </label>
+              {num(priorityPenalty, setPriorityPenalty, '250')}
+            </div>
+          </div>
         </div>
 
         <div className={card}>

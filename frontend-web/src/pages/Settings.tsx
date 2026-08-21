@@ -47,6 +47,9 @@ export default function Settings() {
   const [prankInterval, setPrankInterval] = useState<string>('60')
   const [sweepStalePlans, setSweepStalePlans] = useState<boolean>(false)
   const [sweepAfterDays, setSweepAfterDays] = useState<string>('1')
+  const [prioritySlots, setPrioritySlots] = useState('0')
+  const [priorityPerProject, setPriorityPerProject] = useState('0')
+  const [priorityPenalty, setPriorityPenalty] = useState('0')
   const [qrValiditySeconds, setQrValiditySeconds] = useState<string>('0')
   const [graceMinutes, setGraceMinutes] = useState<string>('0')
   const [onlineWindow, setOnlineWindow] = useState<string>('15')
@@ -86,6 +89,9 @@ export default function Settings() {
     setPrankInterval(String(loaded.prank_interval_minutes ?? 60))
     setSweepStalePlans(!!loaded.sweep_stale_plans)
     setSweepAfterDays(String(loaded.sweep_stale_plan_after_days))
+    setPrioritySlots(String(loaded.daily_priority_slots ?? 0))
+    setPriorityPerProject(String(loaded.max_project_priorities_per_day ?? 0))
+    setPriorityPenalty(String(loaded.priority_miss_penalty ?? 0))
     setQrValiditySeconds(String(loaded.qr_validity_seconds))
     setGraceMinutes(String(loaded.attendance_grace_minutes))
     setOnlineWindow(String(loaded.online_window_minutes ?? 15))
@@ -161,6 +167,9 @@ export default function Settings() {
         prank_interval_minutes: Math.max(1, n(prankInterval)),
         sweep_stale_plans: sweepStalePlans ? 1 : 0,
         sweep_stale_plan_after_days: Math.max(0, n(sweepAfterDays)),
+        daily_priority_slots: Math.max(0, n(prioritySlots)),
+        max_project_priorities_per_day: Math.max(0, n(priorityPerProject)),
+        priority_miss_penalty: Math.max(0, n(priorityPenalty)),
         qr_validity_seconds: n(qrValiditySeconds),
         attendance_grace_minutes: n(graceMinutes),
         online_window_minutes: n(onlineWindow),
@@ -697,6 +706,61 @@ export default function Settings() {
               sebelum hari ini. Slot hari ini &amp; mendatang, serta todo Done/Checked/Completed, tidak disentuh.
               Default nonaktif.
             </p>
+          </div>
+        </BentoTile>
+
+        <BentoTile span="md" tone="tint" accent="amber" title="Prioritas Harian">
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-muted">
+              Tiap orang punya sejumlah slot prioritas per hari. Ketua proyek mengisi slot yang masih kosong
+              dengan salah satu todo orang itu. Prioritas yang belum “🟠 Done” sampai tengah malam memotong
+              poin, dan memotong lagi tiap hari sampai selesai. Isi 0 untuk mematikan fitur ini.
+            </p>
+            <Field label="Slot prioritas per orang per hari">
+              {(id) => (
+                <input
+                  id={id}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className={field}
+                  value={prioritySlots}
+                  onChange={(e) => setPrioritySlots(e.target.value)}
+                  onBlur={() => setPrioritySlots((v) => String(Math.max(0, n(v))))}
+                  placeholder="3"
+                />
+              )}
+            </Field>
+            <Field label="Maksimum slot yang boleh dipakai satu proyek" hint="0 = tanpa batas per proyek.">
+              {(id) => (
+                <input
+                  id={id}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className={field}
+                  value={priorityPerProject}
+                  onChange={(e) => setPriorityPerProject(e.target.value)}
+                  onBlur={() => setPriorityPerProject((v) => String(Math.max(0, n(v))))}
+                  placeholder="2"
+                />
+              )}
+            </Field>
+            <Field label="Potongan poin per hari terlewat">
+              {(id) => (
+                <input
+                  id={id}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className={field}
+                  value={priorityPenalty}
+                  onChange={(e) => setPriorityPenalty(e.target.value)}
+                  onBlur={() => setPriorityPenalty((v) => String(Math.max(0, n(v))))}
+                  placeholder="250"
+                />
+              )}
+            </Field>
           </div>
         </BentoTile>
 

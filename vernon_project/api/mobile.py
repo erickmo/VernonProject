@@ -2802,6 +2802,9 @@ def get_app_settings():
 		"force_photo_upload": int(g("force_photo_upload") or 0),
 		"sweep_stale_plans": int(g("sweep_stale_plans") or 0),
 		"sweep_stale_plan_after_days": int(g("sweep_stale_plan_after_days") or 1),
+		"daily_priority_slots": int(g("daily_priority_slots") or 0),
+		"max_project_priorities_per_day": int(g("max_project_priorities_per_day") or 0),
+		"priority_miss_penalty": float(g("priority_miss_penalty") or 0),
 		"qr_validity_seconds": int(g("qr_validity_seconds") or 0),
 		"attendance_grace_minutes": int(g("attendance_grace_minutes") or 0),
 		"late_penalty_per_minute": float(g("late_penalty_per_minute") or 0),
@@ -2904,6 +2907,9 @@ def save_app_settings(
 	force_photo_upload=None,
 	sweep_stale_plans=None,
 	sweep_stale_plan_after_days=None,
+	daily_priority_slots=None,
+	max_project_priorities_per_day=None,
+	priority_miss_penalty=None,
 	qr_validity_seconds=None,
 	attendance_grace_minutes=None,
 	late_penalty_per_minute=None,
@@ -2951,6 +2957,8 @@ def save_app_settings(
 		"force_photo_upload": force_photo_upload,
 		"sweep_stale_plans": sweep_stale_plans,
 		"sweep_stale_plan_after_days": sweep_stale_plan_after_days,
+		"daily_priority_slots": daily_priority_slots,
+		"max_project_priorities_per_day": max_project_priorities_per_day,
 		"qr_validity_seconds": qr_validity_seconds,
 		"attendance_grace_minutes": attendance_grace_minutes,
 		"late_penalty_enabled": late_penalty_enabled,
@@ -2967,6 +2975,7 @@ def save_app_settings(
 		"late_penalty_per_minute": late_penalty_per_minute,
 		"early_leave_penalty_per_minute": early_leave_penalty_per_minute,
 		"absence_penalty": absence_penalty,
+		"priority_miss_penalty": priority_miss_penalty,
 	}
 	for field, value in int_fields.items():
 		if value is not None:
