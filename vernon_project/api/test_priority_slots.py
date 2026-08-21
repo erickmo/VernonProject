@@ -11,13 +11,24 @@ def _set(**kw):
 
 
 class _PriorityFixture(unittest.TestCase):
-	"""Project (owner+leader=Administrator) / Detail / two todos on one day for a
-	non-leader assignee. Mirrors test_allocations.py's setup."""
+	"""Two Projects / Details / two todos on one day for a non-leader assignee. Mirrors
+	test_allocations.py's setup. Prio Project 1 is led by prio_leader@example.com — a
+	genuinely non-System-Manager leader, so occupancy tests can walk the real leader
+	permission branch instead of always short-circuiting on the SM bypass. (Project
+	Leader, not Project Owner: the Project Owner DocPerm has if_owner=1, which would
+	additionally restrict reads to docs Frappe's own `owner` meta-field says this user
+	created — every fixture Project is inserted as Administrator, so that role alone
+	would see nothing. Project Leader carries no such restriction.) Prio Project 2 stays
+	owner+leader=Administrator, as before."""
 
 	def setUp(self):
 		if not frappe.db.exists("User", "prio_assignee@example.com"):
 			frappe.get_doc({"doctype": "User", "email": "prio_assignee@example.com",
 				"first_name": "Prio", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		if not frappe.db.exists("User", "prio_leader@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "prio_leader@example.com",
+				"first_name": "Prio", "last_name": "Leader", "send_welcome_email": 0,
+				"roles": [{"role": "Project Leader"}]}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Brand", "Prio Brand"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Prio Brand",
 				"company": frappe.db.get_value("Company", {}, "name")}).insert(ignore_permissions=True)
@@ -43,7 +54,8 @@ class _PriorityFixture(unittest.TestCase):
 		for i in (1, 2):
 			p = frappe.get_doc({
 				"doctype": "Project", "project_name": f"Prio Project {i}", "brand": "Prio Brand",
-				"project_owner": "Administrator", "project_leader": "Administrator",
+				"project_owner": "Administrator",
+				"project_leader": "prio_leader@example.com" if i == 1 else "Administrator",
 				"status": "Ongoing", "start_date": nowdate(),
 				"deadline": add_days(nowdate(), 30),
 				"team_members": [{"user": "Administrator"}, {"user": "prio_assignee@example.com"}],
@@ -180,8 +192,12 @@ class TestPriorityOccupancy(_PriorityFixture):
 		self.assertEqual(len(out["prio_assignee@example.com"]["items"]), 1)
 
 	def test_leader_can_view_team_member(self):
+		# prio_leader leads Prio Project 1 (self.details[0]) and is NOT System Manager — this
+		# exercises the real Project Team / Project Todo leader-permission branch in
+		# _allowed(), not the is_sm short-circuit (Administrator would always bypass it).
+		self.assertNotIn("System Manager", frappe.get_roles("prio_leader@example.com"))
 		self._todo(0)
-		out = self._occ(["prio_assignee@example.com"], self.day, as_user="Administrator")
+		out = self._occ(["prio_assignee@example.com"], self.day, as_user="prio_leader@example.com")
 		self.assertIn("prio_assignee@example.com", out)
 		self.assertEqual(len(out["prio_assignee@example.com"]["items"]), 1)
 
@@ -190,6 +206,16 @@ class TestPriorityOccupancy(_PriorityFixture):
 			frappe.get_doc({"doctype": "User", "email": "prio_outsider@example.com",
 				"first_name": "Outsider", "send_welcome_email": 0}).insert(ignore_permissions=True)
 		out = self._occ(["prio_outsider@example.com"], self.day, as_user="prio_assignee@example.com")
+		self.assertEqual(out, {})
+
+	def test_non_sm_leader_unrelated_user_omitted(self):
+		# Same negative case as above, but the requester is a genuinely non-SM leader
+		# (leads Prio Project 1) rather than a plain assignee — confirms the leader branch
+		# in _allowed() rejects a user outside their project, not just the SM bypass.
+		if not frappe.db.exists("User", "prio_outsider@example.com"):
+			frappe.get_doc({"doctype": "User", "email": "prio_outsider@example.com",
+				"first_name": "Outsider", "send_welcome_email": 0}).insert(ignore_permissions=True)
+		out = self._occ(["prio_outsider@example.com"], self.day, as_user="prio_leader@example.com")
 		self.assertEqual(out, {})
 
 	def test_feature_off_returns_zero_slots_no_items(self):
