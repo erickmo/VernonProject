@@ -27,34 +27,59 @@ Mirrors the existing `recurring_exception_dates` (Small Text holding JSON) patte
 
 Compact keys (`t`, `d`) keep the field small.
 
-## Backend (`vernon_project/api/mobile.py`)
+## Backend
 
-### Write — reuse `update_todo`
-Add one optional param `checklist=None` to `update_todo`. When not `None`:
-- Parse the incoming JSON string, validate it is a list of `{t: str, d: bool}` (coerce/trim `t`, bool `d`, drop empty-text rows), re-serialize, assign `row.checklist`.
-- Saved through the existing `row.save()` path (runs controller as today).
-- Permission = the **existing** edit gate (System Manager / project owner / leader / `assigned_to` / project admin). The assignee toggling their own items is allowed by this gate.
+Checklist mirrors **notes** end to end — notes is the exact precedent: a Small Text
+field, its own save endpoint with a looser gate than full-task edit, and a
+self-persisting FE component. Copy that pattern rather than threading a param
+through the strict `update_todo` path.
 
-The frontend sends the **whole array** on every mutation (add / rename / toggle / delete / reorder). Optimistic UI hides the round-trip. No new endpoint.
+### Write — new endpoint `save_checklist` (`vernon_project/api/project_todo.py`)
+Mirror `save_notes` (same file, ~line 507):
 
-### Read — `_shape_todo`
-- Always expose lightweight counts: `checklist_total` (int), `checklist_done` (int), parsed from the field once per row. Powers the card chip. (0/absent → no chip.)
-- Expose the full `checklist` array **only** on the detail/edit path (`include_notes=True`), alongside `notes` — the detail view is the only place items render.
+```python
+@frappe.whitelist()
+def save_checklist(todo_id, checklist):
+    # gate: assignee / project_owner / project_leader / project admins / System Manager
+    # (matches the shape's `can_edit_notes` flag, so FE affordance == backend gate)
+    # validate: json.loads → list of {t:str,d:bool}; trim t, coerce d bool, drop empty-t rows
+    # todo.checklist = json.dumps(clean, ensure_ascii=False); todo.save(ignore_permissions=True)
+```
 
-### Edit load — `_load_todo_for_edit`
-Return the parsed `checklist` array so the editor opens pre-filled.
+`save_notes`'s own gate omits admins/SM (a latent mismatch with `can_edit_notes`);
+`save_checklist` includes them so the affordance and the gate agree.
 
-A single tiny helper `_parse_checklist(raw)` → `list[{t,d}]` (safe on null / bad JSON → `[]`) is shared by shape, load, and write-validation.
+The frontend sends the **whole array** on every mutation (add / rename / toggle /
+delete / reorder). Optimistic UI hides the round-trip.
+
+### Read — expose in the detail payload
+`get_project_item` already calls `_shape_todo(..., include_notes=True)`; adding
+`checklist` to `_shape_todo` surfaces it on the detail screen for free.
+
+- In `_shape_todo`: `out["checklist"] = _parse_checklist(row.get("checklist"))` — a list, always. The FE derives the `done/total` chip from the array (no separate count fields).
+- Add `t.checklist` to the two todo `SELECT` column lists (`_fetch_todos` ~584 and the other list fetch ~1213) so list-context rows carry the array for the card chip. A `SELECT` that omits it → `row.get("checklist")` is `None` → `_parse_checklist` returns `[]` (safe).
+- No change to `get_project_item`/`_load_todo_for_edit` — `checklist` rides down inside the existing `shaped` dict.
+
+Shared helper `_parse_checklist(raw)` → `list[{t,d}]` (safe on null / bad JSON → `[]`), used by shape and by the endpoint's read-back.
 
 ## Frontend (both `/m` and `/w`)
 
 Shared behaviour lives in `frontend/src` (imported as `@` by web); presentation is per-platform.
 
-- **Where:** in the todo detail / edit view, adjacent to the `notes` block.
-- **Rows:** each item = checkbox + text field + delete button. "Tambah item" adds a blank row. Drag handle reorders.
-- **Persist:** on each change, build the array and call `update_todo({checklist: JSON.stringify(items)})`; optimistic local state.
-- **Card chip:** when `checklist_total > 0`, show `▢ {done}/{total}` on the todo card / list row.
-- **Design language:** mobile = Soft-Pop card list rows; web = detail block matching its bento/detail styling. Reuse existing input/checkbox primitives (`SearchableSelect` etc. not needed here — plain text input + checkbox).
+Mirror the existing **`<Notes>`** component (defined locally in
+`ProjectItemScreen.tsx` ~line 431 and in web `ProjectItem.tsx`), which self-persists
+via `useSaveNotes` and is gated by `data.can_edit_notes`.
+
+- **Shared wiring** (in `frontend/src`, imported by web as `@`):
+  - `api.ts`: `saveChecklist(todoId, checklist)` → POST `vernon_project.api.project_todo.save_checklist`.
+  - `useData.ts`: `useSaveChecklist(todoId)` mirroring `useSaveNotes` (invalidates the same project-item query).
+  - Type: todo detail gains `checklist: {t: string; d: boolean}[]`.
+- **Component** `<Checklist todoId initial={data.checklist} canEdit={data.can_edit_notes} />`, one per frontend (mobile Soft-Pop rows, web detail block), rendered next to `<Notes>` in each detail screen.
+  - **Rows:** checkbox + text input + delete. "Tambah item" adds a blank row.
+  - **Persist:** local optimistic state; on any change build the array and `save.mutate(items)`. Toggling a checkbox commits immediately; text edits commit on blur (mirrors `<Notes>` commit-on-blur).
+  - **Read-only** (`!canEdit`): render items as a static checked/unchecked list; hide add/delete.
+- **Card chip:** when `checklist.length > 0`, show `▢ {done}/{total}` (done = items with `d`) on `TodoCard.tsx`. Derived from the array already on the row.
+- Plain text input + checkbox — no `SearchableSelect`/date primitives needed.
 
 ## Testing
 
