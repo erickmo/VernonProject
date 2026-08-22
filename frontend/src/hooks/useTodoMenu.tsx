@@ -11,11 +11,12 @@ import {
   CalendarCheck,
   Copy,
   FolderInput,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoPriority } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { todayISO } from '@/lib/format'
 import { useConfirm } from '@/components/Confirm'
@@ -69,6 +70,7 @@ export function useTodoMenuGroups(
   const { onFocusPill } = useFocusPill(t)
   const setAlloc = useSetTodoAllocations(t.name)
   const confirm = useConfirm()
+  const setPriority = useSetTodoPriority()
 
   if (!target) return []
 
@@ -127,6 +129,8 @@ export function useTodoMenuGroups(
       { key: 't-note', label: 'Add focus note', icon: StickyNote, onClick: overlays.onAddFocusNote },
       // Only the assignee sets the day-plan (backend enforces it too).
       ...(t.is_mine ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
+      // Leader/owner/admin can flag this todo a priority for its deadline day (cap-enforced server-side).
+      ...(t.can_prioritize ? [{ key: 't-priority', label: t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas', icon: Zap, onClick: () => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority }) }] : []),
       { key: 't-duplicate', label: 'Duplicate', icon: Copy, onClick: go(`/project-item/${item}?duplicate=1`) },
       // Move this todo (and optionally its detail-siblings) to another detail of the same project.
       ...(t.project_detail ? [{ key: 't-move', label: 'Move to detail…', icon: FolderInput, onClick: overlays.onMove }] : []),
