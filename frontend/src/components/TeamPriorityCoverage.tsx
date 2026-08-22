@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ArrowUp, Users } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { useTeamPriorityCoverage } from '@/hooks/useData'
+import { groupOpenSlotsByDay } from '@/lib/priorityCoverage'
 import { addDaysISO, formatDate, todayISO } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
 
@@ -40,6 +41,7 @@ export function TeamPriorityCoverage({
   const project = projectOverride || projectOptions[0]?.value || ''
 
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO()))
+  const [view, setView] = useState<'member' | 'day'>('member')
 
   const { data, isLoading } = useTeamPriorityCoverage(project, weekStart)
 
@@ -57,6 +59,22 @@ export function TeamPriorityCoverage({
           placeholder="Pilih proyek…"
         />
       )}
+
+      {/* View toggle: member-major grid vs day-major open-slot roster */}
+      <div className="flex gap-1 rounded-full bg-paper-line p-1 dark:bg-slate-700">
+        {([['member', 'Per anggota'], ['day', 'Per hari']] as const).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={clsx(
+              'flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition active:scale-95',
+              view === v ? 'bg-brand-600 text-white shadow-sm' : 'text-stone-500 dark:text-slate-400',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Week nav */}
       <div className="flex items-center gap-2 rounded-2xl border border-paper-edge bg-paper-card p-3 shadow-card dark:border-slate-700 dark:bg-slate-800">
@@ -85,6 +103,39 @@ export function TeamPriorityCoverage({
         </div>
       ) : !data?.members.length ? (
         <EmptyState icon={Users} title="Tidak ada anggota tim" />
+      ) : view === 'day' ? (
+        <ul className="flex flex-col gap-2.5">
+          {groupOpenSlotsByDay(data.members).map((d, i) => (
+            <li
+              key={d.date}
+              className="rounded-2xl border border-paper-edge bg-paper-card p-3.5 shadow-card dark:border-slate-700 dark:bg-slate-800"
+            >
+              {d.allFull ? (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-stone-800 dark:text-slate-100">
+                    {DAY_LABELS[i]} · {formatDate(d.date)}
+                  </p>
+                  <span className="shrink-0 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    Semua terisi ✓
+                  </span>
+                </div>
+              ) : (
+                <button onClick={() => onOpenDate(d.date)} className="w-full text-left">
+                  <p className="mb-2 text-sm font-semibold text-stone-800 dark:text-slate-100">
+                    {DAY_LABELS[i]} · {formatDate(d.date)}
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {d.open.map((o) => (
+                      <span key={o.user} className="text-xs font-medium text-stone-600 dark:text-slate-300">
+                        {o.full_name} — {o.remaining} slot kosong
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
       ) : (
         <ul className="flex flex-col gap-3">
           {data.members.map((m) => {
