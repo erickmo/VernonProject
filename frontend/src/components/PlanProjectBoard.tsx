@@ -143,6 +143,7 @@ export function PlanProjectBoard({
               }
             : isPicked
               ? (e) => {
+                  if (consumeLongPress()) return
                   e.stopPropagation()
                   setPicked(null)
                 }
