@@ -6,6 +6,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
 import { AssigneeTag, PlanLegend, PriorityBadge } from '@/components/PlanMeta'
 import { useBoot, useMoveTodoDeadline, usePriorityOccupancy, useSetTodoPriority } from '@/hooks/useData'
+import { useTodoMenuTrigger } from '@/hooks/useTodoMenuTrigger'
 import { deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { addDaysISO, formatDate, formatEstimate } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
@@ -58,6 +59,7 @@ export function PlanDeadlineDay({
   const addPool = useMemo(() => candidates.filter((t) => t.deadline !== selected), [candidates, selected])
 
   const setPriority = useSetTodoPriority()
+  const { makeTriggerProps, consumeLongPress } = useTodoMenuTrigger()
   const assignees = useMemo(
     () => [...new Set(due.map((t) => t.assigned_to).filter(Boolean))],
     [due],
@@ -153,6 +155,7 @@ export function PlanDeadlineDay({
               return (
                 <li
                   key={t.name}
+                  {...makeTriggerProps(t)}
                   className={clsx(
                     'relative flex items-center gap-2 rounded-2xl border border-l-4 bg-paper-card px-3 py-2.5 dark:bg-slate-800',
                     'border-paper-edge dark:border-slate-700',
@@ -160,7 +163,10 @@ export function PlanDeadlineDay({
                   )}
                 >
                   <button
-                    onClick={() => navigate(`/project-item/${encodeURIComponent(t.name)}`)}
+                    onClick={() => {
+                      if (consumeLongPress()) return
+                      navigate(`/project-item/${encodeURIComponent(t.name)}`)
+                    }}
                     className="min-w-0 flex-1 text-left"
                   >
                     <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-stone-800 dark:text-slate-100">
