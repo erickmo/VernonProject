@@ -1,3 +1,5 @@
+import json
+
 import frappe
 
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
@@ -526,6 +528,60 @@ def save_notes(todo_id, notes):
 		todo.notes = notes
 		todo.save(ignore_permissions=True)
 		return {"status": "ok", "message": "Catatan berhasil disimpan."}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
+
+
+def _parse_checklist(raw):
+	"""Normalize the stored checklist JSON into a clean list. Safe on None /
+	malformed JSON -> []. Each item is {"t": str, "d": bool}; empty-text rows
+	are dropped. Accepts either a JSON string (from the DB / client) or a list."""
+	if not raw:
+		return []
+	try:
+		data = json.loads(raw) if isinstance(raw, str) else raw
+	except (ValueError, TypeError):
+		return []
+	if not isinstance(data, list):
+		return []
+	out = []
+	for it in data:
+		if not isinstance(it, dict):
+			continue
+		t = str(it.get("t") or "").strip()
+		if not t:
+			continue
+		out.append({"t": t, "d": bool(it.get("d"))})
+	return out
+
+
+@frappe.whitelist()
+def save_checklist(todo_id, checklist):
+	"""Save the checklist for a project todo. Gate mirrors the detail screen's
+	`can_edit_notes`: assignee, project owner/leader, project admins, or System
+	Manager. `checklist` is a JSON string from the client; it is re-validated
+	and re-serialized server-side."""
+	try:
+		todo = frappe.get_doc("Project Todo", todo_id)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
+		project = frappe.get_doc("Project", project_detail.project)
+
+		user = frappe.session.user
+		allowed = (
+			user in (todo.assigned_to, project.project_owner, project.project_leader)
+			or user in get_project_admins(project)
+			or "System Manager" in frappe.get_roles(user)
+		)
+		if not allowed:
+			return {"status": "error", "message": "Anda tidak punya izin mengubah checklist ini."}
+
+		clean = _parse_checklist(checklist)
+		todo.checklist = json.dumps(clean, ensure_ascii=False)
+		todo.save(ignore_permissions=True)
+		return {"status": "ok", "message": "Checklist tersimpan.", "checklist": clean}
 
 	except frappe.DoesNotExistError:
 		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}

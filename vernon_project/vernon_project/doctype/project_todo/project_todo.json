@@ -24,6 +24,7 @@
       "blocked_by",
       "blocking",
       "notes",
+      "checklist",
       "points_section",
       "group",
       "level",
@@ -203,6 +204,12 @@
          "fieldname": "notes",
          "fieldtype": "Text Editor",
          "label": "Notes"
+      },
+      {
+         "description": "JSON array of {t: text, d: done} sub-items. Edited in-app, not in Desk.",
+         "fieldname": "checklist",
+         "fieldtype": "Small Text",
+         "label": "Checklist"
       },
       {
          "columns": 1,

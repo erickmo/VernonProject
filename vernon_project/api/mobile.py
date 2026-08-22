@@ -581,7 +581,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
@@ -790,6 +790,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		and getdate(row["owner_deadline"]) < _today()
 	)
 	assignee = name_map.get(row["assigned_to"], {})
+	from vernon_project.api.project_todo import _parse_checklist
 	out = {
 		"name": row["name"],
 		"to_do": row["to_do"],
@@ -854,6 +855,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"assignee_earned": row.get("assignee_earned") or 0,
 		"leader_earned": row.get("leader_earned") or 0,
 		"notes": row.get("notes") or "",
+		"checklist": _parse_checklist(row.get("checklist")),
 		"cancellation_reason": row.get("cancellation_reason") or None,
 		# When the todo was cancelled. Legacy rows have no cancelled_on — fall back to
 		# `modified` (the cancel is a cancelled todo's last write in practice).
@@ -1080,14 +1082,19 @@ def get_dashboard():
 	review.sort(key=lambda t: t["modified"] or "", reverse=True)
 	upcoming.sort(key=lambda t: t["deadline"] or "9999")
 
-	# My tasks completed today — one aggregate instead of scanning the (now
-	# unfetched) completed backlog. assigned_to is the todo's own assignee.
+	# My tasks marked done today — anything I pushed past Planned (Done, Checked,
+	# Completed), not only Owner-approved. A rejected todo reverts to Planned, so
+	# it drops out here automatically. Anchor on the Done transition, not approval:
+	# a slow leader/owner review must not move the task to a different day (mirrors
+	# the lateness anchor in the controller). one aggregate instead of scanning the
+	# backlog. assigned_to is the todo's own assignee.
 	_c = frappe.db.sql(
 		"""SELECT COUNT(*) AS cnt, COALESCE(SUM(estimated), 0) AS mins
 		   FROM `tabProject Todo`
-		   WHERE assigned_to = %(user)s AND status = %(completed)s
-		     AND DATE(completed_at) = %(today)s""",
-		{"user": user, "completed": STATUS_COMPLETED, "today": today},
+		   WHERE assigned_to = %(user)s AND status IN (%(done)s, %(checked)s, %(completed)s)
+		     AND DATE(COALESCE(done_started_at, developed_at, phase_completed_at, completed_at)) = %(today)s""",
+		{"user": user, "done": STATUS_DONE, "checked": STATUS_CHECKED,
+		 "completed": STATUS_COMPLETED, "today": today},
 		as_dict=True,
 	)[0]
 	completed_today = _c["cnt"]
@@ -1205,7 +1212,7 @@ def get_priority_occupancy(users, date):
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
