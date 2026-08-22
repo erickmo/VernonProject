@@ -61,3 +61,61 @@ export function PriorityBadge({ used, slots }: { used: number; slots: number }) 
     </span>
   )
 }
+
+// Per-card priority-slot badge for the By-project board: shows the card assignee's
+// remaining priority slots on the card's day, and (for a leader) toggles the todo's
+// priority on tap. Three states — already-priority / room-left / full — plus a
+// null-render when the feature is off (slots <= 0). Token-safe (amber/stone/slate
+// only) so it works in both frontends' PlanProjectBoard. `pending` dims + disables it
+// while the toggle mutation for THIS card is in flight. onToggle must NOT need the
+// event; the badge stops propagation itself so it never triggers the card's own tap.
+export function PrioritySlotBadge({
+  used,
+  slots,
+  isPriority,
+  canToggle,
+  pending,
+  onToggle,
+}: {
+  used: number
+  slots: number
+  isPriority: boolean
+  canToggle: boolean
+  pending: boolean
+  onToggle: () => void
+}) {
+  if (!slots) return null
+  const free = slots - used
+  const full = !isPriority && free <= 0
+  const tappable = canToggle && !full && !pending
+  const label = isPriority ? 'prioritas' : full ? `slot penuh (${used}/${slots})` : `${free} slot kosong`
+  const tone = isPriority
+    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+    : full
+      ? 'bg-stone-100 text-stone-500 dark:bg-slate-700 dark:text-slate-400'
+      : 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
+  return (
+    <span
+      role={tappable ? 'button' : undefined}
+      tabIndex={tappable ? 0 : undefined}
+      aria-label={tappable ? (isPriority ? 'Lepas prioritas' : 'Jadikan prioritas') : undefined}
+      onClick={
+        tappable
+          ? (e) => {
+              e.stopPropagation()
+              onToggle()
+            }
+          : undefined
+      }
+      className={clsx(
+        'mt-1 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold',
+        tone,
+        tappable && 'cursor-pointer active:scale-95',
+        pending && 'animate-pulse opacity-60',
+      )}
+    >
+      <Zap className="h-3 w-3" fill={isPriority ? 'currentColor' : 'none'} />
+      {label}
+    </span>
+  )
+}
