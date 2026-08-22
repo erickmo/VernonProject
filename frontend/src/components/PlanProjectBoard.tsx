@@ -4,8 +4,8 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, FolderKanban, Info, X } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { EmptyState, Spinner } from '@/components/ui'
-import { AssigneeTag, PlanLegend } from '@/components/PlanMeta'
-import { useMoveTodoPlan, useMoveTodoDeadline } from '@/hooks/useData'
+import { AssigneeTag, PlanLegend, PrioritySlotBadge } from '@/components/PlanMeta'
+import { useMoveTodoPlan, useMoveTodoDeadline, useTeamPriorityCoverage, useSetTodoPriority } from '@/hooks/useData'
 import { weekStartISO } from '@/pages/PlanScreen'
 import { boardDate, deadlineDate, planColumns, allocMinutes, deadlineTone, type DeadlineTone } from '@/lib/planDay'
 import { buildOptions } from '@/lib/filters'
@@ -98,6 +98,21 @@ export function PlanProjectBoard({
   const weekSet = useMemo(() => new Set(weekDates), [weekDates])
   const detailTotal = useMemo(() => estOf(detailTodos), [detailTodos])
 
+  // Priority-slot occupancy for this detail's project across the board week — reused
+  // from the Tim view's endpoint. Deadline mode only (the leader is placing due dates).
+  const boardProject = detailTodos[0]?.project ?? ''
+  const occ = useTeamPriorityCoverage(deadlineMode ? boardProject : '', boardWeekStart)
+  const occByUserDate = useMemo(() => {
+    const m = new Map<string, Map<string, { used: number; slots: number }>>()
+    for (const mem of occ.data?.members ?? []) {
+      const dm = new Map<string, { used: number; slots: number }>()
+      for (const d of mem.days) dm.set(d.date, { used: d.used, slots: d.slots })
+      m.set(mem.user, dm)
+    }
+    return m
+  }, [occ.data])
+  const setPriority = useSetTodoPriority()
+
   const drop = (date: string | null) => {
     if (!picked) return
     doMove(picked, date)
@@ -155,6 +170,20 @@ export function PlanProjectBoard({
             <AssigneeTag name={t.assigned_to_name} />
           </div>
         )}
+        {deadlineMode && t.assigned_to && t.deadline && weekSet.has(t.deadline) && (() => {
+          const cell = occByUserDate.get(t.assigned_to)?.get(t.deadline)
+          if (!cell) return null
+          return (
+            <PrioritySlotBadge
+              used={cell.used}
+              slots={cell.slots}
+              isPriority={!!t.is_priority}
+              canToggle={!!t.can_prioritize}
+              pending={setPriority.isPending && setPriority.variables?.todoName === t.name}
+              onToggle={() => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority })}
+            />
+          )
+        })()}
         {/* Open the todo detail without triggering the card's pick-to-move tap. */}
         <span
           role="button"
