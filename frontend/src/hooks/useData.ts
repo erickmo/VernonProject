@@ -786,6 +786,7 @@ export function useSetTodoPriority() {
       qc.invalidateQueries({ queryKey: keys.dashboard })
       qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoName) })
       qc.invalidateQueries({ queryKey: ['priority-occupancy'] })
+      qc.invalidateQueries({ queryKey: ['team-priority-coverage'] })
     },
   })
 }
