@@ -17,9 +17,12 @@ import {
   Copy,
   CornerDownRight,
   FileText,
+  ArrowDown,
+  ArrowUp,
   FolderKanban,
   History,
   Layers,
+  ListChecks,
   Link2,
   Lock,
   Pause,
@@ -39,6 +42,7 @@ import {
 import {
   useProjectItem,
   useSaveNotes,
+  useSaveChecklist,
   useSetTodoAllocations,
   useSetAssignedAllocation,
   useUpdateTodo,
@@ -76,7 +80,7 @@ import { FocusNoteDialog } from '@web/components/FocusNoteDialog'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { DatePicker } from '@web/components/DatePicker'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
-import type { ProjectItemDetail, StatusKey, TodoFile } from '@/lib/types'
+import type { ProjectItemDetail, StatusKey, TodoFile, ChecklistItem } from '@/lib/types'
 
 // ─────────────────────────── Stepper ───────────────────────────
 
@@ -259,6 +263,110 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
           <span>Click outside to save</span>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+// ─────────────────────────── Checklist ───────────────────────────
+
+function Checklist({ todoId, initial, canEdit }: { todoId: string; initial: ChecklistItem[]; canEdit: boolean }) {
+  const save = useSaveChecklist(todoId)
+  const toast = useToast()
+  const [items, setItems] = useState<ChecklistItem[]>(initial ?? [])
+  const [newItem, setNewItem] = useState('')
+  const baseline = useRef(JSON.stringify(initial ?? []))
+
+  useEffect(() => {
+    if (baseline.current === JSON.stringify(items)) {
+      setItems(initial ?? [])
+      baseline.current = JSON.stringify(initial ?? [])
+    }
+  }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = (next: ChecklistItem[]) => {
+    setItems(next)
+    baseline.current = JSON.stringify(next)
+    save.mutate(next, { onError: (err) => toast('error', (err as Error).message) })
+  }
+
+  const done = items.filter((i) => i.d).length
+  const addItem = () => {
+    const t = newItem.trim()
+    if (!t) return
+    commit([...items, { t, d: false }])
+    setNewItem('')
+  }
+  const move = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir
+    if (j < 0 || j >= items.length) return
+    const next = items.slice()
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    commit(next)
+  }
+
+  if (!canEdit) {
+    if (!items.length) return <p className="text-sm italic text-muted">No checklist.</p>
+    return (
+      <ul className="flex flex-col gap-2">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-center gap-2 text-sm">
+            {it.d ? <Check className="h-4 w-4 text-emerald-600" /> : <span className="inline-block h-4 w-4 rounded border border-line" />}
+            <span className={it.d ? 'text-muted line-through' : 'text-ink'}>{it.t}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <div>
+      {items.length > 0 && (
+        <ul className="mb-2 flex flex-col gap-2">
+          {items.map((it, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2">
+              <input
+                type="checkbox"
+                checked={it.d}
+                onChange={() => commit(items.map((x, j) => (j === i ? { ...x, d: !x.d } : x)))}
+                className="h-5 w-5 accent-brand-600"
+              />
+              <span className={'flex-1 text-sm ' + (it.d ? 'text-muted line-through' : 'text-ink')}>{it.t}</span>
+              <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" className="text-muted disabled:opacity-30 hover:text-ink">
+                <ArrowUp className="h-4 w-4" />
+              </button>
+              <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move down" className="text-muted disabled:opacity-30 hover:text-ink">
+                <ArrowDown className="h-4 w-4" />
+              </button>
+              <button onClick={() => commit(items.filter((_, j) => j !== i))} aria-label="Remove item" className="text-rose-500 hover:text-rose-600">
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <input
+          className="w-full rounded-xl border border-line bg-hover/[0.04] px-3 py-2 text-sm text-ink placeholder:text-muted outline-none focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100"
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addItem()
+            }
+          }}
+          placeholder="Tambah item checklist"
+        />
+        <button
+          onClick={addItem}
+          disabled={!newItem.trim()}
+          aria-label="Add item"
+          className="flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-3 text-white hover:bg-brand-700 disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+      {items.length > 0 && <p className="mt-1.5 text-xs text-muted">{done}/{items.length} selesai</p>}
     </div>
   )
 }
@@ -1547,6 +1655,14 @@ const [followOpen, setFollowOpen] = useState(false)
                 <FileText className="h-3.5 w-3.5" /> Notes
               </p>
               <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
+            </div>
+
+            {/* Checklist */}
+            <div className="rounded-xl bg-surface p-4 border border-line">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <ListChecks className="h-3.5 w-3.5" /> Checklist
+              </p>
+              <Checklist todoId={data.name} initial={data.checklist} canEdit={data.can_edit_notes} />
             </div>
 
             {/* Files */}
