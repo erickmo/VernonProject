@@ -70,7 +70,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { openFocusOverlay } from '@/lib/focusUI'
-import { BentoGrid, BentoTile } from '@web/components/bento'
+import { BentoTile } from '@web/components/bento'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
@@ -1407,9 +1407,11 @@ const [followOpen, setFollowOpen] = useState(false)
           <EditForm data={data} onClose={() => setEditing(false)} />
         </div>
       ) : (
-        <BentoGrid>
-          {/* ── LEFT COLUMN ── */}
-          <BentoTile span="wide" tone="plain" className="space-y-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+          {/* Todo-detail two-column: right panel (notes/checklist/files) is the wider 60%.
+              flex parent → BentoTile's grid col-span classes go inert; lg:w-* drives the split. */}
+          {/* ── LEFT COLUMN (40%) ── */}
+          <BentoTile span="wide" tone="plain" className="space-y-5 lg:w-2/5">
             {/* Badges */}
             {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0) && (
               <div className="flex flex-wrap gap-2">
@@ -1647,8 +1649,8 @@ const [followOpen, setFollowOpen] = useState(false)
             )}
           </BentoTile>
 
-          {/* ── RIGHT COLUMN ── */}
-          <BentoTile span="md" tone="plain" className="space-y-5">
+          {/* ── RIGHT COLUMN (60%) ── */}
+          <BentoTile span="md" tone="plain" className="space-y-5 lg:w-3/5">
             {/* Notes */}
             <div className="rounded-xl bg-surface p-4 border border-line">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -1726,7 +1728,7 @@ const [followOpen, setFollowOpen] = useState(false)
 
       <FocusNoteDialog open={showFocusNote} onClose={() => setShowFocusNote(false)} todoId={todoName} title={data.to_do} />
           </BentoTile>
-        </BentoGrid>
+        </div>
       )}
 
       {showWaiting && (
