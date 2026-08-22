@@ -14,7 +14,8 @@
 // v20: proctored timed application wizard (per-test timers, ketelitian, apply-once, anti-cheat).
 // v22: flush stale /m shell + assets so the Team Priority Coverage ("Tim" mode) deploy lands.
 // v23: flush stale /m shell for the By-project board priority-slot badge.
-const ASSET_CACHE = 'vernon-assets-v25'
+// v26: flush stale /m shell for the todo checklist.
+const ASSET_CACHE = 'vernon-assets-v26'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
