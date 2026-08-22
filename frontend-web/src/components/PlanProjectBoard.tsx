@@ -10,6 +10,7 @@ import { planColumns, boardDate, deadlineDate, allocMinutes, deadlineTone, type 
 import { buildOptions } from '@/lib/filters'
 import { todayISO, addDaysISO, formatDate, formatEstimate } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
+import { useTodoMenuTrigger } from '@/hooks/useTodoMenuTrigger'
 
 // ponytail: 3-line helper, same as Plan.tsx's local copy — not worth exporting.
 // Mon-first start of the week containing `iso` (TZ-safe via addDaysISO).
@@ -115,6 +116,7 @@ export function PlanProjectBoard({
     return m
   }, [occ.data])
   const setPriority = useSetTodoPriority()
+  const { makeTriggerProps, consumeLongPress } = useTodoMenuTrigger()
 
   const drop = (date: string | null) => {
     const t = dragged.current
@@ -136,6 +138,7 @@ export function PlanProjectBoard({
       <div
         key={t.name}
         draggable={!moving}
+        {...makeTriggerProps(t)}
         onDragStart={(e) => {
           dragged.current = t
           e.dataTransfer.setData('text/plain', t.name) // Firefox won't drag without data
@@ -148,6 +151,7 @@ export function PlanProjectBoard({
         onClick={() => {
           // A plain click opens the detail drawer; a drag fires dragstart/end and
           // suppresses click, so the two don't collide.
+          if (consumeLongPress()) return
           if (!moving) navigate(`/project-item/${encodeURIComponent(t.name)}`)
         }}
         title="Open detail"

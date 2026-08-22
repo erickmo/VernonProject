@@ -11,6 +11,7 @@ import { boardDate, deadlineDate, planColumns, allocMinutes, deadlineTone, type 
 import { buildOptions } from '@/lib/filters'
 import { addDaysISO, formatDate, formatEstimate, todayISO } from '@/lib/format'
 import type { ProjectItem } from '@/lib/types'
+import { useTodoMenuTrigger } from '@/hooks/useTodoMenuTrigger'
 
 // Weekday short + day number for a column header (e.g. "Mon 28"). TZ-safe local parse.
 function dayLabel(iso: string): { wd: string; day: number } {
@@ -112,6 +113,7 @@ export function PlanProjectBoard({
     return m
   }, [occ.data])
   const setPriority = useSetTodoPriority()
+  const { makeTriggerProps, consumeLongPress } = useTodoMenuTrigger()
 
   const drop = (date: string | null) => {
     if (!picked) return
@@ -132,9 +134,13 @@ export function PlanProjectBoard({
       <button
         key={t.name}
         disabled={moving}
+        {...makeTriggerProps(t)}
         onClick={
           !picked
-            ? () => setPicked(t)
+            ? () => {
+                if (consumeLongPress()) return
+                setPicked(t)
+              }
             : isPicked
               ? (e) => {
                   e.stopPropagation()
