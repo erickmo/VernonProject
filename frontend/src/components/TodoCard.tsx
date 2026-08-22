@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2 } from 'lucide-react'
+import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
@@ -207,6 +207,12 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
               <span className="inline-flex items-center gap-1 text-stone-500 dark:text-slate-400">
                 <Clock className="h-3.5 w-3.5" />
                 {formatEstimate(todo.estimated)}
+              </span>
+            )}
+            {!!todo.checklist?.length && (
+              <span className="inline-flex items-center gap-1 text-stone-500 dark:text-slate-400" title="Checklist">
+                <ListChecks className="h-3.5 w-3.5" />
+                {todo.checklist.filter((i) => i.d).length}/{todo.checklist.length}
               </span>
             )}
             {todo.today_allocation > 0 && showAssignee && (

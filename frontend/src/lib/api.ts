@@ -230,6 +230,11 @@ export const mobileApi = {
       'vernon_project.api.project_todo.save_notes',
       { todo_id: todoId, notes },
     ),
+  saveChecklist: (todoId: string, checklist: string) =>
+    api.post<{ status: string; message: string }>(
+      'vernon_project.api.project_todo.save_checklist',
+      { todo_id: todoId, checklist },
+    ),
   listTodoFiles: (todoId: string) =>
     api.get<TodoFile[]>('vernon_project.api.project_todo.list_todo_files', { todo_id: todoId }),
   deleteTodoFile: (todoId: string, fileName: string) =>

@@ -67,7 +67,10 @@ import type {
   LmsCompleteResult,
   LeaveType,
   HabitsResponse,
+  ChecklistItem,
 } from '@/lib/types'
+
+export type { ChecklistItem }
 import type { GanttGroup } from '@/lib/gantt'
 
 type BrandWeekdayPayload = Partial<Record<(typeof BRAND_WEEKDAY_KEYS)[number], number>>
@@ -878,6 +881,18 @@ export function useSaveNotes(todoId: string) {
   return useMutation({
     mutationFn: async (notes: string) => {
       const res = await mobileApi.saveNotes(todoId, notes)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.projectItem(todoId) }),
+  })
+}
+
+export function useSaveChecklist(todoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (items: ChecklistItem[]) => {
+      const res = await mobileApi.saveChecklist(todoId, JSON.stringify(items))
       if (res.status === 'error') throw new Error(res.message)
       return res
     },

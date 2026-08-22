@@ -3,7 +3,10 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   AlertCircle,
+  ArrowDown,
   ArrowDownLeft,
+  ArrowUp,
+  ListChecks,
   ArrowRight,
   ArrowUpRight,
   Ban,
@@ -44,7 +47,8 @@ import { openFocusOverlay } from '@/lib/focusUI'
 import { todoFileHref } from '@/lib/api'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, dateSub, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
+import type { ChecklistItem } from '@/lib/types'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -488,6 +492,117 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
           <span>Tap outside to save</span>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+function Checklist({ todoId, initial, canEdit }: { todoId: string; initial: ChecklistItem[]; canEdit: boolean }) {
+  const save = useSaveChecklist(todoId)
+  const toast = useToast()
+  const [items, setItems] = useState<ChecklistItem[]>(initial ?? [])
+  const [newItem, setNewItem] = useState('')
+  const baseline = useRef(JSON.stringify(initial ?? []))
+
+  // Adopt server state only when we have no pending local divergence — mirrors <Notes>.
+  useEffect(() => {
+    if (baseline.current === JSON.stringify(items)) {
+      setItems(initial ?? [])
+      baseline.current = JSON.stringify(initial ?? [])
+    }
+  }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = (next: ChecklistItem[]) => {
+    setItems(next)
+    baseline.current = JSON.stringify(next) // adopt now so the refetch doesn't clobber optimistic state
+    save.mutate(next, { onError: (err) => toast('error', (err as Error).message) })
+  }
+
+  const done = items.filter((i) => i.d).length
+  const addItem = () => {
+    const t = newItem.trim()
+    if (!t) return
+    commit([...items, { t, d: false }])
+    setNewItem('')
+  }
+  const move = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir
+    if (j < 0 || j >= items.length) return
+    const next = items.slice()
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    commit(next)
+  }
+
+  // Read-only: static checked list. ponytail: no edit affordances when !canEdit.
+  if (!canEdit) {
+    if (!items.length) return <p className="text-sm italic text-slate-400 dark:text-slate-500">No checklist.</p>
+    return (
+      <ul className="flex flex-col gap-2">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-center gap-2 text-sm">
+            {it.d ? <Check className="h-4 w-4 text-emerald-600" /> : <span className="inline-block h-4 w-4 rounded border border-slate-300 dark:border-slate-600" />}
+            <span className={it.d ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}>{it.t}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <div>
+      {items.length > 0 && (
+        <ul className="mb-2 flex flex-col gap-2">
+          {items.map((it, i) => (
+            <li
+              key={i}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2"
+            >
+              <input
+                type="checkbox"
+                checked={it.d}
+                onChange={() => commit(items.map((x, j) => (j === i ? { ...x, d: !x.d } : x)))}
+                className="h-5 w-5 accent-brand-600"
+              />
+              <span className={'flex-1 text-sm ' + (it.d ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-800 dark:text-slate-100')}>
+                {it.t}
+              </span>
+              <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" className="text-slate-400 disabled:opacity-30 active:scale-90">
+                <ArrowUp className="h-4 w-4" />
+              </button>
+              <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move down" className="text-slate-400 disabled:opacity-30 active:scale-90">
+                <ArrowDown className="h-4 w-4" />
+              </button>
+              <button onClick={() => commit(items.filter((_, j) => j !== i))} aria-label="Remove item" className="text-rose-500 active:scale-90">
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <input
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100"
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addItem()
+            }
+          }}
+          placeholder="Tambah item checklist"
+        />
+        <button
+          onClick={addItem}
+          disabled={!newItem.trim()}
+          aria-label="Add item"
+          className="flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-3 text-white active:scale-95 disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+      {items.length > 0 && (
+        <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">{done}/{items.length} selesai</p>
+      )}
     </div>
   )
 }
@@ -1483,6 +1598,14 @@ const [followOpen, setFollowOpen] = useState(false)
           <FileText className="h-3.5 w-3.5" /> Notes
         </p>
         <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
+      </div>
+
+      {/* Checklist */}
+      <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <ListChecks className="h-3.5 w-3.5" /> Checklist
+        </p>
+        <Checklist todoId={data.name} initial={data.checklist} canEdit={data.can_edit_notes} />
       </div>
 
       {/* Files */}
