@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck } from 'lucide-react'
+import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck, GraduationCap } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
-import { useLastSeenAccess } from '@/hooks/useData'
+import { useLastSeenAccess, useInternAllocationAccess } from '@/hooks/useData'
 
 // Bespoke reports with their own screens (not the generic /report/:name engine).
 const BESPOKE = [
@@ -28,7 +28,18 @@ const BESPOKE = [
 export default function Reports() {
   const navigate = useNavigate()
   const { data: lastSeenAccess } = useLastSeenAccess()
+  const { data: internAccess } = useInternAllocationAccess()
   const bespoke = [
+    ...(internAccess?.can
+      ? [{
+          key: 'intern-allocation',
+          title: 'Alokasi Magang',
+          desc: 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin',
+          icon: GraduationCap,
+          accent: 'from-amber-500 to-orange-600',
+          to: '/reports/intern-allocation',
+        }]
+      : []),
     ...(lastSeenAccess?.can
       ? [{
           key: 'last-seen',
