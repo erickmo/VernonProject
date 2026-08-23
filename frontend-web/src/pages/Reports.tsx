@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck } from 'lucide-react'
+import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck, GraduationCap } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
-import { useLastSeenAccess } from '@/hooks/useData'
+import { useLastSeenAccess, useInternAllocationAccess } from '@/hooks/useData'
 import { Card, CardList } from '@web/components/Card'
 import { EmptyState } from '@/components/ui'
 import { Page, PageHeader, rise } from '@web/components/Page'
@@ -29,14 +29,16 @@ export default function Reports() {
     !query || title.toLowerCase().includes(query) || desc.toLowerCase().includes(query)
 
   const { data: lastSeenAccess } = useLastSeenAccess()
+  const { data: internAccess } = useInternAllocationAccess()
   const showTodosDue = match(TODOS_DUE.title, TODOS_DUE.desc)
   const showLastSeen = !!lastSeenAccess?.can && match('Last Seen', 'When each teammate was last active')
+  const showIntern = !!internAccess?.can && match('Alokasi Magang', 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin')
   const filtered = useMemo(() => REPORTS.filter((r) => match(r.title, r.desc)), [query])
-  const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0)
+  const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0) + (showIntern ? 1 : 0)
 
   return (
     <Page>
-      <PageHeader icon={BarChart3} title="Reports" subtitle={`${count} of ${REPORTS.length + 1} reports`} />
+      <PageHeader icon={BarChart3} title="Reports" subtitle={`${count} of ${REPORTS.length + 1 + (internAccess?.can ? 1 : 0) + (lastSeenAccess?.can ? 1 : 0)} reports`} />
 
       {/* Search — filters the catalogue by title or description. */}
       <div className="relative mb-4">
@@ -73,6 +75,16 @@ export default function Reports() {
                 eyebrow={<ReportBadge icon={AlarmClock} accent="from-rose-500 to-pink-600" />}
                 title={TODOS_DUE.title}
                 meta={TODOS_DUE.desc}
+              />
+            </div>
+          )}
+          {showIntern && (
+            <div {...rise(1)}>
+              <Card
+                onClick={() => navigate('/reports/intern-allocation')}
+                eyebrow={<ReportBadge icon={GraduationCap} accent="from-amber-500 to-orange-600" />}
+                title="Alokasi Magang"
+                meta="Matriks tugas magang per hari + sinyal pengelolaan pemimpin"
               />
             </div>
           )}
