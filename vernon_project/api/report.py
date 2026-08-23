@@ -24,6 +24,12 @@ STATUS_COMPLETED = "✅ Completed"      # ✅ Completed
 STATUS_CANCELLED = "\U0001f6ab Cancelled"  # 🚫 Cancelled
 STATUS_PLANNED = "⚪️ Planned"       # ⚪️ Planned (medium white circle + variation selector)
 STATUS_CHECKED = "\U0001f537 Checked By PL"   # 🔷 Checked By PL
+STATUS_DONE = "\U0001f7e0 Done"            # 🟠 Done — delivered, waiting on the leader
+
+# Intern-allocation thresholds. Named so the report's rules read out of the code.
+STALE_ASSIGNMENT_DAYS = 7   # no new assigned work for this long -> needs attention
+REVIEW_WAIT_DAYS = 3        # delivered work left unreviewed this long -> needs attention
+_AWAITING = (STATUS_DONE, STATUS_CHECKED)   # delivered by the intern, not yet resolved by the leader
 
 
 def _date_list(from_date, to_date):
@@ -71,6 +77,105 @@ def _build_daily_matrix(active_users, assigned_rows, planned_rows, from_date, to
 
 	return {"threshold": threshold, "from_date": str(getdate(from_date)),
 		"to_date": str(getdate(to_date)), "dates": dates, "rows": out_rows}
+
+
+def _weekday_dates(dates):
+	"""Mon-Fri members of `dates`. ponytail: fixed Mon-Fri, not shift- or holiday-aware —
+	most users carry no Shift Assignment, so a shift-derived working-day model would leave
+	every day unevaluated. `_resolve_expected()` is the upgrade path if that changes."""
+	return [d for d in dates if getdate(d).weekday() < 5]
+
+
+def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope):
+	"""Enrich a `_build_daily_matrix` payload with the per-intern management signals HR
+	reads: dry spells, work stuck in review, delivery, and written coaching. Pure — every
+	argument is plain data, so this is unit-testable without a site.
+
+	`interns`   [{name, full_name, sources}]  sources: which marking(s) flagged them.
+	`todo_rows` [{user, project, project_name, leader, leader_name, status, deadline,
+	              done_on, review_since, minutes, in_range}] — `in_range` false for a todo
+	              pulled in only because it is still awaiting review (see _intern_todo_rows).
+	`note_rows` [{user, note_date}]
+	Rows sort attention-first: the report exists to surface the neglected ones.
+	"""
+	dates = matrix["dates"]
+	weekdays = set(_weekday_dates(dates))
+	to_date = matrix["to_date"]
+	by_user = {r["user"]: r for r in matrix["rows"]}
+
+	todos_by_user, notes_by_user = {}, {}
+	for t in todo_rows:
+		todos_by_user.setdefault(t["user"], []).append(t)
+	for n in note_rows:
+		notes_by_user.setdefault(n["user"], []).append(n)
+
+	rows = []
+	for intern in interns:
+		row = dict(by_user.get(intern["name"]) or {
+			"user": intern["name"], "full_name": intern.get("full_name") or intern["name"],
+			"per_day_assigned": {d: 0 for d in dates}, "per_day_planned": {d: 0 for d in dates},
+			"assigned_total": 0, "planned_total": 0, "flagged_dates": list(dates),
+		})
+		row["sources"] = list(intern.get("sources") or [])
+
+		worked = [d for d in dates if row["per_day_assigned"].get(d, 0) > 0]
+		row["zero_days"] = len([d for d in weekdays if row["per_day_assigned"].get(d, 0) <= 0])
+		row["last_assigned_on"] = worked[-1] if worked else None
+		# Work scheduled ahead inside the range is not a dry spell, hence max(0, ...).
+		row["stale_days"] = (
+			max(0, date_diff(to_date, row["last_assigned_on"])) if worked else len(dates)
+		)
+
+		mine = todos_by_user.get(intern["name"], [])
+		waiting = [t for t in mine if t.get("status") in _AWAITING]
+		row["awaiting_review"] = len(waiting)
+		row["oldest_wait_days"] = max(
+			[max(0, date_diff(to_date, t["review_since"])) for t in waiting if t.get("review_since")],
+			default=0,
+		)
+		in_range = [t for t in mine if t.get("in_range")]
+		row["assigned_count"] = len(in_range)
+		done = [t for t in in_range if t.get("done_on")]
+		row["done"] = len(done)
+		row["late"] = len([t for t in done if t.get("deadline") and t["done_on"] > t["deadline"]])
+
+		projects = {}
+		for t in mine:
+			p = projects.setdefault(t["project"], {
+				"project": t["project"], "project_name": t.get("project_name") or t["project"],
+				"leader": t.get("leader"), "leader_name": t.get("leader_name") or t.get("leader"),
+				"todos": 0, "minutes": 0, "waiting": 0,
+			})
+			p["todos"] += 1
+			p["minutes"] += int(t.get("minutes") or 0)
+			if t.get("status") in _AWAITING:
+				p["waiting"] += 1
+		row["projects"] = sorted(projects.values(), key=lambda p: p["project_name"])
+		leaders = {p["leader"]: p["leader_name"] for p in row["projects"] if p["leader"]}
+		row["leaders"] = [{"leader": k, "leader_name": v} for k, v in sorted(leaders.items())]
+
+		notes = sorted(str(n["note_date"]) for n in notes_by_user.get(intern["name"], []) if n.get("note_date"))
+		row["notes_count"] = len(notes)
+		row["last_note_on"] = notes[-1] if notes else None
+
+		reasons = []
+		if weekdays and row["zero_days"] == len(weekdays):
+			reasons.append("idle")
+		if row["stale_days"] >= STALE_ASSIGNMENT_DAYS:
+			reasons.append("stale")
+		if row["oldest_wait_days"] >= REVIEW_WAIT_DAYS:
+			reasons.append("waiting")
+		row["reasons"] = reasons
+		row["attention"] = bool(reasons)
+		rows.append(row)
+
+	rows.sort(key=lambda r: (not r["attention"], (r["full_name"] or "").lower()))
+	return {
+		"scope": scope, "threshold": matrix["threshold"],
+		"from_date": matrix["from_date"], "to_date": to_date, "dates": dates,
+		"rows": rows,
+		"totals": {"interns": len(rows), "attention": len([r for r in rows if r["attention"]])},
+	}
 
 
 def _is_system_manager():

@@ -197,7 +197,7 @@ class TestBuildInternMatrix(unittest.TestCase):
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `python3 -m pytest vernon_project/api/test_intern_allocation.py -x 2>&1 | tail -5`
+Run: `cd /home/frappe/frappe-bench && env/bin/python -m unittest vernon_project.api.test_intern_allocation -v 2>&1 | tail -5` (pytest is not installed in the bench venv; `unittest` needs no site for the pure tests)
 Expected: `ImportError: cannot import name 'STATUS_DONE'` (or `_build_intern_matrix`).
 
 - [ ] **Step 3: Implement**
@@ -309,8 +309,8 @@ def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope):
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd /home/frappe/frappe-bench/apps/vernon_project && python3 -m pytest vernon_project/api/test_intern_allocation.py -q 2>&1 | tail -5`
-Expected: all tests pass. (These tests import only pure helpers, so plain pytest works without a bench site.)
+Run: `cd /home/frappe/frappe-bench && env/bin/python -m unittest vernon_project.api.test_intern_allocation 2>&1 | tail -5`
+Expected: all tests pass. (These tests import only pure helpers, so `unittest` works without a bench site.)
 
 - [ ] **Step 5: Commit**
 
@@ -544,7 +544,7 @@ def intern_allocation(from_date, to_date):
 - [ ] **Step 4: Verify (deferred)**
 
 These tests need the site; they run in Task 7's single integration pass. Sanity-check the module still imports:
-Run: `cd /home/frappe/frappe-bench/apps/vernon_project && python3 -m pytest vernon_project/api/test_intern_allocation.py -q -k "Weekday or BuildIntern" 2>&1 | tail -3`
+Run: `cd /home/frappe/frappe-bench && env/bin/python -m unittest vernon_project.api.test_intern_allocation.TestBuildInternMatrix 2>&1 | tail -3`
 Expected: the Task-1 pure tests still pass (the new imports must not break them).
 
 - [ ] **Step 5: Commit**
