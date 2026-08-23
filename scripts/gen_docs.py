@@ -59,6 +59,7 @@ CLUSTERS = {
     }),
     "hr": ("Kepegawaian", "HR", "1x1", {
         "Employee Profile", "Employee Education", "Employee Skill", "Employee Training",
+        "Internship Certificate", "Internship Certificate Rubric",
     }),
     "recruitment": ("Rekrutmen", "Recruitment", "1x1", {
         "Job Opening", "Job Test Question", "Job Application",
@@ -351,22 +352,27 @@ def selfcheck(vp):
     expectations, not truth — they are asserted only here, never in the generate path,
     so a real DocType #75 shows up as a git diff (the drift oracle) instead of a crash.
     """
-    assert vp["counts"]["doctypes"]["n"] == 83, vp["counts"]["doctypes"]
+    assert vp["counts"]["doctypes"]["n"] == 95, vp["counts"]["doctypes"]
     # ponytail: the listdir/os.walk traps are described in read_doctypes, not asserted
     # here — their counts move with __pycache__ litter, so asserting them fails on the
     # bare checkout this generator promises to run on. This is the env-independent one.
-    assert len(glob.glob(str(ROOT / DT_GLOB))) == 83, "doctype json glob moved"
+    assert len(glob.glob(str(ROOT / DT_GLOB))) == 95, "doctype json glob moved"
     seen = [c for d in vp["doctypes"] for c in [d["cluster"]] if c]
-    assert len(seen) == 83 and sum(len(c["doctypes"]) for c in vp["clusters"]) == 83, "cluster gap/dupe"
+    assert len(seen) == 95 and sum(len(c["doctypes"]) for c in vp["clusters"]) == 95, "cluster gap/dupe"
     mods = {e["module"] for e in vp["endpoints"]}
     for m in ("vernon_project.vernon_project.doctype.project.project",
               "vernon_project.vernon_project.doctype.project_todo.project_todo"):
         assert m in mods, f"endpoint glob dropped {m} — naive api/*.py bug"
-    assert vp["counts"]["fields"]["n"] == 676, vp["counts"]["fields"]
+    assert vp["counts"]["fields"]["n"] == 903, vp["counts"]["fields"]
     # 149 (80 specs) was true until 2026-07-15-docs-site-rebuild-design.md — this very
     # rebuild's own spec — landed in 874178e, making it 150/81. A hand-typed count that
     # rotted inside one commit; the reason this file exists.
-    assert vp["counts"]["devlogs"]["n"] == 171, vp["counts"]["devlogs"]
+    #
+    # 2026-08-23: these tripwires had drifted a long way (83/676/171 against a real
+    # 93/876/221) because they are asserted only under --selfcheck, which nothing runs
+    # automatically. Rebased onto the true numbers here. They are expectations, not
+    # truth: when they fail, look at the git diff of data.js first.
+    assert vp["counts"]["devlogs"]["n"] == 223, vp["counts"]["devlogs"]
     assert vp["counts"]["devlogs"]["n"] == vp["counts"]["specs"]["n"] + vp["counts"]["plans"]["n"]
     assert all(r["title"] and r["date"] for r in vp["devlog"]), "devlog parse gap"
     # read_hooks emitted a hand-typed 7-key set and so left out page_renderer — the hook
@@ -384,7 +390,7 @@ def selfcheck(vp):
     for must in ("page_renderer", "doc_events", "scheduler_events", "after_request",
                  "permission_query_conditions", "has_permission", "website_route_rules"):
         assert must in vp["hooks"], f"{must} is declared in hooks.py but missing from the docs"
-    print(f"selfcheck OK — 83 doctypes / {vp['counts']['fields']['n']} fields / "
+    print(f"selfcheck OK — 95 doctypes / {vp['counts']['fields']['n']} fields / "
           f"{vp['counts']['endpoints']['n']} endpoints / {vp['counts']['devlogs']['n']} devlogs / "
           f"{len(vp['hooks'])} hooks")
 
