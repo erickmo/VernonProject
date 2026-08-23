@@ -590,6 +590,21 @@ export const useLastSeenAccess = () =>
     staleTime: 1000 * 60 * 5,
   })
 
+export const useInternAllocationAccess = () =>
+  useQuery({
+    queryKey: ['intern-allocation-access'],
+    queryFn: () => mobileApi.internAllocationAccess(),
+    staleTime: 1000 * 60 * 5,
+  })
+
+export const useInternAllocation = (from: string, to: string, enabled = true) =>
+  useQuery({
+    queryKey: ['intern-allocation', from, to],
+    queryFn: () => mobileApi.internAllocation(from, to),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+
 export const useLastSeenReport = (enabled = true) =>
   useQuery({
     queryKey: ['last-seen'],

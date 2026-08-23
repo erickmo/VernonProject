@@ -604,6 +604,53 @@ export interface LastSeenAccess {
   scope: 'all' | 'team' | 'none'
 }
 
+export interface InternAllocationProject {
+  project: string
+  project_name: string
+  leader: string | null
+  leader_name: string | null
+  todos: number
+  minutes: number
+  waiting: number
+}
+
+export interface InternAllocationRow {
+  user: string
+  full_name: string
+  sources: ('member_type' | 'profile')[]
+  per_day_assigned: Record<string, number>
+  per_day_planned: Record<string, number>
+  assigned_total: number
+  planned_total: number
+  flagged_dates: string[]
+  zero_days: number
+  last_assigned_on: string | null
+  stale_days: number
+  awaiting_review: number
+  oldest_wait_days: number
+  assigned_count: number
+  done: number
+  late: number
+  notes_count: number
+  last_note_on: string | null
+  projects: InternAllocationProject[]
+  leaders: { leader: string; leader_name: string }[]
+  attention: boolean
+  reasons: InternAttentionReason[]
+}
+
+export type InternAttentionReason = 'idle' | 'stale' | 'waiting'
+
+export interface InternAllocationResponse {
+  scope: 'all' | 'team'
+  threshold: number
+  from_date: string
+  to_date: string
+  dates: string[]
+  rows: InternAllocationRow[]
+  totals: { interns: number; attention: number }
+}
+
 export interface UserFormPayload {
   full_name: string
   roles: string[]

@@ -747,6 +747,13 @@ export const mobileApi = {
     api.get<{ rows: import('./types').LastSeenRow[]; scope: 'all' | 'team' }>(
       'vernon_project.api.report.last_seen_report',
     ),
+  internAllocation: (from_date: string, to_date: string) =>
+    api.get<import('./types').InternAllocationResponse>(
+      'vernon_project.api.report.intern_allocation',
+      { from_date, to_date },
+    ),
+  internAllocationAccess: () =>
+    api.get<import('./types').LastSeenAccess>('vernon_project.api.report.intern_allocation_access'),
   lastSeenAccess: () =>
     api.get<import('./types').LastSeenAccess>('vernon_project.api.report.last_seen_access'),
   buzzTodo: (todo: string) =>
