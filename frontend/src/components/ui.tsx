@@ -165,6 +165,22 @@ export function Pill({
   )
 }
 
+// Account active/inactive (User.enabled) — distinct from presence (online-now dot).
+export function StatusPill({ enabled }: { enabled: 0 | 1 | boolean }) {
+  return (
+    <Pill
+      className={clsx(
+        'shrink-0',
+        enabled
+          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+          : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
+      )}
+    >
+      {enabled ? 'Active' : 'Inactive'}
+    </Pill>
+  )
+}
+
 export function FilterChips<T extends string>({
   options,
   value,

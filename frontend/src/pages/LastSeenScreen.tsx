@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import clsx from 'clsx'
 import { DetailScreen } from '@/components/Layout'
-import { Spinner, EmptyState, PresenceAvatar } from '@/components/ui'
+import { Spinner, EmptyState, PresenceAvatar, StatusPill } from '@/components/ui'
 import { UserRoundCheck } from 'lucide-react'
 import { useLastSeenReport, useBoot } from '@/hooks/useData'
 import { presenceOf } from '@/lib/presence'
@@ -75,7 +75,10 @@ export default function LastSeenScreen() {
                 <div key={r.name} className={`${card} flex items-center gap-3`}>
                   <PresenceAvatar name={r.full_name || r.name} image={r.user_image} config={r.avatar_config} size={40} rounded online={p.online} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-stone-800 dark:text-slate-100">{r.full_name || r.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-semibold text-stone-800 dark:text-slate-100">{r.full_name || r.name}</p>
+                      <StatusPill enabled={r.enabled} />
+                    </div>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">{r.member_type || r.name}</p>
                   </div>
                   <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{p.label}</span>

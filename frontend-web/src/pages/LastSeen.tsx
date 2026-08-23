@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { UserRoundCheck } from 'lucide-react'
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable, type Column } from '@web/components/DataTable'
-import { EmptyState, PresenceAvatar } from '@/components/ui'
+import { EmptyState, PresenceAvatar, StatusPill } from '@/components/ui'
 import { useLastSeenReport, useBoot } from '@/hooks/useData'
 import { presenceOf } from '@/lib/presence'
 import type { LastSeenRow } from '@/lib/types'
@@ -36,6 +36,12 @@ export default function LastSeen() {
       key: 'type',
       header: 'Type',
       render: (u) => (u.member_type ? <span className="text-xs text-muted">{u.member_type}</span> : <span className="text-xs text-muted">—</span>),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortValue: (u) => (u.enabled ? 1 : 0),
+      render: (u) => <StatusPill enabled={u.enabled} />,
     },
     {
       key: 'presence',
