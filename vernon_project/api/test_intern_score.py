@@ -310,3 +310,122 @@ class TestSplitGrade(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+# --- row mappers: the only part of the DB layer that has real logic in it ------------
+
+from vernon_project.api.intern_score import (  # noqa: E402
+	ATT_IGNORED, ATT_PRESENT, attendance_from_rows, courses_from_rows,
+	point_target, points_from_rows,
+)
+
+
+def att(*statuses):
+	return [{"status": s} for s in statuses]
+
+
+class TestAttendanceRows(unittest.TestCase):
+	def test_present_and_absent(self):
+		self.assertEqual(attendance_from_rows(att("Present", "Present", "Absent")),
+			{"scheduled": 3, "present": 2})
+
+	def test_off_days_and_holidays_are_not_scheduled(self):
+		self.assertEqual(attendance_from_rows(att("OffDay", "Holiday", "Present")),
+			{"scheduled": 1, "present": 1})
+
+	def test_approved_leave_is_not_held_against_the_intern(self):
+		# Excused-Leave is leave the company granted. Counting it as a missed day would
+		# punish an intern for a request their own HR approved.
+		self.assertEqual(attendance_from_rows(att("Excused-Leave", "Present")),
+			{"scheduled": 1, "present": 1})
+
+	def test_late_still_counts_as_showing_up(self):
+		# Lateness is judged by the leader under Kedisiplinan in the rubric, not twice.
+		self.assertEqual(attendance_from_rows(att("Late", "EarlyLeave", "Late+EarlyLeave")),
+			{"scheduled": 3, "present": 3})
+
+	def test_wfh_counts_as_present(self):
+		self.assertEqual(attendance_from_rows(att("Excused-WFH")), {"scheduled": 1, "present": 1})
+
+	def test_no_rows_leaves_no_denominator(self):
+		self.assertEqual(attendance_from_rows([]), {"scheduled": 0, "present": 0})
+		self.assertEqual(attendance_from_rows(None), {"scheduled": 0, "present": 0})
+
+	def test_all_ignored_leaves_no_denominator(self):
+		self.assertEqual(attendance_from_rows(att("OffDay", "Holiday")),
+			{"scheduled": 0, "present": 0})
+
+	def test_unknown_status_is_scheduled_but_not_present(self):
+		self.assertEqual(attendance_from_rows(att("Teleported")), {"scheduled": 1, "present": 0})
+
+	def test_present_and_ignored_sets_do_not_overlap(self):
+		self.assertEqual(set(ATT_PRESENT) & set(ATT_IGNORED), set())
+
+
+class TestCourseRows(unittest.TestCase):
+	def test_counts_completed(self):
+		rows = [{"status": "Completed"}, {"status": "In Progress"}, {"status": "Assigned"}]
+		self.assertEqual(courses_from_rows(rows), {"enrolled": 3, "completed": 1})
+
+	def test_no_enrollments(self):
+		self.assertEqual(courses_from_rows([]), {"enrolled": 0, "completed": 0})
+		self.assertEqual(courses_from_rows(None), {"enrolled": 0, "completed": 0})
+
+
+class TestPointRows(unittest.TestCase):
+	def test_sums_points_earned(self):
+		rows = [{"points_earned": 10}, {"points_earned": 5.5}]
+		self.assertEqual(points_from_rows(rows, 100)["earned"], 15.5)
+
+	def test_penalties_are_included(self):
+		# Negative ledger rows are penalties; netting them off is the honest total.
+		self.assertEqual(points_from_rows([{"points_earned": 10}, {"points_earned": -4}], 100)["earned"], 6.0)
+
+	def test_missing_values_are_zero(self):
+		self.assertEqual(points_from_rows([{"points_earned": None}, {}], 100)["earned"], 0.0)
+
+	def test_target_passes_through(self):
+		self.assertEqual(points_from_rows([], 250)["target"], 250)
+
+	def test_no_rows(self):
+		self.assertEqual(points_from_rows(None, 100), {"earned": 0.0, "target": 100})
+
+
+class TestPointTarget(unittest.TestCase):
+	def test_scales_with_the_length_of_the_internship(self):
+		# 31 days is slightly more than one mean month, so slightly more than the target.
+		self.assertAlmostEqual(point_target("2026-01-01", "2026-01-31", 100), 101.8, places=1)
+
+	def test_a_period_of_a_mean_month_is_exactly_the_monthly_target(self):
+		# 30.44 days rounds to a 30-day span (inclusive), give or take the rounding.
+		self.assertAlmostEqual(point_target("2026-01-01", "2026-01-30", 100), 98.6, places=1)
+
+	def test_twice_as_long_is_twice_the_target(self):
+		one = point_target("2026-01-01", "2026-01-30", 100)     # 30 days
+		two = point_target("2026-01-01", "2026-03-01", 100)     # 60 days
+		self.assertAlmostEqual(two, one * 2, places=0)
+
+	def test_target_scales_with_the_monthly_rate(self):
+		self.assertAlmostEqual(point_target("2026-01-01", "2026-03-31", 200),
+			point_target("2026-01-01", "2026-03-31", 100) * 2, places=0)
+
+	def test_unset_target_means_the_component_is_dropped(self):
+		# 0 -> no denominator -> compute_auto_score drops "contribution" entirely, which
+		# is what an admin who never configured a target should get.
+		self.assertEqual(point_target("2026-01-01", "2026-06-30", 0), 0.0)
+		self.assertEqual(point_target("2026-01-01", "2026-06-30", None), 0.0)
+
+	def test_single_day_still_has_a_target(self):
+		self.assertGreater(point_target("2026-01-01", "2026-01-01", 100), 0)
+
+	def test_reversed_period_does_not_go_negative(self):
+		self.assertEqual(point_target("2026-06-30", "2026-01-01", 100), 0.0)
+
+	def test_missing_dates_drop_the_component(self):
+		self.assertEqual(point_target(None, None, 100), 0.0)
+
+	def test_impossible_dates_drop_the_component_instead_of_crashing(self):
+		# 2026 is not a leap year. A bad date must not take the whole score page down.
+		self.assertEqual(point_target("2026-01-01", "2026-02-29", 100), 0.0)
+		self.assertEqual(point_target("2026-01-01", "not-a-date", 100), 0.0)
+		self.assertEqual(point_target("2026-13-01", "2026-12-01", 100), 0.0)

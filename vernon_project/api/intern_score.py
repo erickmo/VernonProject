@@ -183,3 +183,63 @@ def blank_rubric():
 	"""The rubric a leader starts from: every line present, none scored yet."""
 	return [{"key": k, "label": lbl, "weight": w, "score": None, "comment": ""}
 		for k, lbl, w in RUBRIC]
+
+
+# --- row mappers --------------------------------------------------------------------
+# The DB layer in api/certificate.py hands raw rows to these and gets score inputs back.
+# They live here, and are tested here, because this is where the judgement calls are.
+
+# Days the company never expected the intern to work. Not scheduled -> not counted.
+# Excused-Leave is in this set on purpose: leave the company itself approved must not
+# come back as a missed day.
+ATT_IGNORED = ("OffDay", "Holiday", "Excused-Leave")
+
+# The intern turned up. Late / EarlyLeave count: they were there, and punctuality is
+# judged once, by the leader, under Kedisiplinan in the rubric.
+ATT_PRESENT = ("Present", "Late", "EarlyLeave", "Late+EarlyLeave", "Excused-WFH")
+
+DAYS_PER_MONTH = 30.44   # mean Gregorian month, so a target scales smoothly by day
+
+
+def attendance_from_rows(rows):
+	scheduled = [r for r in (rows or []) if (r.get("status") or "") not in ATT_IGNORED]
+	present = [r for r in scheduled if (r.get("status") or "") in ATT_PRESENT]
+	return {"scheduled": len(scheduled), "present": len(present)}
+
+
+def courses_from_rows(rows):
+	rows = rows or []
+	return {"enrolled": len(rows),
+		"completed": sum(1 for r in rows if (r.get("status") or "") == "Completed")}
+
+
+def points_from_rows(rows, target):
+	"""Net points over the period. Penalty rows are negative and are netted off rather
+	than ignored — the ledger's own total is the honest one."""
+	return {"earned": round(sum(_num(r.get("points_earned")) for r in (rows or [])), 2),
+		"target": target}
+
+
+def point_target(period_start, period_end, per_month):
+	"""Points an intern is expected to earn over this period.
+
+	Returns 0.0 when no monthly target is configured, which drops the contribution
+	component instead of scoring every intern zero against a target nobody set."""
+	per_month = _num(per_month)
+	if per_month <= 0 or not period_start or not period_end:
+		return 0.0
+	from datetime import date
+
+	def d(x):
+		y, m, dd = (int(p) for p in str(x)[:10].split("-"))
+		return date(y, m, dd)
+
+	try:
+		days = (d(period_end) - d(period_start)).days + 1   # inclusive
+	except (ValueError, TypeError):
+		# An impossible date (29 Feb in a common year, a typo) drops the component
+		# rather than taking the whole score down with it.
+		return 0.0
+	if days <= 0:
+		return 0.0
+	return round(days / DAYS_PER_MONTH * per_month, 1)

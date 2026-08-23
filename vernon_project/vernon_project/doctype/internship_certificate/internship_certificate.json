@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-08-23 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "intern", "project", "position", "column_break_a", "period_start", "period_end", "status",
+  "identity_section", "cert_no", "verify_code", "column_break_b", "issued_on", "published_by",
+  "score_section", "auto_score", "auto_grade", "column_break_c", "rubric_score", "rubric_grade",
+  "breakdown_json",
+  "rubric_section", "rubric", "summary",
+  "revoke_section", "revoked_on", "revoke_reason"
+ ],
+ "fields": [
+  {"fieldname": "intern", "fieldtype": "Link", "options": "User", "label": "Peserta Magang", "reqd": 1, "in_list_view": 1, "search_index": 1},
+  {"fieldname": "project", "fieldtype": "Link", "options": "Project", "label": "Proyek", "in_list_view": 1, "description": "Kosongkan bila sertifikat mencakup seluruh masa magang, bukan satu proyek."},
+  {"fieldname": "position", "fieldtype": "Data", "label": "Posisi", "in_list_view": 1},
+  {"fieldname": "column_break_a", "fieldtype": "Column Break"},
+  {"fieldname": "period_start", "fieldtype": "Date", "label": "Mulai Magang", "reqd": 1},
+  {"fieldname": "period_end", "fieldtype": "Date", "label": "Selesai Magang", "reqd": 1},
+  {"fieldname": "status", "fieldtype": "Select", "options": "Draft\nPending HR\nPublished\nRevoked", "default": "Draft", "label": "Status", "in_list_view": 1, "in_standard_filter": 1, "read_only": 1},
+
+  {"fieldname": "identity_section", "fieldtype": "Section Break", "label": "Identitas Sertifikat"},
+  {"fieldname": "cert_no", "fieldtype": "Data", "label": "Nomor Sertifikat", "read_only": 1, "unique": 1, "description": "Dicetak di sertifikat. Baru terbit saat HR menerbitkan."},
+  {"fieldname": "verify_code", "fieldtype": "Data", "label": "Kode Verifikasi", "read_only": 1, "unique": 1, "search_index": 1, "description": "Kunci halaman verifikasi publik. Siapa pun yang tahu kode ini dapat membaca sertifikat."},
+  {"fieldname": "column_break_b", "fieldtype": "Column Break"},
+  {"fieldname": "issued_on", "fieldtype": "Date", "label": "Tanggal Terbit", "read_only": 1},
+  {"fieldname": "published_by", "fieldtype": "Link", "options": "User", "label": "Diterbitkan Oleh", "read_only": 1},
+
+  {"fieldname": "score_section", "fieldtype": "Section Break", "label": "Nilai (dibekukan saat terbit)"},
+  {"fieldname": "auto_score", "fieldtype": "Float", "label": "Nilai Kinerja", "read_only": 1, "precision": "1"},
+  {"fieldname": "auto_grade", "fieldtype": "Data", "label": "Grade Kinerja", "read_only": 1},
+  {"fieldname": "column_break_c", "fieldtype": "Column Break"},
+  {"fieldname": "rubric_score", "fieldtype": "Float", "label": "Nilai Penilaian", "read_only": 1, "precision": "1"},
+  {"fieldname": "rubric_grade", "fieldtype": "Data", "label": "Grade Penilaian", "read_only": 1},
+  {"fieldname": "breakdown_json", "fieldtype": "Small Text", "label": "Rincian Nilai Kinerja (JSON)", "read_only": 1},
+
+  {"fieldname": "rubric_section", "fieldtype": "Section Break", "label": "Penilaian Pembimbing"},
+  {"fieldname": "rubric", "fieldtype": "Table", "options": "Internship Certificate Rubric", "label": "Rubrik"},
+  {"fieldname": "summary", "fieldtype": "Small Text", "label": "Catatan Pembimbing", "description": "Dicetak di sertifikat."},
+
+  {"fieldname": "revoke_section", "fieldtype": "Section Break", "label": "Pencabutan", "depends_on": "eval:doc.status=='Revoked'"},
+  {"fieldname": "revoked_on", "fieldtype": "Date", "label": "Dicabut Pada", "read_only": 1},
+  {"fieldname": "revoke_reason", "fieldtype": "Small Text", "label": "Alasan Pencabutan", "read_only": 1}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-08-23 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Internship Certificate",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "HR Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Project Leader", "create": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
