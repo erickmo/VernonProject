@@ -7,3 +7,9 @@ node_modules
 __pycache__
 # TS incremental build cache
 *.tsbuildinfo
+
+# Session scratch — throwaway files, never repo content
+scratchpad/
+# Claude Code: shared hooks/settings are tracked; machine-local ones are not
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/frappe/frappe-bench/apps/vernon_project/.claude/hooks/whats-new-reminder.sh",
+            "timeout": 10,
+            "statusMessage": "Checking What's New…"
+          }
+        ]
+      }
+    ]
+  }
+}
