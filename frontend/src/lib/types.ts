@@ -1673,3 +1673,77 @@ export interface AdminAnnouncement {
   end_date: string
   published: 0 | 1
 }
+
+// --- Internship certificate + intern score ------------------------------------------
+// Two scores travel together everywhere and are never merged: `auto_score` is derived
+// from the intern's own record, `rubric_score` is the supervisor's judgement.
+
+export type CertificateStatus = 'Draft' | 'Pending HR' | 'Published' | 'Revoked'
+
+export interface ScoreComponent {
+  key: string
+  label: string
+  weight: number
+  /** 0-100. A component with no denominator is absent from the list, never 0. */
+  value: number
+  points: number
+  /** e.g. "9/10", "18/20 hari" — the raw counts behind the percentage. */
+  detail: string
+}
+
+export interface RubricLine {
+  label: string
+  weight: number
+  /** null = this criterion was not judged. Never conflate with a scored 0. */
+  score: number | null
+  comment: string
+}
+
+export interface LiveScore {
+  auto_score: number | null
+  grade: string | null
+  components: ScoreComponent[]
+  rubric?: { key: string; label: string; weight: number; score: number | null; comment: string }[]
+}
+
+export interface CertificateRow {
+  name: string
+  intern: string
+  intern_name: string
+  project?: string | null
+  project_name?: string | null
+  position?: string | null
+  period_start: string
+  period_end: string
+  status: CertificateStatus
+  cert_no?: string | null
+  /** Only ever present for Published/Revoked — it is the public key to the certificate. */
+  verify_code?: string | null
+  issued_on?: string | null
+  auto_score: number | null
+  rubric_score: number | null
+  auto_grade?: string | null
+  rubric_grade?: string | null
+  modified: string
+}
+
+export interface CertificateDetail extends CertificateRow {
+  summary?: string | null
+  rubric: RubricLine[]
+  components: ScoreComponent[]
+  /** true once published: the scores are a snapshot and no longer recompute. */
+  frozen: boolean
+  verify_url?: string | null
+  /** Statuses this viewer may move to right now — drives which buttons render. */
+  actions: CertificateStatus[]
+  can_edit: boolean
+  is_hr: boolean
+  revoked_on?: string | null
+  revoke_reason?: string | null
+}
+
+export interface CertificateAccess {
+  can_issue: boolean
+  scope: 'all' | 'team' | 'self'
+  is_hr: boolean
+}

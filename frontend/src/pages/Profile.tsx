@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket } from 'lucide-react'
+import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket, Award } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -164,6 +164,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             { icon: Palette, label: 'Customize Avatar', hue: 'violet', onClick: () => navigate('/avatar') },
             { icon: Trophy, label: 'Achievements', hue: 'amber', onClick: () => navigate('/achievements') },
             { icon: Flame, label: 'Kebiasaan', hue: 'amber', onClick: () => navigate('/habits') },
+            { icon: Award, label: 'Sertifikat Magang', hue: 'emerald', onClick: () => navigate('/certificates') },
             { icon: Sparkles, label: 'Superpower', hue: 'violet', onClick: () => navigate(`/superpowers/${boot?.user}`) },
             { icon: KeyRound, label: 'Change password', hue: 'sky', onClick: () => setShowChangePw(true) },
             ...(pushSupported()

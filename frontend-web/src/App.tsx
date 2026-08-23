@@ -43,6 +43,8 @@ import ReportPage from '@web/pages/ReportPage'
 import TodosDue from '@web/pages/TodosDue'
 import LastSeen from '@web/pages/LastSeen'
 import InternAllocation from '@web/pages/InternAllocation'
+import Certificates from '@web/pages/Certificates'
+import Certificate from '@web/pages/Certificate'
 import Income from '@web/pages/Income'
 import IncomeAdmin from '@web/pages/IncomeAdmin'
 import Announcements from '@web/pages/Announcements'
@@ -283,6 +285,8 @@ export default function App() {
           <Route path="/reports/todos-due" element={<TodosDue />} />
           <Route path="/reports/last-seen" element={<LastSeen />} />
           <Route path="/reports/intern-allocation" element={<InternAllocation />} />
+<Route path="/certificates" element={<Certificates />} />
+<Route path="/certificates/:name" element={<Certificate />} />
           <Route path="/logbook" element={<Logbook />} />
           {canManageGroups(b) && (
             <Route path="/data-health" element={<DataHealth />} />

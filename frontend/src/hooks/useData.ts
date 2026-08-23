@@ -6,7 +6,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query'
-import { api, mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi } from '@/lib/api'
+import { api, mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { enrollPasskey } from '@/lib/webauthn'
 import { allocTotal } from '@/lib/planDay'
@@ -604,6 +604,81 @@ export const useInternAllocation = (from: string, to: string, enabled = true) =>
     enabled,
     staleTime: 1000 * 30,
   })
+
+// --- internship certificates ---------------------------------------------------------
+
+export const useCertificateAccess = () =>
+  useQuery({
+    queryKey: ['certificate-access'],
+    queryFn: () => certificateApi.certificateAccess(),
+    staleTime: 1000 * 60 * 5,
+  })
+
+export const useCertificates = (params?: { intern?: string; status?: string }, enabled = true) =>
+  useQuery({
+    queryKey: ['certificates', params?.intern ?? '', params?.status ?? ''],
+    queryFn: () => certificateApi.listCertificates(params),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+
+export const useIssuableInterns = (enabled = true) =>
+  useQuery({
+    queryKey: ['certificate-interns'],
+    queryFn: () => certificateApi.issuableInterns(),
+    enabled,
+    staleTime: 1000 * 60 * 5,
+  })
+
+export const useMyScore = () =>
+  useQuery({
+    queryKey: ['my-intern-score'],
+    queryFn: () => certificateApi.myScore(),
+    staleTime: 1000 * 60,
+  })
+
+export const useCertificate = (name: string | undefined) =>
+  useQuery({
+    queryKey: ['certificate', name],
+    queryFn: () => certificateApi.getCertificate(name!),
+    enabled: !!name,
+    // A draft recomputes its auto score on every read, so never serve a stale one.
+    staleTime: 0,
+  })
+
+export const usePreviewScore = (
+  intern: string | undefined, from: string, to: string, project?: string, enabled = true,
+) =>
+  useQuery({
+    queryKey: ['certificate-preview', intern ?? '', from, to, project ?? ''],
+    queryFn: () => certificateApi.previewScore(intern!, from, to, project),
+    enabled: enabled && !!intern && !!from && !!to,
+    staleTime: 1000 * 30,
+  })
+
+export const useSaveCertificate = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof certificateApi.saveCertificate>[0]) =>
+      certificateApi.saveCertificate(payload),
+    onSuccess: (doc) => {
+      qc.invalidateQueries({ queryKey: ['certificates'] })
+      qc.setQueryData(['certificate', doc.name], doc)
+    },
+  })
+}
+
+export const useSetCertificateStatus = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, target, reason }: { name: string; target: string; reason?: string }) =>
+      certificateApi.setCertificateStatus(name, target, reason),
+    onSuccess: (doc) => {
+      qc.invalidateQueries({ queryKey: ['certificates'] })
+      qc.setQueryData(['certificate', doc.name], doc)
+    },
+  })
+}
 
 export const useLastSeenReport = (enabled = true) =>
   useQuery({

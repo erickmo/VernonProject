@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Users, ArrowLeftRight, Briefcase, FileText, Ban, ClipboardList, ClipboardCheck,
   Building2, Store, BookOpen, DoorOpen, ShieldAlert, ChevronRight, Copy, Megaphone, GraduationCap,
+  Award,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import {
@@ -38,6 +39,9 @@ export default function HrHubScreen() {
         ...(canManageUsers(boot) ? [{ icon: Copy, label: 'Salin Keanggotaan Proyek', hue: 'sky', to: '/clone-memberships' }] : []),
         // The intern report lives where HR works, not only under Reports.
         ...(canHrApprove(boot) ? [{ icon: GraduationCap, label: 'Employee Allocation', hue: 'amber', to: '/reports/intern-allocation' }] : []),
+        // Leaders draft certificates and HR publishes them, so it belongs beside the
+        // intern report rather than under Reports.
+        { icon: Award, label: 'Sertifikat Magang', hue: 'emerald', to: '/certificates' },
       ],
     },
     {

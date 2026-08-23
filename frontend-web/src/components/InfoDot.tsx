@@ -2,10 +2,17 @@ import { Info } from 'lucide-react'
 import { HoverCard } from '@web/components/HoverCard'
 import { internHelp } from '@/lib/internAllocation'
 
-// An (i) that explains one reporting term on hover/focus. Copy comes from the shared
-// help map, so /w and /m never drift apart on what a number means.
-export function InfoDot({ term, className }: { term: string; className?: string }) {
-  const entry = internHelp(term)
+type HelpEntry = { title: string; body: string }
+
+// An (i) that explains one term on hover/focus. Copy comes from a shared help map, so
+// /w and /m never drift apart on what a number means. `lookup` picks which map — the
+// intern report's by default, but any feature can pass its own.
+export function InfoDot({
+  term, className, lookup = internHelp,
+}: {
+  term: string; className?: string; lookup?: (term: string) => HelpEntry | undefined
+}) {
+  const entry = lookup(term)
   if (!entry) return null
   return (
     <HoverCard

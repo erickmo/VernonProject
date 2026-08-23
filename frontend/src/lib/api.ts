@@ -1540,6 +1540,7 @@ export const APPLICATION_STATUSES = [
   'Submitted', 'Screening', 'Interview', 'Offered', 'Hired', 'Rejected',
 ] as const
 
+const CERT = 'vernon_project.api.certificate.'
 const REC = 'vernon_project.api.recruitment.'
 
 export const recruitmentApi = {
@@ -1590,4 +1591,49 @@ export const recruitmentApi = {
     api.post<{ ok: boolean }>(REC + 'add_blacklist', { nik_ktp, full_name, reason }),
   removeBlacklist: (nik_ktp: string) =>
     api.post<{ ok: boolean }>(REC + 'remove_blacklist', { nik_ktp }),
+
+}
+
+// Internship certificates. The two scores always travel together and are never
+// merged; see api/intern_score.py for why.
+export const certificateApi = {
+  certificateAccess: () =>
+    api.get<import('./types').CertificateAccess>(CERT + 'certificate_access'),
+  listCertificates: (params?: { intern?: string; status?: string }) =>
+    api.get<{ rows: import('./types').CertificateRow[]; scope: 'all' | 'team' | 'self' }>(
+      CERT + 'list_certificates',
+      params as Record<string, unknown>,
+    ),
+  issuableInterns: () =>
+    api.get<{ interns: { name: string; full_name: string; projects: { project: string; project_name: string }[] }[]; scope: string }>(
+      CERT + 'issuable_interns',
+    ),
+  myScore: () =>
+    api.get<import('./types').LiveScore & {
+      period_start: string; period_end: string
+      certificates: { name: string; cert_no: string | null; status: string; issued_on: string | null }[]
+    }>(CERT + 'my_score'),
+  getCertificate: (name: string) =>
+    api.get<import('./types').CertificateDetail>(CERT + 'get_certificate', { name }),
+  previewScore: (intern: string, period_start: string, period_end: string, project?: string) =>
+    api.get<import('./types').LiveScore>(CERT + 'preview_score', {
+      intern, period_start, period_end, ...(project ? { project } : {}),
+    }),
+  saveCertificate: (payload: {
+    name?: string; intern?: string; project?: string | null; position?: string
+    period_start: string; period_end: string; summary?: string
+    rubric: { key: string; score: number | null; comment: string }[]
+  }) =>
+    api.post<import('./types').CertificateDetail>(CERT + 'save_certificate', {
+      ...payload,
+      // the rubric is a list of objects; Frappe wants it as a JSON string in the body
+      rubric: JSON.stringify(payload.rubric),
+    }),
+  setCertificateStatus: (name: string, target: string, reason?: string) =>
+    api.post<import('./types').CertificateDetail>(CERT + 'set_certificate_status', {
+      name, target, ...(reason ? { reason } : {}),
+    }),
+  /** Published certificates only — the server refuses a draft rather than watermarking it. */
+  certificatePdfUrl: (name: string) =>
+    `${METHOD}${CERT}certificate_pdf?name=${encodeURIComponent(name)}`,
 }

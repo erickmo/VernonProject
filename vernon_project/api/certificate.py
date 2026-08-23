@@ -27,7 +27,7 @@ from vernon_project.api.intern_score import (
 	courses_from_rows, point_target, points_from_rows, rubric_display, split_grade,
 )
 from vernon_project.api.qr import qr_data_uri, verify_url
-from vernon_project.api.report import _projects_i_run, _users_on_projects
+from vernon_project.api.report import _intern_users, _projects_i_run, _users_on_projects
 
 DOCTYPE = "Internship Certificate"
 
@@ -131,6 +131,39 @@ def certificate_access():
 
 
 @frappe.whitelist()
+def issuable_interns():
+	"""Interns this caller may write a certificate for, with the projects they are on.
+
+	Scoped rather than "every user": a leader picking from a list of 400 accounts is how
+	a certificate ends up on the wrong person."""
+	me = frappe.session.user
+	scope, allowed = _scope(me)
+	if scope == "self":
+		return {"interns": [], "scope": scope}
+
+	interns = _intern_users(None if scope == "all" else allowed)
+	names = [i["name"] for i in interns]
+	if not names:
+		return {"interns": [], "scope": scope}
+
+	rows = frappe.get_all("Project Team",
+		filters={"user": ["in", names], "parenttype": "Project"},
+		fields=["user", "parent"])
+	titles = {p.name: p.project_name for p in frappe.get_all(
+		"Project", filters={"name": ["in", sorted({r.parent for r in rows})]},
+		fields=["name", "project_name"])} if rows else {}
+
+	by_user = {}
+	for r in rows:
+		by_user.setdefault(r.user, []).append(
+			{"project": r.parent, "project_name": titles.get(r.parent) or r.parent})
+
+	for i in interns:
+		i["projects"] = by_user.get(i["name"], [])
+	return {"interns": interns, "scope": scope}
+
+
+@frappe.whitelist()
 def list_certificates(intern=None, status=None):
 	"""Certificates the caller may see, newest first."""
 	me = frappe.session.user
@@ -229,6 +262,40 @@ def preview_score(intern, period_start, period_end, project=None):
 		str(getdate(period_start)), str(getdate(period_end)))
 	out["rubric"] = [{"key": k, "label": lbl, "weight": w, "score": None, "comment": ""}
 		for k, lbl, w in RUBRIC]
+	return out
+
+
+@frappe.whitelist()
+def my_score(period_start=None, period_end=None):
+	"""The caller's own live score, so an intern can watch it during the placement
+	instead of meeting it for the first time on a certificate.
+
+	The period defaults to their Employee Profile contract dates, falling back to the
+	last 180 days -- an intern should not have to know their own start date to see a
+	number about themselves."""
+	me = frappe.session.user
+
+	if not (period_start and period_end):
+		profile = frappe.db.get_value("Employee Profile", {"user": me},
+			["contract_start", "contract_end", "date_joined"], as_dict=True) or {}
+		period_start = period_start or profile.get("contract_start") or profile.get("date_joined") \
+			or frappe.utils.add_days(nowdate(), -180)
+		period_end = period_end or profile.get("contract_end") or nowdate()
+		# A contract that runs into the future would score against days not yet worked.
+		if str(getdate(period_end)) > nowdate():
+			period_end = nowdate()
+
+	problem = validate_period(period_start, period_end)
+	if problem:
+		frappe.throw(problem)
+
+	start, end = str(getdate(period_start)), str(getdate(period_end))
+	out = _live_auto(me, None, start, end)
+	out["period_start"], out["period_end"] = start, end
+	# Certificates already issued to them, so the screen can link straight there.
+	out["certificates"] = frappe.get_all(DOCTYPE,
+		filters={"intern": me, "status": ["in", (PUBLISHED, REVOKED)]},
+		fields=["name", "cert_no", "status", "issued_on"], order_by="issued_on desc")
 	return out
 
 

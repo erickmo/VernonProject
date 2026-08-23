@@ -6,7 +6,7 @@ import {
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
   History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck, Clock,
-  ClipboardList, GraduationCap,
+  ClipboardList, GraduationCap, Award,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -65,6 +65,9 @@ const COMMUNITY: NavLeaf[] = [
   { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/income', label: 'Extra Income', sub: 'Opportunities & claims', icon: Banknote },
   { to: '/papan-iklan', label: 'Papan Iklan', sub: 'Jual · beli · sewa', icon: Megaphone },
+  // Not HR-gated: an intern opens the same screen to see their own certificate and
+  // live score. The list endpoint scopes what each viewer gets.
+  { to: '/certificates', label: 'Sertifikat Magang', sub: 'Sertifikat + nilai magang', icon: Award },
   { to: '/whats-new', label: "What's New", sub: 'Latest updates', icon: Sparkles },
 ]
 

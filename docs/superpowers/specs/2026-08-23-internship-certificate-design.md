@@ -188,6 +188,35 @@ Then the endpoint/state-machine tests: permission scope per role, illegal transi
 publish freezing, duplicate publish refused, revoke keeping the row, verify lookup for
 valid / revoked / unknown codes.
 
+## What changed during implementation
+
+Four things the design did not anticipate, all found by building it:
+
+- **`Internship Certificate Rubric.scored` (Check).** A Frappe `Float` column cannot store
+  `None` — it writes `0.0`. So every criterion a leader skipped came back looking like a
+  scored zero and dragged the rubric down: a rubric that should have read 86.0 read 43.0.
+  The flag is what keeps "not judged" and "judged zero" apart. The pure engine still
+  accepts `score: None` for rows built in memory.
+
+- **`my_score` endpoint.** The design only ever showed an intern their score on a
+  certificate — which means meeting it for the first time on the way out. `my_score`
+  returns the caller's own live score over their Employee Profile contract dates
+  (falling back to the last 180 days), and both frontends lead with it.
+
+- **`issuable_interns` endpoint.** Picking the intern out of every user account is how a
+  certificate ends up on the wrong person. The picker is scoped to interns the caller
+  actually leads.
+
+- **The PDF layout is shaped by three measured wkhtmltopdf facts**, each of which
+  silently produced a two-page or half-blank certificate. They are documented in the
+  template itself: the printable band is 180mm rather than 210mm (frappe overrides the
+  caller's margins with 15mm when the HTML has no header/footer div); QtWebKit paginates
+  on any explicit `<body>` height; and QtWebKit has neither flexbox nor the `inset`
+  shorthand, so rows stacked and the decorative frame never drew.
+
+Also: the QR forces `https` even though `frappe.utils.get_url()` returns `http` on this
+site (no `host_name` in site_config). A URL printed onto paper cannot be corrected later.
+
 ## Deliberately not built
 
 No admin-editable rubric weights. No bulk issue. No email delivery. No certificate templates
