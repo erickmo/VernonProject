@@ -10,8 +10,8 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { InternHelpSheet } from '@/components/InternHelpSheet'
 import { useInternAllocation } from '@/hooks/useData'
 import {
-  EMPTY_INTERN_FILTERS, REASON_LABEL, cellBand, dayLabel, filterInternRows,
-  internFilterOptions, isWeekend, lastDays,
+  EMPTY_INTERN_FILTERS, MAX_RANGE_DAYS, REASON_LABEL, cellBand, dayLabel, filterInternRows,
+  internFilterOptions, isWeekend, lastDays, rangeBounds, spanDays,
 } from '@/lib/internAllocation'
 import type { InternAllocationRow } from '@/lib/types'
 
@@ -26,6 +26,8 @@ const SOURCES = [
   { value: 'member_type', label: 'Member Type' },
   { value: 'profile', label: 'Profil' },
 ]
+
+const dateField = 'min-w-0 flex-1 rounded-xl border border-paper-edge bg-paper-card px-2.5 py-2 text-sm text-stone-800 focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
 
 const card = 'rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card'
 
@@ -139,8 +141,12 @@ function DetailSheet({ row, onClose }: { row: InternAllocationRow | null; onClos
 }
 
 export default function InternAllocationScreen() {
-  const [days, setDays] = useState('14')
-  const [from, to] = useMemo(() => lastDays(Number(days)), [days])
+  // One source of truth for the period: the range itself. A preset just writes into it,
+  // so the chips and the date fields can never disagree about what is being shown.
+  const [[from, to], setRange] = useState<[string, string]>(() => lastDays(14))
+  const today = lastDays(1)[1]
+  const activePreset = to === today ? String(spanDays(from, to)) : ''
+  const bounds = rangeBounds(from, to)
   const { data, isLoading, isError, error, refetch } = useInternAllocation(from, to)
 
   const [filters, setFilters] = useState(EMPTY_INTERN_FILTERS)
@@ -190,7 +196,34 @@ export default function InternAllocationScreen() {
                 <Info className="h-5 w-5" />
               </button>
             </div>
-            <Segmented options={RANGES} value={days} onChange={setDays} />
+            <Segmented options={RANGES} value={activePreset} onChange={(v) => setRange(lastDays(Number(v)))} />
+
+            {/* Custom period. min/max keep every reachable pick inside what the endpoint
+                accepts, so a too-wide range is unpickable instead of a 403. */}
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={from}
+                min={bounds.fromMin}
+                max={bounds.fromMax}
+                onChange={(e) => e.target.value && setRange([e.target.value, to])}
+                aria-label="Tanggal mulai"
+                className={dateField}
+              />
+              <span className="shrink-0 text-stone-400 dark:text-slate-500" aria-hidden>→</span>
+              <input
+                type="date"
+                value={to}
+                min={bounds.toMin}
+                max={bounds.toMax}
+                onChange={(e) => e.target.value && setRange([from, e.target.value])}
+                aria-label="Tanggal akhir"
+                className={dateField}
+              />
+            </div>
+            <p className="text-center text-[11px] text-stone-400 dark:text-slate-500">
+              {spanDays(from, to)} hari · maksimal {MAX_RANGE_DAYS} hari
+            </p>
           </div>
 
           {/* Filter — semuanya di sisi klien, jadi hasilnya seketika. */}

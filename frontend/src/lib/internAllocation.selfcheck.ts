@@ -76,3 +76,32 @@ assert.ok(internHelp('waiting')!.body.includes(String(REVIEW_WAIT_DAYS)))
 assert.equal(internHelp('nope'), undefined)
 
 console.log('intern allocation self-check OK')
+
+// --- period range helpers -----------------------------------------------------
+import { MAX_RANGE_DAYS, addDaysISO, rangeBounds, spanDays } from './internAllocation'
+
+// inclusive span, both ends counted
+assert.equal(spanDays('2026-08-17', '2026-08-17'), 1)
+assert.equal(spanDays('2026-08-17', '2026-08-23'), 7)
+// reversed or junk is not a range
+assert.equal(spanDays('2026-08-23', '2026-08-17'), 0)
+assert.equal(spanDays('', '2026-08-17'), 0)
+
+// calendar arithmetic must cross month and year ends without UTC drift
+assert.equal(addDaysISO('2026-08-31', 1), '2026-09-01')
+assert.equal(addDaysISO('2026-09-01', -1), '2026-08-31')
+assert.equal(addDaysISO('2026-12-31', 1), '2027-01-01')
+assert.equal(addDaysISO('2026-01-01', -1), '2025-12-31')
+assert.equal(addDaysISO('2026-08-17', 0), '2026-08-17')
+
+// bounds keep every reachable pick inside what the endpoint accepts
+const b = rangeBounds('2026-08-01', '2026-08-14')
+assert.equal(b.toMin, '2026-08-01')            // "to" can never precede "from"
+assert.equal(b.fromMax, '2026-08-14')          // "from" can never follow "to"
+assert.equal(spanDays('2026-08-01', b.toMax!), MAX_RANGE_DAYS)   // widest allowed pick
+assert.equal(spanDays(b.fromMin!, '2026-08-14'), MAX_RANGE_DAYS)
+// an empty end leaves that side unbounded rather than guessing
+assert.equal(rangeBounds('', '2026-08-14').toMin, undefined)
+assert.equal(rangeBounds('2026-08-01', '').fromMax, undefined)
+
+console.log('period range self-check OK')

@@ -153,6 +153,38 @@ export function dayLabel(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+// Widest period the pickers allow. The endpoint's guard is `date_diff(end, start) >
+// MAX_SPAN_DAYS` with MAX_SPAN_DAYS = 92, which admits 93 INCLUSIVE days — this cap is
+// deliberately one day stricter so a reachable pick can never 403. Raise report.py first
+// if this ever grows.
+export const MAX_RANGE_DAYS = 92
+
+/** Inclusive day count of [from, to]. Reversed or unparseable input -> 0. */
+export function spanDays(from: string, to: string): number {
+  const a = Date.parse(from)
+  const b = Date.parse(to)
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return 0
+  return Math.round((b - a) / 86_400_000) + 1
+}
+
+/** Shift a YYYY-MM-DD by whole days, staying on the calendar (no UTC drift). */
+export function addDaysISO(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + days)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+/** The bounds each picker must enforce so any pick stays a range the endpoint accepts:
+ *  `to` never before `from`, and the span never wider than MAX_RANGE_DAYS. */
+export function rangeBounds(from: string, to: string) {
+  return {
+    fromMax: to || undefined,
+    fromMin: to ? addDaysISO(to, -(MAX_RANGE_DAYS - 1)) : undefined,
+    toMin: from || undefined,
+    toMax: from ? addDaysISO(from, MAX_RANGE_DAYS - 1) : undefined,
+  }
+}
+
 /** Inclusive [from, to] for the last `days` days ending today. */
 export function lastDays(days: number): [string, string] {
   const to = new Date()

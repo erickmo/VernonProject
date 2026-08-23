@@ -3,14 +3,15 @@ import clsx from 'clsx'
 import { GraduationCap, AlertTriangle, SearchX, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Page, PageHeader } from '@web/components/Page'
+import { DatePicker } from '@web/components/DatePicker'
 import { Sheet } from '@web/components/Sheet'
 import { InfoDot } from '@web/components/InfoDot'
 import { EmptyState, Spinner, Pill } from '@/components/ui'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { useInternAllocation } from '@/hooks/useData'
 import {
-  EMPTY_INTERN_FILTERS, REASON_LABEL, cellBand, dayLabel, filterInternRows,
-  internFilterOptions, isWeekend, lastDays,
+  EMPTY_INTERN_FILTERS, MAX_RANGE_DAYS, REASON_LABEL, cellBand, dayLabel, filterInternRows,
+  internFilterOptions, isWeekend, lastDays, rangeBounds, spanDays,
 } from '@/lib/internAllocation'
 import type { InternAllocationRow } from '@/lib/types'
 
@@ -124,8 +125,12 @@ function DetailSheet({ row, onClose }: { row: InternAllocationRow | null; onClos
 }
 
 export default function InternAllocation() {
-  const [days, setDays] = useState(14)
-  const [from, to] = useMemo(() => lastDays(days), [days])
+  // One source of truth for the period: the range itself. A preset just writes into it,
+  // so the two controls can never disagree about what is being shown.
+  const [[from, to], setRange] = useState<[string, string]>(() => lastDays(14))
+  const today = lastDays(1)[1]
+  const activePreset = to === today ? RANGES.find((d) => spanDays(from, to) === d) ?? null : null
+  const bounds = rangeBounds(from, to)
   const { data, isLoading, isError, error, refetch } = useInternAllocation(from, to)
 
   const [filters, setFilters] = useState(EMPTY_INTERN_FILTERS)
@@ -174,13 +179,39 @@ export default function InternAllocation() {
             <button
               key={d}
               type="button"
-              onClick={() => setDays(d)}
+              onClick={() => setRange(lastDays(d))}
+              aria-pressed={d === activePreset}
               className={clsx('rounded-lg px-3 py-1.5 text-sm font-medium transition',
-                d === days ? 'bg-brand-600 text-white' : 'text-muted hover:text-ink')}
+                d === activePreset ? 'bg-brand-600 text-white' : 'text-muted hover:text-ink')}
             >
               {d} hari
             </button>
           ))}
+        </div>
+
+        {/* Custom period. The pickers' own min/max keep every reachable pick inside what
+            the endpoint accepts, so a too-wide range is unpickable instead of a 403. */}
+        <div className="flex items-center gap-1.5 rounded-xl border border-line bg-surface px-2 py-1">
+          <DatePicker
+            value={from}
+            onChange={(v) => v && setRange([v, to])}
+            min={bounds.fromMin}
+            max={bounds.fromMax}
+            aria-label="Tanggal mulai"
+            className="px-1.5 py-1 text-sm text-ink"
+          />
+          <span className="text-muted" aria-hidden>→</span>
+          <DatePicker
+            value={to}
+            onChange={(v) => v && setRange([from, v])}
+            min={bounds.toMin}
+            max={bounds.toMax}
+            aria-label="Tanggal akhir"
+            className="px-1.5 py-1 text-sm text-ink"
+          />
+          <span className="whitespace-nowrap px-1 text-xs text-muted">
+            {spanDays(from, to)} hari · maks {MAX_RANGE_DAYS}
+          </span>
         </div>
 
         <button
