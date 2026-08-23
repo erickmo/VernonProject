@@ -37,7 +37,7 @@ export default function HrHubScreen() {
         ...(canManageUsers(boot) ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky', to: '/transfer-tasks' }] : []),
         ...(canManageUsers(boot) ? [{ icon: Copy, label: 'Salin Keanggotaan Proyek', hue: 'sky', to: '/clone-memberships' }] : []),
         // The intern report lives where HR works, not only under Reports.
-        ...(canHrApprove(boot) ? [{ icon: GraduationCap, label: 'Alokasi Magang', hue: 'amber', to: '/reports/intern-allocation' }] : []),
+        ...(canHrApprove(boot) ? [{ icon: GraduationCap, label: 'Employee Allocation', hue: 'amber', to: '/reports/intern-allocation' }] : []),
       ],
     },
     {

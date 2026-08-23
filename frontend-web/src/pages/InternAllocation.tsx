@@ -145,7 +145,7 @@ export default function InternAllocation() {
   if (denied) {
     return (
       <Page>
-        <PageHeader icon={GraduationCap} title="Alokasi Magang" />
+        <PageHeader icon={GraduationCap} title="Employee Allocation" />
         <EmptyState icon={GraduationCap} title="Tidak ada akses" subtitle="Laporan ini untuk tim HR dan pemimpin proyek." />
       </Page>
     )
@@ -155,7 +155,7 @@ export default function InternAllocation() {
     <Page>
       <PageHeader
         icon={GraduationCap}
-        title="Alokasi Magang"
+        title="Employee Allocation"
         subtitle={
           <span className="inline-flex items-center">
             {data?.totals.interns ?? 0} magang · {data?.totals.attention ?? 0} perlu perhatian

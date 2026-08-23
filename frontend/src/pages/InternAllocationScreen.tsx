@@ -158,7 +158,7 @@ export default function InternAllocationScreen() {
   const failed = isError && !denied
 
   return (
-    <DetailScreen title="Alokasi Magang">
+    <DetailScreen title="Employee Allocation">
       {denied ? (
         <EmptyState icon={GraduationCap} title="Tidak ada akses" subtitle="Laporan ini untuk tim HR dan pemimpin proyek." />
       ) : (

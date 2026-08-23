@@ -150,7 +150,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   // Gated on the HR roles the menu can see from boot; project leaders reach the same
   // report through the Reports tile, which asks the access endpoint.
   if (canHrApprove(b)) {
-    admin.push({ to: '/reports/intern-allocation', label: 'Alokasi Magang', sub: 'Beban kerja magang per hari', icon: GraduationCap })
+    admin.push({ to: '/reports/intern-allocation', label: 'Employee Allocation', sub: 'Beban kerja magang per hari', icon: GraduationCap })
   }
   const hrLeaves = [...admin, ...att]
   if (hrLeaves.length) groups.push({ id: 'hr', label: 'HR Management', leaves: hrLeaves })

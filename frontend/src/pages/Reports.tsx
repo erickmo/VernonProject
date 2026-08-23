@@ -33,7 +33,7 @@ export default function Reports() {
     ...(internAccess?.can
       ? [{
           key: 'intern-allocation',
-          title: 'Alokasi Magang',
+          title: 'Employee Allocation',
           desc: 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin',
           icon: GraduationCap,
           accent: 'from-amber-500 to-orange-600',

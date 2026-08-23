@@ -32,7 +32,7 @@ export default function Reports() {
   const { data: internAccess } = useInternAllocationAccess()
   const showTodosDue = match(TODOS_DUE.title, TODOS_DUE.desc)
   const showLastSeen = !!lastSeenAccess?.can && match('Last Seen', 'When each teammate was last active')
-  const showIntern = !!internAccess?.can && match('Alokasi Magang', 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin')
+  const showIntern = !!internAccess?.can && match('Employee Allocation', 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin')
   const filtered = useMemo(() => REPORTS.filter((r) => match(r.title, r.desc)), [query])
   const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0) + (showIntern ? 1 : 0)
 
@@ -83,7 +83,7 @@ export default function Reports() {
               <Card
                 onClick={() => navigate('/reports/intern-allocation')}
                 eyebrow={<ReportBadge icon={GraduationCap} accent="from-amber-500 to-orange-600" />}
-                title="Alokasi Magang"
+                title="Employee Allocation"
                 meta="Matriks tugas magang per hari + sinyal pengelolaan pemimpin"
               />
             </div>

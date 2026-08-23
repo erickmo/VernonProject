@@ -917,3 +917,9 @@ All seven tasks executed inline. Deviations from the plan as written, and why:
 
 Final state: 28 intern tests + 80 report tests green, both bundles carry the feature, SW v27,
 What's New 2.0.0 live on both platforms.
+
+- **Renamed after ship (2026-08-23).** The user-visible label is **"Employee Allocation"**, not
+  "Alokasi Magang". Only display strings changed — the route (`/reports/intern-allocation`),
+  filenames, endpoints and query keys keep their `intern` identifiers, because the deep links
+  were already shipped. The published What's New row (2.0.0) was edited in place to match.
+  NOTE: the report's *content* is still interns only (the union of the two intern markings).
