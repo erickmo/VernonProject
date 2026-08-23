@@ -1019,6 +1019,173 @@ def last_seen_report():
 	return {"rows": _last_seen_rows(names), "scope": "team"}
 
 
+# --- Intern allocation matrix --------------------------------------------------
+# Rows = interns, columns = days. Answers "is this intern being given work, and is
+# their leader responding to it?" — the reason HR opens this report.
+
+INTERN_MEMBER_TYPE = "Intern"
+
+
+def _full_name_map(names):
+	"""{user-id: full_name} for the given ids. Empty input -> {}."""
+	uniq = [n for n in set(names) if n]
+	if not uniq:
+		return {}
+	return {r["name"]: r["full_name"] or r["name"] for r in frappe.get_all(
+		"User", filters={"name": ["in", uniq]}, fields=["name", "full_name"], limit_page_length=0)}
+
+
+def _intern_users(name_filter=None):
+	"""Interns as this app marks them, deduped: User.custom_member_type == 'Intern'
+	UNION Employee Profile.employment_status == 'Intern'. Each row carries the marking(s)
+	it came from, so a user the two records disagree about is shown with its source —
+	never silently dropped. `name_filter`: None = everyone, else an iterable of user-ids.
+	Returns [{name, full_name, sources}] sorted by name."""
+	excluded = {"Guest", "Administrator"}
+	allowed = None
+	if name_filter is not None:
+		allowed = {n for n in name_filter if n not in excluded}
+		if not allowed:
+			return []
+	base = {"enabled": 1, "user_type": "System User",
+		"name": ["in", sorted(allowed)] if allowed is not None else ["not in", sorted(excluded)]}
+
+	by_type = frappe.get_all("User", filters={**base, "custom_member_type": INTERN_MEMBER_TYPE},
+		fields=["name", "full_name"], limit_page_length=0)
+	profiled = frappe.get_all("Employee Profile", filters={"employment_status": INTERN_MEMBER_TYPE},
+		pluck="user", limit_page_length=0)
+	# Narrow the profile list against the SAME name constraint in Python: merging a fresh
+	# "name" key into `base` would REPLACE the exclusion/scope filter, not intersect it.
+	profiled = [u for u in profiled if u and u not in excluded and (allowed is None or u in allowed)]
+	by_profile = frappe.get_all("User", filters={**base, "name": ["in", profiled]},
+		fields=["name", "full_name"], limit_page_length=0) if profiled else []
+
+	merged = {}
+	for rows, source in ((by_type, "member_type"), (by_profile, "profile")):
+		for r in rows:
+			entry = merged.setdefault(r["name"], {
+				"name": r["name"], "full_name": r.get("full_name") or r["name"], "sources": []})
+			if source not in entry["sources"]:
+				entry["sources"].append(source)
+	return sorted(merged.values(), key=lambda r: (r["full_name"] or "").lower())
+
+
+def _intern_todo_rows(names, from_date, to_date):
+	"""Todos that matter for the window: anything whose deadline or done-date lands in
+	range, PLUS anything still awaiting review whenever it was delivered — work the intern
+	finished a month ago that nobody has reviewed is exactly what HR is looking for.
+	`in_range` marks the former, so those strays never inflate the window's counts."""
+	if not names:
+		return []
+	rows = frappe.db.sql(
+		"""
+		SELECT todo.assigned_to AS user, todo.project AS project,
+		       proj.project_name AS project_name, proj.project_leader AS leader,
+		       todo.status AS status, todo.deadline AS deadline,
+		       IFNULL(todo.estimated, 0) AS minutes,
+		       DATE(COALESCE(todo.done_started_at, todo.developed_at)) AS done_on,
+		       DATE(COALESCE(todo.tested_at, todo.developed_at)) AS review_since
+		FROM `tabProject Todo` AS todo
+		LEFT JOIN `tabProject` AS proj ON todo.project = proj.name
+		WHERE todo.assigned_to IN %(users)s AND todo.status != %(cancelled)s
+		  AND (todo.deadline BETWEEN %(from_date)s AND %(to_date)s
+		       OR DATE(COALESCE(todo.done_started_at, todo.developed_at))
+		          BETWEEN %(from_date)s AND %(to_date)s
+		       OR todo.status IN %(awaiting)s)
+		""",
+		{"users": names, "from_date": from_date, "to_date": to_date,
+			"cancelled": STATUS_CANCELLED, "awaiting": _AWAITING}, as_dict=True,
+	)
+	leader_names = _full_name_map([r["leader"] for r in rows if r["leader"]])
+	out = []
+	for r in rows:
+		deadline = str(r["deadline"]) if r["deadline"] else None
+		done_on = str(r["done_on"]) if r["done_on"] else None
+		out.append({
+			"user": r["user"], "project": r["project"] or "\u2014",
+			"project_name": r["project_name"] or r["project"] or "\u2014",
+			"leader": r["leader"], "leader_name": leader_names.get(r["leader"]) or r["leader"],
+			"status": r["status"], "deadline": deadline, "done_on": done_on,
+			"review_since": str(r["review_since"]) if r["review_since"] else None,
+			"minutes": int(r["minutes"] or 0),
+			"in_range": bool((deadline and from_date <= deadline <= to_date)
+				or (done_on and from_date <= done_on <= to_date)),
+		})
+	return out
+
+
+def _intern_note_rows(names, from_date, to_date):
+	"""Leader Note rows written about these users inside the window."""
+	if not names:
+		return []
+	return frappe.get_all("Leader Note",
+		filters={"user": ["in", names], "note_date": ["between", [from_date, to_date]]},
+		fields=["user", "note_date"], limit_page_length=0)
+
+
+def _intern_scope(user):
+	"""(scope, allowed_user_ids) for the intern report. HR Manager / System Manager see
+	every intern ('all', None); anyone who owns/leads/admins a project sees only the
+	interns on those projects ('team', ids); everyone else ('none', None)."""
+	roles = frappe.get_roles(user)
+	if "System Manager" in roles or "HR Manager" in roles:
+		return "all", None
+	projects = _projects_i_run(user)
+	if projects:
+		return "team", _users_on_projects(projects)
+	return "none", None
+
+
+@frappe.whitelist()
+def intern_allocation_access():
+	"""Whether the caller may open the Intern Allocation report, and at what scope.
+	Single source for the nav/tile gate — same rule intern_allocation enforces, so the
+	UI can hide the entry without a 403 round-trip."""
+	scope, _ = _intern_scope(frappe.session.user)
+	return {"can": scope != "none", "scope": scope}
+
+
+@frappe.whitelist()
+def intern_allocation(from_date, to_date):
+	"""Intern x day assigned-minutes matrix plus the signals that show whether each
+	intern's project leader is managing them. Minutes reuse the same sources as the
+	Daily Estimated Time report, so the two never disagree."""
+	scope, allowed = _intern_scope(frappe.session.user)
+	if scope == "none":
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	start, end = _validated_range(from_date, to_date)
+	interns = _intern_users(allowed)
+	names = [i["name"] for i in interns]
+	threshold = frappe.db.get_single_value("Vernon Settings", "min_daily_estimated_minutes") or 0
+
+	planned_rows = []
+	if names:
+		planned_rows = frappe.db.sql(
+			"""
+			SELECT todo.assigned_to AS user, alloc.allocation_date AS day,
+			       SUM(alloc.estimated_minutes) AS minutes
+			FROM `tabProject Todo Allocation` AS alloc
+			JOIN `tabProject Todo` AS todo ON alloc.parent = todo.name
+			WHERE todo.assigned_to IN %(users)s AND alloc.parenttype = 'Project Todo'
+			  AND todo.status != %(cancelled)s
+			  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
+			GROUP BY todo.assigned_to, alloc.allocation_date
+			""",
+			{"users": names, "from_date": str(start), "to_date": str(end),
+				"cancelled": STATUS_CANCELLED}, as_dict=True,
+		)
+
+	matrix = _build_daily_matrix(
+		interns, _assigned_minutes(names, str(start), str(end)), planned_rows, start, end, threshold)
+	return _build_intern_matrix(
+		matrix, interns,
+		_intern_todo_rows(names, str(start), str(end)),
+		_intern_note_rows(names, str(start), str(end)),
+		scope,
+	)
+
+
 @frappe.whitelist(methods=["POST"])
 def buzz_todo(todo):
 	"""Nudge a Project Todo's assignee — in-app notification + Web Push (device vibrates

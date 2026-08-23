@@ -546,7 +546,9 @@ class TestLogbookEndpoint(unittest.TestCase):
 				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
 					"send_welcome_email": 0}).insert(ignore_permissions=True)
 		if not frappe.db.exists("Brand", "Logbook Brand"):
-			frappe.get_doc({"doctype": "Brand", "brand_name": "Logbook Brand"}).insert(ignore_permissions=True)
+			# company is mandatory on Brand (same as test_priority_slots' fixture).
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Logbook Brand",
+				"company": frappe.db.get_value("Company", {}, "name")}).insert(ignore_permissions=True)
 		self.group, self.level_id = _ensure_test_group()
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Logbook Project", "brand": "Logbook Brand",

@@ -154,3 +154,119 @@ class TestBuildInternMatrix(unittest.TestCase):
 		out = _build_intern_matrix(_matrix(users, assigned), interns, [], [], "all")
 		self.assertEqual([r["user"] for r in out["rows"]], ["b@x.id", "a@x.id"])
 		self.assertEqual(out["totals"], {"interns": 2, "attention": 1})
+
+
+# --- Endpoint gates ------------------------------------------------------------
+# These need the site (they query), so they run under `bench run-tests`, not bare unittest.
+
+import frappe  # noqa: E402
+from frappe.utils import add_days, nowdate  # noqa: E402
+
+from vernon_project.api.report import (  # noqa: E402
+	_intern_scope, _intern_users, intern_allocation, intern_allocation_access,
+)
+
+ROW_KEYS = (
+	"user", "full_name", "sources", "per_day_assigned", "per_day_planned",
+	"assigned_total", "planned_total", "flagged_dates", "zero_days", "last_assigned_on",
+	"stale_days", "awaiting_review", "oldest_wait_days", "assigned_count", "done", "late",
+	"notes_count", "last_note_on", "projects", "leaders", "attention", "reasons",
+)
+
+
+class TestInternAllocationGate(unittest.TestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_admin_scope_all(self):
+		frappe.set_user("Administrator")
+		self.assertEqual(intern_allocation_access(), {"can": True, "scope": "all"})
+
+	def test_hr_manager_scope_all(self):
+		# _intern_scope reads roles for a user id, so an HR Manager is testable without
+		# creating a session for them.
+		user = frappe.get_all("Has Role", filters={"role": "HR Manager", "parenttype": "User"},
+			pluck="parent", limit=1)
+		if not user:
+			self.skipTest("no HR Manager on this site")
+		scope, allowed = _intern_scope(user[0])
+		self.assertEqual(scope, "all")
+		self.assertIsNone(allowed)
+
+	def test_stranger_denied(self):
+		frappe.set_user("Guest")
+		self.assertEqual(intern_allocation_access(), {"can": False, "scope": "none"})
+		with self.assertRaises(frappe.PermissionError):
+			intern_allocation(add_days(nowdate(), -6), nowdate())
+
+	def test_leader_gets_team_scope_limited_to_their_projects(self):
+		from vernon_project.api.report import _projects_i_run, _users_on_projects
+
+		leader = frappe.get_all("Project", filters={"project_leader": ["is", "set"]},
+			pluck="project_leader", limit=1)
+		leader = [u for u in leader if u and "System Manager" not in frappe.get_roles(u)
+			and "HR Manager" not in frappe.get_roles(u)]
+		if not leader:
+			self.skipTest("no non-admin project leader on this site")
+		scope, allowed = _intern_scope(leader[0])
+		self.assertEqual(scope, "team")
+		self.assertEqual(allowed, _users_on_projects(_projects_i_run(leader[0])))
+
+	def test_admin_gets_contract_shape(self):
+		frappe.set_user("Administrator")
+		out = intern_allocation(add_days(nowdate(), -6), nowdate())
+		for key in ("scope", "dates", "rows", "totals", "threshold", "from_date", "to_date"):
+			self.assertIn(key, out)
+		self.assertEqual(out["scope"], "all")
+		self.assertEqual(len(out["dates"]), 7)
+		self.assertEqual(sorted(out["totals"]), ["attention", "interns"])
+		self.assertEqual(out["totals"]["interns"], len(out["rows"]))
+		for row in out["rows"]:
+			for key in ROW_KEYS:
+				self.assertIn(key, row)
+			self.assertEqual(sorted(row["per_day_assigned"]), out["dates"])
+
+	def test_rejects_oversize_span(self):
+		frappe.set_user("Administrator")
+		with self.assertRaises(frappe.ValidationError):
+			intern_allocation("2020-01-01", nowdate())
+
+	def test_rejects_reversed_range(self):
+		frappe.set_user("Administrator")
+		with self.assertRaises(frappe.ValidationError):
+			intern_allocation(nowdate(), add_days(nowdate(), -3))
+
+
+class TestInternUsers(unittest.TestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_every_row_is_a_marked_intern_with_its_source(self):
+		for row in _intern_users():
+			self.assertTrue(row["sources"], row["name"])
+			self.assertTrue(set(row["sources"]) <= {"member_type", "profile"})
+			if "member_type" in row["sources"]:
+				self.assertEqual(frappe.db.get_value("User", row["name"], "custom_member_type"), "Intern")
+			if "profile" in row["sources"]:
+				self.assertEqual(
+					frappe.db.get_value("Employee Profile", {"user": row["name"]}, "employment_status"),
+					"Intern")
+
+	def test_never_duplicates_a_user_marked_twice(self):
+		names = [r["name"] for r in _intern_users()]
+		self.assertEqual(len(names), len(set(names)))
+
+	def test_excludes_guest_and_administrator(self):
+		names = [r["name"] for r in _intern_users()]
+		self.assertNotIn("Guest", names)
+		self.assertNotIn("Administrator", names)
+
+	def test_empty_filter_returns_nothing(self):
+		self.assertEqual(_intern_users([]), [])
+
+	def test_name_filter_restricts(self):
+		everyone = _intern_users()
+		if not everyone:
+			self.skipTest("no interns on this site")
+		first = everyone[0]["name"]
+		self.assertEqual([r["name"] for r in _intern_users([first])], [first])
