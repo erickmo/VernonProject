@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Users, ArrowLeftRight, Briefcase, FileText, Ban, ClipboardList, ClipboardCheck,
-  Building2, Store, BookOpen, DoorOpen, ShieldAlert, ChevronRight, Copy, Megaphone,
+  Building2, Store, BookOpen, DoorOpen, ShieldAlert, ChevronRight, Copy, Megaphone, GraduationCap,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import {
-  useBoot, canManageUsers, canManageAttendance, canManageRecruitment,
+  useBoot, canManageUsers, canManageAttendance, canManageRecruitment, canHrApprove,
   canManageCompanies, canManageBrands,
   canManageLms, canManageGroups, canManageResources, canManageAnnouncements,
 } from '@/hooks/useData'
@@ -36,6 +36,8 @@ export default function HrHubScreen() {
         ...(canManageUsers(boot) ? [{ icon: Users, label: 'Manage Users', hue: 'sky', to: '/users' }] : []),
         ...(canManageUsers(boot) ? [{ icon: ArrowLeftRight, label: 'Transfer Tasks', hue: 'sky', to: '/transfer-tasks' }] : []),
         ...(canManageUsers(boot) ? [{ icon: Copy, label: 'Salin Keanggotaan Proyek', hue: 'sky', to: '/clone-memberships' }] : []),
+        // The intern report lives where HR works, not only under Reports.
+        ...(canHrApprove(boot) ? [{ icon: GraduationCap, label: 'Alokasi Magang', hue: 'amber', to: '/reports/intern-allocation' }] : []),
       ],
     },
     {

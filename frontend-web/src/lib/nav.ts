@@ -6,7 +6,7 @@ import {
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
   History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck, Clock,
-  ClipboardList,
+  ClipboardList, GraduationCap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -145,6 +145,12 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
     att.unshift({ to: '/attendance/cuti-admin', label: 'Penyesuaian Cuti', sub: 'Saldo cuti & koreksi', icon: Scale })
     att.unshift({ to: '/attendance/leave-types', label: 'Leave Types', sub: 'Kategori & batas cuti', icon: CalendarDays })
     att.unshift({ to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'HR final approval', icon: Inbox })
+  }
+  // The intern report belongs where HR actually works, not only in the Reports list.
+  // Gated on the HR roles the menu can see from boot; project leaders reach the same
+  // report through the Reports tile, which asks the access endpoint.
+  if (canHrApprove(b)) {
+    admin.push({ to: '/reports/intern-allocation', label: 'Alokasi Magang', sub: 'Beban kerja magang per hari', icon: GraduationCap })
   }
   const hrLeaves = [...admin, ...att]
   if (hrLeaves.length) groups.push({ id: 'hr', label: 'HR Management', leaves: hrLeaves })
