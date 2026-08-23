@@ -141,7 +141,7 @@ function DetailSheet({ row, onClose }: { row: InternAllocationRow | null; onClos
 export default function InternAllocationScreen() {
   const [days, setDays] = useState('14')
   const [from, to] = useMemo(() => lastDays(Number(days)), [days])
-  const { data, isLoading, isError, error } = useInternAllocation(from, to)
+  const { data, isLoading, isError, error, refetch } = useInternAllocation(from, to)
 
   const [filters, setFilters] = useState(EMPTY_INTERN_FILTERS)
   const [helpTerm, setHelpTerm] = useState<string | null>(null)
@@ -151,7 +151,11 @@ export default function InternAllocationScreen() {
   const options = useMemo(() => internFilterOptions(rows), [rows])
   const shown = useMemo(() => filterInternRows(rows, filters), [rows, filters])
   const threshold = data?.threshold ?? 0
-  const denied = isError && /permission|not permitted/i.test(String((error as Error)?.message ?? ''))
+  // A failed request must not read as "no interns" — that would quietly tell HR that
+  // nobody needs attention. Permission is its own case; everything else offers a retry.
+  const errMsg = String((error as Error)?.message ?? '')
+  const denied = isError && /permission|not permitted/i.test(errMsg)
+  const failed = isError && !denied
 
   return (
     <DetailScreen title="Alokasi Magang">
@@ -249,7 +253,22 @@ export default function InternAllocationScreen() {
             </div>
           )}
 
-          {!isLoading && shown.length === 0 && (
+          {failed && (
+            <div className={`${card} flex flex-col items-center gap-3 py-8 text-center`}>
+              <AlertTriangle className="h-8 w-8 text-amber-500" />
+              <p className="font-semibold text-stone-800 dark:text-slate-100">Gagal memuat laporan</p>
+              <p className="max-w-xs text-sm text-stone-500 dark:text-slate-400">{errMsg || 'Coba lagi sebentar.'}</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white active:scale-95"
+              >
+                Coba lagi
+              </button>
+            </div>
+          )}
+
+          {!isLoading && !failed && shown.length === 0 && (
             <EmptyState
               icon={SearchX}
               title="Tidak ada magang"
