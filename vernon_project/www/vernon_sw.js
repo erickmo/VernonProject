@@ -16,7 +16,8 @@
 // v23: flush stale /m shell for the By-project board priority-slot badge.
 // v26: flush stale /m shell for the todo checklist.
 // v27: flush stale /m shell for the Alokasi Magang report.
-const ASSET_CACHE = 'vernon-assets-v27'
+// v28: flush stale /m shell for internship certificates + the intern score screen.
+const ASSET_CACHE = 'vernon-assets-v28'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
