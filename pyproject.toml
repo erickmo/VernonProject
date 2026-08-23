@@ -20,6 +20,11 @@ dependencies = [
     # headless = no libGL/system GUI deps. Pinned <5: 5.x ships without the bundled
     # haarcascade data files; 4.10 includes haarcascade_frontalface_default.xml.
     "opencv-python-headless~=4.10.0",
+    # QR codes on internship certificates (api/qr.py). Pure Python, no transitive
+    # dependencies, and writes PNG without Pillow -- which matters because the
+    # certificate PDF goes through wkhtmltopdf, and this build renders inline SVG
+    # unreliably while a PNG data URI always works.
+    "segno~=1.6.0",
 ]
 
 [build-system]

@@ -163,13 +163,33 @@ def compute_auto_score(todos=None, attendance=None, points=None, courses=None):
 	return {"auto_score": score, "grade": grade_for(score), "components": components}
 
 
+def _is_scored(r):
+	"""Whether a rubric line was actually judged.
+
+	A Frappe Float column cannot store None -- it writes 0.0 -- so rows that came from
+	the database carry a `scored` flag to tell "not judged" apart from "judged zero".
+	Rows built in memory (preview, tests) have no flag and use score=None instead."""
+	if "scored" in r:
+		return bool(r.get("scored"))
+	return r.get("score") is not None and r.get("score") != ""
+
+
+def rubric_display(rows):
+	"""Rubric lines as anything user-facing should render them: an unjudged line comes
+	back with score None so the UI shows a dash, never a zero that reads as a verdict."""
+	return [{"label": r.get("label"), "weight": r.get("weight"),
+		"score": (_clamp(_num(r.get("score"))) if _is_scored(r) else None),
+		"comment": r.get("comment") or ""}
+		for r in (rows or [])]
+
+
 def compute_rubric_score(rows):
 	"""Weighted mean of the leader's rubric lines. Unscored lines are ignored, not read
 	as zero — a half-filled rubric should read as incomplete, not as a bad review.
 	Returns None when nothing is scored."""
 	weighted = total = 0.0
 	for r in rows or []:
-		if r.get("score") is None or r.get("score") == "":
+		if not _is_scored(r):
 			continue
 		w = _num(r.get("weight"))
 		if w <= 0:

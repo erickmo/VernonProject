@@ -10,6 +10,8 @@
 import json
 import secrets
 
+from vernon_project.api.intern_score import rubric_display
+
 DRAFT = "Draft"
 PENDING = "Pending HR"
 PUBLISHED = "Published"
@@ -185,8 +187,8 @@ def build_verify_payload(cert):
 		"rubric_grade": cert.get("rubric_grade"),
 		"summary": cert.get("summary"),
 		"components": _components(cert.get("breakdown_json")),
-		"rubric": [{"label": r.get("label"), "weight": r.get("weight"),
-			"score": r.get("score"), "comment": r.get("comment")}
-			for r in (cert.get("rubric") or [])],
+		# rubric_display turns an unjudged line back into score=None, so the public page
+		# shows a dash instead of a zero that would read as a damning verdict.
+		"rubric": rubric_display(cert.get("rubric")),
 	})
 	return out

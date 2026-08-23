@@ -1,0 +1,210 @@
+{% extends "templates/vernoncorp_base.html" %}
+
+{#- Public certificate verification. Three outcomes, and the difference matters to
+    whoever just scanned a QR off a piece of paper: valid, revoked, not found. -#}
+
+{% set c = cert %}
+{% set ok = c.state == "valid" %}
+{% set revoked = c.state == "revoked" %}
+
+{% block content %}
+<section class="relative overflow-hidden">
+  <div class="gradient-mesh absolute inset-0 -z-10"></div>
+  <div class="mx-auto max-w-3xl px-4 sm:px-6 pt-12 pb-20">
+
+    <!-- ===================== VERDICT ===================== -->
+    <div class="rounded-3xl border shadow-sm overflow-hidden
+      {% if ok %}border-emerald-200 bg-emerald-50
+      {% elif revoked %}border-amber-200 bg-amber-50
+      {% else %}border-rose-200 bg-rose-50{% endif %}">
+      <div class="p-6 sm:p-8 flex items-start gap-4">
+        <span class="shrink-0 grid place-items-center w-12 h-12 rounded-2xl
+          {% if ok %}bg-emerald-600{% elif revoked %}bg-amber-500{% else %}bg-rose-600{% endif %} text-white">
+          {% if ok %}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          {% elif revoked %}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+          {% else %}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+          {% endif %}
+        </span>
+        <div class="min-w-0">
+          <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-tight
+            {% if ok %}text-emerald-900{% elif revoked %}text-amber-900{% else %}text-rose-900{% endif %}">
+            {{ t[c.state] }}
+          </h1>
+          <p class="mt-1.5 text-sm leading-relaxed
+            {% if ok %}text-emerald-800/80{% elif revoked %}text-amber-800/80{% else %}text-rose-800/80{% endif %}">
+            {{ t[c.state ~ "_sub"] }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {% if c.state != "not_found" %}
+    <!-- ===================== IDENTITY ===================== -->
+    <div class="mt-6 rounded-3xl border border-brand-100 bg-white shadow-sm p-6 sm:p-8">
+      <dl class="grid sm:grid-cols-2 gap-x-8 gap-y-5">
+        <div class="sm:col-span-2">
+          <dt class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.holder }}</dt>
+          <dd class="mt-1 font-display text-2xl font-bold text-brand-900">{{ c.intern_name }}</dd>
+        </div>
+        {% if c.position %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.position }}</dt>
+          <dd class="mt-1 text-brand-900">{{ c.position }}</dd>
+        </div>
+        {% endif %}
+        {% if c.project_name %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.project }}</dt>
+          <dd class="mt-1 text-brand-900">{{ c.project_name }}</dd>
+        </div>
+        {% endif %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.period }}</dt>
+          <dd class="mt-1 text-brand-900">
+            {{ frappe.format(c.period_start, {"fieldtype": "Date"}) }} —
+            {{ frappe.format(c.period_end, {"fieldtype": "Date"}) }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.cert_no }}</dt>
+          <dd class="mt-1 font-mono text-sm text-brand-900">{{ c.cert_no }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.issued_on }}</dt>
+          <dd class="mt-1 text-brand-900">{{ frappe.format(c.issued_on, {"fieldtype": "Date"}) }}</dd>
+        </div>
+        {% if revoked %}
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wider text-amber-700">{{ t.revoked_on }}</dt>
+          <dd class="mt-1 text-amber-900">{{ frappe.format(c.revoked_on, {"fieldtype": "Date"}) }}</dd>
+        </div>
+        {% if c.revoke_reason %}
+        <div class="sm:col-span-2">
+          <dt class="text-xs font-semibold uppercase tracking-wider text-amber-700">{{ t.revoke_reason }}</dt>
+          <dd class="mt-1 text-amber-900">{{ c.revoke_reason }}</dd>
+        </div>
+        {% endif %}
+        {% endif %}
+      </dl>
+    </div>
+    {% endif %}
+
+    {% if ok %}
+    <!-- ===================== THE TWO SCORES ===================== -->
+    <div class="mt-6 grid sm:grid-cols-2 gap-4">
+      {% for key, val, grade, help in [
+        ("auto_score", c.auto_score, c.auto_grade, t.auto_help),
+        ("rubric_score", c.rubric_score, c.rubric_grade, t.rubric_help)] %}
+      <div class="rounded-3xl border border-brand-100 bg-white shadow-sm p-6">
+        <div class="flex items-baseline justify-between gap-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t[key] }}</h2>
+          {% if grade %}
+          <span class="px-2.5 py-0.5 rounded-full bg-brand-600 text-white text-xs font-bold">{{ grade }}</span>
+          {% endif %}
+        </div>
+        <p class="mt-2 font-display text-5xl font-bold text-brand-900 tabular-nums">
+          {% if val is not none %}{{ "%.1f"|format(val) }}<span class="text-2xl text-brand-800/30">/100</span>
+          {% else %}<span class="text-2xl text-brand-800/30">{{ t.not_measured }}</span>{% endif %}
+        </p>
+        <p class="mt-3 text-xs leading-relaxed text-brand-800/60">{{ help }}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- (i) the single most confusing thing on this page: why two numbers -->
+    <div class="mt-4 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 flex gap-3">
+      <svg class="shrink-0 mt-0.5 text-brand-600" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      <p class="text-xs leading-relaxed text-brand-800/75">{{ t.why_two }}</p>
+    </div>
+
+    {% if c.summary %}
+    <div class="mt-4 rounded-2xl border border-brand-100 bg-white p-5">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-brand-800/50">{{ t.summary }}</h3>
+      <p class="mt-2 text-sm leading-relaxed text-brand-900">{{ c.summary }}</p>
+    </div>
+    {% endif %}
+
+    <!-- ===================== BREAKDOWN ===================== -->
+    {% if c.components %}
+    <div class="mt-6 rounded-3xl border border-brand-100 bg-white shadow-sm overflow-hidden">
+      <h3 class="px-6 pt-6 pb-3 font-display font-semibold text-brand-900">{{ t.breakdown }}</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs uppercase tracking-wider text-brand-800/50 border-b border-brand-100">
+              <th class="px-6 py-2.5 font-semibold">{{ t.component }}</th>
+              <th class="px-3 py-2.5 font-semibold text-right">{{ t.achieved }}</th>
+              <th class="px-6 py-2.5 font-semibold text-right">{{ t.weight }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for k in c.components %}
+            <tr class="border-b border-brand-50 last:border-0">
+              <td class="px-6 py-3">
+                <div class="text-brand-900">{{ k.label }}</div>
+                <div class="mt-1.5 h-1.5 w-full max-w-[12rem] rounded-full bg-brand-100 overflow-hidden">
+                  <div class="h-full rounded-full bg-brand-600" style="width: {{ k.value }}%"></div>
+                </div>
+              </td>
+              <td class="px-3 py-3 text-right tabular-nums text-brand-900">
+                {{ "%.0f"|format(k.value) }}%
+                <span class="block text-xs text-brand-800/40">{{ k.detail }}</span>
+              </td>
+              <td class="px-6 py-3 text-right tabular-nums text-brand-800/60">{{ "%.0f"|format(k.weight) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if c.rubric %}
+    <div class="mt-4 rounded-3xl border border-brand-100 bg-white shadow-sm overflow-hidden">
+      <h3 class="px-6 pt-6 pb-3 font-display font-semibold text-brand-900">{{ t.rubric_table }}</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs uppercase tracking-wider text-brand-800/50 border-b border-brand-100">
+              <th class="px-6 py-2.5 font-semibold">{{ t.component }}</th>
+              <th class="px-3 py-2.5 font-semibold text-right">{{ t.score }}</th>
+              <th class="px-6 py-2.5 font-semibold">{{ t.note }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in c.rubric %}
+            <tr class="border-b border-brand-50 last:border-0">
+              <td class="px-6 py-3 text-brand-900">{{ r.label }}</td>
+              <td class="px-3 py-3 text-right tabular-nums text-brand-900">
+                {% if r.score is not none %}{{ "%.0f"|format(r.score) }}{% else %}<span class="text-brand-800/30">—</span>{% endif %}
+              </td>
+              <td class="px-6 py-3 text-brand-800/60">{{ r.comment or "" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- ===================== WHAT THIS PAGE PROVES ===================== -->
+    <div class="mt-6 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 flex gap-3">
+      <svg class="shrink-0 mt-0.5 text-brand-600" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      <p class="text-xs leading-relaxed text-brand-800/75">{{ t.what_this_proves }}</p>
+    </div>
+
+    <p class="mt-8 text-center">
+      <a href="/about{{ '?lang=en' if lang == 'en' else '' }}"
+         class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-900">
+        {{ t.open_app }}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </p>
+
+  </div>
+</section>
+{% endblock %}

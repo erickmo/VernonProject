@@ -53,6 +53,10 @@ website_route_rules = [
 	# Jinja template and cannot emit raw .css/.js/.md bytes, so the DocsPage renderer below
 	# serves the files. This rule only parks the sub-path in form_dict.app_path.
 	{"from_route": "/docs/<path:app_path>", "to_route": "docs"},
+	# Public certificate verification — the page behind the QR printed on every
+	# internship certificate. Guest-readable on purpose: whoever holds the paper has no
+	# account here. The 22-char code is the access control; see www/verify.py.
+	{"from_route": "/verify/<code>", "to_route": "verify"},
 ]
 
 # Custom renderers are tried before frappe's built-ins, so DocsPage owns /docs and can

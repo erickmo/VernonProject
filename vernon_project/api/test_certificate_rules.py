@@ -185,6 +185,19 @@ class TestVerifyPayload(unittest.TestCase):
 		self.assertEqual(out["components"][0]["label"], "Penyelesaian Tugas")
 		self.assertEqual(out["rubric"][0]["label"], "Kualitas Kerja")
 
+	def test_unjudged_rubric_lines_show_as_a_dash_not_a_zero(self):
+		# Rows straight out of the DB: a Float column wrote 0.0 for "not judged".
+		out = payload(rubric=[
+			{"label": "Kualitas Kerja", "weight": 30, "score": 95.0, "scored": 1, "comment": ""},
+			{"label": "Inisiatif", "weight": 20, "score": 0.0, "scored": 0, "comment": ""}])
+		self.assertEqual(out["rubric"][0]["score"], 95.0)
+		self.assertIsNone(out["rubric"][1]["score"])
+
+	def test_a_deliberate_zero_is_still_published_as_zero(self):
+		out = payload(rubric=[
+			{"label": "Inisiatif", "weight": 20, "score": 0.0, "scored": 1, "comment": ""}])
+		self.assertEqual(out["rubric"][0]["score"], 0.0)
+
 	def test_revoked_certificate_says_revoked_and_keeps_identity(self):
 		# Never a 404: "we revoked this" and "we have never heard of this" are opposite
 		# answers to whoever is holding the paper.

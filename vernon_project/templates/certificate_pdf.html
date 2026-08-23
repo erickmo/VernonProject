@@ -1,0 +1,175 @@
+{#- Internship certificate, A4 landscape, rendered by api/certificate.py::certificate_pdf.
+
+    Everything is inline: wkhtmltopdf fetches external assets without the caller's
+    session, so a linked stylesheet or image would silently come out blank. The QR is a
+    PNG data URI for the same reason. -#}
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  /* Two wkhtmltopdf facts this layout is built around, both measured:
+     1. Height must live on .sheet, never on <body>. QtWebKit treats an explicit body
+        height as content extent and emits a second page at every value.
+     2. The printable band is 180mm tall, not 210mm. frappe's prepare_options ->
+        read_options_from_html forces margin-top/bottom to 15mm whenever the HTML has
+        no #header-html / #footer-html div, overriding the 0mm passed by the caller
+        (frappe/utils/pdf.py). Anything past 180mm silently becomes a second page. */
+  body {
+    margin: 0; width: 100%; height: auto;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1f2233; background: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .sheet { position: relative; width: 100%; min-height: 178mm; padding: 12mm 16mm; overflow: hidden; }
+  .frame {
+    position: absolute; top: 6mm; right: 6mm; bottom: 6mm; left: 6mm;
+    border: 1.2mm solid #4f46e5; border-radius: 3mm;
+  }
+  .frame::after {
+    content: ""; position: absolute; top: 2mm; right: 2mm; bottom: 2mm; left: 2mm;
+    border: 0.3mm solid #c7d2fe; border-radius: 2mm;
+  }
+  .inner { position: relative; height: 100%; }
+
+  .head { text-align: center; padding-top: 2mm; }
+  .org { font-size: 10pt; letter-spacing: 3pt; text-transform: uppercase; color: #6b7280; }
+  .title { font-size: 25pt; font-weight: 700; letter-spacing: 1pt; margin: 2mm 0 0.8mm; color: #312e81; }
+  .subtitle { font-size: 10pt; color: #6b7280; }
+
+  .name { font-size: 28pt; font-weight: 700; text-align: center; margin: 3.5mm 0 1mm; color: #111827; }
+  .rule { width: 80mm; height: 0.5mm; background: #4f46e5; margin: 0 auto 3mm; }
+  .blurb { text-align: center; font-size: 9.5pt; line-height: 1.5; color: #374151; max-width: 200mm; margin: 0 auto; }
+  .blurb strong { color: #111827; }
+
+  /* ponytail: tables, not flexbox -- QtWebKit (wkhtmltopdf 0.12.6) has no flexbox,
+     and a stacked "row" is how this certificate became two pages. */
+  .body { display: table; width: 100%; margin-top: 6mm; border-spacing: 3.5mm 0; }
+  .col { display: table-cell; width: 50%; vertical-align: top; }
+
+  .scores { display: table; width: 100%; border-spacing: 2.5mm 0; }
+  .score {
+    display: table-cell; width: 50%; vertical-align: top; border: 0.3mm solid #e5e7eb; border-radius: 2mm; padding: 3mm 4mm;
+    background: #f9fafb;
+  }
+  .score .lbl { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.8pt; color: #6b7280; }
+  .score .val { font-size: 18pt; font-weight: 700; color: #312e81; line-height: 1.1; }
+  .score .grade { font-size: 9pt; color: #4f46e5; font-weight: 600; }
+  .score .hint { font-size: 6.5pt; color: #9ca3af; line-height: 1.35; margin-top: 1mm; }
+
+  table.detail { width: 100%; border-collapse: collapse; margin-top: 3mm; font-size: 8pt; }
+  table.detail th {
+    text-align: left; font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.6pt;
+    color: #6b7280; border-bottom: 0.3mm solid #e5e7eb; padding: 1.2mm 1mm;
+  }
+  table.detail td { padding: 0.9mm 1mm; border-bottom: 0.2mm solid #f3f4f6; }
+  table.detail td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .caption { font-size: 7pt; color: #6b7280; margin-top: 1.5mm; line-height: 1.4; }
+
+  .foot { display: table; width: 100%; margin-top: 7mm; border-spacing: 3.5mm 0; }
+  .qrbox { display: table-cell; text-align: center; width: 42mm; vertical-align: bottom; }
+  .qrbox img { width: 27mm; height: 27mm; display: block; margin: 0 auto 1mm; }
+  .qrbox .cap { font-size: 6.5pt; color: #6b7280; line-height: 1.35; }
+  .meta { display: table-cell; vertical-align: bottom; font-size: 8pt; color: #4b5563; line-height: 1.6; }
+  .meta .no { font-family: "Courier New", monospace; font-size: 9pt; color: #111827; }
+  .sign { display: table-cell; width: 58mm; vertical-align: bottom; text-align: center; font-size: 8pt; color: #4b5563; }
+  .sign .line { border-top: 0.3mm solid #9ca3af; margin: 11mm 0 1.5mm; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="frame"></div>
+  <div class="inner">
+
+    <div class="head">
+      <div class="org">Vernon</div>
+      <div class="title">SERTIFIKAT MAGANG</div>
+      <div class="subtitle">Diberikan kepada</div>
+    </div>
+
+    <div class="name">{{ intern_name }}</div>
+    <div class="rule"></div>
+
+    <div class="blurb">
+      atas penyelesaian program magang
+      {% if doc.position %}sebagai <strong>{{ doc.position }}</strong>{% endif %}
+      {% if project_name %}pada proyek <strong>{{ project_name }}</strong>{% endif %}
+      terhitung <strong>{{ frappe.format(doc.period_start, {"fieldtype": "Date"}) }}</strong>
+      sampai <strong>{{ frappe.format(doc.period_end, {"fieldtype": "Date"}) }}</strong>.
+      {% if doc.summary %}<br>{{ doc.summary }}{% endif %}
+    </div>
+
+    <div class="body">
+      <div class="col">
+        <div class="scores">
+          <div class="score">
+            <div class="lbl">Nilai Kinerja</div>
+            <div class="val">{{ "%.1f"|format(doc.auto_score) if doc.auto_score is not none else "—" }}</div>
+            <div class="grade">{{ doc.auto_grade or "belum dinilai" }}</div>
+            <div class="hint">Dihitung otomatis dari catatan tugas, kehadiran, poin dan pembelajaran.</div>
+          </div>
+          <div class="score">
+            <div class="lbl">Nilai Penilaian</div>
+            <div class="val">{{ "%.1f"|format(doc.rubric_score) if doc.rubric_score is not none else "—" }}</div>
+            <div class="grade">{{ doc.rubric_grade or "belum dinilai" }}</div>
+            <div class="hint">Penilaian pembimbing atas kualitas, kedisiplinan, inisiatif, kolaborasi dan komunikasi.</div>
+          </div>
+        </div>
+        <div class="caption">
+          Kedua nilai berdiri sendiri dan sengaja tidak dirata-ratakan: yang satu mengukur
+          catatan kerja, yang lain penilaian manusia.
+        </div>
+        {% if components %}
+        <table class="detail">
+          <tr><th>Komponen Kinerja</th><th class="num">Capaian</th><th class="num">Bobot</th></tr>
+          {% for c in components %}
+          <tr>
+            <td>{{ c.label }}</td>
+            <td class="num">{{ "%.0f"|format(c.value) }}% <span style="color:#9ca3af">({{ c.detail }})</span></td>
+            <td class="num">{{ "%.0f"|format(c.weight) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% endif %}
+      </div>
+
+      <div class="col">
+        {% if rubric %}
+        <table class="detail">
+          <tr><th>Penilaian Pembimbing</th><th class="num">Nilai</th><th class="num">Bobot</th></tr>
+          {% for r in rubric %}
+          <tr>
+            <td>{{ r.label }}</td>
+            <td class="num">{{ "%.0f"|format(r.score) if r.score is not none else "—" }}</td>
+            <td class="num">{{ "%.0f"|format(r.weight) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="qrbox">
+        <img src="{{ qr }}" alt="QR verifikasi">
+        <div class="cap">Pindai untuk memeriksa keaslian</div>
+      </div>
+      <div class="meta">
+        <div>Nomor sertifikat</div>
+        <div class="no">{{ doc.cert_no }}</div>
+        <div style="margin-top:2mm">Diterbitkan {{ frappe.format(doc.issued_on, {"fieldtype": "Date"}) }}</div>
+        <div style="color:#9ca3af; font-size:7pt; margin-top:1mm">{{ verify_url }}</div>
+      </div>
+      <div class="sign">
+        <div class="line"></div>
+        Human Resources<br>Vernon
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

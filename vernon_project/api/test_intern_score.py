@@ -429,3 +429,62 @@ class TestPointTarget(unittest.TestCase):
 		self.assertEqual(point_target("2026-01-01", "2026-02-29", 100), 0.0)
 		self.assertEqual(point_target("2026-01-01", "not-a-date", 100), 0.0)
 		self.assertEqual(point_target("2026-13-01", "2026-12-01", 100), 0.0)
+
+
+# --- unscored rubric lines through the DB -------------------------------------------
+# A Frappe Float column cannot hold None: it stores 0.0. So "not judged" and "judged
+# zero" arrive here looking identical, and a half-filled rubric would read as a damning
+# review. A companion `scored` flag is what tells them apart.
+
+from vernon_project.api.intern_score import rubric_display  # noqa: E402
+
+
+def row(key="quality", weight=30, score=0.0, scored=0, comment=""):
+	return {"criteria_key": key, "label": key.title(), "weight": weight,
+		"score": score, "scored": scored, "comment": comment}
+
+
+class TestUnscoredFlag(unittest.TestCase):
+	def test_unscored_zero_is_ignored_not_counted(self):
+		rows = [row("quality", 30, 90, 1), row("discipline", 20, 80, 1),
+			row("initiative", 20, 0.0, 0), row("collaboration", 15, 0.0, 0),
+			row("communication", 15, 0.0, 0)]
+		# (90*30 + 80*20) / 50 = 86.0, not 43.0 (which is what dividing by the full
+		# 100 of weight would give -- the exact bug this guards).
+		self.assertEqual(compute_rubric_score(rows), 86.0)
+
+	def test_a_deliberate_zero_still_counts(self):
+		rows = [row("quality", 30, 0.0, 1), row("discipline", 20, 100, 1)]
+		self.assertEqual(compute_rubric_score(rows), 40.0)
+
+	def test_all_unscored_is_none(self):
+		self.assertIsNone(compute_rubric_score([row(scored=0), row("discipline", 20, 0.0, 0)]))
+
+	def test_rows_without_the_flag_still_work(self):
+		# The pure path (preview, tests) passes score=None and no flag at all.
+		self.assertEqual(compute_rubric_score([{"label": "a", "weight": 1, "score": 50}]), 50.0)
+
+
+class TestRubricDisplay(unittest.TestCase):
+	def test_unscored_lines_show_as_none_not_zero(self):
+		out = rubric_display([row("quality", 30, 90, 1), row("initiative", 20, 0.0, 0)])
+		self.assertEqual(out[0]["score"], 90.0)
+		self.assertIsNone(out[1]["score"])
+
+	def test_a_real_zero_survives(self):
+		self.assertEqual(rubric_display([row("quality", 30, 0.0, 1)])[0]["score"], 0.0)
+
+	def test_keeps_label_weight_and_comment(self):
+		out = rubric_display([row("quality", 30, 90, 1, comment="rapi")])[0]
+		self.assertEqual((out["label"], out["weight"], out["comment"]), ("Quality", 30, "rapi"))
+
+	def test_no_internal_fields_leak(self):
+		self.assertEqual(set(rubric_display([row()])[0]), {"label", "weight", "score", "comment"})
+
+	def test_empty(self):
+		self.assertEqual(rubric_display([]), [])
+		self.assertEqual(rubric_display(None), [])
+
+	def test_flagless_rows_pass_through(self):
+		out = rubric_display([{"label": "a", "weight": 1, "score": None, "comment": ""}])
+		self.assertIsNone(out[0]["score"])
