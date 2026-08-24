@@ -2,6 +2,8 @@
 # See license.txt
 
 import frappe
+
+from vernon_project.fixtures_for_tests import ensure_user
 import unittest
 from frappe.utils import nowdate, add_days
 
@@ -15,16 +17,16 @@ class TestProjectGuards(unittest.TestCase):
 	def setUp(self):
 		_ensure("Brand", "Test Customer", {
 			"doctype": "Brand", "brand_name": "Test Customer"})
-		_ensure("Project Group", "Test Project Group", {
-			"doctype": "Project Group", "project_name": "Test Project Group"})
-		for u in ("owner_u@example.com", "leader_u@example.com", "other_u@example.com"):
-			if not frappe.db.exists("User", u):
-				frappe.get_doc({"doctype": "User", "email": u, "first_name": u.split("@")[0],
-					"send_welcome_email": 0}).insert(ignore_permissions=True)
+		# Roles are per-user on purpose: Project validates that whoever it names as
+		# owner/leader holds the matching role, and the guards below must fail for the
+		# right reason (not being this project's lead), not for a missing role.
+		ensure_user("owner_u@example.com", roles=("Project Owner",))
+		ensure_user("leader_u@example.com", roles=("Project Leader",))
+		ensure_user("other_u@example.com", roles=("Project Leader",))
 
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Guard Test Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "owner_u@example.com", "project_leader": "leader_u@example.com",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})
@@ -51,15 +53,17 @@ class TestProjectGuards(unittest.TestCase):
 		frappe.set_user("other_u@example.com")
 		p = frappe.get_doc("Project", self.project.name)
 		p.goal = "hijack"
+		# No ignore_permissions: the controller's guard deliberately steps aside for
+		# trusted server code, so passing it here would skip the very check under test.
 		with self.assertRaises(frappe.PermissionError):
-			p.save(ignore_permissions=True)
+			p.save()
 		frappe.set_user("Administrator")
 
 	def test_leader_can_edit_meta(self):
 		frappe.set_user("leader_u@example.com")
 		p = frappe.get_doc("Project", self.project.name)
 		p.goal = "leader edit ok"
-		p.save(ignore_permissions=True)
+		p.save()
 		frappe.set_user("Administrator")
 		self.assertEqual(frappe.db.get_value("Project", self.project.name, "goal"), "leader edit ok")
 
@@ -68,14 +72,14 @@ class TestProjectGuards(unittest.TestCase):
 		p = frappe.get_doc("Project", self.project.name)
 		p.project_owner = "leader_u@example.com"
 		with self.assertRaises(frappe.PermissionError):
-			p.save(ignore_permissions=True)
+			p.save()
 		frappe.set_user("Administrator")
 
 	def test_owner_can_reassign(self):
 		frappe.set_user("owner_u@example.com")
 		p = frappe.get_doc("Project", self.project.name)
 		p.project_leader = "other_u@example.com"
-		p.save(ignore_permissions=True)
+		p.save()
 		frappe.set_user("Administrator")
 		self.assertEqual(
 			frappe.db.get_value("Project", self.project.name, "project_leader"), "other_u@example.com")

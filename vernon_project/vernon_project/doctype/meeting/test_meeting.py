@@ -3,26 +3,21 @@
 
 import frappe
 import unittest
+
+from vernon_project.fixtures_for_tests import ensure_brand, ensure_group, ensure_user
 from frappe.utils import nowdate, add_days
 
 
 class MeetingTestBase(unittest.TestCase):
 	def setUp(self):
 		for email, first in (("m_user1@example.com", "M1"), ("m_user2@example.com", "M2")):
-			if not frappe.db.exists("User", email):
-				frappe.get_doc({
-					"doctype": "User", "email": email, "first_name": first,
-					"send_welcome_email": 0,
-				}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Brand", "Test Customer"):
-			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Test Project Group"):
-			frappe.get_doc({"doctype": "Project Group", "project_name": "Test Project Group"}).insert(ignore_permissions=True)
+			# Reading a Meeting needs one of the project roles at all.
+			ensure_user(email, first, roles=("Project Team",))
+		ensure_brand("Test Customer")
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Meeting Test Project",
 			"brand": "Test Customer",
-			"project_group": "Test Project Group",
 			"project_owner": "Administrator",
 			"project_leader": "Administrator",
 			"status": "Ongoing",
@@ -49,7 +44,11 @@ class MeetingTestBase(unittest.TestCase):
 			"doctype": "Meeting",
 			"project": self.project.name,
 			"title": kw.pop("title", "Standup"),
-			"participants": [{"user": u} for u in kw.pop("participants", [])],
+			# A meeting must have at least one participant (controller rule), so the
+			# default is a real team member rather than an empty table.
+			"participants": [
+				{"user": u} for u in kw.pop("participants", ["m_user1@example.com"])
+			],
 			**kw,
 		})
 		doc.insert(ignore_permissions=True)
@@ -67,25 +66,18 @@ class TestMeetingBasics(MeetingTestBase):
 class TestMeetingPoints(MeetingTestBase):
 	def setUp(self):
 		super().setUp()
-		self.group = frappe.get_doc({
-			"doctype": "Group",
-			"group_name": "Meeting Group",
-			"base_rate_per_minute": 2,
-			"levels": [
-				{"type_name": "Sync", "level_name": "Easy", "difficulty_percent": 50},
-			],
-		})
-		self.group.insert(ignore_permissions=True)
-		self.level_id = self.group.levels[0].level_id
+		# Kept, not recreated per test: deleting and re-inserting the Group left a
+		# dangling link whenever a tearDown died mid-way.
+		self.group_name = ensure_group(
+			"Meeting Group", "MEETLVL1", base_rate=2, difficulty=50,
+			type_name="Sync", level_name="Easy",
+		)
+		self.level_id = "MEETLVL1"
 		frappe.db.commit()
-
-	def tearDown(self):
-		frappe.delete_doc("Group", self.group.name, force=True, ignore_permissions=True)
-		super().tearDown()
 
 	def test_point_is_rate_times_minutes_times_difficulty(self):
 		# 2 /min × 30 min × 50% = 30
-		m = self.make_meeting(group=self.group.name, level_id=self.level_id, estimated=30)
+		m = self.make_meeting(group=self.group_name, level_id=self.level_id, estimated=30)
 		self.assertEqual(m.point, 30)
 		self.assertEqual(m.level, "Easy")
 		self.assertEqual(m.level_type, "Sync")
@@ -120,7 +112,7 @@ class TestMeetingAward(TestMeetingPoints):
 
 	def test_done_credits_each_participant_once(self):
 		m = self.make_meeting(
-			group=self.group.name, level_id=self.level_id, estimated=30,
+			group=self.group_name, level_id=self.level_id, estimated=30,
 			participants=["m_user1@example.com", "m_user2@example.com"],
 		)
 		m.status = "✅ Done"
@@ -132,7 +124,7 @@ class TestMeetingAward(TestMeetingPoints):
 
 	def test_resaving_done_does_not_double_credit(self):
 		m = self.make_meeting(
-			group=self.group.name, level_id=self.level_id, estimated=30,
+			group=self.group_name, level_id=self.level_id, estimated=30,
 			participants=["m_user1@example.com"],
 		)
 		m.status = "✅ Done"
@@ -143,7 +135,7 @@ class TestMeetingAward(TestMeetingPoints):
 
 	def test_reopen_removes_ledger(self):
 		m = self.make_meeting(
-			group=self.group.name, level_id=self.level_id, estimated=30,
+			group=self.group_name, level_id=self.level_id, estimated=30,
 			participants=["m_user1@example.com"],
 		)
 		m.status = "✅ Done"

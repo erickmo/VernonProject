@@ -177,11 +177,28 @@ class TestEventsRegistration(FrappeTestCase):
             result2 = _apply_notification(_make_payload())
             self.assertEqual(result2, "Confirmed")
 
-            # Amount mismatch raises PermissionError.
-            tampered = _make_payload(gross_amount="99999.00",
-                                     sig=_sha512_sig(reg.name, "200", "99999.00"))
+            # A tampered replay against an already-Confirmed row is a harmless no-op:
+            # the idempotency short-circuit runs before the amount check, on purpose.
+            tampered_replay = _make_payload(gross_amount="99999.00",
+                                            sig=_sha512_sig(reg.name, "200", "99999.00"))
+            self.assertEqual(_apply_notification(tampered_replay), "Confirmed")
+
+            # On a row still awaiting payment, the amount check does fire.
+            reg2 = self._reg(ev.name, user, status="Pending", method="Rupiah", amount=50000)
+            reg2.db_set("midtrans_order_id", reg2.name)
+            tampered = {
+                "order_id": reg2.name,
+                "status_code": "200",
+                "gross_amount": "99999.00",
+                "transaction_status": "settlement",
+                "signature_key": _sha512_sig(reg2.name, "200", "99999.00"),
+            }
             with self.assertRaises(frappe.PermissionError):
                 _apply_notification(tampered)
+            self.assertEqual(
+                frappe.db.get_value("Vernon Event Registration", reg2.name, "status"),
+                "Pending",
+            )
 
 
 if __name__ == "__main__":

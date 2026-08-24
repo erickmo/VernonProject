@@ -2,6 +2,8 @@
 # See license.txt
 
 import frappe
+
+from vernon_project.fixtures_for_tests import ensure_user
 import unittest
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days, getdate, now_datetime, add_to_date
@@ -452,6 +454,7 @@ class TestProjectTodo(unittest.TestCase):
 			"assigned_to": "test_user@example.com",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 5),
+			"estimated": 30,
 			"status": "⚪️ Planned",
 			"group": self.group,
 			"level_id": self.level_id,
@@ -633,6 +636,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			frappe.get_doc({
 				"doctype": "Brand",
 				"brand_name": "Test Customer Phase",
+				"company": frappe.db.get_value("Company", {}, "name"),
 			}).insert(ignore_permissions=True)
 
 		# Create test project with team members so validate_assigned_to_team_member passes
@@ -919,10 +923,11 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 		extra_todo = frappe.get_doc({
 			"doctype": "Project Todo",
 			"project_detail": self.project_detail.name,
-			"to_do": "Todo with No Estimates",
+			"to_do": "Todo with No Phase Estimates",
 			"assigned_to": "test_user@example.com",
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 7),
+			"estimated": 15,
 			"status": "⚪️ Planned",
 			"group": self.group,
 			"level_id": self.level_id,
@@ -931,15 +936,16 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 		extra_todo.reload()
 
-		self.assertEqual(extra_todo.total_estimated_hours, 0.0,
-			"Total should be 0 when no estimates are provided")
+		self.assertEqual(extra_todo.total_estimated_hours, 15,
+			"Total should equal the main estimate when no phase estimates are set")
 
 
 class TestProjectTodoWaiting(FrappeTestCase):
 	def setUp(self):
 		# Minimal project + detail so validate_create_permission passes (Admin = owner+leader).
 		if not frappe.db.exists("Brand", "Test Customer Waiting"):
-			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Waiting"}).insert(ignore_permissions=True)
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Waiting",
+				"company": frappe.db.get_value("Company", {}, "name")}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Waiting Flag Test Project",
@@ -987,6 +993,7 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		todo.status = "⚪️ Planned"
 		todo.group = self.group
 		todo.level_id = self.level_id
+		todo.estimated = 30  # mandatory + >= MIN_ESTIMATED_MINUTES
 		return todo
 
 	def test_waiting_requires_reason(self):
@@ -1036,12 +1043,14 @@ class TestProjectTodoFiles(FrappeTestCase):
 
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer Files"):
-			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Files"}).insert(ignore_permissions=True)
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer Files",
+				"company": frappe.db.get_value("Company", {}, "name")}).insert(ignore_permissions=True)
 		self.assignee = "todofiles_user@example.com"
 		self.other = "todofiles_other@example.com"
 		for email, fn in ((self.assignee, "TodoFiles"), (self.other, "OtherFiles")):
-			if not frappe.db.exists("User", email):
-				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn, "send_welcome_email": 0}).insert(ignore_permissions=True)
+			# Downloading a todo file goes through has_permission("read") — the reader
+			# needs one of the project roles, not just team membership.
+			ensure_user(email, fn, roles=("Project Team",))
 		self.project = frappe.get_doc({
 			"doctype": "Project",
 			"project_name": "Todo Files Test Project",
@@ -1071,6 +1080,7 @@ class TestProjectTodoFiles(FrappeTestCase):
 			"assigned_to": self.assignee,
 			"start_date": nowdate(),
 			"deadline": add_days(nowdate(), 5),
+			"estimated": 30,
 			"status": "⚪️ Planned",
 			"group": self.group,
 			"level_id": self.level_id,
@@ -1148,8 +1158,16 @@ class TestProjectTodoFiles(FrappeTestCase):
 			frappe.local.response = frappe._dict()
 			download_todo_file(self.todo.name, row["name"])
 			self.assertEqual(frappe.local.response.type, "download")
-			self.assertEqual(frappe.local.response.filecontent, b"<h1>hi</h1>")
-			self.assertEqual(frappe.local.response.filename, "report.html")
+			# File.get_content() decodes text files to str; bytes for binary. Normalise
+			# so the assertion is about the content, not its transport type.
+			content = frappe.local.response.filecontent
+			if isinstance(content, bytes):
+				content = content.decode()
+			self.assertEqual(content, "<h1>hi</h1>")
+			# Frappe may de-duplicate the stored name (report.html -> reportXXXX.html);
+			# what matters for the Cloudflare-safe path is that the .html extension
+			# survives onto the download filename.
+			self.assertTrue(frappe.local.response.filename.endswith(".html"))
 		finally:
 			frappe.set_user("Administrator")
 

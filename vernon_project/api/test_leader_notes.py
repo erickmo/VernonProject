@@ -9,6 +9,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
+from vernon_project.fixtures_for_tests import ensure_user
 from vernon_project.api.leader_notes import (
 	_can_note,
 	add_user_note,
@@ -37,13 +38,11 @@ class TestLeaderNotes(unittest.TestCase):
 		frappe.set_user("Administrator")
 		leaders = {LEADER1, LEADER2, CLOSED_LEADER}
 		for email, name in USERS:
-			if not frappe.db.exists("User", email):
-				frappe.get_doc({
-					"doctype": "User", "email": email, "first_name": name,
-					"send_welcome_email": 0, "enabled": 1,
-				}).insert(ignore_permissions=True)
-			if email in leaders and not frappe.db.exists("Has Role", {"parent": email, "role": "Project Leader"}):
-				frappe.get_doc("User", email).add_roles("Project Leader")
+			# Project validates that its leader/owner hold the matching role.
+			roles = ["Project Leader"] if email in leaders else []
+			if email == OWNER:
+				roles.append("Project Owner")
+			ensure_user(email, name, roles)
 		self.brand = frappe.get_all("Brand", pluck="name", limit=1)[0]
 
 		self.projects = []

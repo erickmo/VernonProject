@@ -3,23 +3,19 @@
 
 import frappe
 import unittest
+
+from vernon_project.fixtures_for_tests import ensure_brand, ensure_group
 from frappe.utils import nowdate, add_days
 from vernon_project.vernon_project.doctype.project_detail.project_detail import recompute_detail_rollups
 
 
-def _ensure(doctype, name, doc):
-	if not frappe.db.exists(doctype, name):
-		frappe.get_doc(doc).insert(ignore_permissions=True)
-
-
 class TestProjectDetailOnTrash(unittest.TestCase):
 	def setUp(self):
-		_ensure("Brand", "Test Customer", {"doctype": "Brand",
-			"brand_name": "Test Customer"})
-		_ensure("Project Group", "Test Project Group", {"doctype": "Project Group",
-			"project_name": "Test Project Group"})
+		ensure_brand("Test Customer")
+		# Project Todo scores off group + level, and both are mandatory now.
+		self.group_name = ensure_group("PD Trash Group", "PDTRASHLVL1")
 		self.project = frappe.get_doc({"doctype": "Project", "project_name": "PD Trash Project",
-			"brand": "Test Customer", "project_group": "Test Project Group",
+			"brand": "Test Customer",
 			"project_owner": "Administrator", "project_leader": "Administrator",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "Administrator"}]})
@@ -54,7 +50,11 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 				"project_detail": d.name,
 				"to_do": "T1",
 				"assigned_to": "Administrator",
+				"start_date": nowdate(),
 				"deadline": add_days(nowdate(), 3),
+				"group": self.group_name,
+				"level_id": "PDTRASHLVL1",
+				"estimated": 30,
 				"status": "⚪️ Planned",
 			}).insert(ignore_permissions=True)
 			frappe.db.commit()
@@ -80,7 +80,10 @@ class TestProjectDetailOnTrash(unittest.TestCase):
 				"project_detail": d.name,
 				"to_do": f"task {i}",
 				"assigned_to": team_user,
+				"start_date": nowdate(),
 				"deadline": "2026-12-31",
+				"group": self.group_name,
+				"level_id": "PDTRASHLVL1",
 				"estimated": 60,
 				"status": "⚪️ Planned",
 			}).insert(ignore_permissions=True)
