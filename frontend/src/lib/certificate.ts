@@ -129,7 +129,9 @@ export function canDownload(detail: Pick<CertificateDetail, 'status'>): boolean 
 // --- (i) help ------------------------------------------------------------------------
 // Everything here is a question a real reader asks. Keep the answers concrete.
 
-export interface HelpEntry { term: string; title: string; body: string }
+import type { HelpEntry } from './types'
+
+export type { HelpEntry }
 
 export const CERT_HELP: HelpEntry[] = [
   {

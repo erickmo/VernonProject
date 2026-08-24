@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  AlertTriangle,
   FolderOpen,
   Pencil,
   CalendarPlus,
@@ -131,6 +132,8 @@ export function useTodoMenuGroups(
       ...(t.is_mine ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
       // Leader/owner/admin can flag this todo a priority for its deadline day (cap-enforced server-side).
       ...(t.can_prioritize ? [{ key: 't-priority', label: t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas', icon: Zap, onClick: () => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority }) }] : []),
+      // Raising an issue creates a todo, so it rides the same gate as creating one.
+      ...(t.can_create ? [{ key: 't-issue', label: 'Report issue', icon: AlertTriangle, onClick: go(`/project-item/${item}?issue=1`) }] : []),
       { key: 't-duplicate', label: 'Duplicate', icon: Copy, onClick: go(`/project-item/${item}?duplicate=1`) },
       // Move this todo (and optionally its detail-siblings) to another detail of the same project.
       ...(t.project_detail ? [{ key: 't-move', label: 'Move to detail…', icon: FolderInput, onClick: overlays.onMove }] : []),

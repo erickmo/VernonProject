@@ -173,6 +173,14 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc({"doctype": "User", "email": email,
 					"first_name": email.split("@")[0], "send_welcome_email": 0}).insert(ignore_permissions=True)
+			# Project.validate now requires the owner/leader to hold the matching role.
+			u = frappe.get_doc("User", email)
+			have = {r.role for r in u.roles}
+			missing = [r for r in ("Project Owner", "Project Leader") if r not in have]
+			if missing:
+				for role in missing:
+					u.append("roles", {"role": role})
+				u.save(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Team Roster Project",
 			"brand": "Test Customer",
@@ -195,6 +203,7 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		self.todo = frappe.get_doc({"doctype": "Project Todo", "project_detail": self.detail.name,
 			"to_do": "Open task", "assigned_to": "tm_member@example.com",
 			"status": "⚪️ Planned", "start_date": nowdate(), "deadline": add_days(nowdate(), 5),
+			"estimated": 30,
 			"group": "Test Group", "level": "1"}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
@@ -517,6 +526,7 @@ class TestMobileRecurring(unittest.TestCase):
 			"deadline": add_days(nowdate(), 7),
 			"group": "Test Group Recurring",
 			"level_id": "TESTLVL1",
+			"estimated": 30,
 			"status": "⚪️ Planned",
 			"is_recurring": 1,
 			"recurring_frequency": "Weekly",
@@ -1071,16 +1081,26 @@ class TestMobileGetProjectBlueprint(FrappeTestCase):
 			"doctype": "Project Detail", "project": self.project.name, "title": "Sub 1",
 			"project_deadline": add_days(nowdate(), 20),
 		}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Test Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Test Group"}).insert(ignore_permissions=True)
+		_reqd = {"assigned_to": "Administrator", "start_date": nowdate(),
+			"group": "Test Group", "level": "1", "estimated": 30}
 		self.dated = frappe.get_doc({
 			"doctype": "Project Todo", "project_detail": self.detail.name, "to_do": "Dated action",
-			"deadline": add_days(nowdate(), 10),
+			"deadline": add_days(nowdate(), 10), **_reqd,
 		}).insert(ignore_permissions=True)
+		# `deadline` is mandatory now, so an undated todo can only exist the way the real
+		# ones do: a legacy row. Insert dated, then clear the column underneath validation.
 		self.undated = frappe.get_doc({
 			"doctype": "Project Todo", "project_detail": self.detail.name, "to_do": "Undated action",
+			"deadline": add_days(nowdate(), 10), **_reqd,
 		}).insert(ignore_permissions=True)
 		# dated blocks undated → one dependency edge (controller mirrors both sides).
 		self.dated.append("blocking", {"todo": self.undated.name})
 		self.dated.save(ignore_permissions=True)
+		# Clear it only now: mirroring re-saves the other side, which would trip the
+		# mandatory check.
+		frappe.db.set_value("Project Todo", self.undated.name, "deadline", None, update_modified=False)
 		frappe.db.commit()
 
 	def tearDown(self):

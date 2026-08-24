@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, X, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, X, Plus } from 'lucide-react'
 import { useCreateProjectItem } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/ui'
@@ -23,9 +23,12 @@ interface CreateProjectItemSheetProps {
    *  initializers only run once, so mount this sheet fresh per open. */
   initial?: CreateTodoInitial
   onCreated?: (todoName: string) => void
+  /** Reporting an issue found on this todo: links the new todo back to it (server field
+   *  `issue_of`) and relabels the form. The issue is an ordinary todo otherwise. */
+  issueOf?: { name: string; title: string }
 }
 
-export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial, onCreated }: CreateProjectItemSheetProps) {
+export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial, onCreated, issueOf }: CreateProjectItemSheetProps) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
 
@@ -85,6 +88,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
     if (ownerDeadline) fields.owner_deadline = ownerDeadline
     if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
     if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
+    if (issueOf) fields.issue_of = issueOf.name
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
     Object.assign(fields, serializeRecurrence(recurrence))
@@ -105,7 +109,15 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">New todo</h3>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">{issueOf ? 'Report issue' : 'New todo'}</h3>
+            {issueOf && (
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <span className="truncate">on “{issueOf.title}”</span>
+              </p>
+            )}
+          </div>
           <button onClick={close} className="rounded-full p-1 text-slate-400 dark:text-slate-500 active:scale-95">
             <X className="h-5 w-5" />
           </button>
@@ -113,8 +125,8 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
 
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Todo<span className="text-red-500"> *</span>
-            <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder="What needs doing?" />
+            {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
+            <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'} />
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">

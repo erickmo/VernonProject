@@ -85,6 +85,26 @@ def _status_key(status):
 	return STATUS_KEY.get(status, "planned")
 
 
+def is_issue_resolved(status):
+	"""An issue is resolved only once its todo is Completed — done AND approved.
+	Done / Checked By PL are mid-approval, not resolved."""
+	return status == STATUS_COMPLETED
+
+
+def issue_counts(statuses):
+	"""{open, resolved, cancelled} for a list of issue statuses. A cancelled issue is
+	neither open nor resolved — nobody fixed it, it was dropped."""
+	out = {"open": 0, "resolved": 0, "cancelled": 0}
+	for st in statuses:
+		if is_issue_resolved(st):
+			out["resolved"] += 1
+		elif st == STATUS_CANCELLED:
+			out["cancelled"] += 1
+		else:
+			out["open"] += 1
+	return out
+
+
 def _today():
 	"""getdate(nowdate()) memoized for the request. nowdate() rebuilds a system-tz
 	datetime (pytz) and getdate() then dateutil-parses the resulting string — ~0.2ms
@@ -568,7 +588,11 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
-	params = {"projects": tuple(project_names), "cancelled": STATUS_CANCELLED}
+	params = {
+		"projects": tuple(project_names),
+		"cancelled": STATUS_CANCELLED,
+		"completed": STATUS_COMPLETED,
+	}
 	if statuses:
 		cond += " AND t.status IN %(statuses)s"
 		params["statuses"] = tuple(statuses)
@@ -583,7 +607,10 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
 			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
-			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
+			t.developed_by, t.developed_at, t.tested_by, t.tested_at, t.issue_of,
+			(SELECT COUNT(*) FROM `tabProject Todo` iss
+				WHERE iss.issue_of = t.name AND iss.status NOT IN (%(completed)s, %(cancelled)s)
+			) AS open_issues,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
 			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
 			p.project_name, p.project_owner, p.project_leader, p.auto_approve AS project_auto_approve,
@@ -824,6 +851,11 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"ongoing": bool(row.get("ongoing")),
 		"is_recurring": bool(row.get("is_recurring")),
 		"is_priority": bool(row.get("is_priority")),
+		# Issue links. `issue_of` = this task is an issue raised on that task;
+		# `open_issues` = issues raised on THIS task that aren't resolved yet.
+		# .get() because some callers build rows without the issue columns.
+		"issue_of": row.get("issue_of") or None,
+		"open_issues": int(row.get("open_issues") or 0),
 		# Same set as can_create (SM / owner / leader / project admin) — who may spend
 		# one of the assignee's daily priority slots.
 		"can_prioritize": can_create,
@@ -892,7 +924,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 	return out
 
 
-def _shape_item_row(row, user, name_map, alloc_map=None):
+def _shape_item_row(row, user, name_map, alloc_map=None, can_create=False):
 	"""Lightweight project-item shape for link rows on the Project Detail screen.
 	Full detail loads via get_project_item."""
 	skey = _status_key(row["status"])
@@ -929,6 +961,10 @@ def _shape_item_row(row, user, name_map, alloc_map=None):
 			and getdate(row["deadline"]) < _today()
 		),
 		"is_waiting": bool(row.get("is_waiting")),
+		# Unresolved issues raised on this todo — the row's warning chip.
+		"can_create": can_create,
+		"issue_of": row.get("issue_of") or None,
+		"open_issues": int(row.get("open_issues") or 0),
 		"assigned_to": row["assigned_to"],
 		"assigned_to_name": assignee.get("full_name") or row["assigned_to"],
 		"auto_approve_mode": _auto_approve_fields(row)[0],
@@ -1888,7 +1924,6 @@ def get_project_detail(project_detail, include_cancelled=0):
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])
 	detail["project_name"] = frappe.get_value("Project", detail["project"], "project_name")
-	detail["project_items"] = [_shape_item_row(r, user, name_map, alloc_map) for r in rows]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
 	owner, leader = frappe.get_value(
@@ -1898,6 +1933,12 @@ def get_project_detail(project_detail, include_cancelled=0):
 	is_sm = "System Manager" in frappe.get_roles(user)
 	# Admins may now create tasks (task injectors), alongside owner/leader.
 	detail["can_create"] = is_sm or user == owner or user == leader or user in admins
+	# Every row here lives in this one detail, so they share the create gate — it rides
+	# on the rows so the shared todo menu can offer "Report issue" (an issue is a task).
+	detail["project_items"] = [
+		_shape_item_row(r, user, name_map, alloc_map, can_create=detail["can_create"])
+		for r in rows
+	]
 	detail["can_edit"] = is_sm or user in (owner, leader)
 	detail["can_delete"] = is_sm or user == owner or user == leader or user in admins
 	detail["auto_approve"] = bool(frappe.db.get_value("Project", detail["project"], "auto_approve"))
@@ -2041,6 +2082,48 @@ def get_project_item(project_item):
 		filters={"parent": project_item, "parentfield": "blocking"},
 		pluck="todo",
 	)
+	# Issues: other todos raised against this one. An issue is resolved once its own
+	# todo reaches Completed (done AND approved) — nothing extra is stored for it.
+	# Issues may live in another project, so titles come from the rows themselves
+	# rather than the sibling list below.
+	issue_rows = frappe.get_all(
+		"Project Todo",
+		filters={"issue_of": project_item},
+		fields=["name", "to_do", "status", "assigned_to", "deadline", "completed_at"],
+		order_by="creation asc",
+		limit_page_length=0,
+	)
+	issue_names = _user_name_map({i["assigned_to"] for i in issue_rows if i.get("assigned_to")})
+	shaped["issues"] = [
+		{
+			"name": i["name"],
+			"to_do": i["to_do"],
+			"status": i["status"],
+			"status_key": _status_key(i["status"]),
+			"resolved": is_issue_resolved(i["status"]),
+			"assigned_to": i["assigned_to"],
+			"assigned_to_name": (issue_names.get(i["assigned_to"]) or {}).get("full_name")
+			or i["assigned_to"],
+			"deadline": str(i["deadline"]) if i["deadline"] else None,
+			"deadline_human": _humanize_date(i["deadline"]),
+			"resolved_at_human": (
+				_humanize_datetime(i["completed_at"]) if is_issue_resolved(i["status"]) else None
+			),
+		}
+		for i in issue_rows
+	]
+	shaped["issue_counts"] = issue_counts([i["status"] for i in issue_rows])
+	# Backlink for when THIS todo is itself an issue on another one.
+	_host = (
+		frappe.db.get_value("Project Todo", shaped["issue_of"], ["to_do", "status"], as_dict=True)
+		if shaped.get("issue_of") else None
+	)
+	shaped["issue_of_title"] = _host.get("to_do") if _host else None
+	shaped["issue_of_status_key"] = _status_key(_host.get("status")) if _host else None
+	# Raising an issue creates a todo, so it rides the same gate as any create
+	# (System Manager / project owner / leader / project admin).
+	shaped["can_report_issue"] = shaped["can_create"]
+
 	# Sibling tasks in the same project detail (for the blocking pickers; excludes self).
 	shaped["detail_todos"] = frappe.get_all(
 		"Project Todo",

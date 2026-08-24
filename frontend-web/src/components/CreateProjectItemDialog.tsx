@@ -40,9 +40,12 @@ interface Props {
    *  initializers only run once, so mount this dialog fresh per open. */
   initial?: CreateTodoInitial
   onCreated?: (todoName: string) => void
+  /** Reporting an issue found on this todo: links the new todo back to it (server field
+   *  `issue_of`) and relabels the form. The issue is an ordinary todo otherwise. */
+  issueOf?: { name: string; title: string }
 }
 
-export function CreateProjectItemDialog({ open, onClose, projectDetail = '', team: teamProp, defaultGroup, siblings: siblingsProp = [], initial, onCreated }: Props) {
+export function CreateProjectItemDialog({ open, onClose, projectDetail = '', team: teamProp, defaultGroup, siblings: siblingsProp = [], initial, onCreated, issueOf }: Props) {
   const toast = useToast()
   // No fixed detail → let the user pick a project then one of its details.
   const pickMode = !projectDetail
@@ -130,6 +133,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
     if (ownerDeadline) fields.owner_deadline = ownerDeadline
     if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
     if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
+    if (issueOf) fields.issue_of = issueOf.name
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
     Object.assign(fields, serializeRecurrence(rec))
@@ -150,7 +154,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
     <Drawer
       open={open}
       onClose={close}
-      title="New todo"
+      title={issueOf ? `Report issue on “${issueOf.title}”` : 'New todo'}
       widthClass="max-w-xl"
       scrim="bg-black/20"
       onSubmit={() => submit(false)}
@@ -192,13 +196,13 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
           </div>
         )}
         <label className="text-sm font-medium text-muted">
-          Todo<span className="text-red-500"> *</span>
+          {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
           <input
             ref={firstFieldRef}
             className={field + ' mt-1'}
             value={toDo}
             onChange={(e) => setToDo(e.target.value)}
-            placeholder="What needs doing?"
+            placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'}
           />
         </label>
 

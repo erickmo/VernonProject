@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks } from 'lucide-react'
+import {
+  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks,
+} from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { Avatar, Pill } from './ui'
@@ -207,6 +209,24 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
               <span className="inline-flex items-center gap-1 text-stone-500 dark:text-slate-400">
                 <Clock className="h-3.5 w-3.5" />
                 {formatEstimate(todo.estimated)}
+              </span>
+            )}
+            {todo.issue_of && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                title="This todo is an issue raised on another todo"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Issue
+              </span>
+            )}
+            {todo.open_issues > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                title={`${todo.open_issues} unresolved issue${todo.open_issues > 1 ? 's' : ''}`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {todo.open_issues}
               </span>
             )}
             {!!todo.checklist?.length && (

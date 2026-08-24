@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import type { MouseEvent } from 'react'
-import { Play, Timer, Plus, Check } from 'lucide-react'
+import { AlertTriangle, Play, Timer, Plus, Check } from 'lucide-react'
 import {
   StatusCell,
   EditableAssigneeCell,
@@ -46,17 +46,28 @@ export const TODO_COLUMNS: Column<ProjectItem>[] = [
     header: 'Task',
     sortValue: (r) => r.to_do,
     render: (r) => (
-      <span
-        className={
-          r.status_key === 'cancelled'
-            ? 'text-muted line-through'
-            : r.is_overdue
-            ? 'font-medium text-rose-700 dark:text-rose-400'
-            : 'font-medium text-ink'
-        }
-      >
-        {r.to_do}
-      </span>
+      <>
+        <span
+          className={
+            r.status_key === 'cancelled'
+              ? 'text-muted line-through'
+              : r.is_overdue
+              ? 'font-medium text-rose-700 dark:text-rose-400'
+              : 'font-medium text-ink'
+          }
+        >
+          {r.to_do}
+        </span>
+        {r.open_issues > 0 && (
+          <span
+            className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+            title={`${r.open_issues} unresolved issue${r.open_issues > 1 ? 's' : ''}`}
+          >
+            <AlertTriangle className="h-3 w-3" />
+            {r.open_issues}
+          </span>
+        )}
+      </>
     ),
   },
   {

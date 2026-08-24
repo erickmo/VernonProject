@@ -23,6 +23,7 @@
       "estimated",
       "blocked_by",
       "blocking",
+      "issue_of",
       "notes",
       "checklist",
       "points_section",
@@ -234,6 +235,15 @@
          "label": "Blocking",
          "options": "Project Todo Dependency",
          "description": "This task blocks the selected tasks."
+      },
+      {
+         "fieldname": "issue_of",
+         "fieldtype": "Link",
+         "label": "Issue Of",
+         "options": "Project Todo",
+         "search_index": 1,
+         "no_copy": 1,
+         "description": "This task is an issue found on the selected task. It counts as resolved once it reaches Completed."
       },
       {
          "fieldname": "points_section",

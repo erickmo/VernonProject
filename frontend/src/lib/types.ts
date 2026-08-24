@@ -1,4 +1,9 @@
+import type { IssueCounts, TodoIssue } from './todoIssues'
+
 export type StatusKey = 'planned' | 'done' | 'checked' | 'completed' | 'cancelled'
+
+/** One (i) explanation: the term it is keyed by, a question, and the answer. */
+export interface HelpEntry { term: string; title: string; body: string }
 
 export interface Badge {
   tier_name: string
@@ -161,6 +166,10 @@ export interface ProjectItem {
   estimated: number
   ongoing: boolean
   is_recurring: boolean
+  /** This todo is itself an issue raised on that todo (null when it is not). */
+  issue_of: string | null
+  /** Issues raised on THIS todo that are not resolved yet (drives the card chip). */
+  open_issues: number
   assigned_to: string
   assigned_to_name: string
   assigned_to_image: string | null
@@ -255,6 +264,13 @@ export interface ProjectItemDetail extends ProjectItem {
   leader_earned?: number
   blocked_by: string[]
   blocking: string[]
+  /** Todos raised as issues on this one; resolved once each reaches Completed. */
+  issues: TodoIssue[]
+  issue_counts: IssueCounts
+  /** Title + status of the todo THIS one is an issue of (the backlink). */
+  issue_of_title: string | null
+  issue_of_status_key: StatusKey | null
+  can_report_issue: boolean
   detail_todos: { name: string; to_do: string }[]
   cancellation_reason?: string | null
   cancelled_on?: string | null

@@ -30,6 +30,8 @@ import {
   RotateCcw,
   Save,
   Trash2,
+  AlertTriangle,
+  CircleCheck,
   CalendarRange,
   Layers,
   Target,
@@ -61,6 +63,8 @@ import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { FocusNoteSheet } from '@/components/FocusNoteSheet'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
+import { ISSUE_HELP, issueCounts, issueLabel, todoIssueInitial } from '@/lib/todoIssues'
+import { HelpSheet, InfoDot } from '@/components/HelpSheet'
 import type { ProjectItemDetail, TodoFile } from '@/lib/types'
 import { recurrenceFromDetail, serializeRecurrence, summarizeRecurrence, type Recurrence } from '@/lib/recurrence'
 import { RecurrenceEditor } from '@/components/RecurrenceEditor'
@@ -429,6 +433,106 @@ function DepGroup({
         ))}
       </div>
     </div>
+  )
+}
+
+/** Issues raised on this todo. Each one IS a todo (own assignee, deadline and points)
+ *  that points back here, so a row is a link, not an inline editor. Resolved means the
+ *  issue's own todo reached Completed — done AND approved. */
+function Issues({
+  data, onReport, onHelp,
+}: {
+  data: ProjectItemDetail
+  onReport: () => void
+  onHelp: (term: string) => void
+}) {
+  const counts = issueCounts(data.issues)
+  const open = data.issues.filter((i) => !i.resolved && i.status_key !== 'cancelled')
+  const rest = data.issues.filter((i) => i.resolved || i.status_key === 'cancelled')
+  const rows = [...open, ...rest] // unresolved first — that is the part that needs work
+
+  return (
+    <>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <AlertTriangle className={clsx('h-3.5 w-3.5', counts.open > 0 && 'text-amber-500')} /> Issues
+          <InfoDot term="apa-itu" onOpen={onHelp} label="Apa itu issue" />
+        </p>
+        {data.can_report_issue && (
+          <button
+            onClick={onReport}
+            className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 transition active:scale-95"
+          >
+            <Plus className="h-3.5 w-3.5" /> Report
+          </button>
+        )}
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">
+          No issues on this todo.
+          {data.can_report_issue
+            ? ' Found something that needs fixing? Report it as its own task.'
+            : ''}
+        </p>
+      ) : (
+        <>
+          <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            {issueLabel(counts)}
+            <InfoDot term="kapan-selesai" onOpen={onHelp} label="Kapan issue dihitung selesai" />
+          </p>
+          <ul className="space-y-1.5">
+            {rows.map((i) => {
+              const meta = STATUS[i.status_key]
+              return (
+                <li key={i.name}>
+                  <Link
+                    to={`/project-item/${encodeURIComponent(i.name)}`}
+                    className={clsx(
+                      'flex items-start gap-2 rounded-xl px-3 py-2 text-left transition active:scale-[0.99]',
+                      i.resolved
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10'
+                        : i.status_key === 'cancelled'
+                          ? 'bg-slate-50 dark:bg-slate-800/60 opacity-70'
+                          : 'bg-amber-50 dark:bg-amber-500/10',
+                    )}
+                  >
+                    {i.resolved ? (
+                      <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    ) : i.status_key === 'cancelled' ? (
+                      <Ban className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    ) : (
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={clsx(
+                          'block text-sm font-medium text-slate-800 dark:text-slate-100',
+                          i.status_key === 'cancelled' && 'line-through',
+                        )}
+                      >
+                        {i.to_do}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">
+                        {i.assigned_to_name}
+                        {i.resolved
+                          ? ` · resolved ${i.resolved_at_human ?? ''}`.trimEnd()
+                          : i.deadline_human
+                            ? ` · due ${i.deadline_human}`
+                            : ''}
+                      </span>
+                    </span>
+                    <span className={clsx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', meta.pill)}>
+                      {i.resolved ? 'Resolved' : meta.label}
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </>
   )
 }
 
@@ -1055,6 +1159,8 @@ export default function ProjectItemScreen() {
   const [showFocusNote, setShowFocusNote] = useState(false)
   const [dupOpen, setDupOpen] = useState(false)
 const [followOpen, setFollowOpen] = useState(false)
+  const [issueOpen, setIssueOpen] = useState(false)
+  const [issueHelpTerm, setIssueHelpTerm] = useState<string | null>(null)
   const [waitingReason, setWaitingReason] = useState('')
   const focus = useFocusTimer(id)
   const focusMode = useFocusMode()
@@ -1064,6 +1170,7 @@ const [followOpen, setFollowOpen] = useState(false)
   useEffect(() => {
     if (searchParams.get('edit')) setEditing(true)
     else if (searchParams.get('duplicate')) setDupOpen(true)
+    else if (searchParams.get('issue')) setIssueOpen(true)
     else return
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams])
@@ -1273,6 +1380,25 @@ const [followOpen, setFollowOpen] = useState(false)
         <div className="mb-3">
           <CancelledNote item={data} />
         </div>
+      )}
+      {data.issue_of && (
+        <Link
+          to={`/project-item/${encodeURIComponent(data.issue_of)}`}
+          className="mb-3 flex items-center gap-2 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 transition active:scale-[0.99]"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              Issue on
+            </span>
+            <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+              {data.issue_of_title ?? data.issue_of}
+            </span>
+          </span>
+          <span className="shrink-0 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            {data.status_key === 'completed' ? 'Resolved' : 'Open'}
+          </span>
+        </Link>
       )}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -1608,6 +1734,13 @@ const [followOpen, setFollowOpen] = useState(false)
         <Checklist todoId={data.name} initial={data.checklist} canEdit={data.can_edit_notes} />
       </div>
 
+      {/* Issues — hidden entirely for a viewer with nothing to see and nothing to add. */}
+      {(data.issues.length > 0 || data.can_report_issue) && (
+        <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+          <Issues data={data} onReport={() => setIssueOpen(true)} onHelp={setIssueHelpTerm} />
+        </div>
+      )}
+
       {/* Files */}
       <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -1694,12 +1827,15 @@ const [followOpen, setFollowOpen] = useState(false)
         </div>
       )}
 
-      {(dupOpen || followOpen) && (
+      <HelpSheet entries={ISSUE_HELP} term={issueHelpTerm} onClose={() => setIssueHelpTerm(null)} />
+
+      {(dupOpen || followOpen || issueOpen) && (
         <CreateProjectItemSheet
           open
           onClose={() => {
             setDupOpen(false)
             setFollowOpen(false)
+            setIssueOpen(false)
           }}
           projectDetail={data.project_detail}
           team={
@@ -1712,7 +1848,14 @@ const [followOpen, setFollowOpen] = useState(false)
               ? [{ name: data.name, to_do: data.to_do }, ...data.detail_todos]
               : data.detail_todos
           }
-          initial={followOpen ? todoFollowUpInitial(data) : todoDuplicateInitial(data)}
+          issueOf={issueOpen ? { name: data.name, title: data.to_do } : undefined}
+          initial={
+            issueOpen
+              ? todoIssueInitial(data, todayISO())
+              : followOpen
+                ? todoFollowUpInitial(data)
+                : todoDuplicateInitial(data)
+          }
         />
       )}
     </DetailScreen>

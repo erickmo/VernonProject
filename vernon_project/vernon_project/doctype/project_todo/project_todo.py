@@ -55,6 +55,7 @@ class ProjectTodo(Document):
 		self.track_phase_changes()
 		self.track_waiting()
 		self.validate_block_links()
+		self.validate_issue_link()
 		self.validate_recurrence_rule()
 		self._ensure_today_allocation()
 		self.validate_priority_slot()
@@ -70,6 +71,29 @@ class ProjectTodo(Document):
 				seen.add(row.todo)
 				rows.append(row)
 			self.set(fieldname, rows)
+
+	def validate_issue_link(self):
+		"""`issue_of` points at the task this one is an issue of.
+
+		No self-link, and no loop: an issue chain that folds back on itself would
+		recurse forever when the screens walk it. Mirrors Project.validate_blocking_chain.
+		The link itself (host must exist) is enforced by Frappe's link validation.
+		"""
+		if not self.issue_of:
+			return
+		if self.issue_of == self.name:
+			frappe.throw(_("A task cannot be an issue of itself."))
+		seen = {self.name}
+		current = self.issue_of
+		while current:
+			if current in seen:
+				frappe.throw(
+					_("Circular issue link detected (loops back through {0}).").format(
+						frappe.bold(current)
+					)
+				)
+			seen.add(current)
+			current = frappe.db.get_value("Project Todo", current, "issue_of")
 
 	def sync_project_from_detail(self):
 		"""Keep the denormalized `project` in sync with the linked Project Detail.
@@ -574,6 +598,25 @@ class ProjectTodo(Document):
 					reference_name=self.name,
 					actor=actor,
 				)
+
+			# An issue resolves only at Completed (done AND approved). Two people care and
+			# they are usually different: whoever raised it (waiting to hear it is fixed)
+			# and whoever owns the task it was raised on. _notify drops self-notifications,
+			# so the one who did the resolving never hears about their own work.
+			if self.status == COMPLETED and self.issue_of:
+				host = frappe.db.get_value(
+					"Project Todo", self.issue_of, ["assigned_to", "to_do"], as_dict=True
+				) or {}
+				for who in {self.owner, host.get("assigned_to")}:
+					_notify(
+						recipient=who,
+						type="Approval",
+						title="Issue resolved",
+						body=f"“{self.to_do}” is resolved on “{host.get('to_do')}”.",
+						reference_doctype="Project Todo",
+						reference_name=self.issue_of,
+						actor=actor,
+					)
 		except Exception:
 			frappe.log_error(title="_notify_status_change failed")
 
@@ -638,6 +681,10 @@ class ProjectTodo(Document):
 		frappe.db.set_value(
 			"Point Ledger", {"todo": self.name, "source": "Priority"}, "todo", None
 		)
+		# Issues logged against this task outlive it — release the link so the delete
+		# isn't blocked by it and no dangling reference is left behind.
+		for child in frappe.get_all("Project Todo", filters={"issue_of": self.name}, pluck="name"):
+			frappe.db.set_value("Project Todo", child, "issue_of", None, update_modified=False)
 		# Drop mirror references from the other side so no dangling links remain.
 		for r in self.blocking:
 			self._remove_block_link(r.todo, "blocked_by")

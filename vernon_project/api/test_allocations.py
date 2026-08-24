@@ -62,14 +62,21 @@ class _AllocFixture(unittest.TestCase):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
 					"send_welcome_email": 0}).insert(ignore_permissions=True)
+			# Reading a Project Todo needs a role — "Project Team" is the member one.
+			u = frappe.get_doc("User", email)
+			if "Project Team" not in {r.role for r in u.roles}:
+				u.append("roles", {"role": "Project Team"})
+				u.save(ignore_permissions=True)
 		if not frappe.db.exists("Brand", "Alloc Brand"):
-			frappe.get_doc({"doctype": "Brand", "brand_name": "Alloc Brand"}).insert(ignore_permissions=True)
-		if not frappe.db.exists("Project Group", "Alloc Group"):
-			frappe.get_doc({"doctype": "Project Group", "project_name": "Alloc Group"}).insert(ignore_permissions=True)
+			# Brand.company is mandatory now — borrow whichever company the site has.
+			frappe.get_doc({
+				"doctype": "Brand", "brand_name": "Alloc Brand",
+				"company": frappe.db.get_value("Company", {}, "name"),
+			}).insert(ignore_permissions=True)
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Alloc Project", "brand": "Alloc Brand",
 			"project_owner": "Administrator", "project_leader": "Administrator",
-			"project_group": "Alloc Group", "status": "Ongoing", "start_date": nowdate(),
+			"status": "Ongoing", "start_date": nowdate(),
 			"deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": "Administrator"}, {"user": "alloc_assignee@example.com"}],
 		}).insert(ignore_permissions=True)
@@ -78,8 +85,11 @@ class _AllocFixture(unittest.TestCase):
 		self.detail = frappe.get_doc({"doctype": "Project Detail", "project": self.project.name,
 			"title": "Alloc Detail", "grouping": self.grouping,
 			"project_deadline": add_days(nowdate(), 30), "estimated": 100}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Alloc Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Alloc Group"}).insert(ignore_permissions=True)
 		self.todo = frappe.get_doc({"doctype": "Project Todo", "project_detail": self.detail.name,
 			"to_do": "Alloc Todo", "assigned_to": "alloc_assignee@example.com",
+			"start_date": nowdate(), "group": "Alloc Group", "level": "1",
 			"deadline": add_days(nowdate(), 5), "estimated": 60, "status": "⚪️ Planned"}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
