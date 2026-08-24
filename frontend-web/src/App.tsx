@@ -22,6 +22,7 @@ import {
   useRecognitionGate,
 } from '@/hooks/useData'
 import { ApiError } from '@/lib/api'
+import { useRootBackGuard } from '@/lib/rootBackGuard'
 import Login from '@web/pages/Login'
 import { AppShell } from '@web/components/AppShell'
 import Home from '@web/pages/Home'
@@ -170,6 +171,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  useRootBackGuard()
   const bgRef = useRef<Location | null>(null)
   const onTodo = isTodoPath(location.pathname)
   // Freeze the last non-todo page; it stays mounted behind the drawer.

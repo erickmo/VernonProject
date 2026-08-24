@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useParams, useLocation, useNavigate } from 're
 import { FolderKanban } from 'lucide-react'
 import { useBoot, useRecognitionGate } from './hooks/useData'
 import { ApiError } from './lib/api'
+import { useRootBackGuard } from './lib/rootBackGuard'
 import { Spinner } from './components/ui'
 import { useConfirm } from './components/Confirm'
 import { TodoContextMenuProvider } from './components/TodoContextMenuProvider'
@@ -148,6 +149,7 @@ export default function App() {
   const { data: boot, isLoading, error } = useBoot()
   const location = useLocation()
   const navigate = useNavigate()
+  useRootBackGuard()
   const sp = boot?.settings
   // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
   const superpowerBlocked =
