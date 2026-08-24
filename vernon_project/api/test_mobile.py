@@ -721,11 +721,19 @@ class TestDeleteProjectAndDetail(unittest.TestCase):
 			"doctype": "Project Detail", "project": self.project.name, "title": "Delete Detail",
 			"grouping": self.grouping, "project_deadline": add_days(nowdate(), 30), "estimated": 10,
 		}).insert(ignore_permissions=True)
+		# The Project naming series (PRJ-YYMM-#####) reuses numbers across runs, and
+		# point-minting tests on this shared live DB can leave orphan Point Ledger rows
+		# behind. If our fresh project's docname happens to match such orphans, the
+		# delete guard (rightly) refuses. Clear any rows for THIS exact name so the
+		# test exercises a genuinely clean project.
+		frappe.db.delete("Point Ledger", {"project": self.project.name})
 		frappe.db.commit()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		frappe.db.delete("Project Todo", {"project": self.project.name})
+		# Don't leak our own point rows onto the next run that reuses this name.
+		frappe.db.delete("Point Ledger", {"project": self.project.name})
 		for dt, name in (("Project Detail", self.detail.name), ("Glossary", self.grouping),
 				("Project", self.project.name)):
 			if frappe.db.exists(dt, name):
