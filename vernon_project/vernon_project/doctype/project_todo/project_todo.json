@@ -1,759 +1,775 @@
 {
-   "actions": [],
-   "allow_rename": 1,
-   "autoname": "hash",
-   "creation": "2026-01-15 14:14:26.857159",
-   "doctype": "DocType",
-   "editable_grid": 1,
-   "engine": "InnoDB",
-   "field_order": [
-      "project",
-      "project_detail",
-      "ongoing",
-      "to_do",
-      "assigned_to",
-      "mentor",
-      "start_date",
-      "deadline",
-      "leader_deadline",
-      "owner_deadline",
-      "is_priority",
-      "auto_approve",
-      "auto_approve_opt_out",
-      "estimated",
-      "blocked_by",
-      "blocking",
-      "issue_of",
-      "notes",
-      "checklist",
-      "points_section",
-      "group",
-      "level",
-      "level_id",
-      "level_type",
-      "point",
-      "column_break_points",
-      "assignee_earned",
-      "leader_earned",
-      "time_estimation_section",
-      "estimated_planned_to_done",
-      "estimated_done_to_checked",
-      "estimated_checked_to_completed",
-      "column_break_time_est",
-      "total_estimated_hours",
-      "phase_tracking_section",
-      "planned_started_at",
-      "done_started_at",
-      "column_break_phase",
-      "checked_started_at",
-      "phase_completed_at",
-      "actual_time_section",
-      "actual_planned_to_done",
-      "actual_done_to_checked",
-      "column_break_actual",
-      "actual_checked_to_completed",
-      "total_actual_hours",
-      "recurring_section",
-      "is_recurring",
-      "recurring_frequency",
-      "recurring_interval",
-      "recurring_weekdays",
-      "recurring_monthly_mode",
-      "recurring_day_of_month",
-      "recurring_nth",
-      "recurring_paused",
-      "recurring_until",
-      "recurring_exception_weekdays",
-      "recurring_exception_monthdays",
-      "recurring_exception_dates",
-      "recurring_exception_behavior",
-      "recurring_anchor_date",
-      "column_break_recurring",
-      "next_occurrence",
-      "original_todo",
-      "allocations_section",
-      "allocations",
-      "assigned_allocation",
-      "progress_section",
-      "status",
-      "is_waiting",
-      "waiting_reason",
-      "waiting_since",
-      "waiting_by",
-      "cancellation_reason",
-      "cancelled_on",
-      "action",
-      "column_break_hypm",
-      "developed_at",
-      "developed_by",
-      "column_break_dncy",
-      "tested_at",
-      "tested_by",
-      "column_break_cdce",
-      "completed_at",
-      "completed_by",
-      "rejection_reason",
-      "rejected_at",
-      "rejected_by"
-   ],
-   "fields": [
-      {
-         "fieldname": "project",
-         "fieldtype": "Link",
-         "label": "Project",
-         "options": "Project",
-         "in_standard_filter": 1,
-         "search_index": 1,
-         "description": "Pick a project to filter the Project Detail list."
-      },
-      {
-         "fieldname": "project_detail",
-         "fieldtype": "Link",
-         "label": "Detail",
-         "options": "Project Detail",
-         "reqd": 1,
-         "in_standard_filter": 1,
-         "search_index": 1
-      },
-      {
-         "default": "0",
-         "fieldname": "ongoing",
-         "fieldtype": "Check",
-         "in_list_view": 1,
-         "label": "Ongoing"
-      },
-      {
-         "columns": 3,
-         "fieldname": "to_do",
-         "fieldtype": "Data",
-         "in_list_view": 1,
-         "label": "To Do",
-         "reqd": 1
-      },
-      {
-         "columns": 1,
-         "fieldname": "assigned_to",
-         "fieldtype": "Link",
-         "in_list_view": 1,
-         "label": "Assigned To",
-         "options": "User",
-         "reqd": 1
-      },
-      {
-         "fieldname": "mentor",
-         "fieldtype": "Link",
-         "label": "Mentor",
-         "options": "User",
-         "description": "Optional. Whoever coached/unblocked the assignee on this task; earns a share of points (Mentor Weight on the Group)."
-      },
-      {
-         "columns": 1,
-         "fieldname": "start_date",
-         "fieldtype": "Date",
-         "in_list_view": 1,
-         "label": "Start Date",
-         "reqd": 1,
-         "description": "When work on this task begins. Must be on or before the deadline."
-      },
-      {
-         "columns": 1,
-         "fieldname": "deadline",
-         "fieldtype": "Date",
-         "in_list_view": 1,
-         "label": "Deadline",
-         "reqd": 1
-      },
-      {
-         "columns": 1,
-         "fieldname": "leader_deadline",
-         "fieldtype": "Date",
-         "label": "Leader Approval Deadline",
-         "description": "Optional target date for Leader approval (status Checked By PL). For long tasks."
-      },
-      {
-         "columns": 1,
-         "fieldname": "owner_deadline",
-         "fieldtype": "Date",
-         "label": "Owner Approval Deadline",
-         "description": "Optional target date for Owner approval (status Completed). For long tasks."
-      },
-      {
-         "default": "0",
-         "fieldname": "is_priority",
-         "fieldtype": "Check",
-         "label": "Priority Slot",
-         "description": "Claims one of the assignee's daily priority slots for this todo's deadline date."
-      },
-      {
-         "default": "0",
-         "fieldname": "auto_approve",
-         "fieldtype": "Check",
-         "label": "Auto-Approve (Owner)",
-         "read_only": 1,
-         "description": "When set, a todo reaching Checked By PL auto-advances to Completed without Owner approval. Only a Partner project owner can set this."
-      },
-      {
-         "default": "0",
-         "fieldname": "auto_approve_opt_out",
-         "fieldtype": "Check",
-         "label": "Auto-Approve Opt-Out",
-         "read_only": 1,
-         "description": "When set, this todo is excluded from the project-wide auto-approve and always waits for Owner approval. Only a Partner project owner can set this."
-      },
-      {
-         "columns": 3,
-         "fieldname": "notes",
-         "fieldtype": "Text Editor",
-         "label": "Notes"
-      },
-      {
-         "description": "JSON array of {t: text, d: done} sub-items. Edited in-app, not in Desk.",
-         "fieldname": "checklist",
-         "fieldtype": "Small Text",
-         "label": "Checklist"
-      },
-      {
-         "columns": 1,
-         "fieldname": "estimated",
-         "fieldtype": "Int",
-         "hide_seconds": 1,
-         "in_list_view": 1,
-         "label": "Estimated (minutes)",
-         "non_negative": 1,
-         "search_index": 1
-      },
-      {
-         "fieldname": "blocked_by",
-         "fieldtype": "Table MultiSelect",
-         "label": "Blocked By",
-         "options": "Project Todo Dependency",
-         "description": "This task is blocked by / depends on the selected tasks."
-      },
-      {
-         "fieldname": "blocking",
-         "fieldtype": "Table MultiSelect",
-         "label": "Blocking",
-         "options": "Project Todo Dependency",
-         "description": "This task blocks the selected tasks."
-      },
-      {
-         "fieldname": "issue_of",
-         "fieldtype": "Link",
-         "label": "Issue Of",
-         "options": "Project Todo",
-         "search_index": 1,
-         "no_copy": 1,
-         "description": "This task is an issue found on the selected task. It counts as resolved once it reaches Completed."
-      },
-      {
-         "fieldname": "points_section",
-         "fieldtype": "Section Break",
-         "label": "Points"
-      },
-      {
-         "fieldname": "group",
-         "fieldtype": "Link",
-         "label": "Group",
-         "options": "Group",
-         "reqd": 1,
-         "in_standard_filter": 1,
-         "search_index": 1
-      },
-      {
-         "fieldname": "level",
-         "fieldtype": "Data",
-         "label": "Level",
-         "reqd": 1,
-         "description": "Cached display name of the chosen level (refreshed from the group)."
-      },
-      {
-         "fieldname": "level_id",
-         "fieldtype": "Data",
-         "label": "Level ID",
-         "read_only": 1,
-         "no_copy": 1,
-         "in_standard_filter": 1,
-         "description": "Stable reference to the chosen Group Level row."
-      },
-      {
-         "fieldname": "level_type",
-         "fieldtype": "Data",
-         "label": "Type",
-         "read_only": 1
-      },
-      {
-         "fieldname": "point",
-         "fieldtype": "Float",
-         "label": "Point",
-         "read_only": 1,
-         "description": "Base point from the chosen level."
-      },
-      {
-         "fieldname": "column_break_points",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "assignee_earned",
-         "fieldtype": "Float",
-         "label": "Assignee Earned",
-         "read_only": 1
-      },
-      {
-         "fieldname": "leader_earned",
-         "fieldtype": "Float",
-         "label": "Leader Earned",
-         "read_only": 1
-      },
-      {
-         "fieldname": "time_estimation_section",
-         "fieldtype": "Section Break",
-         "label": "Time Estimation Per Phase",
-         "collapsible": 1
-      },
-      {
-         "fieldname": "estimated_planned_to_done",
-         "fieldtype": "Int",
-         "label": "Estimated: Planned → Done (minutes, deprecated)",
-         "description": "Deprecated: covered by Estimated (minutes). Kept for historical data.",
-         "non_negative": 1,
-         "hidden": 1
-      },
-      {
-         "fieldname": "estimated_done_to_checked",
-         "fieldtype": "Int",
-         "label": "Estimated: Done → Checked By PL (minutes)",
-         "description": "Estimasi waktu (menit) dari status Done ke Checked By PL (approval Leader)",
-         "non_negative": 1
-      },
-      {
-         "fieldname": "estimated_checked_to_completed",
-         "fieldtype": "Int",
-         "label": "Estimated: Checked → Completed (minutes)",
-         "description": "Estimasi waktu (menit) dari status Checked By PL ke Completed (approval Owner)",
-         "non_negative": 1
-      },
-      {
-         "fieldname": "column_break_time_est",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "total_estimated_hours",
-         "fieldtype": "Int",
-         "label": "Total Estimated (minutes)",
-         "description": "Total estimasi waktu (menit): Estimated + Done→Checked + Checked→Completed",
-         "read_only": 1
-      },
-      {
-         "fieldname": "phase_tracking_section",
-         "fieldtype": "Section Break",
-         "label": "Phase Timestamps",
-         "collapsible": 1
-      },
-      {
-         "fieldname": "planned_started_at",
-         "fieldtype": "Datetime",
-         "label": "Planned Started At",
-         "description": "Timestamp saat todo dibuat dengan status Planned",
-         "read_only": 1
-      },
-      {
-         "fieldname": "done_started_at",
-         "fieldtype": "Datetime",
-         "label": "Done Started At",
-         "description": "Timestamp saat todo berubah ke status Done",
-         "read_only": 1
-      },
-      {
-         "fieldname": "column_break_phase",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "checked_started_at",
-         "fieldtype": "Datetime",
-         "label": "Checked Started At",
-         "description": "Timestamp saat todo berubah ke status Checked By PL",
-         "read_only": 1
-      },
-      {
-         "fieldname": "phase_completed_at",
-         "fieldtype": "Datetime",
-         "label": "Phase Completed At",
-         "description": "Timestamp saat todo berubah ke status Completed",
-         "read_only": 1
-      },
-      {
-         "fieldname": "actual_time_section",
-         "fieldtype": "Section Break",
-         "label": "Actual Time Per Phase",
-         "collapsible": 1
-      },
-      {
-         "fieldname": "actual_planned_to_done",
-         "fieldtype": "Float",
-         "label": "Actual: Planned → Done (hours)",
-         "description": "Waktu aktual dari Planned ke Done",
-         "read_only": 1,
-         "precision": "2"
-      },
-      {
-         "fieldname": "actual_done_to_checked",
-         "fieldtype": "Float",
-         "label": "Actual: Done → Checked By PL (hours)",
-         "description": "Waktu aktual dari Done ke Checked By PL",
-         "read_only": 1,
-         "precision": "2"
-      },
-      {
-         "fieldname": "column_break_actual",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "actual_checked_to_completed",
-         "fieldtype": "Float",
-         "label": "Actual: Checked → Completed (hours)",
-         "description": "Waktu aktual dari Checked By PL ke Completed",
-         "read_only": 1,
-         "precision": "2"
-      },
-      {
-         "fieldname": "total_actual_hours",
-         "fieldtype": "Float",
-         "label": "Total Actual Hours",
-         "description": "Total waktu aktual dari semua fase",
-         "read_only": 1,
-         "precision": "2"
-      },
-      {
-         "fieldname": "recurring_section",
-         "fieldtype": "Section Break",
-         "label": "Recurring Settings",
-         "collapsible": 1
-      },
-      {
-         "default": "0",
-         "fieldname": "is_recurring",
-         "fieldtype": "Check",
-         "label": "Is Recurring"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_frequency",
-         "fieldtype": "Select",
-         "label": "Recurring Frequency",
-         "options": "\nDaily\nWeekly\nMonthly\nAnnually"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_interval",
-         "fieldtype": "Int",
-         "label": "Repeat Every (N)",
-         "default": "1"
-      },
-      {
-         "fieldname": "recurring_weekdays",
-         "fieldtype": "Data",
-         "label": "Weekdays (CSV MON,THU)",
-         "depends_on": "eval:doc.recurring_frequency=='Weekly' || (doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Nth Weekday')"
-      },
-      {
-         "fieldname": "recurring_monthly_mode",
-         "fieldtype": "Select",
-         "label": "Monthly Mode",
-         "options": "Day of Month\nNth Weekday",
-         "default": "Day of Month",
-         "depends_on": "eval:doc.recurring_frequency=='Monthly'"
-      },
-      {
-         "fieldname": "recurring_day_of_month",
-         "fieldtype": "Int",
-         "label": "Day of Month (1-31)",
-         "depends_on": "eval:doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Day of Month'"
-      },
-      {
-         "fieldname": "recurring_nth",
-         "fieldtype": "Select",
-         "label": "Nth Weekday",
-         "options": "First\nSecond\nThird\nFourth\nLast",
-         "default": "First",
-         "depends_on": "eval:doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Nth Weekday'"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_paused",
-         "fieldtype": "Check",
-         "label": "Paused",
-         "default": "0"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_until",
-         "fieldtype": "Date",
-         "label": "Recurring Until"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_exception_weekdays",
-         "fieldtype": "Data",
-         "label": "Exception Weekdays (CSV MON,SUN)"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_exception_monthdays",
-         "fieldtype": "Data",
-         "label": "Exception Days of Month (CSV 1,25)"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_exception_dates",
-         "fieldtype": "Small Text",
-         "label": "Exception Dates/Ranges (JSON)"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_exception_behavior",
-         "fieldtype": "Select",
-         "label": "On Exception",
-         "options": "Skip\nShift",
-         "default": "Skip"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "recurring_anchor_date",
-         "fieldtype": "Date",
-         "label": "Recurring Anchor Date",
-         "read_only": 1
-      },
-      {
-         "fieldname": "column_break_recurring",
-         "fieldtype": "Column Break"
-      },
-      {
-         "depends_on": "eval:doc.is_recurring==1",
-         "fieldname": "next_occurrence",
-         "fieldtype": "Date",
-         "label": "Next Occurrence",
-         "read_only": 1
-      },
-      {
-         "fieldname": "original_todo",
-         "fieldtype": "Link",
-         "label": "Original Todo",
-         "options": "Project Todo",
-         "read_only": 1,
-         "hidden": 1,
-         "search_index": 1
-      },
-      {
-         "fieldname": "allocations_section",
-         "fieldtype": "Section Break",
-         "label": "Day Allocations"
-      },
-      {
-         "fieldname": "allocations",
-         "fieldtype": "Table",
-         "label": "Day Allocations",
-         "options": "Project Todo Allocation",
-         "description": "Assignee's plan splitting the estimated effort across days. Planning only \u2014 not scored."
-      },
-      {
-         "fieldname": "assigned_allocation",
-         "fieldtype": "Table",
-         "label": "Assigned Allocation",
-         "options": "Project Todo Assigned Allocation",
-         "description": "Leader's authoritative split of the estimate across dates. Default: whole estimate on the deadline."
-      },
-      {
-         "columns": 1,
-         "default": "\u26aa\ufe0f Planned",
-         "fieldname": "status",
-         "fieldtype": "Select",
-         "in_list_view": 1,
-         "label": "Status",
-         "options": "\u26aa\ufe0f Planned\n\ud83d\udfe0 Done\n\ud83d\udd37 Checked By PL\n\u2705 Completed\n\ud83d\udeab Cancelled",
-         "read_only": 1,
-         "reqd": 1
-      },
-      {
-         "default": "0",
-         "fieldname": "is_waiting",
-         "fieldtype": "Check",
-         "label": "Waiting"
-      },
-      {
-         "depends_on": "is_waiting",
-         "fieldname": "waiting_reason",
-         "fieldtype": "Small Text",
-         "label": "Waiting Reason",
-         "description": "Why this todo is parked (required while waiting)"
-      },
-      {
-         "fieldname": "waiting_since",
-         "fieldtype": "Datetime",
-         "label": "Waiting Since",
-         "read_only": 1
-      },
-      {
-         "fieldname": "waiting_by",
-         "fieldtype": "Link",
-         "label": "Waiting Set By",
-         "options": "User",
-         "read_only": 1
-      },
-      {
-         "fieldname": "cancellation_reason",
-         "fieldtype": "Small Text",
-         "label": "Cancellation Reason"
-      },
-      {
-         "fieldname": "cancelled_on",
-         "fieldtype": "Datetime",
-         "label": "Cancelled On",
-         "read_only": 1
-      },
-      {
-         "columns": 1,
-         "fieldname": "action",
-         "fieldtype": "Button",
-         "in_list_view": 1,
-         "label": "Next"
-      },
-      {
-         "fieldname": "progress_section",
-         "fieldtype": "Section Break",
-         "label": "Progress"
-      },
-      {
-         "fieldname": "column_break_hypm",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "developed_at",
-         "fieldtype": "Datetime",
-         "label": "Developed At",
-         "read_only": 1
-      },
-      {
-         "fieldname": "developed_by",
-         "fieldtype": "Link",
-         "label": "Developed By",
-         "options": "User"
-      },
-      {
-         "fieldname": "column_break_dncy",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "tested_at",
-         "fieldtype": "Datetime",
-         "label": "Tested At",
-         "read_only": 1
-      },
-      {
-         "fieldname": "tested_by",
-         "fieldtype": "Link",
-         "label": "Tested By",
-         "options": "User"
-      },
-      {
-         "fieldname": "column_break_cdce",
-         "fieldtype": "Column Break"
-      },
-      {
-         "fieldname": "completed_at",
-         "fieldtype": "Datetime",
-         "label": "Completed At",
-         "read_only": 1
-      },
-      {
-         "fieldname": "completed_by",
-         "fieldtype": "Link",
-         "label": "Completed By",
-         "options": "User"
-      },
-      {
-         "fieldname": "rejection_reason",
-         "fieldtype": "Small Text",
-         "label": "Rejection Reason",
-         "read_only": 1
-      },
-      {
-         "fieldname": "rejected_at",
-         "fieldtype": "Datetime",
-         "label": "Rejected At",
-         "read_only": 1
-      },
-      {
-         "fieldname": "rejected_by",
-         "fieldtype": "Link",
-         "label": "Rejected By",
-         "options": "User",
-         "read_only": 1
-      }
-   ],
-   "grid_page_length": 50,
-   "index_web_pages_for_search": 1,
-   "istable": 0,
-   "links": [],
-   "modified": "2026-03-04 07:40:00.000000",
-   "modified_by": "mo@vernon.id",
-   "module": "Vernon Project",
-   "name": "Project Todo",
-   "naming_rule": "Random",
-   "owner": "Administrator",
-   "permissions": [
-      {
-         "create": 1,
-         "delete": 1,
-         "email": 1,
-         "export": 1,
-         "print": 1,
-         "read": 1,
-         "report": 1,
-         "role": "System Manager",
-         "share": 1,
-         "write": 1
-      },
-      {
-         "create": 1,
-         "email": 1,
-         "export": 1,
-         "print": 1,
-         "read": 1,
-         "report": 1,
-         "role": "Project Owner",
-         "share": 1,
-         "write": 1
-      },
-      {
-         "create": 1,
-         "email": 1,
-         "export": 1,
-         "print": 1,
-         "read": 1,
-         "report": 1,
-         "role": "Project Leader",
-         "share": 1,
-         "write": 1
-      },
-      {
-         "email": 1,
-         "export": 1,
-         "print": 1,
-         "read": 1,
-         "report": 1,
-         "role": "Project Admin",
-         "share": 1,
-         "write": 1
-      },
-      {
-         "create": 1,
-         "read": 1,
-         "role": "Project Team"
-      }
-   ],
-   "row_format": "Dynamic",
-   "sort_field": "modified",
-   "sort_order": "DESC",
-   "states": [],
-   "title_field": "to_do"
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-01-15 14:14:26.857159",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "project_detail",
+  "ongoing",
+  "to_do",
+  "assigned_to",
+  "mentor",
+  "start_date",
+  "deadline",
+  "leader_deadline",
+  "owner_deadline",
+  "is_priority",
+  "work_mode",
+  "to_check",
+  "auto_approve",
+  "auto_approve_opt_out",
+  "estimated",
+  "blocked_by",
+  "blocking",
+  "issue_of",
+  "notes",
+  "checklist",
+  "points_section",
+  "group",
+  "level",
+  "level_id",
+  "level_type",
+  "point",
+  "column_break_points",
+  "assignee_earned",
+  "leader_earned",
+  "time_estimation_section",
+  "estimated_planned_to_done",
+  "estimated_done_to_checked",
+  "estimated_checked_to_completed",
+  "column_break_time_est",
+  "total_estimated_hours",
+  "phase_tracking_section",
+  "planned_started_at",
+  "done_started_at",
+  "column_break_phase",
+  "checked_started_at",
+  "phase_completed_at",
+  "actual_time_section",
+  "actual_planned_to_done",
+  "actual_done_to_checked",
+  "column_break_actual",
+  "actual_checked_to_completed",
+  "total_actual_hours",
+  "recurring_section",
+  "is_recurring",
+  "recurring_frequency",
+  "recurring_interval",
+  "recurring_weekdays",
+  "recurring_monthly_mode",
+  "recurring_day_of_month",
+  "recurring_nth",
+  "recurring_paused",
+  "recurring_until",
+  "recurring_exception_weekdays",
+  "recurring_exception_monthdays",
+  "recurring_exception_dates",
+  "recurring_exception_behavior",
+  "recurring_anchor_date",
+  "column_break_recurring",
+  "next_occurrence",
+  "original_todo",
+  "allocations_section",
+  "allocations",
+  "assigned_allocation",
+  "progress_section",
+  "status",
+  "is_waiting",
+  "waiting_reason",
+  "waiting_since",
+  "waiting_by",
+  "cancellation_reason",
+  "cancelled_on",
+  "action",
+  "column_break_hypm",
+  "developed_at",
+  "developed_by",
+  "column_break_dncy",
+  "tested_at",
+  "tested_by",
+  "column_break_cdce",
+  "completed_at",
+  "completed_by",
+  "rejection_reason",
+  "rejected_at",
+  "rejected_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "description": "Pick a project to filter the Project Detail list."
+  },
+  {
+   "fieldname": "project_detail",
+   "fieldtype": "Link",
+   "label": "Detail",
+   "options": "Project Detail",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "ongoing",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Ongoing"
+  },
+  {
+   "columns": 3,
+   "fieldname": "to_do",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "To Do",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Assigned To",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mentor",
+   "fieldtype": "Link",
+   "label": "Mentor",
+   "options": "User",
+   "description": "Optional. Whoever coached/unblocked the assignee on this task; earns a share of points (Mentor Weight on the Group)."
+  },
+  {
+   "columns": 1,
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Start Date",
+   "reqd": 1,
+   "description": "When work on this task begins. Must be on or before the deadline."
+  },
+  {
+   "columns": 1,
+   "fieldname": "deadline",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Deadline",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "leader_deadline",
+   "fieldtype": "Date",
+   "label": "Leader Approval Deadline",
+   "description": "Optional target date for Leader approval (status Checked By PL). For long tasks."
+  },
+  {
+   "columns": 1,
+   "fieldname": "owner_deadline",
+   "fieldtype": "Date",
+   "label": "Owner Approval Deadline",
+   "description": "Optional target date for Owner approval (status Completed). For long tasks."
+  },
+  {
+   "default": "0",
+   "fieldname": "is_priority",
+   "fieldtype": "Check",
+   "label": "Priority Slot",
+   "description": "Claims one of the assignee's daily priority slots for this todo's deadline date."
+  },
+  {
+   "description": "Tag whether this task is done by a Human, AI, or Both.",
+   "fieldname": "work_mode",
+   "fieldtype": "Select",
+   "label": "Work Mode",
+   "options": "\nHuman\nAI\nBoth"
+  },
+  {
+   "default": "0",
+   "fieldname": "to_check",
+   "fieldtype": "Check",
+   "label": "To Check",
+   "description": "Assignee's own reminder that this task still needs checking while they work it. No scoring or workflow effect."
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_approve",
+   "fieldtype": "Check",
+   "label": "Auto-Approve (Owner)",
+   "read_only": 1,
+   "description": "When set, a todo reaching Checked By PL auto-advances to Completed without Owner approval. Only a Partner project owner can set this."
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_approve_opt_out",
+   "fieldtype": "Check",
+   "label": "Auto-Approve Opt-Out",
+   "read_only": 1,
+   "description": "When set, this todo is excluded from the project-wide auto-approve and always waits for Owner approval. Only a Partner project owner can set this."
+  },
+  {
+   "columns": 3,
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "description": "JSON array of {t: text, d: done} sub-items. Edited in-app, not in Desk.",
+   "fieldname": "checklist",
+   "fieldtype": "Small Text",
+   "label": "Checklist"
+  },
+  {
+   "columns": 1,
+   "fieldname": "estimated",
+   "fieldtype": "Int",
+   "hide_seconds": 1,
+   "in_list_view": 1,
+   "label": "Estimated (minutes)",
+   "non_negative": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "blocked_by",
+   "fieldtype": "Table MultiSelect",
+   "label": "Blocked By",
+   "options": "Project Todo Dependency",
+   "description": "This task is blocked by / depends on the selected tasks."
+  },
+  {
+   "fieldname": "blocking",
+   "fieldtype": "Table MultiSelect",
+   "label": "Blocking",
+   "options": "Project Todo Dependency",
+   "description": "This task blocks the selected tasks."
+  },
+  {
+   "fieldname": "issue_of",
+   "fieldtype": "Link",
+   "label": "Issue Of",
+   "options": "Project Todo",
+   "search_index": 1,
+   "no_copy": 1,
+   "description": "This task is an issue found on the selected task. It counts as resolved once it reaches Completed."
+  },
+  {
+   "fieldname": "points_section",
+   "fieldtype": "Section Break",
+   "label": "Points"
+  },
+  {
+   "fieldname": "group",
+   "fieldtype": "Link",
+   "label": "Group",
+   "options": "Group",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "level",
+   "fieldtype": "Data",
+   "label": "Level",
+   "reqd": 1,
+   "description": "Cached display name of the chosen level (refreshed from the group)."
+  },
+  {
+   "fieldname": "level_id",
+   "fieldtype": "Data",
+   "label": "Level ID",
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Stable reference to the chosen Group Level row."
+  },
+  {
+   "fieldname": "level_type",
+   "fieldtype": "Data",
+   "label": "Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "point",
+   "fieldtype": "Float",
+   "label": "Point",
+   "read_only": 1,
+   "description": "Base point from the chosen level."
+  },
+  {
+   "fieldname": "column_break_points",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "assignee_earned",
+   "fieldtype": "Float",
+   "label": "Assignee Earned",
+   "read_only": 1
+  },
+  {
+   "fieldname": "leader_earned",
+   "fieldtype": "Float",
+   "label": "Leader Earned",
+   "read_only": 1
+  },
+  {
+   "fieldname": "time_estimation_section",
+   "fieldtype": "Section Break",
+   "label": "Time Estimation Per Phase",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "estimated_planned_to_done",
+   "fieldtype": "Int",
+   "label": "Estimated: Planned \u2192 Done (minutes, deprecated)",
+   "description": "Deprecated: covered by Estimated (minutes). Kept for historical data.",
+   "non_negative": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "estimated_done_to_checked",
+   "fieldtype": "Int",
+   "label": "Estimated: Done \u2192 Checked By PL (minutes)",
+   "description": "Estimasi waktu (menit) dari status Done ke Checked By PL (approval Leader)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "estimated_checked_to_completed",
+   "fieldtype": "Int",
+   "label": "Estimated: Checked \u2192 Completed (minutes)",
+   "description": "Estimasi waktu (menit) dari status Checked By PL ke Completed (approval Owner)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_time_est",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_estimated_hours",
+   "fieldtype": "Int",
+   "label": "Total Estimated (minutes)",
+   "description": "Total estimasi waktu (menit): Estimated + Done\u2192Checked + Checked\u2192Completed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phase_tracking_section",
+   "fieldtype": "Section Break",
+   "label": "Phase Timestamps",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "planned_started_at",
+   "fieldtype": "Datetime",
+   "label": "Planned Started At",
+   "description": "Timestamp saat todo dibuat dengan status Planned",
+   "read_only": 1
+  },
+  {
+   "fieldname": "done_started_at",
+   "fieldtype": "Datetime",
+   "label": "Done Started At",
+   "description": "Timestamp saat todo berubah ke status Done",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_phase",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "checked_started_at",
+   "fieldtype": "Datetime",
+   "label": "Checked Started At",
+   "description": "Timestamp saat todo berubah ke status Checked By PL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phase_completed_at",
+   "fieldtype": "Datetime",
+   "label": "Phase Completed At",
+   "description": "Timestamp saat todo berubah ke status Completed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_time_section",
+   "fieldtype": "Section Break",
+   "label": "Actual Time Per Phase",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "actual_planned_to_done",
+   "fieldtype": "Float",
+   "label": "Actual: Planned \u2192 Done (hours)",
+   "description": "Waktu aktual dari Planned ke Done",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "actual_done_to_checked",
+   "fieldtype": "Float",
+   "label": "Actual: Done \u2192 Checked By PL (hours)",
+   "description": "Waktu aktual dari Done ke Checked By PL",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_actual",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_checked_to_completed",
+   "fieldtype": "Float",
+   "label": "Actual: Checked \u2192 Completed (hours)",
+   "description": "Waktu aktual dari Checked By PL ke Completed",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "total_actual_hours",
+   "fieldtype": "Float",
+   "label": "Total Actual Hours",
+   "description": "Total waktu aktual dari semua fase",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "recurring_section",
+   "fieldtype": "Section Break",
+   "label": "Recurring Settings",
+   "collapsible": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_recurring",
+   "fieldtype": "Check",
+   "label": "Is Recurring"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_frequency",
+   "fieldtype": "Select",
+   "label": "Recurring Frequency",
+   "options": "\nDaily\nWeekly\nMonthly\nAnnually"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_interval",
+   "fieldtype": "Int",
+   "label": "Repeat Every (N)",
+   "default": "1"
+  },
+  {
+   "fieldname": "recurring_weekdays",
+   "fieldtype": "Data",
+   "label": "Weekdays (CSV MON,THU)",
+   "depends_on": "eval:doc.recurring_frequency=='Weekly' || (doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Nth Weekday')"
+  },
+  {
+   "fieldname": "recurring_monthly_mode",
+   "fieldtype": "Select",
+   "label": "Monthly Mode",
+   "options": "Day of Month\nNth Weekday",
+   "default": "Day of Month",
+   "depends_on": "eval:doc.recurring_frequency=='Monthly'"
+  },
+  {
+   "fieldname": "recurring_day_of_month",
+   "fieldtype": "Int",
+   "label": "Day of Month (1-31)",
+   "depends_on": "eval:doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Day of Month'"
+  },
+  {
+   "fieldname": "recurring_nth",
+   "fieldtype": "Select",
+   "label": "Nth Weekday",
+   "options": "First\nSecond\nThird\nFourth\nLast",
+   "default": "First",
+   "depends_on": "eval:doc.recurring_frequency=='Monthly' && doc.recurring_monthly_mode=='Nth Weekday'"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_paused",
+   "fieldtype": "Check",
+   "label": "Paused",
+   "default": "0"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_until",
+   "fieldtype": "Date",
+   "label": "Recurring Until"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_exception_weekdays",
+   "fieldtype": "Data",
+   "label": "Exception Weekdays (CSV MON,SUN)"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_exception_monthdays",
+   "fieldtype": "Data",
+   "label": "Exception Days of Month (CSV 1,25)"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_exception_dates",
+   "fieldtype": "Small Text",
+   "label": "Exception Dates/Ranges (JSON)"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_exception_behavior",
+   "fieldtype": "Select",
+   "label": "On Exception",
+   "options": "Skip\nShift",
+   "default": "Skip"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "recurring_anchor_date",
+   "fieldtype": "Date",
+   "label": "Recurring Anchor Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_recurring",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.is_recurring==1",
+   "fieldname": "next_occurrence",
+   "fieldtype": "Date",
+   "label": "Next Occurrence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_todo",
+   "fieldtype": "Link",
+   "label": "Original Todo",
+   "options": "Project Todo",
+   "read_only": 1,
+   "hidden": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "allocations_section",
+   "fieldtype": "Section Break",
+   "label": "Day Allocations"
+  },
+  {
+   "fieldname": "allocations",
+   "fieldtype": "Table",
+   "label": "Day Allocations",
+   "options": "Project Todo Allocation",
+   "description": "Assignee's plan splitting the estimated effort across days. Planning only \u2014 not scored."
+  },
+  {
+   "fieldname": "assigned_allocation",
+   "fieldtype": "Table",
+   "label": "Assigned Allocation",
+   "options": "Project Todo Assigned Allocation",
+   "description": "Leader's authoritative split of the estimate across dates. Default: whole estimate on the deadline."
+  },
+  {
+   "columns": 1,
+   "default": "\u26aa\ufe0f Planned",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\u26aa\ufe0f Planned\n\ud83d\udfe0 Done\n\ud83d\udd37 Checked By PL\n\u2705 Completed\n\ud83d\udeab Cancelled",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_waiting",
+   "fieldtype": "Check",
+   "label": "Waiting"
+  },
+  {
+   "depends_on": "is_waiting",
+   "fieldname": "waiting_reason",
+   "fieldtype": "Small Text",
+   "label": "Waiting Reason",
+   "description": "Why this todo is parked (required while waiting)"
+  },
+  {
+   "fieldname": "waiting_since",
+   "fieldtype": "Datetime",
+   "label": "Waiting Since",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waiting_by",
+   "fieldtype": "Link",
+   "label": "Waiting Set By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancellation_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Reason"
+  },
+  {
+   "fieldname": "cancelled_on",
+   "fieldtype": "Datetime",
+   "label": "Cancelled On",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "action",
+   "fieldtype": "Button",
+   "in_list_view": 1,
+   "label": "Next"
+  },
+  {
+   "fieldname": "progress_section",
+   "fieldtype": "Section Break",
+   "label": "Progress"
+  },
+  {
+   "fieldname": "column_break_hypm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "developed_at",
+   "fieldtype": "Datetime",
+   "label": "Developed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "developed_by",
+   "fieldtype": "Link",
+   "label": "Developed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_dncy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tested_at",
+   "fieldtype": "Datetime",
+   "label": "Tested At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tested_by",
+   "fieldtype": "Link",
+   "label": "Tested By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_cdce",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Link",
+   "label": "Completed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejected_at",
+   "fieldtype": "Datetime",
+   "label": "Rejected At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejected_by",
+   "fieldtype": "Link",
+   "label": "Rejected By",
+   "options": "User",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-03-04 07:40:00.000000",
+ "modified_by": "mo@vernon.id",
+ "module": "Vernon Project",
+ "name": "Project Todo",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Owner",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Leader",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Project Team"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "to_do"
 }

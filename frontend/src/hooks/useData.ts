@@ -884,6 +884,48 @@ export function useSetTodoPriority() {
   })
 }
 
+// Set Work Mode (Human/AI/Both, '' clears) on an arbitrary todo — same list-context
+// reason as useSetTodoPriority (menu renders per-row, can't call a hook per row).
+export function useSetTodoWorkMode() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: async ({ todoName, workMode }: { todoName: string; workMode: 'Human' | 'AI' | 'Both' | '' }) => {
+      const res = await mobileApi.updateTodo(todoName, { work_mode: workMode })
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onError: (e) => toast('error', (e as Error).message || 'Could not update work mode'),
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoName) })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
+// Toggle the assignee's "To Check" reminder flag from a list context (same per-row
+// reason as useSetTodoPriority). Plain flag — no scoring/workflow effect.
+export function useSetTodoCheck() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: async ({ todoName, toCheck }: { todoName: string; toCheck: boolean }) => {
+      const res = await mobileApi.updateTodo(todoName, { to_check: toCheck ? 1 : 0 })
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onError: (e) => toast('error', (e as Error).message || 'Could not update To Check'),
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoName) })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
 export function useSetAssignedAllocation(todoId: string) {
   const qc = useQueryClient()
   return useMutation({

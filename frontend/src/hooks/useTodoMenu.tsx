@@ -13,11 +13,13 @@ import {
   Copy,
   FolderInput,
   Zap,
+  Bot,
+  Eye,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations, useSetTodoPriority } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoPriority, useSetTodoWorkMode, useSetTodoCheck } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { todayISO } from '@/lib/format'
 import { useConfirm } from '@/components/Confirm'
@@ -72,6 +74,8 @@ export function useTodoMenuGroups(
   const setAlloc = useSetTodoAllocations(t.name)
   const confirm = useConfirm()
   const setPriority = useSetTodoPriority()
+  const setWorkMode = useSetTodoWorkMode()
+  const setCheck = useSetTodoCheck()
 
   if (!target) return []
 
@@ -132,6 +136,10 @@ export function useTodoMenuGroups(
       ...(t.is_mine ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
       // Leader/owner/admin can flag this todo a priority for its deadline day (cap-enforced server-side).
       ...(t.can_prioritize ? [{ key: 't-priority', label: t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas', icon: Zap, onClick: () => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority }) }] : []),
+      // Flag/unflag this task as AI work (only 'AI' shows a card chip). Full Human/AI/Both picker lives in the edit form. Editable by assignee or leadership (backend re-checks).
+      ...((t.is_mine || t.can_prioritize) ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
+      // Assignee's own "still needs checking" reminder — a plain flag, no scoring/workflow effect.
+      ...(t.is_mine ? [{ key: 't-check', label: t.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek', icon: Eye, onClick: () => setCheck.mutate({ todoName: t.name, toCheck: !t.to_check }) }] : []),
       // Raising an issue creates a todo, so it rides the same gate as creating one.
       ...(t.can_create ? [{ key: 't-issue', label: 'Report issue', icon: AlertTriangle, onClick: go(`/project-item/${item}?issue=1`) }] : []),
       { key: 't-duplicate', label: 'Duplicate', icon: Copy, onClick: go(`/project-item/${item}?duplicate=1`) },

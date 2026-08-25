@@ -4,7 +4,8 @@ import { resolveGlobalKey, isEditableTarget, SHORTCUTS } from './shortcuts'
 // bare keys
 assert.deepEqual(resolveGlobalKey(false, '?'), { kind: 'help' })
 assert.deepEqual(resolveGlobalKey(false, '/'), { kind: 'palette' })
-assert.deepEqual(resolveGlobalKey(false, 'c'), { kind: 'quick' })
+assert.deepEqual(resolveGlobalKey(false, 'q'), { kind: 'quick' })
+assert.equal(resolveGlobalKey(false, 'c'), null) // bare c freed for per-task To Check
 assert.deepEqual(resolveGlobalKey(false, 'n'), { kind: 'task' })
 assert.deepEqual(resolveGlobalKey(false, 'g'), { kind: 'startG' })
 assert.equal(resolveGlobalKey(false, 'x'), null)

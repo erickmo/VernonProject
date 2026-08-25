@@ -40,6 +40,7 @@ import {
   Trash2,
   X,
   Zap,
+  Eye,
 } from 'lucide-react'
 import {
   useProjectItem,
@@ -834,9 +835,13 @@ function TodoShortcuts(props: {
   editing: boolean
   focusActive: boolean
   canDeadlineToday: boolean
+  canCheck: boolean
+  canAi: boolean
   onEdit: () => void
   onFocusToggle: () => void
   onDeadlineToday: () => void
+  onToggleCheck: () => void
+  onToggleAi: () => void
 }) {
   const ref = useRef(props)
   ref.current = props
@@ -852,6 +857,8 @@ function TodoShortcuts(props: {
       if (e.key === 'e' && s.canEdit) { e.preventDefault(); s.onEdit() }
       else if (e.key === 'f') { e.preventDefault(); s.onFocusToggle() }
       else if (e.key === 't' && s.canDeadlineToday) { e.preventDefault(); s.onDeadlineToday() }
+      else if (e.key === 'c' && s.canCheck) { e.preventDefault(); s.onToggleCheck() }
+      else if (e.key === 'a' && s.canAi) { e.preventDefault(); s.onToggleAi() }
     }
     document.addEventListener('keydown', onKey)
     return () => {
@@ -890,6 +897,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
+  const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
@@ -934,6 +942,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.owner_deadline = ownerDeadline || ''
     fields.group = group
     fields.level_id = level
+    fields.work_mode = workMode
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
     update.mutate(fields, {
@@ -1125,6 +1134,27 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         />
       </div>
 
+      <div className="mb-3">
+        <label className="mb-1 block text-xs font-medium text-muted">Work mode <span className="font-normal opacity-70">· siapa yang kerjakan</span></label>
+        <div className="flex gap-2">
+          {(['Human', 'AI', 'Both'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setWorkMode(workMode === m ? '' : m)}
+              className={clsx(
+                'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition',
+                workMode === m
+                  ? 'border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/60 dark:bg-brand-500/20 dark:text-brand-300'
+                  : 'border-line bg-surface-2 text-muted hover:border-brand-300',
+              )}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {data.detail_todos.length > 0 && (
         <div className="mb-3">
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-muted">
@@ -1193,6 +1223,8 @@ export default function ProjectItem() {
   const setDeadlineToday = useUpdateTodo(todoName)
   const setWaiting = useUpdateTodo(todoName)
   const setPriority = useUpdateTodo(todoName)
+  const setCheck = useUpdateTodo(todoName)
+  const setAi = useUpdateTodo(todoName)
   const confirm = useConfirm()
   const navigate = useNavigate()
   const toast = useToast()
@@ -1324,6 +1356,33 @@ const [followOpen, setFollowOpen] = useState(false)
     )
   }
 
+  // Assignee's own "still needs checking" reminder — plain flag, no scoring/workflow effect.
+  const onToggleCheck = () => {
+    if (setCheck.isPending) return
+    const next = data.to_check ? 0 : 1
+    setCheck.mutate(
+      { to_check: next },
+      {
+        onSuccess: () => toast('success', next ? 'Ditandai perlu dicek' : 'Tanda cek dilepas'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+
+  // Toggle the AI work-mode flag in place (same as the card menu). Full Human/AI/Both
+  // picker still lives in the edit form; this just flips 'AI' ⇄ '' for the shortcut/menu.
+  const onToggleAi = () => {
+    if (setAi.isPending) return
+    const next = data.work_mode === 'AI' ? '' : 'AI'
+    setAi.mutate(
+      { work_mode: next },
+      {
+        onSuccess: () => toast('success', next ? 'Ditandai kerja AI' : 'Tanda AI dilepas'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+
   const onMarkWaiting = () => {
     if (setWaiting.isPending || !waitingReason.trim()) return
     setWaiting.mutate(
@@ -1377,9 +1436,13 @@ const [followOpen, setFollowOpen] = useState(false)
         editing={editing}
         focusActive={focusActive}
         canDeadlineToday={canSetDeadlineToday}
+        canCheck={!!data.is_mine && data.status_key !== 'cancelled'}
+        canAi={(!!data.is_mine || !!data.can_prioritize) && data.status_key !== 'cancelled'}
         onEdit={() => setEditing(true)}
         onFocusToggle={() => (focusActive ? focus.stop() : openFocus())}
         onDeadlineToday={onDeadlineToday}
+        onToggleCheck={onToggleCheck}
+        onToggleAi={onToggleAi}
       />
       {data.status_key === 'cancelled' && <CancelledNote item={data} />}
       {data.issue_of && (
@@ -1466,6 +1529,16 @@ const [followOpen, setFollowOpen] = useState(false)
                         icon: Zap,
                         onClick: onTogglePriority,
                         disabled: setPriority.isPending,
+                      },
+                    ]
+                  : []),
+                ...(data.is_mine && data.status_key !== 'cancelled'
+                  ? [
+                      {
+                        label: data.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek',
+                        icon: Eye,
+                        onClick: onToggleCheck,
+                        disabled: setCheck.isPending,
                       },
                     ]
                   : []),

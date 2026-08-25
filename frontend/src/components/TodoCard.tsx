@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks,
+  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks, Bot, Target, Eye,
 } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
@@ -11,7 +11,7 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { useUndo } from '@/components/UndoProvider'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
 import type { ProjectItem } from '@/lib/types'
@@ -42,6 +42,35 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   const menu = useTodoContextMenu()
   const [pressing, setPressing] = useState(false)
   const [flash, setFlash] = useState(false)
+
+  // Desktop-only convenience: while the pointer hovers a card, `c` toggles the
+  // assignee's To Check flag and `a` toggles the AI flag — same keys as the
+  // open-task shortcuts on /w. Inert on /m (no hover, no keyboard). Same gates as
+  // the useTodoMenu items so a card never toggles something its menu wouldn't.
+  const setCheckFlag = useSetTodoCheck()
+  const setWorkModeFlag = useSetTodoWorkMode()
+  const [hovered, setHovered] = useState(false)
+  useEffect(() => {
+    if (!hovered) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const el = e.target as (HTMLElement & { tagName?: string }) | null
+      if (el && el.tagName && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return
+      if (e.key === 'c' && todo.is_mine) {
+        e.preventDefault()
+        setCheckFlag.mutate({ todoName: todo.name, toCheck: !todo.to_check })
+      } else if (e.key === 'a' && (todo.is_mine || todo.can_prioritize)) {
+        e.preventDefault()
+        setWorkModeFlag.mutate({ todoName: todo.name, workMode: todo.work_mode === 'AI' ? '' : 'AI' })
+      } else if (e.key === 'f' && todo.status_key !== 'completed') {
+        e.preventDefault()
+        onFocusPill()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key])
 
   // A quick bounce whenever the context menu is summoned (long-press on touch,
   // right-click on desktop) so the trigger feels tactile. `pressing` gives live
@@ -101,6 +130,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
 
   const setAlloc = useSetTodoAllocations(todo.name)
   const planned = todo.today_allocation > 0
+  const isAI = todo.work_mode === 'AI'
   const onToggleToday = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     if (setAlloc.isPending) return
@@ -119,18 +149,62 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
       onPointerMove={onPointerMove}
       onPointerUp={cancelPress}
       onPointerLeave={cancelPress}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onPointerCancel={cancelPress}
       style={{ transform: pressing ? 'scale(0.96)' : flash ? 'scale(1.03)' : undefined }}
       className={clsx(
-        'group w-full min-w-0 max-w-full rounded-2xl border-l-4 p-4 text-left shadow-card transition active:scale-[0.99]',
+        'group relative w-full min-w-0 max-w-full overflow-hidden rounded-2xl border-l-4 p-4 text-left shadow-card transition active:scale-[0.99]',
         pressing && 'ring-2 ring-brand-400/70 dark:ring-brand-500/50',
-        focusActive
-          ? 'border-amber-500 bg-gradient-to-br from-amber-200 to-amber-100 ring-1 ring-amber-300 dark:border-amber-500/70 dark:from-amber-500/25 dark:to-amber-500/10 dark:ring-amber-500/40'
+        // Focus no longer owns the background — it's an animated border overlay below,
+        // so an AI task keeps its cyan card while focused.
+        isAI
+          ? 'border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-violet-100 ring-2 ring-cyan-400/60 shadow-[0_2px_18px_rgba(6,182,212,0.30)] dark:border-cyan-400 dark:from-cyan-500/25 dark:via-slate-800 dark:to-violet-500/25 dark:ring-cyan-400/40'
           : clsx('bg-paper-card dark:bg-slate-800', todo.is_overdue ? 'border-rose-400' : meta.ring),
       )}
     >
+      {focusActive && (
+        <svg aria-hidden className="pointer-events-none absolute inset-0 z-20 h-full w-full">
+          {/* solid base line — always a full amber outline */}
+          <rect
+            x="1.25" y="1.25" width="100%" height="100%" rx="14" ry="14"
+            fill="none" stroke="currentColor" strokeWidth="2"
+            className="text-amber-400/40 dark:text-amber-500/40"
+          />
+          {/* the light: one short bright segment that travels the perimeter. pathLength
+              normalises the outline to 100 units so dash math is size-independent + seamless. */}
+          <rect
+            x="1.25" y="1.25" width="100%" height="100%" rx="14" ry="14"
+            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+            pathLength={100} strokeDasharray="16 84"
+            className="tk-runner text-amber-200 [filter:drop-shadow(0_0_4px_#fcd34d)]"
+          />
+        </svg>
+      )}
+      {isAI && (
+        <Bot
+          aria-hidden
+          className="pointer-events-none absolute -bottom-4 -right-3 h-28 w-28 rotate-12 text-cyan-500/15 dark:text-cyan-400/15"
+        />
+      )}
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
+          {/* Icon-only status tags — colour distinguishes them; title/aria-label carry the name. */}
+          {focusActive && (
+            <span title="Fokus" aria-label="Fokus" className="mb-1.5 mr-1.5 inline-flex items-center justify-center rounded-md bg-amber-400 p-1 text-white shadow-sm dark:bg-amber-500">
+              <Target className="h-4 w-4" />
+            </span>
+          )}
+          {isAI && (
+            <span title="AI Task" aria-label="AI Task" className="mb-1.5 mr-1.5 inline-flex items-center justify-center rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 p-1 text-white shadow-sm">
+              <Bot className="h-4 w-4" />
+            </span>
+          )}
+          {todo.to_check && (
+            <span title="To Check" aria-label="To Check" className="mb-1.5 mr-1.5 inline-flex items-center justify-center rounded-md bg-rose-500 p-1 text-white shadow-sm dark:bg-rose-500">
+              <Eye className="h-4 w-4" />
+            </span>
+          )}
           {showProject && (
             <p className="mb-1 truncate text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-slate-500">
               {todo.is_recurring && (

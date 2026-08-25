@@ -24,6 +24,14 @@ def _todo(user="budi@x.id", **kw):
 	return row
 
 
+def _member(user="budi@x.id", **kw):
+	"""One ACTIVE project membership row, the shape _intern_project_rows returns."""
+	row = {"user": user, "project": "PROJ-1", "project_name": "Website",
+		"leader": "sinta@x.id", "leader_name": "Sinta"}
+	row.update(kw)
+	return row
+
+
 class TestWeekdayDates(unittest.TestCase):
 	def test_drops_saturday_and_sunday(self):
 		self.assertEqual(_weekday_dates(WEEK), WEEK[:5])
@@ -33,10 +41,11 @@ class TestWeekdayDates(unittest.TestCase):
 
 
 class TestBuildInternMatrix(unittest.TestCase):
-	def _run(self, assigned=(), todos=(), notes=(), sources=("member_type",), scope="all"):
+	def _run(self, assigned=(), todos=(), notes=(), sources=("member_type",), scope="all", members=()):
 		users = [{"name": "budi@x.id", "full_name": "Budi"}]
 		interns = [{"name": "budi@x.id", "full_name": "Budi", "sources": list(sources)}]
-		out = _build_intern_matrix(_matrix(users, list(assigned)), interns, list(todos), list(notes), scope)
+		out = _build_intern_matrix(_matrix(users, list(assigned)), interns, list(todos), list(notes),
+			scope, list(members))
 		return out, out["rows"][0]
 
 	def test_no_work_at_all_is_idle(self):
@@ -115,7 +124,9 @@ class TestBuildInternMatrix(unittest.TestCase):
 			_todo(minutes=60), _todo(minutes=30),
 			_todo(project="PROJ-2", project_name="App", leader="rendi@x.id", leader_name="Rendi", minutes=90),
 		]
-		_, row = self._run(todos=todos)
+		members = [_member(), _member(project="PROJ-2", project_name="App",
+			leader="rendi@x.id", leader_name="Rendi")]
+		_, row = self._run(todos=todos, members=members)
 		by_name = {p["project"]: p for p in row["projects"]}
 		self.assertEqual(by_name["PROJ-1"]["todos"], 2)
 		self.assertEqual(by_name["PROJ-1"]["minutes"], 90)
@@ -125,6 +136,27 @@ class TestBuildInternMatrix(unittest.TestCase):
 			{"leader": "rendi@x.id", "leader_name": "Rendi"},
 			{"leader": "sinta@x.id", "leader_name": "Sinta"},
 		])
+
+	def test_leaders_come_from_active_projects_not_todos(self):
+		# Work sits in a project led by Sinta, but the employee's active project is led by
+		# Rendi — the report must file them under Rendi.
+		_, row = self._run(todos=[_todo()], members=[_member(
+			project="PROJ-9", project_name="Ops", leader="rendi@x.id", leader_name="Rendi")])
+		self.assertEqual(row["leaders"], [{"leader": "rendi@x.id", "leader_name": "Rendi"}])
+
+	def test_no_active_project_means_no_leader(self):
+		# Todos exist (so the old todo-derived leader would have shown), but no active
+		# membership -> the row is filterable as "Tanpa pemimpin".
+		_, row = self._run(todos=[_todo()])
+		self.assertEqual(row["leaders"], [])
+
+	def test_active_project_without_leader_is_leaderless(self):
+		_, row = self._run(members=[_member(leader=None, leader_name=None)])
+		self.assertEqual(row["leaders"], [])
+
+	def test_membership_of_another_user_does_not_leak(self):
+		_, row = self._run(members=[_member(user="ayu@x.id")])
+		self.assertEqual(row["leaders"], [])
 
 	def test_notes_counted_in_range_only(self):
 		_, row = self._run(notes=[{"user": "budi@x.id", "note_date": "2026-08-18"},

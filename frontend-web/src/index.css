@@ -135,3 +135,10 @@ body { padding-top: var(--tk-h, 0px); }
 .tk-marquee { animation: tk-marquee linear infinite; }
 .tk-track:hover .tk-marquee { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .tk-marquee { animation: none; } }
+
+/* Focused-task border light: a short bright stroke segment glides around the card
+   outline. The rect uses pathLength=100, so travelling the offset by 100 == one full
+   seamless lap regardless of card size. */
+@keyframes tk-runner { to { stroke-dashoffset: -100; } }
+.tk-runner { animation: tk-runner 2.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .tk-runner { animation: none; } }

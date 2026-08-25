@@ -108,6 +108,11 @@ export function cellBand(minutes: number, threshold: number): 'empty' | 'thin' |
   return 'ok'
 }
 
+/** Sentinel leader filter value: rows whose projects have no project leader at all.
+ *  Safe against collision — a real leader value is always a user id (email). */
+export const NO_LEADER = '__none__'
+export const NO_LEADER_LABEL = 'Tanpa pemimpin'
+
 export interface InternFilters {
   q: string
   leader: string
@@ -125,7 +130,9 @@ export function filterInternRows(rows: InternAllocationRow[], f: InternFilters):
   return rows.filter((r) => {
     if (f.attentionOnly && !r.attention) return false
     if (f.source && !r.sources.includes(f.source)) return false
-    if (f.leader && !r.leaders.some((l) => l.leader === f.leader)) return false
+    if (f.leader === NO_LEADER) {
+      if (r.leaders.length) return false
+    } else if (f.leader && !r.leaders.some((l) => l.leader === f.leader)) return false
     if (f.project && !r.projects.some((p) => p.project === f.project)) return false
     if (q && !`${r.full_name} ${r.user}`.toLowerCase().includes(q)) return false
     return true
@@ -142,8 +149,11 @@ export function internFilterOptions(rows: InternAllocationRow[]) {
     for (const p of r.projects) projects.set(p.project, p.project_name || p.project)
   }
   const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label)
+  // "Tanpa pemimpin" is offered only when some row actually has no leader, so the select
+  // can never present a filter that returns nothing.
+  const noLeader = rows.some((r) => !r.leaders.length) ? [{ value: NO_LEADER, label: NO_LEADER_LABEL }] : []
   return {
-    leaders: [...leaders].map(([value, label]) => ({ value, label })).sort(byLabel),
+    leaders: [...noLeader, ...[...leaders].map(([value, label]) => ({ value, label })).sort(byLabel)],
     projects: [...projects].map(([value, label]) => ({ value, label })).sort(byLabel),
   }
 }

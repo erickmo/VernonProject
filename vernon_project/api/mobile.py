@@ -605,7 +605,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at, t.issue_of,
 			(SELECT COUNT(*) FROM `tabProject Todo` iss
@@ -851,6 +851,8 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"ongoing": bool(row.get("ongoing")),
 		"is_recurring": bool(row.get("is_recurring")),
 		"is_priority": bool(row.get("is_priority")),
+		"work_mode": row.get("work_mode") or "",
+		"to_check": bool(row.get("to_check")),
 		# Issue links. `issue_of` = this task is an issue raised on that task;
 		# `open_issues` = issues raised on THIS task that aren't resolved yet.
 		# .get() because some callers build rows without the issue columns.
@@ -1248,7 +1250,7 @@ def get_priority_occupancy(users, date):
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
@@ -2232,6 +2234,8 @@ def update_todo(
 	mentor=None,
 	is_waiting=None,
 	is_priority=None,
+	work_mode=None,
+	to_check=None,
 	waiting_reason=None,
 	recurring_interval=None,
 	recurring_weekdays=None,
@@ -2308,6 +2312,14 @@ def update_todo(
 			if not (is_sm or user in (project.project_owner, project.project_leader) or user in get_project_admins(project)):
 				return {"status": "error", "message": "Only the project leader or owner can set a priority slot."}
 			row.is_priority = 1 if str(is_priority) in ("1", "true", "True") else 0
+		# Work Mode is a plain label (Human/AI/Both) — anyone who can edit the
+		# task may set it. Empty string clears it.
+		if work_mode is not None:
+			row.work_mode = work_mode if work_mode in ("Human", "AI", "Both") else ""
+		# "To Check" is the assignee's own working reminder — a plain flag with no
+		# scoring/workflow effect, so anyone who can edit the task may set it.
+		if to_check is not None:
+			row.to_check = 1 if str(to_check) in ("1", "true", "True") else 0
 		if group is not None and group:
 			row.group = group
 		# `level_id` is the stable reference (truth); the controller's

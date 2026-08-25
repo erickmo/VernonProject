@@ -86,7 +86,7 @@ def _weekday_dates(dates):
 	return [d for d in dates if getdate(d).weekday() < 5]
 
 
-def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope):
+def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope, project_rows=()):
 	"""Enrich a `_build_daily_matrix` payload with the per-intern management signals HR
 	reads: dry spells, work stuck in review, delivery, and written coaching. Pure — every
 	argument is plain data, so this is unit-testable without a site.
@@ -96,6 +96,10 @@ def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope):
 	              done_on, review_since, minutes, in_range}] — `in_range` false for a todo
 	              pulled in only because it is still awaiting review (see _intern_todo_rows).
 	`note_rows` [{user, note_date}]
+	`project_rows` [{user, project, project_name, leader, leader_name}] — ACTIVE project
+	              memberships. `leaders` comes from here, never from the todos: an employee
+	              put on a project but given no work still has a leader, and that pairing is
+	              exactly what the report has to make filterable.
 	Rows sort attention-first: the report exists to surface the neglected ones.
 	"""
 	dates = matrix["dates"]
@@ -103,9 +107,11 @@ def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope):
 	to_date = matrix["to_date"]
 	by_user = {r["user"]: r for r in matrix["rows"]}
 
-	todos_by_user, notes_by_user = {}, {}
+	todos_by_user, notes_by_user, members_by_user = {}, {}, {}
 	for t in todo_rows:
 		todos_by_user.setdefault(t["user"], []).append(t)
+	for m in project_rows:
+		members_by_user.setdefault(m["user"], []).append(m)
 	for n in note_rows:
 		notes_by_user.setdefault(n["user"], []).append(n)
 
@@ -151,7 +157,8 @@ def _build_intern_matrix(matrix, interns, todo_rows, note_rows, scope):
 			if t.get("status") in _AWAITING:
 				p["waiting"] += 1
 		row["projects"] = sorted(projects.values(), key=lambda p: p["project_name"])
-		leaders = {p["leader"]: p["leader_name"] for p in row["projects"] if p["leader"]}
+		mem = members_by_user.get(intern["name"], [])
+		leaders = {m["leader"]: (m.get("leader_name") or m["leader"]) for m in mem if m.get("leader")}
 		row["leaders"] = [{"leader": k, "leader_name": v} for k, v in sorted(leaders.items())]
 
 		notes = sorted(str(n["note_date"]) for n in notes_by_user.get(intern["name"], []) if n.get("note_date"))
@@ -1024,6 +1031,9 @@ def last_seen_report():
 # their leader responding to it?" — the reason HR opens this report.
 
 INTERN_MEMBER_TYPE = "Intern"
+# Only projects in this status count as "the project this employee is on right now" —
+# a closed project's leader is nobody's current leader.
+ACTIVE_PROJECT_STATUS = "Ongoing"
 
 
 def _full_name_map(names):
@@ -1114,6 +1124,30 @@ def _intern_todo_rows(names, from_date, to_date):
 	return out
 
 
+def _intern_project_rows(names):
+	"""Active (Ongoing) project memberships for these users, with each project's leader.
+	This — not the todos — is where the report's leader column comes from: an employee
+	assigned to a project but given no work yet still has a leader who owns that gap."""
+	if not names:
+		return []
+	rows = frappe.db.sql(
+		"""
+		SELECT team.user AS user, proj.name AS project,
+		       proj.project_name AS project_name, proj.project_leader AS leader
+		FROM `tabProject Team` AS team
+		JOIN `tabProject` AS proj ON team.parent = proj.name
+		WHERE team.user IN %(users)s AND team.parenttype = 'Project'
+		  AND proj.status = %(active)s
+		""",
+		{"users": names, "active": ACTIVE_PROJECT_STATUS}, as_dict=True,
+	)
+	leader_names = _full_name_map([r["leader"] for r in rows if r["leader"]])
+	for r in rows:
+		r["project_name"] = r["project_name"] or r["project"]
+		r["leader_name"] = leader_names.get(r["leader"]) or r["leader"]
+	return rows
+
+
 def _intern_note_rows(names, from_date, to_date):
 	"""Leader Note rows written about these users inside the window."""
 	if not names:
@@ -1183,6 +1217,7 @@ def intern_allocation(from_date, to_date):
 		_intern_todo_rows(names, str(start), str(end)),
 		_intern_note_rows(names, str(start), str(end)),
 		scope,
+		_intern_project_rows(names),
 	)
 
 

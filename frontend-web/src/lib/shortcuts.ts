@@ -31,7 +31,7 @@ export function resolveGlobalKey(pendingG: boolean, key: string): GlobalAction |
   switch (key) {
     case '?': return { kind: 'help' }
     case '/': return { kind: 'palette' }
-    case 'c': return { kind: 'quick' }
+    case 'q': return { kind: 'quick' }
     case 'n': return { kind: 'task' }
     case 'g': return { kind: 'startG' }
     default: return null
@@ -55,7 +55,7 @@ export const SHORTCUTS: ShortcutGroup[] = [
       { keys: '?', label: 'Show keyboard shortcuts' },
       { keys: '⌘K / Ctrl K', label: 'Command palette' },
       { keys: '/', label: 'Search (command palette)' },
-      { keys: 'c', label: 'Quick create' },
+      { keys: 'q', label: 'Quick create' },
       { keys: 'n', label: 'New task' },
       { keys: 'g then h', label: 'Go to Home' },
       { keys: 'g then p', label: 'Go to Projects' },
@@ -71,6 +71,8 @@ export const SHORTCUTS: ShortcutGroup[] = [
       { keys: 'e', label: 'Edit task' },
       { keys: 'f', label: 'Start / stop focus' },
       { keys: 't', label: 'Set deadline to today' },
+      { keys: 'c', label: 'Toggle "To Check" flag' },
+      { keys: 'a', label: 'Toggle AI task flag' },
       { keys: '⌘S / Ctrl S', label: 'Save (while editing)' },
     ],
   },

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert'
 import {
   cellBand, dayLabel, EMPTY_INTERN_FILTERS, filterInternRows, internFilterOptions,
-  internHelp, INTERN_HELP, isWeekend, lastDays, REVIEW_WAIT_DAYS, STALE_ASSIGNMENT_DAYS,
+  internHelp, INTERN_HELP, isWeekend, lastDays, NO_LEADER, REVIEW_WAIT_DAYS, STALE_ASSIGNMENT_DAYS,
 } from './internAllocation'
 import type { InternAllocationRow } from './types'
 
@@ -49,6 +49,15 @@ const opts = internFilterOptions(rows)
 assert.deepEqual(opts.leaders, [{ value: 'rendi@x.id', label: 'Rendi' }, { value: 'sinta@x.id', label: 'Sinta' }])
 assert.deepEqual(opts.projects, [{ value: 'P2', label: 'App' }, { value: 'P1', label: 'Website' }])
 assert.deepEqual(internFilterOptions([]), { leaders: [], projects: [] })
+
+// "no leader" filter: only rows whose projects have no project leader
+const yatim = row({ user: 'dewi@x.id', full_name: 'Dewi', leaders: [] })
+const withOrphan = [budi, ayu, yatim]
+assert.deepEqual(names(filterInternRows(withOrphan, f({ leader: NO_LEADER }))), ['dewi@x.id'])
+assert.deepEqual(names(filterInternRows(rows, f({ leader: NO_LEADER }))), [])
+// the option appears only when such a row exists, and always first
+assert.equal(internFilterOptions(withOrphan).leaders[0].value, NO_LEADER)
+assert.equal(internFilterOptions(rows).leaders.some((o) => o.value === NO_LEADER), false)
 
 // heat bands — threshold 0 (this site's current setting) must not invent a "thin" band
 assert.equal(cellBand(0, 180), 'empty')

@@ -39,6 +39,7 @@ import {
   StickyNote,
   X,
   Zap,
+  Eye,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -128,6 +129,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
+  const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
@@ -178,6 +180,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.owner_deadline = ownerDeadline || ''
     fields.group = group
     fields.level_id = level
+    fields.work_mode = workMode
     // Blocking links: arrays of todo names (controller syncs the mirror side).
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
@@ -348,6 +351,27 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           onChange={(v) => { setGroup(v.group); setLevel(v.levelId) }}
           estimated={estimated}
         />
+      </div>
+
+      <div className="mb-3">
+        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Work mode <span className="font-normal text-slate-400">· siapa yang kerjakan</span></label>
+        <div className="flex gap-2">
+          {(['Human', 'AI', 'Both'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setWorkMode(workMode === m ? '' : m)}
+              className={clsx(
+                'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition active:scale-95',
+                workMode === m
+                  ? 'border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/60 dark:bg-brand-500/20 dark:text-brand-300'
+                  : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',
+              )}
+            >
+              {m === 'Human' ? 'Human' : m === 'AI' ? 'AI' : 'Both'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {data.detail_todos.length > 0 && (
@@ -1152,6 +1176,7 @@ export default function ProjectItemScreen() {
   const setDeadlineToday = useUpdateTodo(id)
   const setWaiting = useUpdateTodo(id)
   const setPriority = useUpdateTodo(id)
+  const setCheck = useUpdateTodo(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -1278,6 +1303,19 @@ const [followOpen, setFollowOpen] = useState(false)
     )
   }
 
+  // Assignee's own "still needs checking" reminder — plain flag, no scoring/workflow effect.
+  const onToggleCheck = () => {
+    if (setCheck.isPending) return
+    const next = data.to_check ? 0 : 1
+    setCheck.mutate(
+      { to_check: next },
+      {
+        onSuccess: () => toast('success', next ? 'Ditandai perlu dicek' : 'Tanda cek dilepas'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+
   const onMarkWaiting = () => {
     if (setWaiting.isPending || !waitingReason.trim()) return
     setWaiting.mutate(
@@ -1323,6 +1361,16 @@ const [followOpen, setFollowOpen] = useState(false)
                   icon: Zap,
                   onClick: onTogglePriority,
                   disabled: setPriority.isPending,
+                },
+              ]
+            : []),
+          ...(data.is_mine && data.status_key !== 'cancelled'
+            ? [
+                {
+                  label: data.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek',
+                  icon: Eye,
+                  onClick: onToggleCheck,
+                  disabled: setCheck.isPending,
                 },
               ]
             : []),
