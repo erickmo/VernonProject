@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Send, ImagePlus, ZoomIn } from 'lucide-react'
-import { useComments, useAddComment } from '../hooks/useData'
+import { Send, ImagePlus, ZoomIn, Pencil, Check, X } from 'lucide-react'
+import { useComments, useAddComment, useEditComment, useBoot } from '../hooks/useData'
 import { Spinner } from './ui'
 import { sanitizeHtml } from '../lib/format'
 import { uploadCommentImage, mobileApi } from '../lib/api'
@@ -20,6 +20,11 @@ export default function CommentThread({
 }) {
   const { data: comments, isLoading } = useComments(referenceDoctype, referenceName)
   const addComment = useAddComment(referenceDoctype, referenceName)
+  const editComment = useEditComment(referenceDoctype, referenceName)
+  const { data: boot } = useBoot()
+  const me = boot?.user
+  const [editingName, setEditingName] = useState<string | null>(null)
+  const editBodyRef = useRef<HTMLDivElement | null>(null)
   const toast = useToast()
   const editorRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -128,6 +133,26 @@ export default function CommentThread({
       p.user.toLowerCase().includes(mentionQuery),
   )
 
+  const saveEdit = (name: string) => {
+    const ed = editBodyRef.current
+    if (!ed) return
+    const html = sanitizeHtml(ed.innerHTML).trim()
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    const hasContent = (tmp.textContent || '').trim() || tmp.querySelector('img,span[data-mention]')
+    if (!hasContent) {
+      toast('error', 'Comment cannot be empty.')
+      return
+    }
+    editComment.mutate(
+      { name, content: html },
+      {
+        onSuccess: () => setEditingName(null),
+        onError: (err) => toast('error', (err as Error).message || 'Failed to edit comment'),
+      },
+    )
+  }
+
   const submit = () => {
     const ed = editorRef.current
     if (!ed) return
@@ -175,22 +200,76 @@ export default function CommentThread({
                     </span>
                   )}
                 </span>
-                <span className="text-xs text-gray-400">{c.at_human}</span>
+                <span className="flex items-center gap-2 text-xs text-gray-400">
+                  {c.at_human}
+                  {c.by === me && editingName !== c.name && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingName(c.name)}
+                      className="text-gray-400 hover:text-brand-600"
+                      aria-label="Edit comment"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </span>
               </div>
-              <div
-                className="comment-body mt-1 text-sm text-gray-700 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700"
-                onClick={(e) => {
-                  const t = e.target as HTMLElement
-                  if (t.tagName === 'IMG')
-                    setZoomSrc((t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src)
-                }}
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.content) }}
-              />
-              {c.content.includes('<img') && (
-                <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400">
-                  <ZoomIn className="h-3 w-3" />
-                  Ketuk gambar untuk memperbesar
-                </p>
+              {editingName === c.name ? (
+                <div className="mt-1">
+                  <div
+                    contentEditable
+                    role="textbox"
+                    aria-label="Edit comment"
+                    ref={(el) => {
+                      editBodyRef.current = el
+                      if (el && el.dataset.seeded !== '1') {
+                        el.innerHTML = sanitizeHtml(c.content)
+                        el.dataset.seeded = '1'
+                        el.focus()
+                      }
+                    }}
+                    className="comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(c.name)}
+                      disabled={editComment.isPending}
+                      className="flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Simpan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingName(null)}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="comment-body mt-1 text-sm text-gray-700 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700"
+                    onClick={(e) => {
+                      const t = e.target as HTMLElement
+                      if (t.tagName === 'IMG')
+                        setZoomSrc(
+                          (t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src,
+                        )
+                    }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.content) }}
+                  />
+                  {c.content.includes('<img') && (
+                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400">
+                      <ZoomIn className="h-3 w-3" />
+                      Ketuk gambar untuk memperbesar
+                    </p>
+                  )}
+                </>
               )}
             </li>
           ))}

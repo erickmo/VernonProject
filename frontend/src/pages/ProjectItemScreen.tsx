@@ -17,6 +17,7 @@ import {
   Clock,
   Copy,
   CornerDownRight,
+  UserCheck,
   FileText,
   FolderKanban,
   History,
@@ -64,6 +65,7 @@ import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
 import { FocusNoteSheet } from '@/components/FocusNoteSheet'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
+import { FollowUpCheckDialog } from '@/components/FollowUpCheckDialog'
 import { ISSUE_HELP, issueCounts, issueLabel, todoIssueInitial } from '@/lib/todoIssues'
 import { HelpSheet, InfoDot } from '@/components/HelpSheet'
 import type { ProjectItemDetail, TodoFile } from '@/lib/types'
@@ -690,9 +692,14 @@ function Checklist({ todoId, initial, canEdit }: { todoId: string; initial: Chec
                 onChange={() => commit(items.map((x, j) => (j === i ? { ...x, d: !x.d } : x)))}
                 className="h-5 w-5 accent-brand-600"
               />
-              <span className={'flex-1 text-sm ' + (it.d ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-800 dark:text-slate-100')}>
-                {it.t}
-              </span>
+              <input
+                value={it.t}
+                readOnly={it.d}
+                onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, t: e.target.value } : x)))}
+                onBlur={() => { if (JSON.stringify(items) !== baseline.current) commit(items) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                className={'flex-1 bg-transparent text-sm outline-none ' + (it.d ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-800 dark:text-slate-100')}
+              />
               <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" className="text-slate-400 disabled:opacity-30 active:scale-90">
                 <ArrowUp className="h-4 w-4" />
               </button>
@@ -1184,6 +1191,7 @@ export default function ProjectItemScreen() {
   const [showFocusNote, setShowFocusNote] = useState(false)
   const [dupOpen, setDupOpen] = useState(false)
 const [followOpen, setFollowOpen] = useState(false)
+  const [checkOpen, setCheckOpen] = useState(false)
   const [issueOpen, setIssueOpen] = useState(false)
   const [issueHelpTerm, setIssueHelpTerm] = useState<string | null>(null)
   const [waitingReason, setWaitingReason] = useState('')
@@ -1378,6 +1386,7 @@ const [followOpen, setFollowOpen] = useState(false)
             ? [
                 { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
                 { label: 'Add follow-up todo', icon: CornerDownRight, onClick: () => setFollowOpen(true) },
+                { label: 'Minta orang lain cek…', icon: UserCheck, onClick: () => setCheckOpen(true) },
               ]
             : []),
           ...(canSetDeadlineToday
@@ -1877,6 +1886,17 @@ const [followOpen, setFollowOpen] = useState(false)
 
       <HelpSheet entries={ISSUE_HELP} term={issueHelpTerm} onClose={() => setIssueHelpTerm(null)} />
 
+      <FollowUpCheckDialog
+        open={checkOpen}
+        onClose={() => setCheckOpen(false)}
+        todo={{ name: data.name, to_do: data.to_do }}
+        defaultAssignee={data.creator}
+        team={
+          data.team.some((m) => m.user === data.assigned_to)
+            ? data.team
+            : [{ user: data.assigned_to, name: data.assigned_to_name }, ...data.team]
+        }
+      />
       {(dupOpen || followOpen || issueOpen) && (
         <CreateProjectItemSheet
           open

@@ -1,8 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, Search } from 'lucide-react'
 import { SearchableSelect, type SelectOption } from '@/components/SearchableSelect'
+import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import type { ProjectItem } from '@/lib/types'
-import { groupByDetail, detailPickerOptions, availableDetailOptions, MIN_COLS, MAX_COLS, type DetailGroup } from '@/lib/filters'
+import {
+  groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, matchProjectItem, TODO_TAGS,
+  MIN_COLS, MAX_COLS, type DetailGroup, type TodoTag,
+} from '@/lib/filters'
 
 // One scroll only: columns grow to their content and the WINDOW scrolls. The
 // per-column viewport-tall scroll region was removed — nesting a scroll inside
@@ -48,12 +52,28 @@ function usePersistedCols(key: string) {
   return { count: clampCols(state.count), picks: state.picks, setCount, setPick }
 }
 
-// One by-project column: a project picker + that project's todos rendered via
-// `renderCard`. No matching group → placeholder, unless `fallbackTodos` is given
-// (col 1) in which case it shows the full list (any) — covers both an empty pick
-// and a stale persisted pick whose project has left the list; the picker narrows.
+// A per-column text search box (todo text + project/brand/people, via matchProjectItem).
+function ColSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search…"
+        className="w-full rounded-full border border-line bg-transparent py-1 pl-8 pr-3 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+      />
+    </div>
+  )
+}
+
+// One by-project column: a project picker + this column's OWN search + tag filter
+// over that project's todos, rendered via `renderCard`. No matching group →
+// placeholder, unless `fallbackTodos` is given (col 1) in which case it shows the
+// full list — covers both an empty pick and a stale persisted pick whose project
+// has left the list. Each column keeps its own filter state, independent of the rest.
 function ProjectPickCol({
-  pick, setPick, options, group, renderCard, fallbackTodos,
+  pick, setPick, options, group, renderCard, fallbackTodos, focusedIds,
 }: {
   pick: string
   setPick: (v: string) => void
@@ -61,18 +81,64 @@ function ProjectPickCol({
   group?: DetailGroup
   renderCard: (t: ProjectItem, i: number) => ReactNode
   fallbackTodos?: ProjectItem[]
+  focusedIds: Set<string>
 }) {
-  const todos = group ? group.todos : fallbackTodos
+  const [tags, setTags] = useState<Set<TodoTag>>(new Set())
+  const [q, setQ] = useState('')
+  const toggleTag = (t: TodoTag) =>
+    setTags((s) => {
+      const next = new Set(s)
+      next.has(t) ? next.delete(t) : next.add(t)
+      return next
+    })
+  const base = group ? group.todos : fallbackTodos
+  const todos = base && filterByTags(base, tags, focusedIds).filter((t) => matchProjectItem(t, q))
   return (
     <div className={COL}>
       <SearchableSelect value={pick} onChange={setPick} options={options} allowClear placeholder={fallbackTodos ? 'All projects' : 'Pick a project'} />
+      {base && (
+        <div className="flex flex-col gap-2">
+          <ColSearch value={q} onChange={setQ} />
+          <TagFilter selected={tags} toggle={toggleTag} />
+        </div>
+      )}
       {todos ? (
-        <div className={LIST}>{todos.map(renderCard)}</div>
+        todos.length ? (
+          <div className={LIST}>{todos.map(renderCard)}</div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No matches</div>
+        )
       ) : (
         <div className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">
           Pick a project to see its todos
         </div>
       )}
+    </div>
+  )
+}
+
+// Toggle-chip row for the todo tag filter (untagged/focus/ai/to-check). Empty
+// selection = show everything; each chip OR-adds its tag. One row per column.
+function TagFilter({ selected, toggle }: { selected: Set<TodoTag>; toggle: (t: TodoTag) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {TODO_TAGS.map(({ value, label }) => {
+        const on = selected.has(value)
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={on}
+            onClick={() => toggle(value)}
+            className={
+              'rounded-full border px-3 py-1 text-xs font-semibold transition ' +
+              (on ? 'border-ink bg-ink text-canvas' : 'border-line text-muted hover:bg-line')
+            }
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -115,6 +181,7 @@ export function ThreeColProjectList({
   storageKey: string
 }) {
   const { count, picks, setCount, setPick } = usePersistedCols(`${storageKey}.projCols`)
+  const focusedIds = useFocusedTaskIds()
   const groups = groupByDetail(items)
   const options = detailPickerOptions(groups)
   const colFor = (pick: string) => groups.find((g) => g.key === pick)
@@ -126,10 +193,10 @@ export function ThreeColProjectList({
       <ColStepper count={count} setCount={setCount} />
       <div className="grid grid-cols-1 gap-4 overflow-x-auto md:grid-cols-none md:auto-cols-[minmax(220px,1fr)] md:grid-flow-col">
         {/* Column 1 — full list by default; picker narrows it to one project */}
-        <ProjectPickCol pick={picks[0] || ''} setPick={(v) => setPick(0, v)} options={optsFor(0)} group={colFor(picks[0] || '')} renderCard={renderCard} fallbackTodos={items} />
+        <ProjectPickCol pick={picks[0] || ''} setPick={(v) => setPick(0, v)} options={optsFor(0)} group={colFor(picks[0] || '')} renderCard={renderCard} fallbackTodos={items} focusedIds={focusedIds} />
         {/* Remaining columns — each a separate project you pick */}
         {Array.from({ length: count - 1 }, (_, k) => k + 1).map((i) => (
-          <ProjectPickCol key={i} pick={picks[i] || ''} setPick={(v) => setPick(i, v)} options={optsFor(i)} group={colFor(picks[i] || '')} renderCard={renderCard} />
+          <ProjectPickCol key={i} pick={picks[i] || ''} setPick={(v) => setPick(i, v)} options={optsFor(i)} group={colFor(picks[i] || '')} renderCard={renderCard} focusedIds={focusedIds} />
         ))}
       </div>
     </div>

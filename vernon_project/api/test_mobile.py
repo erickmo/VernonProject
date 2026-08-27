@@ -322,6 +322,27 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 			self.assertEqual(mine["by"], frappe.session.user)
 			self.assertTrue(mine["by_name"])
 
+	def test_edit_comment_author_only(self):
+		from vernon_project.api.mobile import add_comment, edit_comment, get_comments
+		added = add_comment("Project", self.project.name, "before")  # author = Administrator
+		# Author can edit.
+		edited = edit_comment(added["name"], "after")
+		self.assertEqual(edited["content"], "after")
+		rows = get_comments("Project", self.project.name)
+		self.assertTrue(any(c["content"] == "after" for c in rows))
+		self.assertFalse(any(c["content"] == "before" for c in rows))
+		# Empty content rejected.
+		with self.assertRaises(frappe.ValidationError):
+			edit_comment(added["name"], "   ")
+		# A non-author who CAN see the project (a team member) still cannot edit —
+		# the gate is authorship, not visibility.
+		frappe.set_user("tm_member@example.com")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				edit_comment(added["name"], "hijacked")
+		finally:
+			frappe.set_user("Administrator")
+
 	def test_comment_rejects_unknown_doctype(self):
 		from vernon_project.api.mobile import add_comment
 		with self.assertRaises(frappe.ValidationError):

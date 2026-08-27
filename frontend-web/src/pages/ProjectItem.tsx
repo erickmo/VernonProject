@@ -18,6 +18,7 @@ import {
   Clock,
   Copy,
   CornerDownRight,
+  UserCheck,
   FileText,
   ArrowDown,
   ArrowUp,
@@ -83,6 +84,7 @@ import { FocusNoteDialog } from '@web/components/FocusNoteDialog'
 import { AutoApproveSegment } from '@web/components/AutoApproveSegment'
 import { DatePicker } from '@web/components/DatePicker'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
+import { FollowUpCheckDialog } from '@/components/FollowUpCheckDialog'
 import { issueCounts, issueHelp, issueLabel, todoIssueInitial } from '@/lib/todoIssues'
 import { InfoDot } from '@web/components/InfoDot'
 import type { ProjectItemDetail, StatusKey, TodoFile, ChecklistItem } from '@/lib/types'
@@ -426,7 +428,14 @@ function Checklist({ todoId, initial, canEdit }: { todoId: string; initial: Chec
                 onChange={() => commit(items.map((x, j) => (j === i ? { ...x, d: !x.d } : x)))}
                 className="h-5 w-5 accent-brand-600"
               />
-              <span className={'flex-1 text-sm ' + (it.d ? 'text-muted line-through' : 'text-ink')}>{it.t}</span>
+              <input
+                value={it.t}
+                readOnly={it.d}
+                onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, t: e.target.value } : x)))}
+                onBlur={() => { if (JSON.stringify(items) !== baseline.current) commit(items) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                className={'flex-1 bg-transparent text-sm outline-none ' + (it.d ? 'text-muted line-through' : 'text-ink')}
+              />
               <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" className="text-muted disabled:opacity-30 hover:text-ink">
                 <ArrowUp className="h-4 w-4" />
               </button>
@@ -1236,6 +1245,7 @@ export default function ProjectItem() {
   const focusMode = useFocusMode()
   const [dupOpen, setDupOpen] = useState(false)
 const [followOpen, setFollowOpen] = useState(false)
+  const [checkOpen, setCheckOpen] = useState(false)
   const [issueOpen, setIssueOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -1546,6 +1556,7 @@ const [followOpen, setFollowOpen] = useState(false)
                   ? [
                       { label: 'Duplicate task', icon: Copy, onClick: () => setDupOpen(true) },
                       { label: 'Add follow-up todo', icon: CornerDownRight, onClick: () => setFollowOpen(true) },
+                      { label: 'Minta orang lain cek…', icon: UserCheck, onClick: () => setCheckOpen(true) },
                     ]
                   : []),
                 ...(canSetDeadlineToday
@@ -1566,6 +1577,25 @@ const [followOpen, setFollowOpen] = useState(false)
         )}
       </div>
 
+      <FollowUpCheckDialog
+        open={checkOpen}
+        onClose={() => setCheckOpen(false)}
+        todo={{ name: data.name, to_do: data.to_do }}
+        defaultAssignee={data.creator}
+        team={
+          data.team.some((m) => m.user === data.assigned_to)
+            ? data.team
+            : [{ user: data.assigned_to, name: data.assigned_to_name }, ...data.team]
+        }
+        renderDateField={(p) => (
+          <DatePicker
+            value={p.value}
+            onChange={p.onChange}
+            placeholder="Pilih tanggal…"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        )}
+      />
       {(dupOpen || followOpen || issueOpen) && (
         <CreateProjectItemDialog
           open

@@ -926,6 +926,39 @@ export function useSetTodoCheck() {
   })
 }
 
+// Quick check-handoff: create a follow-up todo for someone else, mark mine Done.
+export function useFollowUpCheck() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: ({
+      todoId,
+      assignee,
+      note,
+      estimated,
+      group,
+      levelId,
+      deadline,
+    }: {
+      todoId: string
+      assignee: string
+      note?: string
+      estimated?: number
+      group?: string
+      levelId?: string
+      deadline?: string
+    }) => mobileApi.followUpCheck(todoId, assignee, { note, estimated, group, levelId, deadline }),
+    onError: (e) => toast('error', (e as Error).message || 'Gagal membuat tindak lanjut'),
+    onSuccess: () => toast('success', 'Tindak lanjut dikirim ke rekanmu'),
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoId) })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
 export function useSetAssignedAllocation(todoId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -1311,6 +1344,15 @@ export function useAddComment(refDoctype: string, refName: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (content: string) => mobileApi.addComment(refDoctype, refName, content),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', refDoctype, refName] }),
+  })
+}
+
+export function useEditComment(refDoctype: string, refName: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, content }: { name: string; content: string }) =>
+      mobileApi.editComment(name, content),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', refDoctype, refName] }),
   })
 }

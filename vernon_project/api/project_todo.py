@@ -696,3 +696,92 @@ def download_todo_file(todo_id, file_name):
 	frappe.local.response.filename = f.file_name
 	frappe.local.response.filecontent = f.get_content()
 	frappe.local.response.type = "download"
+
+
+# Default scoring for a check task: Engineering ▸ Backend Development ▸ Testing (100%).
+# The client pre-fills these but the fields are editable, so callers may override.
+CHECK_DEFAULT_GROUP = "Engineering"
+CHECK_DEFAULT_LEVEL_ID = "eng_be_testing"
+CHECK_DEFAULT_ESTIMATED = 10
+
+
+@frappe.whitelist()
+def follow_up_check(todo_id, assignee, note=None, estimated=None, group=None, level_id=None, deadline=None):
+	"""Quick hand-off: spawn a linked follow-up todo for ANOTHER person to check
+	this one, then mark the current todo Done for its own assignee.
+
+	The follow-up is a "(Follow Up)" todo blocked_by this one (provenance — it clears
+	at once since we mark the source Done). estimate + group/level come from the client
+	(defaulting to 10 min and the Testing work-type); the controller derives level name
+	and points from level_id. Unlike a plain create, the new assignee is NOTIFIED here:
+	the Project Todo controller only fires notifications on STATUS transitions, never on
+	first assignment, so the checker would otherwise never hear about the task.
+	"""
+	from vernon_project.api.mobile import _notify
+
+	todo = frappe.get_doc("Project Todo", todo_id)
+	project_detail = frappe.get_doc("Project Detail", todo.project_detail)
+	project = frappe.get_doc("Project", project_detail.project)
+	user = frappe.session.user
+
+	# Who may hand off: the source assignee, the project leader/owner, or an admin.
+	allowed = [todo.assigned_to, project.project_leader, project.project_owner] + list(
+		get_project_admins(project)
+	)
+	if user not in allowed:
+		frappe.throw("You are not allowed to follow up on this todo.", frappe.PermissionError)
+
+	assignee = (assignee or "").strip()
+	if not assignee:
+		frappe.throw("Pilih orang yang akan mengecek.")
+
+	# Estimate: client default 10, floored at 5 (validate_estimated_min requires ≥5).
+	est = max(frappe.utils.cint(estimated) or CHECK_DEFAULT_ESTIMATED, 5)
+
+	# The check-todo. group + level_id come from the client (defaulting to the Testing
+	# work-type); the controller derives level name + points from level_id. blocked_by =
+	# source → clears on Done. validate_assigned_to_team_member rejects a non-team assignee.
+	follow = frappe.get_doc(
+		{
+			"doctype": "Project Todo",
+			"project": todo.project,
+			"project_detail": todo.project_detail,
+			"to_do": f"{todo.to_do} (Follow Up)",
+			"assigned_to": assignee,
+			"status": "⚪️ Planned",
+			"start_date": frappe.utils.today(),
+			"estimated": est,
+			"deadline": deadline or frappe.utils.add_days(frappe.utils.today(), 1),
+			"group": group or CHECK_DEFAULT_GROUP,
+			"level_id": level_id or CHECK_DEFAULT_LEVEL_ID,
+			"blocked_by": [{"todo": todo.name}],
+			"notes": note or "",
+		}
+	).insert(ignore_permissions=True)
+
+	# Inserting the follow-up with blocked_by=[source] makes the controller mirror a
+	# `blocking` row back onto the source row, so our in-memory `todo` is now stale —
+	# reload before mutating or the save trips TimestampMismatchError.
+	todo.reload()
+
+	# Mark the source Done for its assignee — only from Planned (the sane hand-off
+	# point). Reuses the Planned→Done stamps + self-review auto-advance from update_status.
+	if todo.status == "⚪️ Planned":
+		todo.status = "🟠 Done"
+		todo.developed_at = frappe.utils.now()
+		todo.developed_by = user
+		_auto_advance(todo, project.project_leader, project.project_owner, project.auto_approve)
+		todo.save(ignore_permissions=True)
+
+	actor_name = frappe.db.get_value("User", user, "full_name") or user
+	_notify(
+		recipient=assignee,
+		type="Assignment",
+		title="Ada tugas untuk kamu cek",
+		body=f"{actor_name} minta kamu cek “{todo.to_do}”.",
+		reference_doctype="Project Todo",
+		reference_name=follow.name,
+		actor=user,
+	)
+	frappe.db.commit()
+	return {"name": follow.name, "source_status": todo.status}

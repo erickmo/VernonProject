@@ -1,17 +1,80 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, Search } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { TodoCard } from '@/components/TodoCard'
+import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import type { ProjectItem } from '@/lib/types'
-import { groupByDetail, detailPickerOptions, availableDetailOptions, MIN_COLS, MAX_COLS } from '@/lib/filters'
+import { groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, matchProjectItem, TODO_TAGS, MIN_COLS, MAX_COLS, type TodoTag } from '@/lib/filters'
 
-function Cards({ todos }: { todos: ProjectItem[] }) {
+// A per-pane text search box (todo text + project/brand/people, via matchProjectItem).
+function ColSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Cari tugas…"
+        className="w-full rounded-xl border border-paper-edge bg-white py-1.5 pl-9 pr-3 text-sm text-stone-700 placeholder:text-stone-400 focus:border-brand-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+      />
+    </div>
+  )
+}
+
+// One pane's own search + tag filter over its todos, then the cards. Each pane
+// keeps its own filter state (mounted across swipes), so filtering/searching one
+// project never touches another. `withSearch` off for the "All" pane, which
+// leans on the page-wide search in the header instead.
+function Pane({ todos, focusedIds, withSearch = false }: { todos: ProjectItem[]; focusedIds: Set<string>; withSearch?: boolean }) {
+  const [tags, setTags] = useState<Set<TodoTag>>(new Set())
+  const [q, setQ] = useState('')
+  const toggleTag = (t: TodoTag) =>
+    setTags((s) => {
+      const next = new Set(s)
+      next.has(t) ? next.delete(t) : next.add(t)
+      return next
+    })
+  const shown = filterByTags(todos, tags, focusedIds).filter((t) => (withSearch ? matchProjectItem(t, q) : true))
   return (
     <div className="flex flex-col gap-3">
-      {todos.map((t) => (
-        <TodoCard key={t.name} todo={t} />
-      ))}
+      {withSearch && <ColSearch value={q} onChange={setQ} />}
+      <TagFilter selected={tags} toggle={toggleTag} />
+      {shown.length ? (
+        shown.map((t) => <TodoCard key={t.name} todo={t} />)
+      ) : (
+        <div className="rounded-2xl border border-dashed border-paper-edge p-8 text-center text-sm text-stone-400 dark:border-slate-700 dark:text-slate-500">
+          {q || tags.size ? 'Tidak ada yang cocok.' : 'Belum ada tugas di sini.'}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Todo tag filter chips (untagged/focus/ai/to-check). Empty = show all; each
+// chip OR-adds its tag. Applies across every pane.
+function TagFilter({ selected, toggle }: { selected: Set<TodoTag>; toggle: (t: TodoTag) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {TODO_TAGS.map(({ value, label }) => {
+        const on = selected.has(value)
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={on}
+            onClick={() => toggle(value)}
+            className={clsx(
+              'rounded-full px-3 py-1 text-xs font-semibold transition active:scale-95',
+              on
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'border border-paper-edge text-stone-500 dark:border-slate-700 dark:text-slate-400',
+            )}
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -75,6 +138,7 @@ export function SwipeProjectLists({
   const [idx, setIdx] = useState(persist.idx)
   const [count, setCount] = useState(persist.count) // total panes incl. "All"
   const [picks, setPicks] = useState(persist.picks) // focus panes (count-1 of them)
+  const focusedIds = useFocusedTaskIds()
   const PANES = count
   const FOCUS_PANES = Array.from({ length: count - 1 }, (_, i) => i)
 
@@ -197,8 +261,8 @@ export function SwipeProjectLists({
       </div>
 
       {!multi ? (
-        // 0-1 project detail → no carousel; flat list or the empty state.
-        items.length ? <Cards todos={items} /> : emptyState
+        // 0-1 project detail → no carousel; single pane (own search + tags) or empty.
+        items.length ? <Pane todos={items} focusedIds={focusedIds} withSearch /> : emptyState
       ) : (
         <>
           {/* Dots + pane counter + count stepper */}
@@ -254,14 +318,15 @@ export function SwipeProjectLists({
               style={{ transform: `translateX(calc(${-idx * 100}% + ${drag}px))` }}
             >
               <div ref={(el) => (paneRefs.current[0] = el)} className="w-full shrink-0">
-                <Cards todos={items} />
+                {/* "All" pane — its own tag chips; page-wide search sits in the header. */}
+                <Pane todos={items} focusedIds={focusedIds} />
               </div>
               {FOCUS_PANES.map((i) => {
                 const todos = paneTodos(i)
                 return (
                   <div key={i} ref={(el) => (paneRefs.current[i + 1] = el)} className="w-full shrink-0">
                     {todos ? (
-                      <Cards todos={todos} />
+                      <Pane todos={todos} focusedIds={focusedIds} withSearch />
                     ) : (
                       <div className="rounded-2xl border border-dashed border-paper-edge p-8 text-center text-sm text-stone-400 dark:border-slate-700 dark:text-slate-500">
                         Pick a project above to focus this pane.

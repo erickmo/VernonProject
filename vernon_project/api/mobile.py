@@ -822,6 +822,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"name": row["name"],
 		"to_do": row["to_do"],
 		"status": row["status"],
+		"creator": row.get("owner"),
 		"status_key": skey,
 		"modified": str(row["modified"]) if row.get("modified") else None,
 		"next_status_label": NEXT_LABEL.get(skey),
@@ -1846,6 +1847,34 @@ def add_comment(reference_doctype, reference_name, content):
 			"comment_email": c.comment_email,
 			"comment_by": c.comment_by,
 			"creation": c.creation,
+		},
+		name_map,
+	)
+
+
+@frappe.whitelist()
+def edit_comment(name, content):
+	"""Edit an existing comment's content. Only the comment's author may edit."""
+	comment = frappe.get_doc("Comment", name)
+	if comment.comment_type != "Comment":
+		frappe.throw("Not permitted", frappe.PermissionError)
+	_assert_comment_visible(comment.reference_doctype, comment.reference_name)
+	if (comment.comment_email or comment.owner) != frappe.session.user:
+		frappe.throw("Only the author can edit this comment.", frappe.PermissionError)
+	content = (content or "").strip()
+	if not content:
+		frappe.throw("Comment cannot be empty.")
+	comment.content = content
+	comment.save(ignore_permissions=True)
+	frappe.db.commit()
+	name_map = _user_name_map({comment.comment_email, comment.comment_by})
+	return _shape_comment(
+		{
+			"name": comment.name,
+			"content": comment.content,
+			"comment_email": comment.comment_email,
+			"comment_by": comment.comment_by,
+			"creation": comment.creation,
 		},
 		name_map,
 	)

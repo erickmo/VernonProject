@@ -1,6 +1,6 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert/strict'
-import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions } from './filters'
+import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, todoHasTag } from './filters'
 
 const todos = [
   { project: 'P1', project_name: 'Alpha', detail: 'Login screen' },
@@ -60,3 +60,30 @@ const ownKept = availableDetailOptions(picks, new Set(['D1']), 'D1')
 assert.ok(ownKept.some((o) => o.value === 'D1'))
 
 console.log('buildOptions.selfcheck: all assertions passed')
+
+// --- todoHasTag / filterByTags (dashboard column tag filter) ---
+const focused = new Set(['t-focus'])
+const tagItems = [
+  { name: 'a-untag', work_mode: '', to_check: false },
+  { name: 't-focus', work_mode: '', to_check: false },
+  { name: 'c-ai', work_mode: 'AI', to_check: false },
+  { name: 'd-check', work_mode: '', to_check: true },
+  { name: 'e-ai-check', work_mode: 'AI', to_check: true }, // two tags at once
+]
+// Each predicate matches only its own tag; untagged excludes all three flags.
+assert.equal(todoHasTag(tagItems[0], 'untagged', focused), true)
+assert.equal(todoHasTag(tagItems[1], 'focus', focused), true)
+assert.equal(todoHasTag(tagItems[1], 'untagged', focused), false) // focused ⇒ not untagged
+assert.equal(todoHasTag(tagItems[2], 'ai', focused), true)
+assert.equal(todoHasTag(tagItems[3], 'to_check', focused), true)
+// Empty selection is a pass-through (no filtering).
+assert.equal(filterByTags(tagItems, new Set(), focused).length, 5)
+// OR semantics: ai OR to_check → c, d, and the two-tag e (once, no dup).
+assert.deepEqual(
+  filterByTags(tagItems, new Set(['ai', 'to_check']), focused).map((t) => t.name),
+  ['c-ai', 'd-check', 'e-ai-check'],
+)
+// Untagged alone surfaces only the flag-free row.
+assert.deepEqual(filterByTags(tagItems, new Set(['untagged']), focused).map((t) => t.name), ['a-untag'])
+
+console.log('tagFilter.selfcheck: all assertions passed')

@@ -248,3 +248,38 @@ export function applyProjectItemFilters(list: ProjectItem[], f: Record<string, s
       matchEstimate(f.estimate || '', t.estimated),
   )
 }
+
+/**
+ * Todo "tags" — the icon flags shown on a TodoCard. `focus` = has a live focus
+ * timer (transient, membership from `useFocusedTaskIds`), `ai` = work_mode AI,
+ * `to_check` = the To Check flag, `untagged` = none of the three. Drives the
+ * by-project column tag filter on the dashboard (both frontends).
+ */
+export type TodoTag = 'untagged' | 'focus' | 'ai' | 'to_check'
+
+export const TODO_TAGS: { value: TodoTag; label: string }[] = [
+  { value: 'untagged', label: 'Untagged' },
+  { value: 'focus', label: 'Focus' },
+  { value: 'ai', label: 'AI' },
+  { value: 'to_check', label: 'To Check' },
+]
+
+/** `focusedIds` = task ids with a live focus timer (useFocusedTaskIds). */
+export function todoHasTag(t: ProjectItem, tag: TodoTag, focusedIds: Set<string>): boolean {
+  switch (tag) {
+    case 'focus':
+      return focusedIds.has(t.name)
+    case 'ai':
+      return t.work_mode === 'AI'
+    case 'to_check':
+      return !!t.to_check
+    case 'untagged':
+      return !focusedIds.has(t.name) && t.work_mode !== 'AI' && !t.to_check
+  }
+}
+
+/** Keep todos matching ANY selected tag; empty selection passes everything. */
+export function filterByTags(list: ProjectItem[], tags: Set<TodoTag>, focusedIds: Set<string>): ProjectItem[] {
+  if (!tags.size) return list
+  return list.filter((t) => [...tags].some((tag) => todoHasTag(t, tag, focusedIds)))
+}

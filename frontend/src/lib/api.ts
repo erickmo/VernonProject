@@ -198,6 +198,26 @@ export const mobileApi = {
       'vernon_project.api.project_todo.undo_approval',
       { todo_id: todoId },
     ),
+  // Quick hand-off: spawn a follow-up "(Follow Up)" todo for `assignee` to check
+  // this one, mark the source Done, and notify the checker. Server does it atomically.
+  // estimated/group/levelId are the check task's scoring inputs (server defaults them).
+  followUpCheck: (
+    todoId: string,
+    assignee: string,
+    opts?: { note?: string; estimated?: number; group?: string; levelId?: string; deadline?: string },
+  ) =>
+    api.post<{ name: string; source_status: string }>(
+      'vernon_project.api.project_todo.follow_up_check',
+      {
+        todo_id: todoId,
+        assignee,
+        ...(opts?.note ? { note: opts.note } : {}),
+        ...(opts?.estimated ? { estimated: opts.estimated } : {}),
+        ...(opts?.group ? { group: opts.group } : {}),
+        ...(opts?.levelId ? { level_id: opts.levelId } : {}),
+        ...(opts?.deadline ? { deadline: opts.deadline } : {}),
+      },
+    ),
   myApprovals: () =>
     api.get<import('./types').MyApprovalItem[]>('vernon_project.api.project_todo.get_my_approvals'),
   recentlyDone: () =>
@@ -355,6 +375,8 @@ export const mobileApi = {
       reference_name: refName,
       content,
     }),
+  editComment: (name: string, content: string) =>
+    api.post(M + 'edit_comment', { name, content }),
   getMentionableUsers: (refDoctype: string, refName: string) =>
     api.get<import('./types').MentionUser[]>(M + 'get_mentionable_users', {
       reference_doctype: refDoctype,

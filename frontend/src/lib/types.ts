@@ -130,6 +130,8 @@ export interface ProjectItem {
   name: string
   to_do: string
   status: string
+  /** Email of whoever created the todo (doc.owner). Only get_project_item fills it. */
+  creator?: string
   checklist: ChecklistItem[]
   status_key: StatusKey
   modified: string | null
