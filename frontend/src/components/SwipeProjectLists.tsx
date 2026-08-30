@@ -5,7 +5,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { TodoCard } from '@/components/TodoCard'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import type { ProjectItem } from '@/lib/types'
-import { groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, matchProjectItem, TODO_TAGS, MIN_COLS, MAX_COLS, type TodoTag } from '@/lib/filters'
+import { groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, matchProjectItem, TODO_TAGS, MIN_COLS, MAX_COLS, type TodoTag, type TagFilterState } from '@/lib/filters'
 
 // A per-pane text search box (todo text + project/brand/people, via matchProjectItem).
 function ColSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -27,14 +27,9 @@ function ColSearch({ value, onChange }: { value: string; onChange: (v: string) =
 // project never touches another. `withSearch` off for the "All" pane, which
 // leans on the page-wide search in the header instead.
 function Pane({ todos, focusedIds, withSearch = false }: { todos: ProjectItem[]; focusedIds: Set<string>; withSearch?: boolean }) {
-  const [tags, setTags] = useState<Set<TodoTag>>(new Set())
+  const [tags, setTags] = useState<TagFilterState>(new Map())
   const [q, setQ] = useState('')
-  const toggleTag = (t: TodoTag) =>
-    setTags((s) => {
-      const next = new Set(s)
-      next.has(t) ? next.delete(t) : next.add(t)
-      return next
-    })
+  const toggleTag = (t: TodoTag) => setTags((s) => cycleTag(s, t))
   const shown = filterByTags(todos, tags, focusedIds).filter((t) => (withSearch ? matchProjectItem(t, q) : true))
   return (
     <div className="flex flex-col gap-3">
@@ -51,27 +46,28 @@ function Pane({ todos, focusedIds, withSearch = false }: { todos: ProjectItem[];
   )
 }
 
-// Todo tag filter chips (untagged/focus/ai/to-check). Empty = show all; each
-// chip OR-adds its tag. Applies across every pane.
-function TagFilter({ selected, toggle }: { selected: Set<TodoTag>; toggle: (t: TodoTag) => void }) {
+// Todo tag filter chips (untagged/focus/ai/to-check). Each chip is tri-state,
+// cycling all → on (require) → off (exclude) → all. Empty = show everything.
+function TagFilter({ selected, toggle }: { selected: TagFilterState; toggle: (t: TodoTag) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {TODO_TAGS.map(({ value, label }) => {
-        const on = selected.has(value)
+        const state = selected.get(value)
         return (
           <button
             key={value}
             type="button"
-            aria-pressed={on}
+            aria-label={`${label}: ${state === 'on' ? 'only' : state === 'off' ? 'hidden' : 'all'}`}
+            title={state === 'on' ? `Only ${label}` : state === 'off' ? `Hide ${label}` : `Filter by ${label}`}
             onClick={() => toggle(value)}
             className={clsx(
               'rounded-full px-3 py-1 text-xs font-semibold transition active:scale-95',
-              on
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'border border-paper-edge text-stone-500 dark:border-slate-700 dark:text-slate-400',
+              state === 'on' && 'bg-brand-600 text-white shadow-sm',
+              state === 'off' && 'bg-rose-500 text-white line-through shadow-sm',
+              !state && 'border border-paper-edge text-stone-500 dark:border-slate-700 dark:text-slate-400',
             )}
           >
-            {label}
+            {state === 'off' ? '−' : state === 'on' ? '✓' : ''} {label}
           </button>
         )
       })}

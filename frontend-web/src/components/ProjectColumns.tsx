@@ -4,8 +4,8 @@ import { SearchableSelect, type SelectOption } from '@/components/SearchableSele
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import type { ProjectItem } from '@/lib/types'
 import {
-  groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, matchProjectItem, TODO_TAGS,
-  MIN_COLS, MAX_COLS, type DetailGroup, type TodoTag,
+  groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, matchProjectItem, TODO_TAGS,
+  MIN_COLS, MAX_COLS, type DetailGroup, type TodoTag, type TagFilterState,
 } from '@/lib/filters'
 
 // One scroll only: columns grow to their content and the WINDOW scrolls. The
@@ -83,14 +83,9 @@ function ProjectPickCol({
   fallbackTodos?: ProjectItem[]
   focusedIds: Set<string>
 }) {
-  const [tags, setTags] = useState<Set<TodoTag>>(new Set())
+  const [tags, setTags] = useState<TagFilterState>(new Map())
   const [q, setQ] = useState('')
-  const toggleTag = (t: TodoTag) =>
-    setTags((s) => {
-      const next = new Set(s)
-      next.has(t) ? next.delete(t) : next.add(t)
-      return next
-    })
+  const toggleTag = (t: TodoTag) => setTags((s) => cycleTag(s, t))
   const base = group ? group.todos : fallbackTodos
   const todos = base && filterByTags(base, tags, focusedIds).filter((t) => matchProjectItem(t, q))
   return (
@@ -117,25 +112,30 @@ function ProjectPickCol({
   )
 }
 
-// Toggle-chip row for the todo tag filter (untagged/focus/ai/to-check). Empty
-// selection = show everything; each chip OR-adds its tag. One row per column.
-function TagFilter({ selected, toggle }: { selected: Set<TodoTag>; toggle: (t: TodoTag) => void }) {
+// Tri-state chip row for the todo tag filter (untagged/focus/ai/to-check). Each
+// chip cycles all → on (require) → off (exclude) → all. Empty = show everything.
+function TagFilter({ selected, toggle }: { selected: TagFilterState; toggle: (t: TodoTag) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {TODO_TAGS.map(({ value, label }) => {
-        const on = selected.has(value)
+        const state = selected.get(value)
         return (
           <button
             key={value}
             type="button"
-            aria-pressed={on}
+            aria-label={`${label}: ${state === 'on' ? 'only' : state === 'off' ? 'hidden' : 'all'}`}
+            title={state === 'on' ? `Only ${label}` : state === 'off' ? `Hide ${label}` : `Filter by ${label}`}
             onClick={() => toggle(value)}
             className={
               'rounded-full border px-3 py-1 text-xs font-semibold transition ' +
-              (on ? 'border-ink bg-ink text-canvas' : 'border-line text-muted hover:bg-line')
+              (state === 'on'
+                ? 'border-ink bg-ink text-canvas'
+                : state === 'off'
+                  ? 'border-rose-600 bg-rose-600 text-white line-through'
+                  : 'border-line text-muted hover:bg-line')
             }
           >
-            {label}
+            {state === 'off' ? '−' : state === 'on' ? '✓' : ''} {label}
           </button>
         )
       })}

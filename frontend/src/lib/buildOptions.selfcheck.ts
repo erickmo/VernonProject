@@ -1,6 +1,6 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert/strict'
-import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, todoHasTag } from './filters'
+import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, todoHasTag } from './filters'
 
 const todos = [
   { project: 'P1', project_name: 'Alpha', detail: 'Login screen' },
@@ -76,14 +76,28 @@ assert.equal(todoHasTag(tagItems[1], 'focus', focused), true)
 assert.equal(todoHasTag(tagItems[1], 'untagged', focused), false) // focused ⇒ not untagged
 assert.equal(todoHasTag(tagItems[2], 'ai', focused), true)
 assert.equal(todoHasTag(tagItems[3], 'to_check', focused), true)
-// Empty selection is a pass-through (no filtering).
-assert.equal(filterByTags(tagItems, new Set(), focused).length, 5)
-// OR semantics: ai OR to_check → c, d, and the two-tag e (once, no dup).
+// Empty state is a pass-through (no filtering).
+assert.equal(filterByTags(tagItems, new Map(), focused).length, 5)
+// Two 'on' tags OR together: ai OR to_check → c, d, and the two-tag e (once, no dup).
 assert.deepEqual(
-  filterByTags(tagItems, new Set(['ai', 'to_check']), focused).map((t) => t.name),
+  filterByTags(tagItems, new Map([['ai', 'on'], ['to_check', 'on']]), focused).map((t) => t.name),
   ['c-ai', 'd-check', 'e-ai-check'],
 )
-// Untagged alone surfaces only the flag-free row.
-assert.deepEqual(filterByTags(tagItems, new Set(['untagged']), focused).map((t) => t.name), ['a-untag'])
+// Untagged 'on' surfaces only the flag-free row.
+assert.deepEqual(filterByTags(tagItems, new Map([['untagged', 'on']]), focused).map((t) => t.name), ['a-untag'])
+// 'off' excludes: hide ai → drop c and e, keep the rest.
+assert.deepEqual(
+  filterByTags(tagItems, new Map([['ai', 'off']]), focused).map((t) => t.name),
+  ['a-untag', 't-focus', 'd-check'],
+)
+// on + off combine (AND across the off constraint): require to_check, exclude ai → only the pure to_check row.
+assert.deepEqual(
+  filterByTags(tagItems, new Map([['to_check', 'on'], ['ai', 'off']]), focused).map((t) => t.name),
+  ['d-check'],
+)
+// cycleTag: all → on → off → all.
+assert.equal(cycleTag(new Map(), 'ai').get('ai'), 'on')
+assert.equal(cycleTag(new Map([['ai', 'on']]), 'ai').get('ai'), 'off')
+assert.equal(cycleTag(new Map([['ai', 'off']]), 'ai').has('ai'), false)
 
 console.log('tagFilter.selfcheck: all assertions passed')

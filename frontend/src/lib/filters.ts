@@ -278,8 +278,33 @@ export function todoHasTag(t: ProjectItem, tag: TodoTag, focusedIds: Set<string>
   }
 }
 
-/** Keep todos matching ANY selected tag; empty selection passes everything. */
-export function filterByTags(list: ProjectItem[], tags: Set<TodoTag>, focusedIds: Set<string>): ProjectItem[] {
-  if (!tags.size) return list
-  return list.filter((t) => [...tags].some((tag) => todoHasTag(t, tag, focusedIds)))
+/** Tri-state per tag: 'on' = require, 'off' = exclude; a tag absent from the map = don't care. */
+export type TagState = 'on' | 'off'
+export type TagFilterState = Map<TodoTag, TagState>
+
+/** Cycle one tag through all → on → off → all. Returns a fresh map (immutable update for setState). */
+export function cycleTag(state: TagFilterState, tag: TodoTag): TagFilterState {
+  const next = new Map(state)
+  const cur = next.get(tag)
+  if (cur === undefined) next.set(tag, 'on')
+  else if (cur === 'on') next.set(tag, 'off')
+  else next.delete(tag)
+  return next
+}
+
+/**
+ * Tri-state tag filter. A todo passes when it carries at least one 'on' tag
+ * (or nothing is 'on') AND carries none of the 'off' tags. Empty state = pass-through.
+ * All-'on' reduces to the old OR behaviour, so an all-on selection is backward compatible.
+ */
+export function filterByTags(list: ProjectItem[], state: TagFilterState, focusedIds: Set<string>): ProjectItem[] {
+  if (!state.size) return list
+  const on: TodoTag[] = []
+  const off: TodoTag[] = []
+  state.forEach((s, tag) => (s === 'on' ? on : off).push(tag))
+  return list.filter(
+    (t) =>
+      (on.length === 0 || on.some((tag) => todoHasTag(t, tag, focusedIds))) &&
+      off.every((tag) => !todoHasTag(t, tag, focusedIds)),
+  )
 }

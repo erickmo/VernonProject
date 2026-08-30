@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query'
 import { api, mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
 import { useToast } from '@/components/Toast'
+import { stopTimer } from '@/hooks/useFocusTimer'
 import { enrollPasskey } from '@/lib/webauthn'
 import { allocTotal } from '@/lib/planDay'
 import { todayISO, effectivePoints } from '@/lib/format'
@@ -949,7 +950,10 @@ export function useFollowUpCheck() {
       deadline?: string
     }) => mobileApi.followUpCheck(todoId, assignee, { note, estimated, group, levelId, deadline }),
     onError: (e) => toast('error', (e as Error).message || 'Gagal membuat tindak lanjut'),
-    onSuccess: () => toast('success', 'Tindak lanjut dikirim ke rekanmu'),
+    onSuccess: (_res, vars) => {
+      stopTimer(vars.todoId) // hand-off marks the source Done → drop its focus timer here too
+      toast('success', 'Tindak lanjut dikirim ke rekanmu')
+    },
     onSettled: (_res, _err, vars) => {
       qc.invalidateQueries({ queryKey: keys.calendar })
       qc.invalidateQueries({ queryKey: keys.dashboard })

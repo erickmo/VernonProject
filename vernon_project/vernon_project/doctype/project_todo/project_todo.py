@@ -525,10 +525,12 @@ class ProjectTodo(Document):
 						frappe.log_error(title="recurring generate_next on complete failed")
 			elif prev_state == "✅ Completed":
 				self._remove_ledger()
-			# Task no longer actionable → drop every user's focus timer for it, so it
-			# clears from the assignee's FAB/dock (whose per-user row a client stop by
-			# the approver can't reach). See api/focus.clear_task_timers.
-			if self.status in ("✅ Completed", "🚫 Cancelled"):
+			# Work finished → drop every user's focus timer for it, so it clears from
+			# the assignee's FAB/dock (whose per-user row a client stop by the approver
+			# can't reach). Done counts: past Done the todo is in review, not being
+			# actively worked — and the follow-up hand-off marks it Done server-side
+			# without any client stop. See api/focus.clear_task_timers.
+			if self.status in ("🟠 Done", "✅ Completed", "🚫 Cancelled"):
 				try:
 					from vernon_project.api.focus import clear_task_timers
 
