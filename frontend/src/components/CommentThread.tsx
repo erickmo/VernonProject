@@ -127,11 +127,18 @@ export default function CommentThread({
     setMentionQuery('')
   }
 
-  const filtered = people.filter(
-    (p) =>
-      p.full_name.toLowerCase().includes(mentionQuery) ||
-      p.user.toLowerCase().includes(mentionQuery),
-  )
+  const filtered = [
+    // "@all" mentions every project participant — only when the record has any,
+    // and it fans out server-side in add_comment.
+    ...(people.length && 'all'.startsWith(mentionQuery)
+      ? [{ user: '@all', full_name: 'all', image: null } as MentionUser]
+      : []),
+    ...people.filter(
+      (p) =>
+        p.full_name.toLowerCase().includes(mentionQuery) ||
+        p.user.toLowerCase().includes(mentionQuery),
+    ),
+  ]
 
   const saveEdit = (name: string) => {
     const ed = editBodyRef.current

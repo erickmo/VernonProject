@@ -1802,6 +1802,33 @@ def _comment_participants(reference_doctype, reference_name):
 	return {p for p in people if p}
 
 
+def _project_mention_emails(project):
+	"""Every email @mentionable in a comment on this project: owner, leader,
+	admins, team members, and todo assignees. Shared by get_mentionable_users
+	(picker list) and add_comment (@all fan-out)."""
+	if not project:
+		return set()
+	owner, leader = frappe.get_value(
+		"Project", project, ["project_owner", "project_leader"]
+	)
+	emails = {e for e in (owner, leader) if e}
+	emails |= set(get_project_admins(project))
+	emails |= set(
+		frappe.get_all(
+			"Project Team", filters={"parent": project}, pluck="user", limit_page_length=0
+		)
+	)
+	emails |= set(
+		frappe.get_all(
+			"Project Todo",
+			filters={"project": project, "assigned_to": ["is", "set"]},
+			pluck="assigned_to",
+			limit_page_length=0,
+		)
+	)
+	return {e for e in emails if e}
+
+
 @frappe.whitelist()
 def add_comment(reference_doctype, reference_name, content):
 	"""Add a built-in comment to a Project / Project Detail / Project Item."""
@@ -1816,6 +1843,13 @@ def add_comment(reference_doctype, reference_name, content):
 	actor = frappe.session.user
 	actor_name = (_user_name_map({actor}).get(actor) or {}).get("full_name") or actor
 	mentioned = _parse_mentions(content)
+	if "@all" in mentioned:
+		# "@all" fans out to every project participant, minus the author.
+		everyone = _project_mention_emails(
+			_comment_project(reference_doctype, reference_name)
+		)
+		everyone.discard(actor)
+		mentioned = (mentioned - {"@all"}) | everyone
 	# Mention notifications take precedence over the generic comment ping for the
 	# same person (don't double-notify a mentioned participant).
 	for u in mentioned:
@@ -1891,28 +1925,7 @@ def get_mentionable_users(reference_doctype, reference_name):
 	if not project:
 		return []
 
-	owner, leader = frappe.get_value(
-		"Project", project, ["project_owner", "project_leader"]
-	)
-	emails = {e for e in (owner, leader) if e}
-	emails |= set(get_project_admins(project))
-	emails |= set(
-		frappe.get_all(
-			"Project Team",
-			filters={"parent": project},
-			pluck="user",
-			limit_page_length=0,
-		)
-	)
-	emails |= set(
-		frappe.get_all(
-			"Project Todo",
-			filters={"project": project, "assigned_to": ["is", "set"]},
-			pluck="assigned_to",
-			limit_page_length=0,
-		)
-	)
-	emails = {e for e in emails if e}
+	emails = _project_mention_emails(project)
 	name_map = _user_name_map(emails)
 	out = [
 		{

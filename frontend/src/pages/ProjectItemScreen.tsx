@@ -1204,6 +1204,7 @@ const [followOpen, setFollowOpen] = useState(false)
     if (searchParams.get('edit')) setEditing(true)
     else if (searchParams.get('duplicate')) setDupOpen(true)
     else if (searchParams.get('issue')) setIssueOpen(true)
+    else if (searchParams.get('check')) setCheckOpen(true)
     else return
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams])

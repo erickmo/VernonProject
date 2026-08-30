@@ -72,6 +72,7 @@ export const SHORTCUTS: ShortcutGroup[] = [
       { keys: 'f', label: 'Start / stop focus' },
       { keys: 't', label: 'Set deadline to today' },
       { keys: 'c', label: 'Toggle "To Check" flag' },
+      { keys: 'r', label: 'Ask a teammate to check' },
       { keys: 'a', label: 'Toggle AI task flag' },
       { keys: '⌘S / Ctrl S', label: 'Save (while editing)' },
     ],

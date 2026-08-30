@@ -15,6 +15,7 @@ import {
   Zap,
   Bot,
   Eye,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
@@ -140,6 +141,8 @@ export function useTodoMenuGroups(
       ...((t.is_mine || t.can_prioritize) ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
       // Assignee's own "still needs checking" reminder — a plain flag, no scoring/workflow effect.
       ...(t.is_mine ? [{ key: 't-check', label: t.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek', icon: Eye, onClick: () => setCheck.mutate({ todoName: t.name, toCheck: !t.to_check }) }] : []),
+      // Hand this todo to a teammate to verify — opens FollowUpCheckDialog via the ?check deep-link on the detail.
+      ...(t.can_create ? [{ key: 't-followcheck', label: 'Minta orang lain cek…', icon: UserCheck, onClick: go(`/project-item/${item}?check=1`) }] : []),
       // Raising an issue creates a todo, so it rides the same gate as creating one.
       ...(t.can_create ? [{ key: 't-issue', label: 'Report issue', icon: AlertTriangle, onClick: go(`/project-item/${item}?issue=1`) }] : []),
       { key: 't-duplicate', label: 'Duplicate', icon: Copy, onClick: go(`/project-item/${item}?duplicate=1`) },

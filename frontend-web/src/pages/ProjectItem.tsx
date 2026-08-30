@@ -846,11 +846,13 @@ function TodoShortcuts(props: {
   canDeadlineToday: boolean
   canCheck: boolean
   canAi: boolean
+  canRequestCheck: boolean
   onEdit: () => void
   onFocusToggle: () => void
   onDeadlineToday: () => void
   onToggleCheck: () => void
   onToggleAi: () => void
+  onRequestCheck: () => void
 }) {
   const ref = useRef(props)
   ref.current = props
@@ -868,6 +870,7 @@ function TodoShortcuts(props: {
       else if (e.key === 't' && s.canDeadlineToday) { e.preventDefault(); s.onDeadlineToday() }
       else if (e.key === 'c' && s.canCheck) { e.preventDefault(); s.onToggleCheck() }
       else if (e.key === 'a' && s.canAi) { e.preventDefault(); s.onToggleAi() }
+      else if (e.key === 'r' && s.canRequestCheck) { e.preventDefault(); s.onRequestCheck() }
     }
     document.addEventListener('keydown', onKey)
     return () => {
@@ -1255,6 +1258,7 @@ const [followOpen, setFollowOpen] = useState(false)
     if (searchParams.get('edit')) setEditing(true)
     else if (searchParams.get('duplicate')) setDupOpen(true)
     else if (searchParams.get('issue')) setIssueOpen(true)
+    else if (searchParams.get('check')) setCheckOpen(true)
     else return
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams])
@@ -1448,11 +1452,13 @@ const [followOpen, setFollowOpen] = useState(false)
         canDeadlineToday={canSetDeadlineToday}
         canCheck={!!data.is_mine && data.status_key !== 'cancelled'}
         canAi={(!!data.is_mine || !!data.can_prioritize) && data.status_key !== 'cancelled'}
+        canRequestCheck={!!data.can_create}
         onEdit={() => setEditing(true)}
         onFocusToggle={() => (focusActive ? focus.stop() : openFocus())}
         onDeadlineToday={onDeadlineToday}
         onToggleCheck={onToggleCheck}
         onToggleAi={onToggleAi}
+        onRequestCheck={() => setCheckOpen(true)}
       />
       {data.status_key === 'cancelled' && <CancelledNote item={data} />}
       {data.issue_of && (
