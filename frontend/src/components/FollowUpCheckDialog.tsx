@@ -58,6 +58,8 @@ export function FollowUpCheckDialog({
 
   const est = Number(estimated)
   const estValid = Number.isFinite(est) && est >= 5
+  const today = todayISO()
+  const tomorrow = addDaysISO(today, 1)
   const canSubmit = !!assignee && estValid && !!gl.levelId && !!deadline && !followUp.isPending
 
   const submit = () => {
@@ -97,6 +99,22 @@ export function FollowUpCheckDialog({
 
         <label className="mt-3 block text-sm font-medium text-slate-600 dark:text-slate-300">
           Deadline<span className="text-red-500"> *</span>
+          <div className="mt-1 flex gap-1.5">
+            {([['Hari ini', today], ['Besok', tomorrow]] as const).map(([lbl, d]) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDeadline(d)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  deadline === d
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
           {renderDateField ? (
             <div className="mt-1">{renderDateField({ value: deadline, onChange: setDeadline })}</div>
           ) : (
