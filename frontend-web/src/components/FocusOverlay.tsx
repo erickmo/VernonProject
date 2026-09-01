@@ -19,6 +19,7 @@ import {
 import { formatClock } from '@/lib/format'
 import { ambient, loadSoundPrefs, saveSoundPrefs } from '@/lib/ambientSound'
 import type { FocusMeta } from '@/lib/focusUI'
+import { useModalEscape } from '@/hooks/useModalEscape'
 
 // Distraction-free full-screen countdown. Presentational only — all timer state
 // lives in useFocusTimer (caller). X closes overlay but leaves timer running;
@@ -79,12 +80,9 @@ export function FocusOverlay({
   // Stop sound when leaving focus mode entirely.
   useEffect(() => () => ambient.stop(), [])
 
-  // Escape closes the overlay (timer keeps running, same as the X button).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  // Escape closes the overlay (timer keeps running, same as the X button). Via
+  // the shared modal stack so it wins over a drawer/dialog underneath.
+  useModalEscape(true, onClose)
 
   const patch = (p: Partial<typeof prefs>) =>
     setPrefs((prev) => {

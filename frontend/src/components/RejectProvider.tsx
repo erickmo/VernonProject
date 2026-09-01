@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { X } from 'lucide-react'
 import { useRejectStatus } from '@/hooks/useData'
 import { Spinner } from './ui'
+import { useModalEscape } from '@/hooks/useModalEscape'
 
 // Opens a dialog to reject a Project Todo under review. A reason is required;
 // on submit the todo bounces back to Planned and the assignee is notified.
@@ -51,19 +52,17 @@ export function RejectProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, reason, reject])
 
+  // Escape closes via the shared modal stack (top-most overlay only).
+  useModalEscape(!!state, close)
+
   useEffect(() => {
     if (!state) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
-      window.removeEventListener('keydown', onKey)
     }
-  }, [state, close])
+  }, [state])
 
   return (
     <RejectCtx.Provider value={open}>

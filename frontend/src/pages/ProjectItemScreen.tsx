@@ -48,6 +48,7 @@ import { Avatar, FullScreenLoader, EmptyState, Spinner } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { openFocusOverlay } from '@/lib/focusUI'
+import { anyModalOpen } from '@/lib/modalStack'
 import { todoFileHref } from '@/lib/api'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, dateSub, stripHtml, todayISO } from '@/lib/format'
@@ -1180,6 +1181,15 @@ export default function ProjectItemScreen() {
   const restoreTodo = useRestoreTodo()
   const deleteTodo = useDeleteTodo()
   const setAutoApprove = useSetAutoApprove()
+  // Escape closes this todo screen (go back) — but only when no dialog/picker is
+  // open on top of it (those own Escape via the shared modal stack).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !anyModalOpen()) navigate(-1)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [navigate])
   const setDeadlineToday = useUpdateTodo(id)
   const setWaiting = useUpdateTodo(id)
   const setPriority = useUpdateTodo(id)

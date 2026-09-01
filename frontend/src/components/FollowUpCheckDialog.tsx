@@ -3,6 +3,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { GroupLevelPicker, type GroupLevel } from '@/components/GroupLevelPicker'
 import { useFollowUpCheck } from '@/hooks/useData'
 import { todayISO, addDaysISO } from '@/lib/format'
+import { useModalEscape } from '@/hooks/useModalEscape'
 
 // A check task defaults to Engineering ▸ Backend Development ▸ Testing (100%) at 10 min,
 // both editable. Keep in sync with follow_up_check's CHECK_DEFAULT_* server-side.
@@ -47,12 +48,9 @@ export function FollowUpCheckDialog({
     }
   }, [open, defaultAssignee, team])
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  // Escape closes via the shared modal stack (top-most overlay only), so closing
+  // this dialog inside the todo drawer doesn't also close the drawer.
+  useModalEscape(open, onClose)
 
   if (!open) return null
 

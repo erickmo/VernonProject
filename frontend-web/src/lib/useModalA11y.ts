@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { pushModal, popModal, isTopModal } from '@/lib/modalStack'
 
 /**
  * Shared modal accessibility for desktop overlays (Dialog, Drawer, Onboarding):
@@ -9,11 +10,10 @@ import { useEffect, useRef } from 'react'
  *
  * Returns a ref to attach to the panel element.
  */
-// Module-level stack of open modals so only the TOP-most one reacts to
-// Escape/Tab. Without it, a Drawer nested inside another Drawer (e.g. the todo
-// slide-over hosting ProjectItem, which itself opens dialogs) would have both
-// panels' Escape fire on one press and both Tab-traps fight over focus.
-const modalStack: symbol[] = []
+// Uses the shared modalStack so only the TOP-most open overlay reacts to
+// Escape/Tab — and so these web panels coordinate with the shared (mobile)
+// confirms/dialogs that use useModalEscape. Without it, a confirm opened inside
+// the todo drawer would have both the confirm and the drawer close on one press.
 
 export function useModalA11y(
   open: boolean,
@@ -32,9 +32,8 @@ export function useModalA11y(
 
   useEffect(() => {
     if (!open) return
-    const token = Symbol()
-    modalStack.push(token)
-    const isTop = () => modalStack[modalStack.length - 1] === token
+    const token = pushModal()
+    const isTop = () => isTopModal(token)
     const panel = ref.current
     const restoreTo = document.activeElement as HTMLElement | null
 
@@ -81,8 +80,7 @@ export function useModalA11y(
     document.body.style.overflow = 'hidden'
 
     return () => {
-      const i = modalStack.indexOf(token)
-      if (i >= 0) modalStack.splice(i, 1)
+      popModal(token)
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
       restoreTo?.focus?.()

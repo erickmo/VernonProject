@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatDate } from '@/lib/format'
+import { useModalEscape } from '@/hooks/useModalEscape'
 import {
   parseISO, todayParts, todayISO, monthGrid, stepMonth, inRange,
   splitDT, joinDT, monthLabel, WEEKDAYS,
@@ -42,6 +43,10 @@ function AnchoredPanel({
   const panelRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
+  // Escape closes via the shared modal stack (top-most overlay only), so closing
+  // the picker inside a drawer/dialog doesn't also close the drawer.
+  useModalEscape(open, onClose)
+
   useLayoutEffect(() => {
     if (!open) return
     const place = () => {
@@ -62,16 +67,13 @@ function AnchoredPanel({
       if (panelRef.current?.contains(t) || anchorRef.current?.contains(t)) return
       onClose()
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     // Any scroll (capture catches scrolling containers, not just window) detaches
     // the fixed panel from its anchor — close rather than float out of place.
     document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
     window.addEventListener('scroll', onClose, true)
     window.addEventListener('resize', onClose)
     return () => {
       document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
       window.removeEventListener('scroll', onClose, true)
       window.removeEventListener('resize', onClose)
     }

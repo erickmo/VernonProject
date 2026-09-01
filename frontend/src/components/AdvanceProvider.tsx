@@ -4,6 +4,7 @@ import { useAdvanceStatus } from '@/hooks/useData'
 import { stopTimer } from '@/hooks/useFocusTimer'
 import { Spinner } from './ui'
 import DonePop from './DonePop'
+import { useModalEscape } from '@/hooks/useModalEscape'
 
 // Opens a confirm dialog for a Project Todo status advance. After a successful
 // advance, if the SAME user is permitted to advance again, the dialog stays open
@@ -72,12 +73,15 @@ export function AdvanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, advance])
 
+  // Escape closes via the shared modal stack (top-most overlay only), so a
+  // confirm opened inside the todo drawer doesn't also close the drawer.
+  useModalEscape(!!state, close)
+
   useEffect(() => {
     if (!state) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
       if (e.key === 'Enter') {
         e.preventDefault()
         confirm()

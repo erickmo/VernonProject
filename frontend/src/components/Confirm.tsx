@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
+import { useModalEscape } from '@/hooks/useModalEscape'
 
 interface ConfirmInput {
   placeholder?: string
@@ -54,13 +55,16 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  // Escape closes (cancel) via the shared modal stack so a confirm opened inside
+  // the todo drawer doesn't also close the drawer.
+  useModalEscape(!!pending, () => close(false))
+
   useEffect(() => {
     if (!pending) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    // Enter confirms plain dialogs; in a textarea it must insert a newline.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close(false)
-      // Enter confirms plain dialogs; in a textarea it must insert a newline.
       if (e.key === 'Enter' && !pending.input) close(true)
     }
     window.addEventListener('keydown', onKey)
