@@ -118,6 +118,7 @@ def update_status(todo_id):
 				todo.status = "🟠 Done"
 				todo.developed_at = frappe.utils.now()
 				todo.developed_by = user
+				todo.to_check = 0  # marking done clears the "To Check" reminder (mirrors Focus drop)
 			else:
 				return {"status": "error", "message": f"You do not have permission to approve this todo {todo.to_do} (Yg bisa hanya Project Owner {project_owner}, Project Leader {project_leader} atau Assigned To {todo.assigned_to})."}
 		elif todo.status == "🟠 Done":
@@ -770,6 +771,7 @@ def follow_up_check(todo_id, assignee, note=None, estimated=None, group=None, le
 		todo.status = "🟠 Done"
 		todo.developed_at = frappe.utils.now()
 		todo.developed_by = user
+		todo.to_check = 0  # marking done clears the "To Check" reminder (mirrors update_status)
 		_auto_advance(todo, project.project_leader, project.project_owner, project.auto_approve)
 		todo.save(ignore_permissions=True)
 
