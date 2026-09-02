@@ -27,10 +27,10 @@ export default {
         },
       },
       fontFamily: {
-        // Figtree = friendly, slightly narrow humanist body — crisp, not wide.
-        sans: ['Figtree', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
-        // Familjen Grotesk = narrow grotesque with character for headings.
-        display: ['"Familjen Grotesk"', 'system-ui', 'sans-serif'],
+        // Inter = modern UI workhorse body face.
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Space Grotesk = geometric grotesque with character for headings.
+        display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         card: '0 2px 10px -2px rgb(120 80 40 / 0.08), 0 1px 2px 0 rgb(120 80 40 / 0.05)',

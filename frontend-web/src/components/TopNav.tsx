@@ -47,24 +47,16 @@ export function TopBar({
   const doLogout = async () => { try { await logout() } finally { window.location.href = '/w' } }
 
   return (
-    <header className="sticky top-[var(--tk-h,0px)] z-20 bg-gradient-to-br from-indigo-700 via-violet-600 to-indigo-600 shadow-[0_10px_30px_-10px_rgb(79_70_229/0.55),0_2px_6px_-3px_rgb(0_0_0/0.25)] ring-1 ring-black/10">
-      {/* slow ambient light sweep — clipped to the bar so it never bleeds onto dropdowns */}
-      <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <span className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-sheen" />
-      </span>
-      {/* top bevel highlight — raised 3D edge */}
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-      {/* signature hairline along the bottom edge */}
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-black/15" />
+    <header className="sticky top-[var(--tk-h,0px)] z-20 border-b border-line bg-white dark:bg-slate-900">
       <div className="relative flex min-h-[4.5rem] items-center gap-2 px-4 py-3 lg:px-6">
         <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
           <NavLink to="/" aria-label="Vernon home" className="group mr-2.5 flex shrink-0 items-center gap-2.5">
             {logo ? (
-              <img src={logo} alt="Vernon" className="h-9 w-auto max-w-[160px] object-contain drop-shadow-[0_2px_4px_rgb(0_0_0/0.25)] transition-transform duration-300 group-hover:scale-105" />
+              <img src={logo} alt="Vernon" className="h-9 w-auto max-w-[160px] object-contain transition-transform duration-300 group-hover:scale-105" />
             ) : (
               <>
-                <span className="grid h-9 w-9 place-items-center rounded-2xl bg-white font-display text-base font-bold text-brand-600 shadow-[0_4px_12px_-2px_rgb(0_0_0/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-1 ring-inset ring-white/50 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">V</span>
-                <span className="hidden font-display text-xl font-bold tracking-tight text-white drop-shadow-sm sm:inline">Vernon</span>
+                <span className="grid h-9 w-9 place-items-center rounded-2xl bg-brand-600 font-display text-base font-bold text-white transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">V</span>
+                <span className="hidden font-display text-xl font-bold tracking-tight text-ink sm:inline">Vernon</span>
               </>
             )}
           </NavLink>
@@ -81,8 +73,8 @@ export function TopBar({
                 className={clsx(
                   'relative flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-base font-semibold transition-all duration-200 active:scale-95',
                   active
-                    ? 'bg-white text-brand-700 shadow-[0_4px_14px_-3px_rgb(0_0_0/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-1 ring-inset ring-white/50'
-                    : 'text-white/85 hover:bg-white/15 hover:text-white',
+                    ? 'bg-brand-600 text-white'
+                    : 'text-muted hover:bg-hover/[0.05] hover:text-ink',
                 )}
               >
                 <Icon className={clsx('h-[1.15rem] w-[1.15rem] transition-transform', active && 'scale-110')} />
@@ -96,33 +88,31 @@ export function TopBar({
             )
           })}
           <button onClick={onOpenMore} aria-label="More destinations"
-            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-base font-semibold text-white/85 transition-all hover:bg-white/15 hover:text-white active:scale-95">
+            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-base font-semibold text-muted transition-all hover:bg-hover/[0.05] hover:text-ink active:scale-95">
             <Grid3x3 className="h-[1.15rem] w-[1.15rem]" /> <span className="hidden md:inline">More</span>
           </button>
         </nav>
 
         <button onClick={onOpenPalette} aria-label="Search"
-          className="group flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/80 shadow-[inset_0_1px_0_rgb(255_255_255/0.2)] transition hover:bg-white/20 hover:text-white">
+          className="group flex items-center gap-2 rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-muted transition hover:bg-hover/[0.05] hover:text-ink">
           <Search className="h-4 w-4" />
           <span className="hidden md:inline">Search…</span>
-          <kbd className="hidden rounded-md border border-white/40 bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white xl:inline-flex">⌘K</kbd>
+          <kbd className="hidden rounded-md border border-line bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-muted xl:inline-flex">⌘K</kbd>
         </button>
         {/* Discoverability hint for the `?` cheat-sheet — desktop-only (needs a physical keyboard). */}
         <button onClick={onOpenShortcuts} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (press ?)"
-          className="hidden items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-2.5 py-2 text-white/80 shadow-[inset_0_1px_0_rgb(255_255_255/0.2)] transition hover:bg-white/20 hover:text-white lg:inline-flex">
+          className="hidden items-center gap-1.5 rounded-xl border border-line bg-canvas px-2.5 py-2 text-muted transition hover:bg-hover/[0.05] hover:text-ink lg:inline-flex">
           <Keyboard className="h-4 w-4" />
-          <kbd className="rounded-md border border-white/40 bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white">?</kbd>
+          <kbd className="rounded-md border border-line bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-muted">?</kbd>
         </button>
         <button onClick={onQuickCreate} aria-label="New"
-          className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-brand-700 shadow-[0_4px_14px_-2px_rgb(0_0_0/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-1 ring-inset ring-white/50 transition hover:shadow-[0_6px_20px_-2px_rgb(0_0_0/0.4)] active:scale-[0.97]">
-          {/* sheen sweep on hover */}
-          <span aria-hidden className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-brand-500/15 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+          className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 active:scale-[0.97]">
           <Plus className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" /> <span className="hidden sm:inline">New</span>
         </button>
-        <NotificationBell className="text-white/85 hover:bg-white/15" />
+        <NotificationBell className="text-muted hover:bg-hover/[0.05]" />
         <NavLink to="/wallet"
-          className="group hidden items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold text-white/90 shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] ring-1 ring-inset ring-white/20 transition hover:bg-white/20 hover:text-white sm:flex">
-          <Coins className="h-4 w-4 text-amber-300 transition-transform group-hover:animate-wiggle" /> {wallet.data ? formatNumber(wallet.data.balance) : '—'}
+          className="group hidden items-center gap-1.5 rounded-xl border border-line bg-canvas px-3 py-2 text-sm font-bold text-ink transition hover:bg-hover/[0.05] sm:flex">
+          <Coins className="h-4 w-4 text-amber-500 transition-transform group-hover:animate-wiggle" /> {wallet.data ? formatNumber(wallet.data.balance) : '—'}
         </NavLink>
 
         <AvatarMenu name={b?.full_name ?? '?'} image={b?.image ?? undefined} config={b?.avatar_config}
@@ -142,7 +132,7 @@ function AvatarMenu({
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} aria-label="Account" aria-haspopup="menu" aria-expanded={open}
-        className="rounded-full p-0.5 ring-2 ring-white/70 ring-offset-1 ring-offset-transparent transition hover:ring-white active:scale-95">
+        className="rounded-full p-0.5 ring-1 ring-line transition hover:ring-brand-400 active:scale-95">
         <Avatar name={name} image={image} config={config} size={30} />
       </button>
       {open && (

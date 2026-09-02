@@ -26,8 +26,8 @@ html.dark {
 }
 
 @layer base {
-  /* Page titles get the display face; body stays Figtree for readability. */
-  h1 { font-family: 'Familjen Grotesk', system-ui, sans-serif; letter-spacing: -0.015em; }
+  /* Page titles get the display face; body stays Inter for readability. */
+  h1 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -0.015em; }
   /* Warm, friendly selection tint. */
   ::selection { background: rgb(99 102 241 / 0.18); }
   /* Smooth micro-interactions on anything interactive. */
@@ -142,3 +142,6 @@ body { padding-top: var(--tk-h, 0px); }
 @keyframes tk-runner { to { stroke-dashoffset: -100; } }
 .tk-runner { animation: tk-runner 2.4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .tk-runner { animation: none; } }
+
+/* Flat design: no elevation box-shadows anywhere (drop-shadow filters kept). */
+[class*="shadow"] { box-shadow: none; }

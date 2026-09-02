@@ -88,7 +88,7 @@ function Badge({ u, logo, value }: { u: TeamWallUser; logo: string; value: strin
       <div className="absolute inset-x-0 top-[176px] px-3 text-center">
         <h2
           className="line-clamp-2 break-words text-[19px] font-extrabold uppercase leading-[1.02] tracking-tight text-indigo-950"
-          style={{ fontFamily: '"Familjen Grotesk", "Figtree", ui-sans-serif, system-ui, sans-serif' }}
+          style={{ fontFamily: '"Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif' }}
         >
           {name}
         </h2>

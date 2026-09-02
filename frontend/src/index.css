@@ -116,3 +116,6 @@ body { padding-top: var(--tk-h, 0px); }
 @keyframes tk-runner { to { stroke-dashoffset: -100; } }
 .tk-runner { animation: tk-runner 2.4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .tk-runner { animation: none; } }
+
+/* Flat design: no elevation box-shadows anywhere (drop-shadow filters kept). */
+[class*="shadow"] { box-shadow: none; }

@@ -16,7 +16,7 @@ export function BottomNav() {
   const reviewCount = data?.counts.review ?? 0
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-edge dark:border-slate-800 bg-paper-card dark:bg-slate-800 shadow-nav pb-safe">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-edge dark:border-slate-800 bg-white dark:bg-slate-800 shadow-nav pb-safe">
       <div className="mx-auto flex max-w-[448px] items-stretch justify-around">
         {TABS.map((t) => {
           const Icon = t.icon

@@ -29,9 +29,9 @@ export default {
         },
       },
       fontFamily: {
-        // Match mobile: Figtree body + Familjen Grotesk display.
-        sans: ['Figtree', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
-        display: ['"Familjen Grotesk"', 'system-ui', 'sans-serif'],
+        // Match mobile: Inter body + Space Grotesk display.
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         // Warm-tinted shadows to match mobile (shared /m components use shadow-card/nav).
