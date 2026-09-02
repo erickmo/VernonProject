@@ -1,6 +1,6 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert/strict'
-import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, todoHasTag } from './filters'
+import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, todoHasTag, todoDayBucket, cycleDay, filterByDay } from './filters'
 
 const todos = [
   { project: 'P1', project_name: 'Alpha', detail: 'Login screen' },
@@ -99,5 +99,28 @@ assert.deepEqual(
 assert.equal(cycleTag(new Map(), 'ai').get('ai'), 'on')
 assert.equal(cycleTag(new Map([['ai', 'on']]), 'ai').get('ai'), 'off')
 assert.equal(cycleTag(new Map([['ai', 'off']]), 'ai').has('ai'), false)
+
+// --- todoDayBucket / filterByDay / cycleDay (the "today" day-plan filter) ---
+const TODAY = '2026-09-01'
+const dayItems = [
+  { name: 'plan-today', allocations: [{ date: '2026-08-30', minutes: 30 }, { date: TODAY, minutes: 60 }] },
+  { name: 'plan-other', allocations: [{ date: '2026-09-05', minutes: 60 }] },
+  { name: 'no-plan', allocations: [] },
+  { name: 'no-alloc-field' }, // allocations undefined ⇒ unplanned
+]
+assert.equal(todoDayBucket(dayItems[0], TODAY), 'today') // any slot dated today
+assert.equal(todoDayBucket(dayItems[1], TODAY), 'other') // planned, none today
+assert.equal(todoDayBucket(dayItems[2], TODAY), 'unplanned') // empty slots
+assert.equal(todoDayBucket(dayItems[3], TODAY), 'unplanned') // missing field
+// filterByDay: undefined = pass-through; a bucket keeps only its members.
+assert.equal(filterByDay(dayItems, undefined, TODAY).length, 4)
+assert.deepEqual(filterByDay(dayItems, 'today', TODAY).map((t) => t.name), ['plan-today'])
+assert.deepEqual(filterByDay(dayItems, 'other', TODAY).map((t) => t.name), ['plan-other'])
+assert.deepEqual(filterByDay(dayItems, 'unplanned', TODAY).map((t) => t.name), ['no-plan', 'no-alloc-field'])
+// cycleDay: All → Today → Not today → Unplanned → All.
+assert.equal(cycleDay(undefined), 'today')
+assert.equal(cycleDay('today'), 'other')
+assert.equal(cycleDay('other'), 'unplanned')
+assert.equal(cycleDay('unplanned'), undefined)
 
 console.log('tagFilter.selfcheck: all assertions passed')

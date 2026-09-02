@@ -510,7 +510,8 @@ def get_recently_done(limit=30):
 def save_notes(todo_id, notes):
 	"""
 	Save notes for a project todo item.
-	Only assigned_to, project_owner, or project_leader can save.
+	Only assigned_to, project_owner, project_leader, or the todo creator
+	(todo.owner) can save.
 	"""
 	try:
 		todo = frappe.get_doc("Project Todo", todo_id)
@@ -518,12 +519,12 @@ def save_notes(todo_id, notes):
 		project = frappe.get_doc("Project", project_detail.project)
 
 		user = frappe.session.user
-		allowed = [todo.assigned_to, project.project_owner, project.project_leader]
+		allowed = [todo.assigned_to, project.project_owner, project.project_leader, todo.owner]
 
 		if user not in allowed:
 			return {
 				"status": "error",
-				"message": f"Anda tidak punya izin mengubah catatan ini. Yang boleh: Assigned To ({todo.assigned_to}), Project Owner ({project.project_owner}), atau Project Leader ({project.project_leader})."
+				"message": f"Anda tidak punya izin mengubah catatan ini. Yang boleh: Assigned To ({todo.assigned_to}), Project Owner ({project.project_owner}), Project Leader ({project.project_leader}), atau pembuat todo ({todo.owner})."
 			}
 
 		todo.notes = notes
@@ -572,7 +573,7 @@ def save_checklist(todo_id, checklist):
 
 		user = frappe.session.user
 		allowed = (
-			user in (todo.assigned_to, project.project_owner, project.project_leader)
+			user in (todo.assigned_to, project.project_owner, project.project_leader, todo.owner)
 			or user in get_project_admins(project)
 			or "System Manager" in frappe.get_roles(user)
 		)

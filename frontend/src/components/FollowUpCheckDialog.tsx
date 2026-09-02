@@ -2,8 +2,18 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { GroupLevelPicker, type GroupLevel } from '@/components/GroupLevelPicker'
 import { useFollowUpCheck } from '@/hooks/useData'
-import { todayISO, addDaysISO } from '@/lib/format'
+import { todayISO, addDaysISO, pickRememberedDeadline } from '@/lib/format'
 import { useModalEscape } from '@/hooks/useModalEscape'
+
+// Remember the last deadline picked in this dialog so re-checking many todos in a row
+// doesn't re-type it. Client-side only (per browser), guarded for private mode.
+const DEADLINE_KEY = 'followUpCheck.lastDeadline'
+const readLastDeadline = (): string | null => {
+  try { return localStorage.getItem(DEADLINE_KEY) } catch { return null }
+}
+const saveLastDeadline = (d: string) => {
+  try { localStorage.setItem(DEADLINE_KEY, d) } catch { /* private mode: don't remember */ }
+}
 
 // A check task defaults to Engineering ▸ Backend Development ▸ Testing (100%) at 10 min,
 // both editable. Keep in sync with follow_up_check's CHECK_DEFAULT_* server-side.
@@ -44,7 +54,8 @@ export function FollowUpCheckDialog({
       setNote('')
       setEstimated(DEFAULT_EST)
       setGl(DEFAULT_GL)
-      setDeadline(addDaysISO(todayISO(), 1)) // default tomorrow
+      // Prefill with the last deadline picked here (if still today-or-later), else tomorrow.
+      setDeadline(pickRememberedDeadline(readLastDeadline(), todayISO(), addDaysISO(todayISO(), 1)))
     }
   }, [open, defaultAssignee, team])
 
@@ -64,7 +75,7 @@ export function FollowUpCheckDialog({
     if (!canSubmit) return
     followUp.mutate(
       { todoId: todo.name, assignee, note: note.trim() || undefined, estimated: est, group: gl.group, levelId: gl.levelId, deadline },
-      { onSuccess: onClose },
+      { onSuccess: () => { saveLastDeadline(deadline); onClose() } },
     )
   }
 

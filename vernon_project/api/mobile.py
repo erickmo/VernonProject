@@ -2056,7 +2056,7 @@ def get_project_item(project_item):
 	_admins = get_project_admins(r["project"])
 	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=_admins)
 	shaped["can_edit_notes"] = user in (
-		r["assigned_to"], r["project_owner"], r["project_leader"]
+		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
 	) or user in _admins
 	# Full-task edit is a lead action; assignee/deadline/estimate are locked once
 	# the task is Done/Completed (enforced by the doctype's validate()).

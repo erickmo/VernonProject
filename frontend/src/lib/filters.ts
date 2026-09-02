@@ -308,3 +308,33 @@ export function filterByTags(list: ProjectItem[], state: TagFilterState, focused
       off.every((tag) => !todoHasTag(t, tag, focusedIds)),
   )
 }
+
+/**
+ * Day-plan bucket for the "today" filter, from a todo's plan slots (`allocations`):
+ * `today` = a slot dated today, `unplanned` = no slots at all, `other` = planned but
+ * none today. `today` param is todayISO() (injected so this stays pure/testable).
+ */
+export type DayBucket = 'today' | 'other' | 'unplanned'
+
+export function todoDayBucket(t: ProjectItem, today: string): DayBucket {
+  if (!t.allocations?.length) return 'unplanned'
+  return t.allocations.some((a) => a.date === today) ? 'today' : 'other'
+}
+
+/** Chip labels for the "today" filter. Neutral (undefined) state reuses "Today". */
+export const DAY_FILTER_LABEL: Record<DayBucket, string> = {
+  today: 'Today',
+  other: 'Not today',
+  unplanned: 'Unplanned',
+}
+
+/** Single-select cycle: All (undefined) → Today → Not today → Unplanned → All. */
+const DAY_CYCLE: (DayBucket | undefined)[] = [undefined, 'today', 'other', 'unplanned']
+export function cycleDay(cur: DayBucket | undefined): DayBucket | undefined {
+  return DAY_CYCLE[(DAY_CYCLE.indexOf(cur) + 1) % DAY_CYCLE.length]
+}
+
+/** Keep only todos in the selected day bucket; undefined = pass-through. */
+export function filterByDay(list: ProjectItem[], bucket: DayBucket | undefined, today: string): ProjectItem[] {
+  return bucket ? list.filter((t) => todoDayBucket(t, today) === bucket) : list
+}

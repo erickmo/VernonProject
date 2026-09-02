@@ -4,9 +4,10 @@ import { SearchableSelect, type SelectOption } from '@/components/SearchableSele
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import type { ProjectItem } from '@/lib/types'
 import {
-  groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, matchProjectItem, TODO_TAGS,
-  MIN_COLS, MAX_COLS, type DetailGroup, type TodoTag, type TagFilterState,
+  groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, filterByDay, cycleDay, DAY_FILTER_LABEL, matchProjectItem, TODO_TAGS,
+  MIN_COLS, MAX_COLS, type DetailGroup, type TodoTag, type TagFilterState, type DayBucket,
 } from '@/lib/filters'
+import { todayISO } from '@/lib/format'
 
 // One scroll only: columns grow to their content and the WINDOW scrolls. The
 // per-column viewport-tall scroll region was removed — nesting a scroll inside
@@ -84,17 +85,19 @@ function ProjectPickCol({
   focusedIds: Set<string>
 }) {
   const [tags, setTags] = useState<TagFilterState>(new Map())
+  const [day, setDay] = useState<DayBucket | undefined>()
   const [q, setQ] = useState('')
   const toggleTag = (t: TodoTag) => setTags((s) => cycleTag(s, t))
   const base = group ? group.todos : fallbackTodos
-  const todos = base && filterByTags(base, tags, focusedIds).filter((t) => matchProjectItem(t, q))
+  const todos =
+    base && filterByDay(filterByTags(base, tags, focusedIds), day, todayISO()).filter((t) => matchProjectItem(t, q))
   return (
     <div className={COL}>
       <SearchableSelect value={pick} onChange={setPick} options={options} allowClear placeholder={fallbackTodos ? 'All projects' : 'Pick a project'} />
       {base && (
         <div className="flex flex-col gap-2">
           <ColSearch value={q} onChange={setQ} />
-          <TagFilter selected={tags} toggle={toggleTag} />
+          <TagFilter selected={tags} toggle={toggleTag} day={day} onDay={() => setDay(cycleDay(day))} />
         </div>
       )}
       {todos ? (
@@ -114,7 +117,17 @@ function ProjectPickCol({
 
 // Tri-state chip row for the todo tag filter (untagged/focus/ai/to-check). Each
 // chip cycles all → on (require) → off (exclude) → all. Empty = show everything.
-function TagFilter({ selected, toggle }: { selected: TagFilterState; toggle: (t: TodoTag) => void }) {
+function TagFilter({
+  selected,
+  toggle,
+  day,
+  onDay,
+}: {
+  selected: TagFilterState
+  toggle: (t: TodoTag) => void
+  day: DayBucket | undefined
+  onDay: () => void
+}) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {TODO_TAGS.map(({ value, label }) => {
@@ -139,6 +152,19 @@ function TagFilter({ selected, toggle }: { selected: TagFilterState; toggle: (t:
           </button>
         )
       })}
+      {/* Day-plan filter: single chip cycling All → Today → Not today → Unplanned. */}
+      <button
+        type="button"
+        aria-label={`Day plan: ${day ? DAY_FILTER_LABEL[day] : 'all'}`}
+        title={day ? DAY_FILTER_LABEL[day] : 'Filter by day plan'}
+        onClick={onDay}
+        className={
+          'rounded-full border px-3 py-1 text-xs font-semibold transition ' +
+          (day ? 'border-ink bg-ink text-canvas' : 'border-line text-muted hover:bg-line')
+        }
+      >
+        {day ? `✓ ${DAY_FILTER_LABEL[day]}` : 'Today'}
+      </button>
     </div>
   )
 }

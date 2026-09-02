@@ -5,7 +5,8 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { TodoCard } from '@/components/TodoCard'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
 import type { ProjectItem } from '@/lib/types'
-import { groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, matchProjectItem, TODO_TAGS, MIN_COLS, MAX_COLS, type TodoTag, type TagFilterState } from '@/lib/filters'
+import { groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, filterByDay, cycleDay, DAY_FILTER_LABEL, matchProjectItem, TODO_TAGS, MIN_COLS, MAX_COLS, type TodoTag, type TagFilterState, type DayBucket } from '@/lib/filters'
+import { todayISO } from '@/lib/format'
 
 // A per-pane text search box (todo text + project/brand/people, via matchProjectItem).
 function ColSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -28,18 +29,21 @@ function ColSearch({ value, onChange }: { value: string; onChange: (v: string) =
 // leans on the page-wide search in the header instead.
 function Pane({ todos, focusedIds, withSearch = false }: { todos: ProjectItem[]; focusedIds: Set<string>; withSearch?: boolean }) {
   const [tags, setTags] = useState<TagFilterState>(new Map())
+  const [day, setDay] = useState<DayBucket | undefined>()
   const [q, setQ] = useState('')
   const toggleTag = (t: TodoTag) => setTags((s) => cycleTag(s, t))
-  const shown = filterByTags(todos, tags, focusedIds).filter((t) => (withSearch ? matchProjectItem(t, q) : true))
+  const shown = filterByDay(filterByTags(todos, tags, focusedIds), day, todayISO()).filter((t) =>
+    withSearch ? matchProjectItem(t, q) : true,
+  )
   return (
     <div className="flex flex-col gap-3">
       {withSearch && <ColSearch value={q} onChange={setQ} />}
-      <TagFilter selected={tags} toggle={toggleTag} />
+      <TagFilter selected={tags} toggle={toggleTag} day={day} onDay={() => setDay(cycleDay(day))} />
       {shown.length ? (
         shown.map((t) => <TodoCard key={t.name} todo={t} />)
       ) : (
         <div className="rounded-2xl border border-dashed border-paper-edge p-8 text-center text-sm text-stone-400 dark:border-slate-700 dark:text-slate-500">
-          {q || tags.size ? 'Tidak ada yang cocok.' : 'Belum ada tugas di sini.'}
+          {q || tags.size || day ? 'Tidak ada yang cocok.' : 'Belum ada tugas di sini.'}
         </div>
       )}
     </div>
@@ -48,7 +52,17 @@ function Pane({ todos, focusedIds, withSearch = false }: { todos: ProjectItem[];
 
 // Todo tag filter chips (untagged/focus/ai/to-check). Each chip is tri-state,
 // cycling all → on (require) → off (exclude) → all. Empty = show everything.
-function TagFilter({ selected, toggle }: { selected: TagFilterState; toggle: (t: TodoTag) => void }) {
+function TagFilter({
+  selected,
+  toggle,
+  day,
+  onDay,
+}: {
+  selected: TagFilterState
+  toggle: (t: TodoTag) => void
+  day: DayBucket | undefined
+  onDay: () => void
+}) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {TODO_TAGS.map(({ value, label }) => {
@@ -71,6 +85,20 @@ function TagFilter({ selected, toggle }: { selected: TagFilterState; toggle: (t:
           </button>
         )
       })}
+      {/* Day-plan filter: single chip cycling All → Today → Not today → Unplanned. */}
+      <button
+        type="button"
+        aria-label={`Day plan: ${day ? DAY_FILTER_LABEL[day] : 'all'}`}
+        title={day ? DAY_FILTER_LABEL[day] : 'Filter by day plan'}
+        onClick={onDay}
+        className={clsx(
+          'rounded-full px-3 py-1 text-xs font-semibold transition active:scale-95',
+          day && 'bg-brand-600 text-white shadow-sm',
+          !day && 'border border-paper-edge text-stone-500 dark:border-slate-700 dark:text-slate-400',
+        )}
+      >
+        {day ? `✓ ${DAY_FILTER_LABEL[day]}` : 'Today'}
+      </button>
     </div>
   )
 }

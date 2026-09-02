@@ -122,6 +122,13 @@ export function addDaysISO(iso: string, n: number): string {
   return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 }
 
+// Follow-up check dialog remembers the last deadline you picked and prefills it on the
+// next open. Reuse a stored date only if it's still today-or-later; a stale past date
+// falls back to tomorrow. ISO YYYY-MM-DD sorts lexicographically = chronologically.
+export function pickRememberedDeadline(stored: string | null, today: string, tomorrow: string): string {
+  return stored && stored >= today ? stored : tomorrow
+}
+
 export function stripHtml(html: string): string {
   if (!html) return ''
   const tmp = document.createElement('div')
