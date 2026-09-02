@@ -90,7 +90,7 @@ export function DataTable<T>({
                 onContextMenu={onRowContextMenu ? (e) => onRowContextMenu(row, e) : undefined}
                 className={clsx(
                   'border-b border-line last:border-0',
-                  onRowClick && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] hover:shadow-[inset_2px_0_0_#6366f1]',
+                  onRowClick && 'cursor-pointer hover:bg-hover/[0.03] dark:hover:bg-hover/[0.04] hover:shadow-[inset_2px_0_0_#7c3aed]',
                   rowClassName?.(row),
                   activeKey === k && 'bg-brand-50 dark:bg-brand-500/10',   // selection wins over row tint
                 )}

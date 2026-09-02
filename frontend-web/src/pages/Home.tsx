@@ -538,7 +538,7 @@ export default function Home() {
         <div className="flex flex-col gap-3">
           <div className="rounded-3xl border border-line bg-gradient-to-br from-brand-50 via-surface to-surface p-4 dark:from-brand-500/10 dark:via-slate-900 dark:to-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{dateStr}</p>
-            <h1 className="mt-1 font-display text-2xl font-semibold text-ink">{firstName ? `${greeting}, ${firstName}` : greeting}</h1>
+            <h1 className="mt-1 font-display text-3xl font-semibold leading-[1.1] text-ink sm:text-4xl">{firstName ? `${greeting}, ${firstName}` : greeting}</h1>
             <p className="mt-1 text-sm text-muted">
               {needCount === 0
                 ? `You're all caught up${daily?.streak ? ` — 🔥 ${daily.streak}-day streak` : ''}.${counts.upcoming > 0 ? '' : ' Enjoy the clear plate.'}`

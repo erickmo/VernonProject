@@ -56,7 +56,7 @@ export function BentoTile({
   // brand-600) instead of inheriting the shared `text-ink` below — header
   // icon/subtitle and BentoStat label/delta use text-current so they follow.
   const toneClass =
-    tone === 'plain' ? 'bg-surface shadow-card'
+    tone === 'plain' ? 'bg-surface border border-line'
     : tone === 'tint' ? `${ACCENT_TINT[accent]} border border-line`
     : tone === 'gradient' ? 'bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-500/15 dark:to-brand-500/5'
     : 'bg-brand-600 text-white'   // solid

@@ -47,7 +47,7 @@ export function TopBar({
   const doLogout = async () => { try { await logout() } finally { window.location.href = '/w' } }
 
   return (
-    <header className="sticky top-[var(--tk-h,0px)] z-20 border-b border-line bg-white dark:bg-slate-900">
+    <header className="sticky top-[var(--tk-h,0px)] z-20 border-b border-line bg-surface/90 backdrop-blur-md">
       <div className="relative flex min-h-[4.5rem] items-center gap-2 px-4 py-3 lg:px-6">
         <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
           <NavLink to="/" aria-label="Vernon home" className="group mr-2.5 flex shrink-0 items-center gap-2.5">
@@ -74,21 +74,21 @@ export function TopBar({
                   'relative flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-base font-semibold transition-all duration-200 active:scale-95',
                   active
                     ? 'bg-brand-600 text-white'
-                    : 'text-muted hover:bg-hover/[0.05] hover:text-ink',
+                    : 'text-muted hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-brand-500/15 dark:hover:text-brand-300',
                 )}
               >
                 <Icon className={clsx('h-[1.15rem] w-[1.15rem] transition-transform', active && 'scale-110')} />
                 <span className="hidden md:inline">{t.label}</span>
                 {badge > 0 && (
-                  <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white/60">
+                  <span className="ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold leading-none text-amber-950">
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}
               </NavLink>
             )
           })}
-          <button onClick={onOpenMore} aria-label="More destinations"
-            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-base font-semibold text-muted transition-all hover:bg-hover/[0.05] hover:text-ink active:scale-95">
+          <button onClick={onOpenMore} aria-label="More destinations" title="All destinations"
+            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 py-2 text-base font-semibold text-muted transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 active:scale-95 dark:hover:bg-brand-500/15 dark:hover:text-brand-300">
             <Grid3x3 className="h-[1.15rem] w-[1.15rem]" /> <span className="hidden md:inline">More</span>
           </button>
         </nav>

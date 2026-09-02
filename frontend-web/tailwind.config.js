@@ -8,10 +8,12 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Cool violet — the company purple as a clean editorial violet. Contrast
+        // checked: white-on-600 5.7:1, 600-on-canvas 5.36:1, 300-on-slate 9.67:1.
         brand: {
-          50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
-          400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
-          800: '#3730a3', 900: '#312e81',
+          50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd',
+          400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9',
+          800: '#5b21b6', 900: '#4c1d95',
         },
         canvas:  'rgb(var(--canvas) / <alpha-value>)',
         surface: 'rgb(var(--surface) / <alpha-value>)',
@@ -29,15 +31,16 @@ export default {
         },
       },
       fontFamily: {
-        // Match mobile: Inter body + Space Grotesk display.
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
-        display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
+        // Cool-editorial pair: Instrument Serif (crisp high-contrast serif display)
+        // + Familjen Grotesk (neutral grotesque body, shared voice with mobile /m).
+        sans: ['"Familjen Grotesk"', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['"Instrument Serif"', 'Georgia', 'ui-serif', 'serif'],
       },
       boxShadow: {
         // Warm-tinted shadows to match mobile (shared /m components use shadow-card/nav).
         card: '0 2px 10px -2px rgb(120 80 40 / 0.08), 0 1px 2px 0 rgb(120 80 40 / 0.05)',
         'card-hover': '0 6px 20px -4px rgb(120 80 40 / 0.12), 0 2px 6px -1px rgb(120 80 40 / 0.07)',
-        pop: '0 4px 24px -6px rgb(15 15 15 / 0.12), 0 1px 3px 0 rgb(15 15 15 / 0.06)',
+        pop: '0 8px 30px -8px rgb(15 23 42 / 0.16), 0 2px 6px -2px rgb(15 23 42 / 0.10)',
         nav: '0 -1px 12px 0 rgb(120 80 40 / 0.07)',
       },
       keyframes: {

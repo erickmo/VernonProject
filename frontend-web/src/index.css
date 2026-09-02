@@ -4,32 +4,32 @@
 
 :root {
   color-scheme: light;
-  /* Warm paper palette — exact match to mobile (/m): #FAF7F0 canvas, #FFFDF8
-     card surface, #3A2F28 ink, #EAE3D5 edge line. */
-  --canvas: 243 242 239;   /* #F3F2EF light warm gray (greige) */
-  --surface: 255 253 248;  /* #FFFDF8 card lifts off the canvas */
-  --ink: 58 47 40;         /* #3A2F28 warm ink */
-  --muted: 110 109 106;    /* AA on the warm canvas (~4.95:1) */
-  --line: 234 227 213;     /* #EAE3D5 warm edge */
-  --hover: 30 22 8;        /* warm-tinted, used at low alpha via bg-hover/[.04] */
+  /* Cool editorial palette: crisp neutral canvas, white card, cool near-black
+     ink. AA verified — ink 16.7:1, muted 5.6:1 on canvas. */
+  --canvas: 247 248 250;   /* #F7F8FA cool off-white */
+  --surface: 255 255 255;  /* #FFFFFF card lifts off the canvas */
+  --ink: 22 24 29;         /* #16181D cool near-black */
+  --muted: 91 100 112;     /* #5B6470 cool gray, AA on canvas */
+  --line: 230 232 236;     /* #E6E8EC cool edge */
+  --hover: 20 22 30;       /* cool near-black, used at low alpha via bg-hover/[.04] */
 }
 html.dark {
   color-scheme: dark;
-  /* Slate dark — matches mobile (/m) dark and the shared /m components that
-     hardcode dark:bg-slate-*. Keeps light+dark consistent across both apps. */
+  /* Cool slate dark — matches the reused /m components that hardcode
+     dark:bg-slate-*, so cards stay consistent in dark mode. */
   --canvas: 15 23 42;      /* slate-900 #0F172A */
   --surface: 30 41 59;     /* slate-800 #1E293B — surface above canvas */
   --ink: 226 232 240;      /* slate-200 #E2E8F0 */
   --muted: 148 163 184;    /* slate-400 */
   --line: 51 65 85;        /* slate-700 — borders read against surface */
-  --hover: 255 252 247;
+  --hover: 248 250 252;    /* slate-50 near-white for low-alpha hovers */
 }
 
 @layer base {
-  /* Page titles get the display face; body stays Inter for readability. */
-  h1 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -0.015em; }
-  /* Warm, friendly selection tint. */
-  ::selection { background: rgb(99 102 241 / 0.18); }
+  /* Page titles get the Instrument Serif display face; body stays Familjen Grotesk. */
+  h1 { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.005em; }
+  /* Cool violet selection tint. */
+  ::selection { background: rgb(124 58 237 / 0.16); }
   /* Smooth micro-interactions on anything interactive. */
   a, button, [role='button'], summary {
     transition: color .15s ease, background-color .15s ease, border-color .15s ease,
@@ -40,7 +40,7 @@ html.dark {
      tile, chip, lens button and link that relied on the default outline now
      gets one consistent brand ring. */
   :focus-visible {
-    outline: 2px solid rgb(99 102 241);   /* brand-500 */
+    outline: 2px solid rgb(124 58 237);   /* brand-500 (violet) */
     outline-offset: 2px;
   }
 }
@@ -51,17 +51,23 @@ html, body, #root { height: 100%; }
 html { overscroll-behavior: none; }
 body {
   margin: 0;
-  /* Warm cream canvas + faint warm dot grain for the tactile paper feel (matches /m). */
-  background-color: rgb(var(--canvas));
-  background-image: radial-gradient(rgba(120, 90, 60, 0.045) 1px, transparent 1px);
-  background-size: 22px 22px;
+  font-family: 'Familjen Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: rgb(var(--ink));
+  /* Atmosphere, not a flat fill: two soft cool glows (violet + slate) drifting in
+     from the top corners — clean and editorial, no paper texture. */
+  background-color: rgb(var(--canvas));
+  background-image:
+    radial-gradient(900px 380px at 88% -10%, rgb(124 58 237 / 0.05), transparent 60%),
+    radial-gradient(760px 340px at 0% 0%, rgb(100 116 139 / 0.05), transparent 55%);
+  background-repeat: no-repeat;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-/* Dark canvas is solid slate — no paper grain. */
+/* Dark: same glows, a touch stronger to register on slate. */
 html.dark body {
-  background-image: none;
+  background-image:
+    radial-gradient(900px 380px at 88% -10%, rgb(139 92 246 / 0.12), transparent 60%),
+    radial-gradient(760px 340px at 0% 0%, rgb(148 163 184 / 0.06), transparent 55%);
 }
 
 /* Hide scrollbars on horizontal strips but keep scrollability */
@@ -85,7 +91,7 @@ html.dark body {
 .prose-notes {
   font-size: 0.9rem;
   line-height: 1.55;
-  color: #334155;
+  color: rgb(var(--ink));
 }
 .prose-notes p {
   margin: 0 0 0.5rem;
@@ -95,10 +101,10 @@ html.dark body {
   margin: 0 0 0.5rem 1.1rem;
 }
 .prose-notes a {
-  color: #4f46e5;
+  color: #7c3aed;   /* brand-600 (violet) */
   text-decoration: underline;
 }
-html.dark .prose-notes { color: #cbd5e1; } /* slate-300 */
+html.dark .prose-notes a { color: #c4b5fd; } /* brand-300 — AA on slate */
 
 /* Placeholder for empty contentEditable rich editor */
 .rich-editor:empty:before {
@@ -143,5 +149,8 @@ body { padding-top: var(--tk-h, 0px); }
 .tk-runner { animation: tk-runner 2.4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .tk-runner { animation: none; } }
 
-/* Flat design: no elevation box-shadows anywhere (drop-shadow filters kept). */
-[class*="shadow"] { box-shadow: none; }
+/* Flat page surfaces: cards/tiles carry no elevation (deliberate flat design) —
+   separation comes from the hairline border + warm surface instead. Overlays
+   (menus, sheets, popovers, hover cards) keep shadow-pop so they read as
+   floating above the page rather than glued to it. */
+.shadow-card, .shadow-card-hover, .shadow-nav, .shadow-sm { box-shadow: none !important; }
