@@ -22,6 +22,7 @@ import {
   BookOpen,
   Sparkles,
   Flame,
+  UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +72,7 @@ export const ACTION_GROUPS: { title: string; hue: string; tile: string; items: A
     items: [
       { icon: Ticket, title: 'Events', short: 'Events', desc: 'Browse and register for office events, or host your own.', to: '/events' },
       { icon: HandHeart, title: 'Recognize teammates', short: 'Recognize', desc: 'React on the team wall to send recognition points.', to: '/team-wall' },
+      { icon: UtensilsCrossed, title: 'Makan Bareng', short: 'Makan', desc: 'Ajak rekan kerja makan bareng.', to: '/food/new' },
       { icon: Megaphone, title: 'Papan Iklan', short: 'Iklan', desc: 'Pasang iklan — jual, beli, atau sewa barang.', to: '/papan-iklan' },
     ],
   },
