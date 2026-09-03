@@ -17,3 +17,5 @@ scratchpad/
 # MCP server: isolated venv + real secrets, never committed
 mcp_server/.venv/
 mcp_server/.env
+mcp_server/.env.http
+mcp_server/*.log
