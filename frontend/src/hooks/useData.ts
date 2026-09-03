@@ -122,6 +122,8 @@ export const keys = {
   redemptionNotice: ['redemption-notice'] as const,
   unreadMentions: ['unread-mentions'] as const,
   notificationFeed: ['notification-feed'] as const,
+  foodInvitesPending: ['food-invites-pending'] as const,
+  foodInvite: (n: string) => ['food-invite', n] as const,
   personalNotes: ['personalNotes'] as const,
   meetings: ['meetings'] as const,
   meeting: (n: string) => ['meeting', n] as const,
@@ -3239,5 +3241,65 @@ export function useDeleteSuperpower() {
   return useMutation({
     mutationFn: (name: string) => mobileApi.deleteSuperpower(name),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.superpowers }),
+  })
+}
+
+// --- Food Invite (Makan Bareng) ---------------------------------------------
+
+/** Open invites the session user hasn't answered. Poll backstop for the popup;
+ * FoodInviteWatcher also refetches this on the `food_invite` realtime event.
+ * Poll-safe for everyone (no invites → []). */
+export function usePendingFoodInvites() {
+  return useQuery({
+    queryKey: keys.foodInvitesPending,
+    queryFn: () => mobileApi.pendingFoodInvites(),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+  })
+}
+
+/** One invite by name — for the shared /food/:name link page. */
+export function useFoodInvite(name: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: keys.foodInvite(name ?? ''),
+    queryFn: () => mobileApi.getFoodInvite(name!),
+    enabled: enabled && !!name,
+  })
+}
+
+export function useRespondFoodInvite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ invite, response }: { invite: string; response: 'Yes' | 'No' }) =>
+      mobileApi.respondFoodInvite(invite, response),
+    onSettled: (_r, _e, v) => {
+      qc.invalidateQueries({ queryKey: keys.foodInvitesPending })
+      qc.invalidateQueries({ queryKey: keys.foodInvite(v.invite) })
+    },
+  })
+}
+
+export function useCreateFoodInvite() {
+  return useMutation({
+    mutationFn: async (v: {
+      message: string
+      order_by: string
+      audience_type: import('@/lib/types').FoodAudience
+      place?: string
+      users?: string[]
+      project?: string
+    }) => {
+      const res = await mobileApi.createFoodInvite(v)
+      if (res.status !== 'success') throw new Error(res.message || 'Gagal membuat undangan')
+      return res
+    },
+  })
+}
+
+/** Internal-team + intern directory for the "specific people" picker. */
+export function useFoodInvitableUsers(txt = '') {
+  return useQuery({
+    queryKey: ['food-invitable', txt] as const,
+    queryFn: () => mobileApi.foodInvitableUsers(txt),
   })
 }

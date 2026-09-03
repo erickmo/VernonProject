@@ -10,6 +10,7 @@ import {
   Hand,
   Heart,
   Megaphone,
+  UtensilsCrossed,
   MessageCircle,
   MessageSquareText,
 } from 'lucide-react'
@@ -31,6 +32,7 @@ export const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   Attendance: CalendarClock,
   Billboard: Megaphone,
   Learning: GraduationCap,
+  'Food Invite': UtensilsCrossed,
 }
 
 /** The destinations whose path differs between /m and /w. */
@@ -83,6 +85,8 @@ export function deepLink(n: AppNotification, routes: DeepLinkRoutes): string {
       return routes.exceptionApprovals
     case 'Attendance Exception':
       return routes.myExceptions
+    case 'Food Invite':
+      return name ? `/food/${enc}` : '/'
     default:
       return '/'
   }

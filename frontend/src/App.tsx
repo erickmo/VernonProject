@@ -33,6 +33,9 @@ import DailyRecognitionGate from './components/DailyRecognitionGate'
 import PhotoGate from './components/PhotoGate'
 import DiscReminderPopup from './components/DiscReminderPopup'
 import PrankPopup from './components/PrankPopup'
+import { FoodInviteWatcher } from './components/FoodInviteWatcher'
+import { CreateFoodInviteSheet } from './components/CreateFoodInviteSheet'
+import FoodInviteScreen from './pages/FoodInviteScreen'
 import RecognitionGateTest from './pages/RecognitionGateTest'
 import GroupsScreen from './pages/GroupsScreen'
 import DataHealthScreen from './pages/DataHealthScreen'
@@ -225,6 +228,7 @@ export default function App() {
       {!superpowerBlocked && !recognitionGate?.owed && <DiscReminderPopup />}
       {/* Photo prank: self-gates on boot.settings.prank_enabled, ticks its own timer. */}
       <PrankPopup />
+      <FoodInviteWatcher />
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />
@@ -246,6 +250,8 @@ export default function App() {
         {/* Legacy deep-link redirects (cached PWA links). Remove next release. */}
         <Route path="/work-item/:name" element={<LegacyRedirect to="project-detail" />} />
         <Route path="/todo/:name" element={<LegacyRedirect to="project-item" />} />
+        <Route path="/food/new" element={<CreateFoodInviteSheet open onClose={() => navigate('/')} />} />
+        <Route path="/food/:name" element={<FoodInviteScreen />} />
         {canManageGroups(boot) && (
           <>
             <Route path="/groups" element={<GroupsScreen />} />

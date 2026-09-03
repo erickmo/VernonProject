@@ -1,0 +1,33 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["inviter", "message", "place", "order_by", "audience_type", "project", "recipients"],
+ "fields": [
+  {"fieldname": "inviter", "fieldtype": "Link", "label": "Inviter", "options": "User", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "message", "fieldtype": "Small Text", "label": "Message", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "place", "fieldtype": "Data", "label": "Place"},
+  {"fieldname": "order_by", "fieldtype": "Datetime", "label": "Order By", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "audience_type", "fieldtype": "Select", "label": "Audience Type", "options": "Specific\nInternal\nProject\nLink", "default": "Specific"},
+  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project"},
+  {"fieldname": "recipients", "fieldtype": "Table", "label": "Recipients", "options": "Food Invite Recipient"}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "Food Invite",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

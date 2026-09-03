@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket, Award } from 'lucide-react'
+import { LogOut, History, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket, Award, UtensilsCrossed } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -200,6 +200,7 @@ export default function Profile({ onReplayOnboarding }: { onReplayOnboarding: ()
             { icon: CalendarDays, label: 'Events', hue: 'sky', onClick: () => navigate('/events') },
             { icon: Ticket, label: 'My Registrations', hue: 'sky', onClick: () => navigate('/my-registrations') },
             { icon: UsersRound, label: 'Team Wall', hue: 'violet', onClick: () => navigate('/team-wall') },
+            { icon: UtensilsCrossed, label: 'Makan Bareng', hue: 'amber', onClick: () => navigate('/food/new') },
             { icon: Send, label: 'Send Points', hue: 'amber', onClick: () => navigate('/gift-points') },
             { icon: Banknote, label: 'Extra Income', hue: 'emerald', onClick: () => navigate('/income') },
             { icon: BookOpen, label: 'Learn', hue: 'indigo', onClick: () => navigate('/learn') },

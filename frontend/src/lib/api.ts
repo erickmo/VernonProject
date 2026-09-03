@@ -119,6 +119,7 @@ const DT = 'vernon_project.api.disc_test.'
 const OV = 'vernon_project.api.overtime.'
 const H = 'vernon_project.api.habit.'
 const AN = 'vernon_project.api.announcement.'
+const FI = 'vernon_project.api.food_invite.'
 
 /** Live pre-submit conflict check. Reuses the deployed whitelisted method.
  *  equipment is JSON-encoded (list param). Returns the conflicts array. */
@@ -451,6 +452,31 @@ export const mobileApi = {
   }) => api.post<{ ok: boolean; name: string }>(AN + 'save_announcement', v),
   deleteAnnouncement: (name: string) =>
     api.post<{ ok: boolean }>(AN + 'delete_announcement', { name }),
+  // --- Food Invite (Makan Bareng) ---
+  createFoodInvite: (v: {
+    message: string
+    order_by: string
+    audience_type: import('./types').FoodAudience
+    place?: string
+    users?: string[]
+    project?: string
+  }) =>
+    api.post<{ status: string; invite?: string; message?: string }>(FI + 'create_invite', {
+      message: v.message,
+      order_by: v.order_by,
+      audience_type: v.audience_type,
+      ...(v.place ? { place: v.place } : {}),
+      ...(v.users ? { users: JSON.stringify(v.users) } : {}),
+      ...(v.project ? { project: v.project } : {}),
+    }),
+  respondFoodInvite: (invite: string, response: 'Yes' | 'No') =>
+    api.post<{ status: string; response?: string }>(FI + 'respond', { invite, response }),
+  getFoodInvite: (invite: string) =>
+    api.get<import('./types').FoodInvite>(FI + 'get_invite', { invite }),
+  pendingFoodInvites: () =>
+    api.get<import('./types').FoodInvite[]>(FI + 'get_pending_invites'),
+  foodInvitableUsers: (txt = '') =>
+    api.get<{ users: { user: string; full_name: string }[] }>(FI + 'food_invitable_users', { txt }),
   income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
   submitIncomeClaim: (opportunity: string, details: string) =>
     api.post<{ ok: boolean; name: string }>(IN + 'submit_claim', { opportunity, details }),

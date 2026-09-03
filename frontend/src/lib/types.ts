@@ -53,6 +53,7 @@ export type NotificationType =
   | 'Attendance'
   | 'Billboard'
   | 'Learning'
+  | 'Food Invite'
 
 export interface AppNotification {
   name: string
@@ -1766,4 +1767,22 @@ export interface CertificateAccess {
   can_issue: boolean
   scope: 'all' | 'team' | 'self'
   is_hr: boolean
+}
+
+// --- Food Invite (Makan Bareng) ---
+export type FoodAudience = 'Specific' | 'Internal' | 'Project' | 'Link'
+
+export interface FoodInvite {
+  name: string
+  message: string
+  place: string | null
+  order_by: string
+  inviter: string
+  inviter_name: string
+  is_inviter: boolean
+  closed: boolean
+  my_response: 'Yes' | 'No' | null
+  yes_count: number
+  no_count: number
+  yes_names: string[]
 }

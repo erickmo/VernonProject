@@ -97,6 +97,9 @@ import DailyRecognitionGate from '@/components/DailyRecognitionGate'
 import PhotoGate from '@/components/PhotoGate'
 import DiscReminderPopup from '@/components/DiscReminderPopup'
 import PrankPopup from '@/components/PrankPopup'
+import { FoodInviteWatcher } from '@/components/FoodInviteWatcher'
+import { CreateFoodInviteSheet } from '@web/components/CreateFoodInviteSheet'
+import FoodInviteScreen from '@/pages/FoodInviteScreen'
 import RecognitionGateTest from '@/pages/RecognitionGateTest'
 import { Meetings } from './pages/Meetings'
 import AvatarCustomizer from '@web/pages/AvatarCustomizer'
@@ -249,6 +252,7 @@ export default function App() {
       {!superpowerBlocked && !recognitionGate?.owed && <DiscReminderPopup />}
       {/* Photo prank: self-gates on boot.settings.prank_enabled, ticks its own timer. */}
       <PrankPopup />
+      <FoodInviteWatcher />
       <Routes location={background}>
         <Route path="/kiosk/:station" element={<Kiosk />} />
         <Route element={<AppShell />}>
@@ -295,6 +299,8 @@ export default function App() {
           )}
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/team-wall" element={<TeamWall />} />
+          <Route path="/food/new" element={<CreateFoodInviteSheet open onClose={() => navigate('/')} />} />
+          <Route path="/food/:name" element={<FoodInviteScreen />} />
           <Route path="/team-wall/nametags" element={<NametagSheet />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/wallet" element={<WalletLog />} />

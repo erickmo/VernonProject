@@ -68,6 +68,7 @@ CLUSTERS = {
     "meetings": ("Rapat & Ruangan", "Meetings & rooms", "1x1", {
         "Meeting", "Meeting Participant", "Meeting Room", "Resource Booking",
         "Resource Booking Equipment", "Equipment",
+        "Food Invite", "Food Invite Recipient",
     }),
     "focus": ("Fokus", "Focus", "1x1", {"Focus Timer", "Habit", "Habit Log"}),
     "events": ("Acara", "Events", "1x1", {"Vernon Event", "Vernon Event Registration"}),

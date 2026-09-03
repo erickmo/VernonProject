@@ -6,7 +6,7 @@ import {
   CalendarClock, Building2, Megaphone, Ban, BookOpen, BarChart3, User,
   Banknote, Activity as ActivityIcon, Sparkles, CalendarPlus, FileText,
   History, Scale, Boxes, Briefcase, HeartHandshake, Globe, Copy, ClipboardCheck, Clock,
-  ClipboardList, GraduationCap, Award,
+  ClipboardList, GraduationCap, Award, UtensilsCrossed,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -61,6 +61,7 @@ const COMMUNITY: NavLeaf[] = [
   { to: '/events', label: 'Events', sub: 'Browse, register & host', icon: CalendarDays, match: '/events' },
   { to: '/my-registrations', label: 'My Registrations', sub: 'Your events', icon: Ticket },
   { to: '/team-wall', label: 'Team Wall', sub: 'Recognition feed', icon: UsersRound },
+  { to: '/food/new', label: 'Makan Bareng', sub: 'Ajak makan bareng', icon: UtensilsCrossed },
   { to: '/activity', label: 'Activity', sub: 'Recent team activity', icon: ActivityIcon },
   { to: '/leaderboard', label: 'Leaderboard', sub: 'Rankings & dimensions', icon: Trophy },
   { to: '/income', label: 'Extra Income', sub: 'Opportunities & claims', icon: Banknote },
