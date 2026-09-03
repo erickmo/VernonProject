@@ -1,10 +1,17 @@
 import { useState } from 'react'
-import { X, Copy, Check } from 'lucide-react'
-import type { Opt2, FoodAudience } from '@/lib/types'
+import { X, Copy, Check, FlaskConical } from 'lucide-react'
+import type { Opt2, FoodAudience, FoodInvite } from '@/lib/types'
 import { MultiSelectSearch } from './MultiSelectSearch'
 import { SearchableSelect } from './SearchableSelect'
 import { useCreateFoodInvite, useFoodInvitableUsers, useProjects } from '@/hooks/useData'
 import { useToast } from './Toast'
+import { FoodInviteModal } from './FoodInviteModal'
+
+const TEST_INVITE: FoodInvite = {
+  name: 'test', message: "Nasi Padang yuk, gw lapar banget 😋", place: 'Padang Sederhana',
+  order_by: new Date(Date.now() + 3600_000).toISOString(), inviter: 'me', inviter_name: 'Kamu',
+  is_inviter: false, closed: false, my_response: null, yes_count: 0, no_count: 0, yes_names: [],
+}
 
 const AUDIENCE: { value: FoodAudience; label: string }[] = [
   { value: 'Specific', label: 'Orang tertentu' },
@@ -29,13 +36,14 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
   const [time, setTime] = useState('')
   const [audience, setAudience] = useState<FoodAudience>('Specific')
   const [users, setUsers] = useState<string[]>([])
-  const [project, setProject] = useState('')
+  const [projectIds, setProjectIds] = useState<string[]>([])
   const [link, setLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
 
   const reset = () => {
     setMessage(''); setPlace(''); setDate(''); setTime('')
-    setAudience('Specific'); setUsers([]); setProject(''); setLink(null); setCopied(false)
+    setAudience('Specific'); setUsers([]); setProjectIds([]); setLink(null); setCopied(false)
   }
   const close = () => { reset(); onClose() }
 
@@ -43,7 +51,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
     if (!message.trim()) return toast('error', 'Tulis ajakannya dulu')
     if (!date) return toast('error', 'Pilih tanggal batas pesan')
     if (audience === 'Specific' && !users.length) return toast('error', 'Pilih minimal satu orang')
-    if (audience === 'Project' && !project) return toast('error', 'Pilih proyek')
+    if (audience === 'Project' && !projectIds.length) return toast('error', 'Pilih minimal satu tim')
     const order_by = `${date}T${time || '12:00'}`
     create.mutate(
       {
@@ -52,7 +60,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
         audience_type: audience,
         place: place.trim() || undefined,
         users: audience === 'Specific' ? users : undefined,
-        project: audience === 'Project' ? project : undefined,
+        projects: audience === 'Project' ? projectIds : undefined,
       },
       {
         onSuccess: (r) => {
@@ -85,8 +93,17 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
       <div className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white p-5 dark:bg-slate-800" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">🍜 Makan Bareng</h3>
-          <button onClick={close} className="rounded-full p-1 text-slate-400"><X className="h-5 w-5" /></button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTestOpen(true)}
+              className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300"
+            >
+              <FlaskConical className="h-3.5 w-3.5" />Test
+            </button>
+            <button onClick={close} className="rounded-full p-1 text-slate-400"><X className="h-5 w-5" /></button>
+          </div>
         </div>
+        {testOpen && <FoodInviteModal invite={TEST_INVITE} onDone={() => setTestOpen(false)} />}
 
         {link ? (
           <div className="flex flex-col gap-3">
@@ -112,7 +129,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
               <MultiSelectSearch value={users} onChange={setUsers} options={userOptions} placeholder="Pilih orang…" />
             )}
             {audience === 'Project' && (
-              <SearchableSelect value={project} onChange={setProject} options={projectOptions} placeholder="Pilih proyek…" />
+              <MultiSelectSearch value={projectIds} onChange={setProjectIds} options={projectOptions} placeholder="Pilih tim…" />
             )}
             <button onClick={submit} disabled={create.isPending} className="mt-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white disabled:opacity-40">
               Kirim ajakan

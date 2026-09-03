@@ -1,10 +1,18 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { UtensilsCrossed, X, MapPin, Clock } from 'lucide-react'
+import { UtensilsCrossed, X, MapPin, Clock, Pizza, Soup, Sandwich, IceCreamCone, PartyPopper } from 'lucide-react'
 import type { FoodInvite } from '@/lib/types'
 import { formatDateTime } from '@/lib/format'
 import { useRespondFoodInvite } from '@/hooks/useData'
 import { useToast } from './Toast'
+
+// Decorative food icons drifting around the card — purely cosmetic, no data.
+const FLOATERS: { icon: typeof Pizza; className: string; delay: string }[] = [
+  { icon: Pizza, className: 'left-2 top-3 h-7 w-7 text-orange-400/70 animate-float', delay: '0s' },
+  { icon: Soup, className: 'right-3 top-8 h-8 w-8 text-amber-400/70 animate-wiggle', delay: '0.2s' },
+  { icon: Sandwich, className: 'left-6 bottom-6 h-6 w-6 text-rose-400/60 animate-float', delay: '0.5s' },
+  { icon: IceCreamCone, className: 'right-6 bottom-3 h-7 w-7 text-pink-400/60 animate-wiggle', delay: '0.35s' },
+]
 
 // Shared across /m and /w (like PrankPopup): a full-screen portal card, so it
 // needs no per-platform chrome. Shows one invite; the receiver picks Yes/No.
@@ -23,8 +31,8 @@ export function FoodInviteModal({ invite, onDone }: { invite: FoodInvite; onDone
   const answer = (response: 'Yes' | 'No') => {
     respond.mutate({ invite: invite.name, response }, {
       onSuccess: (r) => {
-        if (r.status === 'closed') toast('info', 'Undangan sudah ditutup')
-        else toast('success', response === 'Yes' ? 'Sip! Kamu ikut pesan 🍜' : 'Oke, lain kali ya')
+        if (r.status === 'closed') toast('info', 'Yah, undangan sudah ditutup 😅')
+        else toast('success', response === 'Yes' ? 'Gas! Kamu ikut pesan 🍜' : 'Oke, laper-laper an aja lain kali')
         onDone()
       },
       onError: (e) => toast('error', (e as Error).message),
@@ -40,58 +48,72 @@ export function FoodInviteModal({ invite, onDone }: { invite: FoodInvite; onDone
     >
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        className="relative w-full max-w-sm overflow-hidden rounded-[2rem] bg-white shadow-2xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onDone} className="absolute right-4 top-4 rounded-full p-1 text-slate-400" aria-label="Tutup">
+        <button onClick={onDone} className="absolute right-4 top-4 z-10 rounded-full bg-white/70 p-1 text-slate-500 backdrop-blur dark:bg-slate-800/70 dark:text-slate-300" aria-label="Tutup">
           <X className="h-5 w-5" />
         </button>
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-500/20">
-          <UtensilsCrossed className="h-7 w-7" />
-        </div>
-        <p className="text-center text-xs font-semibold uppercase tracking-wide text-amber-600">Makan Bareng</p>
-        <h3 className="mt-1 text-center text-lg font-bold text-slate-900 dark:text-slate-50">
-          {invite.inviter_name} ngajak makan bareng
-        </h3>
-        <p className="mt-2 whitespace-pre-wrap text-center text-base text-slate-700 dark:text-slate-200">{invite.message}</p>
-        <div className="mt-3 flex flex-col gap-1 text-sm text-slate-500 dark:text-slate-400">
-          {invite.place && (
-            <span className="inline-flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{invite.place}</span>
-          )}
-          <span className="inline-flex items-center justify-center gap-1">
-            <Clock className="h-4 w-4" />Pesan sebelum {formatDateTime(invite.order_by)}
-          </span>
+
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-300 via-orange-400 to-rose-400 px-6 pb-14 pt-8">
+          {FLOATERS.map(({ icon: Icon, className, delay }, i) => (
+            <Icon key={i} className={'absolute drop-shadow ' + className} style={{ animationDelay: delay }} strokeWidth={2} />
+          ))}
+          <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/90 shadow-lg dark:bg-slate-900/80">
+            <UtensilsCrossed className="h-8 w-8 animate-wiggle text-amber-600" />
+          </div>
+          <p className="relative mt-3 text-center text-xs font-bold uppercase tracking-wide text-white/90">Makan Bareng</p>
         </div>
 
-        {invite.is_inviter ? (
-          <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-center text-sm dark:bg-slate-700/40">
-            <p className="font-semibold text-slate-700 dark:text-slate-200">{invite.yes_count} orang ikut pesan</p>
-            {invite.yes_names.length > 0 && <p className="mt-1 text-slate-500">{invite.yes_names.join(', ')}</p>}
+        <div className="-mt-8 px-6 pb-6">
+          <div className="rounded-2xl bg-white p-4 text-center shadow-lg dark:bg-slate-800">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">
+              {invite.inviter_name} ngajak makan bareng!
+            </h3>
+            <p className="mt-2 whitespace-pre-wrap text-base text-slate-700 dark:text-slate-200">{invite.message}</p>
           </div>
-        ) : invite.closed ? (
-          <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-slate-700/40">Undangan sudah ditutup.</p>
-        ) : invite.my_response ? (
-          <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-600 dark:bg-slate-700/40 dark:text-slate-300">
-            Kamu menjawab: <b>{invite.my_response === 'Yes' ? "Ya, aku pesan" : 'Tidak, terima kasih'}</b>
-          </p>
-        ) : (
-          <div className="mt-6 flex gap-3">
-            <button
-              onClick={() => answer('No')}
-              disabled={respond.isPending}
-              className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
-            >
-              No, thank you
-            </button>
-            <button
-              onClick={() => answer('Yes')}
-              disabled={respond.isPending}
-              className="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-40"
-            >
-              Yes, I'll order
-            </button>
+
+          <div className="mt-3 flex flex-col gap-1 text-center text-sm text-slate-500 dark:text-slate-400">
+            {invite.place && (
+              <span className="inline-flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{invite.place}</span>
+            )}
+            <span className="inline-flex items-center justify-center gap-1">
+              <Clock className="h-4 w-4" />Pesan sebelum {formatDateTime(invite.order_by)}
+            </span>
           </div>
-        )}
+
+          {invite.is_inviter ? (
+            <div className="mt-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center text-sm dark:from-slate-700/40 dark:to-slate-700/40">
+              <p className="inline-flex items-center justify-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
+                <PartyPopper className="h-4 w-4" />{invite.yes_count} orang ikut pesan
+              </p>
+              {invite.yes_names.length > 0 && <p className="mt-1 text-slate-500 dark:text-slate-400">{invite.yes_names.join(', ')}</p>}
+            </div>
+          ) : invite.closed ? (
+            <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-slate-700/40">Yah, undangan sudah ditutup.</p>
+          ) : invite.my_response ? (
+            <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-600 dark:bg-slate-700/40 dark:text-slate-300">
+              Kamu jawab: <b>{invite.my_response === 'Yes' ? 'Ya, aku ikut! 🍜' : 'Nanti dulu ya'}</b>
+            </p>
+          ) : (
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => answer('No')}
+                disabled={respond.isPending}
+                className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 disabled:opacity-40 dark:border-slate-600 dark:text-slate-300"
+              >
+                Nanti dulu
+              </button>
+              <button
+                onClick={() => answer('Yes')}
+                disabled={respond.isPending}
+                className="flex-1 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/30 transition active:scale-95 disabled:opacity-40"
+              >
+                Gas, aku ikut! 🍜
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>,
     document.body,

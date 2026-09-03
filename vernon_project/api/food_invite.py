@@ -35,26 +35,27 @@ def _is_closed(order_by):
 	return bool(order_by) and get_datetime(order_by) < now_datetime()
 
 
-def _parse_users(users):
-	if isinstance(users, str):
-		users = frappe.parse_json(users) if users else []
-	return [u for u in (users or []) if u]
+def _parse_list(v):
+	if isinstance(v, str):
+		v = frappe.parse_json(v) if v else []
+	return [x for x in (v or []) if x]
 
 
-def _resolve_recipients(audience_type, users, project, inviter):
+def _resolve_recipients(audience_type, users, projects, inviter):
 	"""Emails to popup + notify, by audience. Never the inviter, protected, or
 	disabled accounts. Link audience has no pre-targeted recipients."""
 	if audience_type == "Specific":
-		emails = _parse_users(users)
+		emails = _parse_list(users)
 	elif audience_type == "Internal":
 		emails = frappe.get_all(
 			"User", filters={"enabled": 1, "custom_member_type": "Internal Team"}, pluck="name"
 		)
 	elif audience_type == "Project":
-		if not project:
-			frappe.throw(_("Pick a project"))
+		projects = _parse_list(projects)
+		if not projects:
+			frappe.throw(_("Pick at least one team"))
 		emails = frappe.get_all(
-			"Project Team", filters={"parent": project, "parenttype": "Project"}, pluck="user"
+			"Project Team", filters={"parent": ["in", projects], "parenttype": "Project"}, pluck="user"
 		)
 	else:  # Link
 		return []
@@ -85,7 +86,7 @@ def _serialize(doc, user):
 
 
 @frappe.whitelist()
-def create_invite(message, order_by, audience_type="Specific", place=None, users=None, project=None):
+def create_invite(message, order_by, audience_type="Specific", place=None, users=None, projects=None):
 	inviter = _require_login()
 	message = (message or "").strip()
 	if not message:
@@ -95,7 +96,7 @@ def create_invite(message, order_by, audience_type="Specific", place=None, users
 	if audience_type not in AUDIENCES:
 		frappe.throw(_("Invalid audience"))
 
-	recipients = _resolve_recipients(audience_type, users, project, inviter)
+	recipients = _resolve_recipients(audience_type, users, projects, inviter)
 	if audience_type != "Link" and not recipients:
 		frappe.throw(_("No one to invite"))
 
@@ -107,7 +108,7 @@ def create_invite(message, order_by, audience_type="Specific", place=None, users
 		"place": place,
 		"order_by": order_by,
 		"audience_type": audience_type,
-		"project": project if audience_type == "Project" else None,
+		"projects": frappe.as_json(_parse_list(projects)) if audience_type == "Project" else None,
 		"recipients": [{"user": u} for u in recipients],
 	}).insert(ignore_permissions=True)
 	frappe.db.commit()
@@ -189,7 +190,7 @@ def food_invitable_users(txt=""):
 		   WHERE enabled = 1 AND name NOT IN %(protected)s
 		     AND custom_member_type IN ('Internal Team', 'Intern')
 		     AND (name LIKE %(like)s OR full_name LIKE %(like)s)
-		   ORDER BY full_name LIMIT 50""",
+		   ORDER BY full_name LIMIT 500""",
 		{"protected": tuple(PROTECTED_USERS), "like": like},
 		as_dict=True,
 	)

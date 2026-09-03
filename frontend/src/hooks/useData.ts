@@ -3287,7 +3287,7 @@ export function useCreateFoodInvite() {
       audience_type: import('@/lib/types').FoodAudience
       place?: string
       users?: string[]
-      project?: string
+      projects?: string[]
     }) => {
       const res = await mobileApi.createFoodInvite(v)
       if (res.status !== 'success') throw new Error(res.message || 'Gagal membuat undangan')

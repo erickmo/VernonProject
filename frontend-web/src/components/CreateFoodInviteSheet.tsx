@@ -1,12 +1,19 @@
 import { useState } from 'react'
-import { X, Copy, Check } from 'lucide-react'
-import type { Opt2, FoodAudience } from '@/lib/types'
+import { X, Copy, Check, FlaskConical } from 'lucide-react'
+import type { Opt2, FoodAudience, FoodInvite } from '@/lib/types'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { useCreateFoodInvite, useFoodInvitableUsers, useProjects } from '@/hooks/useData'
 import { useToast } from '@/components/Toast'
 import { Button, IconButton } from '@web/components/ui'
 import { DateTimePicker } from '@web/components/DatePicker'
+import { FoodInviteModal } from '@/components/FoodInviteModal'
+
+const TEST_INVITE: FoodInvite = {
+  name: 'test', message: "Nasi Padang yuk, gw lapar banget 😋", place: 'Padang Sederhana',
+  order_by: new Date(Date.now() + 3600_000).toISOString(), inviter: 'me', inviter_name: 'Kamu',
+  is_inviter: false, closed: false, my_response: null, yes_count: 0, no_count: 0, yes_names: [],
+}
 
 const AUDIENCE: { value: FoodAudience; label: string }[] = [
   { value: 'Specific', label: 'Orang tertentu' },
@@ -33,9 +40,10 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
   const [orderBy, setOrderBy] = useState('')
   const [audience, setAudience] = useState<FoodAudience>('Specific')
   const [users, setUsers] = useState<string[]>([])
-  const [project, setProject] = useState('')
+  const [projectIds, setProjectIds] = useState<string[]>([])
   const [link, setLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
 
   if (!open) return null
 
@@ -43,7 +51,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
     if (!message.trim()) return toast('error', 'Tulis ajakannya dulu')
     if (!orderBy) return toast('error', 'Pilih batas waktu pesan')
     if (audience === 'Specific' && !users.length) return toast('error', 'Pilih minimal satu orang')
-    if (audience === 'Project' && !project) return toast('error', 'Pilih proyek')
+    if (audience === 'Project' && !projectIds.length) return toast('error', 'Pilih minimal satu tim')
     create.mutate(
       {
         message: message.trim(),
@@ -51,7 +59,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
         audience_type: audience,
         place: place.trim() || undefined,
         users: audience === 'Specific' ? users : undefined,
-        project: audience === 'Project' ? project : undefined,
+        projects: audience === 'Project' ? projectIds : undefined,
       },
       {
         onSuccess: (r) => {
@@ -79,8 +87,17 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
       <div className="w-full max-w-md rounded-3xl border border-line bg-surface p-6 text-ink shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold">🍜 Makan Bareng</h3>
-          <IconButton onClick={onClose} aria-label="Tutup"><X className="h-5 w-5" /></IconButton>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTestOpen(true)}
+              className="flex items-center gap-1 rounded-full bg-hover/[0.06] px-2.5 py-1 text-xs font-semibold text-muted"
+            >
+              <FlaskConical className="h-3.5 w-3.5" />Test
+            </button>
+            <IconButton onClick={onClose} aria-label="Tutup"><X className="h-5 w-5" /></IconButton>
+          </div>
         </div>
+        {testOpen && <FoodInviteModal invite={TEST_INVITE} onDone={() => setTestOpen(false)} />}
 
         {link ? (
           <div className="flex flex-col gap-3">
@@ -106,7 +123,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
               <MultiSelectSearch value={users} onChange={setUsers} options={userOptions} placeholder="Pilih orang…" />
             )}
             {audience === 'Project' && (
-              <SearchableSelect value={project} onChange={setProject} options={projectOptions} placeholder="Pilih proyek…" />
+              <MultiSelectSearch value={projectIds} onChange={setProjectIds} options={projectOptions} placeholder="Pilih tim…" />
             )}
             <Button variant="primary" className="w-full" onClick={submit} disabled={create.isPending}>Kirim ajakan</Button>
           </div>

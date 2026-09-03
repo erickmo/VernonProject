@@ -5,14 +5,14 @@
  "creation": "2026-09-03 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["inviter", "message", "place", "order_by", "audience_type", "project", "recipients"],
+ "field_order": ["inviter", "message", "place", "order_by", "audience_type", "projects", "recipients"],
  "fields": [
   {"fieldname": "inviter", "fieldtype": "Link", "label": "Inviter", "options": "User", "reqd": 1, "in_list_view": 1},
   {"fieldname": "message", "fieldtype": "Small Text", "label": "Message", "reqd": 1, "in_list_view": 1},
   {"fieldname": "place", "fieldtype": "Data", "label": "Place"},
   {"fieldname": "order_by", "fieldtype": "Datetime", "label": "Order By", "reqd": 1, "in_list_view": 1},
   {"fieldname": "audience_type", "fieldtype": "Select", "label": "Audience Type", "options": "Specific\nInternal\nProject\nLink", "default": "Specific"},
-  {"fieldname": "project", "fieldtype": "Link", "label": "Project", "options": "Project"},
+  {"fieldname": "projects", "fieldtype": "Small Text", "label": "Projects (JSON list)"},
   {"fieldname": "recipients", "fieldtype": "Table", "label": "Recipients", "options": "Food Invite Recipient"}
  ],
  "index_web_pages_for_search": 1,

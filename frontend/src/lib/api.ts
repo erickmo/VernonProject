@@ -459,7 +459,7 @@ export const mobileApi = {
     audience_type: import('./types').FoodAudience
     place?: string
     users?: string[]
-    project?: string
+    projects?: string[]
   }) =>
     api.post<{ status: string; invite?: string; message?: string }>(FI + 'create_invite', {
       message: v.message,
@@ -467,7 +467,7 @@ export const mobileApi = {
       audience_type: v.audience_type,
       ...(v.place ? { place: v.place } : {}),
       ...(v.users ? { users: JSON.stringify(v.users) } : {}),
-      ...(v.project ? { project: v.project } : {}),
+      ...(v.projects ? { projects: JSON.stringify(v.projects) } : {}),
     }),
   respondFoodInvite: (invite: string, response: 'Yes' | 'No') =>
     api.post<{ status: string; response?: string }>(FI + 'respond', { invite, response }),
