@@ -13,3 +13,7 @@ scratchpad/
 # Claude Code: shared hooks/settings are tracked; machine-local ones are not
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# MCP server: isolated venv + real secrets, never committed
+mcp_server/.venv/
+mcp_server/.env

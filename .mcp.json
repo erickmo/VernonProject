@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "vernon-project": {
+      "command": "/home/frappe/frappe-bench/apps/vernon_project/mcp_server/run.sh"
+    }
+  }
+}
