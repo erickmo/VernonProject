@@ -53,8 +53,8 @@ import { anyModalOpen } from '@/lib/modalStack'
 import { todoFileHref } from '@/lib/api'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, dateSub, stripHtml, todayISO } from '@/lib/format'
-import { useProjectItem, useSaveNotes, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
-import type { ChecklistItem } from '@/lib/types'
+import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
+import type { ChecklistItem, AiPrompt } from '@/lib/types'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
@@ -133,7 +133,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
-  const [aiPrompt, setAiPrompt] = useState(data.ai_prompt ?? '')
   const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
@@ -186,8 +185,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.group = group
     fields.level_id = level
     fields.work_mode = workMode
-    // Prompt only meaningful for AI/Both; clear it otherwise.
-    fields.ai_prompt = workMode === 'AI' || workMode === 'Both' ? aiPrompt : ''
     // Blocking links: arrays of todo names (controller syncs the mirror side).
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
@@ -381,21 +378,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </div>
       </div>
 
-      {(workMode === 'AI' || workMode === 'Both') && (
-        <div className="mb-3">
-          <label className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <Sparkles className="h-3.5 w-3.5 text-violet-500" /> Prompt <span className="font-normal text-slate-400">· instruksi untuk AI</span>
-          </label>
-          <textarea
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            rows={4}
-            placeholder="Tulis prompt / instruksi untuk AI…"
-            className={clsx(field, 'resize-y')}
-          />
-        </div>
-      )}
-
       {data.detail_todos.length > 0 && (
         <div className="mb-3">
           <label className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -579,6 +561,98 @@ function Issues({
         </>
       )}
     </>
+  )
+}
+
+function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: AiPrompt[]; canEdit: boolean }) {
+  const save = useSaveAiPrompt(todoId)
+  const toast = useToast()
+  const [items, setItems] = useState<AiPrompt[]>(initial)
+  const [saved, setSaved] = useState(false)
+  const baseline = useRef(JSON.stringify(initial))
+
+  useEffect(() => {
+    if (baseline.current === JSON.stringify(items)) {
+      baseline.current = JSON.stringify(initial)
+      setItems(initial)
+    }
+  }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = (next?: AiPrompt[]) => {
+    const payload = (next ?? items).filter((p) => p.prompt.trim())
+    const key = JSON.stringify(payload)
+    if (key === baseline.current) return
+    save.mutate(payload, {
+      onSuccess: (res) => {
+        baseline.current = key
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+        toast('success', res.message)
+      },
+      onError: (err) => toast('error', (err as Error).message),
+    })
+  }
+
+  const patch = (i: number, p: Partial<AiPrompt>) => setItems((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)))
+  const add = () => setItems((xs) => [...xs, { name: '', prompt: '' }])
+  const remove = (i: number) => { const next = items.filter((_, j) => j !== i); setItems(next); commit(next) }
+
+  if (!canEdit) {
+    return initial.length ? (
+      <ol className="space-y-3">
+        {initial.map((p, i) => (
+          <li key={i}>
+            <p className="text-sm font-semibold text-violet-700 dark:text-violet-300">{p.name || `Prompt ${i + 1}`}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{p.prompt}</p>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p className="text-sm italic text-slate-400 dark:text-slate-500">Belum ada prompt.</p>
+    )
+  }
+
+  const inputCls = 'w-full rounded-lg border border-violet-200 dark:border-violet-500/40 bg-white/70 dark:bg-slate-800 px-2.5 py-1.5 text-sm text-slate-700 dark:text-slate-200 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:placeholder-slate-500'
+
+  return (
+    <div className="space-y-3">
+      {items.map((p, i) => (
+        <div key={i} className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-white/60 dark:bg-slate-800/60 p-2.5">
+          <div className="mb-1.5 flex items-center gap-2">
+            <input
+              value={p.name}
+              onChange={(e) => patch(i, { name: e.target.value })}
+              onBlur={() => commit()}
+              placeholder={`Nama / untuk apa (Prompt ${i + 1})`}
+              className={clsx(inputCls, 'flex-1 font-semibold')}
+            />
+            <button type="button" onClick={() => remove(i)} title="Hapus prompt" className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/15">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+          <textarea
+            value={p.prompt}
+            onChange={(e) => patch(i, { prompt: e.target.value })}
+            onBlur={() => commit()}
+            rows={3}
+            placeholder="Tulis prompt / instruksi untuk AI…"
+            className={clsx(inputCls, 'resize-none [field-sizing:content] leading-relaxed')}
+          />
+        </div>
+      ))}
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-violet-100 dark:bg-violet-500/20 px-2.5 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300 active:scale-95">
+          <Plus className="h-3.5 w-3.5" /> Tambah prompt
+        </button>
+        <span className="flex h-5 items-center text-xs text-slate-400 dark:text-slate-500">
+          {save.isPending ? (
+            <span className="inline-flex items-center gap-1"><Spinner className="h-3 w-3" /> Menyimpan…</span>
+          ) : saved ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600"><Check className="h-3.5 w-3.5" /> Tersimpan</span>
+          ) : null}
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -1805,13 +1879,13 @@ const [followOpen, setFollowOpen] = useState(false)
         </div>
       )}
 
-      {/* AI Prompt — read view, only for AI/Both tasks that have one. */}
-      {(data.work_mode === 'AI' || data.work_mode === 'Both') && data.ai_prompt && (
+      {/* AI Prompt — inline-editable card (leader/owner only), above Notes, AI/Both tasks. */}
+      {(data.work_mode === 'AI' || data.work_mode === 'Both') && (
         <div className="mt-4 rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 p-4 shadow-sm">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
             <Sparkles className="h-3.5 w-3.5" /> Prompt
           </p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{data.ai_prompt}</p>
+          <AiPromptList todoId={data.name} initial={data.ai_prompts ?? []} canEdit={!!data.can_edit_prompt} />
         </div>
       )}
 

@@ -256,6 +256,11 @@ export const mobileApi = {
       'vernon_project.api.project_todo.save_checklist',
       { todo_id: todoId, checklist },
     ),
+  saveAiPrompt: (todoId: string, aiPrompt: string) =>
+    api.post<{ status: string; message: string }>(
+      'vernon_project.api.project_todo.save_ai_prompt',
+      { todo_id: todoId, ai_prompt: aiPrompt },
+    ),
   listTodoFiles: (todoId: string) =>
     api.get<TodoFile[]>('vernon_project.api.project_todo.list_todo_files', { todo_id: todoId }),
   deleteTodoFile: (todoId: string, fileName: string) =>

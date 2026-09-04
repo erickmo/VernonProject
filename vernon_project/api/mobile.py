@@ -2055,10 +2055,15 @@ def get_project_item(project_item):
 	name_map = _user_name_map(emails)
 	_admins = get_project_admins(r["project"])
 	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=_admins)
-	shaped["ai_prompt"] = frappe.db.get_value("Project Todo", project_item, "ai_prompt") or ""
+	from vernon_project.api.project_todo import parse_ai_prompts
+	shaped["ai_prompts"] = parse_ai_prompts(frappe.db.get_value("Project Todo", project_item, "ai_prompt"))
 	shaped["can_edit_notes"] = user in (
 		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
 	) or user in _admins
+	# Prompt is a lead-only field: only SM / project owner / leader may edit it.
+	shaped["can_edit_prompt"] = ("System Manager" in frappe.get_roles(user)) or user in (
+		r["project_owner"], r["project_leader"]
+	)
 	# Full-task edit is a lead action; assignee/deadline/estimate are locked once
 	# the task is Done/Completed (enforced by the doctype's validate()).
 	is_sm = "System Manager" in frappe.get_roles(user)
@@ -2361,7 +2366,8 @@ def update_todo(
 		if work_mode is not None:
 			row.work_mode = work_mode if work_mode in ("Human", "AI", "Both") else ""
 		# Prompt for the AI (shown only for AI/Both tasks in the UI). Empty clears.
-		if ai_prompt is not None:
+		# Lead-only field: silently ignored for anyone but SM / owner / leader.
+		if ai_prompt is not None and (is_sm or user in (project.project_owner, project.project_leader)):
 			row.ai_prompt = ai_prompt or None
 		# "To Check" is the assignee's own working reminder — a plain flag with no
 		# scoring/workflow effect, so anyone who can edit the task may set it.

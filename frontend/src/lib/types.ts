@@ -127,6 +127,8 @@ export interface ToggleReactionResult {
 
 export type ChecklistItem = { t: string; d: boolean }
 
+export interface AiPrompt { name: string; prompt: string }
+
 export interface ProjectItem {
   name: string
   to_do: string
@@ -143,7 +145,8 @@ export interface ProjectItem {
   can_create: boolean
   is_priority: boolean
    work_mode?: 'Human' | 'AI' | 'Both' | ''
-  ai_prompt?: string
+  ai_prompts?: AiPrompt[]
+  can_edit_prompt?: boolean
   to_check: boolean
   can_prioritize: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'

@@ -47,6 +47,7 @@ import {
 import {
   useProjectItem,
   useSaveNotes,
+  useSaveAiPrompt,
   useSaveChecklist,
   useSetTodoAllocations,
   useSetAssignedAllocation,
@@ -88,7 +89,7 @@ import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
 import { FollowUpCheckDialog } from '@/components/FollowUpCheckDialog'
 import { issueCounts, issueHelp, issueLabel, todoIssueInitial } from '@/lib/todoIssues'
 import { InfoDot } from '@web/components/InfoDot'
-import type { ProjectItemDetail, StatusKey, TodoFile, ChecklistItem } from '@/lib/types'
+import type { ProjectItemDetail, StatusKey, TodoFile, ChecklistItem, AiPrompt } from '@/lib/types'
 
 // ─────────────────────────── Stepper ───────────────────────────
 
@@ -301,6 +302,98 @@ function Issues({ data, onReport }: { data: ProjectItemDetail; onReport: () => v
 }
 
 // ─────────────────────────── Notes ───────────────────────────
+
+function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: AiPrompt[]; canEdit: boolean }) {
+  const save = useSaveAiPrompt(todoId)
+  const toast = useToast()
+  const [items, setItems] = useState<AiPrompt[]>(initial)
+  const [saved, setSaved] = useState(false)
+  const baseline = useRef(JSON.stringify(initial))
+
+  useEffect(() => {
+    if (baseline.current === JSON.stringify(items)) {
+      baseline.current = JSON.stringify(initial)
+      setItems(initial)
+    }
+  }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = (next?: AiPrompt[]) => {
+    const payload = (next ?? items).filter((p) => p.prompt.trim())
+    const key = JSON.stringify(payload)
+    if (key === baseline.current) return
+    save.mutate(payload, {
+      onSuccess: (res) => {
+        baseline.current = key
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+        toast('success', res.message)
+      },
+      onError: (err) => toast('error', (err as Error).message),
+    })
+  }
+
+  const patch = (i: number, p: Partial<AiPrompt>) => setItems((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)))
+  const add = () => setItems((xs) => [...xs, { name: '', prompt: '' }])
+  const remove = (i: number) => { const next = items.filter((_, j) => j !== i); setItems(next); commit(next) }
+
+  if (!canEdit) {
+    return initial.length ? (
+      <ol className="space-y-3">
+        {initial.map((p, i) => (
+          <li key={i}>
+            <p className="text-sm font-semibold text-violet-700 dark:text-violet-300">{p.name || `Prompt ${i + 1}`}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{p.prompt}</p>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p className="text-sm italic text-muted">Belum ada prompt.</p>
+    )
+  }
+
+  const inputCls = 'w-full rounded-lg border border-violet-200 dark:border-violet-500/40 bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100'
+
+  return (
+    <div className="space-y-3">
+      {items.map((p, i) => (
+        <div key={i} className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-surface p-2.5">
+          <div className="mb-1.5 flex items-center gap-2">
+            <input
+              value={p.name}
+              onChange={(e) => patch(i, { name: e.target.value })}
+              onBlur={() => commit()}
+              placeholder={`Nama / untuk apa (Prompt ${i + 1})`}
+              className={clsx(inputCls, 'flex-1 font-semibold')}
+            />
+            <button type="button" onClick={() => remove(i)} title="Hapus prompt" className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/15">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+          <textarea
+            value={p.prompt}
+            onChange={(e) => patch(i, { prompt: e.target.value })}
+            onBlur={() => commit()}
+            rows={3}
+            placeholder="Tulis prompt / instruksi untuk AI…"
+            className={clsx(inputCls, 'resize-none [field-sizing:content] leading-relaxed')}
+          />
+        </div>
+      ))}
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-violet-100 dark:bg-violet-500/20 px-2.5 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
+          <Plus className="h-3.5 w-3.5" /> Tambah prompt
+        </button>
+        <span className="flex h-5 items-center text-xs text-muted">
+          {save.isPending ? (
+            <span className="inline-flex items-center gap-1"><Spinner className="h-3 w-3" /> Menyimpan…</span>
+          ) : saved ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600"><Check className="h-3.5 w-3.5" /> Tersimpan</span>
+          ) : null}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; canEdit: boolean }) {
   const save = useSaveNotes(todoId)
@@ -911,7 +1004,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
   const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
-  const [aiPrompt, setAiPrompt] = useState(data.ai_prompt ?? '')
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
@@ -957,8 +1049,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.group = group
     fields.level_id = level
     fields.work_mode = workMode
-    // Prompt only meaningful for AI/Both; clear it otherwise.
-    fields.ai_prompt = workMode === 'AI' || workMode === 'Both' ? aiPrompt : ''
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
     update.mutate(fields, {
@@ -1170,21 +1260,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           ))}
         </div>
       </div>
-
-      {(workMode === 'AI' || workMode === 'Both') && (
-        <div className="mb-3">
-          <label className="mb-1 flex items-center gap-1 text-xs font-medium text-muted">
-            <Sparkles className="h-3.5 w-3.5 text-violet-500" /> Prompt <span className="font-normal opacity-70">· instruksi untuk AI</span>
-          </label>
-          <textarea
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            rows={4}
-            placeholder="Tulis prompt / instruksi untuk AI…"
-            className={clsx(fieldCls, 'w-full resize-y')}
-          />
-        </div>
-      )}
 
       {data.detail_todos.length > 0 && (
         <div className="mb-3">
@@ -1900,13 +1975,13 @@ const [followOpen, setFollowOpen] = useState(false)
 
           {/* ── RIGHT COLUMN (60%) ── */}
           <BentoTile span="md" tone="plain" className="space-y-5 lg:w-3/5">
-            {/* AI Prompt — read view, only for AI/Both tasks that have one. */}
-            {(data.work_mode === 'AI' || data.work_mode === 'Both') && data.ai_prompt && (
+            {/* AI Prompt — inline-editable card (leader/owner only), above Notes, AI/Both tasks. */}
+            {(data.work_mode === 'AI' || data.work_mode === 'Both') && (
               <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
                   <Sparkles className="h-3.5 w-3.5" /> Prompt
                 </p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{data.ai_prompt}</p>
+                <AiPromptList todoId={data.name} initial={data.ai_prompts ?? []} canEdit={!!data.can_edit_prompt} />
               </div>
             )}
 

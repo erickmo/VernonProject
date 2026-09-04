@@ -69,6 +69,7 @@ import type {
   LeaveType,
   HabitsResponse,
   ChecklistItem,
+  AiPrompt,
 } from '@/lib/types'
 
 export type { ChecklistItem }
@@ -1052,6 +1053,18 @@ export function useSaveNotes(todoId: string) {
   return useMutation({
     mutationFn: async (notes: string) => {
       const res = await mobileApi.saveNotes(todoId, notes)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.projectItem(todoId) }),
+  })
+}
+
+export function useSaveAiPrompt(todoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (prompts: AiPrompt[]) => {
+      const res = await mobileApi.saveAiPrompt(todoId, JSON.stringify(prompts))
       if (res.status === 'error') throw new Error(res.message)
       return res
     },

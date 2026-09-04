@@ -537,6 +537,62 @@ def save_notes(todo_id, notes):
 		return {"status": "error", "message": str(e)}
 
 
+def parse_ai_prompts(raw):
+	"""Normalize the stored AI prompts into a clean list. Safe on None / malformed
+	JSON / legacy plain-string values. Each item is {"name": str, "prompt": str};
+	rows with an empty prompt are dropped. Accepts a JSON string, a list, or a
+	legacy single-prompt plain string (-> one unnamed item)."""
+	if not raw:
+		return []
+	data = raw
+	if isinstance(raw, str):
+		try:
+			data = json.loads(raw)
+		except (ValueError, TypeError):
+			# Legacy: a single plain-text prompt saved before the list existed.
+			txt = raw.strip()
+			return [{"name": "", "prompt": txt}] if txt else []
+	if not isinstance(data, list):
+		return []
+	out = []
+	for it in data:
+		if not isinstance(it, dict):
+			continue
+		prompt = str(it.get("prompt") or "").strip()
+		if not prompt:
+			continue
+		out.append({"name": str(it.get("name") or "").strip(), "prompt": prompt})
+	return out
+
+
+@frappe.whitelist()
+def save_ai_prompt(todo_id, ai_prompt):
+	"""Save the AI prompts (JSON list) for a project todo. Leader/owner action only
+	(System Manager, project_owner, project_leader) — assignees can't set it."""
+	try:
+		todo = frappe.get_doc("Project Todo", todo_id)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
+		project = frappe.get_doc("Project", project_detail.project)
+
+		user = frappe.session.user
+		is_sm = "System Manager" in frappe.get_roles(user)
+		if not (is_sm or user in (project.project_owner, project.project_leader)):
+			return {
+				"status": "error",
+				"message": f"Hanya Project Leader ({project.project_leader}) atau Project Owner ({project.project_owner}) yang boleh mengubah prompt.",
+			}
+
+		clean = parse_ai_prompts(ai_prompt)
+		todo.ai_prompt = json.dumps(clean) if clean else None
+		todo.save(ignore_permissions=True)
+		return {"status": "ok", "message": "Prompt berhasil disimpan.", "ai_prompts": clean}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
+
+
 def _parse_checklist(raw):
 	"""Normalize the stored checklist JSON into a clean list. Safe on None /
 	malformed JSON -> []. Each item is {"t": str, "d": bool}; empty-text rows
