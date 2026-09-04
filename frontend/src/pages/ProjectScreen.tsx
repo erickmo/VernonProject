@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, Network, FolderKanban, FolderInput, FolderPlus, Gift, CalendarClock, Copy, Loader2 } from 'lucide-react'
+import { Target, Users, CalendarDays, AlertCircle, ChevronRight, Layers, Pencil, Trash2, Plus, ListPlus, UserPlus, Ban, List, BarChart3, Network, FolderKanban, FolderInput, FolderPlus, Gift, CalendarClock, Copy, Loader2, Sparkles } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Avatar, EmptyState, FullScreenLoader, ProgressBar } from '@/components/ui'
 import CommentThread from '@/components/CommentThread'
 import { ProjectFormSheet } from '@/components/ProjectFormSheet'
+import { AiBreakdownSheet } from '@/components/AiBreakdownSheet'
 import { ProjectDetailFormSheet } from '@/components/ProjectDetailFormSheet'
 import { ProjectDetailEditSheet } from '@/components/ProjectDetailEditSheet'
 import { MoveProjectDetailSheet } from '@/components/MoveProjectDetailSheet'
@@ -28,7 +29,7 @@ export default function ProjectScreen() {
   const id = decodeURIComponent(name)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data, isLoading } = useProject(id)
+  const { data, isLoading, refetch } = useProject(id)
   const { data: boot } = useBoot()
   const toast = useToast()
   const confirm = useConfirm()
@@ -38,6 +39,7 @@ export default function ProjectScreen() {
   const promote = usePromoteProjectDetail()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const [editOpen, setEditOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [wiOpen, setWiOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [editDetail, setEditDetail] = useState<string | null>(null)
@@ -138,6 +140,12 @@ export default function ProjectScreen() {
             <button onClick={() => setEditOpen(true)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm active:scale-95">
               <Pencil className="h-4 w-4" /> Edit
+            </button>
+          )}
+          {flags.can_edit && (
+            <button onClick={() => setAiOpen(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 shadow-sm active:scale-95">
+              <Sparkles className="h-4 w-4" /> AI
             </button>
           )}
           {flags.can_edit && (
@@ -482,6 +490,12 @@ export default function ProjectScreen() {
         onClose={() => setEditOpen(false)}
         project={data}
         canReassign={flags.can_reassign}
+      />
+      <AiBreakdownSheet
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        project={data.name}
+        onSaved={() => refetch()}
       />
       <ProjectDetailFormSheet open={wiOpen} onClose={() => setWiOpen(false)} project={data.name} />
       <ProjectDetailEditSheet

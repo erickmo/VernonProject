@@ -30,6 +30,10 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
   const [condition, setCondition] = useState('')
   const [outcome, setOutcome] = useState('')
   const [sow, setSow] = useState('')
+  const [goal, setGoal] = useState('')
+  const [success, setSuccess] = useState('')
+  const [failure, setFailure] = useState('')
+  const [ctx, setCtx] = useState('')
   const [glossaries, setGlossaries] = useState<string[]>([])
 
   // Hydrate from the loaded detail when editing.
@@ -41,13 +45,17 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       setCondition(d.current_condition ?? '')
       setOutcome(d.expected_outcome ?? '')
       setSow(d.keterangan_di_sow ?? '')
+      setGoal(d.goal ?? '')
+      setSuccess(d.success_condition ?? '')
+      setFailure(d.failure_condition ?? '')
+      setCtx(d.context ?? '')
       setGlossaries(d.glossaries ?? [])
     }
   }, [open, detail, detailQuery.data])
 
   const reset = () => {
     setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
-    setSow(''); setGlossaries([])
+    setSow(''); setGoal(''); setSuccess(''); setFailure(''); setCtx(''); setGlossaries([])
   }
   const close = () => { reset(); onClose() }
 
@@ -67,6 +75,10 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       current_condition: condition,
       expected_outcome: outcome,
       keterangan_di_sow: sow,
+      goal,
+      success_condition: success,
+      failure_condition: failure,
+      context: ctx,
       glossaries: glossaries.map((g) => ({ glossary: g })),
     }
     const handlers = {
@@ -137,6 +149,22 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
         <label className="text-sm font-medium text-muted">
           Keterangan di SOW
           <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
+        </label>
+        <label className="text-sm font-medium text-muted">
+          Goal
+          <textarea className={field + ' mt-1'} rows={2} placeholder="This subgoal's purpose" value={goal} onChange={(e) => setGoal(e.target.value)} />
+        </label>
+        <label className="text-sm font-medium text-muted">
+          Success condition
+          <textarea className={field + ' mt-1'} rows={2} placeholder="What success looks like — helps AI draft tasks" value={success} onChange={(e) => setSuccess(e.target.value)} />
+        </label>
+        <label className="text-sm font-medium text-muted">
+          Failure condition
+          <textarea className={field + ' mt-1'} rows={2} placeholder="What would count as failure" value={failure} onChange={(e) => setFailure(e.target.value)} />
+        </label>
+        <label className="text-sm font-medium text-muted">
+          Context
+          <textarea className={field + ' mt-1'} rows={2} placeholder="Extra context for AI" value={ctx} onChange={(e) => setCtx(e.target.value)} />
         </label>
 
         <div className="text-sm font-medium text-muted">

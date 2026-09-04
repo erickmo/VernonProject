@@ -24,6 +24,10 @@
   "current_condition",
   "column_break_yvdj",
   "expected_outcome",
+  "goal",
+  "success_condition",
+  "failure_condition",
+  "context",
   "todo_tab",
   "todo_section",
   "section_break_cysd",
@@ -81,6 +85,30 @@
    "fieldname": "expected_outcome",
    "fieldtype": "Text Editor",
    "label": "Expected Outcome"
+  },
+  {
+   "fieldname": "goal",
+   "fieldtype": "Small Text",
+   "label": "Goal",
+   "description": "This subgoal's purpose (used by AI breakdown)."
+  },
+  {
+   "fieldname": "success_condition",
+   "fieldtype": "Small Text",
+   "label": "Success Condition",
+   "description": "What success looks like for this subgoal."
+  },
+  {
+   "fieldname": "failure_condition",
+   "fieldtype": "Small Text",
+   "label": "Failure Condition",
+   "description": "What would count as failure for this subgoal."
+  },
+  {
+   "fieldname": "context",
+   "fieldtype": "Small Text",
+   "label": "Context",
+   "description": "Extra context for this subgoal."
   },
   {
    "fieldname": "sow_tab",

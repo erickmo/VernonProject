@@ -1223,6 +1223,10 @@ export function useCreateProjectDetail(project: string) {
         ...(input.current_condition != null ? { current_condition: input.current_condition } : {}),
         ...(input.expected_outcome != null ? { expected_outcome: input.expected_outcome } : {}),
         ...(input.keterangan_di_sow != null ? { keterangan_di_sow: input.keterangan_di_sow } : {}),
+        ...(input.goal != null ? { goal: input.goal } : {}),
+        ...(input.success_condition != null ? { success_condition: input.success_condition } : {}),
+        ...(input.failure_condition != null ? { failure_condition: input.failure_condition } : {}),
+        ...(input.context != null ? { context: input.context } : {}),
         ...(input.glossaries ? { glossaries: input.glossaries } : {}),
       }),
     onSettled: () => {

@@ -912,6 +912,18 @@ export const mobileApi = {
     api.get<import('./types').SuperpowerWallResponse>(SP + 'get_superpower_wall'),
   getSuperpowerProgress: (user: string) =>
     api.get<import('./types').SuperpowerProgressView>(SP + 'get_superpower_progress', { user }),
+
+  /** AI breakdown: draft subgoals + todos from a project's (or one subgoal's) context. Read-only. */
+  generateProjectBreakdown: (project: string, projectDetail?: string) =>
+    api.post<import('./types').Breakdown>('vernon_project.api.project.generate_project_breakdown', {
+      project, ...(projectDetail ? { project_detail: projectDetail } : {}),
+    }),
+  /** Persist reviewed drafts. subgoals is a JSON string. Returns created record names/counts. */
+  persistProjectBreakdown: (project: string, subgoals: string, projectDetail?: string) =>
+    api.post<{ project: string; created_details: string[]; created_todos: number }>(
+      'vernon_project.api.project.persist_project_breakdown',
+      { project, subgoals, ...(projectDetail ? { project_detail: projectDetail } : {}) },
+    ),
 }
 
 export const habitApi = {

@@ -403,6 +403,9 @@ export interface ProjectFull {
   status: string
   brand: string
   goal: string | null
+  success_condition: string | null
+  failure_condition: string | null
+  context: string | null
   reward_type: 'Rupiah' | 'Point' | null
   bonus_amount: number
   discount: number
@@ -433,6 +436,10 @@ export interface ProjectDetail {
   current_condition: string | null
   expected_outcome: string | null
   keterangan_di_sow: string | null
+  goal?: string | null
+  success_condition?: string | null
+  failure_condition?: string | null
+  context?: string | null
   latest_deadline: string | null
   project_deadline: string | null
   deadline_human: string | null
@@ -480,6 +487,9 @@ export interface ProjectInput {
   start_date: string
   deadline: string
   goal?: string
+  success_condition?: string
+  failure_condition?: string
+  context?: string
   status: string
   reward_type?: 'Rupiah' | 'Point'
   bonus_amount?: number
@@ -494,6 +504,10 @@ export interface ProjectDetailInput {
   current_condition?: string
   expected_outcome?: string
   keterangan_di_sow?: string
+  goal?: string
+  success_condition?: string
+  failure_condition?: string
+  context?: string
   glossaries?: { glossary: string }[]
 }
 
@@ -1792,4 +1806,24 @@ export interface FoodInvite {
   yes_names: string[]
   no_names: string[]
   pending_names: string[]
+}
+
+// AI project breakdown (deterministic draft subgoals + todos). See api/project.py.
+export interface BreakdownTodo {
+  to_do: string
+  work_mode?: string
+  ai_prompt?: string
+}
+export interface BreakdownSubgoal {
+  title: string
+  goal?: string
+  success_condition?: string
+  failure_condition?: string
+  context?: string
+  todos: BreakdownTodo[]
+}
+export interface Breakdown {
+  project: string
+  project_detail: string | null
+  subgoals: BreakdownSubgoal[]
 }

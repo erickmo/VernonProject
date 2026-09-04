@@ -23,6 +23,10 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
   const [condition, setCondition] = useState('')
   const [outcome, setOutcome] = useState('')
   const [sow, setSow] = useState('')
+  const [goal, setGoal] = useState('')
+  const [success, setSuccess] = useState('')
+  const [failure, setFailure] = useState('')
+  const [ctx, setCtx] = useState('')
   const [glossaries, setGlossaries] = useState<string[]>([])
 
   useEffect(() => {
@@ -32,6 +36,10 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
       setCondition(projectDetail.current_condition || '')
       setOutcome(projectDetail.expected_outcome || '')
       setSow(projectDetail.keterangan_di_sow || '')
+      setGoal(projectDetail.goal || '')
+      setSuccess(projectDetail.success_condition || '')
+      setFailure(projectDetail.failure_condition || '')
+      setCtx(projectDetail.context || '')
       setGlossaries(projectDetail.glossaries ?? [])
     }
   }, [open, projectDetail])
@@ -55,6 +63,10 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
         current_condition: condition,
         expected_outcome: outcome,
         keterangan_di_sow: sow,
+        goal,
+        success_condition: success,
+        failure_condition: failure,
+        context: ctx,
         glossaries: glossaries.map((g) => ({ glossary: g })),
       },
       {
@@ -104,6 +116,26 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Keterangan di SOW
             <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Goal
+            <textarea className={field + ' mt-1'} rows={2} placeholder="This subgoal's purpose" value={goal} onChange={(e) => setGoal(e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Success condition
+            <textarea className={field + ' mt-1'} rows={2} placeholder="What success looks like — helps AI draft tasks" value={success} onChange={(e) => setSuccess(e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Failure condition
+            <textarea className={field + ' mt-1'} rows={2} placeholder="What would count as failure" value={failure} onChange={(e) => setFailure(e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Context
+            <textarea className={field + ' mt-1'} rows={2} placeholder="Extra context for AI" value={ctx} onChange={(e) => setCtx(e.target.value)} />
           </label>
 
           <div className="text-sm font-medium text-slate-600 dark:text-slate-300">

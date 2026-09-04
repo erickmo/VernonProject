@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { safeDecode } from '@web/lib/route'
 import {
   Target, Users, CalendarDays, CalendarClock, AlertCircle, ChevronRight,
-  Layers, Pencil, Trash2, Plus, BarChart3, List, Network, Tag, MousePointerClick, Gift, Copy, FolderInput, FolderPlus, AlarmClock,
+  Layers, Pencil, Trash2, Plus, BarChart3, List, Network, Tag, MousePointerClick, Gift, Copy, FolderInput, FolderPlus, AlarmClock, Sparkles,
 } from 'lucide-react'
 import { useProject, useProjectGantt, permFlags, useBoot, useDeleteProject, useDeleteProjectDetail, useSetProjectAutoApprove, useDuplicateProject, usePromoteProjectDetail, useMeetings } from '@/hooks/useData'
 import { GanttChart } from '@/components/GanttChart'
@@ -16,6 +16,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useToast } from '@/components/Toast'
 import { formatDate, formatEstimateRatio, progressPct, formatReward, rewardNet } from '@/lib/format'
 import { ProjectFormDialog } from '@web/components/ProjectFormDialog'
+import { AiBreakdownSheet } from '@/components/AiBreakdownSheet'
 import { PostponeDialog } from '@web/components/PostponeDialog'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { MoveProjectDetailDialog } from '@web/components/MoveProjectDetailDialog'
@@ -98,6 +99,7 @@ export default function Project() {
   const [view, setView] = useState<View>('list')
   const [detailFilter, setDetailFilter] = useState<DetailFilter>('all')
   const [editOpen, setEditOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [detailFormOpen, setDetailFormOpen] = useState(false)
   const [editDetail, setEditDetail] = useState<string | null>(null)
   const [moveDetail, setMoveDetail] = useState<{ name: string; title: string } | null>(null)
@@ -309,6 +311,11 @@ export default function Project() {
                 {perms.can_edit && (
                   <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
                     <Pencil className="h-4 w-4" /> Edit
+                  </Button>
+                )}
+                {perms.can_edit && (
+                  <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
+                    <Sparkles className="h-4 w-4" /> Generate with AI
                   </Button>
                 )}
                 {perms.can_edit && (
@@ -577,6 +584,12 @@ export default function Project() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         project={p}
+      />
+      <AiBreakdownSheet
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        project={p.name}
+        onSaved={() => project.refetch()}
       />
       <ProjectDetailFormDialog
         open={detailFormOpen}

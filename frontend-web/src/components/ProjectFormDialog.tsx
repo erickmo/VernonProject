@@ -43,6 +43,9 @@ export function ProjectFormDialog({
     start_date: '',
     deadline: '',
     goal: '',
+    success_condition: '',
+    failure_condition: '',
+    context: '',
     status: 'Ongoing',
     reward_type: 'Rupiah',
     bonus_amount: 0,
@@ -62,6 +65,9 @@ export function ProjectFormDialog({
         start_date: project.start_date ?? '',
         deadline: project.deadline ?? '',
         goal: project.goal ?? '',
+        success_condition: project.success_condition ?? '',
+        failure_condition: project.failure_condition ?? '',
+        context: project.context ?? '',
         status: project.status,
         reward_type: project.reward_type ?? 'Rupiah',
         bonus_amount: project.bonus_amount ?? 0,
@@ -250,6 +256,39 @@ export function ProjectFormDialog({
             value={f.goal ?? ''}
             onChange={(e) => set('goal', e.target.value)}
             rows={2}
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+          />
+        </label>
+        {/* Success condition — full width, feeds AI breakdown */}
+        <label className="space-y-1 md:col-span-2">
+          <span className="text-sm font-medium text-muted">Success condition</span>
+          <textarea
+            value={f.success_condition ?? ''}
+            onChange={(e) => set('success_condition', e.target.value)}
+            rows={2}
+            placeholder="What success looks like — helps AI draft the plan"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+          />
+        </label>
+        {/* Failure condition — full width, feeds AI breakdown */}
+        <label className="space-y-1 md:col-span-2">
+          <span className="text-sm font-medium text-muted">Failure condition</span>
+          <textarea
+            value={f.failure_condition ?? ''}
+            onChange={(e) => set('failure_condition', e.target.value)}
+            rows={2}
+            placeholder="What would count as failure"
+            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
+          />
+        </label>
+        {/* Context — full width, feeds AI breakdown */}
+        <label className="space-y-1 md:col-span-2">
+          <span className="text-sm font-medium text-muted">Context</span>
+          <textarea
+            value={f.context ?? ''}
+            onChange={(e) => set('context', e.target.value)}
+            rows={2}
+            placeholder="Constraints, stack, audience — extra context for AI"
             className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
           />
         </label>

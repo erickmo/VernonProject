@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban, Play, Timer, Check } from 'lucide-react'
+import { ListChecks, AlertCircle, Plus, ChevronRight, CalendarClock, List, BarChart3, FolderKanban, Play, Timer, Check, Sparkles } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CreateProjectItemSheet } from '@/components/CreateProjectItemSheet'
+import { AiBreakdownSheet } from '@/components/AiBreakdownSheet'
 import { BulkAddSheet } from '@/components/BulkAddSheet'
 import { GanttChart } from '@/components/GanttChart'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -26,11 +27,12 @@ export default function ProjectDetailScreen() {
   const navigate = useNavigate()
   const id = decodeURIComponent(name)
   const [showCancelled, setShowCancelled] = useState(false)
-  const { data, isLoading } = useProjectDetail(id, showCancelled)
+  const { data, isLoading, refetch } = useProjectDetail(id, showCancelled)
   const { data: boot } = useBoot()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const toast = useToast()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
   const [todoFilter, setTodoFilter] = useState<'all' | 'open' | 'completed'>('all')
@@ -145,6 +147,12 @@ export default function ProjectDetailScreen() {
             {data.can_create && (
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setAiOpen(true)}
+                  className="flex items-center gap-1 rounded-full border border-brand-600 px-3 py-1.5 text-xs font-semibold text-brand-600 active:scale-95"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> AI
+                </button>
+                <button
                   onClick={() => setBulkOpen(true)}
                   className="flex items-center gap-1 rounded-full border border-brand-600 px-3 py-1.5 text-xs font-semibold text-brand-600 active:scale-95"
                 >
@@ -229,6 +237,13 @@ export default function ProjectDetailScreen() {
         team={data.team}
         defaultGroup={data.default_group}
         siblings={data.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
+      />
+      <AiBreakdownSheet
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        project={data.project}
+        projectDetail={data.name}
+        onSaved={() => refetch()}
       />
 
       {bulkOpen && (

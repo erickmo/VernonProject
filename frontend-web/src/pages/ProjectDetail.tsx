@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import {
-  ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3, FolderInput,
+  ArrowLeft, CalendarClock, ListChecks, Plus, MousePointerClick, Pencil, Trash2, List, BarChart3, FolderInput, Sparkles,
 } from 'lucide-react'
 import { useProjectDetail, useDeleteProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
@@ -16,6 +16,7 @@ import { useToast } from '@/components/Toast'
 import CommentThread from '@/components/CommentThread'
 import { BulkAddDialog } from '@web/components/BulkAddDialog'
 import { CreateProjectItemDialog } from '@web/components/CreateProjectItemDialog'
+import { AiBreakdownSheet } from '@/components/AiBreakdownSheet'
 import { ProjectDetailFormDialog } from '@web/components/ProjectDetailFormDialog'
 import { MoveProjectDetailDialog } from '@web/components/MoveProjectDetailDialog'
 import { PostponeDialog } from '@web/components/PostponeDialog'
@@ -36,6 +37,7 @@ export default function ProjectDetail() {
   const toast = useToast()
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [moveOpen, setMoveOpen] = useState(false)
@@ -236,6 +238,9 @@ export default function ProjectDetail() {
             </label>
             {d.can_create && (
               <>
+                <Button variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="h-3.5 w-3.5" /> AI
+                </Button>
                 <Button variant="secondary" size="sm" onClick={() => setBulkOpen(true)}>
                   <Plus className="h-3.5 w-3.5" /> Bulk
                 </Button>
@@ -314,6 +319,13 @@ export default function ProjectDetail() {
         team={d.team.map((t) => ({ user: t.user, name: t.name }))}
         defaultGroup={d.default_group ?? null}
         siblings={d.project_items.map((t) => ({ name: t.name, to_do: t.to_do }))}
+      />
+      <AiBreakdownSheet
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        project={d.project}
+        projectDetail={d.name}
+        onSaved={() => detail.refetch()}
       />
       {bulkOpen && (
         <BulkAddDialog

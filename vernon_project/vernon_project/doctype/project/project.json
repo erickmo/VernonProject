@@ -25,6 +25,9 @@
   "team_members",
   "section_break_madv",
   "goal",
+  "success_condition",
+  "failure_condition",
+  "context",
   "section_break_reward",
   "reward_type",
   "bonus_amount",
@@ -62,6 +65,24 @@
    "fieldname": "goal",
    "fieldtype": "Small Text",
    "label": "Goal"
+  },
+  {
+   "fieldname": "success_condition",
+   "fieldtype": "Small Text",
+   "label": "Success Condition",
+   "description": "What success looks like (used by AI breakdown)."
+  },
+  {
+   "fieldname": "failure_condition",
+   "fieldtype": "Small Text",
+   "label": "Failure Condition",
+   "description": "What would count as failure (used by AI breakdown)."
+  },
+  {
+   "fieldname": "context",
+   "fieldtype": "Small Text",
+   "label": "Context",
+   "description": "Any extra context the AI should know (constraints, stack, audience)."
   },
   {
    "fieldname": "brand",

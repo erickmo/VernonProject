@@ -31,7 +31,8 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
   const [f, setF] = useState<ProjectInput>({
     project_name: '', brand: '', project_owner: '', project_leader: '',
     project_admins: [], blocked_by: '', start_date: '', deadline: '',
-    goal: '', status: 'Ongoing', reward_type: 'Rupiah', bonus_amount: 0, discount: 0, team_members: [],
+    goal: '', success_condition: '', failure_condition: '', context: '',
+    status: 'Ongoing', reward_type: 'Rupiah', bonus_amount: 0, discount: 0, team_members: [],
   })
 
   useEffect(() => {
@@ -46,6 +47,9 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
         start_date: project.start_date ?? '',
         deadline: project.deadline ?? '',
         goal: project.goal ?? '',
+        success_condition: project.success_condition ?? '',
+        failure_condition: project.failure_condition ?? '',
+        context: project.context ?? '',
         status: project.status,
         reward_type: project.reward_type ?? 'Rupiah',
         bonus_amount: project.bonus_amount ?? 0,
@@ -162,6 +166,21 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Goal
             <textarea className={field + ' mt-1'} rows={2} value={f.goal} onChange={(e) => set('goal', e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Success condition
+            <textarea className={field + ' mt-1'} rows={2} placeholder="What success looks like — helps AI draft the plan" value={f.success_condition ?? ''} onChange={(e) => set('success_condition', e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Failure condition
+            <textarea className={field + ' mt-1'} rows={2} placeholder="What would count as failure" value={f.failure_condition ?? ''} onChange={(e) => set('failure_condition', e.target.value)} />
+          </label>
+
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Context
+            <textarea className={field + ' mt-1'} rows={2} placeholder="Constraints, stack, audience — extra context for AI" value={f.context ?? ''} onChange={(e) => set('context', e.target.value)} />
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
