@@ -65,10 +65,20 @@ def _resolve_recipients(audience_type, users, projects, inviter):
 
 def _serialize(doc, user):
 	"""The shape the popup and the /food/:name page both render."""
-	yes = [r.user for r in doc.recipients if r.response == "Yes"]
-	no = [r.user for r in doc.recipients if r.response == "No"]
+	groups = {"Yes": [], "No": [], "": []}
+	for r in doc.recipients:
+		groups.setdefault(r.response or "", []).append(r.user)
+	yes, no, pending = groups["Yes"], groups["No"], groups[""]
 	mine = next((r.response for r in doc.recipients if r.user == user), None)
-	name_map = _user_name_map(set(yes) | {doc.inviter})
+	is_inviter = doc.inviter == user
+	# Only the inviter gets the who-said-what roster: peers needn't see who
+	# declined, and a 100-person invite shouldn't map 100 names on every poll.
+	roster = (set(yes) | set(no) | set(pending)) if is_inviter else set(yes)
+	name_map = _user_name_map(roster | {doc.inviter})
+
+	def names(emails):
+		return [(name_map.get(u) or {}).get("full_name") or u for u in emails]
+
 	return {
 		"name": doc.name,
 		"message": doc.message,
@@ -76,12 +86,15 @@ def _serialize(doc, user):
 		"order_by": str(doc.order_by),
 		"inviter": doc.inviter,
 		"inviter_name": (name_map.get(doc.inviter) or {}).get("full_name") or doc.inviter,
-		"is_inviter": doc.inviter == user,
+		"is_inviter": is_inviter,
 		"closed": _is_closed(doc.order_by),
 		"my_response": mine or None,
 		"yes_count": len(yes),
 		"no_count": len(no),
-		"yes_names": [(name_map.get(u) or {}).get("full_name") or u for u in yes],
+		"pending_count": len(pending),
+		"yes_names": names(yes),
+		"no_names": names(no) if is_inviter else [],
+		"pending_names": names(pending) if is_inviter else [],
 	}
 
 

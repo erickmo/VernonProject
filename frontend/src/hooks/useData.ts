@@ -3271,12 +3271,14 @@ export function usePendingFoodInvites() {
   })
 }
 
-/** One invite by name — for the shared /food/:name link page. */
+/** One invite by name — the shared /food/:name link page and the inviter's
+ * roster. Polls so the inviter's Ikut/Nggak/Belum-jawab tally stays live. */
 export function useFoodInvite(name: string | undefined, enabled = true) {
   return useQuery({
     queryKey: keys.foodInvite(name ?? ''),
     queryFn: () => mobileApi.getFoodInvite(name!),
     enabled: enabled && !!name,
+    refetchInterval: 20_000,
   })
 }
 

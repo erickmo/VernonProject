@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { UtensilsCrossed, X, MapPin, Clock, Pizza, Soup, Sandwich, IceCreamCone, PartyPopper } from 'lucide-react'
+import { UtensilsCrossed, X, MapPin, Clock, Pizza, Soup, Sandwich, IceCreamCone, PartyPopper, Check, Ban, Hourglass, ExternalLink } from 'lucide-react'
 import type { FoodInvite } from '@/lib/types'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, externalUrl } from '@/lib/format'
 import { useRespondFoodInvite } from '@/hooks/useData'
 import { useToast } from './Toast'
 
@@ -13,6 +13,13 @@ const FLOATERS: { icon: typeof Pizza; className: string; delay: string }[] = [
   { icon: Sandwich, className: 'left-6 bottom-6 h-6 w-6 text-rose-400/60 animate-float', delay: '0.5s' },
   { icon: IceCreamCone, className: 'right-6 bottom-3 h-7 w-7 text-pink-400/60 animate-wiggle', delay: '0.35s' },
 ]
+
+// The inviter's roster, grouped. Order = what they care about most.
+const GROUPS = [
+  { key: 'yes', label: 'Ikut pesan', icon: Check, tone: 'text-emerald-700 dark:text-emerald-300', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' },
+  { key: 'no', label: 'Nggak ikut', icon: Ban, tone: 'text-rose-700 dark:text-rose-300', chip: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
+  { key: 'pending', label: 'Belum jawab', icon: Hourglass, tone: 'text-slate-600 dark:text-slate-300', chip: 'bg-slate-100 text-slate-600 dark:bg-slate-600/40 dark:text-slate-300' },
+] as const
 
 // Shared across /m and /w (like PrankPopup): a full-screen portal card, so it
 // needs no per-platform chrome. Shows one invite; the receiver picks Yes/No.
@@ -65,7 +72,7 @@ export function FoodInviteModal({ invite, onDone }: { invite: FoodInvite; onDone
           <p className="relative mt-3 text-center text-xs font-bold uppercase tracking-wide text-white/90">Makan Bareng</p>
         </div>
 
-        <div className="-mt-8 px-6 pb-6">
+        <div className="relative -mt-8 px-6 pb-6">
           <div className="rounded-2xl bg-white p-4 text-center shadow-lg dark:bg-slate-800">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">
               {invite.inviter_name} ngajak makan bareng!
@@ -73,9 +80,24 @@ export function FoodInviteModal({ invite, onDone }: { invite: FoodInvite; onDone
             <p className="mt-2 whitespace-pre-wrap text-base text-slate-700 dark:text-slate-200">{invite.message}</p>
           </div>
 
-          <div className="mt-3 flex flex-col gap-1 text-center text-sm text-slate-500 dark:text-slate-400">
+          <div className="mt-3 flex flex-col gap-1 text-center text-sm text-slate-600 dark:text-slate-300">
             {invite.place && (
-              <span className="inline-flex items-center justify-center gap-1"><MapPin className="h-4 w-4" />{invite.place}</span>
+              <span className="inline-flex items-center justify-center gap-1 break-all">
+                <MapPin className="h-4 w-4 shrink-0" />
+                {externalUrl(invite.place) ? (
+                  <a
+                    href={externalUrl(invite.place)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-semibold text-brand-600 underline decoration-dotted underline-offset-2 dark:text-brand-300"
+                  >
+                    {invite.place}
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  invite.place
+                )}
+              </span>
             )}
             <span className="inline-flex items-center justify-center gap-1">
               <Clock className="h-4 w-4" />Pesan sebelum {formatDateTime(invite.order_by)}
@@ -83,11 +105,27 @@ export function FoodInviteModal({ invite, onDone }: { invite: FoodInvite; onDone
           </div>
 
           {invite.is_inviter ? (
-            <div className="mt-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center text-sm dark:from-slate-700/40 dark:to-slate-700/40">
-              <p className="inline-flex items-center justify-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
+            <div className="mt-5 max-h-[45vh] space-y-2 overflow-y-auto">
+              <p className="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-3 text-sm font-semibold text-amber-700 dark:from-slate-700/40 dark:to-slate-700/40 dark:text-amber-300">
                 <PartyPopper className="h-4 w-4" />{invite.yes_count} orang ikut pesan
               </p>
-              {invite.yes_names.length > 0 && <p className="mt-1 text-slate-500 dark:text-slate-400">{invite.yes_names.join(', ')}</p>}
+              {GROUPS.map(({ key, label, icon: Icon, tone, chip }) => {
+                const names = key === 'yes' ? invite.yes_names : key === 'no' ? invite.no_names : invite.pending_names
+                const count = key === 'yes' ? invite.yes_count : key === 'no' ? invite.no_count : invite.pending_count
+                if (!count) return null
+                return (
+                  <div key={key} className="rounded-2xl bg-slate-50 p-3 text-left dark:bg-slate-700/40">
+                    <p className={'flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ' + tone}>
+                      <Icon className="h-3.5 w-3.5" />{label}
+                      <span className={'ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ' + chip}>{count}</span>
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{names.join(', ')}</p>
+                  </div>
+                )
+              })}
+              {!invite.yes_count && !invite.no_count && !invite.pending_count && (
+                <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-slate-700/40">Belum ada yang diundang lewat link ini.</p>
+              )}
             </div>
           ) : invite.closed ? (
             <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500 dark:bg-slate-700/40">Yah, undangan sudah ditutup.</p>

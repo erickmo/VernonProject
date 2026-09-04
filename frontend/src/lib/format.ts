@@ -298,3 +298,12 @@ export function byAllocationAsc(
   const d = (a.today_allocation || 0) - (b.today_allocation || 0)
   return d !== 0 ? d : byEstimatedAsc(a, b)
 }
+
+/** A free-text field that holds a link → an href; anything else → null.
+ * Used by the Makan Bareng place field (people paste Maps / GoFood links). */
+export function externalUrl(text: string | null | undefined): string | null {
+  const s = (text ?? '').trim()
+  if (/^https?:\/\/\S+$/i.test(s)) return s
+  if (/^www\.\S+\.\S+$/i.test(s)) return 'https://' + s
+  return null
+}

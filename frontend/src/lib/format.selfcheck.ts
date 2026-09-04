@@ -1,6 +1,6 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert/strict'
-import { dateSub, formatDate, pickRememberedDeadline } from './format'
+import { dateSub, externalUrl, formatDate, pickRememberedDeadline } from './format'
 
 // No date → no sub-line at all (the tile falls back to "—" in its value).
 assert.equal(dateSub(null), undefined)
@@ -27,3 +27,13 @@ assert.equal(pickRememberedDeadline('2026-09-01', '2026-09-01', '2026-09-02'), '
 assert.equal(pickRememberedDeadline('2026-08-20', '2026-09-01', '2026-09-02'), '2026-09-02') // stale → tomorrow
 
 console.log('format.selfcheck: all assertions passed')
+
+// externalUrl — a pasted link becomes clickable, a place name never does.
+assert.equal(externalUrl('https://maps.app.goo.gl/x1y2'), 'https://maps.app.goo.gl/x1y2')
+assert.equal(externalUrl('  http://gofood.co.id/a  '), 'http://gofood.co.id/a')
+assert.equal(externalUrl('www.gofood.co.id/a'), 'https://www.gofood.co.id/a')
+assert.equal(externalUrl('Padang Sederhana'), null)
+assert.equal(externalUrl('Kantin lantai 2, dekat www'), null)
+assert.equal(externalUrl('javascript:alert(1)'), null)
+assert.equal(externalUrl(null), null)
+assert.equal(externalUrl(''), null)

@@ -1788,5 +1788,8 @@ export interface FoodInvite {
   my_response: 'Yes' | 'No' | null
   yes_count: number
   no_count: number
+  pending_count: number
   yes_names: string[]
+  no_names: string[]
+  pending_names: string[]
 }

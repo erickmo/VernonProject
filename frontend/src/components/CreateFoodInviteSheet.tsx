@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { X, Copy, Check, FlaskConical } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { X, Copy, Check, FlaskConical, Users } from 'lucide-react'
 import type { Opt2, FoodAudience, FoodInvite } from '@/lib/types'
 import { MultiSelectSearch } from './MultiSelectSearch'
 import { SearchableSelect } from './SearchableSelect'
@@ -10,7 +11,8 @@ import { FoodInviteModal } from './FoodInviteModal'
 const TEST_INVITE: FoodInvite = {
   name: 'test', message: "Nasi Padang yuk, gw lapar banget 😋", place: 'Padang Sederhana',
   order_by: new Date(Date.now() + 3600_000).toISOString(), inviter: 'me', inviter_name: 'Kamu',
-  is_inviter: false, closed: false, my_response: null, yes_count: 0, no_count: 0, yes_names: [],
+  is_inviter: false, closed: false, my_response: null,
+  yes_count: 0, no_count: 0, pending_count: 0, yes_names: [], no_names: [], pending_names: [],
 }
 
 const AUDIENCE: { value: FoodAudience; label: string }[] = [
@@ -26,6 +28,7 @@ function inviteLink(name: string) {
 
 export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast()
+  const navigate = useNavigate()
   const create = useCreateFoodInvite()
   const projects = useProjects()
   const invitable = useFoodInvitableUsers()
@@ -37,13 +40,14 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
   const [audience, setAudience] = useState<FoodAudience>('Specific')
   const [users, setUsers] = useState<string[]>([])
   const [projectIds, setProjectIds] = useState<string[]>([])
+  const [invite, setInvite] = useState<string | null>(null)
   const [link, setLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [testOpen, setTestOpen] = useState(false)
 
   const reset = () => {
     setMessage(''); setPlace(''); setDate(''); setTime('')
-    setAudience('Specific'); setUsers([]); setProjectIds([]); setLink(null); setCopied(false)
+    setAudience('Specific'); setUsers([]); setProjectIds([]); setInvite(null); setLink(null); setCopied(false)
   }
   const close = () => { reset(); onClose() }
 
@@ -65,6 +69,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
       {
         onSuccess: (r) => {
           toast('success', 'Undangan terkirim! 🍜')
+          setInvite(r.invite ?? null)
           setLink(r.invite ? inviteLink(r.invite) : null)
         },
         onError: (e) => toast('error', (e as Error).message),
@@ -114,7 +119,15 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
                 {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
               </button>
             </div>
-            <button onClick={close} className="mt-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white">Selesai</button>
+            {invite && (
+              <button
+                onClick={() => { reset(); navigate(`/food/${invite}`) }}
+                className="mt-1 flex items-center justify-center gap-1.5 rounded-xl border border-brand-600 py-2.5 text-sm font-semibold text-brand-600 dark:border-brand-300 dark:text-brand-300"
+              >
+                <Users className="h-4 w-4" />Lihat siapa yang ikut
+              </button>
+            )}
+            <button onClick={close} className="rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white">Selesai</button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

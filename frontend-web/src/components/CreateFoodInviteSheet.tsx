@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { X, Copy, Check, FlaskConical } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { X, Copy, Check, FlaskConical, Users } from 'lucide-react'
 import type { Opt2, FoodAudience, FoodInvite } from '@/lib/types'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { MultiSelectSearch } from '@/components/MultiSelectSearch'
@@ -12,7 +13,8 @@ import { FoodInviteModal } from '@/components/FoodInviteModal'
 const TEST_INVITE: FoodInvite = {
   name: 'test', message: "Nasi Padang yuk, gw lapar banget 😋", place: 'Padang Sederhana',
   order_by: new Date(Date.now() + 3600_000).toISOString(), inviter: 'me', inviter_name: 'Kamu',
-  is_inviter: false, closed: false, my_response: null, yes_count: 0, no_count: 0, yes_names: [],
+  is_inviter: false, closed: false, my_response: null,
+  yes_count: 0, no_count: 0, pending_count: 0, yes_names: [], no_names: [], pending_names: [],
 }
 
 const AUDIENCE: { value: FoodAudience; label: string }[] = [
@@ -31,6 +33,7 @@ function inviteLink(name: string) {
 
 export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast()
+  const navigate = useNavigate()
   const create = useCreateFoodInvite()
   const projects = useProjects()
   const invitable = useFoodInvitableUsers()
@@ -41,6 +44,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
   const [audience, setAudience] = useState<FoodAudience>('Specific')
   const [users, setUsers] = useState<string[]>([])
   const [projectIds, setProjectIds] = useState<string[]>([])
+  const [invite, setInvite] = useState<string | null>(null)
   const [link, setLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [testOpen, setTestOpen] = useState(false)
@@ -64,6 +68,7 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
       {
         onSuccess: (r) => {
           toast('success', 'Undangan terkirim! 🍜')
+          setInvite(r.invite ?? null)
           setLink(r.invite ? inviteLink(r.invite) : null)
         },
         onError: (e) => toast('error', (e as Error).message),
@@ -108,6 +113,11 @@ export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClos
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+            {invite && (
+              <Button variant="secondary" className="w-full" onClick={() => navigate(`/food/${invite}`)}>
+                <Users className="h-4 w-4" />Lihat siapa yang ikut
+              </Button>
+            )}
             <Button variant="primary" className="w-full" onClick={onClose}>Selesai</Button>
           </div>
         ) : (
