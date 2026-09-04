@@ -1290,6 +1290,16 @@ export const passkeyApi = {
   revokePasskey: (name: string) => api.post<{ ok: boolean }>(PK + 'revoke_passkey', { name }),
 }
 
+// --- Self-service API token (for MCP / scripted access) ---------------------
+
+const AT = 'vernon_project.api.api_token.'
+
+export const apiTokenApi = {
+  status: () => api.get<{ api_key: string | null }>(AT + 'get_api_token_status'),
+  generate: () => api.post<{ api_key: string; api_secret: string }>(AT + 'generate_api_token'),
+  revoke: () => api.post<{ ok: boolean }>(AT + 'revoke_api_token'),
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function passkeyLoginBegin(): Promise<any> {
   const res = await fetch(METHOD + PK + 'login_begin', {

@@ -6,7 +6,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query'
-import { api, mobileApi, resource, renameDoc, passkeyApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
+import { api, mobileApi, resource, renameDoc, passkeyApi, apiTokenApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { stopTimer } from '@/hooks/useFocusTimer'
 import { enrollPasskey } from '@/lib/webauthn'
@@ -129,6 +129,7 @@ export const keys = {
   meetings: ['meetings'] as const,
   meeting: (n: string) => ['meeting', n] as const,
   passkeys: ['passkeys'] as const,
+  apiToken: ['api-token'] as const,
   teamActivity: ['team-activity'] as const,
   avatarCatalog: ['avatar-catalog'] as const,
   crateStatus: ['crate-status'] as const,
@@ -1767,6 +1768,26 @@ export function useRevokePasskey() {
   return useMutation({
     mutationFn: (name: string) => passkeyApi.revokePasskey(name),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.passkeys }),
+  })
+}
+
+export function useApiTokenStatus() {
+  return useQuery({ queryKey: keys.apiToken, queryFn: () => apiTokenApi.status() })
+}
+
+export function useGenerateApiToken() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiTokenApi.generate(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.apiToken }),
+  })
+}
+
+export function useRevokeApiToken() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiTokenApi.revoke(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.apiToken }),
   })
 }
 

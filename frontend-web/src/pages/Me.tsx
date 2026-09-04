@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen, Wifi, WifiOff, RefreshCw, User, CalendarOff, ChevronRight, Rocket } from 'lucide-react'
-import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
+import { LogOut, KeyRound, Smartphone, Sparkles, Fingerprint, Trash2, Loader2, Wand2, Trophy, BookOpen, Wifi, WifiOff, RefreshCw, User, CalendarOff, ChevronRight, Rocket, Webhook, Copy, ExternalLink } from 'lucide-react'
+import { useBoot, usePasskeys, useEnrollPasskey, useRevokePasskey, useApiTokenStatus, useGenerateApiToken, useRevokeApiToken, useAvatarCatalog, useGamification, useClaimDaily, useSaveMyProfile } from '@/hooks/useData'
 import { logout } from '@/lib/api'
 import { Avatar } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -176,6 +176,7 @@ export default function Me({ onReplayOnboarding }: { onReplayOnboarding?: () => 
         </BentoTile>
 
         <PasskeyTile />
+        <ApiTokenTile />
         <VerseSettingsTile />
         <GenderTile />
       </BentoGrid>
@@ -423,6 +424,151 @@ function PasskeyTile() {
           {enroll.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
           {list.length > 0 ? 'Add this device' : 'Set up fingerprint sign-in'}
         </button>
+      </div>
+    </BentoTile>
+  )
+}
+
+// Self-service token for scripted access (mainly the MCP server) — same
+// "shown once" UX as a GitHub personal access token: the secret is never
+// re-displayed after generation, only api_key (safe, not sensitive alone).
+const MCP_URL = 'https://mcp.vernon.id/mcp'
+
+function Code({ children }: { children: React.ReactNode }) {
+  return <code className="rounded bg-black/5 px-1 py-0.5 font-mono dark:bg-white/10">{children}</code>
+}
+
+function ApiTokenTile() {
+  const { data, isLoading } = useApiTokenStatus()
+  const generate = useGenerateApiToken()
+  const revoke = useRevokeApiToken()
+  const toast = useToast()
+  const confirm = useConfirm()
+  const [fresh, setFresh] = useState<{ api_key: string; api_secret: string } | null>(null)
+
+  const doGenerate = async () => {
+    try {
+      setFresh(await generate.mutateAsync())
+    } catch {
+      toast('error', 'Could not generate token')
+    }
+  }
+
+  const doRevoke = async () => {
+    const ok = await confirm({
+      title: 'Revoke API token',
+      message: "Anything using this token (e.g. your MCP server) stops working until you generate a new one.",
+      confirmLabel: 'Revoke',
+      destructive: true,
+    })
+    if (!ok) return
+    try {
+      await revoke.mutateAsync()
+      setFresh(null)
+      toast('success', 'Token revoked')
+    } catch {
+      toast('error', 'Could not revoke token')
+    }
+  }
+
+  const copyEnv = async (key: string, secret: string) => {
+    try {
+      await navigator.clipboard.writeText(`VERNON_API_KEY=${key}\nVERNON_API_SECRET=${secret}`)
+      toast('success', 'Copied — paste into mcp_server/.env')
+    } catch {
+      toast('error', 'Could not copy')
+    }
+  }
+
+  const copyMcpUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(MCP_URL)
+      toast('success', 'Link disalin')
+    } catch {
+      toast('error', 'Could not copy')
+    }
+  }
+
+  return (
+    <BentoTile span="md" tone="tint" accent="violet" title="API Token">
+      <div className="mt-1 space-y-2">
+        <p className="text-sm text-muted">
+          Personal token for scripted access (e.g. the MCP server) — runs with your own permissions.
+        </p>
+
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 dark:border-slate-700">
+          <a
+            href={MCP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-brand-600"
+          >
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{MCP_URL}</span>
+          </a>
+          <button onClick={copyMcpUrl} className="shrink-0 text-muted hover:text-brand-600" aria-label="Copy MCP link">
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <details className="rounded-lg border border-line px-3 py-2 text-xs text-muted dark:border-slate-700">
+          <summary className="cursor-pointer select-none font-semibold">
+            How to set it up
+          </summary>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+            <li>Clone this repo, then <Code>cd mcp_server</Code></li>
+            <li>
+              One-time: <Code>python3 -m venv .venv</Code>, <Code>.venv/bin/pip install -r requirements.txt</Code>,{' '}
+              <Code>cp .env.example .env</Code>
+            </li>
+            <li>Generate a token above, paste it into <Code>mcp_server/.env</Code> as <Code>VERNON_API_KEY</Code> / <Code>VERNON_API_SECRET</Code></li>
+            <li>Claude Code picks it up automatically via <Code>.mcp.json</Code> — run <Code>/mcp</Code> to check</li>
+            <li>For claude.ai Connectors, use the link above instead — needs an extra token from an admin (<Code>VERNON_MCP_TOKEN</Code>)</li>
+          </ol>
+        </details>
+
+        {fresh ? (
+          <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-500/10">
+            <p className="mb-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+              Shown once — copy now, the secret won't be shown again.
+            </p>
+            <div className="space-y-1 break-all font-mono text-xs">
+              <p>VERNON_API_KEY={fresh.api_key}</p>
+              <p>VERNON_API_SECRET={fresh.api_secret}</p>
+            </div>
+            <button
+              onClick={() => copyEnv(fresh.api_key, fresh.api_secret)}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 shadow-sm hover:bg-hover/[0.04] dark:bg-slate-800"
+            >
+              <Copy className="w-3.5 h-3.5" /> Copy for mcp_server/.env
+            </button>
+          </div>
+        ) : data?.api_key ? (
+          <p className="truncate font-mono text-xs text-muted">Key: {data.api_key}</p>
+        ) : !isLoading ? (
+          <p className="text-sm text-muted">No token yet.</p>
+        ) : null}
+
+        <div className="flex gap-2">
+          <button
+            onClick={doGenerate}
+            disabled={generate.isPending}
+            className="mt-1 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium text-brand-600 hover:bg-hover/[0.04] disabled:opacity-60 dark:border-slate-700"
+          >
+            {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Webhook className="w-4 h-4" />}
+            {data?.api_key ? 'Regenerate' : 'Generate token'}
+          </button>
+          {data?.api_key && (
+            <button
+              onClick={doRevoke}
+              disabled={revoke.isPending}
+              className="mt-1 rounded-lg border border-line px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-red-500/10"
+              aria-label="Revoke token"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     </BentoTile>
   )
