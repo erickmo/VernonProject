@@ -9,6 +9,7 @@ import {
 import { valueOfDay } from '@/lib/values'
 import { verseTheme, verseCardStyle } from '@/lib/verseTheme'
 import { ValuesWelcome } from '@web/components/ValuesWelcome'
+import { FoodInviteHomeCard } from '@/components/FoodInviteHomeCard'
 import { PriorityRailPanel } from '@/components/PriorityRailPanel'
 import CheerPop from '@/components/CheerPop'
 import {
@@ -532,6 +533,10 @@ export default function Home() {
     <Page className="space-y-6">
       <CheerPop />
       <ValuesWelcome />
+
+      {/* Makan Bareng — open invites you're part of, with the order thread. */}
+      <FoodInviteHomeCard />
+
       {/* First row — 4 columns: Hello + Ayat · Meetings · This week · Queues */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-stretch">
         {/* 1 · Hello + Ayat */}

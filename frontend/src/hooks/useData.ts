@@ -124,6 +124,7 @@ export const keys = {
   unreadMentions: ['unread-mentions'] as const,
   notificationFeed: ['notification-feed'] as const,
   foodInvitesPending: ['food-invites-pending'] as const,
+  foodInvitesActive: ['food-invites-active'] as const,
   foodInvite: (n: string) => ['food-invite', n] as const,
   personalNotes: ['personalNotes'] as const,
   meetings: ['meetings'] as const,
@@ -3292,6 +3293,16 @@ export function usePendingFoodInvites() {
   })
 }
 
+/** Open invites the user is involved in — the Home card. Everyone invited sees
+ * it (whatever they answered) until the order-by cutoff passes. */
+export function useActiveFoodInvites() {
+  return useQuery({
+    queryKey: keys.foodInvitesActive,
+    queryFn: () => mobileApi.activeFoodInvites(),
+    refetchInterval: 60_000,
+  })
+}
+
 /** One invite by name — the shared /food/:name link page and the inviter's
  * roster. Polls so the inviter's Ikut/Nggak/Belum-jawab tally stays live. */
 export function useFoodInvite(name: string | undefined, enabled = true) {
@@ -3310,13 +3321,16 @@ export function useRespondFoodInvite() {
       mobileApi.respondFoodInvite(invite, response),
     onSettled: (_r, _e, v) => {
       qc.invalidateQueries({ queryKey: keys.foodInvitesPending })
+      qc.invalidateQueries({ queryKey: keys.foodInvitesActive })
       qc.invalidateQueries({ queryKey: keys.foodInvite(v.invite) })
     },
   })
 }
 
 export function useCreateFoodInvite() {
+  const qc = useQueryClient()
   return useMutation({
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.foodInvitesActive }),
     mutationFn: async (v: {
       message: string
       order_by: string

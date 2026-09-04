@@ -1704,7 +1704,23 @@ def get_member_workload(project, user, include_completed=0):
 	return out
 
 
-COMMENTABLE = {"Project", "Project Detail", "Project Todo", "Papan Iklan"}
+COMMENTABLE = {"Project", "Project Detail", "Project Todo", "Papan Iklan", "Food Invite"}
+
+
+def _food_invite_people(name):
+	"""Everyone involved in a Makan Bareng: the inviter plus every recipient,
+	whatever they answered. Gates comment access and drives the @mention list."""
+	inviter = frappe.db.get_value("Food Invite", name, "inviter")
+	people = {inviter} if inviter else set()
+	people |= set(
+		frappe.get_all(
+			"Food Invite Recipient",
+			filters={"parent": name, "parenttype": "Food Invite"},
+			pluck="user",
+			limit_page_length=0,
+		)
+	)
+	return {e for e in people if e}
 
 
 def _comment_project(reference_doctype, reference_name):
@@ -1722,6 +1738,11 @@ def _comment_project(reference_doctype, reference_name):
 def _assert_comment_visible(reference_doctype, reference_name):
 	if reference_doctype not in COMMENTABLE:
 		frappe.throw("Comments are not available for this record.")
+	# Makan Bareng: only the people actually invited may read or add orders.
+	if reference_doctype == "Food Invite":
+		if frappe.session.user not in _food_invite_people(reference_name):
+			frappe.throw("Not permitted", frappe.PermissionError)
+		return
 	# ponytail: Papan Iklan is a public classifieds board; any authenticated user may comment.
 	if reference_doctype == "Papan Iklan":
 		if frappe.session.user == "Guest":
@@ -1799,6 +1820,8 @@ def _comment_participants(reference_doctype, reference_name):
 		author = frappe.get_value("Papan Iklan", reference_name, "author")
 		if author:
 			people.add(author)
+	if reference_doctype == "Food Invite":
+		people |= _food_invite_people(reference_name)
 	return {p for p in people if p}
 
 
@@ -1921,11 +1944,15 @@ def get_mentionable_users(reference_doctype, reference_name):
 	project's todos. Returns [{user, full_name, image}], de-duplicated, sorted by
 	full name. Access is gated by comment visibility on the target."""
 	_assert_comment_visible(reference_doctype, reference_name)
-	project = _comment_project(reference_doctype, reference_name)
-	if not project:
+	if reference_doctype == "Food Invite":
+		emails = _food_invite_people(reference_name) - {frappe.session.user}
+	else:
+		project = _comment_project(reference_doctype, reference_name)
+		if not project:
+			return []
+		emails = _project_mention_emails(project)
+	if not emails:
 		return []
-
-	emails = _project_mention_emails(project)
 	name_map = _user_name_map(emails)
 	out = [
 		{

@@ -44,6 +44,7 @@ import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/ho
 import { Spotlight, type Slide } from '@/components/Spotlight'
 import { QuickActions } from '@/components/QuickActions'
 import { BannerCarousel } from '@/components/BannerCarousel'
+import { FoodInviteHomeCard } from '@/components/FoodInviteHomeCard'
 import { PriorityRailPanel } from '@/components/PriorityRailPanel'
 import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead, useRecentlyDone } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
@@ -490,6 +491,9 @@ export default function Today() {
             <>
               {/* Managed promo banners — full-bleed strip, flush to the top. */}
               <BannerCarousel slides={banners ?? []} />
+
+              {/* Makan Bareng — open invites you're part of, with the order thread. */}
+              <FoodInviteHomeCard />
 
               {/* VernonCorp value of the day — quiet reminder of why we're here. */}
               <div className="mt-3 flex items-center justify-center gap-1.5 text-center">

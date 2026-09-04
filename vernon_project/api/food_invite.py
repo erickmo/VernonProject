@@ -193,6 +193,31 @@ def get_pending_invites():
 
 
 @frappe.whitelist()
+def get_active_invites():
+	"""Invites the session user is involved in that haven't passed their
+	order-by cutoff — the Makan Bareng card on Home. The inviter and every
+	recipient see it whatever they answered, so the order thread stays reachable
+	right up to the cutoff. Soonest cutoff first."""
+	user = _require_login()
+	names = set(
+		frappe.get_all(
+			"Food Invite Recipient", filters={"user": user}, pluck="parent", limit_page_length=0
+		)
+	)
+	names |= set(frappe.get_all(DOCTYPE, filters={"inviter": user}, pluck="name", limit_page_length=0))
+	if not names:
+		return []
+	open_names = frappe.get_all(
+		DOCTYPE,
+		filters={"name": ["in", list(names)], "order_by": [">", now_datetime()]},
+		pluck="name",
+		order_by="order_by asc",
+		limit_page_length=0,
+	)
+	return [_serialize(frappe.get_doc(DOCTYPE, n), user) for n in open_names]
+
+
+@frappe.whitelist()
 def food_invitable_users(txt=""):
 	"""Enabled Internal-Team + Intern users for the 'specific people' picker.
 	Any logged-in user may search — a social invite, not sensitive data."""

@@ -14,9 +14,15 @@ const escapeHtml = (s: string) =>
 export default function CommentThread({
   referenceDoctype,
   referenceName,
+  title = 'Comments',
+  className = 'mt-6',
 }: {
   referenceDoctype: string
   referenceName: string
+  /** Heading above the thread. Makan Bareng labels it "Pesanan" in Bahasa. */
+  title?: string
+  /** Outer <section> spacing — override when embedding inside a card. */
+  className?: string
 }) {
   const { data: comments, isLoading } = useComments(referenceDoctype, referenceName)
   const addComment = useAddComment(referenceDoctype, referenceName)
@@ -182,8 +188,8 @@ export default function CommentThread({
   }
 
   return (
-    <section className="mt-6">
-      <h3 className="mb-2 text-sm font-semibold text-gray-700">Comments</h3>
+    <section className={className}>
+      <h3 className="mb-2 text-sm font-semibold text-gray-700">{title}</h3>
       {isLoading ? (
         <Spinner className="h-5 w-5 text-gray-400" />
       ) : (

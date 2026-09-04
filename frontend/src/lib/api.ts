@@ -480,6 +480,8 @@ export const mobileApi = {
     api.get<import('./types').FoodInvite>(FI + 'get_invite', { invite }),
   pendingFoodInvites: () =>
     api.get<import('./types').FoodInvite[]>(FI + 'get_pending_invites'),
+  activeFoodInvites: () =>
+    api.get<import('./types').FoodInvite[]>(FI + 'get_active_invites'),
   foodInvitableUsers: (txt = '') =>
     api.get<{ users: { user: string; full_name: string }[] }>(FI + 'food_invitable_users', { txt }),
   income: () => api.get<import('./types').IncomeData>(IN + 'get_income'),
