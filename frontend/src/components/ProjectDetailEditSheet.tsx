@@ -50,6 +50,7 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
 
   const field =
     'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+  const head = 'mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'
 
   const submit = () => {
     if (!title.trim()) {
@@ -90,6 +91,8 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
           <Spinner className="mx-auto my-8 h-6 w-6 text-slate-400 dark:text-slate-500" />
         ) : (
         <div className="flex flex-col gap-3">
+          {/* Grouped into sections (mirrors the /w drawer). */}
+          <div className={head}>Basics</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Title<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -103,6 +106,7 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
             <input type="checkbox" checked={isPending} onChange={(e) => setIsPending(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
           </label>
 
+          <div className={head}>Analysis</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Current condition
             <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
@@ -113,11 +117,19 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
             <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
           </label>
 
+          <div className={head}>SOW</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Keterangan di SOW
             <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />
           </label>
 
+          <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Glossaries
+            <MultiSelectChips options={glossaryOpts} value={glossaries} onChange={setGlossaries} emptyText="No glossaries for this project yet" />
+          </div>
+
+          <div className={head}>AI context</div>
+          <span className="-mt-1 block text-xs font-normal text-slate-400 dark:text-slate-500">Feeds the “Generate with AI” drafts for this subgoal. All optional.</span>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Goal
             <textarea className={field + ' mt-1'} rows={2} placeholder="This subgoal's purpose" value={goal} onChange={(e) => setGoal(e.target.value)} />
@@ -137,11 +149,6 @@ export function ProjectDetailEditSheet({ open, onClose, projectDetailName }: Pro
             Context
             <textarea className={field + ' mt-1'} rows={2} placeholder="Extra context for AI" value={ctx} onChange={(e) => setCtx(e.target.value)} />
           </label>
-
-          <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Glossaries
-            <MultiSelectChips options={glossaryOpts} value={glossaries} onChange={setGlossaries} emptyText="No glossaries for this project yet" />
-          </div>
 
           <button onClick={submit} disabled={update.isPending}
             className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-60">

@@ -117,12 +117,16 @@ export function ProjectFormDialog({
     .filter((p) => p.name !== project?.name)
     .map((p) => ({ value: p.name, label: p.project_name }))
 
+  const inputCls =
+    'w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100'
+  const sectionHead = 'text-xs font-semibold uppercase tracking-wide text-muted'
+
   return (
     <Drawer
       open={open}
       onClose={onClose}
       title={isEdit ? 'Edit project' : 'New project'}
-      widthClass="max-w-xl"
+      widthClass="w-full sm:w-[60vw] max-w-none"
       onSubmit={submit}
       footer={
         <>
@@ -135,199 +139,206 @@ export function ProjectFormDialog({
         </>
       }
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Project name — full width */}
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-muted">
-            Project name<span className="text-red-500"> *</span>
-          </span>
-          <input
-            value={f.project_name}
-            onChange={(e) => set('project_name', e.target.value)}
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
+      {/* Wider drawer (60vw) lets the fields sit in grouped sections instead of one long column. */}
+      <div className="flex flex-col gap-7">
+        {/* ---- Basics ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Basics</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-sm font-medium text-muted">
+                Project name<span className="text-red-500"> *</span>
+              </span>
+              <input
+                value={f.project_name}
+                onChange={(e) => set('project_name', e.target.value)}
+                className={inputCls}
+              />
+            </label>
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">
+                Brand<span className="text-red-500"> *</span>
+              </span>
+              <SearchableSelect
+                value={f.brand}
+                onChange={(v) => set('brand', v)}
+                options={brandOpts}
+                placeholder="Select…"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">Status</span>
+              <SearchableSelect
+                value={f.status}
+                onChange={(v) => set('status', v)}
+                options={STATUS_OPTS}
+              />
+            </div>
+          </div>
+        </section>
 
-        {/* Brand */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            Brand<span className="text-red-500"> *</span>
-          </span>
-          <SearchableSelect
-            value={f.brand}
-            onChange={(v) => set('brand', v)}
-            options={brandOpts}
-            placeholder="Select…"
-          />
-        </div>
+        {/* ---- People ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>People</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">
+                Owner<span className="text-red-500"> *</span>
+              </span>
+              <SearchableSelect
+                value={f.project_owner}
+                onChange={(v) => set('project_owner', v)}
+                options={owners}
+                placeholder="Select…"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">
+                Leader<span className="text-red-500"> *</span>
+              </span>
+              <SearchableSelect
+                value={f.project_leader}
+                onChange={(v) => set('project_leader', v)}
+                options={leaders}
+                placeholder="Select…"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">Admins</span>
+              <MultiSelectSearch
+                options={users}
+                value={(f.project_admins ?? []).map((a) => a.user)}
+                onChange={(vs) => set('project_admins', vs.map((user) => ({ user })))}
+                placeholder="None"
+              />
+            </div>
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">Team</span>
+              <MultiSelectSearch
+                options={users}
+                value={(f.team_members ?? []).map((t) => t.user)}
+                onChange={(vs) => set('team_members', vs.map((user) => ({ user })))}
+                placeholder="Add team members…"
+              />
+            </div>
+          </div>
+        </section>
 
-        {/* Status */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">Status</span>
-          <SearchableSelect
-            value={f.status}
-            onChange={(v) => set('status', v)}
-            options={STATUS_OPTS}
-          />
-        </div>
+        {/* ---- Schedule & dependencies ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Schedule &amp; dependencies</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-muted">
+                Start<span className="text-red-500"> *</span>
+              </span>
+              <DatePicker
+                value={f.start_date}
+                onChange={(v) => set('start_date', v)}
+                className={inputCls}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-muted">
+                Deadline<span className="text-red-500"> *</span>
+              </span>
+              <DatePicker
+                value={f.deadline}
+                onChange={(v) => set('deadline', v)}
+                className={inputCls}
+              />
+            </label>
+            <div className="space-y-1 md:col-span-2">
+              <span className="text-sm font-medium text-muted">Blocking project</span>
+              <SearchableSelect
+                value={f.blocked_by ?? ''}
+                onChange={(v) => set('blocked_by', v)}
+                options={blockedByOpts}
+                allowClear
+                placeholder="None — not blocked"
+              />
+              <p className="text-xs text-muted">The project this one depends on / is blocked by.</p>
+            </div>
+          </div>
+        </section>
 
-        {/* Owner */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            Owner<span className="text-red-500"> *</span>
-          </span>
-          <SearchableSelect
-            value={f.project_owner}
-            onChange={(v) => set('project_owner', v)}
-            options={owners}
-            placeholder="Select…"
-          />
-        </div>
-
-        {/* Leader */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            Leader<span className="text-red-500"> *</span>
-          </span>
-          <SearchableSelect
-            value={f.project_leader}
-            onChange={(v) => set('project_leader', v)}
-            options={leaders}
-            placeholder="Select…"
-          />
-        </div>
-
-        {/* Admins */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">Admins</span>
-          <MultiSelectSearch
-            options={users}
-            value={(f.project_admins ?? []).map((a) => a.user)}
-            onChange={(vs) => set('project_admins', vs.map((user) => ({ user })))}
-            placeholder="None"
-          />
-        </div>
-
-        {/* Blocked by — PROJECT link, not user */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            Blocking project
-          </span>
-          <SearchableSelect
-            value={f.blocked_by ?? ''}
-            onChange={(v) => set('blocked_by', v)}
-            options={blockedByOpts}
-            allowClear
-            placeholder="None — not blocked"
-          />
-          <p className="text-xs text-muted">
-            The project this one depends on / is blocked by.
+        {/* ---- AI context ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>AI context</h3>
+          <p className="-mt-1 text-xs text-muted">
+            Feeds the “Generate with AI” drafts. All optional.
           </p>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-sm font-medium text-muted">Goal</span>
+              <textarea
+                value={f.goal ?? ''}
+                onChange={(e) => set('goal', e.target.value)}
+                rows={2}
+                placeholder="What this project is for"
+                className={inputCls}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-muted">Success condition</span>
+              <textarea
+                value={f.success_condition ?? ''}
+                onChange={(e) => set('success_condition', e.target.value)}
+                rows={2}
+                placeholder="What success looks like"
+                className={inputCls}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-muted">Failure condition</span>
+              <textarea
+                value={f.failure_condition ?? ''}
+                onChange={(e) => set('failure_condition', e.target.value)}
+                rows={2}
+                placeholder="What would count as failure"
+                className={inputCls}
+              />
+            </label>
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-sm font-medium text-muted">Context</span>
+              <textarea
+                value={f.context ?? ''}
+                onChange={(e) => set('context', e.target.value)}
+                rows={2}
+                placeholder="Constraints, stack, audience — extra context for AI"
+                className={inputCls}
+              />
+            </label>
+          </div>
+        </section>
 
-        {/* Start date */}
-        <label className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            Start<span className="text-red-500"> *</span>
-          </span>
-          <DatePicker
-            value={f.start_date}
-            onChange={(v) => set('start_date', v)}
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-
-        {/* Deadline */}
-        <label className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            Deadline<span className="text-red-500"> *</span>
-          </span>
-          <DatePicker
-            value={f.deadline}
-            onChange={(v) => set('deadline', v)}
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-
-        {/* Goal — full width */}
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-muted">Goal</span>
-          <textarea
-            value={f.goal ?? ''}
-            onChange={(e) => set('goal', e.target.value)}
-            rows={2}
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-        {/* Success condition — full width, feeds AI breakdown */}
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-muted">Success condition</span>
-          <textarea
-            value={f.success_condition ?? ''}
-            onChange={(e) => set('success_condition', e.target.value)}
-            rows={2}
-            placeholder="What success looks like — helps AI draft the plan"
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-        {/* Failure condition — full width, feeds AI breakdown */}
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-muted">Failure condition</span>
-          <textarea
-            value={f.failure_condition ?? ''}
-            onChange={(e) => set('failure_condition', e.target.value)}
-            rows={2}
-            placeholder="What would count as failure"
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-        {/* Context — full width, feeds AI breakdown */}
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-muted">Context</span>
-          <textarea
-            value={f.context ?? ''}
-            onChange={(e) => set('context', e.target.value)}
-            rows={2}
-            placeholder="Constraints, stack, audience — extra context for AI"
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-
-        {/* Reward type */}
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-muted">Reward type</span>
-          <SearchableSelect
-            value={f.reward_type ?? 'Rupiah'}
-            onChange={(v) => set('reward_type', v as 'Rupiah' | 'Point')}
-            options={[{ value: 'Rupiah', label: 'Rupiah' }, { value: 'Point', label: 'Point' }]}
-          />
-        </div>
-
-        {/* Bonus */}
-        <label className="space-y-1">
-          <span className="text-sm font-medium text-muted">
-            {f.reward_type === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
-          </span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={f.bonus_amount || ''}
-            onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)}
-            className="w-full rounded-xl border border-line dark:border-slate-700 bg-transparent px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:text-slate-100"
-          />
-        </label>
-
-        {/* Team members — full width */}
-        <div className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium text-muted">Team</span>
-          <MultiSelectSearch
-            options={users}
-            value={(f.team_members ?? []).map((t) => t.user)}
-            onChange={(vs) => set('team_members', vs.map((user) => ({ user })))}
-            placeholder="Add team members…"
-          />
-        </div>
+        {/* ---- Reward ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Reward</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-muted">Reward type</span>
+              <SearchableSelect
+                value={f.reward_type ?? 'Rupiah'}
+                onChange={(v) => set('reward_type', v as 'Rupiah' | 'Point')}
+                options={[{ value: 'Rupiah', label: 'Rupiah' }, { value: 'Point', label: 'Point' }]}
+              />
+            </div>
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-muted">
+                {f.reward_type === 'Point' ? 'Bonus Points' : 'Bonus Amount (Rp)'}
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={f.bonus_amount || ''}
+                onChange={(e) => set('bonus_amount', Number(e.target.value) || 0)}
+                className={inputCls}
+              />
+            </label>
+          </div>
+        </section>
       </div>
     </Drawer>
   )

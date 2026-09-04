@@ -66,6 +66,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
 
   const field =
     'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+  const head = 'mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'
 
   const submit = () => {
     if (!f.project_name.trim() || !f.brand || !f.project_owner || !f.project_leader ||
@@ -102,7 +103,9 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
           </button>
         </div>
 
+        {/* Grouped into sections (mirrors the /w drawer) so a long form scans in blocks. */}
         <div className="flex flex-col gap-3">
+          <div className={head}>Basics</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Project name<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={f.project_name} onChange={(e) => set('project_name', e.target.value)} />
@@ -113,6 +116,12 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             <SearchableSelect value={f.brand} onChange={(v) => set('brand', v)} options={opts?.brands ?? []} placeholder="Select…" />
           </label>
 
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Status
+            <SearchableSelect value={f.status} onChange={(v) => set('status', v)} options={STATUSES.map((s) => ({ value: s, label: s }))} />
+          </label>
+
+          <div className={head}>People</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Owner<span className="text-red-500"> *</span>
             <SearchableSelect value={f.project_owner} onChange={(v) => set('project_owner', v)} options={owners} disabled={lockLeads} placeholder="Select…" />
@@ -133,6 +142,18 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             />
           </label>
 
+          <div className={head}>Schedule &amp; dependencies</div>
+          <div className="flex gap-3">
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+              Start<span className="text-red-500"> *</span>
+              <input type="date" className={field + ' mt-1'} value={f.start_date} onChange={(e) => set('start_date', e.target.value)} />
+            </label>
+            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+              Deadline<span className="text-red-500"> *</span>
+              <input type="date" className={field + ' mt-1'} value={f.deadline} onChange={(e) => set('deadline', e.target.value)} />
+            </label>
+          </div>
+
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Blocking project
             <SearchableSelect
@@ -147,22 +168,8 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             <span className="mt-0.5 block text-xs font-normal text-slate-400 dark:text-slate-500">The project this one depends on / is blocked by.</span>
           </label>
 
-          <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Start<span className="text-red-500"> *</span>
-              <input type="date" className={field + ' mt-1'} value={f.start_date} onChange={(e) => set('start_date', e.target.value)} />
-            </label>
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Deadline<span className="text-red-500"> *</span>
-              <input type="date" className={field + ' mt-1'} value={f.deadline} onChange={(e) => set('deadline', e.target.value)} />
-            </label>
-          </div>
-
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Status
-            <SearchableSelect value={f.status} onChange={(v) => set('status', v)} options={STATUSES.map((s) => ({ value: s, label: s }))} />
-          </label>
-
+          <div className={head}>AI context</div>
+          <span className="-mt-1 block text-xs font-normal text-slate-400 dark:text-slate-500">Feeds the “Generate with AI” drafts. All optional.</span>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Goal
             <textarea className={field + ' mt-1'} rows={2} value={f.goal} onChange={(e) => set('goal', e.target.value)} />
@@ -183,6 +190,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             <textarea className={field + ' mt-1'} rows={2} placeholder="Constraints, stack, audience — extra context for AI" value={f.context ?? ''} onChange={(e) => set('context', e.target.value)} />
           </label>
 
+          <div className={head}>Reward</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Reward type
             <SearchableSelect value={f.reward_type ?? 'Rupiah'} onChange={(v) => set('reward_type', v as 'Rupiah' | 'Point')} options={[{ value: 'Rupiah', label: 'Rupiah' }, { value: 'Point', label: 'Point' }]} />
