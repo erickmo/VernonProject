@@ -19,6 +19,7 @@
   "owner_deadline",
   "is_priority",
   "work_mode",
+  "ai_prompt",
   "to_check",
   "auto_approve",
   "auto_approve_opt_out",
@@ -192,6 +193,13 @@
    "fieldtype": "Select",
    "label": "Work Mode",
    "options": "\nHuman\nAI\nBoth"
+  },
+  {
+   "depends_on": "eval:doc.work_mode=='AI'||doc.work_mode=='Both'",
+   "description": "Prompt/instructions for the AI doing this task.",
+   "fieldname": "ai_prompt",
+   "fieldtype": "Long Text",
+   "label": "Prompt"
   },
   {
    "default": "0",

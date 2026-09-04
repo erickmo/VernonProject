@@ -142,7 +142,8 @@ export interface ProjectItem {
   can_undo: boolean
   can_create: boolean
   is_priority: boolean
-  work_mode?: 'Human' | 'AI' | 'Both' | ''
+   work_mode?: 'Human' | 'AI' | 'Both' | ''
+  ai_prompt?: string
   to_check: boolean
   can_prioritize: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'

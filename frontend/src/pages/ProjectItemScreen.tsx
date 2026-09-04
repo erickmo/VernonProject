@@ -41,6 +41,7 @@ import {
   X,
   Zap,
   Eye,
+  Sparkles,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -132,6 +133,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
+  const [aiPrompt, setAiPrompt] = useState(data.ai_prompt ?? '')
   const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
 
   const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
@@ -184,6 +186,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     fields.group = group
     fields.level_id = level
     fields.work_mode = workMode
+    // Prompt only meaningful for AI/Both; clear it otherwise.
+    fields.ai_prompt = workMode === 'AI' || workMode === 'Both' ? aiPrompt : ''
     // Blocking links: arrays of todo names (controller syncs the mirror side).
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
@@ -376,6 +380,21 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           ))}
         </div>
       </div>
+
+      {(workMode === 'AI' || workMode === 'Both') && (
+        <div className="mb-3">
+          <label className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" /> Prompt <span className="font-normal text-slate-400">· instruksi untuk AI</span>
+          </label>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            rows={4}
+            placeholder="Tulis prompt / instruksi untuk AI…"
+            className={clsx(field, 'resize-y')}
+          />
+        </div>
+      )}
 
       {data.detail_todos.length > 0 && (
         <div className="mb-3">
@@ -1783,6 +1802,16 @@ const [followOpen, setFollowOpen] = useState(false)
               )
             })}
           </ol>
+        </div>
+      )}
+
+      {/* AI Prompt — read view, only for AI/Both tasks that have one. */}
+      {(data.work_mode === 'AI' || data.work_mode === 'Both') && data.ai_prompt && (
+        <div className="mt-4 rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 p-4 shadow-sm">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
+            <Sparkles className="h-3.5 w-3.5" /> Prompt
+          </p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{data.ai_prompt}</p>
         </div>
       )}
 

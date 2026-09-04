@@ -2055,6 +2055,7 @@ def get_project_item(project_item):
 	name_map = _user_name_map(emails)
 	_admins = get_project_admins(r["project"])
 	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=_admins)
+	shaped["ai_prompt"] = frappe.db.get_value("Project Todo", project_item, "ai_prompt") or ""
 	shaped["can_edit_notes"] = user in (
 		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
 	) or user in _admins
@@ -2277,6 +2278,7 @@ def update_todo(
 	is_waiting=None,
 	is_priority=None,
 	work_mode=None,
+	ai_prompt=None,
 	to_check=None,
 	waiting_reason=None,
 	recurring_interval=None,
@@ -2358,6 +2360,9 @@ def update_todo(
 		# task may set it. Empty string clears it.
 		if work_mode is not None:
 			row.work_mode = work_mode if work_mode in ("Human", "AI", "Both") else ""
+		# Prompt for the AI (shown only for AI/Both tasks in the UI). Empty clears.
+		if ai_prompt is not None:
+			row.ai_prompt = ai_prompt or None
 		# "To Check" is the assignee's own working reminder — a plain flag with no
 		# scoring/workflow effect, so anyone who can edit the task may set it.
 		if to_check is not None:
