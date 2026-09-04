@@ -593,6 +593,74 @@ def save_ai_prompt(todo_id, ai_prompt):
 		return {"status": "error", "message": str(e)}
 
 
+@frappe.whitelist()
+def delete_ai_prompt(todo_id, name=None):
+	"""Delete AI prompt(s) from a project todo. Same leader/owner gate as save_ai_prompt.
+
+	``name`` given -> removes the prompt(s) whose name matches it (returns an error if
+	none match). ``name`` omitted/empty -> clears ALL prompts on the todo. Returns the
+	remaining prompts."""
+	try:
+		todo = frappe.get_doc("Project Todo", todo_id)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
+		project = frappe.get_doc("Project", project_detail.project)
+
+		user = frappe.session.user
+		is_sm = "System Manager" in frappe.get_roles(user)
+		if not (is_sm or user in (project.project_owner, project.project_leader)):
+			return {
+				"status": "error",
+				"message": f"Hanya Project Leader ({project.project_leader}) atau Project Owner ({project.project_owner}) yang boleh menghapus prompt.",
+			}
+
+		current = parse_ai_prompts(todo.ai_prompt)
+		if name:
+			remaining = [p for p in current if p["name"] != name]
+			if len(remaining) == len(current):
+				return {"status": "error", "message": f"Prompt bernama {name!r} tidak ditemukan."}
+		else:
+			remaining = []
+
+		todo.ai_prompt = json.dumps(remaining) if remaining else None
+		todo.save(ignore_permissions=True)
+		return {"status": "ok", "message": "Prompt berhasil dihapus.", "ai_prompts": remaining}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def get_ai_todos_needing_prompt():
+	"""Planned AI todos assigned to the caller that still need an AI prompt written.
+
+	Filters: ``work_mode`` in (AI, Both), ``assigned_to`` == current user, ``status`` ==
+	⚪️ Planned (not yet started — excludes Done, Checked By PL, Completed, Cancelled),
+	and no AI prompt saved yet (ai_prompt empty once normalized — covers NULL, "", "[]",
+	and rows whose prompts are all blank).
+
+	Returns a compact list ordered by deadline (soonest first), so a caller deciding
+	which todo to apply a prompt to doesn't have to fetch and scan every todo:
+	[{name, to_do, project, project_detail, status, work_mode, deadline}]."""
+	user = frappe.session.user
+	cand = frappe.get_all(
+		"Project Todo",
+		filters={
+			"assigned_to": user,
+			"work_mode": ["in", ["AI", "Both"]],
+			"status": "⚪️ Planned",
+		},
+		fields=["name", "to_do", "project", "project_detail", "status", "work_mode", "deadline", "ai_prompt"],
+		order_by="deadline asc",
+	)
+	return [
+		{k: r[k] for k in ("name", "to_do", "project", "project_detail", "status", "work_mode", "deadline")}
+		for r in cand
+		if not parse_ai_prompts(r.ai_prompt)
+	]
+
+
 def _parse_checklist(raw):
 	"""Normalize the stored checklist JSON into a clean list. Safe on None /
 	malformed JSON -> []. Each item is {"t": str, "d": bool}; empty-text rows

@@ -42,6 +42,7 @@ import {
   Zap,
   Eye,
   Sparkles,
+  ChevronRight,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -593,17 +594,26 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
     })
   }
 
+  const [openIdx, setOpenIdx] = useState<number[]>([])
+  const toggleOpen = (i: number) => setOpenIdx((o) => (o.includes(i) ? o.filter((x) => x !== i) : [...o, i]))
   const patch = (i: number, p: Partial<AiPrompt>) => setItems((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)))
-  const add = () => setItems((xs) => [...xs, { name: '', prompt: '' }])
-  const remove = (i: number) => { const next = items.filter((_, j) => j !== i); setItems(next); commit(next) }
+  const add = () => setItems((xs) => { setOpenIdx((o) => [...o, xs.length]); return [...xs, { name: '', prompt: '' }] })
+  const remove = (i: number) => {
+    const next = items.filter((_, j) => j !== i)
+    setItems(next)
+    setOpenIdx((o) => o.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x)))
+    commit(next)
+  }
 
   if (!canEdit) {
     return initial.length ? (
-      <ol className="space-y-3">
+      <ol className="space-y-2">
         {initial.map((p, i) => (
           <li key={i}>
-            <p className="text-sm font-semibold text-violet-700 dark:text-violet-300">{p.name || `Prompt ${i + 1}`}</p>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{p.prompt}</p>
+            <details className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-white/60 dark:bg-slate-800/60 p-2.5">
+              <summary className="cursor-pointer select-none truncate text-sm font-semibold text-violet-700 dark:text-violet-300">{p.name || `Prompt ${i + 1}`}</summary>
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">{p.prompt}</p>
+            </details>
           </li>
         ))}
       </ol>
@@ -618,26 +628,34 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
     <div className="space-y-3">
       {items.map((p, i) => (
         <div key={i} className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-white/60 dark:bg-slate-800/60 p-2.5">
-          <div className="mb-1.5 flex items-center gap-2">
-            <input
-              value={p.name}
-              onChange={(e) => patch(i, { name: e.target.value })}
-              onBlur={() => commit()}
-              placeholder={`Nama / untuk apa (Prompt ${i + 1})`}
-              className={clsx(inputCls, 'flex-1 font-semibold')}
-            />
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => toggleOpen(i)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+              <ChevronRight className={clsx('h-4 w-4 shrink-0 text-violet-400 transition-transform', openIdx.includes(i) && 'rotate-90')} />
+              <span className="truncate text-sm font-semibold text-violet-700 dark:text-violet-300">{p.name || `Prompt ${i + 1}`}</span>
+            </button>
             <button type="button" onClick={() => remove(i)} title="Hapus prompt" className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/15">
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
-          <textarea
-            value={p.prompt}
-            onChange={(e) => patch(i, { prompt: e.target.value })}
-            onBlur={() => commit()}
-            rows={3}
-            placeholder="Tulis prompt / instruksi untuk AI…"
-            className={clsx(inputCls, 'resize-none [field-sizing:content] leading-relaxed')}
-          />
+          {openIdx.includes(i) && (
+            <div className="mt-2 space-y-2">
+              <input
+                value={p.name}
+                onChange={(e) => patch(i, { name: e.target.value })}
+                onBlur={() => commit()}
+                placeholder={`Nama / untuk apa (Prompt ${i + 1})`}
+                className={clsx(inputCls, 'font-semibold')}
+              />
+              <textarea
+                value={p.prompt}
+                onChange={(e) => patch(i, { prompt: e.target.value })}
+                onBlur={() => commit()}
+                rows={3}
+                placeholder="Tulis prompt / instruksi untuk AI…"
+                className={clsx(inputCls, 'resize-none [field-sizing:content] leading-relaxed')}
+              />
+            </div>
+          )}
         </div>
       ))}
       <div className="flex items-center justify-between">
