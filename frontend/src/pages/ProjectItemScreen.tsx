@@ -7,6 +7,7 @@ import {
   ArrowDownLeft,
   ArrowUp,
   ListChecks,
+  Bot,
   ArrowRight,
   ArrowUpRight,
   Ban,
@@ -69,6 +70,8 @@ import { FocusNoteSheet } from '@/components/FocusNoteSheet'
 import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
 import { FollowUpCheckDialog } from '@/components/FollowUpCheckDialog'
+import { AiPhaseBanner } from '@/components/AiPhaseBanner'
+import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
 import { ISSUE_HELP, issueCounts, issueLabel, todoIssueInitial } from '@/lib/todoIssues'
 import { HelpSheet, InfoDot } from '@/components/HelpSheet'
 import type { ProjectItemDetail, TodoFile } from '@/lib/types'
@@ -361,13 +364,20 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Work mode <span className="font-normal text-slate-400">· siapa yang kerjakan</span></label>
         <div className="flex gap-2">
-          {(['Human', 'AI', 'Both'] as const).map((m) => (
+          {(['Human', 'AI', 'Both'] as const).map((m) => {
+            // Tagging AI needs AI access; already-tagged todos stay switchable so a
+            // revoked user can still move one back to Human. Backend re-checks.
+            const locked = (m === 'AI' || m === 'Both') && !data.can_use_ai && workMode !== m
+            return (
             <button
               key={m}
               type="button"
+              disabled={locked}
+              title={locked ? 'Minta Administrator mengaktifkan akses AI untuk akun Anda.' : undefined}
               onClick={() => setWorkMode(workMode === m ? '' : m)}
               className={clsx(
                 'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition active:scale-95',
+                locked && 'cursor-not-allowed opacity-40',
                 workMode === m
                   ? 'border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/60 dark:bg-brand-500/20 dark:text-brand-300'
                   : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',
@@ -375,7 +385,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             >
               {m === 'Human' ? 'Human' : m === 'AI' ? 'AI' : 'Both'}
             </button>
-          ))}
+          )})}
         </div>
       </div>
 
@@ -1591,8 +1601,18 @@ const [followOpen, setFollowOpen] = useState(false)
           </Link>
           <h2 className="mt-1 text-lg font-bold leading-snug text-slate-900 dark:text-slate-50">{data.to_do}</h2>
 
-          {(data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0 || data.is_waiting) && (
+          {(aiPhaseOf(data) > 0 || data.to_check || data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0 || data.is_waiting) && (
             <div className="mt-2 flex flex-wrap gap-2">
+              {aiPhaseOf(data) > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                  <Bot className="h-3.5 w-3.5" /> AI {aiPhaseOf(data)} · {AI_PHASES[aiPhaseOf(data)].label}
+                </span>
+              )}
+              {data.to_check && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                  <Eye className="h-3.5 w-3.5" /> Perlu dicek
+                </span>
+              )}
               {data.is_missed && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 dark:bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300">
                   <AlertCircle className="h-3.5 w-3.5" /> Missed occurrence
@@ -1897,12 +1917,13 @@ const [followOpen, setFollowOpen] = useState(false)
         </div>
       )}
 
-      {/* AI Prompt — inline-editable card (leader/owner only), above Notes, AI/Both tasks. */}
+      {/* AI — the 3-phase banner then the prompts themselves (editable by leader/owner/assignee). */}
       {(data.work_mode === 'AI' || data.work_mode === 'Both') && (
         <div className="mt-4 rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 p-4 shadow-sm">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
             <Sparkles className="h-3.5 w-3.5" /> Prompt
           </p>
+          <AiPhaseBanner todo={data} />
           <AiPromptList todoId={data.name} initial={data.ai_prompts ?? []} canEdit={!!data.can_edit_prompt} />
         </div>
       )}

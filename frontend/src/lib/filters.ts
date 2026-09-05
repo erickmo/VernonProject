@@ -1,4 +1,4 @@
-import type { ProjectItem, ProjectCard } from './types'
+import type { AiPhase, ProjectItem, ProjectCard } from './types'
 import type { SelectOption } from '../components/SearchableSelect'
 
 /** Case-insensitive substring test. Empty/whitespace query matches everything. */
@@ -250,17 +250,55 @@ export function applyProjectItemFilters(list: ProjectItem[], f: Record<string, s
 }
 
 /**
- * Todo "tags" — the icon flags shown on a TodoCard. `focus` = has a live focus
- * timer (transient, membership from `useFocusedTaskIds`), `ai` = work_mode AI,
- * `to_check` = the To Check flag, `untagged` = none of the three. Drives the
- * by-project column tag filter on the dashboard (both frontends).
+ * The AI ladder. A todo tagged AI walks phases 1 → 2 → 3; phase 0 is untagged work.
+ * Derived server-side (`ai_phase`, see api/project_todo.py) — never stored except for
+ * the phase-3 confirmation checkbox. `next` is the one line of UI copy explaining what
+ * has to happen for the todo to leave this phase.
  */
-export type TodoTag = 'untagged' | 'focus' | 'ai' | 'to_check'
+export const AI_PHASES: Record<AiPhase, { label: string; short: string; next: string }> = {
+  0: {
+    label: 'Non-AI',
+    short: 'Non-AI',
+    next: 'Dikerjakan manusia. Tandai kerja AI untuk mulai fase 1.',
+  },
+  1: {
+    label: 'Ditandai AI',
+    short: 'AI 1',
+    next: 'Menunggu prompt dibuat. Setelah prompt ada, kamu tinggal periksa dan konfirmasi.',
+  },
+  2: {
+    label: 'Prompt Draf',
+    short: 'AI 2',
+    next: 'Periksa dan perbaiki prompt-nya, lalu tekan Konfirmasi supaya AI Agent boleh mengerjakan.',
+  },
+  3: {
+    label: 'Prompt Terkonfirmasi',
+    short: 'AI 3',
+    next: 'AI Agent akan mengerjakan, lalu membuat todo "Ask other to check" kalau sudah selesai.',
+  },
+}
+
+/** Phase of a todo on the AI ladder. Falls back to work_mode for payloads that predate `ai_phase`. */
+export function aiPhaseOf(t: ProjectItem): AiPhase {
+  if (t.ai_phase != null) return t.ai_phase
+  return t.work_mode === 'AI' || t.work_mode === 'Both' ? 1 : 0
+}
+
+/**
+ * Todo "tags" — the icon flags shown on a TodoCard. `focus` = has a live focus
+ * timer (transient, membership from `useFocusedTaskIds`), `ai1`/`ai2`/`ai3` = the AI
+ * phase, `to_check` = the To Check flag, `untagged` = none of them. Drives the
+ * by-project column tag filter on the dashboard (both frontends). Turning all three
+ * AI tags on reproduces the old single "AI" filter, since 'on' tags are OR-ed.
+ */
+export type TodoTag = 'untagged' | 'focus' | 'ai1' | 'ai2' | 'ai3' | 'to_check'
 
 export const TODO_TAGS: { value: TodoTag; label: string }[] = [
   { value: 'untagged', label: 'Untagged' },
   { value: 'focus', label: 'Focus' },
-  { value: 'ai', label: 'AI' },
+  { value: 'ai1', label: 'AI 1 · Ditandai' },
+  { value: 'ai2', label: 'AI 2 · Draf' },
+  { value: 'ai3', label: 'AI 3 · Siap' },
   { value: 'to_check', label: 'To Check' },
 ]
 
@@ -269,12 +307,16 @@ export function todoHasTag(t: ProjectItem, tag: TodoTag, focusedIds: Set<string>
   switch (tag) {
     case 'focus':
       return focusedIds.has(t.name)
-    case 'ai':
-      return t.work_mode === 'AI'
+    case 'ai1':
+      return aiPhaseOf(t) === 1
+    case 'ai2':
+      return aiPhaseOf(t) === 2
+    case 'ai3':
+      return aiPhaseOf(t) === 3
     case 'to_check':
       return !!t.to_check
     case 'untagged':
-      return !focusedIds.has(t.name) && t.work_mode !== 'AI' && !t.to_check
+      return !focusedIds.has(t.name) && aiPhaseOf(t) === 0 && !t.to_check
   }
 }
 

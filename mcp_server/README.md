@@ -80,8 +80,51 @@ update the connector URL in claude.ai.
 - `list_api_methods(search="")` — every `@frappe.whitelist()` function found
   by scanning `vernon_project/api/*.py` (dotted path, signature, docstring).
   Always in sync with the code — nothing to maintain by hand.
+
+  The scan runs **once at import**, so after adding or removing an endpoint
+  the running server still serves the old list and `call_api_method` rejects
+  the new method as unknown. Restart it: `sudo supervisorctl restart
+  vernon-mcp-http` (or `kill -TERM` the pid on 8811 — supervisor's
+  `autorestart` brings it back in ~4s). The stdio server rescans every
+  session, so it needs nothing.
 - `call_api_method(method, kwargs={})` — calls one of those methods on the
   live site and returns its `message` payload.
+
+## Agent brief — AI todos (3-phase ladder)
+
+Paste this to an agent connecting through the connector. It is the whole
+contract; everything in it is reachable through `call_api_method`.
+
+> **VernonProject: AI todos run on a 3-phase ladder.**
+>
+> Your queue is `vernon_project.api.project_todo.get_confirmed_ai_todos` —
+> Planned AI todos assigned to you whose prompt a human has confirmed. Each
+> row carries its `ai_prompts` (`[{name, prompt}]`), so no second call. Work
+> nothing outside this list: phases 1 and 2 are not yours.
+>
+> - **Fase 1 · Ditandai AI** — tagged AI, no prompt yet. Whoever writes prompts
+>   finds them with `get_ai_todos_needing_prompt` and saves with
+>   `save_ai_prompt(todo_id, ai_prompt)`, where `ai_prompt` is a JSON list of
+>   `{"name": ..., "prompt": ...}`.
+> - **Fase 2 · Prompt Draf** — a prompt exists but no human has signed it off.
+>   Not runnable.
+> - **Fase 3 · Prompt Terkonfirmasi** — a human called
+>   `confirm_ai_prompt(todo_id, confirmed=1)`. Runnable, and only now.
+>
+> Rules:
+> - `confirm_ai_prompt` is the human's action. Never call it on your own work.
+> - Any prompt edit (`save_ai_prompt` / `delete_ai_prompt`) drops the todo back
+>   to phase 2. Re-read the queue instead of caching it — a todo can leave it
+>   while you hold it.
+> - When you finish, do **not** just mark it Done. Call
+>   `follow_up_check(todo_id, assignee)` — it creates the "(Follow Up)"
+>   ask-someone-to-check todo for that person, links it to yours, notifies
+>   them, and marks yours Done in one call. `assignee` must be on the
+>   project team. Everything else is optional: `note`, `estimated` (default
+>   10 min, floored at 5), `deadline` (default tomorrow), `group`/`level_id`
+>   (default the Testing work-type).
+> - Tagging a todo as AI at all needs the "AI User" role on the account the
+>   API key belongs to (System Manager also passes).
 
 ## Scope
 

@@ -39,3 +39,4 @@ vernon_project.patches.backfill_recurring_anchor_date
 vernon_project.patches.v1_0.backfill_cuti_ledger
 vernon_project.patches.v1_0.multi_project_admin
 vernon_project.patches.v1_0.add_hot_query_indexes
+vernon_project.patches.v1_0.add_ai_user_role

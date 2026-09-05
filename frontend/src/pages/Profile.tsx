@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, History, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket, Award, UtensilsCrossed, Webhook, Copy, ExternalLink } from 'lucide-react'
+import { LogOut, History, Wifi, WifiOff, BookOpen, ShieldCheck, RefreshCw, ChevronRight, Layers, Store, Users, KeyRound, Settings, Send, Bell, BellOff, ShieldAlert, CalendarClock, CalendarDays, CalendarOff, Fingerprint, Trash2, Palette, MessageSquarePlus, QrCode, ClipboardList, Trophy, Zap, UsersRound, UserMinus, Building2, Boxes, Ticket, ArrowLeftRight, DoorOpen, User, Banknote, Inbox, Sparkles, Briefcase, FileText, Ban, HeartHandshake, Globe, Flame, Rocket, Award, UtensilsCrossed, Webhook, Copy } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TabScreen } from '@/components/Layout'
 import { Avatar, FullScreenLoader, ProgressBar, Segmented, Spinner } from '@/components/ui'
@@ -564,6 +564,9 @@ function PasskeyCard() {
 // "shown once" UX as a GitHub personal access token: the secret is never
 // re-displayed after generation, only api_key (safe, not sensitive alone).
 const MCP_URL = 'https://mcp.vernon.id/mcp'
+// What you actually paste into claude.ai. The bare URL 401s on every path, which
+// clients report as "Authorization server not found" — so never hand it out alone.
+const MCP_CONNECTOR_URL = `${MCP_URL}?token=<VERNON_MCP_TOKEN>`
 
 function Code({ children }: { children: React.ReactNode }) {
   return <code className="rounded bg-black/5 px-1 py-0.5 font-mono dark:bg-white/10">{children}</code>
@@ -613,8 +616,8 @@ function ApiTokenCard() {
 
   const copyMcpUrl = async () => {
     try {
-      await navigator.clipboard.writeText(MCP_URL)
-      toast('success', 'Link disalin')
+      await navigator.clipboard.writeText(MCP_CONNECTOR_URL)
+      toast('success', 'Disalin — ganti <VERNON_MCP_TOKEN> dengan token dari admin')
     } catch {
       toast('error', 'Could not copy')
     }
@@ -630,15 +633,9 @@ function ApiTokenCard() {
       </p>
 
       <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-paper px-3 py-2 dark:bg-slate-900/40">
-        <a
-          href={MCP_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-brand-600"
-        >
-          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{MCP_URL}</span>
-        </a>
+        <span className="min-w-0 truncate font-mono text-xs font-semibold text-brand-600">
+          {MCP_CONNECTOR_URL}
+        </span>
         <button onClick={copyMcpUrl} className="shrink-0 text-stone-400 active:scale-95 dark:text-slate-500" aria-label="Copy MCP link">
           <Copy className="h-3.5 w-3.5" />
         </button>
@@ -656,7 +653,13 @@ function ApiTokenCard() {
           </li>
           <li>Generate a token above, paste it into <Code>mcp_server/.env</Code> as <Code>VERNON_API_KEY</Code> / <Code>VERNON_API_SECRET</Code></li>
           <li>Claude Code picks it up automatically via <Code>.mcp.json</Code> — run <Code>/mcp</Code> to check</li>
-          <li>For claude.ai Connectors, use the link above instead — needs an extra token from an admin (<Code>VERNON_MCP_TOKEN</Code>)</li>
+        <li>
+            For claude.ai Connectors use the URL above — the <Code>?token=</Code> part is
+            required. Without it every request returns 401 and claude.ai reports
+            “Authorization server not found”; this server uses a static token, not OAuth.
+            Ask an admin for <Code>VERNON_MCP_TOKEN</Code>.
+          </li>
+          <li>That remote connector runs as the server’s own account, not yours — only the <Code>.env</Code> route above runs with your permissions.</li>
         </ol>
       </details>
 

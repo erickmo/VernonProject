@@ -537,6 +537,47 @@ def save_notes(todo_id, notes):
 		return {"status": "error", "message": str(e)}
 
 
+AI_WORK_MODES = ("AI", "Both")
+# The AI tag is a 3-phase ladder. Phase is DERIVED (see ai_phase) from work_mode +
+# whether a prompt exists + the ai_prompt_confirmed flag, so the only stored state
+# is that one checkbox. Names are the Bahasa labels the frontends show.
+AI_PHASE_NAMES = {
+	0: "Non-AI",
+	1: "Ditandai AI",
+	2: "Prompt Draf",
+	3: "Prompt Terkonfirmasi",
+}
+
+
+def can_use_ai(user=None):
+	"""Whether `user` may tag a todo as AI work. Granted by the "AI User" role
+	(assignable from the user form in both frontends); System Manager always may."""
+	roles = frappe.get_roles(user or frappe.session.user)
+	return "AI User" in roles or "System Manager" in roles
+
+
+def ai_phase(work_mode, has_prompt, confirmed):
+	"""Derive the AI phase (0-3) from the three inputs. Pure — the single source of
+	truth for the ladder, used by both the list shape and the phase queues.
+
+	0 not tagged AI / 1 tagged, awaiting a generated prompt / 2 prompt written but not
+	yet confirmed by a human / 3 confirmed, an AI agent may pick it up."""
+	if work_mode not in AI_WORK_MODES:
+		return 0
+	if not has_prompt:
+		return 1
+	return 3 if confirmed else 2
+
+
+def _can_touch_prompt(todo, project):
+	"""Who may write/confirm the prompt: System Manager, the project owner or leader,
+	or the assignee (they confirm the generated prompt before an agent runs it)."""
+	user = frappe.session.user
+	if "System Manager" in frappe.get_roles(user):
+		return True
+	return user in (project.project_owner, project.project_leader, todo.assigned_to)
+
+
 def parse_ai_prompts(raw):
 	"""Normalize the stored AI prompts into a clean list. Safe on None / malformed
 	JSON / legacy plain-string values. Each item is {"name": str, "prompt": str};
@@ -574,18 +615,24 @@ def save_ai_prompt(todo_id, ai_prompt):
 		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
 		project = frappe.get_doc("Project", project_detail.project)
 
-		user = frappe.session.user
-		is_sm = "System Manager" in frappe.get_roles(user)
-		if not (is_sm or user in (project.project_owner, project.project_leader)):
+		if not _can_touch_prompt(todo, project):
 			return {
 				"status": "error",
-				"message": f"Hanya Project Leader ({project.project_leader}) atau Project Owner ({project.project_owner}) yang boleh mengubah prompt.",
+				"message": f"Hanya Project Leader ({project.project_leader}), Project Owner ({project.project_owner}) atau yang ditugaskan ({todo.assigned_to}) yang boleh mengubah prompt.",
 			}
 
 		clean = parse_ai_prompts(ai_prompt)
 		todo.ai_prompt = json.dumps(clean) if clean else None
+		# Editing the text drops it back to phase 2: an agent must never run a prompt
+		# no human has signed off in its current wording.
+		todo.ai_prompt_confirmed = 0
 		todo.save(ignore_permissions=True)
-		return {"status": "ok", "message": "Prompt berhasil disimpan.", "ai_prompts": clean}
+		return {
+			"status": "ok",
+			"message": "Prompt berhasil disimpan.",
+			"ai_prompts": clean,
+			"ai_phase": ai_phase(todo.work_mode, bool(clean), 0),
+		}
 
 	except frappe.DoesNotExistError:
 		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
@@ -605,12 +652,10 @@ def delete_ai_prompt(todo_id, name=None):
 		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
 		project = frappe.get_doc("Project", project_detail.project)
 
-		user = frappe.session.user
-		is_sm = "System Manager" in frappe.get_roles(user)
-		if not (is_sm or user in (project.project_owner, project.project_leader)):
+		if not _can_touch_prompt(todo, project):
 			return {
 				"status": "error",
-				"message": f"Hanya Project Leader ({project.project_leader}) atau Project Owner ({project.project_owner}) yang boleh menghapus prompt.",
+				"message": f"Hanya Project Leader ({project.project_leader}), Project Owner ({project.project_owner}) atau yang ditugaskan ({todo.assigned_to}) yang boleh menghapus prompt.",
 			}
 
 		current = parse_ai_prompts(todo.ai_prompt)
@@ -622,13 +667,93 @@ def delete_ai_prompt(todo_id, name=None):
 			remaining = []
 
 		todo.ai_prompt = json.dumps(remaining) if remaining else None
+		todo.ai_prompt_confirmed = 0  # same reason as save_ai_prompt: re-confirm after any edit
 		todo.save(ignore_permissions=True)
-		return {"status": "ok", "message": "Prompt berhasil dihapus.", "ai_prompts": remaining}
+		return {
+			"status": "ok",
+			"message": "Prompt berhasil dihapus.",
+			"ai_prompts": remaining,
+			"ai_phase": ai_phase(todo.work_mode, bool(remaining), 0),
+		}
 
 	except frappe.DoesNotExistError:
 		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
 	except Exception as e:
 		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def confirm_ai_prompt(todo_id, confirmed=1):
+	"""Phase 2 -> 3: a human signs off the generated prompt so an AI agent may run it.
+
+	Gate is the same as editing the prompt (SM / project owner / leader / assignee).
+	Confirming REQUIRES at least one saved prompt — phase 2 cannot be skipped.
+	Pass ``confirmed=0`` to pull it back to phase 2."""
+	try:
+		todo = frappe.get_doc("Project Todo", todo_id)
+		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
+		project = frappe.get_doc("Project", project_detail.project)
+
+		if not _can_touch_prompt(todo, project):
+			return {
+				"status": "error",
+				"message": f"Hanya Project Leader ({project.project_leader}), Project Owner ({project.project_owner}) atau yang ditugaskan ({todo.assigned_to}) yang boleh konfirmasi prompt.",
+			}
+
+		want = 1 if str(confirmed) in ("1", "true", "True") else 0
+		prompts = parse_ai_prompts(todo.ai_prompt)
+		if want and todo.work_mode not in AI_WORK_MODES:
+			return {"status": "error", "message": "Todo ini belum ditandai kerja AI."}
+		if want and not prompts:
+			return {"status": "error", "message": "Belum ada prompt untuk dikonfirmasi (Fase 2 belum selesai)."}
+
+		todo.ai_prompt_confirmed = want
+		todo.save(ignore_permissions=True)
+		phase = ai_phase(todo.work_mode, bool(prompts), want)
+		return {
+			"status": "ok",
+			"message": "Prompt dikonfirmasi. AI Agent siap mengerjakan." if want else "Konfirmasi dibatalkan.",
+			"ai_prompt_confirmed": want,
+			"ai_phase": phase,
+			"ai_phase_name": AI_PHASE_NAMES[phase],
+		}
+
+	except frappe.DoesNotExistError:
+		return {"status": "error", "message": f"Todo {todo_id} tidak ditemukan."}
+	except Exception as e:
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def get_confirmed_ai_todos():
+	"""Phase 3 queue: Planned AI todos assigned to the caller whose prompt a human has
+	confirmed, i.e. the work an AI agent may pick up right now.
+
+	The mirror of ``get_ai_todos_needing_prompt`` (phase 1). Carries the prompts so the
+	agent needs no second round-trip. When the agent finishes it should raise its own
+	"Ask other to check" todo — nothing here does that for it."""
+	user = frappe.session.user
+	rows = frappe.get_all(
+		"Project Todo",
+		filters={
+			"assigned_to": user,
+			"work_mode": ["in", list(AI_WORK_MODES)],
+			"status": "⚪️ Planned",
+			"ai_prompt_confirmed": 1,
+		},
+		fields=["name", "to_do", "project", "project_detail", "status", "work_mode", "deadline", "ai_prompt"],
+		order_by="deadline asc",
+	)
+	out = []
+	for r in rows:
+		prompts = parse_ai_prompts(r.ai_prompt)
+		if not prompts:
+			continue  # confirmed but emptied out of band — not runnable
+		out.append(
+			{k: r[k] for k in ("name", "to_do", "project", "project_detail", "status", "work_mode", "deadline")}
+			| {"ai_prompts": prompts}
+		)
+	return out
 
 
 @frappe.whitelist()
@@ -648,7 +773,7 @@ def get_ai_todos_needing_prompt():
 		"Project Todo",
 		filters={
 			"assigned_to": user,
-			"work_mode": ["in", ["AI", "Both"]],
+			"work_mode": ["in", list(AI_WORK_MODES)],
 			"status": "⚪️ Planned",
 		},
 		fields=["name", "to_do", "project", "project_detail", "status", "work_mode", "deadline", "ai_prompt"],

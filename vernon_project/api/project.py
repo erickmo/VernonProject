@@ -163,6 +163,17 @@ def generate_project_breakdown(project, project_detail=None):
 	}
 
 
+def _allowed_work_mode(mode):
+	"""Sanitise a drafted work_mode, dropping the AI tag when the caller lacks AI access."""
+	from vernon_project.api.project_todo import AI_WORK_MODES, can_use_ai
+
+	if mode not in ("Human", "AI", "Both"):
+		return None
+	if mode in AI_WORK_MODES and not can_use_ai():
+		return None
+	return mode
+
+
 def _create_todo(project, detail_name, td, defaults):
 	"""Insert one Project Todo from a reviewed draft. Returns True if inserted,
 	False if skipped (blank). Throws if a non-blank todo lacks group/level."""
@@ -181,7 +192,10 @@ def _create_todo(project, detail_name, td, defaults):
 		"group": td.get("group"),
 		"level": td.get("level"),
 		"level_id": td.get("level_id"),
-		"work_mode": td.get("work_mode") if td.get("work_mode") in ("Human", "AI", "Both") else None,
+		# AI tag is role-gated the same way as tagging by hand: a user without AI access
+		# gets the drafted todo, just not marked as AI work (its prompt still rides along
+		# so an enabled leader can tag it later).
+		"work_mode": _allowed_work_mode(td.get("work_mode")),
 		"ai_prompt": _clip(td.get("ai_prompt"), 4000) or None,
 		# Drafts rarely carry an estimate; the controller floors at 5 min, so default
 		# to 30m (the app's "unestimated task plans as 30m" convention).

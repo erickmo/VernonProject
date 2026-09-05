@@ -911,6 +911,27 @@ export function useSetTodoWorkMode() {
   })
 }
 
+// Phase 2 -> 3: confirm (or un-confirm) the AI prompt so an agent may pick the todo up.
+export function useConfirmAiPrompt() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: async ({ todoName, confirmed }: { todoName: string; confirmed: boolean }) => {
+      const res = await mobileApi.confirmAiPrompt(todoName, confirmed)
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onSuccess: (res) => toast('success', res.message),
+    onError: (e) => toast('error', (e as Error).message || 'Could not confirm prompt'),
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoName) })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
 // Toggle the assignee's "To Check" reminder flag from a list context (same per-row
 // reason as useSetTodoPriority). Plain flag — no scoring/workflow effect.
 export function useSetTodoCheck() {
@@ -1531,6 +1552,7 @@ export const VERNON_ROLE_OPTIONS = [
   { value: 'Project Team', label: 'Team' },
   { value: 'Points Granter', label: 'Points Granter' },
   { value: 'HR Manager', label: 'HR' },
+  { value: 'AI User', label: 'AI' },
 ]
 
 // Member-type marking on a user. '' = external/unset. Must match MEMBER_TYPES in mobile.py.
@@ -2000,6 +2022,11 @@ export function canManageMarketplace(boot: Boot | undefined): boolean {
     boot.roles.includes('System Manager') ||
     boot.roles.includes('Marketplace Manager')
   )
+}
+
+/** May this user tag a todo as AI work? Granted per-user via the "AI User" role. */
+export function canUseAi(boot: Boot | undefined): boolean {
+  return !!boot && (boot.roles.includes('System Manager') || boot.roles.includes('AI User'))
 }
 
 export function canGrantPoints(boot: Boot | undefined): boolean {

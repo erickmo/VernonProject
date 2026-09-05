@@ -11,9 +11,10 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { useUndo } from '@/components/UndoProvider'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useBoot, canUseAi } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
+import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
 import type { ProjectItem } from '@/lib/types'
 
 const LONG_MS = 450
@@ -49,6 +50,8 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   // the useTodoMenu items so a card never toggles something its menu wouldn't.
   const setCheckFlag = useSetTodoCheck()
   const setWorkModeFlag = useSetTodoWorkMode()
+  const { data: boot } = useBoot()
+  const aiAllowed = canUseAi(boot)
   const [hovered, setHovered] = useState(false)
   useEffect(() => {
     if (!hovered) return
@@ -59,7 +62,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
       if (e.key === 'c' && todo.is_mine) {
         e.preventDefault()
         setCheckFlag.mutate({ todoName: todo.name, toCheck: !todo.to_check })
-      } else if (e.key === 'a' && (todo.is_mine || todo.can_prioritize)) {
+      } else if (e.key === 'a' && (todo.is_mine || todo.can_prioritize) && (aiAllowed || todo.work_mode === 'AI')) {
         e.preventDefault()
         setWorkModeFlag.mutate({ todoName: todo.name, workMode: todo.work_mode === 'AI' ? '' : 'AI' })
       } else if (e.key === 'f' && todo.status_key !== 'completed') {
@@ -70,7 +73,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key])
+  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, aiAllowed])
 
   // A quick bounce whenever the context menu is summoned (long-press on touch,
   // right-click on desktop) so the trigger feels tactile. `pressing` gives live
@@ -130,7 +133,9 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
 
   const setAlloc = useSetTodoAllocations(todo.name)
   const planned = todo.today_allocation > 0
-  const isAI = todo.work_mode === 'AI'
+  // Any AI phase keeps the cyan card; the chip carries WHICH phase (see AI_PHASES).
+  const aiPhase = aiPhaseOf(todo)
+  const isAI = aiPhase > 0
   const onToggleToday = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     if (setAlloc.isPending) return
@@ -196,8 +201,13 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
             </span>
           )}
           {isAI && (
-            <span title="AI Task" aria-label="AI Task" className="mb-1.5 mr-1.5 inline-flex items-center justify-center rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 p-1 text-white shadow-sm">
+            <span
+              title={`Fase ${aiPhase} · ${AI_PHASES[aiPhase].label}`}
+              aria-label={`AI fase ${aiPhase}, ${AI_PHASES[aiPhase].label}`}
+              className="mb-1.5 mr-1.5 inline-flex items-center justify-center gap-0.5 rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 px-1.5 py-1 text-white shadow-sm"
+            >
               <Bot className="h-4 w-4" />
+              <span className="text-[11px] font-bold leading-none">{aiPhase}</span>
             </span>
           )}
           {todo.to_check && (

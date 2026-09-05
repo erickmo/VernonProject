@@ -7,6 +7,7 @@ import {
   SearchX,
   ChevronRight,
   CheckCheck,
+  Check,
   CalendarDays,
   CalendarOff,
   CalendarArrowUp,
@@ -284,6 +285,10 @@ export default function Today() {
   const dueMin = dueTodayActive.reduce((s, t) => s + (t.estimated || 0), 0)
   const todayTotalMin = completedMin + dueMin
   const pct = todayTotalMin ? completedMin / todayTotalMin : 1
+  const pctLabel = Math.round(pct * 100)
+  const doneCount = data?.counts.completed_today ?? 0
+  // Show the momentum ring once there's a plate or anything done today (web parity).
+  const showTodayRing = todayTotalMin > 0 || doneCount > 0
 
   // Deadline buckets exclude waiting — parked todos live only in the Waiting section.
   const filtered = data
@@ -322,6 +327,9 @@ export default function Today() {
   // "Today's plan" = todos allocated minutes today; drives the CTA + ring total.
   const plannedTodos = planGroups.today
   const plannedTodayMin = plannedTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
+  // Plan → Today progress bar (mirrors /w dayProgressHeader): done-minutes vs the day's plate.
+  const dayTotalMin = completedMin + plannedTodayMin
+  const dayPct = dayTotalMin ? Math.round((completedMin / dayTotalMin) * 100) : 100
 
   // Silent auto-plan toward the daily minimum (same logic as Auto-plan button).
   useAutoPlanToday({ due_today: data?.due_today, overdue: data?.overdue, upcoming: data?.upcoming })
@@ -501,6 +509,21 @@ export default function Today() {
                 <span className="text-xs font-medium text-stone-400 dark:text-slate-500">{valueOfDay()}</span>
               </div>
 
+              {/* Today's progress — momentum ring (done-minutes vs the day's plate). Web parity. */}
+              {showTodayRing && (
+                <div className="mt-4 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-brand-500 to-indigo-600 p-4 text-white shadow-[0_12px_32px_-8px_rgba(79,70,229,0.55)]">
+                  <div className="relative h-[68px] w-[68px] shrink-0">
+                    <Ring pct={pct} />
+                    <div className="absolute inset-0 flex items-center justify-center text-sm font-extrabold tabular-nums">{pctLabel}%</div>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Today's progress</p>
+                    <p className="text-lg font-extrabold leading-tight">{doneCount} done</p>
+                    <p className="text-xs font-medium text-white/80">{completedMin > 0 ? `${formatEstimate(completedMin)} today` : 'today'}</p>
+                  </div>
+                </div>
+              )}
+
               {/* DANGER: last shift day fell below the daily-minimum minutes setting. */}
               {shortfall?.under && (
                 <div
@@ -664,11 +687,27 @@ export default function Today() {
                           />
                         </div>
 
-                        {planSub === 'today' && plannedTodayMin > 0 && (
-                          <p className="mt-4 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                            <Clock className="h-3.5 w-3.5 text-brand-500" />
-                            Planning for today: <span className="font-bold text-brand-600 dark:text-brand-400">{formatEstimate(plannedTodayMin)}</span>
-                          </p>
+                        {planSub === 'today' && (dayTotalMin > 0 || doneCount > 0) && (
+                          <div className="mt-4 rounded-2xl bg-paper-card p-3.5 shadow-[0_4px_16px_-8px_rgba(0,0,0,0.15)] dark:bg-slate-800/70">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Today's progress</span>
+                              <span className="text-xs font-medium tabular-nums text-slate-500 dark:text-slate-400">
+                                {doneCount} done · {planGroups.today.length} to go
+                              </span>
+                            </div>
+                            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-paper-line dark:bg-slate-700">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-brand-600 to-[#e879c7] transition-[width] duration-500"
+                                style={{ width: `${Math.max(0, Math.min(100, dayPct))}%` }}
+                              />
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                <Check className="h-3.5 w-3.5" /> {completedMin > 0 ? `${formatEstimate(completedMin)} done` : 'nothing done yet'}
+                              </span>
+                              <span>{plannedTodayMin > 0 ? `${formatEstimate(plannedTodayMin)} left` : "today's plan clear"}</span>
+                            </div>
+                          </div>
                         )}
 
                         {renderList(planGroups[planSub], `Nothing planned ${planSub}`)}

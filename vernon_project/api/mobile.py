@@ -13,13 +13,15 @@ import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
+# project_todo imports mobile only inside functions, so this top-level import is safe.
+from vernon_project.api.project_todo import AI_PHASE_NAMES, ai_phase, can_use_ai
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
 # Must match the option strings stored in `tabProject Todo`.`status` exactly
 # (note the U+FE0F variation selector after the white-circle in "Planned").
 # --------------------------------------------------------------------------------
-VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team", "Points Granter", "HR Manager")
+VERNON_ROLES = ("Project Owner", "Project Leader", "Project Admin", "Project Team", "Points Granter", "HR Manager", "AI User")
 PROTECTED_USERS = ("Guest", "Administrator")
 # Member-type marking on User (custom_member_type). "" = external/unset.
 MEMBER_TYPES = ("", "Internal Team", "Intern")
@@ -605,7 +607,8 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check, t.ai_prompt_confirmed,
+			(t.ai_prompt IS NOT NULL AND t.ai_prompt NOT IN ('', '[]')) AS has_ai_prompt,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at, t.issue_of,
 			(SELECT COUNT(*) FROM `tabProject Todo` iss
@@ -853,6 +856,11 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"is_recurring": bool(row.get("is_recurring")),
 		"is_priority": bool(row.get("is_priority")),
 		"work_mode": row.get("work_mode") or "",
+		# 3-phase AI ladder, derived (see project_todo.ai_phase). .get() because some
+		# callers build rows without the AI columns -> phase 0 there, same as untagged.
+		"ai_phase": ai_phase(
+			row.get("work_mode") or "", bool(row.get("has_ai_prompt")), bool(row.get("ai_prompt_confirmed"))
+		),
 		"to_check": bool(row.get("to_check")),
 		# Issue links. `issue_of` = this task is an issue raised on that task;
 		# `open_issues` = issues raised on THIS task that aren't resolved yet.
@@ -1251,7 +1259,8 @@ def get_priority_occupancy(users, date):
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.ai_prompt_confirmed,
+			(t.ai_prompt IS NOT NULL AND t.ai_prompt NOT IN ('', '[]')) AS has_ai_prompt,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
 			t.completed_by, t.completed_at, t.done_started_at, t.checked_started_at,
@@ -2091,10 +2100,19 @@ def get_project_item(project_item):
 	shaped["can_edit_notes"] = user in (
 		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
 	) or user in _admins
-	# Prompt is a lead-only field: only SM / project owner / leader may edit it.
+	# The assignee joins SM / owner / leader here: phase 2 is theirs to review — they
+	# update the generated prompt and confirm it before an agent runs it.
 	shaped["can_edit_prompt"] = ("System Manager" in frappe.get_roles(user)) or user in (
-		r["project_owner"], r["project_leader"]
+		r["project_owner"], r["project_leader"], r["assigned_to"]
 	)
+	# Same gate confirms phase 2 -> 3; the phase itself already rides in _shape_todo.
+	shaped["can_confirm_prompt"] = shaped["can_edit_prompt"]
+	shaped["ai_prompt_confirmed"] = bool(
+		frappe.db.get_value("Project Todo", project_item, "ai_prompt_confirmed")
+	)
+	shaped["ai_phase_name"] = AI_PHASE_NAMES[shaped["ai_phase"]]
+	# Tagging AI at all is role-gated; the frontends hide the toggle when this is false.
+	shaped["can_use_ai"] = can_use_ai(user)
 	# Full-task edit is a lead action; assignee/deadline/estimate are locked once
 	# the task is Done/Completed (enforced by the doctype's validate()).
 	is_sm = "System Manager" in frappe.get_roles(user)
@@ -2395,7 +2413,12 @@ def update_todo(
 		# Work Mode is a plain label (Human/AI/Both) — anyone who can edit the
 		# task may set it. Empty string clears it.
 		if work_mode is not None:
-			row.work_mode = work_mode if work_mode in ("Human", "AI", "Both") else ""
+			wanted = work_mode if work_mode in ("Human", "AI", "Both") else ""
+			# Tagging AI work is role-gated ("AI User"); clearing it never is, so a
+			# revoked user can still untag, just not tag.
+			if wanted in ("AI", "Both") and not can_use_ai(user):
+				return {"status": "error", "message": "Anda belum punya akses AI. Minta Administrator mengaktifkan akses AI untuk akun Anda."}
+			row.work_mode = wanted
 		# Prompt for the AI (shown only for AI/Both tasks in the UI). Empty clears.
 		# Lead-only field: silently ignored for anyone but SM / owner / leader.
 		if ai_prompt is not None and (is_sm or user in (project.project_owner, project.project_leader)):

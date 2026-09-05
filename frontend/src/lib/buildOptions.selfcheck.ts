@@ -1,6 +1,6 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert/strict'
-import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, todoHasTag, todoDayBucket, cycleDay, filterByDay } from './filters'
+import { buildOptions, groupByDetail, detailPickerOptions, availableDetailOptions, filterByTags, cycleTag, todoHasTag, todoDayBucket, cycleDay, filterByDay, aiPhaseOf } from './filters'
 
 const todos = [
   { project: 'P1', project_name: 'Alpha', detail: 'Login screen' },
@@ -64,41 +64,55 @@ console.log('buildOptions.selfcheck: all assertions passed')
 // --- todoHasTag / filterByTags (dashboard column tag filter) ---
 const focused = new Set(['t-focus'])
 const tagItems = [
-  { name: 'a-untag', work_mode: '', to_check: false },
-  { name: 't-focus', work_mode: '', to_check: false },
-  { name: 'c-ai', work_mode: 'AI', to_check: false },
-  { name: 'd-check', work_mode: '', to_check: true },
-  { name: 'e-ai-check', work_mode: 'AI', to_check: true }, // two tags at once
+  { name: 'a-untag', work_mode: '', ai_phase: 0, to_check: false },
+  { name: 't-focus', work_mode: '', ai_phase: 0, to_check: false },
+  { name: 'c-ai', work_mode: 'AI', ai_phase: 2, to_check: false },
+  { name: 'd-check', work_mode: '', ai_phase: 0, to_check: true },
+  { name: 'e-ai-check', work_mode: 'AI', ai_phase: 2, to_check: true }, // two tags at once
 ]
-// Each predicate matches only its own tag; untagged excludes all three flags.
+// Each predicate matches only its own tag; untagged excludes all the flags.
 assert.equal(todoHasTag(tagItems[0], 'untagged', focused), true)
 assert.equal(todoHasTag(tagItems[1], 'focus', focused), true)
 assert.equal(todoHasTag(tagItems[1], 'untagged', focused), false) // focused ⇒ not untagged
-assert.equal(todoHasTag(tagItems[2], 'ai', focused), true)
+assert.equal(todoHasTag(tagItems[2], 'ai2', focused), true)
+assert.equal(todoHasTag(tagItems[2], 'ai1', focused), false) // phase tags are exclusive
 assert.equal(todoHasTag(tagItems[3], 'to_check', focused), true)
 // Empty state is a pass-through (no filtering).
 assert.equal(filterByTags(tagItems, new Map(), focused).length, 5)
-// Two 'on' tags OR together: ai OR to_check → c, d, and the two-tag e (once, no dup).
+// Two 'on' tags OR together: ai2 OR to_check → c, d, and the two-tag e (once, no dup).
 assert.deepEqual(
-  filterByTags(tagItems, new Map([['ai', 'on'], ['to_check', 'on']]), focused).map((t) => t.name),
+  filterByTags(tagItems, new Map([['ai2', 'on'], ['to_check', 'on']]), focused).map((t) => t.name),
   ['c-ai', 'd-check', 'e-ai-check'],
 )
 // Untagged 'on' surfaces only the flag-free row.
 assert.deepEqual(filterByTags(tagItems, new Map([['untagged', 'on']]), focused).map((t) => t.name), ['a-untag'])
-// 'off' excludes: hide ai → drop c and e, keep the rest.
+// 'off' excludes: hide ai2 → drop c and e, keep the rest.
 assert.deepEqual(
-  filterByTags(tagItems, new Map([['ai', 'off']]), focused).map((t) => t.name),
+  filterByTags(tagItems, new Map([['ai2', 'off']]), focused).map((t) => t.name),
   ['a-untag', 't-focus', 'd-check'],
 )
-// on + off combine (AND across the off constraint): require to_check, exclude ai → only the pure to_check row.
+// on + off combine (AND across the off constraint): require to_check, exclude ai2 → only the pure to_check row.
 assert.deepEqual(
-  filterByTags(tagItems, new Map([['to_check', 'on'], ['ai', 'off']]), focused).map((t) => t.name),
+  filterByTags(tagItems, new Map([['to_check', 'on'], ['ai2', 'off']]), focused).map((t) => t.name),
   ['d-check'],
 )
+// All three AI phases 'on' reproduces the old single "any AI" filter.
+assert.deepEqual(
+  filterByTags(tagItems, new Map([['ai1', 'on'], ['ai2', 'on'], ['ai3', 'on']]), focused).map((t) => t.name),
+  ['c-ai', 'e-ai-check'],
+)
 // cycleTag: all → on → off → all.
-assert.equal(cycleTag(new Map(), 'ai').get('ai'), 'on')
-assert.equal(cycleTag(new Map([['ai', 'on']]), 'ai').get('ai'), 'off')
-assert.equal(cycleTag(new Map([['ai', 'off']]), 'ai').has('ai'), false)
+assert.equal(cycleTag(new Map(), 'ai2').get('ai2'), 'on')
+assert.equal(cycleTag(new Map([['ai2', 'on']]), 'ai2').get('ai2'), 'off')
+assert.equal(cycleTag(new Map([['ai2', 'off']]), 'ai2').has('ai2'), false)
+
+// --- aiPhaseOf: server value wins; work_mode is the fallback for older payloads ---
+assert.equal(aiPhaseOf({ work_mode: 'AI', ai_phase: 3 }), 3)
+assert.equal(aiPhaseOf({ work_mode: 'AI', ai_phase: 0 }), 0) // untagged server-side ⇒ 0, not 1
+assert.equal(aiPhaseOf({ work_mode: 'AI' }), 1) // no ai_phase in payload ⇒ tagged = phase 1
+assert.equal(aiPhaseOf({ work_mode: 'Both' }), 1)
+assert.equal(aiPhaseOf({ work_mode: 'Human' }), 0)
+assert.equal(aiPhaseOf({}), 0)
 
 // --- todoDayBucket / filterByDay / cycleDay (the "today" day-plan filter) ---
 const TODAY = '2026-09-01'

@@ -261,6 +261,11 @@ export const mobileApi = {
       'vernon_project.api.project_todo.save_ai_prompt',
       { todo_id: todoId, ai_prompt: aiPrompt },
     ),
+  confirmAiPrompt: (todoId: string, confirmed: boolean) =>
+    api.post<{ status: string; message: string; ai_phase?: number; ai_phase_name?: string }>(
+      'vernon_project.api.project_todo.confirm_ai_prompt',
+      { todo_id: todoId, confirmed: confirmed ? 1 : 0 },
+    ),
   listTodoFiles: (todoId: string) =>
     api.get<TodoFile[]>('vernon_project.api.project_todo.list_todo_files', { todo_id: todoId }),
   deleteTodoFile: (todoId: string, fileName: string) =>

@@ -129,6 +129,9 @@ export type ChecklistItem = { t: string; d: boolean }
 
 export interface AiPrompt { name: string; prompt: string }
 
+/** Phase on the AI ladder. Must match ai_phase() in api/project_todo.py. */
+export type AiPhase = 0 | 1 | 2 | 3
+
 export interface ProjectItem {
   name: string
   to_do: string
@@ -145,8 +148,16 @@ export interface ProjectItem {
   can_create: boolean
   is_priority: boolean
    work_mode?: 'Human' | 'AI' | 'Both' | ''
+  /** 3-phase AI ladder, derived server-side. 0 non-AI, 1 tagged, 2 prompt drafted, 3 confirmed. */
+  ai_phase?: AiPhase
+  /** Bahasa name of `ai_phase` (detail payload only; lists use AI_PHASES locally). */
+  ai_phase_name?: string
   ai_prompts?: AiPrompt[]
+  ai_prompt_confirmed?: boolean
   can_edit_prompt?: boolean
+  can_confirm_prompt?: boolean
+  /** Whether the VIEWER may tag AI work at all (the "AI User" role). */
+  can_use_ai?: boolean
   to_check: boolean
   can_prioritize: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'

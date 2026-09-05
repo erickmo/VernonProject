@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations, useSetTodoPriority, useSetTodoWorkMode, useSetTodoCheck } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoPriority, useSetTodoWorkMode, useSetTodoCheck, useBoot, canUseAi } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
 import { todayISO } from '@/lib/format'
 import { useConfirm } from '@/components/Confirm'
@@ -77,6 +77,8 @@ export function useTodoMenuGroups(
   const setPriority = useSetTodoPriority()
   const setWorkMode = useSetTodoWorkMode()
   const setCheck = useSetTodoCheck()
+  const { data: boot } = useBoot()
+  const aiAllowed = canUseAi(boot)
 
   if (!target) return []
 
@@ -137,8 +139,11 @@ export function useTodoMenuGroups(
       ...(t.is_mine ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
       // Leader/owner/admin can flag this todo a priority for its deadline day (cap-enforced server-side).
       ...(t.can_prioritize ? [{ key: 't-priority', label: t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas', icon: Zap, onClick: () => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority }) }] : []),
-      // Flag/unflag this task as AI work (only 'AI' shows a card chip). Full Human/AI/Both picker lives in the edit form. Editable by assignee or leadership (backend re-checks).
-      ...((t.is_mine || t.can_prioritize) ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
+      // Flag/unflag this task as AI work — phase 0 <-> 1 of the AI ladder (only tagged todos
+      // show a phase chip). Full Human/AI/Both picker lives in the edit form. Needs the "AI User"
+      // role on top of assignee/leadership; untagging stays open so a revoked user can clean up.
+      // Backend re-checks both gates.
+      ...((t.is_mine || t.can_prioritize) && (aiAllowed || t.work_mode === 'AI') ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
       // Assignee's own "still needs checking" reminder — a plain flag, no scoring/workflow effect.
       ...(t.is_mine ? [{ key: 't-check', label: t.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek', icon: Eye, onClick: () => setCheck.mutate({ todoName: t.name, toCheck: !t.to_check }) }] : []),
       // Hand this todo to a teammate to verify — opens FollowUpCheckDialog via the ?check deep-link on the detail.

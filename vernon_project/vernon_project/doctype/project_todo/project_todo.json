@@ -20,6 +20,7 @@
   "is_priority",
   "work_mode",
   "ai_prompt",
+  "ai_prompt_confirmed",
   "to_check",
   "auto_approve",
   "auto_approve_opt_out",
@@ -200,6 +201,14 @@
    "fieldname": "ai_prompt",
    "fieldtype": "Long Text",
    "label": "Prompt"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.work_mode=='AI'||doc.work_mode=='Both'",
+   "description": "Human has reviewed the prompt and released it to the AI agent (phase 3).",
+   "fieldname": "ai_prompt_confirmed",
+   "fieldtype": "Check",
+   "label": "AI Prompt Confirmed"
   },
   {
    "default": "0",
