@@ -1314,7 +1314,7 @@ export const passkeyApi = {
 const AT = 'vernon_project.api.api_token.'
 
 export const apiTokenApi = {
-  status: () => api.get<{ api_key: string | null }>(AT + 'get_api_token_status'),
+  status: () => api.get<{ api_key: string | null; mcp_connector_url: string | null }>(AT + 'get_api_token_status'),
   generate: () => api.post<{ api_key: string; api_secret: string }>(AT + 'generate_api_token'),
   revoke: () => api.post<{ ok: boolean }>(AT + 'revoke_api_token'),
 }

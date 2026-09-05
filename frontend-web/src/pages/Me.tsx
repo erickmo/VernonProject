@@ -435,6 +435,9 @@ function PasskeyTile() {
 const MCP_URL = 'https://mcp.vernon.id/mcp'
 // What you actually paste into claude.ai. The bare URL 401s on every path, which
 // clients report as "Authorization server not found" — so never hand it out alone.
+// Fallback only: System Managers get the real, token-filled URL from the API
+// (get_api_token_status.mcp_connector_url). A placeholder shown next to the
+// user's own API key made people paste the key instead, which 401s.
 const MCP_CONNECTOR_URL = `${MCP_URL}?token=<VERNON_MCP_TOKEN>`
 
 function Code({ children }: { children: React.ReactNode }) {
@@ -483,10 +486,19 @@ function ApiTokenTile() {
     }
   }
 
+  // The real URL when we're allowed to have it, the placeholder otherwise.
+  const connectorUrl = data?.mcp_connector_url || MCP_CONNECTOR_URL
+  const hasRealToken = !!data?.mcp_connector_url
+
   const copyMcpUrl = async () => {
     try {
-      await navigator.clipboard.writeText(MCP_CONNECTOR_URL)
-      toast('success', 'Disalin — ganti <VERNON_MCP_TOKEN> dengan token dari admin')
+      await navigator.clipboard.writeText(connectorUrl)
+      toast(
+        'success',
+        hasRealToken
+          ? 'Disalin — tempel apa adanya ke claude.ai'
+          : 'Disalin — ganti <VERNON_MCP_TOKEN> dengan token dari admin',
+      )
     } catch {
       toast('error', 'Could not copy')
     }
@@ -501,7 +513,7 @@ function ApiTokenTile() {
 
         <div className="flex items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 dark:border-slate-700">
           <span className="min-w-0 truncate font-mono text-xs font-semibold text-brand-600">
-            {MCP_CONNECTOR_URL}
+            {connectorUrl}
           </span>
           <button onClick={copyMcpUrl} className="shrink-0 text-muted hover:text-brand-600" aria-label="Copy MCP link">
             <Copy className="w-3.5 h-3.5" />
@@ -524,7 +536,11 @@ function ApiTokenTile() {
               For claude.ai Connectors use the URL above — the <Code>?token=</Code> part is
               required. Without it every request returns 401 and claude.ai reports
               “Authorization server not found”; this server uses a static token, not OAuth.
-              Ask an admin for <Code>VERNON_MCP_TOKEN</Code>.
+              {hasRealToken ? (
+                ' The URL above already carries it — copy it whole; do not swap in your own API key.'
+              ) : (
+                <> Ask an admin for <Code>VERNON_MCP_TOKEN</Code>.</>
+              )}
             </li>
             <li>That remote connector runs as the server’s own account, not yours — only the <Code>.env</Code> route above runs with your permissions.</li>
           </ol>
