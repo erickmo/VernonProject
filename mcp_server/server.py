@@ -137,6 +137,13 @@ def _run_http() -> None:
         raise SystemExit("VERNON_MCP_TOKEN must be set to run the HTTP transport")
     host = os.environ.get("VERNON_MCP_HOST", "mcp.vernon.id")
     port = int(os.environ.get("VERNON_MCP_PORT", "8811"))
+    # The SDK's DNS-rebinding guard rejects EVERY Origin it wasn't given (an
+    # absent Origin passes, which is why curl works and a browser doesn't).
+    # claude.ai sends `Origin: https://claude.ai`, so without this the connector
+    # 403s "Invalid Origin header" and the UI reports "Failed to start MCP server".
+    origins = [o.strip() for o in os.environ.get(
+        "VERNON_MCP_ORIGINS", "https://claude.ai,https://claude.com"
+    ).split(",") if o.strip()]
 
     class TokenAuth:
         def __init__(self, app):
@@ -155,7 +162,10 @@ def _run_http() -> None:
 
     app = mcp.streamable_http_app(
         host="127.0.0.1",
-        transport_security=TransportSecuritySettings(allowed_hosts=[host, "127.0.0.1", f"127.0.0.1:{port}"]),
+        transport_security=TransportSecuritySettings(
+            allowed_hosts=[host, "127.0.0.1", f"127.0.0.1:{port}"],
+            allowed_origins=origins,
+        ),
     )
     uvicorn.run(TokenAuth(app), host="127.0.0.1", port=port, log_level="info")
 

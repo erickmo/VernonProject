@@ -69,7 +69,10 @@ sudo supervisorctl restart vernon-mcp-http   # after editing server.py/.env.http
 `.env.http` needs the same `VERNON_API_KEY`/`VERNON_API_SECRET` as `.env`,
 plus `VERNON_MCP_TRANSPORT=http`, `VERNON_MCP_TOKEN` (a long random secret —
 `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`),
-`VERNON_MCP_HOST`/`VERNON_MCP_PORT` (default `mcp.vernon.id` / `8811`).
+`VERNON_MCP_HOST`/`VERNON_MCP_PORT` (default `mcp.vernon.id` / `8811`) and
+`VERNON_MCP_ORIGINS` (default `https://claude.ai,https://claude.com`). That last
+one matters: the SDK's DNS-rebinding guard 403s **any** `Origin` it wasn't given,
+and claude.ai always sends one — curl without `Origin` passing proves nothing.
 
 The connector URL to paste into claude.ai is `https://mcp.vernon.id/mcp?token=<VERNON_MCP_TOKEN>`.
 Rotating the token: change it in `.env.http`, `sudo supervisorctl restart vernon-mcp-http`,
