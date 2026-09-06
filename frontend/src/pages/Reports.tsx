@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck, GraduationCap } from 'lucide-react'
+import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck, GraduationCap, Users } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
-import { useLastSeenAccess, useInternAllocationAccess } from '@/hooks/useData'
+import { useLastSeenAccess, useInternAllocationAccess, useTeamDailyReportAccess } from '@/hooks/useData'
 
 // Bespoke reports with their own screens (not the generic /report/:name engine).
 const BESPOKE = [
@@ -29,6 +29,7 @@ export default function Reports() {
   const navigate = useNavigate()
   const { data: lastSeenAccess } = useLastSeenAccess()
   const { data: internAccess } = useInternAllocationAccess()
+  const { data: teamDailyAccess } = useTeamDailyReportAccess()
   const bespoke = [
     ...(internAccess?.can
       ? [{
@@ -38,6 +39,16 @@ export default function Reports() {
           icon: GraduationCap,
           accent: 'from-amber-500 to-orange-600',
           to: '/reports/intern-allocation',
+        }]
+      : []),
+    ...(teamDailyAccess?.can
+      ? [{
+          key: 'team-daily',
+          title: 'Team Daily Report',
+          desc: 'Menit ditugaskan vs selesai per anggota per hari, lintas semua proyek',
+          icon: Users,
+          accent: 'from-sky-500 to-blue-600',
+          to: '/reports/team-daily',
         }]
       : []),
     ...(lastSeenAccess?.can

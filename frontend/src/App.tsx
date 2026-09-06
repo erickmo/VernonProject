@@ -114,6 +114,7 @@ import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
 import TodosDueScreen from './pages/TodosDueScreen'
 import LastSeenScreen from './pages/LastSeenScreen'
 import InternAllocationScreen from './pages/InternAllocationScreen'
+import TeamDailyReportScreen from './pages/TeamDailyReportScreen'
 import CertificatesScreen from './pages/CertificatesScreen'
 import CertificateScreen from './pages/CertificateScreen'
 import LogbookScreen from './pages/LogbookScreen'
@@ -247,6 +248,7 @@ export default function App() {
         <Route path="/reports/todos-due" element={<TodosDueScreen />} />
         <Route path="/reports/last-seen" element={<LastSeenScreen />} />
         <Route path="/reports/intern-allocation" element={<InternAllocationScreen />} />
+        <Route path="/reports/team-daily" element={<TeamDailyReportScreen />} />
 <Route path="/certificates" element={<CertificatesScreen />} />
 <Route path="/certificates/:name" element={<CertificateScreen />} />
         <Route path="/logbook" element={<LogbookScreen />} />

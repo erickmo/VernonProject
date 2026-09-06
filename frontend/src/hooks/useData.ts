@@ -611,6 +611,21 @@ export const useInternAllocation = (from: string, to: string, enabled = true) =>
     staleTime: 1000 * 30,
   })
 
+export const useTeamDailyReportAccess = () =>
+  useQuery({
+    queryKey: ['team-daily-report-access'],
+    queryFn: () => mobileApi.teamDailyReportAccess(),
+    staleTime: 1000 * 60 * 5,
+  })
+
+export const useTeamDailyReport = (from: string, to: string, member?: string, enabled = true) =>
+  useQuery({
+    queryKey: ['team-daily-report', from, to, member ?? ''],
+    queryFn: () => mobileApi.teamDailyReport(from, to, { member }),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+
 // --- internship certificates ---------------------------------------------------------
 
 export const useCertificateAccess = () =>

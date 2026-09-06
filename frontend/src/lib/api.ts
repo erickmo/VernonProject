@@ -816,6 +816,14 @@ export const mobileApi = {
     api.get<import('./types').LastSeenAccess>('vernon_project.api.report.intern_allocation_access'),
   lastSeenAccess: () =>
     api.get<import('./types').LastSeenAccess>('vernon_project.api.report.last_seen_access'),
+  teamDailyReport: (from_date: string, to_date: string, opts?: { project?: string; member?: string }) =>
+    api.get<import('./types').TeamDailyReportResponse>(
+      'vernon_project.api.report.team_daily_report',
+      { from_date, to_date, ...(opts?.project ? { project: opts.project } : {}),
+        ...(opts?.member ? { member: opts.member } : {}) },
+    ),
+  teamDailyReportAccess: () =>
+    api.get<import('./types').LastSeenAccess>('vernon_project.api.report.team_daily_report_access'),
   buzzTodo: (todo: string) =>
     api.post<{ ok: boolean; assignee: string }>('vernon_project.api.report.buzz_todo', { todo }),
   updateMyProfile: (payload: Partial<import('./types').EmployeeSoft>) =>

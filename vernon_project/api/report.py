@@ -217,14 +217,17 @@ def _active_users():
 	)
 
 
-def _assigned_minutes(names, from_date, to_date):
+def _assigned_minutes(names, from_date, to_date, project=None):
 	"""Assigned minutes per user per day for the given user list and date range.
 	Handles explicit Project Todo Assigned Allocation rows + virtual-default dedup
 	(todos with no explicit rows contribute their full estimate on their deadline).
-	Returns [{user, day, minutes}]. Empty list when names is empty."""
+	`project`, when given, narrows to that one project (default: every project the
+	user has, cross-project). Returns [{user, day, minutes}]. Empty list when names
+	is empty."""
 	if not names:
 		return []
 	from_date, to_date = str(getdate(from_date)), str(getdate(to_date))
+	params = {"users": names, "from_date": from_date, "to_date": to_date, "project": project}
 	# Explicit assigned allocation rows in range.
 	explicit = frappe.db.sql(
 		"""
@@ -235,9 +238,10 @@ def _assigned_minutes(names, from_date, to_date):
 		WHERE todo.assigned_to IN %(users)s AND alloc.parenttype = 'Project Todo'
 		  AND todo.status != '\U0001f6ab Cancelled'
 		  AND alloc.allocation_date BETWEEN %(from_date)s AND %(to_date)s
+		  AND (%(project)s IS NULL OR todo.project = %(project)s)
 		GROUP BY todo.assigned_to, alloc.allocation_date, todo.name
 		""",
-		{"users": names, "from_date": str(from_date), "to_date": str(to_date)}, as_dict=True,
+		params, as_dict=True,
 	)
 	todos_with_explicit = {r["todo"] for r in explicit}
 	result = [{"user": r["user"], "day": r["day"], "minutes": r["minutes"]} for r in explicit]
@@ -250,8 +254,9 @@ def _assigned_minutes(names, from_date, to_date):
 		WHERE assigned_to IN %(users)s AND IFNULL(estimated, 0) > 0
 		  AND status != '\U0001f6ab Cancelled'
 		  AND deadline BETWEEN %(from_date)s AND %(to_date)s
+		  AND (%(project)s IS NULL OR project = %(project)s)
 		""",
-		{"users": names, "from_date": str(from_date), "to_date": str(to_date)}, as_dict=True,
+		params, as_dict=True,
 	)
 	for r in defaults:
 		if r["todo"] not in todos_with_explicit:
@@ -1024,6 +1029,133 @@ def last_seen_report():
 		frappe.throw("Not permitted", frappe.PermissionError)
 	names = _users_on_projects(projects) | {me}
 	return {"rows": _last_seen_rows(names), "scope": "team"}
+
+
+# --- Team daily report ----------------------------------------------------------
+# Rows = every visible team member, columns = days. Cross-project: a member's
+# minutes are summed across every project they touch, the same "one number per
+# person" HR/leaders want instead of hunting per-project reports. `assigned` =
+# allocation minutes dated that day (same source/definition as Daily Estimated
+# Time & Intern Allocation, so numbers never disagree across reports); `done` =
+# the full estimate of a todo, counted once on the day its assignee marked it
+# Done (done_started_at, else developed_at — the same anchor _compute_earned
+# uses for lateness), regardless of when it was assigned or approved.
+
+def _done_minutes(names, from_date, to_date, project=None):
+	"""Done minutes per user per day: SUM(estimated) of todos that user marked Done
+	on that day, across every project (or one, if `project` is given). A todo counts
+	once, on its done-date — never split across its allocation days. Cancelled
+	todos excluded. Returns [{user, day, minutes}]. Empty list when names is empty."""
+	if not names:
+		return []
+	from_date, to_date = str(getdate(from_date)), str(getdate(to_date))
+	return frappe.db.sql(
+		"""
+		SELECT assigned_to AS user,
+		       DATE(COALESCE(done_started_at, developed_at)) AS day,
+		       SUM(estimated) AS minutes
+		FROM `tabProject Todo`
+		WHERE assigned_to IN %(users)s
+		  AND status != %(cancelled)s
+		  AND COALESCE(done_started_at, developed_at) IS NOT NULL
+		  AND DATE(COALESCE(done_started_at, developed_at)) BETWEEN %(from_date)s AND %(to_date)s
+		  AND (%(project)s IS NULL OR project = %(project)s)
+		GROUP BY assigned_to, DATE(COALESCE(done_started_at, developed_at))
+		""",
+		{"users": names, "from_date": from_date, "to_date": to_date,
+			"cancelled": STATUS_CANCELLED, "project": project},
+		as_dict=True,
+	)
+
+
+def _build_team_report(members, assigned_rows, done_rows, from_date, to_date):
+	"""Pure aggregator: pivots assigned/done rows into a member x day table. Every
+	member gets every date (0/0 when idle — never omitted, so a quiet day reads as
+	quiet, not as missing data). Pure — plain data in, plain data out, unit-testable
+	without a site."""
+	dates = _date_list(from_date, to_date)
+	assigned = _pivot(assigned_rows)
+	done = _pivot(done_rows)
+
+	rows = []
+	for m in members:
+		a = assigned.get(m["name"], {})
+		d = done.get(m["name"], {})
+		days = {day: {"assigned": a.get(day, 0), "done": d.get(day, 0)} for day in dates}
+		rows.append({
+			"user": m["name"],
+			"full_name": m.get("full_name") or m["name"],
+			"days": days,
+			"assigned_total": sum(v["assigned"] for v in days.values()),
+			"done_total": sum(v["done"] for v in days.values()),
+		})
+	rows.sort(key=lambda r: (r["full_name"] or "").lower())
+
+	return {
+		"from_date": str(from_date), "to_date": str(to_date), "dates": dates,
+		"rows": rows,
+		"totals": {
+			"assigned": sum(r["assigned_total"] for r in rows),
+			"done": sum(r["done_total"] for r in rows),
+		},
+	}
+
+
+def _team_report_scope(user):
+	"""(scope, allowed_user_ids) for the cross-project team report. System Manager /
+	HR Manager -> everyone ('all', None); a project owner/leader/admin -> members of
+	projects they run, plus themselves ('team', ids); everyone else ('none', None)."""
+	roles = frappe.get_roles(user)
+	if "System Manager" in roles or "HR Manager" in roles:
+		return "all", None
+	projects = _projects_i_run(user)
+	if projects:
+		return "team", _users_on_projects(projects) | {user}
+	return "none", None
+
+
+@frappe.whitelist()
+def team_daily_report_access():
+	"""Whether the caller may open the Team Daily Report, and at what scope. Single
+	source for the nav/tile gate — same rule team_daily_report enforces, so the UI
+	can hide the entry without a 403 round-trip."""
+	scope, _ = _team_report_scope(frappe.session.user)
+	return {"can": scope != "none", "scope": scope}
+
+
+@frappe.whitelist()
+def team_daily_report(from_date, to_date, project=None, member=None):
+	"""Cross-project member x day minutes: assigned (allocation minutes dated that
+	day) and done (estimate of todos marked Done that day), summed across every
+	project the caller may see. `project`/`member` narrow the same numbers further;
+	both must already be inside the caller's scope. System Manager/HR Manager see
+	every member; a project owner/leader/admin sees members of projects they run
+	(plus themselves); everyone else is denied server-side."""
+	scope, allowed = _team_report_scope(frappe.session.user)
+	if scope == "none":
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	start, end = _validated_range(from_date, to_date)
+	project = frappe.utils.cstr(project) if project else None
+
+	members = _active_users()
+	if allowed is not None:
+		members = [m for m in members if m["name"] in allowed]
+	if member:
+		member = frappe.utils.cstr(member)
+		if allowed is not None and member not in allowed:
+			frappe.throw("Not permitted", frappe.PermissionError)
+		members = [m for m in members if m["name"] == member]
+	if project:
+		on_project = _users_on_projects([project])
+		members = [m for m in members if m["name"] in on_project]
+
+	names = [m["name"] for m in members]
+	assigned_rows = _assigned_minutes(names, str(start), str(end), project=project)
+	done_rows = _done_minutes(names, str(start), str(end), project=project)
+	result = _build_team_report(members, assigned_rows, done_rows, start, end)
+	result["scope"] = scope
+	return result
 
 
 # --- Intern allocation matrix --------------------------------------------------

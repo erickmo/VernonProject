@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck, GraduationCap } from 'lucide-react'
+import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck, GraduationCap, Users } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
-import { useLastSeenAccess, useInternAllocationAccess } from '@/hooks/useData'
+import { useLastSeenAccess, useInternAllocationAccess, useTeamDailyReportAccess } from '@/hooks/useData'
 import { Card, CardList } from '@web/components/Card'
 import { EmptyState } from '@/components/ui'
 import { Page, PageHeader, rise } from '@web/components/Page'
@@ -30,15 +30,17 @@ export default function Reports() {
 
   const { data: lastSeenAccess } = useLastSeenAccess()
   const { data: internAccess } = useInternAllocationAccess()
+  const { data: teamDailyAccess } = useTeamDailyReportAccess()
   const showTodosDue = match(TODOS_DUE.title, TODOS_DUE.desc)
   const showLastSeen = !!lastSeenAccess?.can && match('Last Seen', 'When each teammate was last active')
   const showIntern = !!internAccess?.can && match('Employee Allocation', 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin')
+  const showTeamDaily = !!teamDailyAccess?.can && match('Team Daily Report', 'Menit ditugaskan vs selesai per anggota per hari, lintas semua proyek')
   const filtered = useMemo(() => REPORTS.filter((r) => match(r.title, r.desc)), [query])
-  const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0) + (showIntern ? 1 : 0)
+  const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0) + (showIntern ? 1 : 0) + (showTeamDaily ? 1 : 0)
 
   return (
     <Page>
-      <PageHeader icon={BarChart3} title="Reports" subtitle={`${count} of ${REPORTS.length + 1 + (internAccess?.can ? 1 : 0) + (lastSeenAccess?.can ? 1 : 0)} reports`} />
+      <PageHeader icon={BarChart3} title="Reports" subtitle={`${count} of ${REPORTS.length + 1 + (internAccess?.can ? 1 : 0) + (lastSeenAccess?.can ? 1 : 0) + (teamDailyAccess?.can ? 1 : 0)} reports`} />
 
       {/* Search — filters the catalogue by title or description. */}
       <div className="relative mb-4">
@@ -85,6 +87,16 @@ export default function Reports() {
                 eyebrow={<ReportBadge icon={GraduationCap} accent="from-amber-500 to-orange-600" />}
                 title="Employee Allocation"
                 meta="Matriks tugas magang per hari + sinyal pengelolaan pemimpin"
+              />
+            </div>
+          )}
+          {showTeamDaily && (
+            <div {...rise(1)}>
+              <Card
+                onClick={() => navigate('/reports/team-daily')}
+                eyebrow={<ReportBadge icon={Users} accent="from-sky-500 to-blue-600" />}
+                title="Team Daily Report"
+                meta="Menit ditugaskan vs selesai per anggota per hari, lintas semua proyek"
               />
             </div>
           )}

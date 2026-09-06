@@ -2,7 +2,7 @@ import datetime
 import unittest
 
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import add_days, nowdate
 from vernon_project.api.report import (
 	_date_list, _build_daily_matrix, _assigned_minutes,
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
@@ -14,6 +14,7 @@ from vernon_project.api.report import (
 	_build_todos_due, todos_due,
 	_runs_project, buzz_todo,
 	logbook, STATUS_PLANNED, STATUS_COMPLETED,
+	_build_team_report,
 )
 
 
@@ -825,3 +826,260 @@ class TestLastSeenReport(unittest.TestCase):
 		self.assertEqual(last_seen_access(), {"can": True, "scope": "team"})
 		frappe.set_user(self.OUTSIDER)
 		self.assertEqual(last_seen_access(), {"can": False, "scope": "none"})
+
+
+class TestBuildTeamReport(unittest.TestCase):
+	"""Pure aggregator — no site needed. Pins the 0/0-never-omitted rule and the
+	cross-project pivot _team_report_scope/team_daily_report build on top of."""
+
+	MEMBERS = [{"name": "a@x.id", "full_name": "A"}, {"name": "b@x.id", "full_name": "B"}]
+
+	def test_idle_member_is_zero_zero_not_omitted(self):
+		out = _build_team_report(self.MEMBERS, [], [], "2026-08-17", "2026-08-18")
+		row = {r["user"]: r for r in out["rows"]}["b@x.id"]
+		self.assertEqual(row["days"], {
+			"2026-08-17": {"assigned": 0, "done": 0}, "2026-08-18": {"assigned": 0, "done": 0},
+		})
+		self.assertEqual(row["assigned_total"], 0)
+		self.assertEqual(row["done_total"], 0)
+
+	def test_cross_project_rows_summed_per_day(self):
+		assigned = [
+			{"user": "a@x.id", "day": "2026-08-17", "minutes": 60},
+			{"user": "a@x.id", "day": "2026-08-17", "minutes": 25},  # a second project, same day
+		]
+		out = _build_team_report(self.MEMBERS, assigned, [], "2026-08-17", "2026-08-17")
+		row = {r["user"]: r for r in out["rows"]}["a@x.id"]
+		self.assertEqual(row["days"]["2026-08-17"]["assigned"], 85)
+
+	def test_assigned_and_done_are_independent_columns(self):
+		assigned = [{"user": "a@x.id", "day": "2026-08-17", "minutes": 60}]
+		done = [{"user": "a@x.id", "day": "2026-08-18", "minutes": 40}]
+		out = _build_team_report(self.MEMBERS, assigned, done, "2026-08-17", "2026-08-18")
+		row = {r["user"]: r for r in out["rows"]}["a@x.id"]
+		self.assertEqual(row["days"]["2026-08-17"], {"assigned": 60, "done": 0})
+		self.assertEqual(row["days"]["2026-08-18"], {"assigned": 0, "done": 40})
+
+	def test_totals_reconcile_with_daily_rows(self):
+		assigned = [
+			{"user": "a@x.id", "day": "2026-08-17", "minutes": 60},
+			{"user": "b@x.id", "day": "2026-08-18", "minutes": 40},
+		]
+		done = [{"user": "a@x.id", "day": "2026-08-18", "minutes": 30}]
+		out = _build_team_report(self.MEMBERS, assigned, done, "2026-08-17", "2026-08-18")
+		for r in out["rows"]:
+			self.assertEqual(r["assigned_total"], sum(v["assigned"] for v in r["days"].values()))
+			self.assertEqual(r["done_total"], sum(v["done"] for v in r["days"].values()))
+		self.assertEqual(out["totals"]["assigned"], sum(r["assigned_total"] for r in out["rows"]))
+		self.assertEqual(out["totals"]["done"], sum(r["done_total"] for r in out["rows"]))
+
+
+class _TeamReportFixture(unittest.TestCase):
+	"""Two Projects led by one non-SM leader; member A is on both (cross-project
+	overlap), member B only on Project 1, outsider on neither. `to_do`s are seeded
+	via the real set_assigned_allocation endpoint so the assigned-minutes source
+	matches production, and Done is poked straight into the DB (raw set_value) so
+	seeding never trips point-ledger/notification side effects."""
+
+	LEADER = "team_report_leader@example.com"
+	MEMBER_A = "team_report_member_a@example.com"
+	MEMBER_B = "team_report_member_b@example.com"
+	OUTSIDER = "team_report_outsider@example.com"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		for email, fn, roles in (
+			(self.LEADER, "Leader", [{"role": "Project Leader"}, {"role": "Project Owner"}]),
+			# "Project Team" grants desk access (System User) with no elevated
+			# permissions — same role _AllocFixture uses for its assignee.
+			(self.MEMBER_A, "MemberA", [{"role": "Project Team"}]),
+			(self.MEMBER_B, "MemberB", [{"role": "Project Team"}]),
+			(self.OUTSIDER, "Outsider", [{"role": "Project Team"}]),
+		):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": fn,
+					"send_welcome_email": 0, "roles": roles}).insert(ignore_permissions=True)
+			elif roles:
+				u = frappe.get_doc("User", email)
+				have = {r.role for r in u.roles}
+				missing = [r for r in roles if r["role"] not in have]
+				if missing:
+					u.extend("roles", missing)
+					u.save(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Team Report Brand"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Team Report Brand",
+				"company": frappe.db.get_value("Company", {}, "name")}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Team Report Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Team Report Group",
+				"base_rate_per_minute": 1, "levels": [{"type_name": "General", "level_name": "L1",
+					"level_id": "TEAMRPTL1", "difficulty_percent": 100}]}).insert(ignore_permissions=True)
+
+		self.projects, self.details = [], []
+		# Project.validate() auto-adds project_owner/project_leader as a Project Team
+		# row, so the leader ends up on both regardless of what's listed here. Member B
+		# is deliberately left off Project 2, so a project=2 filter excludes them.
+		team_members = [[self.MEMBER_A, self.MEMBER_B], [self.MEMBER_A]]
+		for i, members in enumerate(team_members, start=1):
+			p = frappe.get_doc({
+				"doctype": "Project", "project_name": f"Team Report Project {i}",
+				"brand": "Team Report Brand", "project_owner": self.LEADER, "project_leader": self.LEADER,
+				"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+				"team_members": [{"user": u} for u in members],
+			}).insert(ignore_permissions=True)
+			g = frappe.get_doc({"doctype": "Glossary", "glossary": f"Team Report Grouping {i}",
+				"project": p.name}).insert(ignore_permissions=True)
+			d = frappe.get_doc({"doctype": "Project Detail", "project": p.name,
+				"title": f"Team Report Detail {i}", "grouping": g.name,
+				"project_deadline": add_days(nowdate(), 30), "estimated": 200}).insert(ignore_permissions=True)
+			self.projects.append(p)
+			self.details.append(d)
+
+		self.d1 = str(add_days(nowdate(), 10))
+		self.d2 = str(add_days(nowdate(), 11))
+
+		from vernon_project.api.mobile import set_assigned_allocation
+
+		def make(detail_idx, user, minutes, alloc_day, done_day=None):
+			todo = frappe.get_doc({
+				"doctype": "Project Todo", "project_detail": self.details[detail_idx].name,
+				"to_do": "Team Report Todo", "assigned_to": user,
+				"start_date": self.d1, "deadline": self.d2, "estimated": minutes,
+				"status": "⚪️ Planned", "group": "Team Report Group", "level_id": "TEAMRPTL1",
+			}).insert(ignore_permissions=True)
+			res = set_assigned_allocation(todo.name, [{"date": alloc_day, "minutes": minutes, "note": ""}])
+			assert res["status"] == "ok", res
+			if done_day:
+				frappe.db.set_value("Project Todo", todo.name, {
+					"status": "🟠 Done", "developed_at": f"{done_day} 12:00:00",
+				}, update_modified=False)
+			return todo
+
+		# Member A: 60min on Project 1 + 25min on Project 2, both allocated D1 -> cross-
+		# project same-day sum. The Project-2 todo is also marked Done on D2.
+		self.todo_a1 = make(0, self.MEMBER_A, 60, self.d1)
+		self.todo_a2 = make(1, self.MEMBER_A, 25, self.d1)
+		self.todo_a3 = make(1, self.MEMBER_A, 90, self.d2, done_day=self.d2)
+		# Member B: allocated D1 on Project 1, marked Done D2 -> assigned/done land on
+		# different days for the same todo.
+		self.todo_b1 = make(0, self.MEMBER_B, 40, self.d1, done_day=self.d2)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for d in self.details:
+			for name in frappe.get_all("Project Todo", filters={"project_detail": d.name}, pluck="name"):
+				frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
+				frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True)
+			frappe.delete_doc("Project Detail", d.name, ignore_permissions=True, force=True)
+		for p in self.projects:
+			frappe.delete_doc("Project", p.name, ignore_permissions=True, force=True)
+		frappe.db.commit()
+
+	def _row(self, out, user):
+		return {r["user"]: r for r in out["rows"]}[user]
+
+
+class TestTeamDailyReport(_TeamReportFixture):
+	def test_system_manager_sees_everyone(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user("Administrator")
+		out = team_daily_report(self.d1, self.d2)
+		self.assertEqual(out["scope"], "all")
+		names = {r["user"] for r in out["rows"]}
+		self.assertTrue({self.LEADER, self.MEMBER_A, self.MEMBER_B, self.OUTSIDER} <= names)
+
+	def test_leader_scope_excludes_outsider(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2)
+		frappe.set_user("Administrator")
+		self.assertEqual(out["scope"], "team")
+		names = {r["user"] for r in out["rows"]}
+		self.assertEqual(names, {self.LEADER, self.MEMBER_A, self.MEMBER_B})
+
+	def test_outsider_denied(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.OUTSIDER)
+		with self.assertRaises(frappe.PermissionError):
+			team_daily_report(self.d1, self.d2)
+		frappe.set_user("Administrator")
+
+	def test_access_endpoint(self):
+		from vernon_project.api.report import team_daily_report_access
+		frappe.set_user("Administrator")
+		self.assertEqual(team_daily_report_access(), {"can": True, "scope": "all"})
+		frappe.set_user(self.LEADER)
+		self.assertEqual(team_daily_report_access(), {"can": True, "scope": "team"})
+		frappe.set_user(self.OUTSIDER)
+		self.assertEqual(team_daily_report_access(), {"can": False, "scope": "none"})
+		frappe.set_user("Administrator")
+
+	def test_cross_project_minutes_summed_and_done_on_its_own_day(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2)
+		frappe.set_user("Administrator")
+		row = self._row(out, self.MEMBER_A)
+		self.assertEqual(row["days"][self.d1], {"assigned": 85, "done": 0})  # 60 (P1) + 25 (P2)
+		self.assertEqual(row["days"][self.d2], {"assigned": 90, "done": 90})
+		self.assertEqual(row["assigned_total"], 175)
+		self.assertEqual(row["done_total"], 90)
+
+	def test_assigned_and_done_split_across_days_for_one_todo(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2)
+		frappe.set_user("Administrator")
+		row = self._row(out, self.MEMBER_B)
+		self.assertEqual(row["days"][self.d1], {"assigned": 40, "done": 0})
+		self.assertEqual(row["days"][self.d2], {"assigned": 0, "done": 40})
+
+	def test_idle_member_is_zero_zero(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2)
+		frappe.set_user("Administrator")
+		row = self._row(out, self.LEADER)
+		self.assertEqual(row["assigned_total"], 0)
+		self.assertEqual(row["done_total"], 0)
+
+	def test_totals_reconcile(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2)
+		frappe.set_user("Administrator")
+		self.assertEqual(out["totals"]["assigned"], sum(r["assigned_total"] for r in out["rows"]))
+		self.assertEqual(out["totals"]["done"], sum(r["done_total"] for r in out["rows"]))
+
+	def test_member_filter_narrows_to_one_row(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2, member=self.MEMBER_A)
+		frappe.set_user("Administrator")
+		self.assertEqual([r["user"] for r in out["rows"]], [self.MEMBER_A])
+
+	def test_member_filter_outside_scope_denied(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		with self.assertRaises(frappe.PermissionError):
+			team_daily_report(self.d1, self.d2, member=self.OUTSIDER)
+		frappe.set_user("Administrator")
+
+	def test_project_filter_narrows_and_restricts_minutes(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user(self.LEADER)
+		out = team_daily_report(self.d1, self.d2, project=self.projects[1].name)  # Project 2
+		frappe.set_user("Administrator")
+		names = {r["user"] for r in out["rows"]}
+		# Member B was never added to Project 2 -> dropped. The leader stays (Project.
+		# validate() auto-adds project_owner/leader as a Project Team row on every project).
+		self.assertEqual(names, {self.LEADER, self.MEMBER_A})
+		row_a = self._row(out, self.MEMBER_A)
+		self.assertEqual(row_a["assigned_total"], 115)  # 25 + 90, both on Project 2
+		self.assertEqual(row_a["done_total"], 90)  # the Done todo is on Project 2
+
+	def test_backwards_range_rejected(self):
+		from vernon_project.api.report import team_daily_report
+		frappe.set_user("Administrator")
+		with self.assertRaises(frappe.ValidationError):
+			team_daily_report(self.d2, self.d1)

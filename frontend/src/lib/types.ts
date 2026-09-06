@@ -701,6 +701,24 @@ export interface InternAllocationResponse {
   totals: { interns: number; attention: number }
 }
 
+export interface TeamDailyReportRow {
+  user: string
+  full_name: string
+  // Keyed by date ('YYYY-MM-DD'); every date in `dates` is present, 0/0 when idle.
+  days: Record<string, { assigned: number; done: number }>
+  assigned_total: number
+  done_total: number
+}
+
+export interface TeamDailyReportResponse {
+  scope: 'all' | 'team'
+  from_date: string
+  to_date: string
+  dates: string[]
+  rows: TeamDailyReportRow[]
+  totals: { assigned: number; done: number }
+}
+
 export interface UserFormPayload {
   full_name: string
   roles: string[]
