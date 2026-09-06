@@ -133,7 +133,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
-  const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
 
   const team =
     data.team.some((m) => m.user === data.assigned_to) || !data.assigned_to
@@ -178,7 +177,8 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     // leaves whatever a todo already has untouched, instead of clearing it.
     fields.group = group
     fields.level_id = level
-    fields.work_mode = workMode
+    // work_mode is set only via the AI toggle (top-menu / context-menu "Tandai
+    // kerja AI"), never this form — omitted here on purpose, same reason as above.
     // Blocking links: arrays of todo names (controller syncs the mirror side).
     fields.blocked_by = JSON.stringify(blockedBy)
     fields.blocking = JSON.stringify(blocking)
@@ -308,38 +308,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           onChange={(v) => { setGroup(v.group); setLevel(v.levelId) }}
           estimated={estimated}
         />
-      </div>
-
-      {/* AI group — one place for every AI-related field, styled to match the AI card in the read view. */}
-      <div className="mb-3 rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 p-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
-          <Bot className="h-3.5 w-3.5" /> AI
-        </p>
-        <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Work mode <span className="font-normal text-slate-400">· siapa yang kerjakan</span></label>
-        <div className="flex gap-2">
-          {(['Human', 'AI', 'Both'] as const).map((m) => {
-            // Tagging AI needs AI access; already-tagged todos stay switchable so a
-            // revoked user can still move one back to Human. Backend re-checks.
-            const locked = (m === 'AI' || m === 'Both') && !data.can_use_ai && workMode !== m
-            return (
-            <button
-              key={m}
-              type="button"
-              disabled={locked}
-              title={locked ? 'Minta Administrator mengaktifkan akses AI untuk akun Anda.' : undefined}
-              onClick={() => setWorkMode(workMode === m ? '' : m)}
-              className={clsx(
-                'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold transition active:scale-95',
-                locked && 'cursor-not-allowed opacity-40',
-                workMode === m
-                  ? 'border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/60 dark:bg-brand-500/20 dark:text-brand-300'
-                  : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',
-              )}
-            >
-              {m === 'Human' ? 'Human' : m === 'AI' ? 'AI' : 'Both'}
-            </button>
-          )})}
-        </div>
       </div>
 
       {data.detail_todos.length > 0 && (

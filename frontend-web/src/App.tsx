@@ -272,9 +272,9 @@ export default function App() {
           </Route>
           {/* Standalone deep-link targets (notifications, reports, command palette) */}
           <Route path="/project-item/:name" element={<ProjectItem />} />
-          <Route path="/project-detail/:name" element={<ProjectDetail />}>
-            <Route path="item/:itemName" element={<ProjectItem />} />
-          </Route>
+          {/* Redirects into /project/:project/detail/:name — kept for old deep links. */}
+          <Route path="/project-detail/:name" element={<ProjectDetail />} />
+          <Route path="/project-detail/:name/item/:itemName" element={<ProjectDetail />} />
           <Route path="/review" element={<Review />} />
 <Route path="/my-approvals" element={<MyApprovals />} />
           <Route path="/meetings" element={<Meetings />} />
