@@ -78,5 +78,11 @@ export function mergeTimers(
     // if that edge ever matters.
   }
   for (const r of active) if (!handled.has(r.taskId)) timers.push(rowToTimer(r)) // started elsewhere
+
+  // Final order = the backend's sortOrder (drag-to-reorder is server-authoritative,
+  // same as the note field), so a reorder made on another device wins here too.
+  // A local-only timer with no remote row yet (resave case above) has no sortOrder
+  // to sort by — it keeps its position from the loop above via the stable sort.
+  timers.sort((a, b) => (remote.get(a.taskId)?.sortOrder ?? Infinity) - (remote.get(b.taskId)?.sortOrder ?? Infinity))
   return { timers, resave, synced: new Set(activeIds) }
 }

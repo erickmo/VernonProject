@@ -1,7 +1,7 @@
 // @ts-nocheck — test-only file, run via esbuild; not part of the app bundle
 import assert from 'node:assert'
 import type { ProjectItem } from './types'
-import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes, weekLoad, boardDate, deadlineDate, allocTotal, planColumns, deadlineTone } from './planDay'
+import { autoFillPlan, filterCandidates, sortForPlanning, touchedDiff, buildNext, planFloor, allocMinutes, weekLoad, boardDate, deadlineDate, allocTotal, planColumns, deadlineTone, focusedFirst } from './planDay'
 import { byAllocationAsc } from './format'
 
 // Minimal ProjectItem factory — only the fields these pure fns read.
@@ -255,6 +255,17 @@ assert.equal(
   assert.equal(deadlineTone(item({ deadline: T }), T), 'today', 'deadline today → today')
   assert.equal(deadlineTone(item({ deadline: '2026-07-12' }), T), 'soon', 'within 3 days → soon')
   assert.equal(deadlineTone(item({ deadline: '2026-07-20' }), T), 'future', 'far off → future')
+}
+
+// focusedFirst: focused todos float to top in the GIVEN order, not input order
+{
+  const list = [item({ name: 'a' }), item({ name: 'b' }), item({ name: 'c' }), item({ name: 'd' })]
+  assert.deepEqual(focusedFirst(list, []).map((t) => t.name), ['a', 'b', 'c', 'd'], 'no focus order → unchanged')
+  assert.deepEqual(
+    focusedFirst(list, ['c', 'a']).map((t) => t.name),
+    ['c', 'a', 'b', 'd'],
+    'focused todos on top, in focus-list order (c before a), rest keep input order',
+  )
 }
 
 console.log('planDay self-check OK')

@@ -226,6 +226,19 @@ export function stopTimer(taskId: string) {
   focusApi.stop(taskId).catch(noop) // backend keeps the row iff it has a note
 }
 
+// Drag-to-reorder the focus list. `order` = every active timer's taskId, in the
+// wanted order (a permutation, enforced server-side too — see reorder_focus).
+// Applied optimistically so both the FAB list and any focused-first project list
+// reflect it instantly; persisted so it's still there next session and on other
+// devices (mergeTimers sorts by the backend's sortOrder on the next hydrate).
+function reorderTimers(order: string[]) {
+  const byId = new Map(current.map((t) => [t.taskId, t]))
+  const next = order.map((id) => byId.get(id)).filter((t): t is FocusTimer => !!t)
+  for (const t of current) if (!order.includes(t.taskId)) next.push(t) // defensive: never drop a timer
+  setTimers(next)
+  focusApi.reorder(order).catch((e) => console.warn('[focus] reorder failed', e))
+}
+
 // ---- permanent per-task note ----
 
 const noteDebounce: Record<string, ReturnType<typeof setTimeout>> = {}
@@ -294,22 +307,23 @@ export function useFocusTimer(taskId: string) {
   }
 }
 
-// All timers, enriched + sorted (overdue first, then most-recently started).
-// For the global mini-bar / dock.
+// All timers, enriched, in the user's own drag-to-reorder order (see
+// reorderTimers / focusMerge's sortOrder sort) — for the FAB focus list.
 export function useFocusTimers() {
   useFocusInit()
   const timers = useSyncExternalStore(subscribe, () => current, () => current)
   const anyRunning = timers.some((t) => t.status === 'running')
   const now = useNowTick(anyRunning)
-  const enriched = timers
-    .map((t) => deriveFocus(t, now))
-    .sort((a, b) => {
-      const ao = a.hasEstimate && a.remainingMs < 0 ? 1 : 0
-      const bo = b.hasEstimate && b.remainingMs < 0 ? 1 : 0
-      if (ao !== bo) return bo - ao // overdue first
-      return b.startedAt - a.startedAt // then most-recently started
-    })
-  return { timers: enriched, stop: stopTimer }
+  const enriched = timers.map((t) => deriveFocus(t, now))
+  return { timers: enriched, stop: stopTimer, reorder: reorderTimers }
+}
+
+// Ordered taskIds of every active timer — for floating focused todos to the top
+// of a project/today list in the SAME order as the FAB focus list (see
+// planDay.focusedFirst). Order-only; membership alone is useFocusedTaskIds.
+export function useFocusOrder(): string[] {
+  const timers = useSyncExternalStore(subscribe, () => current, () => current)
+  return useMemo(() => timers.map((t) => t.taskId), [timers])
 }
 
 // Membership-only: taskIds of existing timers. Re-renders on start/stop (store

@@ -6,11 +6,13 @@ type SortableProps<T> = {
   keyFor: (item: T, index: number) => string
   onReorder: (from: number, to: number) => void
   renderItem: (item: T, index: number) => ReactNode
+  onDragEnd?: () => void
 }
 
 // Lightweight pointer-based reorderable list (mouse + touch, no dependency).
-// onReorder is called live as the dragged row crosses another row's midpoint.
-export function Sortable<T>({ items, keyFor, onReorder, renderItem }: SortableProps<T>) {
+// onReorder is called live as the dragged row crosses another row's midpoint;
+// onDragEnd fires once, on release — the moment to persist the final order.
+export function Sortable<T>({ items, keyFor, onReorder, renderItem, onDragEnd }: SortableProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const dragIndexRef = useRef<number | null>(null)
@@ -44,6 +46,7 @@ export function Sortable<T>({ items, keyFor, onReorder, renderItem }: SortablePr
     ;(e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId)
     dragIndexRef.current = null
     setDragIndex(null)
+    onDragEnd?.()
   }
 
   return (

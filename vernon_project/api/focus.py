@@ -64,12 +64,15 @@ def _shape(r):
 		"elapsedBeforeMs": r.get("elapsed_before_ms") or 0,
 		"note": r.get("note") or "",
 		"meta": meta,
+		"sortOrder": r.get("sort_order") or 0,
 	}
 
 
 @frappe.whitelist()
 def list_focus():
-	"""All of the current user's focus rows (active timers + noted tasks)."""
+	"""All of the current user's focus rows (active timers + noted tasks), in the
+	user's drag-to-reorder order. Ties (rows never explicitly reordered, all at the
+	default 0) fall back to most-recently-started first, matching prior behaviour."""
 	rows = frappe.get_all(
 		DOCTYPE,
 		filters={"user": _user()},
@@ -82,9 +85,38 @@ def list_focus():
 			"elapsed_before_ms",
 			"note",
 			"task_meta",
+			"sort_order",
 		],
+		order_by="sort_order asc, started_at_ms desc",
 	)
 	return [_shape(r) for r in rows]
+
+
+@frappe.whitelist()
+def reorder_focus(order):
+	"""Persist the drag-to-reorder position of the caller's own active (running or
+	paused) focus timers. `order` must be exactly the caller's current active task
+	ids, permuted — not an arbitrary list — so this can't touch another user's rows
+	or a task the caller hasn't focused."""
+	if isinstance(order, str):
+		order = json.loads(order)
+	user = _user()
+	current_ids = frappe.get_all(
+		DOCTYPE, filters={"user": user, "status": ["in", ("running", "paused")]}, pluck="task"
+	)
+	if sorted(order) != sorted(current_ids):
+		frappe.throw("Invalid focus order", frappe.PermissionError)
+	if order:
+		case = " ".join("WHEN %s THEN %s" for _ in order)
+		placeholders = ", ".join(["%s"] * len(order))
+		params = [x for i, task in enumerate(order) for x in (task, i)]
+		frappe.db.sql(
+			f"""UPDATE `tabFocus Timer` SET sort_order = CASE task {case} END
+			WHERE user=%s AND task IN ({placeholders})""",
+			params + [user] + list(order),
+		)
+	_ping()
+	return {"ok": True}
 
 
 @frappe.whitelist()

@@ -18,7 +18,7 @@ import {
   usePreviousShiftShortfall, useUnreadMentions, useMarkRead, useRecentlyDone,
 } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
-import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
+import { useFocusOrder } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
 import { ACTION_GROUPS, GROUP_ACCENT, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
@@ -385,7 +385,7 @@ export default function Home() {
     return d ? [...d.overdue, ...d.due_today, ...d.upcoming] : []
   }, [dash.data])
 
-  const focusedIds = useFocusedTaskIds()
+  const focusOrder = useFocusOrder()
   const activeTodos = useMemo(() => allTasks.filter((t) => !t.is_waiting), [allTasks])
   const filteredActive = activeTodos
 
@@ -396,14 +396,14 @@ export default function Home() {
     const isToday = (t: ProjectItem) => allocOn(t, (d) => d === todayStr)
     const isPast = (t: ProjectItem) => allocOn(t, (d) => d < todayStr)
     return {
-      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusedIds),
+      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusOrder),
       past: filteredActive.filter((t) => !isToday(t) && isPast(t)).slice().sort(byDeadlineAsc),
       upcoming: filteredActive
         .filter((t) => !isToday(t) && !isPast(t) && allocOn(t, (d) => d > todayStr))
         .slice()
         .sort(byDeadlineAsc),
     }
-  }, [filteredActive, todayStr, focusedIds])
+  }, [filteredActive, todayStr, focusOrder])
   const planPicked = useMemo(
     () => (pickedDate ? filteredActive.filter((t) => allocOn(t, (d) => d === pickedDate)).slice().sort(byAllocationAsc) : []),
     [filteredActive, pickedDate],

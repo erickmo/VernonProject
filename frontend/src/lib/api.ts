@@ -1469,6 +1469,7 @@ export type FocusRow = {
   elapsedBeforeMs: number
   note: string
   meta: import('./focusUI').FocusMeta | null
+  sortOrder: number
 }
 
 export const focusApi = {
@@ -1484,6 +1485,8 @@ export const focusApi = {
   }) => api.post<FocusRow>(FOCUS + 'save_timer', r),
   setNote: (task: string, note: string) => api.post<FocusRow>(FOCUS + 'set_note', { task, note }),
   stop: (task: string) => api.post<{ ok: boolean }>(FOCUS + 'stop_timer', { task }),
+  // `order` = every currently-active task id, permuted into the wanted position.
+  reorder: (order: string[]) => api.post<{ ok: boolean }>(FOCUS + 'reorder_focus', { order }),
 }
 
 // ---------------------------------------------------------------- recruitment

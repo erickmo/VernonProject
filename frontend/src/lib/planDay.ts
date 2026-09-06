@@ -71,15 +71,15 @@ export function moveYesterdayToToday(allocations: Alloc[], yesterday: string, to
   return [...rest, { date: today, minutes: todayMinutes }]
 }
 
-// ponytail: pure partition; runnable test deferred — no test infra in this repo
-// (project convention: defer tests to final phase). Add a vitest case when infra
-// lands. Behaviour: focused todos float to the very top, preserving input order
-// within the focused and non-focused groups.
-export function focusedFirst(list: ProjectItem[], focused: Set<string>): ProjectItem[] {
-  if (!focused.size) return list
+// Focused todos float to the top, in the user's own drag-to-reorder focus-list
+// order (see useFocusOrder); the rest keep their input order.
+export function focusedFirst(list: ProjectItem[], focusedOrder: string[]): ProjectItem[] {
+  if (!focusedOrder.length) return list
+  const rank = new Map(focusedOrder.map((id, i) => [id, i]))
   const yes: ProjectItem[] = []
   const no: ProjectItem[] = []
-  for (const t of list) (focused.has(t.name) ? yes : no).push(t)
+  for (const t of list) (rank.has(t.name) ? yes : no).push(t)
+  yes.sort((a, b) => rank.get(a.name)! - rank.get(b.name)!)
   return [...yes, ...no]
 }
 

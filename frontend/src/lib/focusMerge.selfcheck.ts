@@ -8,8 +8,8 @@ const NOW = 1_000_000
 function timer(taskId, status = 'running', elapsedBeforeMs = 0, startedAt = NOW) {
   return { taskId, taskTitle: 'x', estimatedMs: 0, status, startedAt, elapsedBeforeMs, meta: undefined }
 }
-function row(taskId, status = 'running', elapsedBeforeMs = 0) {
-  return { taskId, taskTitle: 'x', estimatedMs: 0, status, startedAt: NOW, elapsedBeforeMs, note: '', meta: null }
+function row(taskId, status = 'running', elapsedBeforeMs = 0, sortOrder = 0) {
+  return { taskId, taskTitle: 'x', estimatedMs: 0, status, startedAt: NOW, elapsedBeforeMs, note: '', meta: null, sortOrder }
 }
 const ids = (ts) => ts.map((t) => t.taskId)
 
@@ -50,5 +50,21 @@ assert.deepEqual(r.resave, [], 'a completed todo is NOT re-pushed/resurrected')
 // 5) Backend wins for a live timer (adopt its elapsed/status).
 r = mergeTimers([timer('t1', 'running', 5)], new Set(['t1']), [row('t1', 'running', 999)], NOW)
 assert.equal(r.timers[0].elapsedBeforeMs, 999, 'backend state wins for a still-active timer')
+
+// 6) Drag-to-reorder: final order follows the backend's sortOrder, not arrival
+//    order — a reorder made on another device must win, even though both rows
+//    were already known locally in the opposite order.
+r = mergeTimers(
+  [timer('t1'), timer('t2')],
+  new Set(['t1', 't2']),
+  [row('t1', 'running', 0, 1), row('t2', 'running', 0, 0)],
+  NOW,
+)
+assert.deepEqual(ids(r.timers), ['t2', 't1'], 'remote sortOrder wins over local array order')
+
+// 6b) A fresh un-synced local timer (no remote row, sortOrder unknown) sorts after
+//     every remote-known row instead of jumping ahead of the persisted order.
+r = mergeTimers([timer('t1'), timer('new')], new Set(['t1']), [row('t1', 'running', 0, 5)], NOW)
+assert.deepEqual(ids(r.timers), ['t1', 'new'], 'un-synced local-only timer falls to the end')
 
 console.log('focusMerge self-check OK')

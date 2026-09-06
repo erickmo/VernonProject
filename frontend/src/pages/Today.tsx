@@ -53,7 +53,7 @@ import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MeetingSheet } from '@/components/MeetingSheet'
 import CheerPop from '@/components/CheerPop'
 import type { MeetingListItem } from '@/lib/types'
-import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
+import { useFocusOrder } from '@/hooks/useFocusTimer'
 import { focusedFirst } from '@/lib/planDay'
 import { matchProjectItem } from '@/lib/filters'
 import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
@@ -248,7 +248,7 @@ export default function Today() {
   const [axis, setAxis] = useState<Axis>('plan')
   const [planSub, setPlanSub] = useState<PlanSub>('today')
   const [deadlineSub, setDeadlineSub] = useState<DeadlineSub>('today')
-  const focusedIds = useFocusedTaskIds()
+  const focusOrder = useFocusOrder()
 
   const firstName = boot?.full_name?.split(' ')[0] ?? ''
 
@@ -316,14 +316,14 @@ export default function Today() {
     const isToday = (t: ProjectItem) => allocOn(t, (d) => d === todayStr)
     const isPast = (t: ProjectItem) => allocOn(t, (d) => d < todayStr)
     return {
-      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusedIds),
+      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusOrder),
       past: filteredActive.filter((t) => !isToday(t) && isPast(t)).slice().sort(byDeadlineAsc),
       upcoming: filteredActive
         .filter((t) => !isToday(t) && !isPast(t) && allocOn(t, (d) => d > todayStr))
         .slice()
         .sort(byDeadlineAsc),
     }
-  }, [filteredActive, todayStr, focusedIds])
+  }, [filteredActive, todayStr, focusOrder])
   // "Today's plan" = todos allocated minutes today; drives the CTA + ring total.
   const plannedTodos = planGroups.today
   const plannedTodayMin = plannedTodos.reduce((s, t) => s + (t.today_allocation || 0), 0)
