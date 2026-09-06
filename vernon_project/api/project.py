@@ -23,6 +23,43 @@ def get_project_team_members(project_name):
 	except frappe.DoesNotExistError:
 			return []
 
+
+_PROTECTED_FIELDS = {"name", "doctype", "owner", "creation", "modified", "modified_by", "idx", "docstatus"}
+
+
+def _apply_fields(doc, fields):
+	"""Set caller-given fields onto `doc` (skipping identity/audit fields) and save."""
+	fields = frappe.parse_json(fields) if isinstance(fields, str) else fields
+	if not isinstance(fields, dict):
+		frappe.throw("fields must be an object.")
+	doc.update({k: v for k, v in fields.items() if k not in _PROTECTED_FIELDS})
+	doc.save(ignore_permissions=True)
+	return doc
+
+
+@frappe.whitelist()
+def update_project(project, fields):
+	"""Update a Project's own fields (not its team/details/todos, which have their
+	own endpoints). Owner/leader/SM only — same gate as the AI breakdown endpoints
+	below. `fields` = {fieldname: value}."""
+	doc = _gate_project(project)
+	_apply_fields(doc, fields)
+	return {"name": doc.name}
+
+
+@frappe.whitelist()
+def update_project_detail(project_detail, fields):
+	"""Update a Project Detail's own fields. Gated on its PARENT project's
+	owner/leader/SM — the parent is read from the detail itself, not a
+	caller-supplied id, so there's nothing to spoof. `fields` = {fieldname: value}."""
+	if not frappe.db.exists("Project Detail", project_detail):
+		frappe.throw("Project Detail not found.", frappe.DoesNotExistError)
+	detail = frappe.get_doc("Project Detail", project_detail)
+	_gate_project(detail.project)
+	_apply_fields(detail, fields)
+	return {"name": detail.name}
+
+
 # ================================================================================
 # AI project breakdown — deterministic template that drafts subgoals (Project
 # Details) and draft todos (Project Todos) from a Project's goal/success/failure/
