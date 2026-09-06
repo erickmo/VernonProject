@@ -21,7 +21,7 @@
 // v31: flush stale /m shell for the root back-button guard (back on home no longer blanks).
 // v32: gesture-armed root back guard (installed-PWA only) so back keeps home after first tap.
 // v33: launch+gesture seeded root back guard.
-const ASSET_CACHE = 'vernon-assets-v33'
+const ASSET_CACHE = 'vernon-assets-v34'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {

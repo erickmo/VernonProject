@@ -137,7 +137,7 @@ import LmsAdmin from '@web/pages/LmsAdmin'
 import Superpowers from '@web/pages/Superpowers'
 import SuperpowersAdmin from '@web/pages/SuperpowersAdmin'
 import WhatsNew from '@web/pages/WhatsNew'
-import { isTodoPath } from '@web/lib/todoDrawer'
+import { isTodoPath } from '@/lib/todoDrawer'
 import TodoDrawer from '@web/components/TodoDrawer'
 import { TodoContextMenuProvider } from '@web/components/TodoContextMenuProvider'
 

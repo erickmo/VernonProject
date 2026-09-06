@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useParams, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Navigate, Route, Routes, useParams, useLocation, useNavigate, type Location } from 'react-router-dom'
 import { FolderKanban } from 'lucide-react'
 import { useBoot, useRecognitionGate } from './hooks/useData'
 import { ApiError } from './lib/api'
@@ -20,6 +20,8 @@ import Projects from './pages/Projects'
 import ProjectScreen from './pages/ProjectScreen'
 import ProjectDetailScreen from './pages/ProjectDetailScreen'
 import ProjectItemScreen from './pages/ProjectItemScreen'
+import TodoOverlay from './components/TodoOverlay'
+import { isTodoPath } from './lib/todoDrawer'
 import Profile from './pages/Profile'
 import HrHubScreen from './pages/HrHubScreen'
 import CultureHubScreen from './pages/CultureHubScreen'
@@ -153,6 +155,12 @@ export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
   useRootBackGuard()
+  const bgRef = useRef<Location | null>(null)
+  const onTodo = isTodoPath(location.pathname)
+  // Freeze the last non-todo screen; it stays mounted (scroll intact) behind the overlay.
+  if (!onTodo) bgRef.current = location
+  const showTodoOverlay = onTodo && bgRef.current !== null
+  const background = showTodoOverlay ? bgRef.current! : location
   const sp = boot?.settings
   // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
   const superpowerBlocked =
@@ -229,7 +237,7 @@ export default function App() {
       {/* Photo prank: self-gates on boot.settings.prank_enabled, ticks its own timer. */}
       <PrankPopup />
       <FoodInviteWatcher />
-      <Routes>
+      <Routes location={background}>
         <Route path="/" element={<Today />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/plan" element={<PlanScreen />} />
@@ -410,6 +418,11 @@ export default function App() {
         <Route path="/web" element={<WebManagementScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {showTodoOverlay && (
+        <Routes location={location}>
+          <Route path="/project-item/:name" element={<TodoOverlay />} />
+        </Routes>
+      )}
     </TodoContextMenuProvider>
   )
 }
