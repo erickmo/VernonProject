@@ -5,7 +5,7 @@ import { useModalA11y } from '@web/lib/useModalA11y'
 
 export function Drawer({
   open, onClose, title, children, footer, widthClass = 'max-w-md', onSubmit,
-  scrim = 'bg-black/50', closeOnEscape = true, zClass = 'z-50', bgClass = 'bg-surface',
+  scrim = 'bg-black/50', closeOnEscape = true, zClass = 'z-50', bgClass = 'bg-surface', tintClass,
 }: {
   open: boolean
   onClose: () => void
@@ -22,8 +22,11 @@ export function Drawer({
   closeOnEscape?: boolean
   /** Root stacking. Lower (e.g. 'z-40') to sit below full-screen z-50 modals. */
   zClass?: string
-  /** Panel background. Override for a state-tinted panel (e.g. TodoDrawer's AI wash). */
+  /** Panel background — always opaque, so the page never bleeds through. */
   bgClass?: string
+  /** Optional translucent wash layered ON TOP of bgClass (e.g. TodoDrawer's AI tint).
+   *  Never use this to replace bgClass — it must stay opaque underneath. */
+  tintClass?: string
 }) {
   const ref = useModalA11y(open, onClose, { closeOnEscape })
   if (!open) return null
@@ -53,6 +56,7 @@ export function Drawer({
         tabIndex={-1}
         className={`absolute right-0 top-0 h-full w-full ${widthClass} flex flex-col ${bgClass} shadow-xl`}
       >
+        {tintClass && <div className={`pointer-events-none absolute inset-0 ${tintClass}`} />}
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button aria-label="Close" onClick={onClose} className="text-muted hover:text-ink"><X className="w-5 h-5" /></button>

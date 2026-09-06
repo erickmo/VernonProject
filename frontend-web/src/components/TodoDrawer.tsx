@@ -25,7 +25,7 @@ export default function TodoDrawer({ onClose }: { onClose: () => void }) {
       title="Todo details"
       widthClass="w-full sm:w-[75vw] max-w-none"
       zClass="z-40"
-      bgClass={aiOn ? 'bg-violet-50/40 dark:bg-violet-500/[0.06]' : undefined}
+      tintClass={aiOn ? 'bg-violet-50/40 dark:bg-violet-500/[0.06]' : undefined}
     >
       <ProjectItem />
     </Drawer>
