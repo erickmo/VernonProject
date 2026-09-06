@@ -16,6 +16,7 @@ from pathlib import Path
 
 import requests
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 API_DIR = Path(__file__).resolve().parent.parent / "vernon_project" / "api"
 SITE_URL = os.environ.get("VERNON_SITE_URL", "https://project.vernon.id").rstrip("/")
@@ -95,26 +96,34 @@ def call_api_method(method: str, kwargs: dict | None = None) -> dict:
     "vernon_project.api.food_invite.get_pending_invites". `kwargs` are passed
     as the method's arguments. Runs as whichever user the configured API key
     belongs to — same permission checks as the real app.
+
+    Every failure here is raised as `ToolError` (not a plain exception): the
+    MCPServer runtime treats anything else as an unanticipated crash and
+    replaces its message with a bare "Error executing tool call_api_method",
+    discarding the HTTP status + Frappe error text this function worked out —
+    exactly the failure a caller most needs to see to self-correct.
     """
     if method not in _KNOWN:
-        raise ValueError(f"{method!r} is not a known vernon_project.api.* whitelisted method — call list_api_methods first")
+        raise ToolError(f"{method!r} is not a known vernon_project.api.* whitelisted method — call list_api_methods first")
     if not API_KEY or not API_SECRET:
-        raise RuntimeError("VERNON_API_KEY / VERNON_API_SECRET not set in the server environment")
+        raise ToolError("VERNON_API_KEY / VERNON_API_SECRET not set in the server environment")
 
-    resp = requests.post(
-        f"{SITE_URL}/api/method/{method}",
-        json=kwargs or {},
-        headers={"Authorization": f"token {API_KEY}:{API_SECRET}"},
-        timeout=30,
-    )
+    try:
+        resp = requests.post(
+            f"{SITE_URL}/api/method/{method}",
+            json=kwargs or {},
+            headers={"Authorization": f"token {API_KEY}:{API_SECRET}"},
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        raise ToolError(f"{method} -> request to {SITE_URL} failed: {exc}") from exc
     try:
         body = resp.json()
     except ValueError:
-        resp.raise_for_status()
-        raise
+        raise ToolError(f"{method} -> HTTP {resp.status_code} (non-JSON response): {resp.text[:500]!r}") from None
     if not resp.ok:
         detail = body.get("_server_messages") or body.get("exception") or body.get("message") or body
-        raise RuntimeError(f"{method} -> HTTP {resp.status_code}: {detail}")
+        raise ToolError(f"{method} -> HTTP {resp.status_code}: {detail}")
     return body.get("message", body)
 
 

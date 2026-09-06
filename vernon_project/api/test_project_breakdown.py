@@ -16,12 +16,17 @@ from vernon_project.api.project import (
 
 LEADER = "pb_leader@example.com"
 STRANGER = "pb_stranger@example.com"
+# Assigned as `project_leader` on a Project (which requires the "Project
+# Leader" Role at that moment), then has the Role revoked afterward. The
+# Project's own field is never re-validated on Role change, so _gate_project
+# (a field check, not a Role check) still authorizes this user going forward.
+FIELD_ONLY_LEADER = "pb_field_leader@example.com"
 
 
 class TestProjectBreakdown(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
-		for email, name in ((LEADER, "Pb Leader"), (STRANGER, "Pb Stranger")):
+		for email, name in ((LEADER, "Pb Leader"), (STRANGER, "Pb Stranger"), (FIELD_ONLY_LEADER, "Pb Field Leader")):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc({
 					"doctype": "User", "email": email, "first_name": name,
@@ -154,6 +159,33 @@ class TestProjectBreakdown(FrappeTestCase):
 		frappe.set_user(STRANGER)
 		with self.assertRaises(frappe.PermissionError):
 			persist_project_breakdown(self.project.name, frappe.as_json([]))
+
+	def test_persist_works_after_leaders_role_is_revoked_post_assignment(self):
+		# validate_lead_roles forces project_leader to hold the "Project Leader"
+		# Role at the moment the Project is saved — but nothing re-checks that
+		# once a Role is later revoked from the user, the Project's own
+		# project_leader field is untouched. _gate_project still authorizes
+		# such a user (it reads the field, not the Role), so persist must not
+		# start requiring Group-doctype read permission through the back door.
+		# A todo-free subgoal is the minimal repro: no todo content to blame.
+		frappe.get_doc("User", FIELD_ONLY_LEADER).add_roles("Project Leader")
+		project = frappe.get_doc({
+			"doctype": "Project",
+			"project_name": "PB revoked-role-leader " + frappe.generate_hash(length=6),
+			"brand": self.brand,
+			"project_owner": "Administrator",
+			"project_leader": FIELD_ONLY_LEADER,
+			"status": "Ongoing",
+			"start_date": nowdate(),
+			"deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		frappe.get_doc("User", FIELD_ONLY_LEADER).remove_roles("Project Leader")
+
+		frappe.set_user(FIELD_ONLY_LEADER)
+		subgoals = [{"title": "Subgoal One", "todos": []}]
+		res = persist_project_breakdown(project.name, frappe.as_json(subgoals))
+		self.assertEqual(res["created_todos"], 0)
+		self.assertEqual(len(res["created_details"]), 1)
 
 	def test_persist_clips_overlong_context(self):
 		frappe.set_user(LEADER)
