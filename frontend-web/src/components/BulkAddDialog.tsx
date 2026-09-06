@@ -196,7 +196,7 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
             <div key={i} className="flex flex-col gap-2 rounded-2xl border border-line p-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-muted">{i + 1}</span>
-                <input className={field} value={r.toDo} onChange={(e) => setRow(i, { toDo: e.target.value })} placeholder="Task title…" />
+                <input maxLength={140} className={field} value={r.toDo} onChange={(e) => setRow(i, { toDo: e.target.value })} placeholder="Task title…" />
                 <button type="button" onClick={() => removeRow(i)} className="rounded-full p-1 text-muted active:scale-95" aria-label="Remove task">
                   <Trash2 className="h-4 w-4" />
                 </button>

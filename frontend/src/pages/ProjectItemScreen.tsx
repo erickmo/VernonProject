@@ -208,10 +208,14 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       </div>
 
       <div className={head}>Basics</div>
-      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
+      <div className="mb-1 flex items-center justify-between">
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
+        <span className="text-xs text-slate-400 dark:text-slate-500">{toDo.length}/140</span>
+      </div>
       <textarea
         value={toDo}
         onChange={(e) => setToDo(e.target.value)}
+        maxLength={140}
         rows={2}
         className={clsx(field, 'mb-3 resize-none')}
       />
@@ -1210,7 +1214,14 @@ function TopMenu({ items }: { items: TopItem[] }) {
   )
 }
 
-export default function ProjectItemScreen() {
+export default function ProjectItemScreen({
+  headerPortalTarget,
+}: {
+  /** Passed straight through to DetailScreen — see its own docstring.
+   *  Set only by TodoOverlay, which embeds this screen in its own bottom
+   *  sheet with a separately-scrolling body. */
+  headerPortalTarget?: HTMLElement | null
+} = {}) {
   const { name = '' } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1264,14 +1275,14 @@ const [followOpen, setFollowOpen] = useState(false)
 
   if (isLoading && !data) {
     return (
-      <DetailScreen title="Todo">
+      <DetailScreen title="Todo" headerPortalTarget={headerPortalTarget}>
         <FullScreenLoader />
       </DetailScreen>
     )
   }
   if (!data) {
     return (
-      <DetailScreen title="Todo">
+      <DetailScreen title="Todo" headerPortalTarget={headerPortalTarget}>
         <EmptyState icon={AlertCircle} title="Couldn't load todo" />
       </DetailScreen>
     )
@@ -1508,7 +1519,7 @@ const [followOpen, setFollowOpen] = useState(false)
   const focusValueMs = focusActive ? (focus.hasEstimate ? focus.remainingMs : focus.elapsedMs) : 0
 
   return (
-    <DetailScreen title="Todo" right={topActions}>
+    <DetailScreen title="Todo" right={topActions} headerPortalTarget={headerPortalTarget}>
       {editing && <EditForm data={data} onClose={() => setEditing(false)} />}
       {data.status_key === 'cancelled' && (
         <div className="mb-3">

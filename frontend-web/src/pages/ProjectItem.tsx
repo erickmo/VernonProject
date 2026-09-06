@@ -1098,10 +1098,14 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
 
       <div className={head}>Basics</div>
-      <label className="mb-1 block text-xs font-medium text-muted">Title</label>
+      <div className="mb-1 flex items-center justify-between">
+        <label className="block text-xs font-medium text-muted">Title</label>
+        <span className="text-xs text-muted">{toDo.length}/140</span>
+      </div>
       <textarea
         value={toDo}
         onChange={(e) => setToDo(e.target.value)}
+        maxLength={140}
         rows={2}
         className={clsx(fieldCls, 'mb-3 resize-none')}
       />

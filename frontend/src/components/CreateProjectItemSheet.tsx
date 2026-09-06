@@ -118,8 +118,11 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
         <div className="flex flex-col gap-3">
           <div className={head}>Basics</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
-            <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'} />
+            <span className="flex items-center justify-between">
+              <span>{issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span></span>
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-500">{toDo.length}/140</span>
+            </span>
+            <input maxLength={140} className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'} />
           </label>
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">

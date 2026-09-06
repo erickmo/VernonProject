@@ -509,6 +509,79 @@ class TestTeamWall(unittest.TestCase):
 		self.assertEqual(by_name[self.enabled_user]["job_title"], "QA Lead")
 
 
+class TestUntagAiPreservesPrompt(unittest.TestCase):
+	"""3tl61rrg9a's untag-safety trap: clearing work_mode (the "AI" tag) must
+	only ever HIDE ai_prompt from the UI, never delete the stored data — a
+	prompt someone spent time writing shouldn't vanish because a checkbox was
+	toggled off by mistake. update_todo's work_mode and ai_prompt branches are
+	already independent (only touched when their own kwarg is not None), so
+	this is a regression test proving that stays true, not a fix."""
+
+	def setUp(self):
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Test Group Untag"):
+			frappe.get_doc({
+				"doctype": "Group", "group_name": "Test Group Untag", "base_rate_per_minute": 1,
+				"levels": [{"type_name": "General", "level_name": "L1",
+							"level_id": "UNTAGLVL1", "difficulty_percent": 100}],
+			}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Untag AI Project", "brand": "Test Customer",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 90),
+			"team_members": [{"user": "Administrator"}],
+		}).insert(ignore_permissions=True)
+		self.gl = frappe.get_doc({"doctype": "Glossary", "glossary": "Untag AI Grouping",
+			"project": self.project.name}).insert(ignore_permissions=True)
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "Untag AI Detail",
+			"grouping": self.gl.name, "project_deadline": add_days(nowdate(), 60),
+		}).insert(ignore_permissions=True)
+		# Created directly with work_mode/ai_prompt already set — bypasses the
+		# whitelisted create path's own gates, which isn't what this test is
+		# about; it only cares about what update_todo does to an existing row.
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.detail.name,
+			"to_do": "AI-tagged task", "assigned_to": "Administrator", "start_date": nowdate(),
+			"deadline": add_days(nowdate(), 7), "group": "Test Group Untag", "level_id": "UNTAGLVL1",
+			"estimated": 30, "status": "⚪️ Planned",
+			"work_mode": "AI", "ai_prompt": "Do the thing carefully.",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for dt, name in (
+			("Project Todo", self.todo.name), ("Project Detail", self.detail.name),
+			("Glossary", self.gl.name), ("Project", self.project.name),
+		):
+			if frappe.db.exists(dt, name):
+				frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_clearing_work_mode_does_not_touch_ai_prompt(self):
+		from vernon_project.api.mobile import update_todo
+
+		update_todo(project_item=self.todo.name, work_mode="")
+		work_mode, ai_prompt = frappe.db.get_value(
+			"Project Todo", self.todo.name, ["work_mode", "ai_prompt"]
+		)
+		self.assertEqual(work_mode, "")
+		self.assertEqual(ai_prompt, "Do the thing carefully.")
+
+	def test_retagging_ai_after_untag_still_has_the_old_prompt(self):
+		from vernon_project.api.mobile import update_todo
+
+		update_todo(project_item=self.todo.name, work_mode="")
+		update_todo(project_item=self.todo.name, work_mode="AI")
+		work_mode, ai_prompt = frappe.db.get_value(
+			"Project Todo", self.todo.name, ["work_mode", "ai_prompt"]
+		)
+		self.assertEqual(work_mode, "AI")
+		self.assertEqual(ai_prompt, "Do the thing carefully.")
+
+
 class TestMobileRecurring(unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):

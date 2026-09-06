@@ -177,7 +177,7 @@ export function BulkAddSheet({ open, onClose, projectDetail, team, defaultGroup,
               <div key={i} className="flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 p-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{i + 1}</span>
-                  <input className={field} value={r.toDo} onChange={(e) => setRow(i, { toDo: e.target.value })} placeholder="Task title…" />
+                  <input maxLength={140} className={field} value={r.toDo} onChange={(e) => setRow(i, { toDo: e.target.value })} placeholder="Task title…" />
                   <button onClick={() => removeRow(i)} className="rounded-full p-1 text-slate-400 active:scale-95" aria-label="Remove task">
                     <Trash2 className="h-4 w-4" />
                   </button>

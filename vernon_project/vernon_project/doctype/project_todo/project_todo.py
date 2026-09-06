@@ -44,6 +44,7 @@ class ProjectTodo(Document):
 	def validate(self):
 		self.sync_project_from_detail()
 		self.snapshot_point_from_level()
+		self.validate_to_do_length()
 		self.validate_create_permission()
 		self.validate_assigned_to_team_member()
 		self.validate_start_date()
@@ -59,6 +60,16 @@ class ProjectTodo(Document):
 		self.validate_recurrence_rule()
 		self._ensure_today_allocation()
 		self.validate_priority_slot()
+
+	def validate_to_do_length(self):
+		"""to_do is a Data field — Frappe's default DB column length, 140. A hand
+		save is already stopped client-side (see the title inputs' n/140 counter
+		+ maxlength); this is the server-side floor so a title built in code
+		(a generated follow-up title, a future bulk-import, an API caller that
+		skips the form) truncates cleanly instead of throwing a raw DB length
+		error on insert."""
+		if self.to_do and len(self.to_do) > 140:
+			self.to_do = self.to_do[:140]
 
 	def validate_block_links(self):
 		"""A task can't block or depend on itself; drop duplicate rows."""

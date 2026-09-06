@@ -954,6 +954,10 @@ def download_todo_file(todo_id, file_name):
 CHECK_DEFAULT_GROUP = "Engineering"
 CHECK_DEFAULT_LEVEL_ID = "eng_be_testing"
 CHECK_DEFAULT_ESTIMATED = 10
+# Project Todo.to_do is a Data field — Frappe's default DB column length, 140.
+# No shared constant existed anywhere in the app; this is now the one place a
+# generated title is bounded before insert.
+TO_DO_MAX_LENGTH = 140
 
 
 @frappe.whitelist()
@@ -992,12 +996,20 @@ def follow_up_check(todo_id, assignee, note=None, estimated=None, group=None, le
 	# The check-todo. group + level_id come from the client (defaulting to the Testing
 	# work-type); the controller derives level name + points from level_id. blocked_by =
 	# source → clears on Done. validate_assigned_to_team_member rejects a non-team assignee.
+	# The "(Follow Up)" marker goes at the FRONT, not appended: a source title near the
+	# 140-char cap used to overflow the column and throw a raw DB error on insert once
+	# the suffix was added. Leading marker + truncating the source title into what's
+	# left means the row always fits and the marker is never the part that gets cut.
+	marker = "(Follow Up) "
+	title = marker + todo.to_do
+	if len(title) > TO_DO_MAX_LENGTH:
+		title = marker + todo.to_do[: TO_DO_MAX_LENGTH - len(marker)]
 	follow = frappe.get_doc(
 		{
 			"doctype": "Project Todo",
 			"project": todo.project,
 			"project_detail": todo.project_detail,
-			"to_do": f"{todo.to_do} (Follow Up)",
+			"to_do": title,
 			"assigned_to": assignee,
 			"status": "⚪️ Planned",
 			"start_date": frappe.utils.today(),

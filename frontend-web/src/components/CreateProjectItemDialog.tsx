@@ -189,9 +189,13 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
             </div>
           )}
           <label className="text-sm font-medium text-muted">
-            {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
+            <span className="flex items-center justify-between">
+              <span>{issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span></span>
+              <span className="text-xs font-normal text-muted">{toDo.length}/140</span>
+            </span>
             <input
               ref={firstFieldRef}
+              maxLength={140}
               className={field + ' mt-1'}
               value={toDo}
               onChange={(e) => setToDo(e.target.value)}

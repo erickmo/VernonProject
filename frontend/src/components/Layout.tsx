@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Search } from 'lucide-react'
 import clsx from 'clsx'
@@ -65,25 +66,36 @@ export function DetailScreen({
   title,
   children,
   right,
+  headerPortalTarget,
 }: {
   title: string
   children: React.ReactNode
   right?: React.ReactNode
+  /** When set (TodoOverlay's bottom sheet embeds this screen inside its own,
+   *  separately-scrolling body), the header portals here instead of rendering
+   *  inline. `sticky` can't be relied on once this screen is nested inside
+   *  another element's scroll container that isn't the header's own intended
+   *  one, so the header is hoisted structurally out of the scrolling region
+   *  instead of stuck to it. */
+  headerPortalTarget?: HTMLElement | null
 }) {
   const navigate = useNavigate()
+  const header = (
+    <header className="sticky top-[var(--tk-h,0px)] z-20 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-100 dark:active:bg-slate-700"
+        aria-label="Back"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
+      <h1 className="flex-1 truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{title}</h1>
+      {right && <div className="pr-1">{right}</div>}
+    </header>
+  )
   return (
     <div className="mx-auto flex min-h-full max-w-[448px] flex-col">
-      <header className="sticky top-[var(--tk-h,0px)] z-20 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 dark:text-slate-300 transition active:scale-90 active:bg-slate-100 dark:active:bg-slate-700"
-          aria-label="Back"
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <h1 className="flex-1 truncate text-lg font-semibold text-slate-900 dark:text-slate-50">{title}</h1>
-        {right && <div className="pr-1">{right}</div>}
-      </header>
+      {headerPortalTarget ? createPortal(header, headerPortalTarget) : header}
       <main className="flex-1 px-4 pb-20 pt-5">{children}</main>
     </div>
   )

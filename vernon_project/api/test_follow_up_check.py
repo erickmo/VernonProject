@@ -65,10 +65,11 @@ class FollowUpCheckTest(unittest.TestCase):
 		self.spawned.append(res["name"])
 		follow = frappe.get_doc("Project Todo", res["name"])
 
-		# New check-todo for person 2, linked back, still Planned, "(Follow Up)" title.
+		# New check-todo for person 2, linked back, still Planned, "(Follow Up)" title
+		# — the marker leads, so it survives even when the source title is truncated.
 		self.assertEqual(follow.assigned_to, CHECKER)
 		self.assertEqual(follow.status, PLANNED)
-		self.assertTrue(follow.to_do.endswith("(Follow Up)"))
+		self.assertTrue(follow.to_do.startswith("(Follow Up) "))
 		self.assertEqual(follow.notes, "cek grafiknya")
 		self.assertIn(self.todo.name, [r.todo for r in follow.blocked_by])
 
@@ -107,6 +108,30 @@ class FollowUpCheckTest(unittest.TestCase):
 	def test_non_team_assignee_is_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
 			follow_up_check(self.todo.name, "Guest")
+
+	def test_long_source_title_does_not_overflow_the_140_char_column(self):
+		# The bug this fixes: a source title within ~12 chars of 140 used to
+		# overflow once " (Follow Up)" was appended, throwing a raw DB error.
+		self.todo.to_do = "A" * 135
+		self.todo.save(ignore_permissions=True)
+		res = follow_up_check(self.todo.name, CHECKER)
+		self.spawned.append(res["name"])
+		follow = frappe.get_doc("Project Todo", res["name"])
+		self.assertLessEqual(len(follow.to_do), 140)
+		self.assertTrue(follow.to_do.startswith("(Follow Up) "))
+
+	def test_doctype_level_guard_truncates_an_overlong_to_do(self):
+		# Defense in depth: any path that skips follow_up_check's own truncation
+		# (a bulk import, a future generator) still can't insert past 140 —
+		# validate_to_do_length on the doctype itself is the floor.
+		doc = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.detail.name,
+			"to_do": "B" * 200, "assigned_to": "Administrator", "start_date": nowdate(),
+			"deadline": add_days(nowdate(), 7), "group": "Test Group FU", "level_id": "FULVL1",
+			"estimated": 30,
+		}).insert(ignore_permissions=True)
+		self.spawned.append(doc.name)
+		self.assertEqual(len(doc.to_do), 140)
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
