@@ -211,13 +211,22 @@ def _allowed_work_mode(mode):
 	return mode
 
 
-def _create_todo(project, detail_name, td, defaults):
+def _create_todo(project, detail_name, td, defaults, valid_groups):
 	"""Insert one Project Todo from a reviewed draft. Returns True if inserted,
-	False if skipped (blank). Throws if a non-blank todo lacks group/level."""
+	False if skipped (blank). Throws if a non-blank todo lacks group/level, or
+	names a group that doesn't exist (a caller without the review UI's picker —
+	e.g. an AI/MCP agent — has no other way to discover valid values; Frappe's
+	own Link validation would otherwise throw deep inside insert() with no hint
+	of what's actually valid)."""
 	if not (td.get("to_do") or "").strip():
 		return False
 	if not td.get("group") or not td.get("level"):
 		frappe.throw(f"Todo {td.get('to_do')!r} needs a group and level before it can be saved.")
+	if td["group"] not in valid_groups:
+		frappe.throw(
+			f"Todo {td.get('to_do')!r}: group {td['group']!r} does not exist. "
+			f"Valid groups: {', '.join(sorted(valid_groups))}."
+		)
 	frappe.get_doc({
 		"doctype": "Project Todo",
 		"project": project,
@@ -261,6 +270,7 @@ def persist_project_breakdown(project, subgoals, project_detail=None):
 		"start": doc.start_date or nowdate(),
 		"deadline": doc.deadline or nowdate(),
 	}
+	valid_groups = set(frappe.get_all("Group", pluck="name"))
 
 	created_details, created_todos = [], 0
 	for sg in rows:
@@ -280,7 +290,7 @@ def persist_project_breakdown(project, subgoals, project_detail=None):
 			created_details.append(target)
 
 		for td in (sg.get("todos") or [])[:_MAX_TODOS]:
-			if _create_todo(doc.name, target, td, defaults):
+			if _create_todo(doc.name, target, td, defaults, valid_groups):
 				created_todos += 1
 
 	return {"project": doc.name, "created_details": created_details, "created_todos": created_todos}

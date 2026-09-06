@@ -137,6 +137,19 @@ class TestProjectBreakdown(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("Project Detail", detail, "goal"), "Do the first slice")
 		self.assertEqual(frappe.db.count("Project Todo", {"project_detail": detail}), 1)
 
+	def test_persist_rejects_unknown_group_with_valid_options_listed(self):
+		# A caller without the review UI's picker (e.g. an AI/MCP agent) has no
+		# other way to discover valid group names — the error must name them.
+		frappe.set_user(LEADER)
+		subgoals = [{
+			"title": "Subgoal One",
+			"todos": [{"to_do": "Bad group task", "group": "Nonexistent Group Xyz", "level": "Backend Development"}],
+		}]
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			persist_project_breakdown(self.project.name, frappe.as_json(subgoals))
+		self.assertIn(self.group, str(ctx.exception))
+		self.assertFalse(frappe.db.exists("Project Todo", {"to_do": "Bad group task"}))
+
 	def test_persist_denied_for_stranger(self):
 		frappe.set_user(STRANGER)
 		with self.assertRaises(frappe.PermissionError):
