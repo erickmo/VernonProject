@@ -8,11 +8,7 @@ export interface CreateTodoInitial {
   assignedTo?: string
   startDate?: string
   deadline?: string
-  leaderDeadline?: string
-  ownerDeadline?: string
   estimated?: string
-  leaderEstimated?: string
-  ownerEstimated?: string
   notes?: string
   isRecurring?: boolean
   frequency?: string
@@ -39,11 +35,7 @@ export function todoDuplicateInitial(data: ProjectItemDetail): CreateTodoInitial
     assignedTo: data.assigned_to,
     startDate: data.start_date ?? '',
     deadline: data.deadline ?? '',
-    leaderDeadline: data.leader_deadline ?? '',
-    ownerDeadline: data.owner_deadline ?? '',
     estimated: String(data.estimated || ''),
-    leaderEstimated: String(data.phase_estimates.done_to_checked || ''),
-    ownerEstimated: String(data.phase_estimates.checked_to_completed || ''),
     notes: data.notes ?? '',
     isRecurring: data.recurring.is_recurring,
     frequency: data.recurring.frequency || 'Daily',

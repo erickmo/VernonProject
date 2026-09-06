@@ -614,6 +614,64 @@ class TestProjectTodo(unittest.TestCase):
 			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
 			"ended series (past recurring_until) should not generate")
 
+	# ------------------------------------------------------------------
+	# Approval-field removal (d1datig79t): leader_deadline / owner_deadline /
+	# estimated_done_to_checked / estimated_checked_to_completed dropped from the
+	# Todo forms, but stay valid, optional DocType columns — a client (new or
+	# stale) may omit or still send them.
+	# ------------------------------------------------------------------
+
+	def test_create_without_approval_fields_succeeds(self):
+		todo = self._make_todo()
+		self.assertIsNone(todo.leader_deadline)
+		self.assertIsNone(todo.owner_deadline)
+		self.assertFalse(todo.estimated_done_to_checked)
+		self.assertFalse(todo.estimated_checked_to_completed)
+
+	def test_update_omitting_approval_fields_preserves_existing_values(self):
+		"""The regrouped forms stop sending these fields entirely. update_todo's
+		`if val is not None` guard must leave whatever is already stored untouched
+		— this is the guarantee the removed inputs relied on."""
+		from vernon_project.api.mobile import update_todo
+		todo = self._make_todo(
+			leader_deadline=add_days(nowdate(), 2),
+			owner_deadline=add_days(nowdate(), 3),
+			estimated_done_to_checked=15,
+			estimated_checked_to_completed=20,
+		)
+		result = update_todo(todo.name, to_do="renamed")
+		self.assertEqual(result["status"], "ok")
+		todo.reload()
+		self.assertEqual(todo.to_do, "renamed")
+		self.assertEqual(str(todo.leader_deadline), str(add_days(nowdate(), 2)))
+		self.assertEqual(str(todo.owner_deadline), str(add_days(nowdate(), 3)))
+		self.assertEqual(todo.estimated_done_to_checked, 15)
+		self.assertEqual(todo.estimated_checked_to_completed, 20)
+
+	def test_update_still_accepts_a_stale_client_sending_approval_fields(self):
+		"""Backward compatible: a client still on the old build (sends the removed
+		fields) must not error, and the values still apply normally."""
+		from vernon_project.api.mobile import update_todo
+		todo = self._make_todo()
+		result = update_todo(
+			todo.name,
+			leader_deadline=add_days(nowdate(), 1),
+			owner_deadline=add_days(nowdate(), 2),
+			estimated_done_to_checked=5,
+			estimated_checked_to_completed=10,
+		)
+		self.assertEqual(result["status"], "ok")
+		todo.reload()
+		self.assertEqual(str(todo.leader_deadline), str(add_days(nowdate(), 1)))
+		self.assertEqual(str(todo.owner_deadline), str(add_days(nowdate(), 2)))
+		self.assertEqual(todo.estimated_done_to_checked, 5)
+		self.assertEqual(todo.estimated_checked_to_completed, 10)
+
+	def test_group_is_still_mandatory(self):
+		"""Removing the approval inputs must not loosen unrelated required fields."""
+		with self.assertRaises(frappe.MandatoryError):
+			self._make_todo(group=None)
+
 
 class TestProjectTodoPhaseTracking(unittest.TestCase):
 	"""Test cases for Phase Estimation and Time Tracking"""

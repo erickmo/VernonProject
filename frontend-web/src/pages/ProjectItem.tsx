@@ -1009,11 +1009,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [mentor, setMentor] = useState(data.mentor ?? '')
   const [startDate, setStartDate] = useState(data.start_date ?? '')
   const [deadline, setDeadline] = useState(data.deadline ?? '')
-  const [leaderDeadline, setLeaderDeadline] = useState(data.leader_deadline ?? '')
-  const [ownerDeadline, setOwnerDeadline] = useState(data.owner_deadline ?? '')
   const [estimated, setEstimated] = useState(String(data.estimated || ''))
-  const [pDC, setPDC] = useState(String(data.phase_estimates.done_to_checked || ''))
-  const [pCC, setPCC] = useState(String(data.phase_estimates.checked_to_completed || ''))
   // Exception fields aren't in the shared `recurring` type yet (added on the API
   // side by a sibling change); read them through a local view.
   const recDetail = data.recurring as typeof data.recurring & {
@@ -1026,8 +1022,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
   const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
-
-  const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
   const team =
     data.team.some((m) => m.user === data.assigned_to) || !data.assigned_to
@@ -1063,11 +1057,10 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     if (data.can_edit_estimate) {
       fields.mentor = mentor
     }
-    fields.estimated_done_to_checked = Number(pDC) || 0
-    fields.estimated_checked_to_completed = Number(pCC) || 0
     Object.assign(fields, serializeRecurrence(rec))
-    fields.leader_deadline = leaderDeadline || ''
-    fields.owner_deadline = ownerDeadline || ''
+    // Approval-phase fields (leader/owner deadline + phase estimate) have no form
+    // input anymore — omitted here on purpose so update_todo's `if not None` guard
+    // leaves whatever a todo already has untouched, instead of clearing it.
     fields.group = group
     fields.level_id = level
     fields.work_mode = workMode
@@ -1098,11 +1091,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
 
   const fieldCls =
     'w-full rounded-xl border border-line bg-hover/[0.04] px-3.5 py-2.5 text-sm text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100 disabled:opacity-60'
+  const head = 'mb-1 mt-1 block text-xs font-semibold uppercase tracking-wide text-muted'
 
   return (
     <div className="rounded-2xl bg-surface p-4 border border-line">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Edit todo</p>
 
+      <div className={head}>Basics</div>
       <label className="mb-1 block text-xs font-medium text-muted">Title</label>
       <textarea
         value={toDo}
@@ -1150,6 +1145,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </>
       )}
 
+      <div className={head}>Schedule</div>
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
         <DatePicker
@@ -1184,56 +1180,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </div>
       </div>
 
-      {/* Approval phases */}
-      <div className="mb-3 rounded-xl border border-line bg-hover/[0.04] p-3">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-muted">Approval phases (optional)</span>
-          <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-[11px] font-bold text-brand-700 dark:text-brand-300">
-            Est total {phaseTotal || 0}m
-          </span>
-        </div>
-        {[
-          { label: 'Leader approval', date: leaderDeadline, setDate: setLeaderDeadline, est: pDC, setEst: setPDC },
-          { label: 'Owner approval', date: ownerDeadline, setDate: setOwnerDeadline, est: pCC, setEst: setPCC },
-        ].map((p) => (
-          <div key={p.label} className="mb-3 last:mb-0">
-            <label className="mb-1.5 block text-xs font-semibold text-muted">{p.label}</label>
-            <div className="flex gap-2">
-              <div className="min-w-0 flex-1">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted">
-                  Deadline
-                </span>
-                <DatePicker
-                  value={p.date}
-                  onChange={(v) => p.setDate(v)}
-                  className={clsx(fieldCls, 'min-w-0')}
-                />
-              </div>
-              <div className="w-24 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-muted">
-                  Est.
-                </span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    step="1"
-                    value={p.est}
-                    placeholder="0"
-                    onChange={(e) => p.setEst(e.target.value)}
-                    className={clsx(fieldCls, 'pr-7 text-right')}
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">
-                    m
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Recurring */}
       <div className="mb-3 rounded-xl border border-line bg-hover/[0.04] p-3">
         <label className="flex items-center justify-between">
@@ -1254,6 +1200,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         )}
       </div>
 
+      <div className={head}>Classification</div>
       <div className="mb-3">
         <GroupLevelPicker
           value={{ group, typeName: '', levelId: level }}

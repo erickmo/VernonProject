@@ -127,19 +127,13 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [mentor, setMentor] = useState(data.mentor ?? '')
   const [startDate, setStartDate] = useState(data.start_date ?? '')
   const [deadline, setDeadline] = useState(data.deadline ?? '')
-  const [leaderDeadline, setLeaderDeadline] = useState(data.leader_deadline ?? '')
-  const [ownerDeadline, setOwnerDeadline] = useState(data.owner_deadline ?? '')
   const [estimated, setEstimated] = useState(String(data.estimated || ''))
-  const [pDC, setPDC] = useState(String(data.phase_estimates.done_to_checked || ''))
-  const [pCC, setPCC] = useState(String(data.phase_estimates.checked_to_completed || ''))
   const [recurrence, setRecurrence] = useState<Recurrence>(() => recurrenceFromDetail(data.recurring))
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level_id ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
   const [workMode, setWorkMode] = useState<'Human' | 'AI' | 'Both' | ''>(data.work_mode ?? '')
-
-  const phaseTotal = (Number(pDC) || 0) + (Number(pCC) || 0)
 
   const team =
     data.team.some((m) => m.user === data.assigned_to) || !data.assigned_to
@@ -177,15 +171,11 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
     if (data.can_edit_estimate) {
       fields.mentor = mentor
     }
-    // Approval-phase estimates in minutes (summed into the task total server-side).
-    // Planned→Done is the main `estimated` field above.
-    fields.estimated_done_to_checked = Number(pDC) || 0
-    fields.estimated_checked_to_completed = Number(pCC) || 0
     // Recurring settings
     Object.assign(fields, serializeRecurrence(recurrence))
-    // Optional approval-phase deadlines (editable regardless of lock; empty clears).
-    fields.leader_deadline = leaderDeadline || ''
-    fields.owner_deadline = ownerDeadline || ''
+    // Approval-phase fields (leader/owner deadline + phase estimate) have no form
+    // input anymore — omitted here on purpose so update_todo's `if not None` guard
+    // leaves whatever a todo already has untouched, instead of clearing it.
     fields.group = group
     fields.level_id = level
     fields.work_mode = workMode
@@ -202,6 +192,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   }
 
   const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-[15px] text-slate-800 dark:text-slate-100 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 disabled:opacity-60 dark:placeholder-slate-500'
+  const head = 'mb-1 mt-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
@@ -216,6 +207,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </button>
       </div>
 
+      <div className={head}>Basics</div>
       <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Title</label>
       <textarea
         value={toDo}
@@ -263,6 +255,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </>
       )}
 
+      <div className={head}>Schedule</div>
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Start date</label>
         <input
@@ -303,56 +296,12 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         </div>
       </div>
 
-      {/* Approval phases — each: deadline + estimated time for that step */}
-      <div className="mb-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60 p-3">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Approval phases (optional)</span>
-          <span className="rounded-full bg-brand-100 dark:bg-brand-500/20 px-2 py-0.5 text-[11px] font-bold text-brand-700 dark:text-brand-300">
-            Est total {phaseTotal || 0}m
-          </span>
-        </div>
-        {[
-          { label: 'Leader approval', date: leaderDeadline, setDate: setLeaderDeadline, est: pDC, setEst: setPDC },
-          { label: 'Owner approval', date: ownerDeadline, setDate: setOwnerDeadline, est: pCC, setEst: setPCC },
-        ].map((p) => (
-          <div key={p.label} className="mb-3 last:mb-0">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">{p.label}</label>
-            <div className="flex gap-2">
-              <div className="min-w-0 flex-1">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Deadline</span>
-                <input
-                  type="date"
-                  value={p.date}
-                  onChange={(e) => p.setDate(e.target.value)}
-                  className={clsx(field, 'min-w-0')}
-                />
-              </div>
-              <div className="w-24 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Est.</span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    step="1"
-                    value={p.est}
-                    placeholder="0"
-                    onChange={(e) => p.setEst(e.target.value)}
-                    className={clsx(field, 'pr-7 text-right')}
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500">m</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Recurring */}
       <div className="mb-3">
         <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
       </div>
 
+      <div className={head}>Classification</div>
       <div className="mb-3">
         <GroupLevelPicker
           value={{ group, typeName: '', levelId: level }}

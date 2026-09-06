@@ -69,11 +69,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? '')
   const [startDate, setStartDate] = useState(initial?.startDate ?? '')
   const [deadline, setDeadline] = useState(initial?.deadline ?? '')
-  const [leaderDeadline, setLeaderDeadline] = useState(initial?.leaderDeadline ?? '')
-  const [ownerDeadline, setOwnerDeadline] = useState(initial?.ownerDeadline ?? '')
   const [estimated, setEstimated] = useState(initial?.estimated ?? '')
-  const [leaderEstimated, setLeaderEstimated] = useState(initial?.leaderEstimated ?? '')
-  const [ownerEstimated, setOwnerEstimated] = useState(initial?.ownerEstimated ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [rec, setRec] = useState<Recurrence>(() => initialRecurrence(initial))
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
@@ -85,7 +81,6 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
-    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setRec({ ...emptyRecurrence })
     setGroup(defaultGroup ?? ''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
@@ -95,7 +90,6 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const resetForNext = () => {
     setToDo(''); setEstimated(''); setNotes(''); setBlockedBy([]); setBlocking([])
     setRec((r) => ({ ...r, exceptionWeekdays: '', exceptionMonthdays: '', exceptionDates: [], exceptionBehavior: 'Skip' }))
-    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     firstFieldRef.current?.focus()
   }
 
@@ -129,10 +123,6 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
       level_id: levelId,
     }
     fields.estimated = est
-    if (leaderDeadline) fields.leader_deadline = leaderDeadline
-    if (ownerDeadline) fields.owner_deadline = ownerDeadline
-    if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
-    if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
     if (issueOf) fields.issue_of = issueOf.name
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
@@ -149,6 +139,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   }
 
   const field = 'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
+  const sectionHead = 'text-xs font-semibold uppercase tracking-wide text-muted'
 
   return (
     <Drawer
@@ -171,132 +162,125 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
         </>
       }
     >
-      <div className="flex flex-col gap-4">
-        {pickMode && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-6">
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Basics</h3>
+          {pickMode && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="text-sm font-medium text-muted">
+                Project<span className="text-red-500"> *</span>
+                <SearchableSelect
+                  value={pickProject}
+                  onChange={(v) => { setPickProject(v); setPickDetail('') }}
+                  options={(projectsQ.data ?? []).filter((p) => p.status !== 'Closed' && (p.is_owner || p.is_leader || p.is_admin)).map((p) => ({ value: p.name, label: p.project_name ?? p.name }))}
+                  placeholder="Select a project…"
+                />
+              </label>
+              <label className="text-sm font-medium text-muted">
+                Project detail<span className="text-red-500"> *</span>
+                <SearchableSelect
+                  value={pickDetail}
+                  onChange={setPickDetail}
+                  options={(projectQ.data?.project_details ?? []).map((d) => ({ value: d.name, label: d.title }))}
+                  placeholder={pickProject ? 'Select a detail…' : 'Pick a project first…'}
+                  disabled={!pickProject}
+                />
+              </label>
+            </div>
+          )}
+          <label className="text-sm font-medium text-muted">
+            {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
+            <input
+              ref={firstFieldRef}
+              className={field + ' mt-1'}
+              value={toDo}
+              onChange={(e) => setToDo(e.target.value)}
+              placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'}
+            />
+          </label>
+
+          <label className="text-sm font-medium text-muted">
+            Assigned to<span className="text-red-500"> *</span>
+            <SearchableSelect
+              value={assignedTo}
+              onChange={setAssignedTo}
+              options={team.map((m) => ({ value: m.user, label: m.name }))}
+              placeholder="Select a team member…"
+            />
+          </label>
+          <AssignmentOverloadBanner user={assignedTo} date={deadline} minutes={Number(estimated) || 0} />
+        </section>
+
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Schedule</h3>
+          <label className="text-sm font-medium text-muted">
+            Start date<span className="text-red-500"> *</span>
+            <DatePicker className={field + ' mt-1'} value={startDate} onChange={(v) => setStartDate(v)} />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
             <label className="text-sm font-medium text-muted">
-              Project<span className="text-red-500"> *</span>
-              <SearchableSelect
-                value={pickProject}
-                onChange={(v) => { setPickProject(v); setPickDetail('') }}
-                options={(projectsQ.data ?? []).filter((p) => p.status !== 'Closed' && (p.is_owner || p.is_leader || p.is_admin)).map((p) => ({ value: p.name, label: p.project_name ?? p.name }))}
-                placeholder="Select a project…"
-              />
+              Deadline<span className="text-red-500"> *</span>
+              <DatePicker className={field + ' mt-1'} value={deadline} onChange={(v) => setDeadline(v)} />
             </label>
             <label className="text-sm font-medium text-muted">
-              Project detail<span className="text-red-500"> *</span>
-              <SearchableSelect
-                value={pickDetail}
-                onChange={setPickDetail}
-                options={(projectQ.data?.project_details ?? []).map((d) => ({ value: d.name, label: d.title }))}
-                placeholder={pickProject ? 'Select a detail…' : 'Pick a project first…'}
-                disabled={!pickProject}
-              />
+              Estimated (minutes)<span className="text-red-500"> *</span>
+              <input type="number" min={5} required className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
             </label>
           </div>
-        )}
-        <label className="text-sm font-medium text-muted">
-          {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
-          <input
-            ref={firstFieldRef}
-            className={field + ' mt-1'}
-            value={toDo}
-            onChange={(e) => setToDo(e.target.value)}
-            placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'}
+        </section>
+
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Classification</h3>
+          <GroupLevelPicker
+            value={{ group, typeName: '', levelId }}
+            onChange={(v) => { setGroup(v.group); setLevelId(v.levelId) }}
+            estimated={estimated}
           />
-        </label>
-
-        <label className="text-sm font-medium text-muted">
-          Assigned to<span className="text-red-500"> *</span>
-          <SearchableSelect
-            value={assignedTo}
-            onChange={setAssignedTo}
-            options={team.map((m) => ({ value: m.user, label: m.name }))}
-            placeholder="Select a team member…"
-          />
-        </label>
-        <AssignmentOverloadBanner user={assignedTo} date={deadline} minutes={Number(estimated) || 0} />
-
-        <label className="text-sm font-medium text-muted">
-          Start date<span className="text-red-500"> *</span>
-          <DatePicker className={field + ' mt-1'} value={startDate} onChange={(v) => setStartDate(v)} />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-muted">
-            Deadline<span className="text-red-500"> *</span>
-            <DatePicker className={field + ' mt-1'} value={deadline} onChange={(v) => setDeadline(v)} />
-          </label>
-          <label className="text-sm font-medium text-muted">
-            Estimated (minutes)<span className="text-red-500"> *</span>
-            <input type="number" min={5} required className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-muted">
-            Leader approval by
-            <DatePicker className={field + ' mt-1'} value={leaderDeadline} onChange={(v) => setLeaderDeadline(v)} />
-          </label>
-          <label className="text-sm font-medium text-muted">
-            Est. for approval (min)
-            <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-muted">
-            Owner approval by
-            <DatePicker className={field + ' mt-1'} value={ownerDeadline} onChange={(v) => setOwnerDeadline(v)} />
-          </label>
-          <label className="text-sm font-medium text-muted">
-            Est. for owner approval (min)
-            <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
-          </label>
-        </div>
-
-        <GroupLevelPicker
-          value={{ group, typeName: '', levelId }}
-          onChange={(v) => { setGroup(v.group); setLevelId(v.levelId) }}
-          estimated={estimated}
-        />
+        </section>
 
         {siblings.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div className="text-sm font-medium text-muted">
-              <span className="flex items-center gap-1">
-                <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
-              </span>
-              <MultiSelectSearch
-                value={blockedBy}
-                onChange={setBlockedBy}
-                options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
-              />
+          <section className="space-y-3">
+            <h3 className={sectionHead}>Dependencies</h3>
+            <div className="flex flex-col gap-3">
+              <div className="text-sm font-medium text-muted">
+                <span className="flex items-center gap-1">
+                  <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
+                </span>
+                <MultiSelectSearch
+                  value={blockedBy}
+                  onChange={setBlockedBy}
+                  options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
+                />
+              </div>
+              <div className="text-sm font-medium text-muted">
+                <span className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
+                </span>
+                <MultiSelectSearch
+                  value={blocking}
+                  onChange={setBlocking}
+                  options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
+                />
+              </div>
             </div>
-            <div className="text-sm font-medium text-muted">
-              <span className="flex items-center gap-1">
-                <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
-              </span>
-              <MultiSelectSearch
-                value={blocking}
-                onChange={setBlocking}
-                options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
-              />
-            </div>
-          </div>
+          </section>
         )}
 
-        <label className="text-sm font-medium text-muted">
-          Notes
-          <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </label>
+        <section className="space-y-3">
+          <h3 className={sectionHead}>Notes &amp; recurrence</h3>
+          <label className="text-sm font-medium text-muted">
+            Notes
+            <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </label>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-muted">
-          <input type="checkbox" checked={rec.isRecurring} onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })} />
-          Recurring
-        </label>
+          <label className="flex items-center gap-2 text-sm font-medium text-muted">
+            <input type="checkbox" checked={rec.isRecurring} onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })} />
+            Recurring
+          </label>
 
-        {rec.isRecurring && <RecurrenceEditor value={rec} onChange={setRec} />}
+          {rec.isRecurring && <RecurrenceEditor value={rec} onChange={setRec} />}
+        </section>
       </div>
     </Drawer>
   )

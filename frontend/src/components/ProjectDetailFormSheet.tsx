@@ -35,6 +35,7 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
 
   const field =
     'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+  const head = 'mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'
 
   const submit = () => {
     if (!title.trim()) {
@@ -68,6 +69,7 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
         </div>
 
         <div className="flex flex-col gap-3">
+          <div className={head}>Basics</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Title<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -81,6 +83,7 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
             <input type="checkbox" checked={isPending} onChange={(e) => setIsPending(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
           </label>
 
+          <div className={head}>Analysis</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Current condition
             <RichEditor value={condition} onChange={setCondition} placeholder="Current condition…" />
@@ -91,6 +94,7 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
             <RichEditor value={outcome} onChange={setOutcome} placeholder="Expected outcome…" />
           </label>
 
+          <div className={head}>SOW</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Keterangan di SOW
             <RichEditor value={sow} onChange={setSow} placeholder="Describe the SOW…" />

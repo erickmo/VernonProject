@@ -40,11 +40,7 @@ export function BulkAddSheet({ open, onClose, projectDetail, team, defaultGroup,
   const [assignedTo, setAssignedTo] = useState('')
   const [startDate, setStartDate] = useState('')
   const [deadline, setDeadline] = useState('')
-  const [leaderDeadline, setLeaderDeadline] = useState('')
-  const [ownerDeadline, setOwnerDeadline] = useState('')
   const [estimated, setEstimated] = useState('')
-  const [leaderEstimated, setLeaderEstimated] = useState('')
-  const [ownerEstimated, setOwnerEstimated] = useState('')
   const [group, setGroup] = useState(defaultGroup ?? '')
   const [levelId, setLevelId] = useState('')
   const [recurrence, setRecurrence] = useState<Recurrence>(emptyRecurrence)
@@ -65,7 +61,6 @@ export function BulkAddSheet({ open, onClose, projectDetail, team, defaultGroup,
 
   const reset = () => {
     setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
-    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setGroup(defaultGroup ?? ''); setLevelId(''); setRecurrence(emptyRecurrence)
     setRows([emptyRow(), emptyRow()]); setProg(null)
   }
@@ -92,10 +87,6 @@ export function BulkAddSheet({ open, onClose, projectDetail, team, defaultGroup,
       level_id: levelId,
       estimated: est,
     }
-    if (leaderDeadline) shared.leader_deadline = leaderDeadline
-    if (ownerDeadline) shared.owner_deadline = ownerDeadline
-    if (leaderEstimated) shared.estimated_done_to_checked = Number(leaderEstimated)
-    if (ownerEstimated) shared.estimated_checked_to_completed = Number(ownerEstimated)
     Object.assign(shared, serializeRecurrence(recurrence)) // same rule applied to every task
 
     // Renumber batch refs against the filtered (non-empty) rows we actually send.
@@ -161,28 +152,6 @@ export function BulkAddSheet({ open, onClose, projectDetail, team, defaultGroup,
             <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Estimated (minutes)<span className="text-red-500"> *</span>
               <input type="number" min={5} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
-            </label>
-          </div>
-
-          <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Leader approval by
-              <input type="date" className={field + ' mt-1'} value={leaderDeadline} onChange={(e) => setLeaderDeadline(e.target.value)} />
-            </label>
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Est. for approval (min)
-              <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
-            </label>
-          </div>
-
-          <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Owner approval by
-              <input type="date" className={field + ' mt-1'} value={ownerDeadline} onChange={(e) => setOwnerDeadline(e.target.value)} />
-            </label>
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Est. for owner approval (min)
-              <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
             </label>
           </div>
 

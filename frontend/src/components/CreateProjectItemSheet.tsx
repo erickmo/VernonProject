@@ -36,11 +36,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? '')
   const [startDate, setStartDate] = useState(initial?.startDate ?? '')
   const [deadline, setDeadline] = useState(initial?.deadline ?? '')
-  const [leaderDeadline, setLeaderDeadline] = useState(initial?.leaderDeadline ?? '')
-  const [ownerDeadline, setOwnerDeadline] = useState(initial?.ownerDeadline ?? '')
   const [estimated, setEstimated] = useState(initial?.estimated ?? '')
-  const [leaderEstimated, setLeaderEstimated] = useState(initial?.leaderEstimated ?? '')
-  const [ownerEstimated, setOwnerEstimated] = useState(initial?.ownerEstimated ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [recurrence, setRecurrence] = useState<Recurrence>(
     initial ? recurrenceFromDetail({ is_recurring: initial.isRecurring ?? false, frequency: initial.frequency ?? null,
@@ -53,7 +49,6 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
-    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setNotes(''); setRecurrence(emptyRecurrence)
     setGroup(defaultGroup ?? ''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
@@ -84,10 +79,6 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
       level_id: levelId,
     }
     fields.estimated = est
-    if (leaderDeadline) fields.leader_deadline = leaderDeadline
-    if (ownerDeadline) fields.owner_deadline = ownerDeadline
-    if (leaderEstimated) fields.estimated_done_to_checked = Number(leaderEstimated)
-    if (ownerEstimated) fields.estimated_checked_to_completed = Number(ownerEstimated)
     if (issueOf) fields.issue_of = issueOf.name
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
@@ -101,6 +92,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
   if (!open) return null
 
   const field = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500'
+  const head = 'mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={close}>
@@ -124,6 +116,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
         </div>
 
         <div className="flex flex-col gap-3">
+          <div className={head}>Basics</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             {issueOf ? 'Issue' : 'Todo'}<span className="text-red-500"> *</span>
             <input className={field + ' mt-1'} value={toDo} onChange={(e) => setToDo(e.target.value)} placeholder={issueOf ? 'What needs fixing?' : 'What needs doing?'} />
@@ -135,6 +128,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
           </label>
           <AssignmentOverloadBanner user={assignedTo} date={deadline} minutes={Number(estimated) || 0} />
 
+          <div className={head}>Schedule</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Start date<span className="text-red-500"> *</span>
             <input type="date" className={field + ' mt-1'} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -151,28 +145,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             </label>
           </div>
 
-          <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Leader approval by
-              <input type="date" className={field + ' mt-1'} value={leaderDeadline} onChange={(e) => setLeaderDeadline(e.target.value)} />
-            </label>
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Est. for approval (min)
-              <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
-            </label>
-          </div>
-
-          <div className="flex gap-3">
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Owner approval by
-              <input type="date" className={field + ' mt-1'} value={ownerDeadline} onChange={(e) => setOwnerDeadline(e.target.value)} />
-            </label>
-            <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
-              Est. for owner approval (min)
-              <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
-            </label>
-          </div>
-
+          <div className={head}>Classification</div>
           <GroupLevelPicker
             value={{ group, typeName: '', levelId }}
             onChange={(v) => { setGroup(v.group); setLevelId(v.levelId) }}
@@ -180,28 +153,31 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
           />
 
           {siblings.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                <span className="flex items-center gap-1">
-                  <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
-                </span>
-                <MultiSelectSearch
-                  value={blockedBy}
-                  onChange={setBlockedBy}
-                  options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
-                />
+            <>
+              <div className={head}>Dependencies</div>
+              <div className="flex flex-col gap-3">
+                <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  <span className="flex items-center gap-1">
+                    <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" /> Blocked by
+                  </span>
+                  <MultiSelectSearch
+                    value={blockedBy}
+                    onChange={setBlockedBy}
+                    options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
+                  />
+                </div>
+                <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  <span className="flex items-center gap-1">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
+                  </span>
+                  <MultiSelectSearch
+                    value={blocking}
+                    onChange={setBlocking}
+                    options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
+                  />
+                </div>
               </div>
-              <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                <span className="flex items-center gap-1">
-                  <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" /> Blocking
-                </span>
-                <MultiSelectSearch
-                  value={blocking}
-                  onChange={setBlocking}
-                  options={siblings.map((s) => ({ value: s.name, label: s.to_do }))}
-                />
-              </div>
-            </div>
+            </>
           )}
 
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -209,6 +185,7 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
             <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
 
+          <div className={head}>Recurring</div>
           <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
 
           <button

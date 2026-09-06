@@ -42,11 +42,7 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
   const [assignedTo, setAssignedTo] = useState('')
   const [startDate, setStartDate] = useState('')
   const [deadline, setDeadline] = useState('')
-  const [leaderDeadline, setLeaderDeadline] = useState('')
-  const [ownerDeadline, setOwnerDeadline] = useState('')
   const [estimated, setEstimated] = useState('')
-  const [leaderEstimated, setLeaderEstimated] = useState('')
-  const [ownerEstimated, setOwnerEstimated] = useState('')
   const [group, setGroup] = useState(defaultGroup ?? '')
   const [levelId, setLevelId] = useState('')
   const [rec, setRec] = useState<Recurrence>({ ...emptyRecurrence })
@@ -66,7 +62,6 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
 
   const reset = () => {
     setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
-    setLeaderDeadline(''); setOwnerDeadline(''); setLeaderEstimated(''); setOwnerEstimated('')
     setGroup(defaultGroup ?? ''); setLevelId('')
     setRec({ ...emptyRecurrence })
     setRows([emptyRow(), emptyRow()]); setProg(null)
@@ -94,10 +89,6 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
       level_id: levelId,
       estimated: est,
     }
-    if (leaderDeadline) shared.leader_deadline = leaderDeadline
-    if (ownerDeadline) shared.owner_deadline = ownerDeadline
-    if (leaderEstimated) shared.estimated_done_to_checked = Number(leaderEstimated)
-    if (ownerEstimated) shared.estimated_checked_to_completed = Number(ownerEstimated)
     // Same recurrence rule applied to every task in the batch.
     Object.assign(shared, serializeRecurrence(rec))
 
@@ -169,28 +160,6 @@ export function BulkAddDialog({ open, onClose, projectDetail, team, defaultGroup
           <label className="text-sm font-medium text-muted">
             Estimated (minutes)<span className="text-red-500"> *</span>
             <input type="number" min={5} className={field + ' mt-1'} value={estimated} onChange={(e) => setEstimated(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-muted">
-            Leader approval by
-            <DatePicker className={field + ' mt-1'} value={leaderDeadline} onChange={(v) => setLeaderDeadline(v)} />
-          </label>
-          <label className="text-sm font-medium text-muted">
-            Est. for approval (min)
-            <input type="number" min={0} className={field + ' mt-1'} value={leaderEstimated} onChange={(e) => setLeaderEstimated(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-muted">
-            Owner approval by
-            <DatePicker className={field + ' mt-1'} value={ownerDeadline} onChange={(v) => setOwnerDeadline(v)} />
-          </label>
-          <label className="text-sm font-medium text-muted">
-            Est. for owner approval (min)
-            <input type="number" min={0} className={field + ' mt-1'} value={ownerEstimated} onChange={(e) => setOwnerEstimated(e.target.value)} />
           </label>
         </div>
 
