@@ -361,7 +361,11 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         />
       </div>
 
-      <div className="mb-3">
+      {/* AI group — one place for every AI-related field, styled to match the AI card in the read view. */}
+      <div className="mb-3 rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 p-3">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
+          <Bot className="h-3.5 w-3.5" /> AI
+        </p>
         <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Work mode <span className="font-normal text-slate-400">· siapa yang kerjakan</span></label>
         <div className="flex gap-2">
           {(['Human', 'AI', 'Both'] as const).map((m) => {
@@ -1315,6 +1319,7 @@ export default function ProjectItemScreen() {
   const setWaiting = useUpdateTodo(id)
   const setPriority = useUpdateTodo(id)
   const setCheck = useUpdateTodo(id)
+  const setAiMode = useUpdateTodo(id)
   const confirm = useConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -1456,6 +1461,19 @@ const [followOpen, setFollowOpen] = useState(false)
     )
   }
 
+  // Quick AI toggle from the menu — same flag as the Edit form's AI group, no full edit needed.
+  const onToggleAi = () => {
+    if (setAiMode.isPending) return
+    const next = data.work_mode === 'AI' ? '' : 'AI'
+    setAiMode.mutate(
+      { work_mode: next },
+      {
+        onSuccess: () => toast('success', next ? 'Ditandai kerja AI' : 'Tanda AI dilepas'),
+        onError: (err) => toast('error', (err as Error).message),
+      },
+    )
+  }
+
   const onMarkWaiting = () => {
     if (setWaiting.isPending || !waitingReason.trim()) return
     setWaiting.mutate(
@@ -1511,6 +1529,16 @@ const [followOpen, setFollowOpen] = useState(false)
                   icon: Eye,
                   onClick: onToggleCheck,
                   disabled: setCheck.isPending,
+                },
+              ]
+            : []),
+          ...((data.is_mine || data.can_prioritize) && data.status_key !== 'cancelled' && (data.can_use_ai || data.work_mode === 'AI')
+            ? [
+                {
+                  label: data.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI',
+                  icon: Bot,
+                  onClick: onToggleAi,
+                  disabled: setAiMode.isPending,
                 },
               ]
             : []),

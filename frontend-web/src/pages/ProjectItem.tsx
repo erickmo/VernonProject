@@ -1262,7 +1262,11 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         />
       </div>
 
-      <div className="mb-3">
+      {/* AI group — one place for every AI-related field, styled to match the AI card in the read view. */}
+      <div className="mb-3 rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/50 dark:bg-violet-500/10 p-3">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">
+          <Bot className="h-3.5 w-3.5" /> AI
+        </p>
         <label className="mb-1 block text-xs font-medium text-muted">Work mode <span className="font-normal opacity-70">· siapa yang kerjakan</span></label>
         <div className="flex gap-2">
           {(['Human', 'AI', 'Both'] as const).map((m) => {
@@ -1693,6 +1697,16 @@ const [followOpen, setFollowOpen] = useState(false)
                         icon: Eye,
                         onClick: onToggleCheck,
                         disabled: setCheck.isPending,
+                      },
+                    ]
+                  : []),
+                ...((data.is_mine || data.can_prioritize) && data.status_key !== 'cancelled' && (aiAllowed || data.work_mode === 'AI')
+                  ? [
+                      {
+                        label: data.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI',
+                        icon: Bot,
+                        onClick: onToggleAi,
+                        disabled: setAi.isPending,
                       },
                     ]
                   : []),
