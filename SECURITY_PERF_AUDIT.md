@@ -210,8 +210,76 @@ confirmed the test failed with 3 rows instead of 1 — then GREEN);
 `get_project_item`'s own output unchanged. Full `test_mobile.py` (53 cases)
 re-run clean.
 
-## Remaining work (not yet done)
-1. **Full static sweep** of all ~68 `frappe.db.sql(` call sites for
-   string-interpolated values (only `_fetch_todos` was hand-checked so far).
-2. `pip-audit` / `npm audit`, Lighthouse scores, CSP/cookie flag checks —
-   not run this pass.
+## Fixed / verified — SQL-injection sweep (case 8)
+
+Manually reviewed all 10 `frappe.db.sql(` call sites (of 101 non-test total)
+that build the query with an f-string — the only ones that could be hiding a
+raw value in the SQL text. Every one only splices FIXED literal fragments
+(a module-level column-list constant, a conditional `WHERE` clause built
+from hardcoded strings, a repeated-placeholder count for a variable-length
+`IN` clause) — actual values always go through `%s`/`%(name)s` placeholders
+plus a separate params argument. Zero `.format(` on a query string, zero
+direct Python `%`-formatting of one, anywhere in the app.
+
+Made a standing regression guard rather than a one-time finding:
+`test_no_unparametrised_sql` walks every `.py` file, isolates each
+`sql()` call's query-string portion, and fails if that portion is itself
+the target of a `%` string-format or `.format(` — verified the scanner's
+logic actually catches that pattern against a deliberately unsafe snippet
+before trusting a clean run of it against the real codebase. Commit
+`64ff247`.
+
+## `npm audit --audit-level=high` — reported, not fixed
+
+Run in both frontend packages tonight, on the owner's explicit instruction
+not to upgrade anything: a dependency bump on a live production app, at the
+end of a long day of shipping, with no browser test suite in this repo to
+catch a regression, is how a defensive check becomes an outage.
+
+**`frontend/` (16 vulnerabilities: 8 high, 8 moderate)**
+- `xlsx` (prototype pollution + ReDoS) — **no fix available upstream.**
+- High, fix available via `npm audit fix`: `fast-uri` (host-confusion/SSRF
+  family), `nanoid` (infinite loop on bad input), `postcss` (source-map path
+  traversal), `socket.io-parser` (memory exhaustion).
+- Moderate: `react-router`/`react-router-dom` (open redirect, SSR
+  deserialization).
+
+**`frontend-web/` (10 vulnerabilities: 6 high, 4 moderate)** — the same
+`nanoid`/`postcss`/`socket.io-parser`/`xlsx`/`react-router` set (both apps
+share dependencies via the `@` alias into `frontend/src`), plus `esbuild`
+(dev-server-only, moderate) whose fix requires a breaking `vite` major
+version bump.
+
+**Recommendation for the owner**: `npm audit fix` (non-breaking) for
+`fast-uri`/`nanoid`/`postcss`/`socket.io-parser`/`react-router` is low-risk
+and could land with routine testing; the `esbuild`/`vite` bump and the
+unfixable `xlsx` (used for spreadsheet export — evaluate replacing it, e.g.
+`exceljs`, or accept the risk since it's client-side/no untrusted-file-input
+path found today) are bigger calls that deserve their own scoped todo with
+tests, not a same-night bundled fix.
+
+## Deferred — real constraint, not a shortcut
+
+**Lighthouse and the Playwright suites (the todo's frontend performance and
+some security cases) were not run.** This box was sitting at ~530MB
+available and had already OOM-killed three `tsc` runs earlier tonight.
+Launching a real browser for Lighthouse/Playwright on top of that would
+either crash outright or produce numbers too noisy to trust — not a
+shortcut, a real resource ceiling on this shared host tonight. No frontend
+test runner (Vitest or Playwright) exists in this repo at all yet (see
+above) — that has to be built before any of those cases can run regardless
+of available memory.
+
+## Recommended follow-up (for the owner to scope, not created here)
+
+This session's mandate covered what's above; the following is real,
+identified work that needs its own decision and its own todo:
+1. **Dependency upgrades** — `npm audit fix` for the five low-risk packages
+   above, and a scoped decision on `esbuild`/`vite` and `xlsx`, each behind
+   a real test pass.
+2. **Build a frontend test harness** (Vitest at minimum; Playwright for the
+   XSS/session/perf cases the original todo enumerated) — nothing in this
+   repo can run those cases today.
+3. **Browser-based performance measurement** (Lighthouse on /m Home and /w
+   Dashboard, the request-count budgets, `large_project_renders_smoothly`)
+   once a harness exists and the box has headroom to run a browser.
