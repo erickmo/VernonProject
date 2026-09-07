@@ -141,7 +141,8 @@
    "in_list_view": 1,
    "label": "Assigned To",
    "options": "User",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "mentor",
@@ -165,7 +166,8 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Deadline",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "columns": 1,
@@ -193,7 +195,8 @@
    "fieldname": "work_mode",
    "fieldtype": "Select",
    "label": "Work Mode",
-   "options": "\nHuman\nAI\nBoth"
+   "options": "\nHuman\nAI\nBoth",
+   "search_index": 1
   },
   {
    "depends_on": "eval:doc.work_mode=='AI'||doc.work_mode=='Both'",
@@ -604,7 +607,8 @@
    "label": "Status",
    "options": "\u26aa\ufe0f Planned\n\ud83d\udfe0 Done\n\ud83d\udd37 Checked By PL\n\u2705 Completed\n\ud83d\udeab Cancelled",
    "read_only": 1,
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "default": "0",
