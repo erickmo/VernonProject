@@ -44,8 +44,15 @@ const pick = (slot: string, opts: Record<string, string[]>) => {
 }
 
 export function renderDoodle(options: Record<string, string[]> = {}): string {
-  const bgv = options.backgroundColor?.[0]
-  const bg = bgv && bgv !== 'transparent' ? `<rect width='100' height='100' fill='#${bgv}'/>` : ''
+  // backgroundColor is the one slot not index-validated like top/hair/face
+  // (pick()/idx() only ever read a fixed art array by position) — it is a raw
+  // hex string, and save_my_avatar (vernon_project/api/mobile.py) explicitly
+  // skips validating it ("color... slots are always free"), so an attacker
+  // can store an arbitrary string here directly via the API. Validate it's a
+  // plain hex color before interpolating into SVG markup, or drop it.
+  const bgvRaw = options.backgroundColor?.[0]
+  const bgv = bgvRaw && /^[0-9a-fA-F]{3,8}$/.test(bgvRaw) ? bgvRaw : undefined
+  const bg = bgv ? `<rect width='100' height='100' fill='#${bgv}'/>` : ''
   // order: face + eyebrows shown after hair; body behind head
   return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>${bg}${pick('top', options)}${HEAD}${pick('hair', options)}${pick('face', options)}</svg>`
 }

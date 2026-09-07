@@ -39,6 +39,29 @@ class TestAvatarFreemium(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			save_my_avatar('{"style":"lorelei","options":{"hair":["variant10"]}}')
 
+	def test_save_rejects_non_hex_background_color(self):
+		"""color/probability/unmapped slots skip the ownership check because
+		they are free, but "free" is not "unvalidated" — backgroundColor
+		renders straight into SVG markup for the 'doodle' style
+		(frontend/src/avatar/doodle.ts) via dangerouslySetInnerHTML, so an
+		unvalidated string here is a stored-XSS payload, not just a cosmetic
+		bug. This is the regression guard for that hole."""
+		payload = '{"style":"doodle","options":{"backgroundColor":["x\' onload=\'alert(1)"]}}'
+		with self.assertRaises(frappe.ValidationError):
+			save_my_avatar(payload)
+
+	def test_save_rejects_non_hex_skin_and_hair_color(self):
+		with self.assertRaises(frappe.ValidationError):
+			save_my_avatar('{"style":"lorelei","options":{"skinColor":["<script>"]}}')
+		with self.assertRaises(frappe.ValidationError):
+			save_my_avatar('{"style":"lorelei","options":{"hairColor":["javascript:alert(1)"]}}')
+
+	def test_save_allows_hex_and_transparent_background_color(self):
+		save_my_avatar('{"style":"doodle","options":{"backgroundColor":["b6e3f4"]}}')
+		self.assertEqual(_my_avatar_config(USER)["options"]["backgroundColor"], ["b6e3f4"])
+		save_my_avatar('{"style":"doodle","options":{"backgroundColor":["transparent"]}}')
+		self.assertEqual(_my_avatar_config(USER)["options"]["backgroundColor"], ["transparent"])
+
 	def test_save_allows_free(self):
 		save_my_avatar('{"style":"lorelei","options":{"hair":["variant48"]}}')
 		self.assertEqual(_my_avatar_config(USER)["options"]["hair"], ["variant48"])

@@ -11,6 +11,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useAd, useSetAdStatus, useDeleteAd, useAdminRemoveAd, useBanUser } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
 import type { AdDetail } from '@/lib/types'
+import { sanitizeHtml } from '@/lib/format'
 
 function price(a: AdDetail) {
   if (!a.price) return 'Nego'
@@ -120,7 +121,7 @@ export default function PapanIklanDetail() {
                 : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-paper-line text-[11px] font-semibold text-muted dark:bg-slate-800">{ad.author_name.slice(0, 1)}</span>}
               oleh {ad.author_name}
             </div>
-            {ad.description && <div className="prose prose-sm max-w-none border-t border-line pt-3 text-ink" dangerouslySetInnerHTML={{ __html: ad.description }} />}
+            {ad.description && <div className="prose prose-sm max-w-none border-t border-line pt-3 text-ink" dangerouslySetInnerHTML={{ __html: sanitizeHtml(ad.description) }} />}
           </div>
           <div className="rounded-2xl bg-surface p-4 shadow-card sm:p-5"><CommentThread referenceDoctype="Papan Iklan" referenceName={name} /></div>
         </div>

@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import { useAd, useSetAdStatus, useDeleteAd, useAdminRemoveAd, useBanUser } from '@/hooks/useData'
 import type { AdDetail } from '@/lib/types'
+import { sanitizeHtml } from '@/lib/format'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100'
@@ -94,7 +95,7 @@ export default function PapanIklanDetailScreen() {
         </div>
 
         {ad.description && (
-          <div className="prose prose-sm max-w-none text-stone-700 dark:prose-invert dark:text-slate-200" dangerouslySetInnerHTML={{ __html: ad.description }} />
+          <div className="prose prose-sm max-w-none text-stone-700 dark:prose-invert dark:text-slate-200" dangerouslySetInnerHTML={{ __html: sanitizeHtml(ad.description) }} />
         )}
 
         <a href={waLink(ad.contact)} target="_blank" rel="noreferrer"

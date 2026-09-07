@@ -6090,10 +6090,22 @@ def save_my_avatar(config_json, snapshot_dataurl=None):
 	if not isinstance(options, dict):
 		frappe.throw("Invalid avatar options", frappe.ValidationError)
 
+	# Color slots render straight into SVG markup for the custom 'doodle' style
+	# (frontend/src/avatar/doodle.ts) via dangerouslySetInnerHTML — "free" (no
+	# payment needed, hence skipped below) does not mean "safe to store
+	# unvalidated". Every observed production value is a bare 6-hex-digit
+	# color or "transparent"; reject anything else rather than silently drop
+	# it, so a bad client payload fails loudly instead of storing an XSS payload.
+	color_slots = ("skinColor", "hairColor", "backgroundColor")
+	for slot in color_slots:
+		for v in (options.get(slot) or []):
+			if v != "transparent" and not re.fullmatch(r"[0-9a-fA-F]{3,8}", str(v)):
+				frappe.throw("Invalid avatar color", frappe.ValidationError)
+
 	owned = _avatar_owned_options(user)
 	for slot, vals in options.items():
 		if slot not in AVATAR_FREE.get(style, {}):
-			continue  # color/probability/unmapped slots are always free
+			continue  # color/probability/unmapped slots need no ownership check
 		values = vals if isinstance(vals, list) else [vals]
 		for v in values:
 			if not _is_free(style, slot, v) and (style, slot, v) not in owned:
