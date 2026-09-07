@@ -1,9 +1,16 @@
 # Vernon Project — Performance & Security Audit (jll4vd36n6)
 
-Status: **XSS findings fixed and deployed** (this section closed). Performance
-items and the `allow_guest` endpoint sweep are **triaged but not yet built** —
-see "Remaining work" at the end. This file will be updated in place as that
-work lands rather than rewritten from scratch.
+## NOT YET COMPLETE — read this before trusting any "done" claim elsewhere
+
+The two confirmed stored-XSS findings are fixed, tested and deployed (below).
+**Everything else the todo's Definition of Done requires is still open**,
+most importantly: **the 13 `allow_guest=True` endpoints have not been
+reviewed one by one yet** (the DoD explicitly requires this), and the
+performance items (indexes, `get_project_item`'s sibling dump) are only
+triaged, not built. See "Remaining work" at the end for the full list. This
+file is updated in place as that work lands rather than rewritten from
+scratch — if you're reading this after the fact, check the "Remaining work"
+section is empty before assuming the audit is complete.
 
 ## Fixed — Critical
 
