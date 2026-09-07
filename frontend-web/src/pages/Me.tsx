@@ -507,18 +507,36 @@ function ApiTokenTile() {
   return (
     <BentoTile span="md" tone="tint" accent="violet" title="API Token">
       <div className="mt-1 space-y-2">
-        <p className="text-sm text-muted">
-          Personal token for scripted access (e.g. the MCP server) — runs with your own permissions.
-        </p>
+        {/* Two unrelated credentials share this tile: the shared, admin-only
+            connector link (server's own account) and the reader's own
+            personal key (self-hosting). A non-working placeholder URL next
+            to a real personal key read as "these disagree" — split into two
+            clearly labelled sections instead of hiding either. */}
+        <p className="text-xs font-semibold text-ink">Connect to claude.ai / ChatGPT</p>
+        {hasRealToken ? (
+          <>
+            <p className="text-xs text-muted">
+              Runs as the shared Vernon Project connector account, not your personal permissions.
+            </p>
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 dark:border-slate-700">
+              <span className="min-w-0 truncate font-mono text-xs font-semibold text-brand-600">
+                {connectorUrl}
+              </span>
+              <button onClick={copyMcpUrl} className="shrink-0 text-muted hover:text-brand-600" aria-label="Copy MCP link">
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="rounded-lg border border-line px-3 py-2 text-xs text-muted dark:border-slate-700">
+            Ask a System Manager for the shared connector link — it runs with admin-level access, so this app doesn't hand it to every account. Your own key below is a different, personal credential; it won't work here.
+          </p>
+        )}
 
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 dark:border-slate-700">
-          <span className="min-w-0 truncate font-mono text-xs font-semibold text-brand-600">
-            {connectorUrl}
-          </span>
-          <button onClick={copyMcpUrl} className="shrink-0 text-muted hover:text-brand-600" aria-label="Copy MCP link">
-            <Copy className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <p className="text-xs font-semibold text-ink">Self-hosted MCP server (your own account)</p>
+        <p className="text-xs text-muted">
+          Your own key, for running your own local <Code>mcp_server</Code> — runs with your own permissions.
+        </p>
 
         <details className="rounded-lg border border-line px-3 py-2 text-xs text-muted dark:border-slate-700">
           <summary className="cursor-pointer select-none font-semibold">
@@ -530,19 +548,8 @@ function ApiTokenTile() {
               One-time: <Code>python3 -m venv .venv</Code>, <Code>.venv/bin/pip install -r requirements.txt</Code>,{' '}
               <Code>cp .env.example .env</Code>
             </li>
-            <li>Generate a token above, paste it into <Code>mcp_server/.env</Code> as <Code>VERNON_API_KEY</Code> / <Code>VERNON_API_SECRET</Code></li>
+            <li>Generate a token below, paste it into <Code>mcp_server/.env</Code> as <Code>VERNON_API_KEY</Code> / <Code>VERNON_API_SECRET</Code></li>
             <li>Claude Code picks it up automatically via <Code>.mcp.json</Code> — run <Code>/mcp</Code> to check</li>
-            <li>
-              For claude.ai Connectors use the URL above — the <Code>?token=</Code> part is
-              required. Without it every request returns 401 and claude.ai reports
-              “Authorization server not found”; this server uses a static token, not OAuth.
-              {hasRealToken ? (
-                ' The URL above already carries it — copy it whole; do not swap in your own API key.'
-              ) : (
-                <> Ask an admin for <Code>VERNON_MCP_TOKEN</Code>.</>
-              )}
-            </li>
-            <li>That remote connector runs as the server’s own account, not yours — only the <Code>.env</Code> route above runs with your permissions.</li>
           </ol>
         </details>
 
