@@ -580,13 +580,16 @@ def _visible_projects(status=None):
 	return [n for n in allowed if n in involved]
 
 
-def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None):
+def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None):
 	"""All todos (with project + work-item context) for the given projects.
 	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
 	(full status strings) to fetch only those — lets status-scoped callers like the
 	dashboard skip pulling + shaping the whole completed backlog. Pass `assigned_to`
 	to scope to one user's own todos in SQL — avoids pulling the whole org's rows
-	just to filter them in Python (see get_recently_done)."""
+	just to filter them in Python (see get_recently_done). Pass `names` to fetch
+	specific todos by name (e.g. get_project_item wants exactly one) instead of
+	every sibling in the project — query cost then depends on len(names), not on
+	how many todos the project has."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
@@ -601,6 +604,9 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	if assigned_to:
 		cond += " AND t.assigned_to = %(assigned_to)s"
 		params["assigned_to"] = assigned_to
+	if names:
+		cond += " AND t.name IN %(names)s"
+		params["names"] = tuple(names)
 	return frappe.db.sql(
 		f"""
 		SELECT
@@ -2083,7 +2089,7 @@ def get_project_item(project_item):
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	project = frappe.get_value("Project Detail", project_detail, "project")
 
-	rows = [r for r in _fetch_todos([project], include_cancelled=True) if r["name"] == project_item]
+	rows = _fetch_todos([project], include_cancelled=True, names=[project_item])
 	if not rows:
 		frappe.throw("Not found", frappe.DoesNotExistError)
 	r = rows[0]
