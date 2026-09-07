@@ -15,6 +15,7 @@ from vernon_project.vernon_project.doctype.employee_profile.employee_profile imp
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 # project_todo imports mobile only inside functions, so this top-level import is safe.
 from vernon_project.api.project_todo import AI_PHASE_NAMES, ai_phase, can_use_ai
+from vernon_project.api.external_calendar import visible_events
 
 # --------------------------------------------------------------------------------
 # Status workflow constants
@@ -1442,7 +1443,7 @@ def get_calendar(open_only=0, mine=0):
 		shaped.pop("assigned_to_avatar_config", None)
 		shaped.pop("assigned_to_image", None)
 		todos.append(shaped)
-	return {"todos": todos}
+	return {"todos": todos, "external_events": visible_events()}
 
 
 @frappe.whitelist()

@@ -1,0 +1,49 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:external_key",
+ "creation": "2026-09-07 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "external_key", "source_site", "source_doctype", "source_name", "cb_1",
+  "title", "category", "cancelled", "all_day", "sb_1",
+  "starts_on", "ends_on", "location", "url", "department"
+ ],
+ "fields": [
+  {"fieldname": "external_key", "fieldtype": "Data", "label": "External Key", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"fieldname": "source_site", "fieldtype": "Data", "label": "Source Site", "reqd": 1, "in_standard_filter": 1},
+  {"fieldname": "source_doctype", "fieldtype": "Data", "label": "Source Doctype", "reqd": 1, "in_standard_filter": 1},
+  {"fieldname": "source_name", "fieldtype": "Data", "label": "Source Name", "reqd": 1},
+  {"fieldname": "cb_1", "fieldtype": "Column Break"},
+  {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "category", "fieldtype": "Select", "label": "Category", "options": "batch\nsession\nseminar", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "cancelled", "fieldtype": "Check", "label": "Cancelled", "default": "0", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "all_day", "fieldtype": "Check", "label": "All Day", "default": "0"},
+  {"fieldname": "sb_1", "fieldtype": "Section Break"},
+  {"fieldname": "starts_on", "fieldtype": "Datetime", "label": "Starts On", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "ends_on", "fieldtype": "Datetime", "label": "Ends On"},
+  {"fieldname": "location", "fieldtype": "Data", "label": "Location"},
+  {"fieldname": "url", "fieldtype": "Data", "label": "URL (source record)"},
+  {"fieldname": "department", "fieldtype": "Data", "label": "Department"}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-07 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vernon Project",
+ "name": "External Calendar Event",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Project Owner", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Project Leader", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Project Team", "read": 1, "report": 1, "export": 1, "print": 1}
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "starts_on",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}
