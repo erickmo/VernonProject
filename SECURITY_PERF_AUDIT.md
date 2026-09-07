@@ -2,15 +2,15 @@
 
 ## NOT YET COMPLETE — read this before trusting any "done" claim elsewhere
 
-The two confirmed stored-XSS findings are fixed, tested and deployed (below).
-**Everything else the todo's Definition of Done requires is still open**,
-most importantly: **the 13 `allow_guest=True` endpoints have not been
-reviewed one by one yet** (the DoD explicitly requires this), and the
-performance items (indexes, `get_project_item`'s sibling dump) are only
-triaged, not built. See "Remaining work" at the end for the full list. This
-file is updated in place as that work lands rather than rewritten from
-scratch — if you're reading this after the fact, check the "Remaining work"
-section is empty before assuming the audit is complete.
+The two confirmed stored-XSS findings are fixed, tested and deployed, and all
+13 `allow_guest=True` endpoints have now been reviewed one by one (no leak
+found; one Low/accepted item). **The performance half of the todo's
+Definition of Done is still open** — indexes and `get_project_item`'s
+sibling-dump fix are triaged and approved but not yet built; the full
+SQL-injection sweep and pip-audit/npm-audit/Lighthouse haven't run. See
+"Remaining work" at the end. This file is updated in place as that work
+lands rather than rewritten from scratch — if you're reading this after the
+fact, check "Remaining work" is empty before assuming the audit is complete.
 
 ## Fixed — Critical
 
@@ -123,6 +123,56 @@ vulnerable.
   not a defect; a multi-tenant "does alice's token stay scoped to alice's
   projects" test does not apply to this design.
 
+## Reviewed — all 13 `allow_guest=True` endpoints (no leak found)
+
+Every endpoint checked individually against what it returns and whether it's
+reachable without side effects an attacker would want:
+
+- `attendance.py:station_token` — gated by a per-station `display_key`,
+  compared with `hmac.compare_digest` (constant-time). Returns only a
+  rotating QR payload (station/counter/token), no user data.
+- `contact.py:submit_inquiry` — no persistence (email-only), rate-limited
+  (5/hour), honeypot, all fields escaped before going into the email body,
+  returns only `{ok}`.
+- `events.py:midtrans_notify` — a payment webhook. Verifies the Midtrans
+  SHA512 signature (`order_id+status_code+gross_amount+server_key`) via
+  `hmac.compare_digest` before trusting the payload, exactly per Midtrans's
+  own documented scheme. An unsigned/forged notification is rejected before
+  it can touch a registration's payment status.
+- `midtrans.py:pay_config` — returns the Midtrans **client** key (meant to be
+  public, used to init the client-side Snap widget) and a CDN URL. The
+  server key is never returned here or anywhere.
+- `passkey.py:login_begin` / `login_complete` — real WebAuthn
+  (`generate_authentication_options` / `verify_authentication_response`),
+  `user_verification=REQUIRED`, a one-time server-stored challenge (popped,
+  not reusable), credential looked up by `credential_id` (never by a
+  client-supplied username — can't be used to claim someone else's account),
+  a userHandle cross-check, a disabled-account gate, and `sign_count`
+  updated on every login (WebAuthn's built-in clone-detection). Correctly
+  implemented.
+- `passkey.py:client_log` — **Low finding**: a diagnostic endpoint (explicitly
+  commented "temporary... safe to delete once the passkey rollout is
+  stable") that logs a client-supplied string to the Error Log, capped at
+  2000 chars but with no rate limit (unlike `login_begin`/`login_complete`,
+  which both have `@rate_limit(limit=30, seconds=60)`). Worst case is
+  Error Log spam from a guest, not a data leak. Accepted risk — noted, not
+  fixed, since the code itself says it's slated for removal.
+- `recruitment.py` (6 endpoints: `list_open_jobs`, `check_can_apply`,
+  `start_test`, `get_ketelitian`, `get_job`, `submit_application`) — the
+  most carefully built of the set. `get_job`'s response explicitly excludes
+  `correct_answer`/points ("never expose... this is the public test"), item
+  banks come from `ri.public_*()` generator functions that strip answers
+  before returning, `submit_application` scores server-side and returns only
+  `{ok, application}` (no score, no NIK, no psych profile echoed back), CV
+  uploads are extension- and mimetype-checked, size-capped (10MB), private,
+  and go through Frappe's own file-safety check before the application
+  record is even created. A blacklist match is recorded internally but never
+  surfaced to the applicant. `start_test`/`get_ketelitian` use a per-attempt
+  server-side timer and a server-observed "too fast to be human" signal as
+  the actual anti-automation control (the client-side timer is explicitly
+  documented as bypassable and not trusted). No leak found anywhere in this
+  file.
+
 ## Already handled — confirmed, not a gap
 - `impersonate` (mobile.py): System Manager only, blocks targeting Guest/
   Administrator/another System Manager, audit-logged.
@@ -145,11 +195,8 @@ vulnerable.
    scale with sibling count. Approved fix: a scoped single-row fetch
    producing the identical response shape, with a query-count test (10 vs
    300 siblings, same count) as the regression guard.
-3. **13 `allow_guest=True` endpoints** not yet individually reviewed for
-   private-data leakage: `attendance.py`, `contact.py`, `events.py`,
-   `midtrans.py`, `passkey.py` (×3), `recruitment.py` (×6). Ranked ahead of
-   the performance items — an unauthenticated surface on a live production
-   app outranks an N+1.
+3. ~~13 `allow_guest=True` endpoints~~ — **done**, see "Reviewed" section
+   above.
 4. **Full static sweep** of all ~68 `frappe.db.sql(` call sites for
    string-interpolated values (only `_fetch_todos` was hand-checked so far).
 5. `pip-audit` / `npm audit`, Lighthouse scores, CSP/cookie flag checks —
