@@ -142,8 +142,9 @@ export function useTodoMenuGroups(
       // Flag/unflag this task as AI work — phase 0 <-> 1 of the AI ladder (only tagged todos
       // show a phase chip). Full Human/AI/Both picker lives in the edit form. Needs the "AI User"
       // role on top of assignee/leadership; untagging stays open so a revoked user can clean up.
-      // Backend re-checks both gates.
-      ...((t.is_mine || t.can_prioritize) && (aiAllowed || t.work_mode === 'AI') ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
+      // Frozen once the todo leaves Planned (doctype validate() rejects the write too) — hide
+      // the control rather than let it round-trip into an error toast.
+      ...(t.status_key === 'planned' && (t.is_mine || t.can_prioritize) && (aiAllowed || t.work_mode === 'AI') ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
       // Assignee's own "still needs checking" reminder — a plain flag, no scoring/workflow effect.
       ...(t.is_mine ? [{ key: 't-check', label: t.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek', icon: Eye, onClick: () => setCheck.mutate({ todoName: t.name, toCheck: !t.to_check }) }] : []),
       // Hand this todo to a teammate to verify — opens FollowUpCheckDialog via the ?check deep-link on the detail.

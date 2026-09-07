@@ -147,9 +147,15 @@ class TestDoneTodoValidation(unittest.TestCase):
 		todo.assigned_to = "user@example.com"
 		todo.estimated = 60
 		todo.deadline = "2026-03-15"
+		# work_mode/ai_prompt/ai_prompt_confirmed left at frappe.new_doc's own defaults
+		# ('', None, 0) — old_doc below matches those exactly, so this is a true no-op save.
 
-		# Mock old document with same values
-		old_doc = frappe._dict(assigned_to="user@example.com", estimated=60, deadline="2026-03-15")
+		# Mock old document with same values (including the same field defaults `todo`
+		# itself carries, so the AI-field diff added for he9ioca2fq sees no change either)
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
+			work_mode="", ai_prompt=None, ai_prompt_confirmed=0,
+		)
 		todo.get_doc_before_save = Mock(return_value=old_doc)
 
 		# Should not raise any error
@@ -160,6 +166,134 @@ class TestDoneTodoValidation(unittest.TestCase):
 			success = False
 
 		self.assertTrue(success, "Should allow saving without changes when status is Done")
+
+	def test_validation_blocks_work_mode_when_done(self):
+		"""AI tag (work_mode) is frozen once a todo is Done — he9ioca2fq."""
+		todo = frappe.new_doc("Project Todo")
+		todo.is_new = Mock(return_value=False)
+		todo.status = "🟠 Done"
+		todo.assigned_to = "user@example.com"
+		todo.estimated = 60
+		todo.deadline = "2026-03-15"
+		todo.work_mode = "Human"  # Changed from AI
+
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15", work_mode="AI"
+		)
+		todo.get_doc_before_save = Mock(return_value=old_doc)
+
+		with unittest.mock.patch('frappe.throw') as mock_throw:
+			todo.validate_done_todo_fields()
+			self.assertTrue(mock_throw.called, "Should call frappe.throw for work_mode change")
+			error_msg = str(mock_throw.call_args)
+			self.assertIn("AI Tag", error_msg, "Error should mention AI Tag field")
+
+	def test_validation_blocks_ai_prompt_when_done(self):
+		"""AI prompt text is frozen once a todo is Done — he9ioca2fq."""
+		todo = frappe.new_doc("Project Todo")
+		todo.is_new = Mock(return_value=False)
+		todo.status = "🟠 Done"
+		todo.assigned_to = "user@example.com"
+		todo.estimated = 60
+		todo.deadline = "2026-03-15"
+		todo.ai_prompt = '[{"name": "", "prompt": "edited"}]'
+
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
+			ai_prompt='[{"name": "", "prompt": "original"}]',
+		)
+		todo.get_doc_before_save = Mock(return_value=old_doc)
+
+		with unittest.mock.patch('frappe.throw') as mock_throw:
+			todo.validate_done_todo_fields()
+			self.assertTrue(mock_throw.called, "Should call frappe.throw for ai_prompt change")
+			error_msg = str(mock_throw.call_args)
+			self.assertIn("AI Prompt", error_msg, "Error should mention AI Prompt field")
+
+	def test_validation_blocks_ai_prompt_confirmed_when_done(self):
+		"""confirm_ai_prompt / delete_ai_prompt can't flip the confirm flag after Done."""
+		todo = frappe.new_doc("Project Todo")
+		todo.is_new = Mock(return_value=False)
+		todo.status = "✅ Completed"
+		todo.assigned_to = "user@example.com"
+		todo.estimated = 60
+		todo.deadline = "2026-03-15"
+		todo.ai_prompt_confirmed = 0
+
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
+			ai_prompt_confirmed=1,
+		)
+		todo.get_doc_before_save = Mock(return_value=old_doc)
+
+		with unittest.mock.patch('frappe.throw') as mock_throw:
+			todo.validate_done_todo_fields()
+			self.assertTrue(mock_throw.called, "Should call frappe.throw for ai_prompt_confirmed change")
+
+	def test_validation_blocks_ai_fields_when_checked_by_pl(self):
+		"""The lock also applies to Checked By PL, not just Done/Completed — status != Planned is the rule."""
+		todo = frappe.new_doc("Project Todo")
+		todo.is_new = Mock(return_value=False)
+		todo.status = "🔷 Checked By PL"
+		todo.assigned_to = "user@example.com"
+		todo.estimated = 60
+		todo.deadline = "2026-03-15"
+		todo.work_mode = "Human"
+
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15", work_mode="AI"
+		)
+		todo.get_doc_before_save = Mock(return_value=old_doc)
+
+		with unittest.mock.patch('frappe.throw') as mock_throw:
+			todo.validate_done_todo_fields()
+			self.assertTrue(mock_throw.called, "Should call frappe.throw when Checked By PL")
+
+	def test_validation_blocks_ai_fields_when_cancelled(self):
+		"""The lock also applies to Cancelled — status != Planned is the rule."""
+		todo = frappe.new_doc("Project Todo")
+		todo.is_new = Mock(return_value=False)
+		todo.status = "🚫 Cancelled"
+		todo.assigned_to = "user@example.com"
+		todo.estimated = 60
+		todo.deadline = "2026-03-15"
+		todo.ai_prompt = "[]"
+
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
+			ai_prompt='[{"name": "", "prompt": "x"}]',
+		)
+		todo.get_doc_before_save = Mock(return_value=old_doc)
+
+		with unittest.mock.patch('frappe.throw') as mock_throw:
+			todo.validate_done_todo_fields()
+			self.assertTrue(mock_throw.called, "Should call frappe.throw when Cancelled")
+
+	def test_validation_allows_ai_field_changes_when_planned(self):
+		"""Control case: AI fields stay editable while the todo is still Planned."""
+		todo = frappe.new_doc("Project Todo")
+		todo.is_new = Mock(return_value=False)
+		todo.status = "⚪️ Planned"
+		todo.assigned_to = "user@example.com"
+		todo.estimated = 60
+		todo.deadline = "2026-03-15"
+		todo.work_mode = "AI"
+		todo.ai_prompt = '[{"name": "", "prompt": "new"}]'
+		todo.ai_prompt_confirmed = 1
+
+		old_doc = frappe._dict(
+			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
+			work_mode="", ai_prompt=None, ai_prompt_confirmed=0,
+		)
+		todo.get_doc_before_save = Mock(return_value=old_doc)
+
+		try:
+			todo.validate_done_todo_fields()
+			success = True
+		except Exception:
+			success = False
+
+		self.assertTrue(success, "Should allow AI field edits while status is Planned")
 
 	def test_validation_blocks_multiple_fields(self):
 		"""Test that validation shows all changed fields in error message"""

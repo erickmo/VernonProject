@@ -2108,9 +2108,13 @@ def get_project_item(project_item):
 		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
 	) or user in _admins
 	# The assignee joins SM / owner / leader here: phase 2 is theirs to review — they
-	# update the generated prompt and confirm it before an agent runs it.
-	shaped["can_edit_prompt"] = ("System Manager" in frappe.get_roles(user)) or user in (
-		r["project_owner"], r["project_leader"], r["assigned_to"]
+	# update the generated prompt and confirm it before an agent runs it. Once the
+	# todo leaves Planned, the prompt is frozen (doctype validate() enforces this
+	# server-side regardless of this flag) — read/copy still work via ai_prompts.
+	shaped["can_edit_prompt"] = shaped["status_key"] == "planned" and (
+		("System Manager" in frappe.get_roles(user)) or user in (
+			r["project_owner"], r["project_leader"], r["assigned_to"]
+		)
 	)
 	# Same gate confirms phase 2 -> 3; the phase itself already rides in _shape_todo.
 	shaped["can_confirm_prompt"] = shaped["can_edit_prompt"]

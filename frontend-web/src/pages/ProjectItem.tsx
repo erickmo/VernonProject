@@ -1498,7 +1498,7 @@ const [followOpen, setFollowOpen] = useState(false)
         focusActive={focusActive}
         canDeadlineToday={canSetDeadlineToday}
         canCheck={!!data.is_mine && data.status_key !== 'cancelled'}
-        canAi={(!!data.is_mine || !!data.can_prioritize) && data.status_key !== 'cancelled' && (aiAllowed || data.work_mode === 'AI')}
+        canAi={(!!data.is_mine || !!data.can_prioritize) && data.status_key === 'planned' && (aiAllowed || data.work_mode === 'AI')}
         canRequestCheck={!!data.can_create}
         onEdit={() => setEditing(true)}
         onFocusToggle={() => (focusActive ? focus.stop() : openFocus())}
@@ -1619,7 +1619,7 @@ const [followOpen, setFollowOpen] = useState(false)
                       },
                     ]
                   : []),
-                ...((data.is_mine || data.can_prioritize) && data.status_key !== 'cancelled' && (aiAllowed || data.work_mode === 'AI')
+                ...((data.is_mine || data.can_prioritize) && data.status_key === 'planned' && (aiAllowed || data.work_mode === 'AI')
                   ? [
                       {
                         label: data.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI',

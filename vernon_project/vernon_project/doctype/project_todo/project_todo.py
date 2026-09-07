@@ -352,13 +352,20 @@ class ProjectTodo(Document):
 			)
 
 	def validate_done_todo_fields(self):
-		"""Prevent editing assigned_to, estimated, and deadline when status is Done or Completed"""
+		"""Prevent editing assigned_to, estimated, deadline, and the AI tag/prompt once
+		the todo has left Planned status (Done, Checked By PL, Completed, or Cancelled).
+
+		The AI fields are included here rather than in a separate helper: this is
+		already the single place that diffs a todo's protected fields against the
+		last-saved version, so every write path (save_ai_prompt, delete_ai_prompt,
+		confirm_ai_prompt, update_todo, even a raw frappe.client.set_value) is covered
+		for free — they all end in doc.save(), which always runs validate()."""
 		# Skip validation for new documents
 		if self.is_new():
 			return
 
-		# Check if status is Done or Completed
-		if self.status not in ["🟠 Done", "✅ Completed"]:
+		# Once the todo is no longer Planned, protected fields are frozen.
+		if self.status == PLANNED:
 			return
 
 		# Get the previous version of the document
@@ -371,7 +378,10 @@ class ProjectTodo(Document):
 			"assigned_to": "Assigned To",
 			"estimated": "Estimated (minutes)",
 			"start_date": "Start Date",
-			"deadline": "Deadline"
+			"deadline": "Deadline",
+			"work_mode": "AI Tag",
+			"ai_prompt": "AI Prompt",
+			"ai_prompt_confirmed": "AI Prompt Confirmation",
 		}
 
 		modified_fields = []
@@ -382,7 +392,7 @@ class ProjectTodo(Document):
 		if modified_fields:
 			frappe.throw(
 				f"Cannot modify {', '.join(modified_fields)} when Todo status is '{self.status}'. "
-				"These fields are locked once the todo is marked as Done or Completed.",
+				"These fields are locked once the todo leaves Planned status.",
 				title="Cannot Edit Completed Todo"
 			)
 

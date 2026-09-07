@@ -1460,7 +1460,7 @@ const [followOpen, setFollowOpen] = useState(false)
                 },
               ]
             : []),
-          ...((data.is_mine || data.can_prioritize) && data.status_key !== 'cancelled' && (data.can_use_ai || data.work_mode === 'AI')
+          ...((data.is_mine || data.can_prioritize) && data.status_key === 'planned' && (data.can_use_ai || data.work_mode === 'AI')
             ? [
                 {
                   label: data.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI',
