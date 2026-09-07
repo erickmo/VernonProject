@@ -1,16 +1,16 @@
 # Vernon Project — Performance & Security Audit (jll4vd36n6)
 
-## NOT YET COMPLETE — read this before trusting any "done" claim elsewhere
+## Summary
 
-The two confirmed stored-XSS findings are fixed, tested and deployed, and all
-13 `allow_guest=True` endpoints have now been reviewed one by one (no leak
-found; one Low/accepted item). **The performance half of the todo's
-Definition of Done is still open** — indexes and `get_project_item`'s
-sibling-dump fix are triaged and approved but not yet built; the full
-SQL-injection sweep and pip-audit/npm-audit/Lighthouse haven't run. See
-"Remaining work" at the end. This file is updated in place as that work
-lands rather than rewritten from scratch — if you're reading this after the
-fact, check "Remaining work" is empty before assuming the audit is complete.
+Two confirmed stored-XSS findings, fixed sink-and-source, deployed and
+verified live. All 13 `allow_guest=True` endpoints reviewed one by one —
+zero Critical/High, one Low/accepted (an already-marked-temporary diagnostic
+endpoint with no rate limit). Two performance fixes landed: the four hot
+filters on `Project Todo` are now indexed, and `get_project_item` no longer
+fetches every sibling todo in a project to serve one. **Still open** — see
+"Remaining work" at the end: the full ~68-call-site SQL-injection sweep
+(only the hottest query was hand-checked), and pip-audit/npm-audit/
+Lighthouse haven't run. This file is updated in place as that work lands.
 
 ## Fixed — Critical
 
@@ -184,20 +184,34 @@ reachable without side effects an attacker would want:
   this query. A full 68-call-site sweep for the injection case is still
   outstanding (see below).
 
-## Remaining work (triaged, approved, not yet built)
-1. **Missing indexes** on `Project Todo` — `assigned_to`, `status`,
-   `deadline`, `work_mode` lack `search_index` (only `project`/
-   `project_detail` have it). 9,430 rows in production; adding the flags plus
-   a patch is low-risk. Approved, next up.
-2. **`get_project_item` sibling dump** (`mobile.py:2069`) — calls
-   `_fetch_todos([project], include_cancelled=True)` (fetches/shapes every
-   sibling todo) then filters to one row in Python. Query count and payload
-   scale with sibling count. Approved fix: a scoped single-row fetch
-   producing the identical response shape, with a query-count test (10 vs
-   300 siblings, same count) as the regression guard.
-3. ~~13 `allow_guest=True` endpoints~~ — **done**, see "Reviewed" section
-   above.
-4. **Full static sweep** of all ~68 `frappe.db.sql(` call sites for
+## Fixed — Performance
+
+### P1. Missing indexes on `Project Todo`'s hot filters
+`assigned_to`, `status`, `deadline`, `work_mode` had no `search_index`, while
+`project`/`project_detail` already did — exactly the fields
+`get_dashboard`/`get_calendar`/`get_project`/`get_project_item` filter by.
+Flipped the JSON flags; `bench migrate`'s normal schema sync added the DB
+indexes (verified via `SHOW INDEX`, no separate patch needed for a
+`search_index` change). 9,430 rows in production; migrate ran in well under
+a second. Commit `5a6e715`. Test: `test_hot_filter_indexes_exist` asserts
+the DB index exists for all four (not just the DocField flag).
+
+### P2. `get_project_item` fetched every sibling todo to serve one
+`get_project_item` called the same set-based `_fetch_todos([project])` query
+behind `get_dashboard`/`get_calendar`, then filtered to one row in Python —
+so the row count (and the shaping work behind it) scaled with how many
+todos the project had. Fixed: `_fetch_todos` gained a `names` param (an
+`AND t.name IN (...)` clause), and `get_project_item` now passes
+`names=[project_item]` so the database does the filtering. Same response
+shape and content — proven by a test calling it directly. Commit `3b06ca0`.
+Tests: row count from `_fetch_todos` stays 1 whether the project has 3 or 50
+siblings (verified RED first — temporarily removed the `names` handling,
+confirmed the test failed with 3 rows instead of 1 — then GREEN);
+`get_project_item`'s own output unchanged. Full `test_mobile.py` (53 cases)
+re-run clean.
+
+## Remaining work (not yet done)
+1. **Full static sweep** of all ~68 `frappe.db.sql(` call sites for
    string-interpolated values (only `_fetch_todos` was hand-checked so far).
-5. `pip-audit` / `npm audit`, Lighthouse scores, CSP/cookie flag checks —
+2. `pip-audit` / `npm audit`, Lighthouse scores, CSP/cookie flag checks —
    not run this pass.
