@@ -92,10 +92,11 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) ||
-      `Request failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Request failed', res.status)
+    // Route every failure through frappeMessage — this is the one place almost
+    // every whitelisted-method call in the app throws from, so fixing it here
+    // fixes raw-JSON error toasts nearly everywhere at once, per-call-site
+    // fixes were never needed.
+    throw new ApiError(frappeMessage(data, `Request failed (${res.status})`), res.status)
   }
 
   return (data?.message ?? data) as T
@@ -999,9 +1000,7 @@ export async function uploadRewardImage(file: File): Promise<string> {
     /* non-JSON */
   }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out.file_url as string
@@ -1047,9 +1046,7 @@ export async function uploadBusinessUnitImage(file: File): Promise<string> {
     /* non-JSON */
   }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out.file_url as string
@@ -1072,9 +1069,7 @@ export async function uploadBannerImage(file: File): Promise<string> {
     /* non-JSON */
   }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out.file_url as string
@@ -1105,9 +1100,7 @@ export async function uploadCommentImage(
     /* non-JSON */
   }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out.file_url as string
@@ -1132,9 +1125,7 @@ export async function uploadTodoFile(todoId: string, file: File): Promise<TodoFi
     /* non-JSON */
   }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out as TodoFile
@@ -1196,9 +1187,7 @@ export async function uploadAdImage(file: File): Promise<string> {
   let data: any = null
   try { data = await res.json() } catch { /* non-JSON */ }
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) || `Upload failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Upload failed', res.status)
+    throw new ApiError(frappeMessage(data, `Upload failed (${res.status})`), res.status)
   }
   const out = data?.message ?? data
   return out.file_url as string
@@ -1348,18 +1337,13 @@ export async function passkeyLoginComplete(credential: unknown, handle: string):
     credentials: 'same-origin',
   })
   if (!res.ok) {
-    let msg = 'Passkey sign-in failed'
+    let data: any = null
     try {
-      const d = await res.json()
-      if (d?.message && typeof d.message === 'string') msg = d.message
-      else if (d?._server_messages) {
-        const parsed = JSON.parse(d._server_messages)
-        if (Array.isArray(parsed) && parsed.length) msg = JSON.parse(parsed[0]).message || msg
-      }
+      data = await res.json()
     } catch {
-      /* keep default */
+      /* non-JSON */
     }
-    throw new ApiError(msg, res.status)
+    throw new ApiError(frappeMessage(data, 'Passkey sign-in failed'), res.status)
   }
 }
 
@@ -1424,10 +1408,11 @@ async function resourceRequest<T>(
   }
 
   if (!res.ok) {
-    const msg =
-      (data && (data._server_messages || data.exception || data.message)) ||
-      `Request failed (${res.status})`
-    throw new ApiError(typeof msg === 'string' ? msg : 'Request failed', res.status)
+    // Route every failure through frappeMessage — this is the one place almost
+    // every whitelisted-method call in the app throws from, so fixing it here
+    // fixes raw-JSON error toasts nearly everywhere at once, per-call-site
+    // fixes were never needed.
+    throw new ApiError(frappeMessage(data, `Request failed (${res.status})`), res.status)
   }
 
   return (data?.data ?? data?.message ?? data) as T
