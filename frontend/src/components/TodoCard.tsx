@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
+import { NoteMarkdown } from '@/lib/markdown'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
@@ -43,6 +44,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   const menu = useTodoContextMenu()
   const [pressing, setPressing] = useState(false)
   const [flash, setFlash] = useState(false)
+  const [notesExpanded, setNotesExpanded] = useState(false)
 
   // Desktop-only convenience: while the pointer hovers a card, `c` toggles the
   // assignee's To Check flag and `a` toggles the AI flag — same keys as the
@@ -239,10 +241,22 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
           <p className="line-clamp-2 break-words font-semibold leading-snug text-stone-800 dark:text-slate-100">{todo.to_do}</p>
 
           {todo.notes && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-stone-500 dark:text-slate-400">
-              <StickyNote className="h-3 w-3 shrink-0 text-amber-500" />
-              <span className="truncate">{todo.notes}</span>
-            </p>
+            <div className="mt-1 flex items-start gap-1 text-xs text-stone-500 dark:text-slate-400">
+              <StickyNote className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setNotesExpanded((v) => !v)
+                }}
+                className="min-w-0 flex-1 text-left"
+              >
+                <NoteMarkdown
+                  text={todo.notes}
+                  className={clsx('text-xs [&_*]:text-xs', !notesExpanded && 'line-clamp-2 overflow-hidden')}
+                />
+              </button>
+            </div>
           )}
           {focus.note && (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500 dark:text-slate-400">

@@ -69,7 +69,8 @@ import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { AiPhaseBanner } from '@/components/AiPhaseBanner'
 import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatClock, formatEstimate, formatDate, dateSub, formatNumber, stripHtml, todayISO } from '@/lib/format'
+import { formatClock, formatEstimate, formatDate, dateSub, formatNumber, todayISO } from '@/lib/format'
+import { NoteMarkdown } from '@/lib/markdown'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { todoFileHref } from '@/lib/api'
 import { Avatar, Spinner } from '@/components/ui'
@@ -421,15 +422,19 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
 function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; canEdit: boolean }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
-  const [text, setText] = useState(stripHtml(initial))
+  // The RAW stored value, not stripHtml(initial): editing must show and save
+  // exactly what's in the database, byte-identical on a no-op edit. Legacy
+  // rows with real HTML (this field predates markdown rendering) still get
+  // neutralised on display below, by the renderer's sanitiser rather than by
+  // mangling what the textarea shows and would save back.
+  const [text, setText] = useState(initial)
   const [saved, setSaved] = useState(false)
-  const baseline = useRef(stripHtml(initial))
+  const baseline = useRef(initial)
 
   useEffect(() => {
-    const clean = stripHtml(initial)
     if (baseline.current === text) {
-      baseline.current = clean
-      setText(clean)
+      baseline.current = initial
+      setText(initial)
     }
   }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -447,9 +452,8 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   }
 
   if (!canEdit) {
-    const clean = stripHtml(initial)
-    return clean ? (
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">{clean}</p>
+    return initial ? (
+      <NoteMarkdown text={initial} />
     ) : (
       <p className="text-sm italic text-muted">No notes yet.</p>
     )

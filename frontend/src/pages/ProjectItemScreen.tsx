@@ -55,7 +55,8 @@ import { openFocusOverlay } from '@/lib/focusUI'
 import { anyModalOpen } from '@/lib/modalStack'
 import { todoFileHref } from '@/lib/api'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatClock, formatEstimate, dateSub, stripHtml, todayISO } from '@/lib/format'
+import { formatClock, formatEstimate, dateSub, todayISO } from '@/lib/format'
+import { NoteMarkdown } from '@/lib/markdown'
 import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
 import type { ChecklistItem, AiPrompt } from '@/lib/types'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
@@ -613,15 +614,19 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
 function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; canEdit: boolean }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
-  const [text, setText] = useState(stripHtml(initial))
+  // The RAW stored value, not stripHtml(initial): editing must show and save
+  // exactly what's in the database, byte-identical on a no-op edit. Legacy
+  // rows with real HTML (this field predates markdown rendering) still get
+  // neutralised on display below, by the renderer's sanitiser rather than by
+  // mangling what the textarea shows and would save back.
+  const [text, setText] = useState(initial)
   const [saved, setSaved] = useState(false)
-  const baseline = useRef(stripHtml(initial))
+  const baseline = useRef(initial)
 
   useEffect(() => {
-    const clean = stripHtml(initial)
     if (baseline.current === text) {
-      baseline.current = clean
-      setText(clean)
+      baseline.current = initial
+      setText(initial)
     }
   }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -639,9 +644,8 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   }
 
   if (!canEdit) {
-    const clean = stripHtml(initial)
-    return clean ? (
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">{clean}</p>
+    return initial ? (
+      <NoteMarkdown text={initial} />
     ) : (
       <p className="text-sm italic text-slate-400 dark:text-slate-500">No notes yet.</p>
     )

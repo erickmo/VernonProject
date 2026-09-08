@@ -211,7 +211,7 @@ export function sanitizeHtml(html: string): string {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase()
       if (name.startsWith('on')) el.removeAttribute(attr.name)
-      else if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(attr.value)) {
+      else if ((name === 'href' || name === 'src') && /^\s*(javascript|data):/i.test(attr.value)) {
         el.removeAttribute(attr.name)
       }
     }
