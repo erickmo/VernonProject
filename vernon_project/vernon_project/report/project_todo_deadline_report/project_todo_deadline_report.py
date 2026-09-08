@@ -4,6 +4,7 @@
 import frappe
 from datetime import timedelta
 from frappe.utils import getdate
+from vernon_project.api.mobile import _visible_projects, _can_see_user_work
 
 def execute(filters=None):
 	columns, data = [], []
@@ -14,11 +15,20 @@ def execute(filters=None):
 	if not filters or not filters.get("project"):
 		frappe.msgprint("Please select a Project to generate the report.")
 
+	# Permission scope — see progress_report.py for why this lives in execute()
+	# (reachable directly via Frappe's own frappe.desk.query_report.run, not
+	# just this app's SPA wrapper). 2026-09-08 permission sweep.
+	requester = frappe.session.user
+	if filters and filters.get("project") and filters.get("project") not in set(_visible_projects()):
+		frappe.throw("You are not allowed to see this project.", frappe.PermissionError)
+	if filters and filters.get("assigned_to") and not _can_see_user_work(requester, filters.get("assigned_to")):
+		frappe.throw("You are not allowed to see this user's work.", frappe.PermissionError)
+
 	# ------------------------------------------------------
 	# Query
 	# ------------------------------------------------------
 	# Get Project todo, column is date from first
-	
+
 
 	# Status filter — supports a single value or a list (multi-select)
 	st = filters.get("status") if filters else None

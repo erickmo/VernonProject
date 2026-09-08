@@ -5,22 +5,42 @@ import frappe
 import datetime
 import json
 from frappe.utils import add_days
+from vernon_project.api.mobile import _visible_projects, _can_see_user_work
 
 def execute(filters=None):
 	columns, data = [], []
 
 	# --------------------------------------------------------------------------
-	# Define Columns
+	# Permission scope. This report is reachable both through this app's own
+	# whitelisted run_report() AND directly via Frappe's own whitelisted
+	# frappe.desk.query_report.run — the doctype-level "report" permission on
+	# Project Detail (System Manager/Owner/Leader/Admin/Team, ~174 real users)
+	# is the only gate either path enforces before landing here, so the real
+	# per-record scoping has to live in execute() itself, the one place both
+	# paths pass through. 2026-09-08 permission sweep: previously an omitted
+	# project/user filter meant "everything", not "everything I can see".
 	# --------------------------------------------------------------------------
+	requester = frappe.session.user
+	visible = set(_visible_projects())
+
 	# Filter Project (values escaped — frappe.db.escape returns a quoted literal).
-	filter_project = ""
-	if filters and filters.get("project"):
-		filter_project = f" AND pd.project = {frappe.db.escape(filters.get('project'))} "
+	project = filters.get("project") if filters else None
+	if project:
+		if project not in visible:
+			frappe.throw("You are not allowed to see this project.", frappe.PermissionError)
+		filter_project = f" AND pd.project = {frappe.db.escape(project)} "
+	elif visible:
+		filter_project = f" AND pd.project IN ({', '.join(frappe.db.escape(p) for p in visible)}) "
+	else:
+		filter_project = " AND 1=0 "
 
 	# Filter User
 	filter_user = ""
 	if filters and filters.get("user"):
-		filter_user = f" AND pt.assigned_to = {frappe.db.escape(filters.get('user'))} "
+		target = filters.get("user")
+		if not _can_see_user_work(requester, target):
+			frappe.throw("You are not allowed to see this user's work.", frappe.PermissionError)
+		filter_user = f" AND pt.assigned_to = {frappe.db.escape(target)} "
 
 	# Filter Date
 	filter_date = ""

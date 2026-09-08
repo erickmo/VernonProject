@@ -4,6 +4,7 @@
 import frappe
 from datetime import timedelta
 from frappe.utils import getdate
+from vernon_project.api.mobile import _can_see_user_work
 
 
 # Map status to its corresponding date field in Project Todo
@@ -29,6 +30,13 @@ def execute(filters=None):
 	if not filters.get("assigned_to") or not filters.get("assigned_to").strip():
 		frappe.msgprint("Please select an Assignee to generate the report.")
 		return columns, data
+
+	# Permission scope — see progress_report.py for why this lives in execute()
+	# (reachable directly via Frappe's own frappe.desk.query_report.run, not
+	# just this app's SPA wrapper). 2026-09-08 permission sweep: assigned_to was
+	# caller-supplied with no check that the requester may see that person's work.
+	if not _can_see_user_work(frappe.session.user, filters.get("assigned_to")):
+		frappe.throw("You are not allowed to see this user's work.", frappe.PermissionError)
 
 	if not filters.get("date_range"):
 		frappe.msgprint("Please select a Date Range.")

@@ -4,6 +4,7 @@
 import frappe
 import datetime
 import json
+from vernon_project.api.mobile import _visible_projects, _can_see_user_work
 
 
 
@@ -11,12 +12,26 @@ def execute(filters=None):
 	columns, data = [], []
 
 	# --------------------------------------------------------------------------
-	# Define Columns
+	# Permission scope — see progress_report.py for why this lives in execute()
+	# rather than the SPA wrapper (reachable directly via Frappe's own
+	# frappe.desk.query_report.run too). 2026-09-08 permission sweep: an omitted
+	# project filter meant "everything", not "everything I can see"; this report
+	# also carries todo notes (pt.notes), so an unscoped project leak here was
+	# the same class of exposure as the get_notes finding, just via a report.
 	# --------------------------------------------------------------------------
+	requester = frappe.session.user
+	visible = set(_visible_projects())
+
 	# Filter Project (values escaped — frappe.db.escape returns a quoted literal).
-	filter_project = ""
-	if filters and filters.get("project"):
-		filter_project = f" AND pd.project = {frappe.db.escape(filters.get('project'))} "
+	project = filters.get("project") if filters else None
+	if project:
+		if project not in visible:
+			frappe.throw("You are not allowed to see this project.", frappe.PermissionError)
+		filter_project = f" AND pd.project = {frappe.db.escape(project)} "
+	elif visible:
+		filter_project = f" AND pd.project IN ({', '.join(frappe.db.escape(p) for p in visible)}) "
+	else:
+		filter_project = " AND 1=0 "
 
 	# Filter Grouping
 	filter_grouping = ""
@@ -26,7 +41,10 @@ def execute(filters=None):
 	# Filter Assigned To
 	filter_assigned_to = ""
 	if filters and filters.get("assigned_to"):
-		filter_assigned_to = f" AND pt.assigned_to = {frappe.db.escape(filters.get('assigned_to'))} "
+		target = filters.get("assigned_to")
+		if not _can_see_user_work(requester, target):
+			frappe.throw("You are not allowed to see this user's work.", frappe.PermissionError)
+		filter_assigned_to = f" AND pt.assigned_to = {frappe.db.escape(target)} "
 
 	# Filter Status (Project Detail status) — supports a single value or a list
 	filter_status = ""

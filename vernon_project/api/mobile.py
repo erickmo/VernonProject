@@ -1225,6 +1225,49 @@ def get_dashboard():
 	}
 
 
+def _leader_projects_for(user):
+	"""Projects `user` owns, leads, or admins. Shared by get_priority_occupancy
+	and _can_see_user_work — the same "someone whose work I can already see"
+	predicate, one definition."""
+	names = set(
+		frappe.get_all("Project", filters={"project_owner": user}, pluck="name", limit_page_length=0)
+	)
+	names |= set(
+		frappe.get_all("Project", filters={"project_leader": user}, pluck="name", limit_page_length=0)
+	)
+	names |= set(
+		frappe.get_all(
+			"Project Admin User", filters={"user": user, "parentfield": "project_admins"},
+			pluck="parent", limit_page_length=0,
+		)
+	)
+	return names
+
+
+def _can_see_user_work(requester, target, leader_projects=None):
+	"""Whether `requester` may see `target`'s own work: themselves, System
+	Manager, or requester leads/owns/admins at least one project `target` is
+	involved in (a Project Team member, or has a todo assigned there) — the
+	same trust boundary get_priority_occupancy/PlanDeadlineDay already use to
+	show a leader their team's todos. NOT a role check: a leader with zero
+	shared projects with `target` gets refused same as anyone else."""
+	if target == requester or "System Manager" in frappe.get_roles(requester):
+		return True
+	if leader_projects is None:
+		leader_projects = _leader_projects_for(requester)
+	if not leader_projects:
+		return False
+	if frappe.db.exists("Project Team", {"parent": ["in", list(leader_projects)], "user": target}):
+		return True
+	detail_names = frappe.get_all(
+		"Project Detail", filters={"project": ["in", list(leader_projects)]},
+		pluck="name", limit_page_length=0,
+	)
+	return bool(detail_names and frappe.db.exists(
+		"Project Todo", {"assigned_to": target, "project_detail": ["in", detail_names]}
+	))
+
+
 @frappe.whitelist()
 def get_priority_occupancy(users, date):
 	"""Priority-slot occupancy for one or more users on one date.
@@ -1253,38 +1296,8 @@ def get_priority_occupancy(users, date):
 	target_date = getdate(date)
 
 	is_sm = "System Manager" in frappe.get_roles(requester)
-	leader_projects = set()
-	if not is_sm:
-		leader_projects |= set(
-			frappe.get_all("Project", filters={"project_owner": requester}, pluck="name", limit_page_length=0)
-		)
-		leader_projects |= set(
-			frappe.get_all("Project", filters={"project_leader": requester}, pluck="name", limit_page_length=0)
-		)
-		leader_projects |= set(
-			frappe.get_all(
-				"Project Admin User",
-				filters={"user": requester, "parentfield": "project_admins"},
-				pluck="parent", limit_page_length=0,
-			)
-		)
-
-	def _allowed(u):
-		if u == requester or is_sm:
-			return True
-		if not leader_projects:
-			return False
-		if frappe.db.exists("Project Team", {"parent": ["in", list(leader_projects)], "user": u}):
-			return True
-		detail_names = frappe.get_all(
-			"Project Detail", filters={"project": ["in", list(leader_projects)]},
-			pluck="name", limit_page_length=0,
-		)
-		return bool(detail_names and frappe.db.exists(
-			"Project Todo", {"assigned_to": u, "project_detail": ["in", detail_names]}
-		))
-
-	allowed_users = [u for u in users if _allowed(u)]
+	leader_projects = set() if is_sm else _leader_projects_for(requester)
+	allowed_users = [u for u in users if _can_see_user_work(requester, u, leader_projects)]
 	if not allowed_users:
 		return {}
 
