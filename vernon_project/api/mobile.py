@@ -561,11 +561,13 @@ def unregister_push_subscription(endpoint):
 def _involved_project_names(user):
 	"""Projects the user is involved in: owner / leader / admin, a Project Team
 	member, or assigned to any todo in the project."""
-	names = set()
-	for role_field in ("project_owner", "project_leader"):
-		names |= set(
-			frappe.get_all("Project", filters={role_field: user}, pluck="name", limit_page_length=0)
+	names = set(
+		frappe.get_all(
+			"Project",
+			or_filters=[["project_owner", "=", user], ["project_leader", "=", user]],
+			pluck="name", limit_page_length=0,
 		)
+	)
 	names |= set(
 		frappe.get_all(
 			"Project Admin User",
@@ -605,7 +607,7 @@ def _visible_projects(status=None):
 	return [n for n in allowed if n in involved]
 
 
-def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None):
+def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None, project_detail=None):
 	"""All todos (with project + work-item context) for the given projects.
 	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
 	(full status strings) to fetch only those — lets status-scoped callers like the
@@ -614,7 +616,9 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	just to filter them in Python (see get_recently_done). Pass `names` to fetch
 	specific todos by name (e.g. get_project_item wants exactly one) instead of
 	every sibling in the project — query cost then depends on len(names), not on
-	how many todos the project has."""
+	how many todos the project has. Pass `project_detail` to scope to one work
+	item's todos in SQL instead of fetching the whole project (see
+	get_project_detail) — same reasoning as `assigned_to`."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
@@ -632,6 +636,9 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	if names:
 		cond += " AND t.name IN %(names)s"
 		params["names"] = tuple(names)
+	if project_detail:
+		cond += " AND t.project_detail = %(project_detail)s"
+		params["project_detail"] = project_detail
 	return frappe.db.sql(
 		f"""
 		SELECT
@@ -1721,7 +1728,7 @@ def get_member_workload(project, user, include_completed=0):
 
 	include_completed = frappe.utils.cint(include_completed)
 	me = frappe.session.user
-	rows = [r for r in _fetch_todos([project]) if r["assigned_to"] == user]
+	rows = _fetch_todos([project], assigned_to=user)
 	name_map = _user_name_map({user})
 	alloc_map = _allocations_map([r["name"] for r in rows])
 	project_admins = get_project_admins(project)
@@ -2031,11 +2038,11 @@ def get_project_detail(project_detail, include_cancelled=0):
 	detail["latest_deadline"] = str(detail["latest_deadline"]) if detail.get("latest_deadline") else None
 	detail["project_deadline"] = str(detail["project_deadline"]) if detail.get("project_deadline") else None
 
-	rows = [
-		r
-		for r in _fetch_todos([detail["project"]], include_cancelled=frappe.utils.cint(include_cancelled))
-		if r["project_detail"] == project_detail
-	]
+	rows = _fetch_todos(
+		[detail["project"]],
+		include_cancelled=frappe.utils.cint(include_cancelled),
+		project_detail=project_detail,
+	)
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])
