@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast'
 import { useEvent, useRegisterEvent } from '@/hooks/useData'
 import { snapPay } from '@/lib/snap'
 import { sanitizeHtml } from '@/lib/format'
+import { eventPriceLabel } from '@/lib/eventPricing'
 
 export default function EventDetailScreen() {
   const { name: raw } = useParams()
@@ -58,9 +59,9 @@ export default function EventDetailScreen() {
     ? 'Joined'
     : ev.pricing === 'Free'
     ? 'Register'
-    : ev.pricing === 'Points'
-    ? `Register · ${ev.points_cost ?? 0} pts`
-    : `Pay Rp ${(ev.price ?? 0).toLocaleString('id-ID')}`
+    : ev.pricing === 'Rupiah'
+    ? `Pay ${eventPriceLabel(ev.pricing, ev)}`
+    : `Register · ${eventPriceLabel(ev.pricing, ev)}`
 
   return (
     <DetailScreen title={ev.title}>
@@ -122,7 +123,7 @@ export default function EventDetailScreen() {
                   <span className="block truncate text-sm font-semibold text-stone-800 dark:text-slate-50">{s.title}</span>
                   <span className="block truncate text-xs text-stone-500 dark:text-slate-400">
                     {new Date(s.start_datetime).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-                    {s.pricing === 'Free' ? ' · Free' : s.pricing === 'Points' ? ` · ${s.points_cost ?? 0} pts` : ` · Rp ${(s.price ?? 0).toLocaleString('id-ID')}`}
+                    {' · '}{eventPriceLabel(s.pricing, s)}
                   </span>
                 </span>
                 <span className="shrink-0 text-xs font-semibold text-brand-600">

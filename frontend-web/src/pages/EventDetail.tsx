@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast'
 import { useEvent, useRegisterEvent } from '@/hooks/useData'
 import { snapPay } from '@/lib/snap'
 import { sanitizeHtml } from '@/lib/format'
+import { eventPriceLabel } from '@/lib/eventPricing'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { Property, PropertyRow } from '@web/components/Property'
 
@@ -56,9 +57,9 @@ export default function EventDetail() {
     ? 'Joined'
     : ev.pricing === 'Free'
     ? 'Register'
-    : ev.pricing === 'Points'
-    ? `Register · ${ev.points_cost ?? 0} pts`
-    : `Pay Rp ${(ev.price ?? 0).toLocaleString('id-ID')}`
+    : ev.pricing === 'Rupiah'
+    ? `Pay ${eventPriceLabel(ev.pricing, ev)}`
+    : `Register · ${eventPriceLabel(ev.pricing, ev)}`
 
   return (
     <Page className="max-w-2xl">
@@ -88,7 +89,7 @@ export default function EventDetail() {
             <Property label="Location" icon={MapPin}>{ev.location}</Property>
           )}
           <Property label="Price">
-            {ev.pricing === 'Free' ? 'Free' : ev.pricing === 'Points' ? `${ev.points_cost ?? 0} pts` : `Rp ${(ev.price ?? 0).toLocaleString('id-ID')}`}
+            {eventPriceLabel(ev.pricing, ev)}
           </Property>
           <Property label="Registered" icon={Users}>
             {ev.registered_count}{ev.capacity ? ` / ${ev.capacity}` : ''}
@@ -125,7 +126,7 @@ export default function EventDetail() {
                   <span className="block truncate font-medium text-ink">{s.title}</span>
                   <span className="block truncate text-sm text-muted">
                     {new Date(s.start_datetime).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-                    {s.pricing === 'Free' ? ' · Free' : s.pricing === 'Points' ? ` · ${s.points_cost ?? 0} pts` : ` · Rp ${(s.price ?? 0).toLocaleString('id-ID')}`}
+                    {' · '}{eventPriceLabel(s.pricing, s)}
                   </span>
                 </span>
                 <span className="shrink-0 text-sm font-medium text-brand-600">

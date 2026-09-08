@@ -8,6 +8,7 @@ import { filterEvents, featuredUpcoming, eventCategories, type EventFilter } fro
 import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
 import type { EventItem, ManagedEvent } from '@/lib/types'
+import { eventPriceLabel } from '@/lib/eventPricing'
 
 type Tab = 'browse' | 'manage'
 const TABS: { value: Tab; label: string }[] = [
@@ -15,11 +16,7 @@ const TABS: { value: Tab; label: string }[] = [
   { value: 'manage', label: 'Manage' },
 ]
 
-function price(e: EventItem) {
-  if (e.pricing === 'Free') return 'Free'
-  if (e.pricing === 'Points') return `${e.points_cost ?? 0} pts`
-  return `Rp ${(e.price ?? 0).toLocaleString('id-ID')}`
-}
+const price = (e: EventItem) => eventPriceLabel(e.pricing, e)
 
 const fmtDate = (v: string) => new Date(v).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
 
