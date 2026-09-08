@@ -147,7 +147,12 @@ def respond(invite, response):
 		return {"status": "closed"}
 	row = next((r for r in doc.recipients if r.user == user), None)
 	if row is None:
-		# Link audience / forwarded link: first response self-enrolls.
+		# Self-enroll is a Link-invite feature (forwarded link, open recipient
+		# list) — 2026-09-08 permission sweep: this wasn't actually checked, so
+		# an uninvited user could self-enroll into a Specific/Internal/Project
+		# invite too, whose recipient list is supposed to be closed.
+		if doc.audience_type != "Link":
+			frappe.throw(_("You're not invited to this one."), frappe.PermissionError)
 		row = doc.append("recipients", {"user": user})
 	row.response = response
 	row.responded_at = now_datetime()

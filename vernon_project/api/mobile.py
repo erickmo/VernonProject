@@ -1735,8 +1735,20 @@ def get_project(project):
 
 @frappe.whitelist()
 def get_member_workload(project, user, include_completed=0):
-	"""One member's todos within a project. Open-only unless include_completed."""
+	"""One member's todos within a project. Open-only unless include_completed.
+
+	2026-09-08 permission sweep: checked the CALLER could see the project, but
+	never that `user` is actually a member of it — any project viewer could
+	pull any arbitrary user's per-todo breakdown within it."""
 	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+	proj = frappe.get_doc("Project", project)
+	is_member = (
+		user == proj.project_owner or user == proj.project_leader
+		or user in get_project_admins(proj)
+		or any(t.user == user for t in proj.team_members)
+	)
+	if not is_member:
 		frappe.throw("Not permitted", frappe.PermissionError)
 
 	include_completed = frappe.utils.cint(include_completed)

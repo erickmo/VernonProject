@@ -184,7 +184,12 @@ def user_with_role_query(doctype, txt, searchfield, start, page_len, filters):
 	project_leader (role=Project Leader) so the desk pickers can't offer a user
 	who lacks the role (mirrors Project.validate_lead_roles).
 	"""
+	# 2026-09-08 permission sweep: role was accepted from the caller with no
+	# allowlist, letting anyone enumerate holders of ANY role (e.g. "HR
+	# Manager"), not just the two this picker is actually wired for.
 	role = (filters or {}).get("role")
+	if role not in ("Project Owner", "Project Leader"):
+		return []
 	like = f"%{txt or ''}%"
 	return frappe.db.sql(
 		"""

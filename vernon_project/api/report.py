@@ -650,8 +650,16 @@ def assignment_overload_check(user, date, added_minutes):
 	ponytail: on self-reassign the todo's own virtual-default allocation is already counted in
 	`assigned`, so the estimate can double-count — acceptable for a soft warning; the UI only
 	shows it when the assignee actually changes. Session-authed (whitelist); returns aggregate
-	minutes only, no todo content."""
+	minutes only, no todo content.
+
+	Gated on _can_see_user_work (2026-09-08 permission sweep) — previously any
+	authenticated caller could pass another named employee's email and get
+	their real scheduled minutes + daily threshold, with no relationship
+	check at all."""
+	from vernon_project.api.mobile import _can_see_user_work
 	user = frappe.utils.cstr(user)
+	if not _can_see_user_work(frappe.session.user, user):
+		frappe.throw("You are not allowed to see this user's work.", frappe.PermissionError)
 	date = str(getdate(date))
 	added = frappe.utils.cint(added_minutes)
 	minimum = _resolve_min_minutes(user, date)

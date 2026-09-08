@@ -1191,11 +1191,14 @@ def has_permission(doc, ptype, user):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def assignable_users(doctype, txt, searchfield, start, page_len, filters):
+	"""Gated on Project read (2026-09-08 permission sweep) -- previously any
+	caller-supplied project_detail returned that project's team roster with
+	no check at all."""
 	project_detail = filters.get("project_detail")
 	if not project_detail:
 		return []
 	project = frappe.get_value("Project Detail", project_detail, "project")
-	if not project:
+	if not project or not frappe.has_permission("Project", "read", doc=project):
 		return []
 	users = frappe.get_all(
 		"Project Team",
