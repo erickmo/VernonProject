@@ -555,6 +555,82 @@ class TestPointLedgerCreatePermission(unittest.TestCase):
 		self.assertTrue(frappe.db.exists("Point Ledger", doc.name))
 
 
+class TestLeaderboard(unittest.TestCase):
+	"""get_leaderboard() ranks purely from the SQL query (order by points desc, user
+	asc) — shape()/badge computation must never change WHO is returned or in what
+	order, only decorate. Regression for the 2026-09-08 perf fix that stopped
+	computing badge points for every ranked user instead of just the returned ones.
+
+	Runs against the live site (no test DB here), so fixture points can't be a
+	small fixed number — real users may already outrank it. A/B get astronomically
+	high, guaranteed-top-2 totals. C is pinned to just below whatever the live
+	50th-place cutoff actually is right now, so it lands outside the returned top
+	50 — the exact case the fix must still resolve `me` for."""
+
+	A = "lb_a@example.com"
+	B = "lb_b@example.com"
+	C = "lb_c@example.com"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		for email in (self.A, self.B, self.C):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({
+					"doctype": "User", "email": email, "first_name": email.split("@")[0],
+					"send_welcome_email": 0,
+				}).insert(ignore_permissions=True)
+		frappe.db.delete("Point Ledger", {"user": ["in", (self.A, self.B, self.C)]})
+
+		from vernon_project.api.mobile import get_leaderboard
+		baseline = get_leaderboard(period="all")
+		cutoff = baseline["entries"][-1]["points"] if len(baseline["entries"]) >= 50 else 0
+		self.c_points = max(1, int(cutoff) - 1)
+		self.expect_c_outside_top_50 = len(baseline["entries"]) >= 50
+
+		for email, pts in ((self.A, 999_999_999), (self.B, 999_999_998), (self.C, self.c_points)):
+			frappe.get_doc({
+				"doctype": "Point Ledger", "user": email, "points_earned": pts,
+				"point": pts, "source": "Todo", "credited_on": frappe.utils.now(),
+			}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Point Ledger", {"user": ["in", (self.A, self.B, self.C)]})
+		frappe.db.commit()
+
+	def test_entries_ranked_by_points_desc(self):
+		from vernon_project.api.mobile import get_leaderboard
+		r = get_leaderboard(period="all")
+		by_user = {e["user"]: e for e in r["entries"]}
+		self.assertIn(self.A, by_user)
+		self.assertIn(self.B, by_user)
+		self.assertEqual(by_user[self.A]["rank"], 1)
+		self.assertEqual(by_user[self.B]["rank"], 2)
+		self.assertEqual(by_user[self.A]["points"], 999_999_999)
+		self.assertEqual(by_user[self.A]["full_name"], self.A.split("@")[0])
+		self.assertIn("badge", by_user[self.A])
+		if self.expect_c_outside_top_50:
+			self.assertNotIn(self.C, by_user)
+
+	def test_me_resolves_for_the_calling_user_even_outside_top_50(self):
+		from vernon_project.api.mobile import get_leaderboard
+		frappe.set_user(self.C)
+		try:
+			r = get_leaderboard(period="all")
+		finally:
+			frappe.set_user("Administrator")
+		self.assertIsNotNone(r["me"])
+		self.assertEqual(r["me"]["user"], self.C)
+		self.assertEqual(r["me"]["points"], self.c_points)
+		if self.expect_c_outside_top_50:
+			self.assertGreater(r["me"]["rank"], 50)
+			self.assertNotIn(self.C, {e["user"] for e in r["entries"]})
+		else:
+			matching = next(e for e in r["entries"] if e["user"] == self.C)
+			self.assertEqual(r["me"]["rank"], matching["rank"])
+
+
 class TestTeamWall(unittest.TestCase):
 	def setUp(self):
 		self.enabled_user = "team_wall_enabled@example.com"

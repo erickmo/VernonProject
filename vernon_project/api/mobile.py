@@ -3231,6 +3231,36 @@ def _user_badge(user):
 	return None
 
 
+def _user_badges_batch(users):
+	"""_user_badge for many users at once — one query for the whole set instead of
+	one per user. Same lifetime metric/tier logic as _user_badge/_badge_points,
+	just not re-run per row (see get_leaderboard)."""
+	users = list(users)
+	if not users:
+		return {}
+	rows = frappe.db.sql("""
+		select user, coalesce(sum(points_earned), 0) as pts
+		from `tabPoint Ledger`
+		where user in %(users)s
+		and source not in ('Grant','Gift','Daily','Reward','Achievement')
+		group by user
+	""", {"users": tuple(users)}, as_dict=True)
+	points = {r.user: float(r.pts) for r in rows}
+	s = _gami_settings()
+	tiers = [a for a in (s.achievements or []) if a.is_tier]
+	tiers.sort(key=lambda a: float(a.threshold or 0), reverse=True)
+	out = {}
+	for u in users:
+		pts = points.get(u, 0.0)
+		badge = None
+		for t in tiers:
+			if pts >= float(t.threshold or 0):
+				badge = {"tier_name": t.title, "color": t.color, "icon": t.icon}
+				break
+		out[u] = badge
+	return out
+
+
 @frappe.whitelist()
 def get_badge_settings():
 	"""All configured badge tiers for the admin editor (System Manager only).
@@ -4084,7 +4114,24 @@ def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 	"""
 	ranked = frappe.db.sql(sql, params, as_dict=True)
 
-	name_map = _user_name_map([r["user"] for r in ranked])
+	# Rank/order is fully decided by the query above (ORDER BY points desc, user
+	# asc) — everything below this line only DECORATES the top 50 (+ the caller's
+	# own row, wherever it falls). Only ~51 rows ever need a name/badge lookup, not
+	# the whole ranked pool — see the 2026-09-08 perf audit (58 queries for 6
+	# returned rows before this fix).
+	caller = frappe.session.user
+	top = ranked[:50]
+	caller_row, caller_rank = None, None
+	for i, row in enumerate(ranked):
+		if row["user"] == caller:
+			caller_row, caller_rank = row, i + 1
+			break
+
+	needed_users = {r["user"] for r in top}
+	if caller_row:
+		needed_users.add(caller_row["user"])
+	name_map = _user_name_map(list(needed_users))
+	badge_map = _user_badges_batch(needed_users)
 
 	def shape(row, rank):
 		info = name_map.get(row["user"], {})
@@ -4095,17 +4142,11 @@ def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 			"avatar_config": info.get("avatar_config"),
 			"points": float(row["points"]),
 			"rank": rank,
-			"badge": _user_badge(row["user"]),
+			"badge": badge_map.get(row["user"]),
 		}
 
-	entries, me = [], None
-	caller = frappe.session.user
-	for i, row in enumerate(ranked):
-		shaped = shape(row, i + 1)
-		if i < 50:
-			entries.append(shaped)
-		if row["user"] == caller:
-			me = shaped
+	entries = [shape(row, i + 1) for i, row in enumerate(top)]
+	me = shape(caller_row, caller_rank) if caller_row else None
 
 	brands = [b["brand_name"] for b in frappe.get_all("Brand", fields=["brand_name"], order_by="brand_name asc")]
 
