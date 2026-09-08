@@ -15,10 +15,18 @@ import frappe
 
 
 def _scheduled(d, cadence, weekdays):
-	"""Is habit scheduled on date d? weekdays = set of ints 0=Mon..6=Sun."""
+	"""Is habit scheduled on date d? weekdays = set of ints 0=Mon..6=Sun.
+
+	Enum-drift audit finding: the old bare else treated any cadence that
+	wasn't "Daily" as "Weekdays" — Habit.cadence only has those two values
+	today, so it's dormant, but a third cadence added later would silently
+	fire (or skip) a reminder on the wrong days. An unrecognized cadence now
+	means "don't know when this runs" — no reminder rather than a guessed one."""
 	if cadence == "Daily":
 		return True
-	return d.weekday() in weekdays
+	if cadence == "Weekdays":
+		return d.weekday() in weekdays
+	return False
 
 
 def _streak(log_dates, cadence, weekdays, today):
@@ -89,6 +97,12 @@ def demo():
 	assert _parse_weekdays([0, 2, 4]) == [0, 2, 4]
 	assert _parse_weekdays("") == []
 	assert _parse_weekdays("9,x,3") == [3]
+	# _scheduled: Daily always fires; Weekdays checks the day; an unrecognized
+	# cadence must not silently fall into the Weekdays branch (enum-drift guard).
+	assert _scheduled(D(2026, 7, 27), "Daily", set()) is True  # Monday, no weekdays needed
+	assert _scheduled(D(2026, 7, 27), "Weekdays", {0, 2, 4}) is True  # Monday, in set
+	assert _scheduled(D(2026, 7, 28), "Weekdays", {0, 2, 4}) is False  # Tuesday, not in set
+	assert _scheduled(D(2026, 7, 27), "Some Future Cadence", {0, 2, 4}) is False
 	print("habit _streak self-check OK")
 
 
