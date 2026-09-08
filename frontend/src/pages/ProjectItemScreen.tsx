@@ -2014,6 +2014,9 @@ const [followOpen, setFollowOpen] = useState(false)
             setFollowOpen(false)
             setIssueOpen(false)
           }}
+          // Duplicate opens the new card so the user lands on what they just made,
+          // not back on the source they duplicated from (gltkdnqu1f).
+          onCreated={dupOpen ? (name) => navigate(`/project-item/${encodeURIComponent(name)}`) : undefined}
           projectDetail={data.project_detail}
           team={
             data.team.some((m) => m.user === data.assigned_to)
