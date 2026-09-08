@@ -18,6 +18,7 @@ const ROUTES = {
   exceptionApprovals: '/attendance/my-approvals',
   myExceptions: '/attendance/my-requests',
   hrExceptions: '/attendance/exceptions',
+  teguran: '/attendance/teguran',
 }
 
 function TabChip({

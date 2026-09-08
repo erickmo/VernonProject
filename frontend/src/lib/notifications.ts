@@ -45,6 +45,11 @@ export interface DeepLinkRoutes {
   myExceptions: string
   /** HR's inbox — the only screen that can actually decide a cuti. */
   hrExceptions: string
+  /** The recipient's own Teguran list. Every Teguran notification (new/acknowledged/
+   * SP-eligible) lands here regardless of which of the three it is — issuer/HR can
+   * always reach the admin list from the HR menu, but the employee who just got one
+   * has no other way in. */
+  teguran: string
 }
 
 /**
@@ -89,6 +94,8 @@ export function deepLink(n: AppNotification, routes: DeepLinkRoutes): string {
       return routes.myExceptions
     case 'Food Invite':
       return name ? `/food/${enc}` : '/'
+    case 'Teguran':
+      return routes.teguran
     default:
       return '/'
   }

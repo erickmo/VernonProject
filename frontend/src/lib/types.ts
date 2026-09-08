@@ -1375,6 +1375,28 @@ export type CutiLedgerResponse = {
   summary: LeaveBalance
 }
 
+export type TeguranKategori = 'Keterlambatan' | 'Absen Tanpa Izin' | 'Kinerja' | 'Perilaku' | 'Lainnya'
+export type TeguranStatus = 'Diterbitkan' | 'Diakui' | 'Dibatalkan'
+
+// One HR warning-before-SP record (api.teguran). Content fields are immutable
+// once issued — only status/tanggapan_karyawan/diakui_pada/alasan_pembatalan
+// change after creation, via akui_teguran/batalkan_teguran.
+export type TeguranRow = {
+  name: string
+  karyawan: string
+  tanggal: string
+  kategori_pelanggaran: TeguranKategori
+  deskripsi: string
+  bukti: string | null
+  diberikan_oleh: string
+  status: TeguranStatus
+  tanggapan_karyawan: string | null
+  diakui_pada: string | null
+  alasan_pembatalan: string | null
+  sp_eligible: 0 | 1
+  creation: string
+}
+
 // Admin view adds the sensitive fields:
 export type EmployeeProfileAdmin = EmployeeSoft & {
   full_name?: string;

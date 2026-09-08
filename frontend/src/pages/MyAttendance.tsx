@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { QrCode, CalendarPlus, ClipboardCheck, FileText, Inbox, Tag, Scale, Clock } from 'lucide-react'
+import { QrCode, CalendarPlus, ClipboardCheck, FileText, Inbox, Tag, Scale, Clock, AlertTriangle } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useMyAttendance, useBoot, canHrApprove } from '@/hooks/useData'
@@ -55,6 +55,12 @@ export default function MyAttendance() {
         >
           <Clock className="h-5 w-5" /> Lembur
         </button>
+        <button
+          onClick={() => navigate('/teguran')}
+          className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
+        >
+          <AlertTriangle className="h-5 w-5" /> Teguran Saya
+        </button>
         {/* HR's own way in. The /attendance/manage hub is System-Manager-gated,
             so without this an HR Manager could only reach the inbox from a
             notification — unreachable once that notification is read. */}
@@ -80,6 +86,14 @@ export default function MyAttendance() {
             className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
           >
             <Scale className="h-5 w-5" /> HR · Penyesuaian Cuti
+          </button>
+        )}
+        {canHrApprove(boot) && (
+          <button
+            onClick={() => navigate('/teguran-admin')}
+            className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-paper-card py-3 font-semibold text-stone-700 shadow-card active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100"
+          >
+            <AlertTriangle className="h-5 w-5" /> HR · Teguran
           </button>
         )}
       </div>

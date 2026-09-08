@@ -102,6 +102,8 @@ import ExceptionApprovals from './pages/ExceptionApprovals'
 import MyExceptions from './pages/MyExceptions'
 import CutiLedgerScreen from './pages/CutiLedgerScreen'
 import CutiLedgerAdminScreen from './pages/CutiLedgerAdminScreen'
+import TeguranScreen from './pages/TeguranScreen'
+import TeguranAdminScreen from './pages/TeguranAdminScreen'
 import OvertimeScreen from './pages/OvertimeScreen'
 import RecruitmentOpeningsScreen from './pages/RecruitmentOpeningsScreen'
 import RecruitmentOpeningFormScreen from './pages/RecruitmentOpeningFormScreen'
@@ -369,11 +371,13 @@ export default function App() {
         <Route path="/attendance/my-requests" element={<MyExceptions />} />
         <Route path="/cuti-ledger" element={<CutiLedgerScreen />} />
         <Route path="/lembur" element={<OvertimeScreen />} />
+        <Route path="/teguran" element={<TeguranScreen />} />
         {canHrApprove(boot) && (
           <>
             <Route path="/attendance/manage/exceptions" element={<AttendanceExceptionsScreen />} />
             <Route path="/attendance/manage/leave-types" element={<LeaveTypesAdmin />} />
             <Route path="/cuti-ledger-admin" element={<CutiLedgerAdminScreen />} />
+            <Route path="/teguran-admin" element={<TeguranAdminScreen />} />
           </>
         )}
         {canManageAttendance(boot) && (

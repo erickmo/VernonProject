@@ -53,6 +53,7 @@ const WORK: NavLeaf[] = [
   { to: '/attendance/my-requests', label: 'My leave/WFH', sub: 'Your requests & status', icon: FileText },
   { to: '/attendance/cuti', label: 'Riwayat Cuti', sub: 'Saldo & histori cuti', icon: History },
   { to: '/attendance/overtime', label: 'Lembur', sub: 'Jam lembur & status', icon: Clock },
+  { to: '/attendance/teguran', label: 'Teguran Saya', sub: 'Riwayat peringatan Anda', icon: ShieldAlert },
   { to: '/learn', label: 'Learn', sub: 'Courses & progress', icon: BookOpen, match: '/learn' },
 ]
 
@@ -146,6 +147,7 @@ export function buildNavGroups(b: Parameters<typeof canManageUsers>[0]): NavGrou
   ] : []
   // HR gets the cuti inbox without the rest of attendance admin.
   if (canHrApprove(b)) {
+    att.unshift({ to: '/attendance/teguran-admin', label: 'Teguran', sub: 'Peringatan sebelum SP', icon: ShieldAlert })
     att.unshift({ to: '/attendance/cuti-admin', label: 'Penyesuaian Cuti', sub: 'Saldo cuti & koreksi', icon: Scale })
     att.unshift({ to: '/attendance/leave-types', label: 'Leave Types', sub: 'Kategori & batas cuti', icon: CalendarDays })
     att.unshift({ to: '/attendance/exceptions', label: 'Leave/WFH', sub: 'HR final approval', icon: Inbox })

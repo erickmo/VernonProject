@@ -118,6 +118,8 @@ import RequestException from '@web/pages/RequestException'
 import MyExceptions from '@web/pages/MyExceptions'
 import CutiLedger from '@web/pages/CutiLedger'
 import CutiLedgerAdmin from '@web/pages/CutiLedgerAdmin'
+import Teguran from '@web/pages/Teguran'
+import TeguranAdmin from '@web/pages/TeguranAdmin'
 import Overtime from '@web/pages/Overtime'
 import Kiosk from '@web/pages/Kiosk'
 import Achievements from '@web/pages/Achievements'
@@ -396,9 +398,11 @@ export default function App() {
           <Route path="/attendance/my-requests" element={<MyExceptions />} />
           <Route path="/attendance/cuti" element={<CutiLedger />} />
           <Route path="/attendance/overtime" element={<Overtime />} />
+          <Route path="/attendance/teguran" element={<Teguran />} />
           {canHrApprove(b) && <Route path="/attendance/exceptions" element={<Exceptions />} />}
           {canHrApprove(b) && <Route path="/attendance/leave-types" element={<LeaveTypesAdmin />} />}
           {canHrApprove(b) && <Route path="/attendance/cuti-admin" element={<CutiLedgerAdmin />} />}
+          {canHrApprove(b) && <Route path="/attendance/teguran-admin" element={<TeguranAdmin />} />}
           <Route path="/me" element={<Me onReplayOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/me/info" element={<MyInfo />} />

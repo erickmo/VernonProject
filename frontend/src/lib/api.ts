@@ -776,6 +776,28 @@ export const mobileApi = {
       employee,
       year,
     }),
+  // Teguran — HR warning before a Surat Peringatan.
+  getTeguranSaya: () => api.get<import('./types').TeguranRow[]>('vernon_project.api.teguran.get_teguran_saya'),
+  getTeguranAll: () => api.get<import('./types').TeguranRow[]>('vernon_project.api.teguran.get_teguran_all'),
+  terbitkanTeguran: (
+    karyawan: string,
+    kategori_pelanggaran: import('./types').TeguranKategori,
+    deskripsi: string,
+    tanggal?: string,
+  ) =>
+    api.post<{ name: string }>('vernon_project.api.teguran.terbitkan_teguran', {
+      karyawan,
+      kategori_pelanggaran,
+      deskripsi,
+      ...(tanggal ? { tanggal } : {}),
+    }),
+  akuiTeguran: (name: string, tanggapan?: string) =>
+    api.post<{ status: string }>('vernon_project.api.teguran.akui_teguran', {
+      name,
+      ...(tanggapan ? { tanggapan } : {}),
+    }),
+  batalkanTeguran: (name: string, alasan_pembatalan: string) =>
+    api.post<{ status: string }>('vernon_project.api.teguran.batalkan_teguran', { name, alasan_pembatalan }),
   attendanceReport: (filters: {
     from_date: string
     to_date: string
