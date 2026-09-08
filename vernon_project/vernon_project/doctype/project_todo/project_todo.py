@@ -601,7 +601,15 @@ class ProjectTodo(Document):
 		self._recompute_parent()
 
 	def on_change(self):
-		old = self.get_doc_before_save()
+		# get_old_doc(), not the raw get_doc_before_save(): on_change also fires
+		# during delete_doc (before the row is actually removed), where
+		# get_doc_before_save() is always None regardless of whether the status
+		# just changed -- get_old_doc()'s DB-read fallback returns this row's own
+		# (unchanged) current state instead, so prev_state == self.status and the
+		# mint below is correctly skipped. Today that path is unreachable anyway
+		# (on_trash throws first unless status is Planned/Cancelled), but this
+		# doesn't depend on that business rule staying true.
+		old = self.get_old_doc()
 		prev_state = old.status if old else None
 		if prev_state != self.status:
 			self._recompute_parent()
