@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks, Bot, Target, Eye,
+  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks, Bot, Target, Eye, Reply,
 } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
@@ -136,6 +136,13 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   // Any AI phase keeps the cyan card; the chip carries WHICH phase (see AI_PHASES).
   const aiPhase = aiPhaseOf(todo)
   const isAI = aiPhase > 0
+  // Reject is unavailable for AI-tagged work (ujkfag8r5v) — offer the follow-up
+  // flow in its place, but only where Reject would otherwise have been offered.
+  const followUpInstead =
+    !todo.can_reject &&
+    (todo.is_owner || todo.is_leader) &&
+    (todo.work_mode === 'AI' || todo.work_mode === 'Both') &&
+    (todo.status_key === 'done' || todo.status_key === 'checked')
   const onToggleToday = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     if (setAlloc.isPending) return
@@ -360,7 +367,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
         )}
       </div>
 
-      {((todo.can_advance && todo.next_status_label) || todo.can_reject || todo.can_undo) && (
+      {((todo.can_advance && todo.next_status_label) || todo.can_reject || todo.can_undo || followUpInstead) && (
         <div className="mt-3 flex gap-2 border-t border-paper-edge dark:border-slate-800 pt-3">
           {todo.can_reject && (
             <span
@@ -370,6 +377,19 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
             >
               <X className="h-4 w-4" />
               Reject
+            </span>
+          )}
+          {/* AI-tagged todos can't be rejected (ujkfag8r5v) — offer the existing
+              follow-up flow (same dialog the ⋮ menu's "Minta orang lain cek…" opens)
+              in the same spot instead of leaving no action at all. */}
+          {followUpInstead && (
+            <span
+              onClick={() => navigate(`/project-item/${encodeURIComponent(todo.name)}?check=1`)}
+              role="button"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/15 py-2.5 text-sm font-semibold text-teal-700 dark:text-teal-300 transition active:bg-teal-100 dark:active:bg-teal-500/20"
+            >
+              <Reply className="h-4 w-4" />
+              Buat Follow Up
             </span>
           )}
           {todo.can_undo && (

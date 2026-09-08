@@ -304,6 +304,15 @@ def reject_status(todo_id, reason=None):
 		if user not in [project_leader, project_owner]:
 			return {"status": "error", "message": f"You do not have permission to reject this todo (only Project Owner {project_owner} or Project Leader {project_leader})."}
 
+		# AI-tagged work isn't rejected — raise a follow-up todo instead (ujkfag8r5v).
+		# Checked after the permission gate so an unauthorised user still gets that
+		# message, not this one.
+		if todo.work_mode in AI_WORK_MODES:
+			return {
+				"status": "error",
+				"message": "Todo bertanda AI tidak bisa ditolak — buat Follow Up.",
+			}
+
 		todo.status = "⚪️ Planned"
 		todo.rejection_reason = reason
 		todo.rejected_by = user

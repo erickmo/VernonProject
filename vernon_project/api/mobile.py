@@ -14,7 +14,7 @@ from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff,
 from vernon_project.vernon_project.doctype.employee_profile.employee_profile import _ensure_employee_profile
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 # project_todo imports mobile only inside functions, so this top-level import is safe.
-from vernon_project.api.project_todo import AI_PHASE_NAMES, ai_phase, can_use_ai
+from vernon_project.api.project_todo import AI_PHASE_NAMES, AI_WORK_MODES, ai_phase, can_use_ai
 from vernon_project.api.external_calendar import visible_events
 
 # --------------------------------------------------------------------------------
@@ -185,15 +185,18 @@ def _can_advance(status_key, project, user, assigned_to):
 	return False
 
 
-def _can_reject(status_key, project, user):
+def _can_reject(status_key, project, user, work_mode=None):
 	"""Mirror vernon_project.api.project_todo.reject_status. Reject is offered
 	only at the review stages (done -> awaiting leader, checked -> awaiting
-	owner); Owner or Leader may reject; Admin never."""
+	owner); Owner or Leader may reject; Admin never; AI-tagged work never
+	(ujkfag8r5v — a Follow Up todo is raised instead)."""
 	owner = project.get("project_owner")
 	leader = project.get("project_leader")
 	admins = project.get("admins") or []
 
 	if user in admins:
+		return False
+	if work_mode in AI_WORK_MODES:
 		return False
 	if status_key in ("done", "checked"):
 		return user in (owner, leader)
@@ -796,7 +799,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"admins": admins or [],
 	}
 	can_advance = skey != "completed" and _can_advance(skey, project, user, row["assigned_to"])
-	can_reject = _can_reject(skey, project, user)
+	can_reject = _can_reject(skey, project, user, row.get("work_mode"))
 	can_undo = _can_undo(skey, row, user)
 	# Who may create a todo in this project (mirrors can_create on Project Detail +
 	# validate_create_permission): SM / owner / leader / project admin. Drives the
