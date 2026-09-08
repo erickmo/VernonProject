@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build --base=/assets/vernon_project/frontend/ && npm run copy-html",
     "preview": "vite preview",
-    "copy-html": "node ./copy-html.mjs"
+    "copy-html": "node ./copy-html.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dicebear/collection": "^9.0.0",
@@ -37,6 +39,7 @@
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",
-    "vite-plugin-pwa": "^0.20.1"
+    "vite-plugin-pwa": "^0.20.1",
+    "vitest": "^2.0.5"
   }
 }
