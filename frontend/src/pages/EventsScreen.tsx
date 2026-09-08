@@ -6,14 +6,12 @@ import { EmptyState, FullScreenLoader, Pill, Segmented } from '@/components/ui'
 import { useEvents, useManagedEvents } from '@/hooks/useData'
 import { filterEvents, featuredUpcoming, eventCategories, type EventFilter } from '@/lib/events'
 import type { EventItem } from '@/lib/types'
+import { eventPriceLabel } from '@/lib/eventPricing'
 
 type Tab = 'browse' | 'manage'
 
-function priceLabel(e: { pricing: string; points_cost?: number; price?: number }) {
-  if (e.pricing === 'Free') return 'Free'
-  if (e.pricing === 'Points') return `${e.points_cost ?? 0} pts`
-  return `Rp ${(e.price ?? 0).toLocaleString('id-ID')}`
-}
+const priceLabel = (e: { pricing: string; points_cost?: number; price?: number }) =>
+  eventPriceLabel(e.pricing, e)
 
 const fmtDate = (v: string) => new Date(v).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
 
