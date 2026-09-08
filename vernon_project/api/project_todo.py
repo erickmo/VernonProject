@@ -7,7 +7,12 @@ from vernon_project.vernon_project.doctype.project.project import get_project_ad
 
 @frappe.whitelist()
 def get_notes(todo_id):
-	"""Fetch notes for a specific Project Todo (accessible by all logged-in users)."""
+	"""Fetch notes for a specific Project Todo. Gated on todo read (same audience
+	as list_todo_files/download_todo_file) — whoever can see the todo (assignee,
+	project owner/leader/admin, team member, or System Manager), not the
+	narrower assignee/owner/leader/creator set save_notes requires to write."""
+	if not frappe.has_permission("Project Todo", "read", doc=todo_id):
+		frappe.throw("You are not allowed to read this todo.", frappe.PermissionError)
 	notes = frappe.db.get_value('Project Todo', todo_id, 'notes')
 	return {'notes': notes or ''}
 
@@ -884,6 +889,8 @@ def list_todo_files(todo_id):
 	todo can list its files; downloading a private file is separately enforced by
 	Frappe via attached_to permissions."""
 	frappe.get_doc("Project Todo", todo_id)  # 404 if the todo is gone
+	if not frappe.has_permission("Project Todo", "read", doc=todo_id):
+		frappe.throw("You are not allowed to read this todo.", frappe.PermissionError)
 	return frappe.get_all(
 		"File",
 		filters={"attached_to_doctype": "Project Todo", "attached_to_name": todo_id},

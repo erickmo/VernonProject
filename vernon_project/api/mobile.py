@@ -3307,8 +3307,17 @@ def save_badge_settings(tiers):
 
 @frappe.whitelist()
 def get_app_settings():
+	"""Boot-time app config — called unconditionally by every signed-in user, so
+	most fields here are meant to be public (branding, thresholds, banners).
+	Two fields are NOT: prank_target_users would spoil "Kejutan Foto" and name
+	who's targeted, and all_users (its only stated purpose is the prank-target
+	picker) is a full active-user directory nobody but a settings manager needs
+	from this endpoint. Both are gated below; save_app_settings (the write
+	side) already required _require_settings_manager — this just matches it."""
 	def g(field):
 		return frappe.db.get_single_value("Vernon Settings", field)
+
+	is_settings_manager = {"System Manager", "Group Manager"} & set(frappe.get_roles())
 
 	return {
 		"app_logo": g("app_logo") or "",
@@ -3347,22 +3356,30 @@ def get_app_settings():
 		"overtime_bonus_enabled": int(g("overtime_bonus_enabled") or 0),
 		"overtime_bonus_threshold_minutes": int(g("overtime_bonus_threshold_minutes") or 0),
 		"prank_photo_enabled": int(g("prank_photo_enabled") or 0),
-		"prank_target_users": frappe.parse_json(g("prank_target_users") or "[]") or [],
+		"prank_target_users": (
+			frappe.parse_json(g("prank_target_users") or "[]") or []
+			if is_settings_manager else []
+		),
 		"prank_start_hour": int(g("prank_start_hour") or 9),
 		"prank_end_hour": int(g("prank_end_hour") or 17),
 		"prank_interval_minutes": int(g("prank_interval_minutes") or 60),
 		# Options for the prank target picker: every enabled user — System AND Website
 		# users (most app members are Website users), minus the built-in accounts.
-		"all_users": [
-			{"value": u.name, "label": u.full_name or u.name}
-			for u in frappe.get_all(
-				"User",
-				filters={"enabled": 1},
-				fields=["name", "full_name"],
-				order_by="full_name asc",
-			)
-			if u.name not in ("Administrator", "Guest")
-		],
+		# Settings-manager only: this is a full active-user directory, and picking
+		# prank targets is the only reason any caller needs it from this endpoint.
+		"all_users": (
+			[
+				{"value": u.name, "label": u.full_name or u.name}
+				for u in frappe.get_all(
+					"User",
+					filters={"enabled": 1},
+					fields=["name", "full_name"],
+					order_by="full_name asc",
+				)
+				if u.name not in ("Administrator", "Guest")
+			]
+			if is_settings_manager else []
+		),
 		"home_banners": [
 			{"image": b.image, "link": b.link or "", "is_active": int(b.is_active or 0)}
 			for b in frappe.get_single("Vernon Settings").get("home_banners") or []
