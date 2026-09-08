@@ -291,7 +291,7 @@ export function aiPhaseOf(t: ProjectItem): AiPhase {
  * by-project column tag filter on the dashboard (both frontends). Turning all three
  * AI tags on reproduces the old single "AI" filter, since 'on' tags are OR-ed.
  */
-export type TodoTag = 'untagged' | 'focus' | 'ai1' | 'ai2' | 'ai3' | 'to_check'
+export type TodoTag = 'untagged' | 'focus' | 'ai1' | 'ai2' | 'ai3' | 'to_check' | 'follow_up'
 
 export const TODO_TAGS: { value: TodoTag; label: string }[] = [
   { value: 'untagged', label: 'Untagged' },
@@ -300,6 +300,7 @@ export const TODO_TAGS: { value: TodoTag; label: string }[] = [
   { value: 'ai2', label: 'AI 2 · Draf' },
   { value: 'ai3', label: 'AI 3 · Siap' },
   { value: 'to_check', label: 'To Check' },
+  { value: 'follow_up', label: 'Follow Up' },
 ]
 
 /** `focusedIds` = task ids with a live focus timer (useFocusedTaskIds). */
@@ -315,8 +316,10 @@ export function todoHasTag(t: ProjectItem, tag: TodoTag, focusedIds: Set<string>
       return aiPhaseOf(t) === 3
     case 'to_check':
       return !!t.to_check
+    case 'follow_up':
+      return !!t.is_follow_up
     case 'untagged':
-      return !focusedIds.has(t.name) && aiPhaseOf(t) === 0 && !t.to_check
+      return !focusedIds.has(t.name) && aiPhaseOf(t) === 0 && !t.to_check && !t.is_follow_up
   }
 }
 

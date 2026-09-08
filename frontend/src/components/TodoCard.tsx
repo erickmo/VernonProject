@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks, Bot, Target, Eye,
+  AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks, Bot, Target, Eye, Reply,
 } from 'lucide-react'
 import { STATUS } from '@/lib/status'
 import { formatEstimate, todayISO } from '@/lib/format'
@@ -213,6 +213,11 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
           {todo.to_check && (
             <span title="To Check" aria-label="To Check" className="mb-1.5 mr-1.5 inline-flex items-center justify-center rounded-md bg-rose-500 p-1 text-white shadow-sm dark:bg-rose-500">
               <Eye className="h-4 w-4" />
+            </span>
+          )}
+          {todo.is_follow_up && (
+            <span title="Follow Up" aria-label="Follow Up" className="mb-1.5 mr-1.5 inline-flex items-center justify-center rounded-md bg-teal-500 p-1 text-white shadow-sm dark:bg-teal-500">
+              <Reply className="h-4 w-4" />
             </span>
           )}
           {showProject && (

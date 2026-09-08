@@ -614,7 +614,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check, t.ai_prompt_confirmed,
+			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check, t.ai_prompt_confirmed, t.is_follow_up,
 			(t.ai_prompt IS NOT NULL AND t.ai_prompt NOT IN ('', '[]')) AS has_ai_prompt,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at, t.issue_of,
@@ -869,6 +869,7 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 			row.get("work_mode") or "", bool(row.get("has_ai_prompt")), bool(row.get("ai_prompt_confirmed"))
 		),
 		"to_check": bool(row.get("to_check")),
+		"is_follow_up": bool(row.get("is_follow_up")),
 		# Issue links. `issue_of` = this task is an issue raised on that task;
 		# `open_issues` = issues raised on THIS task that aren't resolved yet.
 		# .get() because some callers build rows without the issue columns.
