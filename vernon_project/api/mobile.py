@@ -85,7 +85,28 @@ NEXT_LABEL = {
 
 
 def _status_key(status):
-	return STATUS_KEY.get(status, "planned")
+	"""Map a raw Project Todo.status string to its short key. Falls back to
+	"unknown" rather than "planned" for an unrecognized status (enum-drift
+	audit finding #4) — "planned" is a real, permission-granting state, so
+	defaulting to it would have silently treated a future 6th status as
+	freshly Planned for every consumer of status_key: approval gates
+	(_can_advance, _can_reject), review-queue filters, point-timing logic. Every
+	one of those does an exact `== "planned"` / `in (...)` check with no bare
+	else, so "unknown" falls through to their existing deny-by-default branch
+	instead — the ladder fails closed, not into a state it was never in.
+	Logged (not raised): this runs on every list/dashboard render, so throwing
+	would turn one bad row into a broken page for everyone."""
+	key = STATUS_KEY.get(status)
+	if key is not None:
+		return key
+	frappe.log_error(
+		title="Unrecognized Project Todo status",
+		message=f"_status_key() got a status not in STATUS_KEY: {status!r}. "
+		"This todo will read as status_key='unknown' everywhere (denied by "
+		"every permission gate, not shown in any status-specific list) until "
+		"STATUS_KEY is updated for this value.",
+	)
+	return "unknown"
 
 
 def is_issue_resolved(status):
