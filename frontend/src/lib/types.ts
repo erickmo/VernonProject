@@ -54,6 +54,7 @@ export type NotificationType =
   | 'Billboard'
   | 'Learning'
   | 'Food Invite'
+  | 'Warning'
 
 export interface AppNotification {
   name: string
