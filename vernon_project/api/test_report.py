@@ -970,7 +970,10 @@ class _TeamReportFixture(unittest.TestCase):
 			for name in frappe.get_all("Project Todo", filters={"project_detail": d.name}, pluck="name"):
 				frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
 				frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True)
+			grouping = d.grouping
 			frappe.delete_doc("Project Detail", d.name, ignore_permissions=True, force=True)
+			if grouping and frappe.db.exists("Glossary", grouping):
+				frappe.delete_doc("Glossary", grouping, ignore_permissions=True, force=True)
 		for p in self.projects:
 			frappe.delete_doc("Project", p.name, ignore_permissions=True, force=True)
 		frappe.db.commit()

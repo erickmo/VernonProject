@@ -48,7 +48,7 @@ class TestDataHealthScope(unittest.TestCase):
 		# unset/0), and what estimate actually counts as an outlier.
 		self.mx = frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
 
-		self.projects, self.details = [], []
+		self.projects, self.details, self.groupings = [], [], []
 		self.todo = {}  # {(owner_label, category): todo doc}
 		for owner, label in ((self.OWNER_A, "A"), (self.OWNER_B, "B")):
 			p = frappe.get_doc({
@@ -61,6 +61,7 @@ class TestDataHealthScope(unittest.TestCase):
 			gl = frappe.get_doc({
 				"doctype": "Glossary", "glossary": f"DHS Grouping {label}", "project": p.name,
 			}).insert(ignore_permissions=True)
+			self.groupings.append(gl.name)
 			d = frappe.get_doc({
 				"doctype": "Project Detail", "project": p.name, "title": f"DHS Detail {label}",
 				"grouping": gl.name, "project_deadline": add_days(nowdate(), 20),
@@ -112,6 +113,9 @@ class TestDataHealthScope(unittest.TestCase):
 			if frappe.db.exists("Project Detail", d.name):
 				frappe.db.delete("Project Todo", {"project_detail": d.name})
 				frappe.delete_doc("Project Detail", d.name, force=True, ignore_permissions=True)
+		for gl in self.groupings:
+			if frappe.db.exists("Glossary", gl):
+				frappe.delete_doc("Glossary", gl, force=True, ignore_permissions=True)
 		for p in self.projects:
 			if frappe.db.exists("Project", p.name):
 				frappe.delete_doc("Project", p.name, force=True, ignore_permissions=True)

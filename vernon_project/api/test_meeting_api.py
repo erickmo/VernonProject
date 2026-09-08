@@ -35,6 +35,12 @@ class TestMeetingApi(unittest.TestCase):
 		frappe.set_user("Administrator")
 		for name in frappe.get_all("Meeting", filters={"project": self.project.name}, pluck="name"):
 			frappe.delete_doc("Meeting", name, force=True, ignore_permissions=True)
+		# After, not before: Meeting.on_change() re-fires during delete_doc (its
+		# get_doc_before_save() returns None outside a real save, so the
+		# prev == self.status guard doesn't short-circuit) and re-mints a Point
+		# Ledger row for the just-deleted meeting -- a real controller bug, not
+		# just a test cleanup gap. This sweep catches whatever that leaves behind.
+		frappe.db.delete("Point Ledger", {"project": self.project.name})
 		frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
 		frappe.db.commit()
 

@@ -131,6 +131,10 @@ class TestProjectTodo(unittest.TestCase):
 		self.project.insert(ignore_permissions=True)
 		self.owner_user = "Administrator"
 		self.group, self.level_id = _ensure_test_group()
+		# Safety-net registry for tests that build their own extra Project/Glossary/
+		# Project Detail chain beyond self.project -- tearDown sweeps these even if
+		# the test dies before reaching its own inline cleanup.
+		self.extra_projects, self.extra_details, self.extra_groupings = [], [], []
 
 		# Create a Glossary to use as the grouping for the project detail
 		grouping_doc = frappe.get_doc({
@@ -189,6 +193,19 @@ class TestProjectTodo(unittest.TestCase):
 
 		if hasattr(self, 'project') and frappe.db.exists("Project", self.project.name):
 			frappe.delete_doc("Project", self.project.name, ignore_permissions=True, force=True)
+
+		# Safety net for tests that build their own extra chain (see setUp) --
+		# usually already gone via the test's own inline cleanup; only fires when
+		# that cleanup was never reached.
+		for name in getattr(self, 'extra_details', []):
+			if frappe.db.exists("Project Detail", name):
+				frappe.delete_doc("Project Detail", name, ignore_permissions=True, force=True)
+		for name in getattr(self, 'extra_groupings', []):
+			if frappe.db.exists("Glossary", name):
+				frappe.delete_doc("Glossary", name, ignore_permissions=True, force=True)
+		for name in getattr(self, 'extra_projects', []):
+			if frappe.db.exists("Project", name):
+				frappe.delete_doc("Project", name, ignore_permissions=True, force=True)
 
 		frappe.db.commit()
 
@@ -429,12 +446,14 @@ class TestProjectTodo(unittest.TestCase):
 			],
 		})
 		proj.insert(ignore_permissions=True)
+		self.extra_projects.append(proj.name)
 		grouping = frappe.get_doc({
 			"doctype": "Glossary",
 			"glossary": "Lead Grouping",
 			"project": proj.name,
 		})
 		grouping.insert(ignore_permissions=True)
+		self.extra_groupings.append(grouping.name)
 		pd = frappe.get_doc({
 			"doctype": "Project Detail",
 			"project": proj.name,
@@ -444,6 +463,7 @@ class TestProjectTodo(unittest.TestCase):
 			"estimated": 10,
 		})
 		pd.insert(ignore_permissions=True)
+		self.extra_details.append(pd.name)
 		frappe.db.commit()
 
 		frappe.set_user("test_user@example.com")
