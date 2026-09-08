@@ -8,7 +8,7 @@ import { Page, PageHeader } from '@web/components/Page'
 import { DataTable } from '@web/components/DataTable'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
-import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo, rewardRedemptionStatusLabel } from '@/lib/format'
 import {
   useBoot,
   canManageMarketplace,
@@ -257,7 +257,7 @@ function RedemptionsTable() {
                   </button>
                 ) : (
                   <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                    Fulfilled
+                    {rewardRedemptionStatusLabel(r.status)}
                   </span>
                 ),
             },

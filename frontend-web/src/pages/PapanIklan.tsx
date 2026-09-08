@@ -6,7 +6,8 @@ import { EmptyState } from '@/components/ui'
 import { Button, ErrorState, Skeleton } from '@web/components/ui'
 import { useAds } from '@/hooks/useData'
 import { Page, PageHeader, rise } from '@web/components/Page'
-import type { AdListItem, AdType } from '@/lib/types'
+import type { AdListItem } from '@/lib/types'
+import { TYPE_LABEL, TYPE_TINT_WEB as TYPE_TINT } from '@/lib/papanIklan'
 
 const TABS = [
   { value: 'all', label: 'All' },
@@ -15,13 +16,6 @@ const TABS = [
   { value: 'Rent', label: 'Sewa' },
   { value: 'mine', label: 'Iklan Saya' },
 ] as const
-const TYPE_LABEL: Record<AdType, string> = { Sell: 'Jual', Buy: 'Beli', Rent: 'Sewa' }
-// Type badge tint — one hue per intent so the board scans at a glance.
-const TYPE_TINT: Record<AdType, string> = {
-  Sell: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200',
-  Buy: 'bg-sky-100 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200',
-  Rent: 'bg-violet-100 text-violet-700 dark:bg-violet-500/25 dark:text-violet-200',
-}
 
 function price(a: AdListItem) {
   if (!a.price) return 'Nego'

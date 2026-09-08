@@ -11,6 +11,7 @@ import { useConfirm } from '@/components/Confirm'
 import { useAd, useSetAdStatus, useDeleteAd, useAdminRemoveAd, useBanUser } from '@/hooks/useData'
 import { Page, PageHeader } from '@web/components/Page'
 import type { AdDetail } from '@/lib/types'
+import { TYPE_LABEL, TYPE_TINT_WEB as TYPE_TINT } from '@/lib/papanIklan'
 import { sanitizeHtml } from '@/lib/format'
 
 function price(a: AdDetail) {
@@ -22,12 +23,6 @@ const waLink = (c: string) => `https://wa.me/${c.replace(/[^0-9]/g, '')}`
 // Match the ad form's field look so create/view/edit read as one system.
 const fieldCls =
   'w-full rounded-xl border border-line bg-paper-line/40 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand-500 focus:bg-surface focus:ring-4 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-800/60'
-const TYPE_LABEL: Record<AdDetail['ad_type'], string> = { Sell: 'Jual', Buy: 'Beli', Rent: 'Sewa' }
-const TYPE_TINT: Record<AdDetail['ad_type'], string> = {
-  Sell: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200',
-  Buy: 'bg-sky-100 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200',
-  Rent: 'bg-violet-100 text-violet-700 dark:bg-violet-500/25 dark:text-violet-200',
-}
 
 export default function PapanIklanDetail() {
   const navigate = useNavigate()
