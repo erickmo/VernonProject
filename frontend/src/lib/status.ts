@@ -9,7 +9,23 @@ interface StatusMeta {
   ring: string // left accent border
 }
 
-export const STATUS: Record<StatusKey, StatusMeta> = {
+/**
+ * Fallback rendered for a status_key the backend can emit that this map
+ * hasn't been updated for — enum-drift audit finding #3. Neutral/gray so it
+ * reads as "unrecognized," never as a real status. Every one of the ~12
+ * `STATUS[key]` call sites (TodoCard, GanttChart, CalendarView, etc., both
+ * frontends) gets this for free via the Proxy below, rather than needing
+ * each site rewritten to `STATUS[key] ?? fallback`.
+ */
+const UNKNOWN_STATUS: StatusMeta = {
+  label: 'Unknown',
+  emoji: '❓',
+  pill: 'bg-stone-100 dark:bg-stone-500/15 text-stone-500 dark:text-stone-400',
+  dot: 'bg-stone-400',
+  ring: 'border-stone-300',
+}
+
+const KNOWN_STATUS: Record<StatusKey, StatusMeta> = {
   planned: {
     label: 'Planned',
     emoji: '🔵',
@@ -46,5 +62,14 @@ export const STATUS: Record<StatusKey, StatusMeta> = {
     ring: 'border-rose-400',
   },
 }
+
+/** Same bracket-access shape as a plain object (`STATUS[key]`, `STATUS[key]?.x`)
+ * at every existing call site, but returns UNKNOWN_STATUS instead of undefined
+ * for a status_key not in KNOWN_STATUS — no call site needs to change. */
+export const STATUS: Record<string, StatusMeta> = new Proxy(KNOWN_STATUS, {
+  get(target, prop: string) {
+    return prop in target ? target[prop as StatusKey] : UNKNOWN_STATUS
+  },
+})
 
 export const STATUS_ORDER: StatusKey[] = ['planned', 'done', 'checked', 'completed']

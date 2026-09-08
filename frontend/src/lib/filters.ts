@@ -92,10 +92,15 @@ export function todoInScope(t: ProjectItem, scope: SearchScope): boolean {
   return scope === 'ongoing' ? todoIsOpen(t) : t.status_key === 'completed'
 }
 
-/** Projects use a text status: 'Ongoing' active, 'Closed' done. */
+/**
+ * Projects use a text status: 'Ongoing' active, 'Closed' done, 'Inbox' not yet
+ * triaged. 'ongoing' scope is "not Closed" (mirrors todoIsOpen's exclusion
+ * pattern below) so Inbox projects surface there rather than nowhere —
+ * enum-drift audit finding: they were previously invisible to both scopes.
+ */
 export function projectInScope(p: ProjectCard, scope: SearchScope): boolean {
   if (scope === 'all') return true
-  return scope === 'ongoing' ? p.status === 'Ongoing' : p.status === 'Closed'
+  return scope === 'ongoing' ? p.status !== 'Closed' : p.status === 'Closed'
 }
 
 export function detailInScope(d: ProjectDetailHit, scope: SearchScope): boolean {

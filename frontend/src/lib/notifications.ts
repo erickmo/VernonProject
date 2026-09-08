@@ -1,5 +1,6 @@
 import {
   AlarmClock,
+  AlertTriangle,
   AtSign,
   CalendarClock,
   CheckCheck,
@@ -33,6 +34,7 @@ export const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   Billboard: Megaphone,
   Learning: GraduationCap,
   'Food Invite': UtensilsCrossed,
+  Warning: AlertTriangle,
 }
 
 /** The destinations whose path differs between /m and /w. */
