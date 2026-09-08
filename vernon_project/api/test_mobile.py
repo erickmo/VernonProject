@@ -464,6 +464,97 @@ class TestMobileWallet(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
+class TestPointLedgerCreatePermission(unittest.TestCase):
+	"""Point Ledger has no controller — every writer is expected to validate its own
+	amount then insert/save with ignore_permissions=True (grant_points, meeting/lms/
+	attendance engines, etc). No role but System Manager should hold doctype-level
+	`create` or `write`, or that validation is bypassable through the permission
+	system. Regression for two bypasses found in the 2026-09-07/08 money-path audit:
+	"Points Granter" could insert an arbitrary-amount row for another user disguised
+	as ordinary earned points (source="Todo"); "Group Manager" could then raise an
+	EXISTING row's points_earned to anything via a direct .save(), the same hole
+	through `write` instead of `create`."""
+
+	GRANTER = "pl_perm_granter@example.com"
+	TARGET = "pl_perm_target@example.com"
+	GROUP_MGR = "pl_perm_group_mgr@example.com"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		for email in (self.GRANTER, self.TARGET, self.GROUP_MGR):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({
+					"doctype": "User", "email": email, "first_name": email.split("@")[0],
+					"send_welcome_email": 0,
+				}).insert(ignore_permissions=True)
+		granter_doc = frappe.get_doc("User", self.GRANTER)
+		if not any(r.role == "Points Granter" for r in granter_doc.roles):
+			granter_doc.append("roles", {"role": "Points Granter"})
+			granter_doc.save(ignore_permissions=True)
+		gm_doc = frappe.get_doc("User", self.GROUP_MGR)
+		if not any(r.role == "Group Manager" for r in gm_doc.roles):
+			gm_doc.append("roles", {"role": "Group Manager"})
+			gm_doc.save(ignore_permissions=True)
+		frappe.db.delete("Point Ledger", {"user": ["in", (self.GRANTER, self.TARGET, self.GROUP_MGR)]})
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Point Ledger", {"user": ["in", (self.GRANTER, self.TARGET, self.GROUP_MGR)]})
+		frappe.db.commit()
+
+	def test_points_granter_cannot_bypass_grant_points_with_direct_insert(self):
+		frappe.set_user(self.GRANTER)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				frappe.get_doc({
+					"doctype": "Point Ledger", "user": self.TARGET,
+					"points_earned": 999999, "point": 999999, "source": "Todo",
+				}).insert()
+		finally:
+			frappe.set_user("Administrator")
+		self.assertFalse(frappe.db.exists("Point Ledger", {"user": self.TARGET}))
+
+	def test_points_granter_can_still_grant_via_grant_points(self):
+		from vernon_project.api.mobile import grant_points
+		frappe.set_user(self.GRANTER)
+		try:
+			grant_points(self.TARGET, 50, note="regression check")
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(
+			frappe.db.get_value("Point Ledger", {"user": self.TARGET, "source": "Grant"}, "points_earned"),
+			50,
+		)
+
+	def test_group_manager_cannot_raise_existing_row_with_direct_save(self):
+		row = frappe.get_doc({
+			"doctype": "Point Ledger", "user": self.GROUP_MGR, "points_earned": 10,
+			"point": 10, "source": "Grant", "granted_by": "Administrator",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		frappe.set_user(self.GROUP_MGR)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				doc = frappe.get_doc("Point Ledger", row.name)
+				doc.points_earned = 999999
+				doc.save()
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Point Ledger", row.name, "points_earned"), 10)
+
+	def test_administrator_direct_insert_still_works(self):
+		# Administrator bypasses doctype permissions entirely — must stay true after
+		# the strip, since seeds/patches/manual fixes rely on it.
+		frappe.set_user("Administrator")
+		doc = frappe.get_doc({
+			"doctype": "Point Ledger", "user": self.TARGET,
+			"points_earned": 5, "point": 5, "source": "Grant",
+		}).insert()
+		self.assertTrue(frappe.db.exists("Point Ledger", doc.name))
+
+
 class TestTeamWall(unittest.TestCase):
 	def setUp(self):
 		self.enabled_user = "team_wall_enabled@example.com"

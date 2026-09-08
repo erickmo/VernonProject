@@ -44,11 +44,11 @@
  "owner": "Administrator",
  "permissions": [
   {"role": "System Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
-  {"role": "Group Manager", "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1, "write": 1},
+  {"role": "Group Manager", "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "share": 1},
   {"role": "Project Owner", "read": 1, "report": 1, "export": 1, "print": 1},
   {"role": "Project Leader", "read": 1, "report": 1, "export": 1, "print": 1},
   {"role": "Project Team", "read": 1, "report": 1, "export": 1, "print": 1},
-  {"role": "Points Granter", "create": 1, "read": 1, "report": 1, "export": 1, "print": 1}
+  {"role": "Points Granter", "read": 1, "report": 1, "export": 1, "print": 1}
  ],
  "row_format": "Dynamic",
  "sort_field": "modified",
