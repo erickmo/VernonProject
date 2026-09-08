@@ -14,6 +14,9 @@ from vernon_project.vernon_project.doctype.project.project import get_project_ad
 # The one Planned status string, shared by the controller. `api/mobile.py` keeps
 # its own copy (STATUS_PLANNED) — importing it here would be a circular import.
 PLANNED = "⚪️ Planned"
+# Mirrors AI_WORK_MODES in api/project_todo.py — same reason as PLANNED above:
+# importing the api module from here risks a circular import.
+AI_WORK_MODES = ("AI", "Both")
 
 
 def _ensure_today_minutes(
@@ -50,6 +53,7 @@ class ProjectTodo(Document):
 		self.validate_start_date()
 		self.validate_done_todo_fields()
 		self.validate_follow_up_immutable()
+		self.validate_reject_authorized()
 		self.validate_estimated_max()
 		self.validate_estimated_min()
 		self.validate_project_admin_status_update()
@@ -412,6 +416,52 @@ class ProjectTodo(Document):
 			frappe.throw(
 				"Tanda Follow Up tidak bisa diubah.",
 				title="Follow Up Tag is Immutable",
+			)
+
+	def validate_reject_authorized(self):
+		"""Backstop for the reject bypass: "reject" isn't a status enum value, it's
+		the field combination rejected_at/rejected_by/rejection_reason that only
+		api.project_todo.reject_status() is meant to write. That function checks
+		review-stage, owner/leader permission and the AI-tag block itself — but a
+		direct frappe.client.set_value (or any other write) could set those three
+		fields without ever calling it. Detect a NEW rejection (rejected_at going
+		from empty to set) here and re-run the same checks, so the guarantee holds
+		regardless of which code path produced the write.
+
+		Cost: the extra project lookup only runs on an actual new rejection, not on
+		every save — this is a rare event, not a hot path."""
+		if self.is_new():
+			return
+		old_doc = self.get_old_doc()
+		if not old_doc:
+			return
+		if not (self.rejected_at and not old_doc.get("rejected_at")):
+			return  # not a new rejection — nothing to re-check
+
+		if not (self.rejection_reason or "").strip():
+			frappe.throw("Alasan penolakan wajib diisi.", title="Reject Bypass Blocked")
+
+		# The status this todo was actually reviewable FROM is the one on the last
+		# saved version, not self.status (which is already "Planned" by now).
+		if old_doc.get("status") not in ("🟠 Done", "🔷 Checked By PL"):
+			frappe.throw(
+				"Todo tidak sedang direview, tidak bisa ditolak.", title="Reject Bypass Blocked"
+			)
+
+		if self.work_mode in AI_WORK_MODES:
+			frappe.throw(
+				"Todo bertanda AI tidak bisa ditolak — buat Follow Up.", title="Reject Bypass Blocked"
+			)
+
+		project_detail = frappe.get_value("Project Detail", self.project_detail, "project")
+		project_owner, project_leader = frappe.get_value(
+			"Project", project_detail, ["project_owner", "project_leader"]
+		)
+		user = frappe.session.user
+		if user not in (project_owner, project_leader):
+			frappe.throw(
+				f"You do not have permission to reject this todo (only Project Owner {project_owner} or Project Leader {project_leader}).",
+				frappe.PermissionError,
 			)
 
 	def _compute_earned(self):
