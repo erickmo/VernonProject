@@ -9,9 +9,20 @@ from vernon_project.vernon_project.doctype.project.project import get_project_ad
 def bulk_assign_project_roles(projects, set_leader=0, leader=None, admins=None, admin_mode="add"):
 	"""Bulk-set the leader and/or admins across many Projects in one call.
 
-	Gated to System Manager / Project Owner. Each project saves inside its own
-	savepoint, so a project that can't be saved (e.g. a leader missing the
-	'Project Leader' role) is skipped and reported, not fatal to the batch.
+	Gated to System Manager / Project Owner *as an entry check* — that only
+	proves the caller may use this tool at all, not that they may touch any
+	given project, since "Project Owner" is a global role (anyone ever set as
+	ANY project's owner holds it, per Project.validate_lead_roles). The actual
+	per-project authority check is `frappe.has_permission("Project", "write",
+	name)` inside the loop, below — the same registered hook Project.has_permission
+	already enforces everywhere else (postpone.py uses the identical call), so
+	this can't drift from the one real definition of "may write this project".
+	A project the caller may not write is skipped and reported, exactly like a
+	project that fails to save for any other reason.
+
+	Each project saves inside its own savepoint, so a project that can't be
+	saved (permission refused, or e.g. a leader missing the 'Project Leader'
+	role) is skipped and reported, not fatal to the batch.
 
 	admin_mode: "add" merges the chosen admins into each project's existing set
 	(dedup, order preserved); "replace" sets them to exactly the chosen set.
@@ -36,6 +47,10 @@ def bulk_assign_project_roles(projects, set_leader=0, leader=None, admins=None, 
 	for name in projects or []:
 		frappe.db.savepoint("bulk_role")
 		try:
+			# Per-record check: entry gate above only proves the caller may use
+			# this tool, not that they may touch THIS project. Same hook
+			# Project.has_permission enforces everywhere else in the app.
+			frappe.has_permission("Project", "write", name, throw=True)
 			doc = frappe.get_doc("Project", name)
 			if set_leader:
 				doc.project_leader = leader
