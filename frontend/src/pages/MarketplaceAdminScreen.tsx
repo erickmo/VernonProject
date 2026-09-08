@@ -4,7 +4,7 @@ import { Plus, Store, ChevronRight, Check, Gift } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { useToast } from '@/components/Toast'
-import { formatNumber, effectivePoints, hasPromo } from '@/lib/format'
+import { formatNumber, effectivePoints, hasPromo, rewardRedemptionStatusLabel } from '@/lib/format'
 import {
   useBoot,
   canManageMarketplace,
@@ -161,7 +161,7 @@ function RedemptionsList() {
                     </button>
                   ) : (
                     <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                      Fulfilled
+                      {rewardRedemptionStatusLabel(r.status)}
                     </span>
                   )}
                 </div>

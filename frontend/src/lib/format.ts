@@ -10,6 +10,17 @@ export function formatNumber(num: number): string {
   return (num || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
+/**
+ * Reward Redemption's "else it's Fulfilled" badge was a claim about a thing a
+ * person is owed — enum-drift audit finding: anything that wasn't exactly
+ * 'Pending' rendered as "Fulfilled", including a status the doctype doesn't
+ * even have today. Shows the raw value instead of assuming delivery for
+ * anything that isn't the one status this actually confirms.
+ */
+export function rewardRedemptionStatusLabel(status: string): string {
+  return status === 'Fulfilled' ? 'Fulfilled' : status
+}
+
 // Marketplace promo pricing. A promo is active only when discounted_points sits
 // strictly between 0 and point_cost (0/empty = no promo). Mirrors the server's
 // _effective_points in api/mobile.py — keep the two in sync.
