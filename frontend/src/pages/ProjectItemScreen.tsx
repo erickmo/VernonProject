@@ -44,6 +44,7 @@ import {
   Eye,
   Sparkles,
   ChevronRight,
+  Reply,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -1817,6 +1818,20 @@ const [followOpen, setFollowOpen] = useState(false)
                 Reject
               </button>
             )}
+            {/* AI-tagged todos can't be rejected (ujkfag8r5v) — offer the existing
+                follow-up flow in the same spot instead of leaving no action at all. */}
+            {!data.can_reject &&
+              (data.is_owner || data.is_leader) &&
+              (data.work_mode === 'AI' || data.work_mode === 'Both') &&
+              (data.status_key === 'done' || data.status_key === 'checked') && (
+                <button
+                  onClick={() => setCheckOpen(true)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-50 dark:bg-teal-500/10 py-3 font-semibold text-teal-700 dark:text-teal-300 transition active:bg-teal-100 dark:active:bg-teal-500/20"
+                >
+                  <Reply className="h-4 w-4" />
+                  Buat Follow Up
+                </button>
+              )}
 
             {data.can_set_auto_approve && !!boot?.settings?.show_auto_approve && (
               <AutoApproveSegment
