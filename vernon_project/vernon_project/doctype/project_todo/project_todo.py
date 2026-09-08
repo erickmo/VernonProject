@@ -49,6 +49,7 @@ class ProjectTodo(Document):
 		self.validate_assigned_to_team_member()
 		self.validate_start_date()
 		self.validate_done_todo_fields()
+		self.validate_follow_up_immutable()
 		self.validate_estimated_max()
 		self.validate_estimated_min()
 		self.validate_project_admin_status_update()
@@ -394,6 +395,23 @@ class ProjectTodo(Document):
 				f"Cannot modify {', '.join(modified_fields)} when Todo status is '{self.status}'. "
 				"These fields are locked once the todo leaves Planned status.",
 				title="Cannot Edit Completed Todo"
+			)
+
+	def validate_follow_up_immutable(self):
+		"""is_follow_up is set once, by follow_up_check() at creation, and never again —
+		like the AI tag it can't be granted or revoked by an ordinary edit. Same
+		get_old_doc() this class already uses for the Done-field lock, so a normal
+		save pays no extra query; frappe.client.set_value goes through save() same as
+		everything else, so it is covered too."""
+		if self.is_new():
+			return
+		old_doc = self.get_old_doc()
+		if not old_doc:
+			return
+		if cint(self.is_follow_up) != cint(old_doc.get("is_follow_up")):
+			frappe.throw(
+				"Tanda Follow Up tidak bisa diubah.",
+				title="Follow Up Tag is Immutable",
 			)
 
 	def _compute_earned(self):

@@ -159,6 +159,8 @@ export interface ProjectItem {
   /** Whether the VIEWER may tag AI work at all (the "AI User" role). */
   can_use_ai?: boolean
   to_check: boolean
+  /** Set once by follow_up_check() at creation, immutable after — no UI toggle exists for it. */
+  is_follow_up: boolean
   can_prioritize: boolean
   auto_approve_mode: 'on' | 'off' | 'inherit'
   auto_approve_effective: boolean

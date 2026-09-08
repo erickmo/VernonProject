@@ -215,6 +215,13 @@
   },
   {
    "default": "0",
+   "fieldname": "is_follow_up",
+   "fieldtype": "Check",
+   "label": "Is Follow Up",
+   "description": "Set only by follow_up_check() at creation. Immutable afterwards (see validate_follow_up_immutable) \u2014 never a user-facing toggle, unlike work_mode/to_check."
+  },
+  {
+   "default": "0",
    "fieldname": "to_check",
    "fieldtype": "Check",
    "label": "To Check",
