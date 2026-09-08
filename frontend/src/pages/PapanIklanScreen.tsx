@@ -5,6 +5,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Segmented, Spinner, EmptyState } from '@/components/ui'
 import { useAds } from '@/hooks/useData'
 import type { AdListItem, AdType } from '@/lib/types'
+import { TYPE_LABEL } from '@/lib/papanIklan'
 
 const TYPE_TABS = [
   { value: 'all', label: 'All' },
@@ -14,7 +15,6 @@ const TYPE_TABS = [
   { value: 'mine', label: 'Iklan Saya' },
 ] as const
 
-const TYPE_LABEL: Record<AdType, string> = { Sell: 'Jual', Buy: 'Beli', Rent: 'Sewa' }
 const TYPE_TONE: Record<AdType, string> = {
   Sell: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
   Buy: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400',
