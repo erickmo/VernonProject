@@ -4,59 +4,129 @@ import frappe
 def get_project_team_members(project_name):
 	"""
 	Retrieves the team members associated with a given project.
-	
+
 	Args:
 			project_name (str): The name of the project.
-			
+
 	Returns:
 			list: A list of team member names associated with the project.
+
+	Gated on Project read (2026-09-08 permission sweep) -- previously any
+	caller-supplied project_name returned its roster with no check at all.
 	"""
 	try:
 		# Get Project
 		project = frappe.get_doc("Project", project_name)
-		
+		if not frappe.has_permission("Project", "read", doc=project):
+			return []
+
 		# Extract team member names
 		member_names = [member.user for member in project.team_members]
-		
+
 		return member_names
 
 	except frappe.DoesNotExistError:
 			return []
 
 
-_PROTECTED_FIELDS = {"name", "doctype", "owner", "creation", "modified", "modified_by", "idx", "docstatus"}
+# 2026-09-08 permission sweep: this used to be a BLOCKLIST (_PROTECTED_FIELDS —
+# identity/audit fields only), which admits every future field by default and
+# stays that way until someone notices it shouldn't. It missed project_owner/
+# project_leader entirely, so a Project LEADER (who legitimately passes
+# _gate_project's owner-OR-leader check) could call update_project(project,
+# {"project_owner": "<self>"}) and self-promote to Owner — a strictly more
+# powerful role (only the Owner may delete the project or reassign owner/
+# leader afterward). Project.validate_edit_permission() already encodes the
+# right rule for this ("only the Owner may change owner/leader"), but its
+# first line is `if self.flags.get("ignore_permissions"): return` — it never
+# runs here because _apply_fields saves with ignore_permissions=True.
+#
+# Now an ALLOWLIST: only fields that are safe for the doc's own owner/leader
+# to set directly are admitted; everything else is refused by default rather
+# than by remembering to list it.
+#
+# Decision on project_owner/project_leader specifically, since there were two
+# ways to close this and leaving it ambiguous would just move the bug: REFUSE
+# them here, don't re-derive the Owner-only check inline. Reassigning a
+# project's owner is not left unreachable — Frappe's own generic REST
+# resource API (`PUT /api/resource/Project/<name>`, what the real frontend
+# actually calls for "edit project" — confirmed neither update_project nor
+# update_project_detail has any caller in either frontend) already exposes
+# it, is already permission-checked through the registered has_permission
+# hook, and does NOT set ignore_permissions, so
+# Project.validate_edit_permission()'s real "only the Owner may change owner/
+# leader" rule runs there normally. Re-deriving that same rule a second time
+# in this function would be a second definition of the same check that can
+# drift from the first — refusing here and pointing at the one real
+# enforcement point is the same principle as the reports/bulk_assign_
+# project_roles fixes earlier tonight. project_admins is refused too, for the
+# same reason: bulk_assign_project_roles is its dedicated, properly-gated
+# path. team_members/glossaries/grouping-adjacent structural fields and every
+# computed rollup are refused as well — none of them belong in a generic
+# content-field editor.
+#
+# Neither update_project nor update_project_detail has any real caller in
+# either frontend (confirmed: frontend's actual "edit project" UI goes
+# through Frappe's own generic REST resource API instead, which is properly
+# permission-checked and does let validate_edit_permission() run) — these
+# two whitelisted functions were reachable only by a direct API call, not
+# through normal app usage. Still fixed: unreachable from the UI is not the
+# same as unexploitable.
+_PROJECT_ALLOWED_FIELDS = {
+	"project_name", "start_date", "deadline", "goal", "success_condition",
+	"failure_condition", "context", "brand", "status", "auto_approve",
+	"blocked_by", "reward_type", "bonus_amount", "discount",
+}
+_PROJECT_DETAIL_ALLOWED_FIELDS = {
+	"title", "project_deadline", "current_condition", "expected_outcome",
+	"goal", "success_condition", "failure_condition", "context",
+	"keterangan_di_sow", "grouping", "status",
+}
 
 
-def _apply_fields(doc, fields):
-	"""Set caller-given fields onto `doc` (skipping identity/audit fields) and save."""
+def _apply_fields(doc, fields, allowed_fields):
+	"""Set caller-given fields onto `doc`, restricted to `allowed_fields`, and save."""
 	fields = frappe.parse_json(fields) if isinstance(fields, str) else fields
 	if not isinstance(fields, dict):
 		frappe.throw("fields must be an object.")
-	doc.update({k: v for k, v in fields.items() if k not in _PROTECTED_FIELDS})
+	rejected = set(fields) - allowed_fields
+	if rejected:
+		frappe.throw(f"Cannot set: {', '.join(sorted(rejected))}.", frappe.PermissionError)
+	doc.update({k: v for k, v in fields.items() if k in allowed_fields})
 	doc.save(ignore_permissions=True)
 	return doc
 
 
 @frappe.whitelist()
 def update_project(project, fields):
-	"""Update a Project's own fields (not its team/details/todos, which have their
-	own endpoints). Owner/leader/SM only — same gate as the AI breakdown endpoints
-	below. `fields` = {fieldname: value}."""
+	"""Update a Project's own content fields (not its team/details/todos, which
+	have their own endpoints, and not owner/leader/admins — see
+	bulk_assign_project_roles). Owner/leader/SM only — same gate as the AI
+	breakdown endpoints below. `fields` = {fieldname: value}."""
 	doc = _gate_project(project)
-	_apply_fields(doc, fields)
+	_apply_fields(doc, fields, _PROJECT_ALLOWED_FIELDS)
 	return {"name": doc.name}
 
 
 @frappe.whitelist()
 def update_project_detail(project_detail, fields):
-	"""Update a Project Detail's own fields. Gated on its PARENT project's
+	"""Update a Project Detail's own content fields. Gated on its PARENT project's
 	owner/leader/SM — the parent is read from the detail itself, not a
-	caller-supplied id, so there's nothing to spoof. `fields` = {fieldname: value}."""
+	caller-supplied id, so there's nothing to spoof. `fields` = {fieldname: value}.
+
+	Does not accept `project`: moving a detail between projects is
+	move_project_detail's job, not this one — that endpoint already gates on
+	owning BOTH the source and destination project, checks the destination
+	team can actually take the detail's assigned todos, and clears the
+	grouping/glossaries that belong to the old project. Duplicating a partial
+	version of that here would either miss those checks or fork the logic;
+	reusing the one real implementation is the same principle as the
+	Project Owner/Leader picker fix earlier tonight."""
 	if not frappe.db.exists("Project Detail", project_detail):
 		frappe.throw("Project Detail not found.", frappe.DoesNotExistError)
 	detail = frappe.get_doc("Project Detail", project_detail)
 	_gate_project(detail.project)
-	_apply_fields(detail, fields)
+	_apply_fields(detail, fields, _PROJECT_DETAIL_ALLOWED_FIELDS)
 	return {"name": detail.name}
 
 

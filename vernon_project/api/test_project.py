@@ -60,11 +60,18 @@ class TestProjectUpdate(FrappeTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			update_project(self.project.name, {"project_name": "Hijacked"})
 
-	def test_protected_fields_are_ignored(self):
+	def test_disallowed_fields_are_rejected(self):
+		# 2026-09-08: was test_protected_fields_are_ignored, asserting `owner`
+		# got silently dropped while project_name still applied -- that's the
+		# blocklist's permissive-by-default shape (admit anything not named),
+		# the same shape that let project_owner/project_leader through. The
+		# allowlist refuses the whole call instead, atomically.
 		original_owner = frappe.db.get_value("Project", self.project.name, "owner")
-		update_project(self.project.name, {"owner": "someone_else@example.com", "project_name": "Still renamed"})
+		original_name = frappe.db.get_value("Project", self.project.name, "project_name")
+		with self.assertRaises(frappe.PermissionError):
+			update_project(self.project.name, {"owner": "someone_else@example.com", "project_name": "Still renamed"})
 		self.assertEqual(frappe.db.get_value("Project", self.project.name, "owner"), original_owner)
-		self.assertEqual(frappe.db.get_value("Project", self.project.name, "project_name"), "Still renamed")
+		self.assertEqual(frappe.db.get_value("Project", self.project.name, "project_name"), original_name)
 
 	def test_leader_can_update_project_detail(self):
 		update_project_detail(self.detail.name, {"title": "Renamed detail"})
