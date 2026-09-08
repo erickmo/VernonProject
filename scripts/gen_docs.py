@@ -51,7 +51,7 @@ CLUSTERS = {
         "Attendance Exception", "Attendance Exception Approver", "Attendance Holiday",
         "Attendance Holiday List", "Attendance Profile", "Attendance Scan",
         "Attendance Station", "Daily Attendance", "Shift Assignment", "Shift Template",
-        "Leave Type", "Cuti Ledger", "Overtime Entry",
+        "Leave Type", "Cuti Ledger", "Overtime Entry", "Teguran",
     }),
     "lms": ("Pembelajaran", "Learning", "1x1", {
         "Course", "Course Enrollment", "Course Lesson", "Course Lesson File",
@@ -68,7 +68,7 @@ CLUSTERS = {
     "meetings": ("Rapat & Ruangan", "Meetings & rooms", "1x1", {
         "Meeting", "Meeting Participant", "Meeting Room", "Resource Booking",
         "Resource Booking Equipment", "Equipment",
-        "Food Invite", "Food Invite Recipient",
+        "Food Invite", "Food Invite Recipient", "External Calendar Event",
     }),
     "focus": ("Fokus", "Focus", "1x1", {"Focus Timer", "Habit", "Habit Log"}),
     "events": ("Acara", "Events", "1x1", {"Vernon Event", "Vernon Event Registration"}),
