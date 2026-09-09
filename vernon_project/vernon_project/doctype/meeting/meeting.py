@@ -266,7 +266,16 @@ def has_permission(doc, ptype, user):
 	if not doc.project:
 		return False
 	project = frappe.get_doc("Project", doc.project)
-	if user == project.project_owner or user == project.project_leader or user in get_project_admins(project):
+	is_privileged = (
+		user == project.project_owner or user == project.project_leader or user in get_project_admins(project)
+	)
+	# write/delete: owner/leader/admin only -- mobile.py's update/delete_meeting
+	# already gate on _meeting_can_manage() and save with ignore_permissions=True,
+	# so a plain team member's create-only JSON grant no longer leaks into
+	# write/delete here too.
+	if ptype in ("write", "delete"):
+		return is_privileged
+	if is_privileged:
 		return True
 	if any(t.user == user for t in project.team_members):
 		return True

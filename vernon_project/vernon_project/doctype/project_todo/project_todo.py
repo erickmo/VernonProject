@@ -1189,7 +1189,17 @@ def has_permission(doc, ptype, user):
 	if not parent_detail.project:
 		return False
 	project = frappe.get_doc("Project", parent_detail.project)
-	if user == project.project_owner or user == project.project_leader or user in get_project_admins(project):
+	is_privileged = (
+		user == project.project_owner or user == project.project_leader or user in get_project_admins(project)
+	)
+	# write/delete: owner/leader/admin only, mirroring the app's own approval
+	# ladder (mobile.update_todo/cancel_todo). A plain Project Team member's
+	# JSON grant is create-only -- writes/deletes for assignees go through
+	# the API layer's own explicit gate + ignore_permissions=True, never
+	# through this hook, so tightening it here doesn't touch that path.
+	if ptype in ("write", "delete"):
+		return is_privileged
+	if is_privileged:
 		return True
 	if any(t.user == user for t in project.team_members):
 		return True
