@@ -1341,6 +1341,9 @@ def search_todos(
 	{name, to_do, project, project_detail, status, work_mode, deadline} plus
 	project_name/project_detail_title/assigned_to — never the ~80KB
 	get_project_item payload (detail_todos, team, notes are never in here).
+	Each row also carries `web_url`/`mobile_url` — the todo's `/w` and `/m`
+	deep link (`isTodoPath`'s `/project-item/<name>` route) — so an MCP
+	caller can hand the user a clickable link straight to it.
 
 	Visibility is `_visible_projects()` — the same rule every other endpoint
 	in this app uses (assigned to the caller, or they own/lead/admin/team-
@@ -1439,6 +1442,9 @@ def search_todos(
 		params | {"limit": limit, "offset": offset},
 		as_dict=True,
 	)
+	site_url = frappe.utils.get_url().rstrip("/")
 	for r in rows:
 		r["deadline"] = str(r["deadline"]) if r["deadline"] else None
+		r["web_url"] = f"{site_url}/w/project-item/{r['name']}"
+		r["mobile_url"] = f"{site_url}/m/project-item/{r['name']}"
 	return {"total": total, "rows": rows}

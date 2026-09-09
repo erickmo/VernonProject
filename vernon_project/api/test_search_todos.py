@@ -281,8 +281,11 @@ class TestSearchTodos(FrappeTestCase):
 		expected = {
 			"name", "to_do", "status", "work_mode", "deadline", "assigned_to",
 			"project_detail", "project_detail_title", "project", "project_name",
+			"web_url", "mobile_url",
 		}
 		self.assertEqual(set(row.keys()), expected)
+		self.assertEqual(row["web_url"], f"{frappe.utils.get_url().rstrip('/')}/w/project-item/{row['name']}")
+		self.assertEqual(row["mobile_url"], f"{frappe.utils.get_url().rstrip('/')}/m/project-item/{row['name']}")
 		self.assertNotIn("detail_todos", row)
 		self.assertNotIn("team", row)
 		self.assertNotIn("notes", row)
