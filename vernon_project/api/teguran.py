@@ -132,12 +132,26 @@ def get_teguran_saya():
 	)
 
 
+TEGURAN_LIST_FIELDS = TEGURAN_FIELDS + [
+	"karyawan.full_name as karyawan_name",
+	"diberikan_oleh.full_name as diberikan_oleh_name",
+]
+
+
 @frappe.whitelist()
-def get_teguran_all():
-	"""Every Teguran. HR Manager / System Manager only (assumption 1 — no
-	per-team scoping exists to offer a narrower view)."""
+def get_teguran_all(status=None, start=0, page_length=20):
+	"""Every Teguran, HR Manager / System Manager only (assumption 1 — no
+	per-team scoping exists to offer a narrower view). Paginated and optionally
+	filtered by status server-side -- this list has no natural per-employee
+	bound, unlike get_teguran_saya. karyawan/diberikan_oleh names ride the
+	query via link-field fetch (karyawan.full_name), not a per-row lookup."""
 	_require_hr()
-	return frappe.get_all("Teguran", fields=TEGURAN_FIELDS, order_by="tanggal desc, creation desc")
+	filters = {"status": status} if status else {}
+	return frappe.get_all(
+		"Teguran", filters=filters, fields=TEGURAN_LIST_FIELDS,
+		order_by="tanggal desc, creation desc",
+		start=int(start or 0), page_length=int(page_length or 20),
+	)
 
 
 @frappe.whitelist()

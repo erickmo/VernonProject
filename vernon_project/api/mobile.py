@@ -1055,7 +1055,7 @@ def bootstrap():
 	roles = frappe.get_roles(user)
 	vernon_roles = [
 		r
-		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager", "Points Granter")
+		for r in ("Project Owner", "Project Leader", "Project Admin", "Project Team", "System Manager", "Marketplace Manager", "Points Granter", "HR Manager")
 		if r in roles
 	]
 	av_cfg = frappe.db.get_value("User Avatar", user, "config_json")

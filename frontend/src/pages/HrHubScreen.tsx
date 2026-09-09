@@ -57,6 +57,11 @@ export default function HrHubScreen() {
       title: 'Attendance',
       rows: [
         ...(canManageAttendance(boot) ? [{ icon: ClipboardList, label: 'Manage attendance', hue: 'emerald', to: '/attendance/manage' }] : []),
+        // Same gate as /w's sidebar → HR Management → Teguran (canHrApprove,
+        // shared from @/hooks/useData). Was previously reachable only from
+        // My Attendance -- not where an HR/SysMgr looking for admin tools
+        // would think to check, which is the missing-menu bug this fixes.
+        ...(canHrApprove(boot) ? [{ icon: ShieldAlert, label: 'Teguran', hue: 'rose', to: '/teguran-admin' }] : []),
       ],
     },
     {
