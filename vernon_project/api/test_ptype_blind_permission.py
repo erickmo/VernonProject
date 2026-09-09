@@ -32,9 +32,14 @@ class TestPtypeBlindPermission(unittest.TestCase):
 					"send_welcome_email": 0,
 				}).insert(ignore_permissions=True)
 		u = frappe.get_doc("User", self.LEADER)
-		if not any(r.role == "Project Owner" for r in u.roles):
-			u.append("roles", {"role": "Project Owner"})
-			u.save(ignore_permissions=True)
+		have = {r.role for r in u.roles}
+		# project_owner AND project_leader both point at this user below, and
+		# Project.validate_lead_roles() checks each field's role independently
+		# -- it needs both roles, not just "Project Owner".
+		for role in ("Project Owner", "Project Leader"):
+			if role not in have:
+				u.append("roles", {"role": role})
+		u.save(ignore_permissions=True)
 		u2 = frappe.get_doc("User", self.TEAMMATE)
 		if not any(r.role == "Project Team" for r in u2.roles):
 			u2.append("roles", {"role": "Project Team"})
@@ -46,23 +51,32 @@ class TestPtypeBlindPermission(unittest.TestCase):
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 			"team_members": [{"user": self.TEAMMATE}],
 		}).insert(ignore_permissions=True)
+		self.gl = frappe.get_doc({
+			"doctype": "Glossary", "glossary": "PTB Grouping", "project": self.project.name,
+		}).insert(ignore_permissions=True)
 		self.detail = frappe.get_doc({
 			"doctype": "Project Detail", "project": self.project.name, "title": "PTB Detail",
+			"grouping": self.gl.name, "project_deadline": add_days(nowdate(), 20),
 		}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Test Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Test Group"}).insert(ignore_permissions=True)
 		self.todo = frappe.get_doc({
 			"doctype": "Project Todo", "to_do": "PTB Todo", "project_detail": self.detail.name,
-			"assigned_to": self.LEADER, "estimated": 30,
+			"assigned_to": self.TEAMMATE, "start_date": nowdate(), "deadline": add_days(nowdate(), 5),
+			"estimated": 30, "group": "Test Group", "level": "1",
 		}).insert(ignore_permissions=True)
 		self.meeting = frappe.get_doc({
 			"doctype": "Meeting", "title": "PTB Meeting", "project": self.project.name,
 			"organizer": self.LEADER, "scheduled_at": frappe.utils.now_datetime(), "estimated": 30,
+			"participants": [{"user": self.TEAMMATE}],
 		}).insert(ignore_permissions=True)
 		frappe.db.commit()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		for dt, name in (("Meeting", self.meeting.name), ("Project Todo", self.todo.name),
-						("Project Detail", self.detail.name), ("Project", self.project.name)):
+						("Project Detail", self.detail.name), ("Glossary", self.gl.name),
+						("Project", self.project.name)):
 			if frappe.db.exists(dt, name):
 				frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
 		frappe.db.commit()
