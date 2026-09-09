@@ -160,6 +160,56 @@ class TestProjectBreakdown(FrappeTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			persist_project_breakdown(self.project.name, frappe.as_json([]))
 
+	def test_persist_writes_notes_and_estimated(self):
+		# Bug: notes was accepted in the payload but never mapped onto the
+		# created Project Todo. estimated must also come from the payload,
+		# not just the "unestimated -> 30" default.
+		frappe.set_user(LEADER)
+		subgoals = [{
+			"title": "Subgoal One",
+			"todos": [{
+				"to_do": "Task with notes", "group": self.group, "level": "Backend Development",
+				"notes": "Build order: 1) migrate 2) API 3) UI. Requirements: X, Y, Z.",
+				"estimated": 90,
+			}],
+		}]
+		res = persist_project_breakdown(self.project.name, frappe.as_json(subgoals))
+		todo_name = frappe.db.get_value(
+			"Project Todo", {"project_detail": res["created_details"][0]}, "name"
+		)
+		from vernon_project.api.mobile import get_project_item
+		item = get_project_item(todo_name)
+		self.assertEqual(item["notes"], "Build order: 1) migrate 2) API 3) UI. Requirements: X, Y, Z.")
+		self.assertEqual(item["estimated"], 90)
+
+	def test_persist_omitted_estimate_still_defaults_to_30(self):
+		frappe.set_user(LEADER)
+		subgoals = [{
+			"title": "Subgoal One",
+			"todos": [{"to_do": "No estimate given", "group": self.group, "level": "Backend Development"}],
+		}]
+		res = persist_project_breakdown(self.project.name, frappe.as_json(subgoals))
+		todo_name = frappe.db.get_value(
+			"Project Todo", {"project_detail": res["created_details"][0]}, "name"
+		)
+		self.assertEqual(frappe.db.get_value("Project Todo", todo_name, "estimated"), 30)
+
+	def test_persist_rejects_overlong_estimate_naming_the_todo(self):
+		frappe.set_user(LEADER)
+		mx = frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
+		self.assertLess(mx, 999)  # sanity: 999 must actually exceed the configured max
+		subgoals = [{
+			"title": "Subgoal One",
+			"todos": [{
+				"to_do": "Way too long task", "group": self.group, "level": "Backend Development",
+				"estimated": 999,
+			}],
+		}]
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			persist_project_breakdown(self.project.name, frappe.as_json(subgoals))
+		self.assertIn("Way too long task", str(ctx.exception))
+		self.assertFalse(frappe.db.exists("Project Todo", {"to_do": "Way too long task"}))
+
 	def test_persist_works_after_leaders_role_is_revoked_post_assignment(self):
 		# validate_lead_roles forces project_leader to hold the "Project Leader"
 		# Role at the moment the Project is saved — but nothing re-checks that

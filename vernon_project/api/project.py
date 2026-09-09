@@ -281,7 +281,7 @@ def _allowed_work_mode(mode):
 	return mode
 
 
-def _create_todo(project, detail_name, td, defaults, valid_groups):
+def _create_todo(project, detail_name, td, defaults, valid_groups, max_estimated):
 	"""Insert one Project Todo from a reviewed draft. Returns True if inserted,
 	False if skipped (blank). Throws if a non-blank todo lacks group/level, or
 	names a group that doesn't exist (a caller without the review UI's picker —
@@ -296,6 +296,16 @@ def _create_todo(project, detail_name, td, defaults, valid_groups):
 		frappe.throw(
 			f"Todo {td.get('to_do')!r}: group {td['group']!r} does not exist. "
 			f"Valid groups: {', '.join(sorted(valid_groups))}."
+		)
+	# Drafts rarely carry an estimate; the controller floors at 5 min, so default
+	# to 30m (the app's "unestimated task plans as 30m" convention).
+	estimated = int(td.get("estimated") or 30)
+	# Same check + message the doctype's own validate_estimated_max makes, just named to
+	# the offending todo — a fan-out of N todos needs to say which one, since the
+	# doctype-level throw alone doesn't identify it inside this loop.
+	if max_estimated and estimated > max_estimated:
+		frappe.throw(
+			f"Todo {td.get('to_do')!r}: Estimated minutes ({estimated}) exceeds the maximum ({int(max_estimated)})."
 		)
 	frappe.get_doc({
 		"doctype": "Project Todo",
@@ -313,9 +323,10 @@ def _create_todo(project, detail_name, td, defaults, valid_groups):
 		# so an enabled leader can tag it later).
 		"work_mode": _allowed_work_mode(td.get("work_mode")),
 		"ai_prompt": _clip(td.get("ai_prompt"), 4000) or None,
-		# Drafts rarely carry an estimate; the controller floors at 5 min, so default
-		# to 30m (the app's "unestimated task plans as 30m" convention).
-		"estimated": int(td.get("estimated") or 30),
+		"estimated": estimated,
+		# Same field save_notes(todo_id, notes) writes — notes set at creation and
+		# notes set later must be the same field, not a lookalike.
+		"notes": td.get("notes") or None,
 	}).insert(ignore_permissions=True)
 	return True
 
@@ -341,6 +352,7 @@ def persist_project_breakdown(project, subgoals, project_detail=None):
 		"deadline": doc.deadline or nowdate(),
 	}
 	valid_groups = set(frappe.get_all("Group", pluck="name"))
+	max_estimated = frappe.db.get_single_value("Vernon Settings", "max_estimated_minutes") or 0
 
 	created_details, created_todos = [], 0
 	for sg in rows:
@@ -360,7 +372,7 @@ def persist_project_breakdown(project, subgoals, project_detail=None):
 			created_details.append(target)
 
 		for td in (sg.get("todos") or [])[:_MAX_TODOS]:
-			if _create_todo(doc.name, target, td, defaults, valid_groups):
+			if _create_todo(doc.name, target, td, defaults, valid_groups, max_estimated):
 				created_todos += 1
 
 	return {"project": doc.name, "created_details": created_details, "created_todos": created_todos}
