@@ -1312,3 +1312,133 @@ def follow_up_check(todo_id, assignee, note=None, estimated=None, group=None, le
 	)
 	frappe.db.commit()
 	return {"name": follow.name, "source_status": todo.status}
+
+
+SEARCH_TODOS_DEFAULT_LIMIT = 20
+SEARCH_TODOS_MAX_LIMIT = 100
+
+
+def _like_escape(text):
+	"""Escape MySQL LIKE's own wildcards (and its escape char) so a caller's
+	literal % / _ never behaves as a wildcard. Backslash must be escaped
+	FIRST, or escaping % first would double-escape the backslash it adds."""
+	return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+@frappe.whitelist()
+def search_todos(
+	query, project=None, project_detail=None, status=None, work_mode=None,
+	assigned_to=None, include_done=0, limit=20, offset=0,
+):
+	"""Find Project Todo rows by exact document id or by a title search — the
+	MCP "search / get todo by name" skill (dja50oqf2p). `query` is matched two
+	ways: an exact `name` (Frappe's 10-char doc id) is returned first, and a
+	case-insensitive substring match against `to_do` (the human title) fills
+	the rest — `%`/`_` in `query` are escaped so they match literally, never
+	as SQL wildcards.
+
+	Rows are the LIGHT shape `get_ai_todos_needing_prompt` already returns —
+	{name, to_do, project, project_detail, status, work_mode, deadline} plus
+	project_name/project_detail_title/assigned_to — never the ~80KB
+	get_project_item payload (detail_todos, team, notes are never in here).
+
+	Visibility is `_visible_projects()` — the same rule every other endpoint
+	in this app uses (assigned to the caller, or they own/lead/admin/team-
+	member the project) — applied to BOTH the exact-id path and the search
+	path via the same WHERE clause, so there's one gate, not two. A real id
+	in a project the caller can't see comes back as an empty result, never
+	the row (not `PermissionError`: `get_project_item`'s equivalent path
+	throws for a DIRECT single-item fetch, but this is a multi-row search
+	where "you can't see that one" is a normal empty page, not an error).
+
+	`limit` defaults to 20 and is clamped to SEARCH_TODOS_MAX_LIMIT (100)
+	server-side regardless of what's requested — this is reachable from an
+	MCP client, so nothing here trusts the caller to behave. `include_done=0`
+	(the default) drops Done/Checked By PL/Completed/Cancelled; pass 1 to see
+	everything. Returns {"total": <count before limit>, "rows": [...]}."""
+	from vernon_project.api.mobile import (
+		STATUS_CANCELLED,
+		STATUS_CHECKED,
+		STATUS_COMPLETED,
+		STATUS_DONE,
+		_visible_projects,
+	)
+
+	query = (query or "").strip()
+	if len(query) < 2:
+		frappe.throw("Search text must be at least 2 characters.", frappe.ValidationError)
+
+	limit = frappe.utils.cint(limit) or SEARCH_TODOS_DEFAULT_LIMIT
+	if limit < 0:
+		frappe.throw("limit must be zero or a positive integer", frappe.ValidationError)
+	limit = min(limit, SEARCH_TODOS_MAX_LIMIT)
+	offset = frappe.utils.cint(offset)
+	if offset < 0:
+		frappe.throw("offset must be zero or a positive integer", frappe.ValidationError)
+
+	projects = _visible_projects()
+	if not projects:
+		return {"total": 0, "rows": []}
+
+	cond = ""
+	params = {
+		"projects": tuple(projects),
+		"exact": query,
+		"exact_lower": query.lower(),
+		"sub_pat": f"%{_like_escape(query)}%",
+		"prefix_pat": f"{_like_escape(query)}%",
+	}
+	if project:
+		cond += " AND pd.project = %(project)s"
+		params["project"] = project
+	if project_detail:
+		cond += " AND t.project_detail = %(project_detail)s"
+		params["project_detail"] = project_detail
+	if status:
+		cond += " AND t.status = %(status)s"
+		params["status"] = status
+	if work_mode:
+		cond += " AND t.work_mode = %(work_mode)s"
+		params["work_mode"] = work_mode
+	if assigned_to:
+		# Identity narrows, never widens: this ANDs onto the visibility
+		# filter already in the WHERE clause below, so a caller can only ever
+		# use it to narrow their OWN visible set, not see someone else's rows.
+		cond += " AND t.assigned_to = %(assigned_to)s"
+		params["assigned_to"] = assigned_to
+	if not frappe.utils.cint(include_done):
+		cond += " AND t.status NOT IN %(done_statuses)s"
+		params["done_statuses"] = (STATUS_DONE, STATUS_CHECKED, STATUS_COMPLETED, STATUS_CANCELLED)
+
+	where = f"""
+		FROM `tabProject Todo` t
+		JOIN `tabProject Detail` pd ON t.project_detail = pd.name
+		JOIN `tabProject` p ON pd.project = p.name
+		WHERE pd.project IN %(projects)s {cond}
+		AND (t.name = %(exact)s OR LOWER(t.to_do) LIKE LOWER(%(sub_pat)s) ESCAPE '\\\\')
+	"""
+
+	total = frappe.db.sql(f"SELECT COUNT(*) {where}", params)[0][0]
+
+	rows = frappe.db.sql(
+		f"""
+		SELECT
+			t.name, t.to_do, t.status, t.work_mode, t.deadline, t.assigned_to,
+			pd.name AS project_detail, pd.title AS project_detail_title, pd.project,
+			p.project_name
+		{where}
+		ORDER BY
+			(t.name = %(exact)s) DESC,
+			(LOWER(t.to_do) = %(exact_lower)s) DESC,
+			(LOWER(t.to_do) LIKE LOWER(%(prefix_pat)s) ESCAPE '\\\\') DESC,
+			(t.deadline IS NULL) ASC,
+			t.deadline ASC,
+			t.modified DESC
+		LIMIT %(limit)s OFFSET %(offset)s
+		""",
+		params | {"limit": limit, "offset": offset},
+		as_dict=True,
+	)
+	for r in rows:
+		r["deadline"] = str(r["deadline"]) if r["deadline"] else None
+	return {"total": total, "rows": rows}
