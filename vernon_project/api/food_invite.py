@@ -137,6 +137,17 @@ def create_invite(message, order_by, audience_type="Specific", place=None, users
 	return {"status": "success", "invite": doc.name}
 
 
+def _can_view(doc, user):
+	"""Inviter, an actual recipient, or (Link audience only) anyone -- a Link
+	invite is meant to be opened by whoever has the link before deciding
+	whether to join. Mirrors respond()'s self-enroll gate below."""
+	if doc.inviter == user:
+		return True
+	if any(r.user == user for r in doc.recipients):
+		return True
+	return doc.audience_type == "Link"
+
+
 @frappe.whitelist()
 def respond(invite, response):
 	user = _require_login()
@@ -170,8 +181,14 @@ def respond(invite, response):
 
 @frappe.whitelist()
 def get_invite(invite):
+	# 2026-09-09 permission sweep: this had no ownership/recipient check at
+	# all -- any logged-in user who knew or guessed an invite name could read
+	# a Specific/Internal/Project invite's full content.
 	user = _require_login()
-	return _serialize(frappe.get_doc(DOCTYPE, invite), user)
+	doc = frappe.get_doc(DOCTYPE, invite)
+	if not _can_view(doc, user):
+		frappe.throw(_("You're not invited to this one."), frappe.PermissionError)
+	return _serialize(doc, user)
 
 
 @frappe.whitelist()
