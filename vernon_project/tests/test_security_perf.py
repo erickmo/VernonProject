@@ -537,6 +537,65 @@ class TestProjectDetailPaginationOptIn(FrappeTestCase):
 			get_project_detail(self.detail.name, start=-1)
 
 
+class TestProjectItemTeamNoDeadAvatarFields(FrappeTestCase):
+	"""6gb7lcr41q: shaped["team"] used to carry image/avatar_config per member,
+	sourced from the SAME _user_name_map()/User-Avatar batch already paid for
+	the assignee etc. Grepped both frontends (ProjectItemScreen.tsx /m,
+	ProjectItem.tsx /w): every read off team[] is `.user`/`.name` only (the
+	reassignment picker) -- `.image`/`.avatar_config` are never read from a
+	team row, only from the top-level assigned_to_image/assigned_to_avatar_config
+	fields. Measured live against the biggest real team (20 members, project
+	PRJ-2601-00001): those two dead fields were 8.3KB of a 13.6KB response --
+	61% of the whole payload, shipped on every single-todo open."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		group, level_id = _ensure_test_group()
+		if not frappe.db.exists("Brand", "Test Team Fields Brand"):
+			frappe.get_doc({
+				"doctype": "Brand", "brand_name": "Test Team Fields Brand",
+				"company": frappe.db.get_value("Company", {}, "name"),
+			}).insert(ignore_permissions=True)
+		if not frappe.db.exists("User", "team_fields_member@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "team_fields_member@example.com",
+				"first_name": "Team", "last_name": "Member", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+			frappe.db.commit()
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Test Team Fields Project",
+			"brand": "Test Team Fields Brand",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}, {"user": "team_fields_member@example.com"}],
+		}).insert(ignore_permissions=True)
+		grouping = frappe.get_doc({
+			"doctype": "Glossary", "glossary": "Test Team Fields Grouping", "project": self.project.name,
+		}).insert(ignore_permissions=True)
+		self.project_detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "Test Team Fields Detail",
+			"grouping": grouping.name, "project_deadline": add_days(nowdate(), 30), "estimated": 100,
+		}).insert(ignore_permissions=True)
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.project_detail.name,
+			"to_do": "Team Fields Todo", "assigned_to": "Administrator", "start_date": nowdate(),
+			"deadline": add_days(nowdate(), 7), "estimated": 10, "status": "⚪️ Planned",
+			"group": group, "level_id": level_id,
+		}).insert(ignore_permissions=True)
+
+	def test_team_rows_carry_only_user_and_name(self):
+		result = get_project_item(self.todo.name)
+		team = result["team"]
+		self.assertEqual(len(team), 2)
+		for row in team:
+			self.assertEqual(set(row.keys()), {"user", "name"})
+
+	def test_team_member_name_still_resolved(self):
+		result = get_project_item(self.todo.name)
+		names = {row["user"]: row["name"] for row in result["team"]}
+		self.assertEqual(names["team_fields_member@example.com"], "Team Member")
+
+
 class TestClampPageLimit(FrappeTestCase):
 	"""Pure unit test for the clamp math itself -- proving the ceiling fires
 	for an oversized request without needing hundreds of DB rows (case 7:

@@ -178,16 +178,74 @@ the prompt wants signed off before it ships — this pass only makes it
 possible to flip on with a one-line frontend change once Erick decides the
 UX (what window size, whether it's a hard page or infinite-scroll, etc).
 
+## Phase 1c — correction to finding #3, plus the fix that was actually safe
+
+Finding #3 above (in the original baseline pass) said team avatar configs
+"aren't rendered anywhere in this response" and proposed trimming `name_map`
+down to referenced emails only. **That was wrong** — checked before touching
+anything, not after: `shaped["team"]` (mobile.py, `get_project_item`) is
+built from the *full* team roster (not the referenced-only set) and is a
+real, used field — both frontends' reassignment picker
+(`frontend/src/pages/ProjectItemScreen.tsx` /m,
+`frontend-web/src/pages/ProjectItem.tsx` /w) reads `team[i].user`/`.name` to
+populate it. Trimming `name_map` to referenced-only would have silently
+emptied that picker for anyone not already assignee/developer/tester/etc —
+exactly the class of bug this todo's own SECURITY GATE warns about. Not
+made; PERF.md is corrected here instead of quietly dropping the wrong claim.
+
+What grepping the same two files *also* showed: neither ever reads
+`team[i].image` or `team[i].avatar_config` — only the top-level
+`assigned_to_image`/`assigned_to_avatar_config` render an avatar anywhere on
+this screen. Those two keys were dead weight on every team row, still
+computed from the same `_user_name_map()`/`User Avatar` batch already paid
+for the assignee etc.
+
+Measured live (`PRJ-2601-00001`, the biggest real team, 20 members) on the
+already-live-on-main code, one full-detail fetch:
+
+| | Before | After | Change |
+|---|---|---|---|
+| `get_project_item` response bytes | 13,584 | 5,316 | **−8,268 B (−61%)** |
+| `team[]` bytes | 9,542 | 1,274 | −87% |
+| Queries | unchanged (2, still batched in `_user_name_map`) | unchanged | 0 |
+
+Zero-behaviour-change: `team[].user`/`.name` unchanged, contract test
+(`GET_PROJECT_ITEM_FIELDS_BOTH_FRONTENDS_READ`) still checks `team` is
+present at the top level and stays green. New test:
+`TestProjectItemTeamNoDeadAvatarFields` (2 cases) — RED confirmed against
+the pre-fix code (both failed, extra `image`/`avatar_config` keys present),
+GREEN after. Full `test_security_perf.py` and `test_mobile.py` re-run clean.
+
+This is the real biggest-single-fix win of this pass — bigger than the two
+Phase-1 query merges combined — and it needed no scope confirmation because
+nothing a user can see changed.
+
 ## Files touched this pass
 
-- `vernon_project/api/mobile.py` — the 2 Phase-1 query merges, `_clamp_page_limit`, `_fetch_todos(date_from=,date_to=)`, `get_calendar(date_from=,date_to=)`, `get_project_detail(limit=,start=)`.
-- `vernon_project/tests/test_security_perf.py` — `TestNoRedundantSingleFieldFetches`, `TestGetProjectItemFieldContract`, `TestGetProjectItemPermissionBoundary`, `TestCalendarDateWindowOptIn`, `TestProjectDetailPaginationOptIn`, `TestClampPageLimit` (23 new test cases total) + `_count_queries` helper (reused from `test_notes_markdown.py`'s pattern).
+- `vernon_project/api/mobile.py` — the 2 Phase-1 query merges, `_clamp_page_limit`, `_fetch_todos(date_from=,date_to=)`, `get_calendar(date_from=,date_to=)`, `get_project_detail(limit=,start=)`, `get_project_item`'s `team[]` shape (Phase 1c).
+- `vernon_project/tests/test_security_perf.py` — `TestNoRedundantSingleFieldFetches`, `TestGetProjectItemFieldContract`, `TestGetProjectItemPermissionBoundary`, `TestCalendarDateWindowOptIn`, `TestProjectDetailPaginationOptIn`, `TestClampPageLimit`, `TestProjectItemTeamNoDeadAvatarFields` (25 new test cases total) + `_count_queries` helper (reused from `test_notes_markdown.py`'s pattern).
 - `PERF.md` (this file) — new.
 - Todo comment on `6gb7lcr41q` — baseline numbers + 4 scope assumptions for Erick.
 
 ## Status
 
-`test_security_perf.py` 26/26 green, `test_mobile.py` 59/59 green, everything
-uncommitted in the shared checkout as instructed. Ready for the hub to land
-the backend half (mobile.py + tests) whenever it wants to merge — nothing
-here is reachable by a frontend yet, so landing it changes nothing live.
+`test_security_perf.py` 28/28 green, `test_mobile.py` 59/59 green, everything
+committed on `ai/perf-optin`, rebased clean onto current `main`. Ready for the
+hub to land the backend half (mobile.py + tests) whenever it wants to merge —
+the calendar/pagination opt-in params aren't reachable by a frontend yet, and
+the team-payload trim is a pure, verified byte reduction with no caller
+change, so landing this changes nothing live except making `get_project_item`
+smaller and faster on every team-heavy project.
+
+## What's deliberately NOT done here
+
+The two MB-scale findings (`get_calendar()` default call at 19.56 MB,
+`get_project_detail` at 446 KB for one screen) still need Erick's scope
+confirmation before the opt-in windowing/pagination built in Phase 1b gets
+switched on from either frontend — that is a real visible-behaviour decision
+(window size, infinite-scroll vs hard pages) this pass correctly does not
+make unilaterally. The 21-case backend regression suite and 17-case
+Playwright E2E suite the todo's other two AI-prompt entries ask for were
+also not built this pass — out of proportion to what was actually asked
+("measure, fix the biggest real costs, prove it"); flagged back to the hub
+rather than silently skipped.

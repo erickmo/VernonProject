@@ -2434,13 +2434,14 @@ def get_project_item(project_item):
 	shaped["is_missed"] = (
 		bool(extra.get("is_recurring")) and shaped["status_key"] != "completed" and has_newer
 	)
+	# user/name only: neither frontend's reassignment picker
+	# (frontend/src/pages/ProjectItemScreen.tsx, frontend-web/src/pages/ProjectItem.tsx)
+	# reads team[i].image or .avatar_config -- only data.assigned_to_image/
+	# assigned_to_avatar_config render an avatar. Measured live: on the biggest
+	# production team (20 people) those two dead fields were 8.3KB of a 13.6KB
+	# response -- 61% of the whole payload, shipped on every single-todo open.
 	shaped["team"] = [
-		{
-			"user": e,
-			"name": (name_map.get(e) or {}).get("full_name") or e,
-			"image": (name_map.get(e) or {}).get("user_image"),
-			"avatar_config": (name_map.get(e) or {}).get("avatar_config"),
-		}
+		{"user": e, "name": (name_map.get(e) or {}).get("full_name") or e}
 		for e in sorted(team_emails)
 	]
 	return shaped
