@@ -278,21 +278,24 @@
    "fieldname": "daily_priority_slots",
    "fieldtype": "Int",
    "label": "Daily Priority Slots (per user)",
-   "description": "How many priority slots each person gets per day. 0 disables the whole feature."
+   "description": "How many priority slots each person gets per day. 0 disables the whole feature.",
+   "non_negative": 1
   },
   {
    "default": "0",
    "fieldname": "max_project_priorities_per_day",
    "fieldtype": "Int",
    "label": "Max Priorities per Project (per user per day)",
-   "description": "How many of one person's daily slots a single project may claim. 0 = no per-project cap."
+   "description": "How many of one person's daily slots a single project may claim. 0 = no per-project cap.",
+   "non_negative": 1
   },
   {
    "default": "0",
    "fieldname": "priority_miss_penalty",
    "fieldtype": "Float",
    "label": "Priority Miss Penalty (points/day)",
-   "description": "Points deducted each day a claimed priority has not reached Done. Entered positive, charged negative."
+   "description": "Points deducted each day a claimed priority has not reached Done. Entered positive, charged negative.",
+   "non_negative": 1
   },
   {
    "fieldname": "recognition_section",
@@ -332,8 +335,8 @@
   {"fieldname": "certificate_section", "fieldtype": "Section Break", "label": "Sertifikat Magang"},
   {"fieldname": "intern_point_target_per_month", "fieldtype": "Float", "label": "Target Poin Magang per Bulan", "non_negative": 1, "default": "0", "description": "Patokan poin per bulan untuk komponen Kontribusi Poin pada Nilai Kinerja. Biarkan 0 bila belum ada patokan \u2014 komponen itu dilewati, bukan dinilai nol."},
   {"fieldname": "teguran_section", "fieldtype": "Section Break", "label": "Teguran (HR Warnings)"},
-  {"fieldname": "teguran_batas_sebelum_sp", "fieldtype": "Int", "label": "Batas Teguran Sebelum SP", "default": "3", "description": "Jumlah Teguran aktif dalam jendela waktu sebelum karyawan ditandai layak SP."},
-  {"fieldname": "teguran_jendela_bulan", "fieldtype": "Int", "label": "Jendela Bulan", "default": "6", "description": "Rentang bulan ke belakang yang dihitung untuk eskalasi Teguran."}
+  {"fieldname": "teguran_batas_sebelum_sp", "fieldtype": "Int", "label": "Batas Teguran Sebelum SP", "default": "3", "description": "Jumlah Teguran aktif dalam jendela waktu sebelum karyawan ditandai layak SP.", "non_negative": 1},
+  {"fieldname": "teguran_jendela_bulan", "fieldtype": "Int", "label": "Jendela Bulan", "default": "6", "description": "Rentang bulan ke belakang yang dihitung untuk eskalasi Teguran.", "non_negative": 1}
  ],
  "issingle": 1,
  "index_web_pages_for_search": 1,
