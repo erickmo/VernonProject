@@ -561,8 +561,10 @@ function PasskeyCard() {
 }
 
 // Self-service token for scripted access (mainly the MCP server) — same
-// "shown once" UX as a GitHub personal access token: the secret is never
-// re-displayed after generation, only api_key (safe, not sensitive alone).
+// "shown once" UX as a GitHub personal access token: both api_key and
+// api_secret are only ever in the Generate response; every later read
+// (get_api_token_status) returns has_token + a masked trailing hint, never
+// the key itself (94cops8ldi — the key used to be shown in full forever).
 const MCP_URL = 'https://mcp.vernon.id/mcp'
 // What you actually paste into claude.ai. The bare URL 401s on every path, which
 // clients report as "Authorization server not found" — so never hand it out alone.
@@ -707,8 +709,8 @@ function ApiTokenCard() {
             <Copy className="h-3.5 w-3.5" /> Copy for mcp_server/.env
           </button>
         </div>
-      ) : data?.api_key ? (
-        <p className="mb-3 truncate font-mono text-xs text-stone-500 dark:text-slate-400">Key: {data.api_key}</p>
+      ) : data?.has_token ? (
+        <p className="mb-3 truncate font-mono text-xs text-stone-500 dark:text-slate-400">Token active, ending ···{data.masked_key}</p>
       ) : !isLoading ? (
         <p className="mb-3 text-sm text-stone-400 dark:text-slate-500">No token yet.</p>
       ) : null}
@@ -720,9 +722,9 @@ function ApiTokenCard() {
           className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-paper-edge bg-paper py-2.5 text-sm font-semibold text-brand-600 active:scale-[0.99] disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900"
         >
           {generate.isPending ? <Spinner className="h-4 w-4" /> : <Webhook className="h-4 w-4" />}
-          {data?.api_key ? 'Regenerate' : 'Generate token'}
+          {data?.has_token ? 'Regenerate' : 'Generate token'}
         </button>
-        {data?.api_key && (
+        {data?.has_token && (
           <button
             onClick={doRevoke}
             disabled={revoke.isPending}

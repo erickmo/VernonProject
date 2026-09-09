@@ -430,8 +430,10 @@ function PasskeyTile() {
 }
 
 // Self-service token for scripted access (mainly the MCP server) — same
-// "shown once" UX as a GitHub personal access token: the secret is never
-// re-displayed after generation, only api_key (safe, not sensitive alone).
+// "shown once" UX as a GitHub personal access token: both api_key and
+// api_secret are only ever in the Generate response; every later read
+// (get_api_token_status) returns has_token + a masked trailing hint, never
+// the key itself (94cops8ldi — the key used to be shown in full forever).
 const MCP_URL = 'https://mcp.vernon.id/mcp'
 // What you actually paste into claude.ai. The bare URL 401s on every path, which
 // clients report as "Authorization server not found" — so never hand it out alone.
@@ -569,8 +571,8 @@ function ApiTokenTile() {
               <Copy className="w-3.5 h-3.5" /> Copy for mcp_server/.env
             </button>
           </div>
-        ) : data?.api_key ? (
-          <p className="truncate font-mono text-xs text-muted">Key: {data.api_key}</p>
+        ) : data?.has_token ? (
+          <p className="truncate font-mono text-xs text-muted">Token active, ending ···{data.masked_key}</p>
         ) : !isLoading ? (
           <p className="text-sm text-muted">No token yet.</p>
         ) : null}
@@ -582,9 +584,9 @@ function ApiTokenTile() {
             className="mt-1 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium text-brand-600 hover:bg-hover/[0.04] disabled:opacity-60 dark:border-slate-700"
           >
             {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Webhook className="w-4 h-4" />}
-            {data?.api_key ? 'Regenerate' : 'Generate token'}
+            {data?.has_token ? 'Regenerate' : 'Generate token'}
           </button>
-          {data?.api_key && (
+          {data?.has_token && (
             <button
               onClick={doRevoke}
               disabled={revoke.isPending}

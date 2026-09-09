@@ -52,10 +52,18 @@ def _mcp_connector_url():
 	return f"https://{host}/mcp?token={token}" if token else None
 
 
+def _mask_key(key):
+	"""Existence + a short trailing hint — never enough on its own to
+	authenticate with (the secret, never returned here, is also required)."""
+	return key[-4:] if key else None
+
+
 @frappe.whitelist()
 def get_api_token_status():
+	key = frappe.db.get_value("User", _self(), "api_key")
 	return {
-		"api_key": frappe.db.get_value("User", _self(), "api_key"),
+		"has_token": bool(key),
+		"masked_key": _mask_key(key),
 		"mcp_connector_url": _mcp_connector_url(),
 	}
 
@@ -65,9 +73,15 @@ def generate_api_token():
 	doc = frappe.get_doc("User", _self())
 	if not doc.api_key:
 		doc.api_key = frappe.generate_hash(length=15)
-	doc.api_secret = frappe.generate_hash(length=15)
+	# Capture the plaintext BEFORE save(): Frappe's own BaseDocument._save_passwords()
+	# overwrites any Password-fieldtype attribute (api_secret) on the in-memory doc
+	# with a dummy "***...*" placeholder right after persisting it (see
+	# frappe/model/base_document.py) — reading doc.api_secret after save() here
+	# returned that placeholder, never the real secret, since this was written.
+	api_secret = frappe.generate_hash(length=15)
+	doc.api_secret = api_secret
 	doc.save(ignore_permissions=True)
-	return {"api_key": doc.api_key, "api_secret": doc.api_secret}
+	return {"api_key": doc.api_key, "api_secret": api_secret}
 
 
 @frappe.whitelist(methods=["POST"])
