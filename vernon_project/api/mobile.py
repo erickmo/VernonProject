@@ -2463,7 +2463,12 @@ def update_todo(
 		if estimated is not None and estimated != "":
 			row.estimated = int(estimated)
 		_prev_assignee = row.assigned_to
-		if assigned_to is not None and assigned_to:
+		if assigned_to is not None and assigned_to and assigned_to != _prev_assignee:
+			# 2026-09-09 permission sweep: this had no extra gate, so the current
+			# assignee could hand their own task to anyone with no leader/owner
+			# approval -- same shape as the `estimated` gate just above.
+			if not (is_sm or user in (project.project_owner, project.project_leader)):
+				return {"status": "error", "message": "Only the project leader or owner can reassign this task."}
 			row.assigned_to = assigned_to
 		# Mentor credit is leader/owner-set only (assignees can't credit themselves).
 		# Empty string clears it.
