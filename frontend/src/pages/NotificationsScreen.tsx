@@ -51,7 +51,7 @@ export default function NotificationsScreen() {
   const navigate = useNavigate()
   const feed = useNotificationFeed()
   const { items: rows, unread, isLoading, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = feed
-  const { updateAvailable, applyUpdate } = useAppUpdate()
+  const { updateAvailable, applying, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
   const redemptionNotice = useRedemptionNotice()
@@ -135,7 +135,8 @@ export default function NotificationsScreen() {
                 <li>
                   <button
                     onClick={applyUpdate}
-                    className="flex w-full items-start gap-3 rounded-2xl bg-brand-50 px-3 py-3 text-left dark:bg-brand-500/15 active:scale-[0.99]"
+                    disabled={applying}
+                    className="flex w-full items-start gap-3 rounded-2xl bg-brand-50 px-3 py-3 text-left dark:bg-brand-500/15 active:scale-[0.99] disabled:opacity-60"
                   >
                     <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-500/25 dark:text-brand-300">
@@ -146,10 +147,10 @@ export default function NotificationsScreen() {
                         Update
                       </span>
                       <span className="block text-sm font-semibold text-stone-800 dark:text-slate-50">
-                        Update available
+                        {applying ? 'Updating…' : 'Update available'}
                       </span>
                       <span className="mt-0.5 block text-sm text-stone-500 dark:text-slate-400">
-                        Tap to load the latest version
+                        {applying ? 'Loading the latest version…' : 'Tap to load the latest version'}
                       </span>
                     </span>
                   </button>

@@ -7,10 +7,15 @@ import { useEffect, useSyncExternalStore } from 'react'
 // State (module-level, app-lifetime). `updateAvailable` only ever flips true.
 let updateAvailable = false
 let latestVersion: string | null = null
+let applying = false
 
 // Stable snapshot: useSyncExternalStore needs referential stability or it
 // infinite-loops. Rebuilt only inside setState (below), never in getSnapshot.
-let snapshot: { updateAvailable: boolean; latestVersion: string | null } = { updateAvailable, latestVersion }
+let snapshot: { updateAvailable: boolean; latestVersion: string | null; applying: boolean } = {
+  updateAvailable,
+  latestVersion,
+  applying,
+}
 
 const listeners = new Set<() => void>()
 function emit() {
@@ -27,7 +32,7 @@ function getSnapshot() {
 // Rebuild the frozen snapshot and notify, mimicking a setState updater so the
 // object identity changes exactly once per real state change.
 function setState() {
-  snapshot = { updateAvailable, latestVersion }
+  snapshot = { updateAvailable, latestVersion, applying }
   emit()
 }
 
@@ -59,7 +64,15 @@ function startPolling() {
   // ponytail: no teardown — this lives for the app's lifetime by design.
 }
 
-const applyUpdate = () => window.location.reload()
+// Flips a busy flag before reloading so the button gives visible feedback
+// instead of looking inert while the navigation is in flight, and a second
+// click (double-tap) can't fire a second reload.
+const applyUpdate = () => {
+  if (applying) return
+  applying = true
+  setState()
+  window.location.reload()
+}
 
 export function useAppUpdate() {
   useEffect(() => {

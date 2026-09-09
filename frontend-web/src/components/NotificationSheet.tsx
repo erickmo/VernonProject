@@ -57,7 +57,7 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
     fetchNextPage,
     isFetchingNextPage,
   } = useNotificationFeed(open)
-  const { updateAvailable, applyUpdate } = useAppUpdate()
+  const { updateAvailable, applying, applyUpdate } = useAppUpdate()
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
   const redemptionNotice = useRedemptionNotice()
@@ -97,15 +97,16 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
       {updateAvailable && (
         <button
           onClick={() => applyUpdate()}
-          className="-mx-5 mb-1 flex w-[calc(100%+2.5rem)] items-start gap-3 border-b border-line bg-brand-50 px-5 py-3 text-left hover:bg-brand-100 dark:bg-brand-500/15 dark:hover:bg-brand-500/25"
+          disabled={applying}
+          className="-mx-5 mb-1 flex w-[calc(100%+2.5rem)] items-start gap-3 border-b border-line bg-brand-50 px-5 py-3 text-left hover:bg-brand-100 disabled:opacity-60 dark:bg-brand-500/15 dark:hover:bg-brand-500/25"
         >
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
-              Update available
+              {applying ? 'Updating…' : 'Update available'}
             </span>
             <span className="block text-sm text-muted dark:text-slate-400">
-              Click to load the latest version
+              {applying ? 'Loading the latest version…' : 'Click to load the latest version'}
             </span>
           </span>
         </button>

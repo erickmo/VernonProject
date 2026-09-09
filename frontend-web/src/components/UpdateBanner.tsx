@@ -8,7 +8,7 @@ import { Button, IconButton } from '@web/components/ui'
 // Global toast shown when a newer build is live. Renders null unless an update
 // is pending, so it's safe to mount once in the shell.
 export default function UpdateBanner() {
-  const { updateAvailable, applyUpdate } = useAppUpdate()
+  const { updateAvailable, applying, applyUpdate } = useAppUpdate()
   // Real user-facing version from What's New, not version.json's pkg.version
   // (frozen at "0.0.0").
   const { data: releases } = useAppReleases('Web')
@@ -30,8 +30,8 @@ export default function UpdateBanner() {
           </p>
           <p className="mt-0.5 text-xs text-muted">A newer version is ready to load.</p>
           <div className="mt-3 flex items-center gap-2">
-            <Button variant="primary" size="sm" onClick={() => applyUpdate()}>
-              Update
+            <Button variant="primary" size="sm" onClick={() => applyUpdate()} disabled={applying}>
+              {applying ? 'Updating…' : 'Update'}
             </Button>
             <button
               onClick={() => navigate('/whats-new')}

@@ -6,7 +6,7 @@ import { useAppReleases } from '@/hooks/useData'
 
 export default function UpdateBanner() {
   const navigate = useNavigate()
-  const { updateAvailable, applyUpdate } = useAppUpdate()
+  const { updateAvailable, applying, applyUpdate } = useAppUpdate()
   // Show the real user-facing version from What's New, not version.json's
   // pkg.version (which never bumps and always read "1.0.0").
   const { data: releases } = useAppReleases('Mobile')
@@ -36,9 +36,10 @@ export default function UpdateBanner() {
           </button>
           <button
             onClick={applyUpdate}
-            className="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95"
+            disabled={applying}
+            className="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white active:scale-95 disabled:opacity-60"
           >
-            Update
+            {applying ? 'Updating…' : 'Update'}
           </button>
           <button
             onClick={() => setDismissed(true)}
