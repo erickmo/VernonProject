@@ -607,7 +607,21 @@ def _visible_projects(status=None):
 	return [n for n in allowed if n in involved]
 
 
-def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None, project_detail=None):
+def _clamp_page_limit(limit, max_limit):
+	"""Server-enforced ceiling for an optional page-size param: 0 means "no
+	limit" (today's behaviour for every caller that doesn't pass one) and is
+	left alone; a positive value above max_limit is silently capped rather
+	than obeyed (6gb7lcr41q's security gate — a client asking for 10000 rows
+	gets clamped, not obeyed); negative is invalid input, not a valid size."""
+	limit = cint(limit)
+	if limit < 0:
+		frappe.throw("limit must be zero or a positive integer", frappe.ValidationError)
+	if limit == 0:
+		return 0
+	return min(limit, max_limit)
+
+
+def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None, project_detail=None, date_from=None, date_to=None):
 	"""All todos (with project + work-item context) for the given projects.
 	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
 	(full status strings) to fetch only those — lets status-scoped callers like the
@@ -618,7 +632,12 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	every sibling in the project — query cost then depends on len(names), not on
 	how many todos the project has. Pass `project_detail` to scope to one work
 	item's todos in SQL instead of fetching the whole project (see
-	get_project_detail) — same reasoning as `assigned_to`."""
+	get_project_detail) — same reasoning as `assigned_to`. Pass `date_from`/
+	`date_to` (both required together) to window on `deadline` — an undated
+	todo then has nothing to match and is excluded, same as it not appearing
+	under any single day today. Neither is set by any caller yet (see
+	get_calendar) — the clause simply doesn't exist in the query when both are
+	falsy, so every existing caller is unaffected."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
@@ -639,6 +658,10 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	if project_detail:
 		cond += " AND t.project_detail = %(project_detail)s"
 		params["project_detail"] = project_detail
+	if date_from and date_to:
+		cond += " AND t.deadline BETWEEN %(date_from)s AND %(date_to)s"
+		params["date_from"] = date_from
+		params["date_to"] = date_to
 	return frappe.db.sql(
 		f"""
 		SELECT
@@ -1434,8 +1457,11 @@ def get_team_priority_coverage(project, week_start):
 	return {"members": out_members}
 
 
+MAX_CALENDAR_WINDOW_DAYS = 400
+
+
 @frappe.whitelist()
-def get_calendar(open_only=0, mine=0):
+def get_calendar(open_only=0, mine=0, date_from=None, date_to=None):
 	"""All visible todos, shaped, for the Calendar view.
 
 	Returns the per-user visible set in one round-trip; the client buckets them
@@ -1450,11 +1476,29 @@ def get_calendar(open_only=0, mine=0):
 	open todos) even though the Plan page only ever shows their own — mine=1 cuts that
 	to the caller's involvement server-side. Calendar/search callers keep the defaults
 	(full visible set) since they render/search everyone's completed todos too.
+
+	date_from/date_to (optional, both-or-neither): windows the result on
+	`deadline` — a real fix for the ~19.5MB/2.8MB payloads measured against the
+	unwindowed calls (see PERF.md, todo 6gb7lcr41q). Backend-only capability for
+	now: no frontend caller passes these yet, so leaving both unset returns
+	exactly what this endpoint always has. Not a silent default window — that
+	would itself be the visible behaviour change this todo holds for sign-off.
 	"""
+	if bool(date_from) != bool(date_to):
+		frappe.throw("Pass both date_from and date_to, or neither.", frappe.ValidationError)
+	if date_from and date_to:
+		date_from, date_to = getdate(date_from), getdate(date_to)
+		if date_from > date_to:
+			frappe.throw("date_from must be on or before date_to", frappe.ValidationError)
+		if date_diff(date_to, date_from) > MAX_CALENDAR_WINDOW_DAYS:
+			frappe.throw(
+				f"Date range too wide — pick {MAX_CALENDAR_WINDOW_DAYS} days or fewer.",
+				frappe.ValidationError,
+			)
 	user = frappe.session.user
 	projects = _visible_projects()
 	statuses = [STATUS_PLANNED, STATUS_DONE, STATUS_CHECKED] if int(open_only or 0) else None
-	rows = _fetch_todos(projects, statuses=statuses)
+	rows = _fetch_todos(projects, statuses=statuses, date_from=date_from, date_to=date_to)
 	if int(mine or 0):
 		rows = [
 			r for r in rows
@@ -2043,9 +2087,19 @@ def get_mentionable_users(reference_doctype, reference_name):
 	return out
 
 
+MAX_PROJECT_ITEMS_PAGE = 500
+
+
 @frappe.whitelist()
-def get_project_detail(project_detail, include_cancelled=0):
-	"""A Project Detail with its project items."""
+def get_project_detail(project_detail, include_cancelled=0, limit=0, start=0):
+	"""A Project Detail with its project items.
+
+	limit/start (optional, default 0): pagination over project_items, for the
+	~446KB/599-row worst case measured in PERF.md (todo 6gb7lcr41q). limit=0
+	(every caller today) returns every item exactly as before this param
+	existed — a capability, not a behaviour change. limit is clamped to
+	MAX_PROJECT_ITEMS_PAGE server-side regardless of what's requested.
+	"""
 	user = frappe.session.user
 	detail = frappe.get_value(
 		"Project Detail", project_detail,
@@ -2068,15 +2122,28 @@ def get_project_detail(project_detail, include_cancelled=0):
 		include_cancelled=frappe.utils.cint(include_cancelled),
 		project_detail=project_detail,
 	)
+	start = cint(start)
+	if start < 0:
+		frappe.throw("start must be zero or a positive integer", frappe.ValidationError)
+	limit = _clamp_page_limit(limit, MAX_PROJECT_ITEMS_PAGE)
+	if limit:
+		rows = rows[start:start + limit]
+	elif start:
+		rows = rows[start:]
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])
-	detail["project_name"] = frappe.get_value("Project", detail["project"], "project_name")
+	# One fetch for every single-field Project lookup this function used to make
+	# separately (project_name, owner/leader, auto_approve — see PERF.md).
+	proj = frappe.get_value(
+		"Project", detail["project"],
+		["project_name", "project_owner", "project_leader", "auto_approve"],
+		as_dict=True,
+	)
+	detail["project_name"] = proj["project_name"]
+	owner, leader = proj["project_owner"], proj["project_leader"]
 
 	# Lead-only "create task" gate + team list for the assignee picker.
-	owner, leader = frappe.get_value(
-		"Project", detail["project"], ["project_owner", "project_leader"]
-	)
 	admins = get_project_admins(detail["project"])
 	is_sm = "System Manager" in frappe.get_roles(user)
 	# Admins may now create tasks (task injectors), alongside owner/leader.
@@ -2089,7 +2156,7 @@ def get_project_detail(project_detail, include_cancelled=0):
 	]
 	detail["can_edit"] = is_sm or user in (owner, leader)
 	detail["can_delete"] = is_sm or user == owner or user == leader or user in admins
-	detail["auto_approve"] = bool(frappe.db.get_value("Project", detail["project"], "auto_approve"))
+	detail["auto_approve"] = bool(proj["auto_approve"])
 	detail["can_set_auto_approve"] = user == owner and "Partner" in frappe.get_roles(user)
 	detail["groupings"] = frappe.get_all(
 		"Glossary", filters={"project": detail["project"]}, pluck="glossary", limit_page_length=0
@@ -2159,58 +2226,10 @@ def get_project_item(project_item):
 	name_map = _user_name_map(emails)
 	_admins = get_project_admins(r["project"])
 	shaped = _shape_todo(r, user, name_map, include_notes=True, admins=_admins)
-	from vernon_project.api.project_todo import parse_ai_prompts
-	shaped["ai_prompts"] = parse_ai_prompts(frappe.db.get_value("Project Todo", project_item, "ai_prompt"))
-	shaped["can_edit_notes"] = user in (
-		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
-	) or user in _admins
-	# The assignee joins SM / owner / leader here: phase 2 is theirs to review — they
-	# update the generated prompt and confirm it before an agent runs it. Once the
-	# todo leaves Planned, the prompt is frozen (doctype validate() enforces this
-	# server-side regardless of this flag) — read/copy still work via ai_prompts.
-	shaped["can_edit_prompt"] = shaped["status_key"] == "planned" and (
-		("System Manager" in frappe.get_roles(user)) or user in (
-			r["project_owner"], r["project_leader"], r["assigned_to"]
-		)
-	)
-	# Same gate confirms phase 2 -> 3; the phase itself already rides in _shape_todo.
-	shaped["can_confirm_prompt"] = shaped["can_edit_prompt"]
-	shaped["ai_prompt_confirmed"] = bool(
-		frappe.db.get_value("Project Todo", project_item, "ai_prompt_confirmed")
-	)
-	shaped["ai_phase_name"] = AI_PHASE_NAMES[shaped["ai_phase"]]
-	# Tagging AI at all is role-gated; the frontends hide the toggle when this is false.
-	shaped["can_use_ai"] = can_use_ai(user)
-	# Full-task edit is a lead action; assignee/deadline/estimate are locked once
-	# the task is Done/Completed (enforced by the doctype's validate()).
-	is_sm = "System Manager" in frappe.get_roles(user)
-	shaped["can_edit"] = is_sm or user in (
-		r["project_owner"], r["project_leader"], r["assigned_to"]
-	) or user in _admins
-	# Attached files ride down with the detail (same edit gate as notes).
-	from vernon_project.api.project_todo import list_todo_files
-	shaped["files"] = list_todo_files(project_item)
-	shaped["can_edit_files"] = shaped["can_edit"]
-	shaped["fields_locked"] = shaped["status_key"] in ("done", "completed")
-	is_leader = user == r["project_leader"]
-	is_owner = user == r["project_owner"]
-	shaped["can_edit_estimate"] = is_sm or is_leader or is_owner
-	shaped["can_edit_assigned"] = is_sm or is_leader
-	_mentor = frappe.db.get_value("Project Todo", project_item, "mentor")
-	shaped["mentor"] = _mentor or ""
-	shaped["mentor_name"] = (frappe.db.get_value("User", _mentor, "full_name") or _mentor) if _mentor else ""
-	_assigned = _assigned_allocations_map([r["name"]]).get(r["name"], [])
-	shaped["assigned_allocation"] = _assigned_allocation_for(
-		_assigned, shaped.get("deadline"), shaped.get("estimated") or 0
-	)
-	shaped["assigned_total"] = sum((a["minutes"] or 0) for a in shaped["assigned_allocation"])
-	# Delete is a lead/admin action and only while Planned or Cancelled.
-	shaped["can_delete"] = (
-		(is_sm or user in (r["project_owner"], r["project_leader"]) or user in _admins)
-		and shaped["status_key"] in ("planned", "cancelled")
-	)
-
-	# Per-phase estimates + recurrence settings + occurrence history
+	# Per-phase estimates + recurrence settings + occurrence history + mentor/ai
+	# fields — one fetch for every other single-field lookup this function used
+	# to make against this same doc (mentor, ai_prompt, ai_prompt_confirmed were
+	# each their own round-trip before; see PERF.md).
 	extra = frappe.get_value(
 		"Project Todo",
 		project_item,
@@ -2234,9 +2253,61 @@ def get_project_item(project_item):
 			"recurring_exception_monthdays",
 			"recurring_exception_dates",
 			"recurring_exception_behavior",
+			"mentor",
+			"ai_prompt",
+			"ai_prompt_confirmed",
 		],
 		as_dict=True,
 	) or {}
+	from vernon_project.api.project_todo import parse_ai_prompts
+	shaped["ai_prompts"] = parse_ai_prompts(extra.get("ai_prompt"))
+	shaped["can_edit_notes"] = user in (
+		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
+	) or user in _admins
+	# The assignee joins SM / owner / leader here: phase 2 is theirs to review — they
+	# update the generated prompt and confirm it before an agent runs it. Once the
+	# todo leaves Planned, the prompt is frozen (doctype validate() enforces this
+	# server-side regardless of this flag) — read/copy still work via ai_prompts.
+	shaped["can_edit_prompt"] = shaped["status_key"] == "planned" and (
+		("System Manager" in frappe.get_roles(user)) or user in (
+			r["project_owner"], r["project_leader"], r["assigned_to"]
+		)
+	)
+	# Same gate confirms phase 2 -> 3; the phase itself already rides in _shape_todo.
+	shaped["can_confirm_prompt"] = shaped["can_edit_prompt"]
+	shaped["ai_prompt_confirmed"] = bool(extra.get("ai_prompt_confirmed"))
+	shaped["ai_phase_name"] = AI_PHASE_NAMES[shaped["ai_phase"]]
+	# Tagging AI at all is role-gated; the frontends hide the toggle when this is false.
+	shaped["can_use_ai"] = can_use_ai(user)
+	# Full-task edit is a lead action; assignee/deadline/estimate are locked once
+	# the task is Done/Completed (enforced by the doctype's validate()).
+	is_sm = "System Manager" in frappe.get_roles(user)
+	shaped["can_edit"] = is_sm or user in (
+		r["project_owner"], r["project_leader"], r["assigned_to"]
+	) or user in _admins
+	# Attached files ride down with the detail (same edit gate as notes).
+	from vernon_project.api.project_todo import list_todo_files
+	shaped["files"] = list_todo_files(project_item)
+	shaped["can_edit_files"] = shaped["can_edit"]
+	shaped["fields_locked"] = shaped["status_key"] in ("done", "completed")
+	is_leader = user == r["project_leader"]
+	is_owner = user == r["project_owner"]
+	shaped["can_edit_estimate"] = is_sm or is_leader or is_owner
+	shaped["can_edit_assigned"] = is_sm or is_leader
+	_mentor = extra.get("mentor")
+	shaped["mentor"] = _mentor or ""
+	shaped["mentor_name"] = (frappe.db.get_value("User", _mentor, "full_name") or _mentor) if _mentor else ""
+	_assigned = _assigned_allocations_map([r["name"]]).get(r["name"], [])
+	shaped["assigned_allocation"] = _assigned_allocation_for(
+		_assigned, shaped.get("deadline"), shaped.get("estimated") or 0
+	)
+	shaped["assigned_total"] = sum((a["minutes"] or 0) for a in shaped["assigned_allocation"])
+	# Delete is a lead/admin action and only while Planned or Cancelled.
+	shaped["can_delete"] = (
+		(is_sm or user in (r["project_owner"], r["project_leader"]) or user in _admins)
+		and shaped["status_key"] in ("planned", "cancelled")
+	)
+
 	shaped["cancellation_reason"] = extra.get("cancellation_reason")
 	# Blocking links are Table MultiSelect child rows (mirror sides of one edge).
 	shaped["blocked_by"] = frappe.get_all(
