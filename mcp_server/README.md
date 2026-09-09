@@ -106,9 +106,12 @@ contract; everything in it is reachable through `call_api_method`.
 > nothing outside this list: phases 1 and 2 are not yours.
 >
 > - **Fase 1 · Ditandai AI** — tagged AI, no prompt yet. Whoever writes prompts
->   finds them with `get_ai_todos_needing_prompt` and saves with
->   `save_ai_prompt(todo_id, ai_prompt)`, where `ai_prompt` is a JSON list of
->   `{"name": ..., "prompt": ...}`.
+>   finds them with `get_ai_todos_needing_prompt(envelope=1, include_context=1)`
+>   (see "Payload-size flags" below); if more detail is still needed, pull it
+>   with `get_ai_todo_context(todo_id)` / `get_ai_project_context(project)`
+>   ("Lean context reads" below) instead of `get_project_item` / `get_project` —
+>   and saves with `save_ai_prompt(todo_id, ai_prompt, return_prompts=0)`,
+>   where `ai_prompt` is a JSON list of `{"name": ..., "prompt": ...}`.
 > - **Fase 2 · Prompt Draf** — a prompt exists but no human has signed it off.
 >   Not runnable.
 > - **Fase 3 · Prompt Terkonfirmasi** — a human called
@@ -128,6 +131,65 @@ contract; everything in it is reachable through `call_api_method`.
 >   (default the Testing work-type).
 > - Tagging a todo as AI at all needs the "AI User" role on the account the
 >   API key belongs to (System Manager also passes).
+
+## Payload-size flags (2026-09-09)
+
+An hourly agent polling `get_ai_todos_needing_prompt` re-sends the full response
+on every turn, so its size is a recurring cost, not a one-off. Both flags below
+default to today's behavior — a call with no arguments is unchanged.
+
+`get_ai_todos_needing_prompt(envelope=0, include_context=0, limit=None)`:
+- `envelope=1` wraps the list as `{ok, count, server_time, user, todos}`. An
+  empty queue used to come back as a bare `[]` (2 bytes) — indistinguishable
+  from "call broke and returned nothing" without a second round-trip. Measured
+  on the live queue: `envelope=1` on an empty queue is 106 bytes and
+  unambiguous (`count: 0`).
+- `include_context=1` adds `notes`, `project_detail_title`, `level_type`,
+  `group`, `estimated`, `creator`, `is_follow_up`, `issue_of`,
+  `issue_of_title`, `blocked_by`, `blocking` per row — the fields an agent was
+  otherwise fetching one `get_project_item` call at a time just to read the
+  notes. Measured on the live site: one such call is **44,786 bytes** for a
+  single todo; `include_context=1` folds that into the list response instead.
+- `limit` caps the row count (hard max 200). Batched queries throughout — a
+  fixed number of queries (main + 3 lookups) regardless of row count.
+
+`save_ai_prompt(todo_id, ai_prompt, return_prompts=1)`:
+- `return_prompts=0` drops the prompt-body echo, returning
+  `{status, message, count, names}` instead of the full `ai_prompts` list.
+  Measured on the live site's largest stored prompt set: the full echo is
+  **27,494 bytes**; the lean response is **309 bytes** (~99% smaller) —
+  storage, validation and permissions are identical either way.
+
+Both flags arrive as strings over the whitelisted HTTP path (`"0"`/`"1"`),
+so they're coerced with `frappe.utils.cint()` server-side — pass them as
+plain `0`/`1` and it works the same from any caller.
+
+## Lean context reads (2026-09-09, part 2)
+
+`get_project_item` / `get_project` carry a whole screen's worth of data — team
+rosters, avatar configs, every sibling todo, timeline, allocations — most of
+which an agent writing an AI prompt never reads. Two new endpoints return only
+what that step actually needs:
+
+- `get_ai_todo_context(todo_id)` — name, to_do, status, work_mode, ai_phase,
+  `ai_prompts_count` (an integer — **never** the prompt text), deadline,
+  estimated, group, level_type, creator, assigned_to, project, project_name,
+  brand, project_detail, project_detail_title, notes, is_follow_up, issue_of,
+  issue_of_title, issue_of_notes, `blocked_by`/`blocking` (as
+  `[{name, to_do}]`), and `sibling_detail_titles` (the project's other
+  sub-module titles, deduplicated). Measured on the live site's largest real
+  todo: `get_project_item` is **94,907 bytes**; `get_ai_todo_context` is
+  **5,180 bytes** (~94% smaller).
+- `get_ai_project_context(project)` — name, project_name, brand, goal,
+  context, success_condition, failure_condition, groupings, and
+  `project_details` as `[{name, title}]`. No team, no todo counts. Measured on
+  the same project: `get_project` is **6,303 bytes**; `get_ai_project_context`
+  is **380 bytes** (~94% smaller).
+
+Same read gates as the endpoints they replace (`frappe.has_permission` for the
+todo, `_visible_projects()` for the project) — reused, not duplicated, so
+access never widens. An unknown id/name raises `DoesNotExistError`; a real one
+the caller can't see raises `PermissionError`.
 
 ## Scope
 

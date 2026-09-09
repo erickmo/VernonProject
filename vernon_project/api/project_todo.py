@@ -1,6 +1,7 @@
 import json
 
 import frappe
+from frappe.utils import cint
 
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
@@ -621,9 +622,15 @@ def parse_ai_prompts(raw):
 
 
 @frappe.whitelist()
-def save_ai_prompt(todo_id, ai_prompt):
+def save_ai_prompt(todo_id, ai_prompt, return_prompts=1):
 	"""Save the AI prompts (JSON list) for a project todo. Leader/owner action only
-	(System Manager, project_owner, project_leader) — assignees can't set it."""
+	(System Manager, project_owner, project_leader) — assignees can't set it.
+
+	``return_prompts=0`` skips echoing the ~20 KB prompt set back and returns
+	{status, message, count, names} instead — storage, validation and permissions
+	are identical either way. Comes in as a string over the whitelisted HTTP path,
+	so it's coerced with cint()."""
+	return_prompts = cint(return_prompts)
 	try:
 		todo = frappe.get_doc("Project Todo", todo_id)
 		project_detail = frappe.get_doc("Project Detail", todo.project_detail)
@@ -641,6 +648,13 @@ def save_ai_prompt(todo_id, ai_prompt):
 		# no human has signed off in its current wording.
 		todo.ai_prompt_confirmed = 0
 		todo.save(ignore_permissions=True)
+		if not return_prompts:
+			return {
+				"status": "ok",
+				"message": "Prompt berhasil disimpan.",
+				"count": len(clean),
+				"names": [p["name"] for p in clean],
+			}
 		return {
 			"status": "ok",
 			"message": "Prompt berhasil disimpan.",
@@ -770,8 +784,75 @@ def get_confirmed_ai_todos():
 	return out
 
 
+_AI_QUEUE_BASE_FIELDS = ("name", "to_do", "project", "project_detail", "status", "work_mode", "deadline")
+_AI_QUEUE_CONTEXT_COLUMNS = ("notes", "level_type", "group", "estimated", "owner", "is_follow_up", "issue_of")
+_AI_QUEUE_LIMIT_MAX = 200
+
+
+def _shape_ai_queue_row(r):
+	"""The compact shape get_ai_todos_needing_prompt has always returned. Kept as
+	one helper so the context-adding pass (below) and any future caller build on
+	the exact same base instead of two copies drifting apart."""
+	return {k: r[k] for k in _AI_QUEUE_BASE_FIELDS}
+
+
+def _batch_field_map(doctype, ids, fields):
+	"""{id: {field: value, ...}} for the given ids, in ONE query. Empty/falsy
+	`ids` skips the query entirely rather than issuing a pointless `IN ()`.
+	Shared by every AI-context endpoint so a new lookup is one call here
+	instead of a hand-rolled frappe.get_all at each call site."""
+	ids = [i for i in ids if i]
+	if not ids:
+		return {}
+	return {
+		r.name: r
+		for r in frappe.get_all(doctype, filters={"name": ["in", ids]}, fields=["name", *fields])
+	}
+
+
+def _batch_dependency_rows(todo_names):
+	"""Raw {parent, parentfield, todo} rows from Project Todo Dependency for the
+	given todos, both directions, in ONE query. Callers group/shape as they need —
+	the AI queue only wants bare ids, get_ai_todo_context wants {name, to_do}."""
+	todo_names = [n for n in todo_names if n]
+	if not todo_names:
+		return []
+	return frappe.get_all(
+		"Project Todo Dependency",
+		filters={"parent": ["in", todo_names], "parentfield": ["in", ["blocked_by", "blocking"]]},
+		fields=["parent", "parentfield", "todo"],
+	)
+
+
+def _attach_ai_queue_context(todos, rows):
+	"""Mutates `todos` in place, adding the include_context=1 fields. Batched:
+	fixed number of queries no matter how many rows are in play (A4) — one for
+	Project Detail titles, one for issue-of titles, one for blocked_by/blocking."""
+	detail_titles = _batch_field_map("Project Detail", (r.project_detail for r in rows), ["title"])
+	issue_titles = _batch_field_map("Project Todo", (r.issue_of for r in rows), ["to_do"])
+
+	blocked_by_map = {}
+	blocking_map = {}
+	for d in _batch_dependency_rows(r.name for r in rows):
+		target = blocked_by_map if d.parentfield == "blocked_by" else blocking_map
+		target.setdefault(d.parent, []).append(d.todo)
+
+	for r, t in zip(rows, todos):
+		t["notes"] = r.notes
+		t["project_detail_title"] = (detail_titles.get(r.project_detail) or {}).get("title")
+		t["level_type"] = r.level_type
+		t["group"] = r.group
+		t["estimated"] = r.estimated
+		t["creator"] = r.owner
+		t["is_follow_up"] = bool(r.is_follow_up)
+		t["issue_of"] = r.issue_of
+		t["issue_of_title"] = (issue_titles.get(r.issue_of) or {}).get("to_do") if r.issue_of else None
+		t["blocked_by"] = blocked_by_map.get(r.name, [])
+		t["blocking"] = blocking_map.get(r.name, [])
+
+
 @frappe.whitelist()
-def get_ai_todos_needing_prompt():
+def get_ai_todos_needing_prompt(envelope=0, include_context=0, limit=None):
 	"""Planned AI todos assigned to the caller that still need an AI prompt written.
 
 	Filters: ``work_mode`` in (AI, Both), ``assigned_to`` == current user, ``status`` ==
@@ -781,8 +862,31 @@ def get_ai_todos_needing_prompt():
 
 	Returns a compact list ordered by deadline (soonest first), so a caller deciding
 	which todo to apply a prompt to doesn't have to fetch and scan every todo:
-	[{name, to_do, project, project_detail, status, work_mode, deadline}]."""
+	[{name, to_do, project, project_detail, status, work_mode, deadline}].
+
+	``envelope=1`` wraps the list as {ok, count, server_time, user, todos} — an empty
+	queue then reads as count:0 instead of a blank body a caller can't tell apart from
+	a broken call.
+
+	``include_context=1`` adds, per row: notes, project_detail_title, level_type, group,
+	estimated, creator, is_follow_up, issue_of, issue_of_title, blocked_by, blocking —
+	enough that a caller no longer needs a get_project_item round-trip per todo just to
+	read the notes.
+
+	``limit`` caps the number of rows returned (hard max 200).
+
+	Args arrive as strings over the whitelisted HTTP path, so every flag is coerced
+	with cint() — "0" must behave as falsy, not as a truthy non-empty string."""
+	envelope = cint(envelope)
+	include_context = cint(include_context)
+	lim = cint(limit) if limit not in (None, "") else None
+	if lim is not None:
+		lim = max(0, min(lim, _AI_QUEUE_LIMIT_MAX))
+
 	user = frappe.session.user
+	fields = list(_AI_QUEUE_BASE_FIELDS) + ["ai_prompt"]
+	if include_context:
+		fields += list(_AI_QUEUE_CONTEXT_COLUMNS)
 	cand = frappe.get_all(
 		"Project Todo",
 		filters={
@@ -790,14 +894,150 @@ def get_ai_todos_needing_prompt():
 			"work_mode": ["in", list(AI_WORK_MODES)],
 			"status": "⚪️ Planned",
 		},
-		fields=["name", "to_do", "project", "project_detail", "status", "work_mode", "deadline", "ai_prompt"],
+		fields=fields,
 		order_by="deadline asc",
 	)
-	return [
-		{k: r[k] for k in ("name", "to_do", "project", "project_detail", "status", "work_mode", "deadline")}
-		for r in cand
-		if not parse_ai_prompts(r.ai_prompt)
-	]
+	rows = [r for r in cand if not parse_ai_prompts(r.ai_prompt)]
+	if lim is not None:
+		rows = rows[:lim]
+
+	todos = [_shape_ai_queue_row(r) for r in rows]
+	if include_context:
+		_attach_ai_queue_context(todos, rows)
+
+	if envelope:
+		return {
+			"ok": True,
+			"count": len(todos),
+			"server_time": frappe.utils.now(),
+			"user": user,
+			"todos": todos,
+		}
+	return todos
+
+
+@frappe.whitelist()
+def get_ai_todo_context(todo_id):
+	"""Lean replacement for get_project_item when an agent is writing an AI prompt.
+
+	get_project_item returns ~80,000 characters for a todo whose actually-useful
+	content is under 2,000 — the rest is 100+ sibling detail_todos, team avatar
+	configs, timeline and allocations the agent never reads, plus the full text of
+	every saved ai_prompt (which this never returns — ``ai_prompts_count`` is an
+	int, never the prompt bodies).
+
+	Same read gate as get_project_item: ``frappe.has_permission("Project Todo",
+	"read", ...)`` — not a second copy, so the two never drift apart. Existence is
+	checked first so an unknown id raises DoesNotExistError rather than being
+	reported as a permission refusal.
+
+	Batched throughout (see _batch_field_map / _batch_dependency_rows, shared with
+	get_ai_todos_needing_prompt's include_context) — a todo with many blocked_by/
+	blocking links or a project with many sibling details costs the same handful
+	of queries as one with none."""
+	if not frappe.db.exists("Project Todo", todo_id):
+		frappe.throw("Not found", frappe.DoesNotExistError)
+	if not frappe.has_permission("Project Todo", "read", doc=todo_id):
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	todo = frappe.db.get_value(
+		"Project Todo",
+		todo_id,
+		[
+			"name", "to_do", "status", "work_mode", "ai_prompt", "ai_prompt_confirmed",
+			"deadline", "estimated", "group", "level_type", "owner", "assigned_to",
+			"project", "project_detail", "notes", "is_follow_up", "issue_of",
+		],
+		as_dict=True,
+	)
+
+	project = frappe.db.get_value("Project", todo.project, ["project_name", "brand"], as_dict=True) or {}
+	detail_titles = _batch_field_map("Project Detail", [todo.project_detail], ["title"])
+	siblings = frappe.get_all(
+		"Project Detail",
+		filters={"project": todo.project, "name": ["!=", todo.project_detail]},
+		pluck="title",
+	)
+
+	issue = _batch_field_map("Project Todo", [todo.issue_of], ["to_do", "notes"]) if todo.issue_of else {}
+	issue_row = issue.get(todo.issue_of) or {}
+
+	dep_rows = _batch_dependency_rows([todo.name])
+	dep_todo_titles = _batch_field_map("Project Todo", (d.todo for d in dep_rows), ["to_do"])
+	blocked_by, blocking = [], []
+	for d in dep_rows:
+		title = (dep_todo_titles.get(d.todo) or {}).get("to_do")
+		entry = {"name": d.todo, "to_do": title}
+		(blocked_by if d.parentfield == "blocked_by" else blocking).append(entry)
+
+	prompts_count = len(parse_ai_prompts(todo.ai_prompt))
+
+	return {
+		"name": todo.name,
+		"to_do": todo.to_do,
+		"status": todo.status,
+		"work_mode": todo.work_mode,
+		"ai_phase": ai_phase(todo.work_mode, bool(prompts_count), todo.ai_prompt_confirmed),
+		"ai_prompts_count": prompts_count,
+		"deadline": todo.deadline,
+		"estimated": todo.estimated,
+		"group": todo.group,
+		"level_type": todo.level_type,
+		"creator": todo.owner,
+		"assigned_to": todo.assigned_to,
+		"project": todo.project,
+		"project_name": project.get("project_name"),
+		"brand": project.get("brand"),
+		"project_detail": todo.project_detail,
+		"project_detail_title": (detail_titles.get(todo.project_detail) or {}).get("title"),
+		"notes": todo.notes,
+		"is_follow_up": bool(todo.is_follow_up),
+		"issue_of": todo.issue_of,
+		"issue_of_title": issue_row.get("to_do") if todo.issue_of else None,
+		"issue_of_notes": issue_row.get("notes") if todo.issue_of else None,
+		"blocked_by": blocked_by,
+		"blocking": blocking,
+		"sibling_detail_titles": sorted({t for t in siblings if t}),
+	}
+
+
+@frappe.whitelist()
+def get_ai_project_context(project):
+	"""Lean replacement for get_project when an agent is writing an AI prompt.
+
+	No team roster, no todo rollups, no counts — just the project's own
+	descriptive fields plus its groupings and sub-module titles.
+
+	Same read gate as get_project: the project must be in ``_visible_projects()``
+	(reused, not re-implemented). Existence is checked first so an unknown name
+	raises DoesNotExistError rather than a bare permission refusal."""
+	if not frappe.db.exists("Project", project):
+		frappe.throw("Not found", frappe.DoesNotExistError)
+	from vernon_project.api.mobile import _visible_projects
+
+	if project not in _visible_projects():
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+	doc = frappe.db.get_value(
+		"Project",
+		project,
+		["name", "project_name", "brand", "goal", "context", "success_condition", "failure_condition"],
+		as_dict=True,
+	)
+	groupings = frappe.get_all("Glossary", filters={"project": project}, pluck="glossary")
+	project_details = frappe.get_all("Project Detail", filters={"project": project}, fields=["name", "title"])
+
+	return {
+		"name": doc.name,
+		"project_name": doc.project_name,
+		"brand": doc.brand,
+		"goal": doc.goal,
+		"context": doc.context,
+		"success_condition": doc.success_condition,
+		"failure_condition": doc.failure_condition,
+		"groupings": groupings,
+		"project_details": project_details,
+	}
 
 
 def _parse_checklist(raw):
