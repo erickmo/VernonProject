@@ -48,16 +48,21 @@ class TestCertificateScorePermlevel(unittest.TestCase):
 		frappe.db.commit()
 
 	def test_project_leader_cannot_set_cert_no_or_verify_code_directly(self):
+		# Frappe's permlevel write-guard doesn't raise on save() -- it silently
+		# resets any permlevel-1 field a permlevel-0-only user tried to change
+		# back to its stored value. Proving the RESET (not an exception) is
+		# what actually confirms the protection is live.
 		frappe.set_user(self.LEADER)
 		try:
 			doc = frappe.get_doc("Internship Certificate", self.cert.name)
 			doc.cert_no = "FORGED-001"
 			doc.verify_code = "forged-verify-code"
-			with self.assertRaises(frappe.PermissionError):
-				doc.save()
+			doc.save()  # no exception -- Frappe quietly drops the permlevel-1 edits
 		finally:
 			frappe.set_user("Administrator")
-		self.assertFalse(frappe.db.get_value("Internship Certificate", self.cert.name, "cert_no"))
+		reloaded = frappe.get_doc("Internship Certificate", self.cert.name)
+		self.assertFalse(reloaded.cert_no)
+		self.assertFalse(reloaded.verify_code)
 
 	def test_project_leader_cannot_forge_scores(self):
 		frappe.set_user(self.LEADER)
@@ -65,10 +70,12 @@ class TestCertificateScorePermlevel(unittest.TestCase):
 			doc = frappe.get_doc("Internship Certificate", self.cert.name)
 			doc.auto_score = 100
 			doc.rubric_score = 100
-			with self.assertRaises(frappe.PermissionError):
-				doc.save()
+			doc.save()  # silently reset, not an exception -- see note above
 		finally:
 			frappe.set_user("Administrator")
+		reloaded = frappe.get_doc("Internship Certificate", self.cert.name)
+		self.assertNotEqual(reloaded.auto_score, 100)
+		self.assertNotEqual(reloaded.rubric_score, 100)
 
 	def test_project_leader_can_still_edit_non_score_fields(self):
 		frappe.set_user(self.LEADER)
