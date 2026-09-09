@@ -246,6 +246,37 @@ class TestSuperpowers(unittest.TestCase):
 		frappe.set_user("Administrator")
 		self.assertEqual(self._rec_count(), 1)
 
+	def test_cast_vote_giver_capped_per_week(self):
+		"""2026-09-09 permission sweep: one voter crediting three DIFFERENT
+		ratees used to mint three uncapped Recognition rows -- the only
+		idempotency was per-(voter, ratee), never per-voter. A weekly
+		per-giver cap (Vernon Settings.recognition_weekly_cap), matching the
+		one mobile.py::_recognition_credit already enforces, now stops it."""
+		self._set_vote_points(2)
+		vs = frappe.get_single("Vernon Settings")
+		orig_cap = vs.recognition_weekly_cap
+		vs.recognition_weekly_cap = 2
+		vs.save(ignore_permissions=True)
+		voter = self._voter(0)
+		ratees = []
+		try:
+			for i in range(3):
+				ratee = f"sp_farm_ratee{i}@example.com"
+				self._ensure_user(ratee, f"Farm Ratee {i}")
+				ratees.append(ratee)
+			frappe.set_user(voter)
+			for ratee in ratees:
+				cast_vote(ratee, self.SPA, VOTE_MAX)
+			frappe.set_user("Administrator")
+			minted = frappe.db.count("Point Ledger", {"granted_by": voter, "source": "Recognition"})
+			self.assertEqual(minted, 2)  # capped, not 3
+		finally:
+			frappe.set_user("Administrator")
+			vs = frappe.get_single("Vernon Settings")
+			vs.recognition_weekly_cap = orig_cap
+			vs.save(ignore_permissions=True)
+			frappe.db.commit()
+
 	# --- performance-earned superpowers ---
 
 	def _attend(self, user, days_ago, status):

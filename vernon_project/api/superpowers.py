@@ -193,8 +193,19 @@ def _recognition_credit(voter, ratee, superpower):
 		"Point Ledger", {"user": ratee, "granted_by": voter, "source": "Recognition", "note": note}
 	):
 		return
-	# ponytail: no weekly per-giver cap (Vernon Settings.recognition_weekly_cap);
-	# add it like mobile._recognition_credit if giver farming ever shows up.
+	# 2026-09-09 permission sweep: colluding low-privilege accounts could farm
+	# unlimited quarterly points for a favored user (each vote is idempotent
+	# per-ratee, but nothing capped how many DIFFERENT ratees one voter could
+	# credit). Same weekly per-giver cap as mobile.py::_recognition_credit,
+	# which this function's own docstring already claims to mirror.
+	cap = cint(frappe.get_cached_doc("Vernon Settings").recognition_weekly_cap)
+	if cap > 0:
+		given = frappe.db.count(
+			"Point Ledger",
+			{"granted_by": voter, "source": "Recognition", "credited_on": [">=", add_days(nowdate(), -7)]},
+		)
+		if given >= cap:
+			return
 	frappe.get_doc({
 		"doctype": "Point Ledger",
 		"user": ratee,
