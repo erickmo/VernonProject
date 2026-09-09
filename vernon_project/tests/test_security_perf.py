@@ -321,6 +321,21 @@ class TestGetProjectItemPermissionBoundary(FrappeTestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		# NEVER frappe.db.commit() after this point in a FrappeTestCase: it rolls
+		# back per CLASS not per test (see [[frappe-test-rollback-and-armed-links]]),
+		# so a manual commit() anywhere permanently commits everything created in
+		# the class's shared transaction from then on -- not just the row being
+		# committed. This one line, positioned AFTER self.project/self.project_detail/
+		# self.todo below, leaked a real "Test Perm Boundary Project" (+detail+todo)
+		# into the live database; moved the user (the only thing that actually
+		# needs to survive a rollback) before any of the per-test fixtures instead.
+		if not frappe.db.exists("User", "perf_outsider@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "perf_outsider@example.com",
+				"first_name": "Perf", "last_name": "Outsider", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+			frappe.db.commit()
+
 		group, level_id = _ensure_test_group()
 		if not frappe.db.exists("Brand", "Test Perm Boundary Brand"):
 			frappe.get_doc({
@@ -347,12 +362,6 @@ class TestGetProjectItemPermissionBoundary(FrappeTestCase):
 			"deadline": add_days(nowdate(), 7), "estimated": 10, "status": "⚪️ Planned",
 			"group": group, "level_id": level_id,
 		}).insert(ignore_permissions=True)
-		if not frappe.db.exists("User", "perf_outsider@example.com"):
-			frappe.get_doc({
-				"doctype": "User", "email": "perf_outsider@example.com",
-				"first_name": "Perf", "last_name": "Outsider", "send_welcome_email": 0,
-			}).insert(ignore_permissions=True)
-			frappe.db.commit()
 
 	def test_outsider_denied_read(self):
 		frappe.set_user("perf_outsider@example.com")
