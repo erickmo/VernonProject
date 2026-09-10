@@ -149,25 +149,39 @@ def enroll(course):
 
 @frappe.whitelist()
 def complete_lesson(course, lesson):
+	"""Row-locked (see mobile.py's vernon_spend/vernon_gami pattern): without a
+	lock, two concurrent calls for the same last lesson of a course can both
+	pass _mint_points' `frappe.db.exists("Point Ledger", ...)` check before
+	either has inserted, minting points twice for one completion -- confirmed
+	live (6gb7lcr41q-adjacent concurrency probe, 2026-09-10): 1 double-mint in
+	8 genuinely-concurrent trials, the other 7 either deadlocked or hit a
+	TimestampMismatchError on enr.save() -- so even short of a double-mint,
+	the endpoint was unreliable under ordinary double-tap/retry concurrency."""
 	_require_login()
 	user = frappe.session.user
 	if frappe.db.get_value("Course Lesson", lesson, "course") != course:
 		frappe.throw("Lesson does not belong to course")
-	enr = _enrollment(course, user)
-	if not enr:
-		enr = frappe.get_doc({
-			"doctype": "Course Enrollment", "course": course, "user": user,
-			"assigned": 0, "status": "In Progress",
-		})
-		enr.insert(ignore_permissions=True)
-	if not any(r.lesson == lesson for r in enr.lessons_done):
-		enr.append("lessons_done", {"lesson": lesson, "completed_on": now_datetime()})
-	awarded = _recompute(enr)
-	enr.save(ignore_permissions=True)
-	return {
-		"ok": True, "progress_pct": enr.progress_pct,
-		"completed": enr.status == "Completed", "points_awarded": awarded,
-	}
+	lock_key = f"vernon_lms:{user}"
+	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+		frappe.throw("Busy, please retry", frappe.ValidationError)
+	try:
+		enr = _enrollment(course, user)
+		if not enr:
+			enr = frappe.get_doc({
+				"doctype": "Course Enrollment", "course": course, "user": user,
+				"assigned": 0, "status": "In Progress",
+			})
+			enr.insert(ignore_permissions=True)
+		if not any(r.lesson == lesson for r in enr.lessons_done):
+			enr.append("lessons_done", {"lesson": lesson, "completed_on": now_datetime()})
+		awarded = _recompute(enr)
+		enr.save(ignore_permissions=True)
+		return {
+			"ok": True, "progress_pct": enr.progress_pct,
+			"completed": enr.status == "Completed", "points_awarded": awarded,
+		}
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
 
 
 @frappe.whitelist()
