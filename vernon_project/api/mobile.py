@@ -1178,8 +1178,8 @@ def get_dashboard():
 		if (
 			shaped["is_mine"]
 			and shaped["is_priority"]
-			and shaped["deadline"]
-			and getdate(shaped["deadline"]) == today
+			and r["deadline"]
+			and getdate(r["deadline"]) == today
 		):
 			priority.append(shaped)
 
@@ -1188,7 +1188,7 @@ def get_dashboard():
 		if shaped["is_mine"] and skey == "planned":
 			if shaped["is_overdue"]:
 				overdue.append(shaped)
-			elif shaped["deadline"] and getdate(shaped["deadline"]) == today:
+			elif r["deadline"] and getdate(r["deadline"]) == today:
 				due_today.append(shaped)
 			else:
 				upcoming.append(shaped)
