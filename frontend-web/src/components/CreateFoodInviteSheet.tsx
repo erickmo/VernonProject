@@ -27,8 +27,12 @@ const AUDIENCE: { value: FoodAudience; label: string }[] = [
 const FIELD =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
 
+// '/w' is the router basename (see main.tsx), NOT import.meta.env.BASE_URL —
+// that one is the vite `base`, i.e. /assets/vernon_project/frontend_web/, so the
+// old version handed people a link into the static asset directory with no app
+// behind it. The share link has to be a route someone can actually open.
 function inviteLink(name: string) {
-  return `${window.location.origin}${import.meta.env.BASE_URL}food/${name}`
+  return `${window.location.origin}/w/food/${name}`
 }
 
 export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) {

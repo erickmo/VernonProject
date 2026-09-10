@@ -22,8 +22,12 @@ const AUDIENCE: { value: FoodAudience; label: string }[] = [
   { value: 'Link', label: 'Siapa saja (lewat link)' },
 ]
 
+// '/m' is the router basename (see main.tsx), NOT import.meta.env.BASE_URL —
+// that one is the vite `base`, i.e. /assets/vernon_project/frontend/, so the old
+// version handed people a link into the static asset directory with no app
+// behind it. The share link has to be a route someone can actually open.
 function inviteLink(name: string) {
-  return `${window.location.origin}${import.meta.env.BASE_URL}food/${name}`
+  return `${window.location.origin}/m/food/${name}`
 }
 
 export function CreateFoodInviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) {

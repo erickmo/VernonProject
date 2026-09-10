@@ -25,7 +25,12 @@ type ConfirmFn = {
   (opts: ConfirmOptions): Promise<boolean>
 }
 
-const ConfirmCtx = createContext<ConfirmFn>((async () => false) as ConfirmFn)
+// Default used only when no ConfirmProvider is mounted: refuse. "Refused" has a
+// different shape per overload — null for an input dialog, false for a plain one —
+// so the stub returns the right one instead of false for both, which is what the
+// old `async () => false` did (and could not be cast to ConfirmFn at all).
+const ConfirmCtx = createContext<ConfirmFn>(((opts: ConfirmOptions) =>
+  Promise.resolve(opts.input ? null : false)) as ConfirmFn)
 
 export const useConfirm = () => useContext(ConfirmCtx)
 
