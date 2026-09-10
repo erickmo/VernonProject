@@ -18,6 +18,7 @@ import {
   usePreviousShiftShortfall, useUnreadMentions, useMarkRead, useRecentlyDone,
 } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
+import { DEEP_LINK_ROUTES } from '@web/lib/deepLinkRoutes'
 import { useFocusOrder } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
@@ -59,13 +60,6 @@ const TINT: Record<string, { tile: string; chip: string }> = {
   ink: { tile: 'bg-surface', chip: 'bg-paper-line text-muted dark:bg-slate-800 dark:text-slate-300' },
 }
 
-// deepLink routes for /w (mirrors NotificationSheet). Mentions resolve to the
-// commented doc; the cuti routes only satisfy the shared signature.
-const ROUTES = {
-  exceptionApprovals: '/attendance/my-approvals',
-  myExceptions: '/attendance/my-requests',
-  hrExceptions: '/attendance/exceptions',
-}
 
 // Small uppercase zone label — gives the long dashboard scannable rhythm.
 function SectionHead({ children }: { children: ReactNode }) {
@@ -652,7 +646,7 @@ export default function Home() {
             {mentions.data.items.map((m) => (
               <button
                 key={m.name}
-                onClick={() => { markRead.mutate(m.name); navigate(deepLink(m, ROUTES)) }}
+                onClick={() => { markRead.mutate(m.name); navigate(deepLink(m, DEEP_LINK_ROUTES)) }}
                 className="flex items-start gap-2 rounded-2xl border border-line bg-surface px-3 py-2.5 text-left transition hover:border-brand-300 hover:bg-brand-50/50 dark:hover:bg-brand-500/10"
               >
                 <span className="min-w-0 flex-1">

@@ -49,6 +49,7 @@ import { FoodInviteHomeCard } from '@/components/FoodInviteHomeCard'
 import { PriorityRailPanel } from '@/components/PriorityRailPanel'
 import { useBoot, useDashboard, useWallet, useHomeBanners, useDailyVerse, usePreviousShiftShortfall, useMeetings, useUnreadMentions, useMarkRead, useRecentlyDone } from '@/hooks/useData'
 import { deepLink } from '@/lib/notifications'
+import { DEEP_LINK_ROUTES } from '@/lib/deepLinkRoutes'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
 import { MeetingSheet } from '@/components/MeetingSheet'
 import CheerPop from '@/components/CheerPop'
@@ -66,13 +67,6 @@ function greeting() {
   return 'Good evening'
 }
 
-// deepLink routes for /m (mirrors NotificationsScreen). Mentions resolve to the
-// commented doc; the cuti routes are only here to satisfy the shared signature.
-const ROUTES = {
-  exceptionApprovals: '/attendance/approvals',
-  myExceptions: '/attendance/my-requests',
-  hrExceptions: '/attendance/manage/exceptions',
-}
 
 // Friendly label for the shortfall banner's day (ISO 'YYYY-MM-DD').
 function shortfallDateLabel(iso: string | null) {
@@ -563,7 +557,7 @@ export default function Today() {
                     {mentions.items.map((m) => (
                       <li key={m.name}>
                         <button
-                          onClick={() => { markRead.mutate(m.name); navigate(deepLink(m, ROUTES)) }}
+                          onClick={() => { markRead.mutate(m.name); navigate(deepLink(m, DEEP_LINK_ROUTES)) }}
                           className="flex w-full items-start gap-2 rounded-2xl bg-paper-card px-3 py-2.5 text-left active:scale-[0.99] dark:bg-slate-800"
                         >
                           <span className="min-w-0 flex-1">
