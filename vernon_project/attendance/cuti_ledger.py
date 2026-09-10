@@ -103,22 +103,35 @@ def ensure_grant(employee, year):
     year = int(year)
     lt = default_annual_type()
     q = effective_quota(employee)
-    existing = frappe.db.get_value(
-        DOCTYPE, {"employee": employee, "year": year, "entry_type": "Grant"}, "name"
-    )
-    if existing:
-        if (frappe.db.get_value(DOCTYPE, existing, "days") or 0) != q:
-            doc = frappe.get_doc(DOCTYPE, existing)
-            doc.days = q
-            doc.leave_type = lt
-            doc.posted_on = now_datetime()
-            doc.save(ignore_permissions=True)
-        return existing
-    return frappe.get_doc({
-        "doctype": DOCTYPE, "employee": employee, "entry_type": "Grant",
-        "leave_type": lt, "days": q, "year": year, "reason": "Kuota tahunan",
-        "posted_by": frappe.session.user or "Administrator", "posted_on": now_datetime(),
-    }).insert(ignore_permissions=True).name
+    # The look-then-insert below is a check-then-write over a table with no unique
+    # index, and `remaining()` is SUM(days) -- so two callers racing here (the
+    # nightly grant_annual_cuti overlapping an HR remint_grant, say) both find no
+    # Grant row, both insert, and the employee's annual leave silently doubles.
+    # Serialise per (employee, year), the same advisory-lock idiom the wallet and
+    # event paths use. Named lock, not a row lock: nothing here holds an InnoDB row
+    # lock while waiting, so it stays out of the row-lock wait graph.
+    lock_key = f"vernon_cuti:{employee}:{year}"
+    if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+        frappe.throw(_("Kuota cuti sedang diproses, coba lagi."))
+    try:
+        existing = frappe.db.get_value(
+            DOCTYPE, {"employee": employee, "year": year, "entry_type": "Grant"}, "name"
+        )
+        if existing:
+            if (frappe.db.get_value(DOCTYPE, existing, "days") or 0) != q:
+                doc = frappe.get_doc(DOCTYPE, existing)
+                doc.days = q
+                doc.leave_type = lt
+                doc.posted_on = now_datetime()
+                doc.save(ignore_permissions=True)
+            return existing
+        return frappe.get_doc({
+            "doctype": DOCTYPE, "employee": employee, "entry_type": "Grant",
+            "leave_type": lt, "days": q, "year": year, "reason": "Kuota tahunan",
+            "posted_by": frappe.session.user or "Administrator", "posted_on": now_datetime(),
+        }).insert(ignore_permissions=True).name
+    finally:
+        frappe.db.sql("select release_lock(%s)", lock_key)
 
 
 def _employees():
