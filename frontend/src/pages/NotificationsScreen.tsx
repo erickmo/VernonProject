@@ -13,13 +13,7 @@ import {
   type NotificationGroup,
 } from '@/lib/notifications'
 import type { NotificationType } from '@/lib/types'
-
-const ROUTES = {
-  exceptionApprovals: '/attendance/approvals',
-  myExceptions: '/attendance/my-requests',
-  hrExceptions: '/attendance/manage/exceptions',
-  teguran: '/teguran',
-}
+import { DEEP_LINK_ROUTES } from '@/lib/deepLinkRoutes'
 
 function TabChip({
   label,
@@ -66,7 +60,7 @@ export default function NotificationsScreen() {
 
   const open = (g: NotificationGroup) => {
     if (g.unread) markRead.mutate(g.names)
-    navigate(deepLink(g.head, ROUTES))
+    navigate(deepLink(g.head, DEEP_LINK_ROUTES))
   }
 
   const markAllButton = (

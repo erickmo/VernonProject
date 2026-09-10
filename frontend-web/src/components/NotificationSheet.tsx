@@ -13,13 +13,7 @@ import {
 import type { NotificationType } from '@/lib/types'
 import { Drawer } from '@web/components/overlays/Drawer'
 import { Button, Skeleton, ErrorState } from '@web/components/ui'
-
-const ROUTES = {
-  exceptionApprovals: '/attendance/my-approvals',
-  myExceptions: '/attendance/my-requests',
-  hrExceptions: '/attendance/exceptions',
-  teguran: '/attendance/teguran',
-}
+import { DEEP_LINK_ROUTES } from '@web/lib/deepLinkRoutes'
 
 function TabChip({
   label,
@@ -74,7 +68,7 @@ export function NotificationSheet({ open, onClose }: { open: boolean; onClose: (
   function openItem(g: NotificationGroup) {
     if (g.unread) markRead.mutate(g.names)
     onClose()
-    navigate(deepLink(g.head, ROUTES))
+    navigate(deepLink(g.head, DEEP_LINK_ROUTES))
   }
 
   return (
