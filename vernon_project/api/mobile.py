@@ -15,6 +15,7 @@ from vernon_project.vernon_project.doctype.employee_profile.employee_profile imp
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 # project_todo imports mobile only inside functions, so this top-level import is safe.
 from vernon_project.api.project_todo import AI_PHASE_NAMES, AI_WORK_MODES, ai_phase, can_use_ai
+from vernon_project.api import external_calendar
 from vernon_project.api.external_calendar import visible_events
 
 # --------------------------------------------------------------------------------
@@ -2716,6 +2717,103 @@ def update_todo(
 		# Surface the validation message (e.g. locked-field edit) cleanly.
 		msg = frappe.utils.strip_html(str(e)).strip() or "Could not save changes."
 		return {"status": "error", "message": msg}
+
+
+@frappe.whitelist()
+def create_todo(
+	project_detail,
+	to_do,
+	assigned_to,
+	start_date,
+	deadline,
+	group,
+	level_id,
+	estimated,
+	notes=None,
+	mentor=None,
+	is_priority=None,
+	work_mode=None,
+	blocked_by=None,
+	blocking=None,
+	issue_of=None,
+):
+	"""Create a Project Todo. Field set mirrors update_todo (this function's
+	edit-side counterpart) so a caller's create+update payloads share one
+	contract, plus project_detail/to_do/assigned_to/start_date/deadline/group/
+	level_id/estimated -- exactly what the real create flow (frontend's
+	CreateProjectItemSheet -> `frappe.client.insert`) requires and validates
+	before it will submit, so a caller here can't create a todo the UI itself
+	would refuse to.
+
+	Route of record for a NEW todo is `frappe.get_doc(...).insert()`, same as
+	the frontend -- there is no separate "creation business logic" function to
+	call instead: Project Todo's own validate()/before_insert() controller
+	(default `level` derived from `level_id`, scoring, team-membership checks,
+	locked-field rules) is the single source of truth for both. ignore_permissions
+	here only skips the interactive lead-only create-permission CHECK (replaced
+	by the role gate below); every controller validation still runs unchanged.
+
+	Not exposed here: recurring_* fields. A new todo is created non-recurring;
+	recurrence can be set afterward via update_todo (same as the frontend's own
+	flow allows), and the multi-occurrence generation machinery this todo
+	warns about (create_next_occurrence / tasks.py's dual-insert path) only
+	fires for an EXISTING recurring series advancing, not initial creation --
+	so it isn't something a create path needs to replicate.
+
+	Permission: role-gated in code, not a DocType permission row -- same
+	pattern and same reasoning as external_calendar.sync_events (also a
+	vedu_erp cross-app caller): no dedicated "Integration Client" role exists
+	on this site yet, so the doctype's own permissions stay untouched (System
+	Manager / Project Owner / Project Leader / Project Team-read/write). Add
+	the role name to external_calendar.ALLOWED_ROLES once it exists; nothing
+	else here needs to change.
+	"""
+	if not external_calendar.ALLOWED_ROLES & set(frappe.get_roles()):
+		frappe.throw("Not permitted to create todos.", frappe.PermissionError)
+
+	if not frappe.db.exists("Project Detail", project_detail):
+		frappe.throw("Project Detail not found.", frappe.DoesNotExistError)
+	to_do = (to_do or "").strip()
+	if not to_do:
+		frappe.throw("to_do is required.", frappe.ValidationError)
+	try:
+		estimated = int(estimated)
+	except (TypeError, ValueError):
+		estimated = 0
+	if estimated < 5:
+		frappe.throw("estimated must be at least 5 minutes.", frappe.ValidationError)
+
+	doc = frappe.get_doc({
+		"doctype": "Project Todo",
+		"project_detail": project_detail,
+		"to_do": to_do,
+		"assigned_to": assigned_to,
+		"start_date": start_date,
+		"deadline": deadline,
+		"group": group,
+		"level_id": level_id,
+		"estimated": estimated,
+		"status": "⚪️ Planned",
+	})
+	if notes is not None:
+		doc.notes = notes
+	if mentor is not None:
+		doc.mentor = mentor or None
+	if is_priority is not None:
+		doc.is_priority = 1 if str(is_priority) in ("1", "true", "True") else 0
+	if work_mode is not None and work_mode in ("Human", "AI", "Both"):
+		doc.work_mode = work_mode
+	if issue_of is not None:
+		doc.issue_of = issue_of or None
+	if blocked_by:
+		ids = frappe.parse_json(blocked_by) if isinstance(blocked_by, str) else blocked_by
+		doc.set("blocked_by", [{"todo": i} for i in ids])
+	if blocking:
+		ids = frappe.parse_json(blocking) if isinstance(blocking, str) else blocking
+		doc.set("blocking", [{"todo": i} for i in ids])
+
+	doc.insert(ignore_permissions=True)
+	return {"status": "ok", "message": "Task created.", "name": doc.name}
 
 
 def _load_todo_for_edit(project_item):
