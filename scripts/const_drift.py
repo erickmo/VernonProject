@@ -18,7 +18,10 @@ reporting. Two false positives were retracted on the first run because these
 literals are often written several keys per line. Known limits: matches consts by
 NAME (a drifted pair under two names is missed); the key regex skips quoted keys
 containing spaces; covers const-bound object literals only — not inline props,
-Map/Set, or TS union types.
+Map/Set, or TS union types. And it diffs KEY SETS ONLY — two duplicated
+maps with identical keys but different VALUES (the papan-iklan TYPE_LABEL
+case, a confirmed real drift on this fleet) are invisible to it, so a clean
+run means no KEY drift, not no drift.
 """
 import os, re, io, sys
 from collections import defaultdict
