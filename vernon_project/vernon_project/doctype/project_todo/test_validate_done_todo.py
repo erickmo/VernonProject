@@ -1,332 +1,209 @@
-# Copyright (c) 2026, Vernon and Contributors
-# Simple validation test for done todo field locking
+# Copyright (c) 2026, Vernon and contributors
+# See license.txt
+
+import unittest
 
 import frappe
-import unittest
-from unittest.mock import Mock, MagicMock
-from vernon_project.vernon_project.doctype.project_todo.project_todo import ProjectTodo
+from frappe.utils import add_days, nowdate
+
+from vernon_project.fixtures_for_tests import ensure_brand, ensure_group, ensure_user
+
+# Rewritten 2026-09-10. The previous version of this file had ten tests that each
+# built a Project Todo object by hand, patched `frappe.throw`, called
+# `todo.validate_done_todo_fields()` DIRECTLY, and asserted that the mock had been
+# called with a message mentioning a field label. There was not one `.save()` in
+# the file.
+#
+# That suite could not fail for the thing that actually matters. The guard only
+# protects anything because project_todo.py's validate() calls it; delete that one
+# line and all ten tests stayed green while protected-field enforcement disappeared
+# from production. It was a test suite reporting on a method nobody calls, and it
+# asserted the mechanism (we called frappe.throw) rather than the outcome (the write
+# was refused and the stored value did not change).
+#
+# Every test here goes through the real save path and asserts the stored value.
+# ponytail: one fixture, no mocks at all -- there is nothing here worth faking.
+
+DONE = "🟠 Done"
+PLANNED = "⚪️ Planned"
 
 
-class TestDoneTodoValidation(unittest.TestCase):
-	"""Test validation logic for done todo fields without database dependencies"""
+class TestDoneTodoFieldsLockedOnSave(unittest.TestCase):
+    """Once a todo leaves Planned, assigned_to / estimated / start_date / deadline
+    and the AI tag+prompt fields are frozen -- enforced in validate(), so every write
+    path that ends in doc.save() is covered."""
 
-	def test_validation_allows_new_documents(self):
-		"""Test that validation skips new documents"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=True)
-		todo.status = "🟠 Done"
+    def setUp(self):
+        frappe.set_user("Administrator")
+        self.other_user = ensure_user("dtv_other@example.com", "DTV")
+        brand = ensure_brand("Test Customer")
+        self.level_id = "DTV-L1"
+        self.group = ensure_group("DTV Group", self.level_id)
 
-		# Should not raise any error
-		try:
-			todo.validate_done_todo_fields()
-			success = True
-		except Exception:
-			success = False
+        self.project = frappe.get_doc({
+            "doctype": "Project",
+            "project_name": "DTV Project",
+            "brand": brand,
+            "project_owner": "Administrator",
+            "project_leader": "Administrator",
+            "status": "Ongoing",
+            "start_date": nowdate(),
+            "deadline": add_days(nowdate(), 30),
+            "team_members": [{"user": "Administrator"}, {"user": self.other_user}],
+        }).insert(ignore_permissions=True)
 
-		self.assertTrue(success, "Should allow validation on new documents")
+        self.grouping = frappe.get_doc({
+            "doctype": "Glossary", "glossary": "DTV Grouping", "project": self.project.name,
+        }).insert(ignore_permissions=True).name
 
-	def test_validation_allows_planned_status(self):
-		"""Test that validation allows edits when status is Planned"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "⚪️ Planned"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 120
-		todo.deadline = "2026-03-20"
+        self.detail = frappe.get_doc({
+            "doctype": "Project Detail",
+            "project": self.project.name,
+            "title": "DTV Detail",
+            "grouping": self.grouping,
+            "project_deadline": add_days(nowdate(), 30),
+            "estimated": 100,
+        }).insert(ignore_permissions=True)
+        frappe.db.commit()
 
-		# Mock old document
-		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+    def tearDown(self):
+        frappe.set_user("Administrator")
+        for name in frappe.get_all(
+            "Project Todo", filters={"project_detail": self.detail.name}, pluck="name"
+        ):
+            # on_trash refuses to delete a todo that has left Planned.
+            frappe.db.set_value("Project Todo", name, "status", PLANNED, update_modified=False)
+            frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True)
+        for dt, name in (
+            ("Project Detail", self.detail.name),
+            ("Glossary", self.grouping),
+            ("Project", self.project.name),
+        ):
+            try:
+                frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
+            except Exception:
+                pass
+        frappe.db.commit()
 
-		# Should not raise any error
-		try:
-			todo.validate_done_todo_fields()
-			success = True
-		except Exception:
-			success = False
+    # ------------------------------------------------------------------ helpers
 
-		self.assertTrue(success, "Should allow edits when status is Planned")
+    def _done_todo(self, **overrides):
+        """A saved todo that has left Planned -- built the way the app builds one."""
+        fields = {
+            "doctype": "Project Todo",
+            "project_detail": self.detail.name,
+            "to_do": "protected field probe",
+            "assigned_to": "Administrator",
+            "start_date": nowdate(),
+            "deadline": add_days(nowdate(), 5),
+            "estimated": 60,
+            "status": PLANNED,
+            "group": self.group,
+            "level_id": self.level_id,
+        }
+        fields.update(overrides)
+        name = frappe.get_doc(fields).insert(ignore_permissions=True).name
+        # Re-load before touching status. The doc returned by insert() still holds the
+        # raw strings this fixture passed in, while get_old_doc() returns typed values
+        # (date objects), so the protected-field diff sees "2026-09-15" != date(2026,9,15)
+        # and refuses a save that changed nothing. Every real write path reloads first,
+        # so the fixture has to as well or it is testing a state no caller produces.
+        todo = frappe.get_doc("Project Todo", name)
+        todo.status = DONE
+        todo.save(ignore_permissions=True)
+        frappe.db.commit()
+        return frappe.get_doc("Project Todo", name)
 
-	def test_validation_blocks_assigned_to_when_done(self):
-		"""Test that validation blocks assigned_to changes when status is Done"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "newuser@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
+    def _assert_frozen(self, field, new_value):
+        """Mutating `field` on a non-Planned todo must be refused by save(), and the
+        stored value must be untouched afterwards."""
+        todo = self._done_todo()
+        before = frappe.db.get_value("Project Todo", todo.name, field)
+        self.assertNotEqual(
+            before, new_value, f"{field}: probe value must actually differ, or this proves nothing"
+        )
 
-		# Mock old document with different assigned_to
-		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+        todo.set(field, new_value)
+        with self.assertRaises(frappe.ValidationError) as caught:
+            todo.save(ignore_permissions=True)
+        self.assertIn("locked once the todo leaves Planned", str(caught.exception))
 
-		# Mock frappe.throw
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			# Should call frappe.throw
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for assigned_to change")
-			# Check error message contains "Assigned To"
-			error_msg = str(mock_throw.call_args)
-			self.assertIn("Assigned To", error_msg, "Error should mention Assigned To field")
+        frappe.db.rollback()
+        after = frappe.db.get_value("Project Todo", todo.name, field)
+        self.assertEqual(after, before, f"{field} was changed on a non-Planned todo")
 
-	def test_validation_blocks_estimated_when_done(self):
-		"""Test that validation blocks estimated changes when status is Done"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 120  # Changed
-		todo.deadline = "2026-03-15"
+    # ------------------------------------------------------- the wiring test
 
-		# Mock old document with different estimated
-		old_doc = frappe._dict(assigned_to="user@example.com", estimated=60, deadline="2026-03-15")
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+    def test_the_guard_runs_on_save_not_just_when_called_by_hand(self):
+        """THE point of this file. Everything else asserts WHAT is frozen; this asserts
+        the guard is actually reached through the ordinary save path.
 
-		# Mock frappe.throw
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			# Should call frappe.throw
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for estimated change")
-			# Check error message contains "Estimated"
-			error_msg = str(mock_throw.call_args)
-			self.assertIn("Estimated", error_msg, "Error should mention Estimated field")
+        Delete `self.validate_done_todo_fields()` from validate() in project_todo.py
+        and this test goes red. The suite this file replaced stayed green, because
+        every one of its tests invoked the method directly.
+        """
+        todo = self._done_todo()
+        stored = frappe.db.get_value("Project Todo", todo.name, "deadline")
 
-	def test_validation_blocks_deadline_when_done(self):
-		"""Test that validation blocks deadline changes when status is Done"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-20"  # Changed
+        todo.deadline = add_days(nowdate(), 99)
+        with self.assertRaises(frappe.ValidationError):
+            todo.save(ignore_permissions=True)  # no direct call to the validator anywhere
 
-		# Mock old document with different deadline
-		old_doc = frappe._dict(assigned_to="user@example.com", estimated=60, deadline="2026-03-15")
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+        frappe.db.rollback()
+        self.assertEqual(frappe.db.get_value("Project Todo", todo.name, "deadline"), stored)
 
-		# Mock frappe.throw
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			# Should call frappe.throw
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for deadline change")
-			# Check error message contains "Deadline"
-			error_msg = str(mock_throw.call_args)
-			self.assertIn("Deadline", error_msg, "Error should mention Deadline field")
+    # ------------------------------------------------------- per-field freezes
 
-	def test_validation_blocks_when_completed(self):
-		"""Test that validation also works for Completed status"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "✅ Completed"
-		todo.assigned_to = "newuser@example.com"  # Changed
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
+    def test_assigned_to_is_frozen(self):
+        self._assert_frozen("assigned_to", self.other_user)
 
-		# Mock old document
-		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+    def test_estimated_is_frozen(self):
+        self._assert_frozen("estimated", 999)
 
-		# Mock frappe.throw
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			# Should call frappe.throw
-			self.assertTrue(mock_throw.called, "Should call frappe.throw when status is Completed")
+    def test_start_date_is_frozen(self):
+        self._assert_frozen("start_date", add_days(nowdate(), 3))
 
-	def test_validation_allows_no_changes_when_done(self):
-		"""Test that validation allows saving without changes when status is Done"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		# work_mode/ai_prompt/ai_prompt_confirmed left at frappe.new_doc's own defaults
-		# ('', None, 0) — old_doc below matches those exactly, so this is a true no-op save.
+    def test_deadline_is_frozen(self):
+        self._assert_frozen("deadline", add_days(nowdate(), 42))
 
-		# Mock old document with same values (including the same field defaults `todo`
-		# itself carries, so the AI-field diff added for he9ioca2fq sees no change either)
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
-			work_mode="", ai_prompt=None, ai_prompt_confirmed=0,
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+    def test_ai_tag_is_frozen(self):
+        self._assert_frozen("work_mode", "AI")
 
-		# Should not raise any error
-		try:
-			todo.validate_done_todo_fields()
-			success = True
-		except Exception:
-			success = False
+    def test_ai_prompt_is_frozen(self):
+        self._assert_frozen("ai_prompt", '[{"name": "p1", "prompt": "x"}]')
 
-		self.assertTrue(success, "Should allow saving without changes when status is Done")
+    def test_ai_prompt_confirmed_is_frozen(self):
+        self._assert_frozen("ai_prompt_confirmed", 1)
 
-	def test_validation_blocks_work_mode_when_done(self):
-		"""AI tag (work_mode) is frozen once a todo is Done — he9ioca2fq."""
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		todo.work_mode = "Human"  # Changed from AI
+    # ------------------------------------------------------- the allowed cases
 
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15", work_mode="AI"
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
+    def test_a_planned_todo_is_still_editable(self):
+        """The freeze is scoped to non-Planned. If this ever fails the guard has
+        stopped being a status rule and started being a blanket lock."""
+        todo = self._done_todo()
+        frappe.db.set_value("Project Todo", todo.name, "status", PLANNED, update_modified=False)
+        frappe.db.commit()
 
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for work_mode change")
-			error_msg = str(mock_throw.call_args)
-			self.assertIn("AI Tag", error_msg, "Error should mention AI Tag field")
+        todo = frappe.get_doc("Project Todo", todo.name)
+        todo.deadline = add_days(nowdate(), 12)
+        todo.save(ignore_permissions=True)
+        frappe.db.commit()
 
-	def test_validation_blocks_ai_prompt_when_done(self):
-		"""AI prompt text is frozen once a todo is Done — he9ioca2fq."""
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		todo.ai_prompt = '[{"name": "", "prompt": "edited"}]'
+        self.assertEqual(
+            str(frappe.db.get_value("Project Todo", todo.name, "deadline")),
+            str(add_days(nowdate(), 12)),
+        )
 
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
-			ai_prompt='[{"name": "", "prompt": "original"}]',
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
-
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for ai_prompt change")
-			error_msg = str(mock_throw.call_args)
-			self.assertIn("AI Prompt", error_msg, "Error should mention AI Prompt field")
-
-	def test_validation_blocks_ai_prompt_confirmed_when_done(self):
-		"""confirm_ai_prompt / delete_ai_prompt can't flip the confirm flag after Done."""
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "✅ Completed"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		todo.ai_prompt_confirmed = 0
-
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
-			ai_prompt_confirmed=1,
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
-
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for ai_prompt_confirmed change")
-
-	def test_validation_blocks_ai_fields_when_checked_by_pl(self):
-		"""The lock also applies to Checked By PL, not just Done/Completed — status != Planned is the rule."""
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🔷 Checked By PL"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		todo.work_mode = "Human"
-
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15", work_mode="AI"
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
-
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			self.assertTrue(mock_throw.called, "Should call frappe.throw when Checked By PL")
-
-	def test_validation_blocks_ai_fields_when_cancelled(self):
-		"""The lock also applies to Cancelled — status != Planned is the rule."""
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🚫 Cancelled"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		todo.ai_prompt = "[]"
-
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
-			ai_prompt='[{"name": "", "prompt": "x"}]',
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
-
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			self.assertTrue(mock_throw.called, "Should call frappe.throw when Cancelled")
-
-	def test_validation_allows_ai_field_changes_when_planned(self):
-		"""Control case: AI fields stay editable while the todo is still Planned."""
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "⚪️ Planned"
-		todo.assigned_to = "user@example.com"
-		todo.estimated = 60
-		todo.deadline = "2026-03-15"
-		todo.work_mode = "AI"
-		todo.ai_prompt = '[{"name": "", "prompt": "new"}]'
-		todo.ai_prompt_confirmed = 1
-
-		old_doc = frappe._dict(
-			assigned_to="user@example.com", estimated=60, deadline="2026-03-15",
-			work_mode="", ai_prompt=None, ai_prompt_confirmed=0,
-		)
-		todo.get_doc_before_save = Mock(return_value=old_doc)
-
-		try:
-			todo.validate_done_todo_fields()
-			success = True
-		except Exception:
-			success = False
-
-		self.assertTrue(success, "Should allow AI field edits while status is Planned")
-
-	def test_validation_blocks_multiple_fields(self):
-		"""Test that validation shows all changed fields in error message"""
-		# Create mock todo
-		todo = frappe.new_doc("Project Todo")
-		todo.is_new = Mock(return_value=False)
-		todo.status = "🟠 Done"
-		todo.assigned_to = "newuser@example.com"  # Changed
-		todo.estimated = 120  # Changed
-		todo.deadline = "2026-03-20"  # Changed
-
-		# Mock old document with all different values
-		old_doc = frappe._dict(assigned_to="olduser@example.com", estimated=60, deadline="2026-03-15")
-		todo.get_doc_before_save = Mock(return_value=old_doc)
-
-		# Mock frappe.throw
-		with unittest.mock.patch('frappe.throw') as mock_throw:
-			todo.validate_done_todo_fields()
-			# Should call frappe.throw
-			self.assertTrue(mock_throw.called, "Should call frappe.throw for multiple changes")
-			# Check that at least one field is mentioned
-			error_msg = str(mock_throw.call_args)
-			has_field = any(field in error_msg for field in ["Assigned To", "Estimated", "Deadline"])
-			self.assertTrue(has_field, "Error should mention at least one changed field")
-
-
-def run_tests():
-	"""Helper function to run all tests"""
-	suite = unittest.TestLoader().loadTestsFromTestCase(TestDoneTodoValidation)
-	runner = unittest.TextTestRunner(verbosity=2)
-	result = runner.run(suite)
-	return result
+    def test_saving_a_done_todo_with_no_protected_change_is_allowed(self):
+        """A non-Planned todo is not read-only -- only the protected fields are."""
+        todo = self._done_todo()
+        todo.to_do = "renamed while done"
+        todo.save(ignore_permissions=True)
+        frappe.db.commit()
+        self.assertEqual(
+            frappe.db.get_value("Project Todo", todo.name, "to_do"), "renamed while done"
+        )
 
 
 if __name__ == "__main__":
-	run_tests()
+    unittest.main()
