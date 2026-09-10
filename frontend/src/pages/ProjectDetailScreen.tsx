@@ -276,8 +276,7 @@ function TodoRow({
   item: t,
   projectAutoApprove,
 }: {
-  // The cancel fields aren't in the lightweight row shape — optional so CancelledNote still takes it.
-  item: ProjectItem & { cancelled_on?: string | null; cancellation_reason?: string | null }
+  item: ProjectItem
   projectAutoApprove: boolean
 }) {
   const { data: boot } = useBoot()

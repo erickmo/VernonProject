@@ -135,7 +135,7 @@ export default function Announcements() {
       <PageHeader icon={Megaphone} title="Pengumuman" />
 
       <BentoGrid>
-        <BentoTile span="sm" tone="tint" accent="indigo" title="Kelola">
+        <BentoTile span="sm" tone="tint" accent="brand" title="Kelola">
           <div className="mt-1 flex flex-col gap-3">
             <p className="text-sm text-muted">Ticker di atas setiap halaman (/m &amp; /w).</p>
             <Button variant="primary" size="sm" onClick={() => setDraft({ ...EMPTY })}>
@@ -144,7 +144,7 @@ export default function Announcements() {
           </div>
         </BentoTile>
 
-        <BentoTile span="sm" tone="tint" accent="indigo">
+        <BentoTile span="sm" tone="tint" accent="brand">
           <BentoStat value={active} label={active === 1 ? 'tayang' : 'tayang'} delta={`${rows.length} total`} />
         </BentoTile>
 
