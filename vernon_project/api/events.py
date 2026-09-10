@@ -140,6 +140,14 @@ def register(event):
 				return {"registration": reg.name, "status": "Pending",
 					"snap_token": reg.snap_token, "order_id": reg.name}
 			frappe.throw("You are already registered.", frappe.ValidationError)
+		# The advisory lock above is keyed per-USER, which is right for the wallet
+		# but cannot cover the capacity check: capacity is a per-EVENT invariant,
+		# and two different users take two different locks, so neither sees the
+		# other's seat and both pass the count below. Serialise contending
+		# registrants on the event row itself -- the same second layer
+		# redeem_reward uses (`... for update` on the shared catalog row) so that
+		# concurrent redeems cannot oversell stock.
+		frappe.db.sql("select name from `tabVernon Event` where name = %s for update", event)
 		if not _capacity_ok(ev):
 			frappe.throw("This event is full.", frappe.ValidationError)
 

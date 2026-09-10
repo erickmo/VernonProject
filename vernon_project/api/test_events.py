@@ -200,6 +200,59 @@ class TestEventsRegistration(FrappeTestCase):
                 "Pending",
             )
 
+    def test_capacity_check_contends_on_the_event_row(self):
+        """A second registrant must not slip past a full-capacity check while another
+        transaction is mid-registration.
+
+        The advisory lock register() holds is keyed per-USER, so two different users
+        take two different locks and neither serialises against the other. Capacity is
+        a per-EVENT invariant, so the seat count has to be serialised on the event row.
+
+        The race, concretely: T1 inserts its registration but has not committed, so its
+        row is invisible to T2's count; T2 reads the old count, passes the capacity
+        check and inserts too; both commit and a capacity-1 event holds two seats.
+
+        This models T1 with a genuinely independent connection holding the event row,
+        and asserts register() now blocks on it rather than sailing through. Remove the
+        `for update` line in register() and this test fails -- register() returns a
+        second registration instead of raising.
+        """
+        import pymysql
+
+        user = "Administrator"
+        frappe.set_user(user)
+        ev = self._event(pricing="Free", capacity=1)
+        # The other connection can only see and lock a COMMITTED row.
+        frappe.db.commit()
+
+        other = pymysql.connect(
+            host=frappe.conf.db_host or "127.0.0.1",
+            port=int(frappe.conf.db_port or 3306),
+            user=frappe.conf.db_name,
+            password=frappe.conf.db_password,
+            database=frappe.conf.db_name,
+        )
+        try:
+            # T1: hold the event row, uncommitted, exactly as the fixed register() does.
+            cur = other.cursor()
+            cur.execute("begin")
+            cur.execute("select name from `tabVernon Event` where name = %s for update", ev.name)
+            cur.fetchall()
+
+            # T2: fail fast instead of sitting on the default 50s lock wait.
+            frappe.db.sql("set session innodb_lock_wait_timeout = 1")
+            before = frappe.db.count("Vernon Event Registration", {"event": ev.name})
+            with self.assertRaises(Exception):
+                register(ev.name)
+            frappe.db.rollback()  # the timed-out statement poisons this transaction
+
+            after = frappe.db.count("Vernon Event Registration", {"event": ev.name})
+            self.assertEqual(after, before, "register() overslipped a held event row")
+        finally:
+            other.rollback()
+            other.close()
+            frappe.db.sql("set session innodb_lock_wait_timeout = 50")
+
 
 if __name__ == "__main__":
     unittest.main()
