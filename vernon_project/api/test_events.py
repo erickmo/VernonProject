@@ -242,8 +242,13 @@ class TestEventsRegistration(FrappeTestCase):
             # T2: fail fast instead of sitting on the default 50s lock wait.
             frappe.db.sql("set session innodb_lock_wait_timeout = 1")
             before = frappe.db.count("Vernon Event Registration", {"event": ev.name})
-            with self.assertRaises(Exception):
+            # Assert the SPECIFIC failure. A bare assertRaises(Exception) here would
+            # also pass if register() started throwing for some unrelated reason -- a
+            # new validation, a permission change -- and the race this test exists to
+            # catch would quietly stop being covered while the suite stayed green.
+            with self.assertRaises(frappe.QueryTimeoutError) as caught:
                 register(ev.name)
+            self.assertIn("Lock wait timeout", str(caught.exception))
             frappe.db.rollback()  # the timed-out statement poisons this transaction
 
             after = frappe.db.count("Vernon Event Registration", {"event": ev.name})
