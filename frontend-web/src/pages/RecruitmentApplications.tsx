@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { STATUS_TONE } from '@/lib/recruitmentStatus'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Users, CalendarDays, MessageCircle } from 'lucide-react'
@@ -11,14 +12,6 @@ import { recruitmentApi, APPLICATION_STATUSES, InterviewRow } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
 const PILL = 'inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold'
-const STATUS_TONE: Record<string, string> = {
-  Submitted: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  Screening: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  Interview: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  Offered: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
-  Hired: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  Rejected: 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
-}
 
 export default function RecruitmentApplications() {
   const navigate = useNavigate()

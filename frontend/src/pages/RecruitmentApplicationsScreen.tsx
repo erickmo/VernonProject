@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { STATUS_TONE, UNKNOWN_STATUS_TONE } from '@/lib/recruitmentStatus'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, ChevronRight, AlertTriangle, CalendarDays, MessageCircle } from 'lucide-react'
@@ -9,14 +10,6 @@ import { useBoot, canManageRecruitment } from '@/hooks/useData'
 import { recruitmentApi, APPLICATION_STATUSES, InterviewRow } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
-const STATUS_HUE: Record<string, string> = {
-  Submitted: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  Screening: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  Interview: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  Offered: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
-  Hired: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  Rejected: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
-}
 
 export default function RecruitmentApplicationsScreen() {
   const navigate = useNavigate()
@@ -100,7 +93,7 @@ export default function RecruitmentApplicationsScreen() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{r.full_name}</p>
-                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_HUE[r.status] ?? STATUS_HUE.Submitted}`}>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_TONE[r.status] ?? UNKNOWN_STATUS_TONE}`}>
                             {r.status}
                           </span>
                         </div>
@@ -173,7 +166,7 @@ export default function RecruitmentApplicationsScreen() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_HUE[a.status] ?? STATUS_HUE.Submitted}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_TONE[a.status] ?? UNKNOWN_STATUS_TONE}`}>
                     {a.status}
                   </span>
                   <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
