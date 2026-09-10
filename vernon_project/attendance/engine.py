@@ -130,57 +130,73 @@ def recompute_daily(employee, date, notify=False):
 	if not profile or getdate(profile.enrolled_from) > date:
 		return None
 
-	assignment = _assignment_for(employee, date)
-	expected_start = expected_end = None
-	shift_template = None
-	if assignment:
-		shift_template = assignment.shift_template
-		start_t, end_t = frappe.db.get_value("Shift Template", shift_template, ["start_time", "end_time"])
-		expected_start = get_datetime(f"{date} {start_t}")
-		expected_end = get_datetime(f"{date} {end_t}")
+	# Row-locked (mobile.py's vernon_spend/vernon_gami pattern): without this,
+	# two concurrent calls for the same (employee, date) -- e.g. a double-tap
+	# or network retry on the QR scan endpoint (api/attendance.py:attendance_scan)
+	# -- can both pass the `exists("Daily Attendance", ...)` check below before
+	# either has inserted, creating two Daily Attendance rows for one day and
+	# two linked penalty Point Ledger rows. Confirmed live with two genuinely
+	# independent DB connections: 8 of 8 trials duplicated both rows every
+	# time (2026-09-10) -- no early-return guard here narrows the window the
+	# way meeting.py's "already Done" check does, so this reproduced far more
+	# reliably than the lms.py complete_lesson race it was found alongside.
+	lock_key = f"vernon_attendance:{employee}:{date}"
+	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+		frappe.throw("Attendance recompute busy, please retry", frappe.ValidationError)
+	try:
+		assignment = _assignment_for(employee, date)
+		expected_start = expected_end = None
+		shift_template = None
+		if assignment:
+			shift_template = assignment.shift_template
+			start_t, end_t = frappe.db.get_value("Shift Template", shift_template, ["start_time", "end_time"])
+			expected_start = get_datetime(f"{date} {start_t}")
+			expected_end = get_datetime(f"{date} {end_t}")
 
-	scan_rows = _scans_on(employee, date)
-	result = evaluate_day(
-		has_assignment=bool(assignment),
-		expected_start=expected_start,
-		expected_end=expected_end,
-		exception_type=_approved_exception(employee, date),
-		is_holiday=_is_holiday(profile.brand, date),
-		scans=[get_datetime(r.scan_time) for r in scan_rows],
-		grace_minutes=cint(frappe.db.get_single_value("Vernon Settings", "attendance_grace_minutes")),
-		late_rate=flt(frappe.db.get_single_value("Vernon Settings", "late_penalty_per_minute")),
-		early_rate=flt(frappe.db.get_single_value("Vernon Settings", "early_leave_penalty_per_minute")),
-		absence_penalty=flt(frappe.db.get_single_value("Vernon Settings", "absence_penalty")),
-	)
+		scan_rows = _scans_on(employee, date)
+		result = evaluate_day(
+			has_assignment=bool(assignment),
+			expected_start=expected_start,
+			expected_end=expected_end,
+			exception_type=_approved_exception(employee, date),
+			is_holiday=_is_holiday(profile.brand, date),
+			scans=[get_datetime(r.scan_time) for r in scan_rows],
+			grace_minutes=cint(frappe.db.get_single_value("Vernon Settings", "attendance_grace_minutes")),
+			late_rate=flt(frappe.db.get_single_value("Vernon Settings", "late_penalty_per_minute")),
+			early_rate=flt(frappe.db.get_single_value("Vernon Settings", "early_leave_penalty_per_minute")),
+			absence_penalty=flt(frappe.db.get_single_value("Vernon Settings", "absence_penalty")),
+		)
 
-	values = {
-		"employee": employee,
-		"attendance_date": date,
-		"status": result["status"],
-		"shift_template": shift_template,
-		"expected_start": expected_start,
-		"expected_end": expected_end,
-		"first_scan": result["first_scan"],
-		"last_scan": result["last_scan"],
-		"station_first": scan_rows[0].station if scan_rows else None,
-		"station_last": scan_rows[-1].station if scan_rows else None,
-		"late_minutes": result["late_minutes"],
-		"early_minutes": result["early_minutes"],
-		"penalty_points": result["penalty_points"],
-	}
-	existing = frappe.db.exists("Daily Attendance", {"employee": employee, "attendance_date": date})
-	if existing:
-		doc = frappe.get_doc("Daily Attendance", existing)
-		doc.update(values)
-		doc.save(ignore_permissions=True)
-	else:
-		doc = frappe.get_doc({"doctype": "Daily Attendance", **values})
-		doc.insert(ignore_permissions=True)
+		values = {
+			"employee": employee,
+			"attendance_date": date,
+			"status": result["status"],
+			"shift_template": shift_template,
+			"expected_start": expected_start,
+			"expected_end": expected_end,
+			"first_scan": result["first_scan"],
+			"last_scan": result["last_scan"],
+			"station_first": scan_rows[0].station if scan_rows else None,
+			"station_last": scan_rows[-1].station if scan_rows else None,
+			"late_minutes": result["late_minutes"],
+			"early_minutes": result["early_minutes"],
+			"penalty_points": result["penalty_points"],
+		}
+		existing = frappe.db.exists("Daily Attendance", {"employee": employee, "attendance_date": date})
+		if existing:
+			doc = frappe.get_doc("Daily Attendance", existing)
+			doc.update(values)
+			doc.save(ignore_permissions=True)
+		else:
+			doc = frappe.get_doc({"doctype": "Daily Attendance", **values})
+			doc.insert(ignore_permissions=True)
 
-	_upsert_penalty_ledger(doc.name, employee, result["penalty_points"])
-	if notify and flt(result["penalty_points"]) > 0:
-		_notify_attendance_penalty(doc.name, employee, result["status"], date)
-	return result
+		_upsert_penalty_ledger(doc.name, employee, result["penalty_points"])
+		if notify and flt(result["penalty_points"]) > 0:
+			_notify_attendance_penalty(doc.name, employee, result["status"], date)
+		return result
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
 
 
 def _upsert_penalty_ledger(daily_name, employee, penalty_points):

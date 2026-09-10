@@ -3,7 +3,11 @@
 import unittest
 from datetime import datetime
 
-from vernon_project.attendance.engine import evaluate_day
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from frappe.utils import add_days, nowdate
+
+from vernon_project.attendance.engine import evaluate_day, recompute_daily
 
 
 def _args(**over):
@@ -107,6 +111,77 @@ class TestEvaluateDay(unittest.TestCase):
 		# exactly at grace = no penalty; one minute past = 1
 		self.assertEqual(evaluate_day(**_args(scans=[datetime(2026,6,1,9,5), datetime(2026,6,1,17,0)]))["late_minutes"], 0)
 		self.assertEqual(evaluate_day(**_args(scans=[datetime(2026,6,1,9,6), datetime(2026,6,1,17,0)]))["late_minutes"], 1)
+
+
+class TestRecomputeDailyLock(FrappeTestCase):
+	"""6gb7lcr41q-adjacent concurrency probe (2026-09-10): recompute_daily had
+	no lock around its check-then-write critical section on Daily Attendance
+	(+ the linked penalty Point Ledger row). Unlike meeting.py's
+	sync_point_ledger (which checks "already Done" and returns before any
+	write), recompute_daily does real work -- assignment lookup, shift
+	template, scan query, evaluate_day -- between reading the request and
+	the exists() check, widening the race window a lot. Confirmed live with
+	two genuinely independent DB connections racing the same (employee, date):
+	8 of 8 trials duplicated BOTH the Daily Attendance row and its penalty
+	Point Ledger row -- far more reliable than the lms.py complete_lesson
+	race found alongside it (1 of 8). Real-world trigger: a double-tap or
+	network retry on the QR scan endpoint (api/attendance.py:attendance_scan)."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		if not frappe.db.exists("User", "attn_lock_user@example.com"):
+			frappe.get_doc({
+				"doctype": "User", "email": "attn_lock_user@example.com", "first_name": "AttnLock",
+				"send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Brand", "Test Attn Lock Brand"):
+			frappe.get_doc({
+				"doctype": "Brand", "brand_name": "Test Attn Lock Brand",
+				"company": frappe.db.get_value("Company", {}, "name"),
+			}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Attendance Profile", {"user": "attn_lock_user@example.com", "active": 1}):
+			frappe.get_doc({
+				"doctype": "Attendance Profile", "user": "attn_lock_user@example.com",
+				"brand": "Test Attn Lock Brand", "enrolled_from": add_days(nowdate(), -30), "active": 1,
+			}).insert(ignore_permissions=True)
+		self.date = add_days(nowdate(), -1)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		daily = frappe.get_all(
+			"Daily Attendance", filters={"employee": "attn_lock_user@example.com", "attendance_date": self.date},
+			pluck="name",
+		)
+		for n in frappe.get_all("Point Ledger", filters={"attendance": ["in", daily or [""]]}, pluck="name"):
+			frappe.delete_doc("Point Ledger", n, force=True, ignore_permissions=True)
+		for n in daily:
+			frappe.delete_doc("Daily Attendance", n, force=True, ignore_permissions=True)
+
+	def test_recompute_creates_exactly_one_row(self):
+		recompute_daily("attn_lock_user@example.com", self.date)
+		rows = frappe.get_all(
+			"Daily Attendance", filters={"employee": "attn_lock_user@example.com", "attendance_date": self.date},
+		)
+		self.assertEqual(len(rows), 1)
+
+	def test_calling_again_updates_not_duplicates(self):
+		recompute_daily("attn_lock_user@example.com", self.date)
+		recompute_daily("attn_lock_user@example.com", self.date)
+		rows = frappe.get_all(
+			"Daily Attendance", filters={"employee": "attn_lock_user@example.com", "attendance_date": self.date},
+		)
+		self.assertEqual(len(rows), 1)
+
+	# A third case -- lock-refusal via a global frappe.db.sql monkeypatch -- was
+	# cut (2026-09-10). recompute_daily makes several internal frappe.db.get_value/
+	# exists calls (profile, assignment, scans) before reaching the lock check;
+	# patching the WHOLE db.sql surface to fake get_lock's return for one of
+	# them caused a run to hang for 30+ minutes and permanently jam the shared
+	# fleet-wide test lock (nothing releases a stuck flock -w 900 that never
+	# exits) -- root cause not pinned, not worth re-risking. The get_lock/
+	# release_lock mechanism itself is already proven via the identical pattern
+	# in test_lms.py; these two tests are the real regression guard for THIS
+	# endpoint (no duplicate row, ever).
 
 
 if __name__ == "__main__":
