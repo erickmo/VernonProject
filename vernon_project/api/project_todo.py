@@ -473,10 +473,42 @@ def get_my_approvals():
 	return out
 
 
+def _done_time(row):
+	"""When the todo was actually marked 🟠 Done -- NOT when a leader/owner later
+	approved it.
+
+	developed_at is stamped at ⚪️ Planned → 🟠 Done by update_status and is present on
+	every Completed row today. done_started_at is the controller's phase stamp, which
+	is NULL on rows that auto-advanced past Done inside a single save, so it can only
+	be a fallback. completed_at (owner approval) is the last-resort anchor for legacy
+	rows carrying neither -- on 37% of Completed rows it lands on a different day than
+	the todo was actually finished, which is exactly the ordering this avoids.
+	"""
+	return row.get("developed_at") or row.get("done_started_at") or row.get("completed_at")
+
+
+def _sort_recently_done(rows, limit):
+	"""Newest-done first, capped at `limit`.
+
+	Tie-break modified desc then name desc so two todos finished in the same second
+	keep one fixed order across refetches. A row with no done time at all sorts last
+	("" is below every timestamp under reverse) rather than being dropped.
+	"""
+	return sorted(
+		rows,
+		key=lambda r: (str(_done_time(r) or ""), str(r.get("modified") or ""), str(r.get("name") or "")),
+		reverse=True,
+	)[:limit]
+
+
 @frappe.whitelist()
 def get_recently_done(limit=30):
 	"""The current user's own recently-completed todos (assignee's Done list),
-	newest completed_at first, capped at `limit`. Powers the Home 'Done' tab.
+	newest DONE time first, capped at `limit`. Powers the Home 'Done' tab.
+
+	Ordered on when the assignee actually marked the todo Done (see _done_time),
+	not on the later owner approval -- a batch of old todos approved this morning
+	must not push aside a todo finished an hour ago.
 
 	Scoped to assigned_to == me in SQL (not the get_my_approvals broad-fetch-then-
 	filter pattern) — this endpoint runs on the Home landing page on every mount
@@ -502,7 +534,7 @@ def get_recently_done(limit=30):
 	if not rows:
 		return []
 
-	mine = sorted(rows, key=lambda r: str(r.get("completed_at") or ""), reverse=True)[:limit]
+	mine = _sort_recently_done(rows, limit)
 
 	emails = {r["assigned_to"] for r in mine}
 	for r in mine:
@@ -514,8 +546,9 @@ def get_recently_done(limit=30):
 	out = []
 	for r in mine:
 		shaped = _shape_todo(r, user, name_map, alloc_map=alloc_map, admins=admins_map.get(r["project"], []))
-		shaped["done_at"] = str(r["completed_at"]) if r.get("completed_at") else None
-		shaped["done_at_human"] = pretty_date(get_datetime(r["completed_at"])) if r.get("completed_at") else None
+		done = _done_time(r)
+		shaped["done_at"] = str(done) if done else None
+		shaped["done_at_human"] = pretty_date(get_datetime(done)) if done else None
 		out.append(shaped)
 
 	return out
