@@ -429,6 +429,7 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   // mangling what the textarea shows and would save back.
   const [text, setText] = useState(initial)
   const [saved, setSaved] = useState(false)
+  const [editing, setEditing] = useState(false)
   const baseline = useRef(initial)
 
   useEffect(() => {
@@ -459,12 +460,42 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
     )
   }
 
+  // An editor sees the rendered markdown too — the textarea only appears once
+  // the note is clicked. Before this, canEdit meant a permanent raw textarea, so
+  // the person who writes the note was the one person who never saw it render.
+  // ponytail: click-to-edit, not a live split preview.
+  if (!editing) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('a')) setEditing(true)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') setEditing(true)
+        }}
+        className="cursor-text rounded-xl p-3 transition hover:bg-hover/[0.04]"
+      >
+        {text ? (
+          <NoteMarkdown text={text} />
+        ) : (
+          <p className="text-sm italic text-muted">Add a quick note about your progress…</p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
       <textarea
+        autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
+        onBlur={() => {
+          commit()
+          setEditing(false)
+        }}
         rows={4}
         placeholder="Add a quick note about your progress…"
         className="w-full resize-none [field-sizing:content] rounded-xl border border-line bg-hover/[0.04] p-3 text-sm leading-relaxed text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100"

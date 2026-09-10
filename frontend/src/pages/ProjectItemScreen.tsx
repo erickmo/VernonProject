@@ -621,6 +621,7 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   // mangling what the textarea shows and would save back.
   const [text, setText] = useState(initial)
   const [saved, setSaved] = useState(false)
+  const [editing, setEditing] = useState(false)
   const baseline = useRef(initial)
 
   useEffect(() => {
@@ -651,12 +652,44 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
     )
   }
 
+  // An editor sees the rendered markdown too — the textarea only appears once
+  // the note is tapped. Before this, canEdit meant a permanent raw textarea, so
+  // the person who writes the note was the one person who never saw it render.
+  // ponytail: click-to-edit, not a live split preview.
+  if (!editing) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('a')) setEditing(true)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') setEditing(true)
+        }}
+        className="cursor-text rounded-xl p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+      >
+        {text ? (
+          <NoteMarkdown text={text} />
+        ) : (
+          <p className="text-sm italic text-slate-400 dark:text-slate-500">
+            Add a quick note about your progress…
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
       <textarea
+        autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
+        onBlur={() => {
+          commit()
+          setEditing(false)
+        }}
         rows={4}
         placeholder="Add a quick note about your progress…"
         className="w-full resize-none [field-sizing:content] rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
