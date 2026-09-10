@@ -210,6 +210,12 @@ export interface ProjectItem {
   is_owner: boolean
   is_leader: boolean
   notes: string
+  /** Why and when the todo was cancelled. Set only on cancelled rows, but the
+   *  LIST query selects them too (mobile.py), not just the detail one — so they
+   *  belong on ProjectItem rather than ProjectItemDetail, and CancelledNote can
+   *  render straight from a list row. */
+  cancellation_reason?: string | null
+  cancelled_on?: string | null
 }
 
 // A row from get_my_approvals: a ProjectItem the current user personally
@@ -224,12 +230,6 @@ export interface MyApprovalItem extends ProjectItem {
 export interface DoneItem extends ProjectItem {
   done_at: string | null
   done_at_human: string | null
-  /** Why and when the todo was cancelled. Set only on cancelled rows, but the
-   *  LIST query selects them too (mobile.py), not just the detail one — so they
-   *  belong here rather than on ProjectItemDetail, and CancelledNote can render
-   *  straight from a list row. */
-  cancellation_reason?: string | null
-  cancelled_on?: string | null
 }
 
 export interface TodoFile {
