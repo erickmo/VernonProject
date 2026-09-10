@@ -18,8 +18,8 @@
   "task_meta"
  ],
  "fields": [
-  {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1},
-  {"fieldname": "task", "fieldtype": "Link", "label": "Task", "options": "Project Todo", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "reqd": 1, "in_list_view": 1, "search_index": 1, "description": "Indexed: EVERY focus read filters on this (list_focus, _find). Without the index MariaDB full-scans the table on each one, and each open tab hydrates on load, on every realtime ping and every 60s — see useFocusTimer.ensureStarted."},
+  {"fieldname": "task", "fieldtype": "Link", "label": "Task", "options": "Project Todo", "reqd": 1, "in_list_view": 1, "search_index": 1, "description": "Indexed: clear_task_timers filters on task alone, and it runs whenever any todo is completed, cancelled or deleted."},
   {"fieldname": "task_title", "fieldtype": "Data", "label": "Task Title"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "idle\nrunning\npaused", "default": "idle", "in_list_view": 1},
   {"fieldname": "sort_order", "fieldtype": "Int", "label": "Sort Order", "default": "0", "description": "User's drag-to-reorder position in the focus list. Ties (e.g. 0 for every never-reordered row) fall back to started_at_ms desc — see list_focus."},
