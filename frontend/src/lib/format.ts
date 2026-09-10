@@ -120,9 +120,12 @@ export function dateSub(iso: string | null | undefined, flag?: string | false | 
 }
 
 // Local calendar date as YYYY-MM-DD — matches Frappe Date fields + <input type="date">.
-export function todayISO(): string {
-  const d = new Date()
+export function toISODate(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
+export function todayISO(): string {
+  return toISODate(new Date())
 }
 
 // YYYY-MM-DD shifted by n days, TZ-safe (parse as local midnight, add days, format

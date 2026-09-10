@@ -212,10 +212,14 @@ export const useFocusMode = (): import('@/lib/types').FocusMode =>
 export const useDashboard = () =>
   useQuery({ queryKey: keys.dashboard, queryFn: () => mobileApi.dashboard() as Promise<Dashboard> })
 
-export const useCalendar = () =>
+// dateFrom/dateTo (both-or-neither) window the result on deadline -- passed by
+// CalendarView for the actual Calendar screen (current month +/- 1, refetches
+// on month nav; see 6gb7lcr41q PERF.md, was 19.56MB unwindowed). Omit both for
+// every other caller (search, the blueprint board) that needs every todo.
+export const useCalendar = (dateFrom?: string, dateTo?: string) =>
   useQuery({
-    queryKey: keys.calendar,
-    queryFn: () => mobileApi.calendar() as Promise<{ todos: ProjectItem[] }>,
+    queryKey: dateFrom && dateTo ? [...keys.calendar, dateFrom, dateTo] : keys.calendar,
+    queryFn: () => mobileApi.calendar(false, false, dateFrom, dateTo) as Promise<{ todos: ProjectItem[] }>,
   })
 
 // Plan pool: open todos assigned to me or in a project I lead/own — exactly what
@@ -293,12 +297,36 @@ export const useMemberWorkload = (
     enabled: !!project && !!user,
   })
 
-export function useProjectDetail(name: string, includeCancelled = false) {
-  return useQuery({
-    queryKey: ['project-detail', name, includeCancelled],
-    queryFn: () => mobileApi.projectDetail(name, includeCancelled) as Promise<ProjectDetail>,
+// Infinite-scroll page size for a project detail's todo list (6gb7lcr41q --
+// the unbounded call measured 446KB/599 rows). project_items accumulates
+// across fetched pages; every other field (title, team, the aggregate
+// counts/minutes, can_edit, ...) comes from the first page -- get_project_detail
+// computes those over the full set server-side regardless of which page is
+// asked for, so they're already correct without needing every page loaded.
+export const PROJECT_DETAIL_PAGE_SIZE = 60
+
+// paginate=false (the default) fetches everything in one page, byte-for-byte
+// the same call every non-list consumer made before pagination existed --
+// several callers (blocker-picker siblings in QuickAddSheet/ProjectScreen/
+// CreateProjectItemDialog, useMoveTodosController) read project_items expecting
+// the COMPLETE sibling set for a dropdown, not just what's scrolled into view.
+// Only the actual todo-list screens (ProjectDetailScreen /m, ProjectDetailPane
+// /w) pass paginate=true.
+export function useProjectDetail(name: string, includeCancelled = false, paginate = false) {
+  const limit = paginate ? PROJECT_DETAIL_PAGE_SIZE : 0
+  const query = useInfiniteQuery({
+    queryKey: ['project-detail', name, includeCancelled, paginate],
+    queryFn: ({ pageParam }) =>
+      mobileApi.projectDetail(name, includeCancelled, limit, pageParam) as Promise<ProjectDetail>,
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.has_more ? pages.length * PROJECT_DETAIL_PAGE_SIZE : undefined),
     enabled: !!name,
   })
+  const first = query.data?.pages[0]
+  const data = first
+    ? { ...first, project_items: query.data!.pages.flatMap((p) => p.project_items) }
+    : undefined
+  return { ...query, data }
 }
 
 export const useProjectItem = (name: string) =>

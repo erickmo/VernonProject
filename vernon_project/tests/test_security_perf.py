@@ -475,6 +475,30 @@ class TestCalendarDateWindowOptIn(FrappeTestCase):
 		self.assertIn(self.far.name, names)
 		self.assertIn(self.very_far.name, names)
 
+	def test_undated_todo_survives_any_window(self):
+		"""An undated todo doesn't belong to any month -- a windowed call must
+		still surface it (matches CalendarView.tsx's "N items without a date"
+		badge, which now-live frontend windowing must not silently zero out).
+
+		`deadline` is reqd:1 on the doctype (live-confirmed: 0 null-deadline
+		rows in production today, so this is a defensive fix for a state that
+		can't currently arise through the normal insert path, not an active
+		bug) -- ignore_mandatory=True is needed to build the fixture at all."""
+		undated = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.detail.name,
+			"to_do": "Undated Window Todo", "assigned_to": "Administrator", "start_date": nowdate(),
+			"estimated": 10, "status": "⚪️ Planned",
+			"group": _ensure_test_group()[0], "level_id": _ensure_test_group()[1],
+		}).insert(ignore_permissions=True, ignore_mandatory=True)
+		try:
+			result = get_calendar(date_from=add_days(nowdate(), 0), date_to=add_days(nowdate(), 10))
+			names = {t["name"] for t in result["todos"]}
+			self.assertIn(undated.name, names)
+			self.assertIn(self.near.name, names)
+			self.assertNotIn(self.far.name, names)
+		finally:
+			frappe.delete_doc("Project Todo", undated.name, force=True, ignore_permissions=True)
+
 
 class TestProjectDetailPaginationOptIn(FrappeTestCase):
 	"""6gb7lcr41q Phase 1b: get_project_detail's biggest real sub-module
@@ -535,6 +559,98 @@ class TestProjectDetailPaginationOptIn(FrappeTestCase):
 	def test_negative_start_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
 			get_project_detail(self.detail.name, start=-1)
+
+
+class TestProjectDetailAggregatesSurvivePagination(FrappeTestCase):
+	"""6gb7lcr41q frontend wiring: ProjectDetailScreen.tsx (/m) and its /w
+	equivalents compute open/completed/cancelled counts + minutes done/total
+	from the FULL project_items array -- correct only while that array is
+	unbounded. Once the frontend actually paginates (this todo's own reason
+	to exist), those client-side sums would silently under-report until every
+	page loaded. Fixed by computing them server-side over the full row set
+	BEFORE the pagination slice (free -- that set is already fetched) and
+	exposing them as top-level fields the frontend reads instead of deriving
+	from project_items. This proves the aggregates are correct on a page that
+	does NOT contain every status."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		group, level_id = _ensure_test_group()
+		if not frappe.db.exists("Brand", "Test Aggregates Brand"):
+			frappe.get_doc({
+				"doctype": "Brand", "brand_name": "Test Aggregates Brand",
+				"company": frappe.db.get_value("Company", {}, "name"),
+			}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Test Aggregates Project",
+			"brand": "Test Aggregates Brand",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": "Administrator"}],
+		}).insert(ignore_permissions=True)
+		grouping = frappe.get_doc({
+			"doctype": "Glossary", "glossary": "Test Aggregates Grouping", "project": self.project.name,
+		}).insert(ignore_permissions=True)
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "Test Aggregates Detail",
+			"grouping": grouping.name, "project_deadline": add_days(nowdate(), 30), "estimated": 100,
+		}).insert(ignore_permissions=True)
+		# 3 Planned (10 min each), 1 Completed (20 min), 1 Cancelled (30 min, must
+		# be excluded from minutes_total/minutes_done, same as the frontend's
+		# `notCancelled` filter).
+		specs = [
+			("Planned 1", "⚪️ Planned", 10), ("Planned 2", "⚪️ Planned", 10), ("Planned 3", "⚪️ Planned", 10),
+			("Done one", "✅ Completed", 20), ("Cancelled one", "🚫 Cancelled", 30),
+		]
+		self.names = []
+		for i, (title, status, minutes) in enumerate(specs):
+			doc = frappe.get_doc({
+				"doctype": "Project Todo", "project_detail": self.detail.name,
+				"to_do": title, "assigned_to": "Administrator", "start_date": nowdate(),
+				"deadline": add_days(nowdate(), i + 1), "estimated": minutes, "status": status,
+				"group": group, "level_id": level_id,
+			}).insert(ignore_permissions=True)
+			self.names.append(doc.name)
+
+	def test_aggregates_correct_on_the_unbounded_default_call(self):
+		"""include_cancelled defaults to 0 (matches the frontend's `showCancelled`
+		toggle -- see useProjectDetail), so _fetch_todos never returns the
+		Cancelled row here at all: 4 rows, not 5. cancelled_count is correctly 0
+		in this mode, same as the Cancelled section being hidden client-side."""
+		result = get_project_detail(self.detail.name)
+		self.assertEqual(result["total_count"], 4)
+		self.assertEqual(result["open_count"], 3)
+		self.assertEqual(result["completed_count"], 1)
+		self.assertEqual(result["cancelled_count"], 0)
+		self.assertEqual(result["minutes_total"], 50)  # 3*10 + 20
+		self.assertEqual(result["minutes_done"], 20)
+
+	def test_aggregates_include_cancelled_when_asked(self):
+		result = get_project_detail(self.detail.name, include_cancelled=1)
+		self.assertEqual(result["total_count"], 5)
+		self.assertEqual(result["cancelled_count"], 1)
+		self.assertEqual(result["minutes_total"], 50)  # cancelled still excluded from minutes
+
+	def test_aggregates_unchanged_on_a_page_that_omits_most_statuses(self):
+		"""The whole point: a 2-row page (both Planned) must still report the
+		TRUE totals across all 4 (non-cancelled) rows, not just what's on this
+		page."""
+		result = get_project_detail(self.detail.name, limit=2, start=0)
+		self.assertEqual(len(result["project_items"]), 2)
+		self.assertEqual(result["total_count"], 4)
+		self.assertEqual(result["open_count"], 3)
+		self.assertEqual(result["completed_count"], 1)
+		self.assertEqual(result["minutes_total"], 50)
+		self.assertEqual(result["minutes_done"], 20)
+
+	def test_has_more_drives_infinite_scroll(self):
+		first = get_project_detail(self.detail.name, limit=2, start=0)
+		self.assertTrue(first["has_more"])
+		last = get_project_detail(self.detail.name, limit=2, start=2)
+		self.assertFalse(last["has_more"])
+		self.assertEqual(len(last["project_items"]), 2)  # 4 non-cancelled rows, page 2 has the remainder
+		unbounded = get_project_detail(self.detail.name)
+		self.assertFalse(unbounded["has_more"])
 
 
 class TestProjectItemTeamNoDeadAvatarFields(FrappeTestCase):

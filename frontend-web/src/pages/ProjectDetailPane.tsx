@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { safeDecode } from '@web/lib/route'
 import { ListChecks, Plus, CalendarClock, List, BarChart3, Sparkles } from 'lucide-react'
 import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useBoot } from '@/hooks/useData'
 import { useFocusedTaskIds } from '@/hooks/useFocusTimer'
+import { useInfiniteScrollTrigger } from '@/hooks/useInfiniteScrollTrigger'
 import { GanttChart } from '@/components/GanttChart'
 import { groupFromItems } from '@/lib/gantt'
 import { formatEstimateRatio } from '@/lib/format'
@@ -36,7 +37,11 @@ export default function ProjectDetailPane() {
   const [showCancelled, setShowCancelled] = useState(false)
   const [view, setView] = useState<'list' | 'gantt'>('list')
 
-  const detail = useProjectDetail(id, showCancelled)
+  const detail = useProjectDetail(id, showCancelled, true)
+  const loadMoreRef = useInfiniteScrollTrigger(
+    () => detail.fetchNextPage(),
+    !!detail.hasNextPage && !detail.isFetchingNextPage,
+  )
   const setAutoApprove = useSetAutoApprove()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const { data: boot } = useBoot()
@@ -45,6 +50,16 @@ export default function ProjectDetailPane() {
   const canAutoApprove = !!boot?.settings?.show_auto_approve
   const toast = useToast()
   const base = `/project/${encodeURIComponent(projectId)}/detail/${encodeURIComponent(id)}`
+
+  // Gantt draws every todo in one chart, not a scrollable list -- switching to
+  // it should show the whole work-package, not just whatever pages List had
+  // loaded so far. Pulls in the rest up front instead of silently rendering a
+  // partial chart.
+  useEffect(() => {
+    if (view === 'gantt' && detail.hasNextPage && !detail.isFetchingNextPage) {
+      detail.fetchNextPage()
+    }
+  }, [view, detail.hasNextPage, detail.isFetchingNextPage, detail.fetchNextPage])
 
   if (detail.isLoading && !detail.data) {
     return (
@@ -59,13 +74,12 @@ export default function ProjectDetailPane() {
 
   const d = detail.data
   const items = d.project_items
-  const completedCount = items.filter((t) => t.status_key === 'completed').length
-  const openCount = items.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
-  const notCancelled = items.filter((t) => t.status_key !== 'cancelled')
-  const minutesTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
-  const minutesDone = notCancelled
-    .filter((t) => t.status_key === 'completed')
-    .reduce((s, t) => s + (t.estimated || 0), 0)
+  // Server-computed over the FULL item set (see get_project_detail) -- stay
+  // correct while project_items itself is only the pages loaded so far.
+  const completedCount = d.completed_count
+  const openCount = d.open_count
+  const minutesTotal = d.minutes_total
+  const minutesDone = d.minutes_done
   const { visibleItems, todoGroups } = todoGroupsOf(items, showCancelled)
 
   // Owner-only per-todo auto-approve control, appended to the shared todo
@@ -166,10 +180,13 @@ export default function ProjectDetailPane() {
         </div>
       )}
 
-      {/* Completion progress bar — mirrors the /w Home + Review lists */}
+      {/* Completion progress bar */}
       {view === 'list' && visibleItems.length > 0 && (
         <div className="mb-4">
-          <TodoProgress items={items} />
+          <TodoProgress
+            items={items}
+            stats={{ doneCount: completedCount, total: openCount + completedCount, minDone: minutesDone, minTotal: minutesTotal }}
+          />
         </div>
       )}
 
@@ -202,6 +219,13 @@ export default function ProjectDetailPane() {
               />
             </div>
           ))}
+          {detail.hasNextPage && (
+            <div ref={loadMoreRef} className="flex justify-center py-3">
+              {detail.isFetchingNextPage && (
+                <span className="text-xs text-muted">Loading more…</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 

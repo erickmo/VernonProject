@@ -634,10 +634,10 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	item's todos in SQL instead of fetching the whole project (see
 	get_project_detail) — same reasoning as `assigned_to`. Pass `date_from`/
 	`date_to` (both required together) to window on `deadline` — an undated
-	todo then has nothing to match and is excluded, same as it not appearing
-	under any single day today. Neither is set by any caller yet (see
-	get_calendar) — the clause simply doesn't exist in the query when both are
-	falsy, so every existing caller is unaffected."""
+	todo is always included regardless of the window (it doesn't belong to any
+	month, so windowing shouldn't hide it — see get_calendar). The clause
+	simply doesn't exist in the query when both are falsy, so a caller that
+	never passes them is unaffected."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
@@ -659,7 +659,12 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 		cond += " AND t.project_detail = %(project_detail)s"
 		params["project_detail"] = project_detail
 	if date_from and date_to:
-		cond += " AND t.deadline BETWEEN %(date_from)s AND %(date_to)s"
+		# OR deadline IS NULL: an undated todo doesn't belong to any month, so a
+		# month-window shouldn't hide it -- it would otherwise vanish from every
+		# windowed call with no window wide enough to ever catch it again. Matches
+		# get_calendar's "N items without a date" badge, which counts these
+		# regardless of which window is showing (see CalendarView.tsx `undated`).
+		cond += " AND (t.deadline BETWEEN %(date_from)s AND %(date_to)s OR t.deadline IS NULL)"
 		params["date_from"] = date_from
 		params["date_to"] = date_to
 	return frappe.db.sql(
@@ -2122,14 +2127,34 @@ def get_project_detail(project_detail, include_cancelled=0, limit=0, start=0):
 		include_cancelled=frappe.utils.cint(include_cancelled),
 		project_detail=project_detail,
 	)
+	# Computed over the FULL row set, before any pagination slice below, so the
+	# header stats (open/completed/cancelled counts, minutes done/total) stay
+	# correct on a paginated page too -- they used to be derived client-side
+	# from the (previously always-complete) project_items array; a paginated
+	# array would otherwise silently under-report until every page loaded.
+	# Free: `rows` is already fetched in full for the slice, no extra query.
+	detail["total_count"] = len(rows)
+	detail["open_count"] = sum(
+		1 for r in rows if _status_key(r["status"]) not in ("completed", "cancelled")
+	)
+	detail["completed_count"] = sum(1 for r in rows if _status_key(r["status"]) == "completed")
+	detail["cancelled_count"] = sum(1 for r in rows if _status_key(r["status"]) == "cancelled")
+	_not_cancelled = [r for r in rows if _status_key(r["status"]) != "cancelled"]
+	detail["minutes_total"] = sum(r["estimated"] or 0 for r in _not_cancelled)
+	detail["minutes_done"] = sum(
+		r["estimated"] or 0 for r in _not_cancelled if _status_key(r["status"]) == "completed"
+	)
 	start = cint(start)
 	if start < 0:
 		frappe.throw("start must be zero or a positive integer", frappe.ValidationError)
 	limit = _clamp_page_limit(limit, MAX_PROJECT_ITEMS_PAGE)
 	if limit:
+		detail["has_more"] = start + limit < len(rows)
 		rows = rows[start:start + limit]
-	elif start:
-		rows = rows[start:]
+	else:
+		detail["has_more"] = False
+		if start:
+			rows = rows[start:]
 	emails = {r["assigned_to"] for r in rows}
 	name_map = _user_name_map(emails)
 	alloc_map = _allocations_map([r["name"] for r in rows])

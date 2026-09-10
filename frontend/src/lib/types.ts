@@ -469,6 +469,15 @@ export interface ProjectDetail {
   default_group?: string | null
   auto_approve: boolean
   can_set_auto_approve: boolean
+  // Computed server-side over the FULL item set, before any pagination slice --
+  // stay correct even when project_items is only the current page (6gb7lcr41q).
+  total_count: number
+  open_count: number
+  completed_count: number
+  cancelled_count: number
+  minutes_total: number
+  minutes_done: number
+  has_more: boolean
 }
 
 export interface Group {

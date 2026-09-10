@@ -144,8 +144,12 @@ export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),
   dashboard: () => api.get(M + 'get_dashboard'),
   dailyVerse: () => api.get<import('./types').DailyVerse>('vernon_project.api.verse.get_daily_verse'),
-  calendar: (openOnly = false, mine = false) =>
-    api.get(M + 'get_calendar', { ...(openOnly ? { open_only: 1 } : {}), ...(mine ? { mine: 1 } : {}) }),
+  calendar: (openOnly = false, mine = false, dateFrom?: string, dateTo?: string) =>
+    api.get(M + 'get_calendar', {
+      ...(openOnly ? { open_only: 1 } : {}),
+      ...(mine ? { mine: 1 } : {}),
+      ...(dateFrom && dateTo ? { date_from: dateFrom, date_to: dateTo } : {}),
+    }),
   priorityOccupancy: (users: string[], date: string) =>
     api.get<Record<string, { slots: number; items: import('./types').ProjectItem[] }>>(
       M + 'get_priority_occupancy',
@@ -160,10 +164,11 @@ export const mobileApi = {
   project: (name: string) => api.get(M + 'get_project', { project: name }),
   projectGantt: (project: string) => api.get(M + 'get_project_gantt', { project }),
   projectBlueprint: (project: string) => api.get(M + 'get_project_blueprint', { project }),
-  projectDetail: (projectDetail: string, includeCancelled = false) =>
+  projectDetail: (projectDetail: string, includeCancelled = false, limit = 0, start = 0) =>
     api.get(M + 'get_project_detail', {
       project_detail: projectDetail,
       ...(includeCancelled ? { include_cancelled: 1 } : {}),
+      ...(limit ? { limit, start } : {}),
     }),
   memberWorkload: (project: string, user: string, includeCompleted: boolean) =>
     api.get(M + 'get_member_workload', {

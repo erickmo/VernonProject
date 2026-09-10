@@ -7,7 +7,7 @@ import { MeetingSheet } from '@/components/MeetingSheet'
 import { Segmented, EmptyState, FullScreenLoader } from '@/components/ui'
 import { useCalendar, useMeetings, useBookings, useProjects, useTeamLeave, useBoot } from '@/hooks/useData'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
-import { formatEstimate } from '@/lib/format'
+import { formatEstimate, toISODate } from '@/lib/format'
 import type { ProjectItem, MeetingListItem, Booking, ProjectCard, TeamLeaveRow } from '@/lib/types'
 
 // The lens the calendar is showing. Each mode buckets a different source of
@@ -97,9 +97,21 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
   const [mode, setMode] = useState<Mode>(() => persisted('cal.mode', 'assigned'))
   const setModeP = (v: Mode) => { setMode(v); persist('cal.mode', v) }
 
+  const now = new Date()
+  const [cursor, setCursor] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  const [openDay, setOpenDay] = useState<string | null>(null)
+  const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
+
+  // Window the calendar fetch to the visible month +/- 1 (buffer for the 6-week
+  // grid's prev/next-month spillover cells), refetching as the user navigates
+  // months (`step`/`goToday` below just change `cursor`, which changes this and
+  // therefore the query key). 6gb7lcr41q: the unwindowed call measured 19.56MB.
+  const dateFrom = toISODate(new Date(cursor.y, cursor.m - 1, 1))
+  const dateTo = toISODate(new Date(cursor.y, cursor.m + 2, 0))
+
   // Only fetch the source the active mode needs (react-query dedupes across
   // pages, so these are cheap when already warm).
-  const calendar = useCalendar()
+  const calendar = useCalendar(dateFrom, dateTo)
   const meetings = useMeetings()
   const bookings = useBookings()
   const projects = useProjects()
@@ -112,11 +124,6 @@ export function CalendarView({ fluid = false }: { fluid?: boolean } = {}) {
     : mode === 'booking' ? bookings.isLoading
     : mode === 'teamleave' ? teamLeave.isLoading
     : projects.isLoading
-
-  const now = new Date()
-  const [cursor, setCursor] = useState({ y: now.getFullYear(), m: now.getMonth() })
-  const [openDay, setOpenDay] = useState<string | null>(null)
-  const [openMeeting, setOpenMeeting] = useState<MeetingListItem | null>(null)
 
   // Build every CalItem for the active mode, then bucket onto days + sum minutes.
   const { byDay, estByDay, undated } = useMemo(() => {

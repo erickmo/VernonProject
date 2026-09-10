@@ -17,20 +17,31 @@ import { ListProgress } from '@web/components/PlanList'
 import type { ProjectItem } from '@/lib/types'
 
 // Completion progress for a work-package's todos — done vs. total (minutes, with
-// a count fallback). Same progress bar as the /w Home + Review lists; render it
-// above the grouped todo tables. Cancelled rows are excluded from the total.
-export function TodoProgress({ items }: { items: ProjectItem[] }) {
+// a count fallback). Render it above the grouped todo tables. Cancelled rows are
+// excluded from the total.
+//
+// `stats`, when given, overrides the done/total/minutes derived from `items` --
+// needed when `items` is only the pages loaded so far by infinite scroll (see
+// ProjectDetailPane.tsx / 6gb7lcr41q), so the bar reflects the work-package's
+// true totals from its first render instead of growing as more pages load.
+export function TodoProgress({
+  items,
+  stats,
+}: {
+  items: ProjectItem[]
+  stats?: { doneCount: number; total: number; minDone: number; minTotal: number }
+}) {
   const notCancelled = items.filter((t) => t.status_key !== 'cancelled')
-  const total = notCancelled.length
+  const total = stats ? stats.total : notCancelled.length
   if (!total) return null
-  const doneRows = notCancelled.filter((t) => t.status_key === 'completed')
-  const minDone = doneRows.reduce((s, t) => s + (t.estimated || 0), 0)
-  const minTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
-  const pct = minTotal ? Math.round((minDone / minTotal) * 100) : Math.round((doneRows.length / total) * 100)
+  const doneCount = stats ? stats.doneCount : notCancelled.filter((t) => t.status_key === 'completed').length
+  const minDone = stats ? stats.minDone : notCancelled.filter((t) => t.status_key === 'completed').reduce((s, t) => s + (t.estimated || 0), 0)
+  const minTotal = stats ? stats.minTotal : notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
+  const pct = minTotal ? Math.round((minDone / minTotal) * 100) : Math.round((doneCount / total) * 100)
   return (
     <ListProgress
       title="Progress"
-      note={`${doneRows.length} of ${total} done`}
+      note={`${doneCount} of ${total} done`}
       pct={pct}
       doneText={minDone > 0 ? `${formatEstimate(minDone)} done` : 'nothing done yet'}
       leftText={minTotal - minDone > 0 ? `${formatEstimate(minTotal - minDone)} left` : 'all wrapped up'}

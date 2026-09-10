@@ -17,6 +17,7 @@ import { useProjectDetail, useSetAutoApprove, useSetProjectAutoApprove, useSetTo
 import { useFocusPill } from '@/hooks/useFocusPill'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
 import { useHoldFeedback } from '@/hooks/useHoldFeedback'
+import { useInfiniteScrollTrigger } from '@/hooks/useInfiniteScrollTrigger'
 import { buildNext } from '@/lib/planDay'
 import { stripHtml, sanitizeHtml, byDeadlineAsc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
 import { STATUS } from '@/lib/status'
@@ -27,7 +28,8 @@ export default function ProjectDetailScreen() {
   const navigate = useNavigate()
   const id = decodeURIComponent(name)
   const [showCancelled, setShowCancelled] = useState(false)
-  const { data, isLoading, refetch } = useProjectDetail(id, showCancelled)
+  const { data, isLoading, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useProjectDetail(id, showCancelled, true)
+  const loadMoreRef = useInfiniteScrollTrigger(() => fetchNextPage(), !!hasNextPage && !isFetchingNextPage)
   const { data: boot } = useBoot()
   const setProjectAutoApprove = useSetProjectAutoApprove()
   const toast = useToast()
@@ -59,13 +61,12 @@ export default function ProjectDetailScreen() {
   const hasCondition = !!stripHtml(conditionHtml).trim()
   const hasOutcome = !!stripHtml(outcomeHtml).trim()
   const projectItems = data.project_items.slice().sort(byDeadlineAsc)
-  const completedCount = projectItems.filter((t) => t.status_key === 'completed').length
-  const openCount = projectItems.filter((t) => t.status_key !== 'completed' && t.status_key !== 'cancelled').length
-  const notCancelled = projectItems.filter((t) => t.status_key !== 'cancelled')
-  const minutesTotal = notCancelled.reduce((s, t) => s + (t.estimated || 0), 0)
-  const minutesDone = notCancelled
-    .filter((t) => t.status_key === 'completed')
-    .reduce((s, t) => s + (t.estimated || 0), 0)
+  // Server-computed over the FULL item set (see get_project_detail) -- stay
+  // correct while project_items itself is only the pages loaded so far.
+  const completedCount = data.completed_count
+  const openCount = data.open_count
+  const minutesTotal = data.minutes_total
+  const minutesDone = data.minutes_done
   const filteredItems = projectItems.filter((t) =>
     todoFilter === 'all' ? true : todoFilter === 'completed' ? t.status_key === 'completed' : (t.status_key !== 'completed' && t.status_key !== 'cancelled'),
   )
@@ -218,6 +219,13 @@ export default function ProjectDetailScreen() {
                 </div>
               </div>
             ))}
+            {hasNextPage && (
+              <div ref={loadMoreRef} className="flex justify-center py-3">
+                {isFetchingNextPage && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500">Loading more…</span>
+                )}
+              </div>
+            )}
           </div>
             ) : (
               <EmptyState icon={ListChecks} title="No matching todos" />
