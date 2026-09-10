@@ -17,7 +17,7 @@ describe('TYPE_ICON', () => {
   })
 })
 
-// Enum-drift finding #2, same family as #1 above and the reason DEEP_LINK_ROUTES
+// Enum-drift finding #5, same family as #1 above and the reason DEEP_LINK_ROUTES
 // exists: the routes map was copy-pasted into each caller, and when `teguran` was
 // added to DeepLinkRoutes only the notification-list copy got it. The Today (/m)
 // and Home (/w) copies kept three keys, so `routes.teguran` was undefined there —
