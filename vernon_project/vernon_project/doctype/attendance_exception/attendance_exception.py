@@ -34,7 +34,12 @@ class AttendanceException(Document):
 			req = working_days(self.employee, start, end)
 			if req <= 0:
 				continue
-			avail = ledger_remaining(self.employee, year, exclude_exception=self.name)
+			# Locking read, not a snapshot read: two HR approvals for the same employee
+			# would otherwise both sum the same pre-race ledger and both pass. See
+			# cuti_ledger.remaining() for why an advisory lock does not close this.
+			avail = ledger_remaining(
+				self.employee, year, exclude_exception=self.name, for_update=True
+			)
 			if req > avail:
 				frappe.throw(
 					_("Kuota cuti {0} tidak cukup: sisa {1} hari, diminta {2} hari.").format(
