@@ -54,7 +54,8 @@ def snap_create(order_id, gross_amount, customer, items):
 		timeout=30,
 	)
 	if resp.status_code != 201:
-		frappe.log_error(f"Snap {resp.status_code}: {resp.text[:500]}", "Midtrans Snap")
+		# title first: a 500-char body as the title always exceeds Error Log.method (140).
+		frappe.log_error(title="Midtrans Snap", message=f"Snap {resp.status_code}: {resp.text[:500]}")
 		frappe.throw("Payment gateway error, try again", frappe.ValidationError)
 	return resp.json()
 
