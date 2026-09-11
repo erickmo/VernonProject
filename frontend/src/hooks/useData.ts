@@ -445,7 +445,7 @@ export const useMyApprovals = () =>
   })
 
 // The current user's own last 30 completed todos, newest first — powers the
-// Home "Done" tab. Invalidated by useAdvanceStatus/useRejectStatus/useUndoApproval
+// Home "Done (3 days)" tab: everything finished in the last 3 days. Invalidated by useAdvanceStatus/useRejectStatus/useUndoApproval
 // (all three can move a todo into or out of Completed) so the tab and its badge
 // count stay live.
 export const useRecentlyDone = () =>

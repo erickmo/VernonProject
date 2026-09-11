@@ -526,6 +526,25 @@ class TestProjectTodo(unittest.TestCase):
 			"Completing a recurring todo must not duplicate the scheduler's occurrence",
 		)
 
+	def test_done_tab_lists_everything_done_in_the_last_3_days_uncapped(self):
+		"""8ek4eg7j87: the Home Done tab = all todos I finished today and the 2 days
+		before (on Done time, not approval time) — no longer the newest 30."""
+		from vernon_project.api.project_todo import get_recently_done
+		today = getdate(nowdate())
+		first_day, day_before = f"{add_days(today, -2)} 00:00:01", f"{add_days(today, -3)} 23:59:59"
+		inside = [self._make_todo(to_do=f"done-in {i}").name for i in range(32)]  # more than the old cap
+		outside = self._make_todo(to_do="done-out").name
+		approved_today_done_long_ago = self._make_todo(to_do="done-long-ago").name
+		for name in inside:
+			frappe.db.set_value("Project Todo", name, {"status": "✅ Completed", "developed_at": first_day}, update_modified=False)
+		frappe.db.set_value("Project Todo", outside, {"status": "✅ Completed", "developed_at": day_before}, update_modified=False)
+		frappe.db.set_value("Project Todo", approved_today_done_long_ago,
+			{"status": "✅ Completed", "developed_at": day_before, "completed_at": frappe.utils.now_datetime()}, update_modified=False)
+		got = {r["name"] for r in get_recently_done()}
+		self.assertTrue(set(inside) <= got, f"missing {len(set(inside) - got)} in-window todos")
+		self.assertNotIn(outside, got)
+		self.assertNotIn(approved_today_done_long_ago, got)  # window is on Done time, not approval
+
 	def test_generation_does_not_wait_for_leader_approval(self):
 		"""rrbnu45v6b: the scheduler mints today's occurrence while yesterday's still waits
 		for the leader (Done), and the later approval adds no second one. (The Sep 2026
