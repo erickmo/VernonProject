@@ -5,7 +5,7 @@ import hmac
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, getdate, now_datetime, nowdate
+from frappe.utils import add_days, cint, cstr, getdate, now_datetime, nowdate
 
 from vernon_project.attendance import qr
 from vernon_project.attendance.engine import _active_profile, recompute_daily
@@ -21,6 +21,7 @@ def station_token(station, key):
 	leaked kiosk link shows nothing off-site."""
 	if not frappe.db.get_single_value("Vernon Settings", "attendance_enabled"):
 		frappe.throw(_("Attendance is disabled"), frappe.PermissionError)
+	station = cstr(station)  # a JSON body could send a dict, which get_value reads as filters
 	st = frappe.db.get_value("Attendance Station", station, ["display_key", "active", "allowed_networks"], as_dict=True)
 	if not st or not st.display_key or not hmac.compare_digest(str(key), str(st.display_key)):
 		frappe.throw(_("Invalid station key"), frappe.PermissionError)
@@ -60,6 +61,7 @@ def attendance_scan(station, counter, token):
 	# duplicate check below and recompute_daily's first/last seen race-free.
 	if not _active_profile(user, for_update=True):
 		return {"status": "error", "message": _("You are not enrolled in attendance.")}
+	station = cstr(station)  # a JSON body could send a dict, which get_value reads as filters
 	st = frappe.db.get_value("Attendance Station", station, ["active", "allowed_networks"], as_dict=True)
 	if not st or not st.active:
 		return {"status": "error", "message": _("Unknown or inactive station.")}
