@@ -356,6 +356,28 @@ class ProjectTodo(Document):
 				_("Proyek ini sudah memakai {0} slot prioritas {1} pada {2}.").format(cap, who, self.deadline)
 			)
 
+	def _field_changed(self, field, old_doc):
+		"""True when `field` really differs from the last-saved value.
+
+		A raw `!=` compares a Date field's DB value (a datetime.date, because old_doc
+		was loaded) against whatever this in-memory doc is holding -- which is still
+		the plain string it was assigned if the doc has not been reloaded since insert.
+		"2026-09-14" != date(2026, 9, 14) is True, so simply setting `status` on a
+		freshly-inserted todo reported Start Date and Deadline as modified and threw
+		"Cannot modify ... once the todo leaves Planned status" on a save that changed
+		neither. Normalise both sides through the field's own type first.
+		"""
+		new, old = self.get(field), old_doc.get(field)
+		if new == old:
+			return False
+		df = self.meta.get_field(field)
+		fieldtype = df.fieldtype if df else None
+		if fieldtype == "Date":
+			return (getdate(new) if new else None) != (getdate(old) if old else None)
+		if fieldtype in ("Datetime", "Date and Time"):
+			return (get_datetime(new) if new else None) != (get_datetime(old) if old else None)
+		return True
+
 	def validate_done_todo_fields(self):
 		"""Prevent editing assigned_to, estimated, deadline, and the AI tag/prompt once
 		the todo has left Planned status (Done, Checked By PL, Completed, or Cancelled).
@@ -391,7 +413,7 @@ class ProjectTodo(Document):
 
 		modified_fields = []
 		for field, label in protected_fields.items():
-			if self.get(field) != old_doc.get(field):
+			if self._field_changed(field, old_doc):
 				modified_fields.append(label)
 
 		if modified_fields:

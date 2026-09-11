@@ -186,13 +186,13 @@ def register(event):
 def _apply_notification(payload):
 	from vernon_project.api.midtrans import _server_key, verify_signature
 	if not verify_signature(payload, _server_key()):
-		frappe.log_error(f"order_id={payload.get('order_id')}", "Events Midtrans bad signature")
+		frappe.log_error(title="Events Midtrans bad signature", message=f"order_id={payload.get('order_id')}")
 		raise frappe.PermissionError("Invalid signature.")
 
 	order_id = payload.get("order_id")
 	name = frappe.db.get_value("Vernon Event Registration", {"midtrans_order_id": order_id}, "name")
 	if not name:
-		frappe.log_error(f"order_id={order_id}", "Events Midtrans unknown order")
+		frappe.log_error(title="Events Midtrans unknown order", message=f"order_id={order_id}")
 		return "ignored"
 
 	# Row-lock to serialise duplicate/concurrent notifications.
@@ -208,7 +208,7 @@ def _apply_notification(payload):
 	if txn == "settlement" or (txn == "capture" and fraud == "accept"):
 		# Amount tamper check.
 		if float(payload.get("gross_amount") or 0) != float(reg.amount or 0):
-			frappe.log_error(f"order_id={order_id} amount mismatch", "Events Midtrans tamper")
+			frappe.log_error(title="Events Midtrans tamper", message=f"order_id={order_id} amount mismatch")
 			raise frappe.PermissionError("Amount mismatch.")
 		reg.db_set({"status": "Confirmed", "paid_on": frappe.utils.now()})
 		return "Confirmed"

@@ -498,7 +498,7 @@ class TestProjectTodo(unittest.TestCase):
 			recurring_frequency="Daily",
 			deadline=add_days(nowdate(), -1),
 		)
-		create_recurring_todos()
+		create_recurring_todos(roots=[head.name])
 		kids = frappe.get_all("Project Todo", filters={"original_todo": head.name},
 			fields=["name", "deadline"])
 		self.assertEqual(len(kids), 1)
@@ -513,7 +513,7 @@ class TestProjectTodo(unittest.TestCase):
 			recurring_frequency="Daily",
 			deadline=add_days(nowdate(), -1),
 		)
-		create_recurring_todos()
+		create_recurring_todos(roots=[head.name])
 		after_scheduler = frappe.db.count("Project Todo", {"original_todo": head.name})
 		head.reload()
 		head.status = "✅ Completed"
@@ -532,7 +532,7 @@ class TestProjectTodo(unittest.TestCase):
 		t = self._make_todo(is_recurring=1, recurring_frequency="Daily",
 			start_date=nowdate(), deadline=add_days(nowdate(), 1))
 		before = frappe.db.count("Project Todo", {"original_todo": t.name})
-		create_recurring_todos()
+		create_recurring_todos(roots=[t.name])
 		# next_date = deadline+1 = day-after-tomorrow > today → gated by force=False
 		self.assertEqual(frappe.db.count("Project Todo", {"original_todo": t.name}), before)
 
@@ -542,7 +542,7 @@ class TestProjectTodo(unittest.TestCase):
 		t = self._make_todo(is_recurring=1, recurring_frequency="Daily",
 			start_date=add_days(nowdate(), -2), deadline=add_days(nowdate(), -1))
 		frappe.db.set_value("Project Todo", t.name, "status", "🚫 Cancelled")
-		create_recurring_todos()
+		create_recurring_todos(roots=[t.name])
 		kids = frappe.get_all("Project Todo", filters={"original_todo": t.name}, fields=["deadline"])
 		self.assertEqual(len(kids), 1, kids)
 		self.assertEqual(str(kids[0].deadline), nowdate())           # rolled (yesterday+1) → today
@@ -560,7 +560,7 @@ class TestProjectTodo(unittest.TestCase):
 		frappe.db.set_value("Project Todo", child.name, "original_todo", root.name)
 		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 1)
 		before = frappe.db.count("Project Todo", {"original_todo": root.name})
-		create_recurring_todos()
+		create_recurring_todos(roots=[root.name])
 		# Paused root blocks generation even though anchor (child) is not paused
 		self.assertEqual(frappe.db.count("Project Todo", {"original_todo": root.name}), before)
 
@@ -599,7 +599,7 @@ class TestProjectTodo(unittest.TestCase):
 		# Reset status before delete so on_trash doesn't block
 		frappe.db.set_value("Project Todo", occ2.name, "status", "⚪️ Planned", update_modified=False)
 		frappe.delete_doc("Project Todo", occ2.name, ignore_permissions=True, force=True)
-		create_recurring_todos()
+		create_recurring_todos(roots=[occ1.name])
 		# Scheduler should roll from occ1 (remaining latest) → next=yesterday → clamped to today
 		got = frappe.get_all("Project Todo",
 			filters={"original_todo": occ1.name, "deadline": nowdate()})
@@ -612,16 +612,46 @@ class TestProjectTodo(unittest.TestCase):
 		root = self._make_recurring_todo(frequency="Daily",
 			start_date=add_days(nowdate(), -10), deadline=add_days(nowdate(), -10))
 		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 1)
-		create_recurring_todos()
+		create_recurring_todos(roots=[root.name])
 		self.assertFalse(
 			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
 			"paused series should not generate")
 		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 0)
-		create_recurring_todos()
+		create_recurring_todos(roots=[root.name])
 		kids = frappe.get_all("Project Todo", filters={"original_todo": root.name},
 			fields=["deadline"])
 		self.assertEqual(len(kids), 1, "resume must not backfill missed occurrences")
 		self.assertEqual(str(kids[0].deadline), nowdate())
+
+	def test_scheduler_survives_a_series_that_fails_with_a_long_error(self):
+		"""One bad series must be logged and skipped, not abort the whole nightly run.
+
+		frappe.log_error takes (title, message) and only auto-swaps them when the title
+		contains a newline. Passing the long error text as the TITLE therefore overflows
+		Error Log.method (140 chars), and the CharacterLengthExceededError escapes the
+		except block that was meant to contain the failure -- so a single real series
+		whose assignee had left the Project Team stopped every remaining series from
+		generating that night. Reproduces exactly that shape.
+		"""
+		from vernon_project.tasks import create_recurring_todos
+		root = self._make_recurring_todo(
+			frequency="Daily",
+			to_do="Buang Sampah Semua " + "x" * 130,  # long enough to overflow a title
+			start_date=add_days(nowdate(), -2),
+			deadline=add_days(nowdate(), -2),
+		)
+		# Drop the assignee out of the Project Team behind validate()'s back, so the
+		# NEXT occurrence fails to insert the way the live series did.
+		frappe.db.set_value("Project Todo", root.name, "assigned_to", "Guest", update_modified=False)
+		frappe.db.commit()
+
+		# Must return normally (0 created), not raise.
+		created = create_recurring_todos(roots=[root.name])
+		self.assertEqual(created, 0, "a failing series should generate nothing")
+		self.assertFalse(
+			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
+			"the failing series must not have generated an occurrence",
+		)
 
 	def test_scheduler_skips_ended_series(self):
 		"""A series past its recurring_until generates nothing."""
@@ -629,7 +659,7 @@ class TestProjectTodo(unittest.TestCase):
 		root = self._make_recurring_todo(frequency="Daily",
 			start_date=add_days(nowdate(), -2), deadline=add_days(nowdate(), -2),
 			recurring_until=add_days(nowdate(), -1))
-		create_recurring_todos()
+		create_recurring_todos(roots=[root.name])
 		self.assertFalse(
 			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
 			"ended series (past recurring_until) should not generate")

@@ -7,28 +7,43 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 
-def create_recurring_todos():
+def create_recurring_todos(roots=None):
     """Daily: roll each active recurring series forward by one step when due.
 
     Keys off the LATEST occurrence per series (COALESCE(original_todo,name)) rather than a
     migrating next_occurrence flag, so a deleted/cancelled occurrence cannot strand the series.
     generate_next() enforces paused/until/resume-clamp/dedup internally.
+
+    roots: optional iterable of series roots to restrict the run to -- used by tests, the
+    same escape hatch charge_missed_priorities(todo_names=...) already has and for the same
+    reason. Site-wide, one unrelated real series that throws makes the except below call
+    frappe.db.rollback(), which discards the CALLER's uncommitted rows too -- so a test that
+    built its fixture inside the test method silently lost it and then asserted against an
+    empty result. The real nightly cron always calls this with no argument.
     """
     from vernon_project.vernon_project.doctype.project_todo.project_todo import (
         latest_occurrence, generate_next,
     )
 
-    roots = frappe.db.sql(
-        """
+    only, values = "", []
+    if roots:
+        values = list(roots)
+        only = " AND COALESCE(NULLIF(original_todo,''), name) IN ({})".format(
+            ", ".join(["%s"] * len(values))
+        )
+    rows = frappe.db.sql(
+        f"""
         SELECT DISTINCT COALESCE(NULLIF(original_todo,''), name) AS root
         FROM `tabProject Todo`
         WHERE is_recurring = 1 AND recurring_frequency IS NOT NULL AND recurring_frequency != ''
+        {only}
         """,
+        values,
         as_dict=True,
     )
 
     created = 0
-    for r in roots:
+    for r in rows:
         try:
             anchor = latest_occurrence(r.root)
             if anchor and generate_next(anchor):  # scheduler path: force=False
@@ -36,7 +51,11 @@ def create_recurring_todos():
                 frappe.db.commit()
         except Exception as e:
             frappe.db.rollback()
-            frappe.log_error(f"Error creating recurring todo: {e}", "Recurring Todo Error")
+            # title first, message second. A long single-line title overflows Error Log.method
+            # (140 chars) and CharacterLengthExceededError escapes this except block, killing
+            # the whole nightly run at the first bad series. frappe only auto-swaps the two
+            # when the title contains a newline, which an f-string like this never does.
+            frappe.log_error(title="Recurring Todo Error", message=f"Error creating recurring todo: {e}")
 
     if created:
         frappe.logger().info(f"Created {created} recurring todos")
@@ -72,7 +91,8 @@ def create_recurring_meetings():
                 frappe.db.commit()
         except Exception as e:
             frappe.db.rollback()
-            frappe.log_error(f"Error creating recurring meeting: {e}", "Recurring Meeting Error")
+            # Same argument-order trap as create_recurring_todos above.
+            frappe.log_error(title="Recurring Meeting Error", message=f"Error creating recurring meeting: {e}")
 
     if created:
         frappe.logger().info(f"Created {created} recurring meetings")
