@@ -534,6 +534,10 @@ class ProjectTodo(Document):
 		completed = self.done_started_at or self.developed_at or self.phase_completed_at or self.completed_at or now_datetime()
 		completed_date = getdate(completed)
 		deadline = getdate(self.deadline) if self.deadline else completed_date
+		# A todo can't be late for days before it existed (e.g. a routine occurrence
+		# backfilled after the scheduler missed it): count from the later of the two.
+		if self.creation:
+			deadline = max(deadline, getdate(self.creation))
 		delta = (completed_date - deadline).days
 		late_days = max(0, delta)
 		early_days = max(0, -delta)

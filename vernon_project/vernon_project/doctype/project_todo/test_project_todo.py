@@ -1628,3 +1628,30 @@ def run_tests():
 
 if __name__ == "__main__":
 	run_tests()
+
+
+class TestLatenessCountsFromCreation(unittest.TestCase):
+	"""A todo can't be late for days before it existed: a backfilled routine occurrence
+	(created 2026-09-11 for a 2026-09-07 date the dead scheduler skipped) must not be
+	charged 30%/day for the outage. Normal todos (created before their deadline) unchanged."""
+
+	def earned(self, deadline, created, done):
+		from unittest.mock import patch
+		t = frappe.new_doc("Project Todo")
+		t.update({"group": "G", "point": 100, "deadline": deadline, "done_started_at": done})
+		t.creation = created
+		grp = frappe._dict(late_penalty=30, early_bonus=10, leader_weight=10,
+			leader_late_weight=50, mentor_weight=0)
+		with patch.object(frappe, "get_doc", lambda *a, **k: grp):
+			assignee, leader, _m, late, early = t._compute_earned()
+		return assignee, late, early
+
+	def test_backfilled_todo_is_late_only_from_its_creation_day(self):
+		self.assertEqual(self.earned("2026-09-07", "2026-09-11 20:00:00", "2026-09-12 09:00:00"), (70, 1, 0))
+
+	def test_backfilled_todo_done_on_creation_day_is_on_time(self):
+		self.assertEqual(self.earned("2026-09-07", "2026-09-11 20:00:00", "2026-09-11 21:00:00"), (100, 0, 0))
+
+	def test_normal_todo_lateness_unchanged(self):
+		self.assertEqual(self.earned("2026-09-07", "2026-09-01 08:00:00", "2026-09-09 10:00:00"), (40, 2, 0))
+		self.assertEqual(self.earned("2026-09-07", "2026-09-01 08:00:00", "2026-09-05 10:00:00"), (120, 0, 2))
