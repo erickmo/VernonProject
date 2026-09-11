@@ -138,16 +138,32 @@ def ensure_grant(employee, year):
     # Serialise per (employee, year), the same advisory-lock idiom the wallet and
     # event paths use. Named lock, not a row lock: nothing here holds an InnoDB row
     # lock while waiting, so it stays out of the row-lock wait graph.
+    #
+    # The advisory lock alone is NOT enough, and the test next to this file only
+    # proves a contender refuses, not that the two serialise. get_lock() is released
+    # when this function returns -- BEFORE the request commits -- so the loser can
+    # take it in that window, and at REPEATABLE READ its plain SELECT returns the
+    # snapshot it took at its first read, without the winner's row. Proved live
+    # (2026-09-12, rolled back): two callers, two Grant rows, annual leave doubled.
+    # So the look-up is a LOCKING read: it reads the latest committed rows and blocks
+    # on the winner's uncommitted insert until it commits. The `employee` index keeps
+    # the lock to this employee's rows (EXPLAIN: type=ref, key=employee). Keeping the
+    # advisory lock too is deliberate -- it serialises the genuinely simultaneous case
+    # that a bare locking read on an empty range would turn into a gap-lock deadlock.
     lock_key = f"vernon_cuti:{employee}:{year}"
     if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
         frappe.throw(_("Kuota cuti sedang diproses, coba lagi."))
     try:
-        existing = frappe.db.get_value(
-            DOCTYPE, {"employee": employee, "year": year, "entry_type": "Grant"}, "name"
+        rows = frappe.db.sql(
+            f"""select name, days from `tab{DOCTYPE}`
+            where employee = %s and year = %s and entry_type = 'Grant' for update""",
+            (employee, year), as_dict=True,
         )
+        existing = rows[0].name if rows else None
         if existing:
-            if (frappe.db.get_value(DOCTYPE, existing, "days") or 0) != q:
-                doc = frappe.get_doc(DOCTYPE, existing)
+            if (rows[0].days or 0) != q:
+                # for_update: the row may have been committed after our snapshot
+                doc = frappe.get_doc(DOCTYPE, existing, for_update=True)
                 doc.days = q
                 doc.leave_type = lt
                 doc.posted_on = now_datetime()
