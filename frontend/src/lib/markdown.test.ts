@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest'
 import { marked } from 'marked'
-import { renderNoteMarkdown } from './markdown'
+import { commentSource, isMarkdownComment, renderComment, renderNoteMarkdown, toCommentContent } from './markdown'
 
 describe('renderNoteMarkdown — rendering (AC1, AC2, AC4, AC8)', () => {
   it('renders headings, not literal # characters', () => {
@@ -122,5 +122,38 @@ describe('renderNoteMarkdown — performance (memoised per exact source string)'
     renderNoteMarkdown('unique-b-' + Math.random())
     expect(spy.mock.calls.length).toBeGreaterThan(callsAfterA)
     spy.mockRestore()
+  })
+})
+
+
+describe('comments in markdown (81hvkl47n3)', () => {
+  it('stores behind Frappe\'s marker and reads back the exact source', () => {
+    const stored = toCommentContent('  **hi** @x  ')
+    expect(stored).toBe('<!-- markdown -->\n**hi** @x')
+    expect(isMarkdownComment(stored)).toBe(true)
+    expect(commentSource(stored)).toBe('**hi** @x')
+    expect(isMarkdownComment('<p>legacy</p>')).toBe(false)
+  })
+  it('renders markdown with mention chips, through the same sanitiser', () => {
+    const html = renderComment(toCommentContent('**tebal** [@Budi](mention:b@x.com)\n\n- satu'))
+    expect(html).toContain('<strong>tebal</strong>')
+    expect(html).toContain('<span data-mention="b@x.com">@Budi</span>')
+    expect(html).toContain('<ul>')
+    expect(html).not.toContain('mention:')
+  })
+  it('keeps the hardening: no script link, raw HTML shown as text, no remote image', () => {
+    const html = renderComment(toCommentContent('[x](javascript:alert(1)) <img src=x onerror=alert(1)> ![p](https://t.example/p.gif)'))
+    expect(html).not.toMatch(/javascript:/i)
+    expect(html).not.toMatch(/<img[^>]*onerror/i)
+    expect(html).toContain('&lt;img')
+    expect(html).not.toContain('t.example')
+  })
+  it('reads back what Frappe stored: its sanitiser entity-escapes < > & in the text', () => {
+    const stored = '<!-- markdown -->\n&gt; kutipan\n\na &lt; b &amp;&amp; c, literal &amp;lt;'
+    expect(commentSource(stored)).toBe('> kutipan\n\na < b && c, literal &lt;')
+    expect(renderComment(stored)).toContain('<blockquote>')
+  })
+  it('still renders legacy rich-text comments as before', () => {
+    expect(renderComment('<p>lama <span data-mention="a@x.com">@A</span></p>')).toBe('<p>lama <span data-mention="a@x.com">@A</span></p>')
   })
 })

@@ -343,6 +343,25 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_markdown_comment_keeps_its_marker_and_its_mentions_notify(self):
+		"""81hvkl47n3: a comment from the markdown editor keeps Frappe's <!-- markdown -->
+		marker through Comment.validate (which always sanitises: < > & come back
+		entity-escaped, and the frontend's commentSource undoes exactly that), and
+		[@Name](mention:user) still notifies."""
+		from vernon_project.api.mobile import _parse_mentions, add_comment
+		content = "<!-- markdown -->\n> kutipan\n\n**tebal** a < b [@TM](mention:tm_member@example.com)"
+		added = add_comment("Project Todo", self.todo.name, content)
+		self.assertEqual(
+			frappe.db.get_value("Comment", added["name"], "content"),
+			"<!-- markdown -->\n&gt; kutipan\n\n**tebal** a &lt; b [@TM](mention:tm_member@example.com)",
+		)
+		self.assertTrue(frappe.db.exists("Vernon Notification", {
+			"recipient": "tm_member@example.com", "type": "Mention", "reference_name": self.todo.name}))
+		self.assertEqual(_parse_mentions(
+			'<span data-mention="a@x.com">@A</span> [@B](mention:b@x.com) [@all](mention:@all)'),
+			{"a@x.com", "b@x.com", "@all"})
+		self.assertEqual(_parse_mentions("[not a mention](https://x.com)"), set())
+
 	def test_comment_rejects_unknown_doctype(self):
 		from vernon_project.api.mobile import add_comment
 		with self.assertRaises(frappe.ValidationError):

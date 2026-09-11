@@ -1921,15 +1921,16 @@ def get_comments(reference_doctype, reference_name):
 
 import re
 
-_MENTION_RE = re.compile(r'data-mention\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
+# <span data-mention="user@email"> in rich-text comment HTML, or [@Name](mention:user@email)
+# in a Markdown comment (81hvkl47n3: the markdown editor writes that token).
+_MENTION_RE = re.compile(r'data-mention\s*=\s*["\']([^"\']+)["\']|\]\(mention:([^)\s]+)\)', re.IGNORECASE)
 
 
 def _parse_mentions(content):
-	"""Extract the set of user emails marked up as
-	<span data-mention="user@email">@Name</span> in comment HTML."""
+	"""Extract the set of user emails @mentioned in a comment, in either format."""
 	if not content:
 		return set()
-	return {m.strip() for m in _MENTION_RE.findall(content) if m.strip()}
+	return {(html or md).strip() for html, md in _MENTION_RE.findall(content) if (html or md).strip()}
 
 
 def _comment_participants(reference_doctype, reference_name):

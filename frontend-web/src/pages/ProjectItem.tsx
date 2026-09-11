@@ -71,6 +71,7 @@ import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
 import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, formatDate, dateSub, formatNumber, todayISO } from '@/lib/format'
 import { NoteMarkdown } from '@/lib/markdown'
+import { MarkdownEditor } from '@/components/MarkdownEditor'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { todoFileHref } from '@/lib/api'
 import { Avatar, Spinner } from '@/components/ui'
@@ -488,16 +489,17 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
 
   return (
     <div>
-      <textarea
+      <MarkdownEditor
         autoFocus
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={setText}
         onBlur={() => {
           commit()
           setEditing(false)
         }}
         rows={4}
-        placeholder="Add a quick note about your progress…"
+        ariaLabel="Notes"
+        placeholder="Add a quick note about your progress… (Markdown)"
         className="w-full resize-none [field-sizing:content] rounded-xl border border-line bg-hover/[0.04] p-3 text-sm leading-relaxed text-ink placeholder:text-muted outline-none transition focus:border-brand-400 focus:bg-surface focus:ring-2 focus:ring-brand-100"
       />
       <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-muted">
