@@ -389,7 +389,7 @@ export default function CertificateScreen() {
                   <input
                     type="number" min={0} max={100} inputMode="numeric"
                     aria-label={`Nilai ${r.label}`}
-                    className={clsx(field, 'w-20 shrink-0 text-right tabular-nums')}
+                    className={clsx(field, '!w-20 shrink-0 text-right tabular-nums')}
                     value={draftText[r.key] ?? (r.score === null ? '' : String(r.score))}
                     onChange={(e) => setDraftText((d) => ({ ...d, [r.key]: e.target.value }))}
                     onBlur={(e) => {
