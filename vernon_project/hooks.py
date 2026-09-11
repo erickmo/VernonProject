@@ -195,6 +195,9 @@ has_permission = {
 # Hook on document methods and events
 
 doc_events = {
+	"Comment": {
+		"before_insert": "vernon_project.api.mobile.guard_comment_reference",
+	},
 	"Shift Assignment": {
 		"on_update": "vernon_project.attendance.triggers.shift_assignment_changed",
 		"on_trash": "vernon_project.attendance.triggers.shift_assignment_changed",

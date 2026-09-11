@@ -1890,8 +1890,21 @@ def _assert_comment_visible(reference_doctype, reference_name):
 		frappe.throw("Not permitted", frappe.PermissionError)
 
 
+def guard_comment_reference(doc, method=None):
+	"""Comment.before_insert: a comment on an app thread needs the same visibility the
+	app's own add_comment asks for, checked against the STORED document by name.
+	Frappe core's run_doc_method(docs=...) checks read permission on a copy the caller
+	sends, so a forged copy listing the caller in team_members otherwise let
+	Document.add_comment post onto a thread the caller cannot see."""
+	if doc.comment_type == "Comment" and doc.reference_doctype in COMMENTABLE and frappe.session.user != "Administrator":
+		_assert_comment_visible(doc.reference_doctype, doc.reference_name)
+
+
 def _shape_comment(row, name_map):
-	by = row.get("comment_email") or row.get("comment_by")
+	# The author is `owner`, the session that inserted the row. Never comment_email or
+	# comment_by: Frappe core (frappe.desk.form.utils.add_comment, Document.add_comment
+	# via run_doc_method) lets anyone who can read the document set those to anyone.
+	by = row["owner"]
 	person = name_map.get(by, {})
 	return {
 		"name": row["name"],
@@ -1917,11 +1930,11 @@ def get_comments(reference_doctype, reference_name):
 			"reference_doctype": reference_doctype,
 			"reference_name": reference_name,
 		},
-		fields=["name", "content", "comment_email", "comment_by", "creation"],
+		fields=["name", "content", "owner", "creation"],
 		order_by="creation desc",
 		limit_page_length=0,
 	)
-	name_map = _user_name_map({r.get("comment_email") for r in rows} | {r.get("comment_by") for r in rows})
+	name_map = _user_name_map({r["owner"] for r in rows})
 	return [_shape_comment(r, name_map) for r in rows]
 
 
@@ -2034,13 +2047,12 @@ def add_comment(reference_doctype, reference_name, content):
 			actor=actor,
 		)
 
-	name_map = _user_name_map({c.comment_email, c.comment_by})
+	name_map = _user_name_map({c.owner})
 	return _shape_comment(
 		{
 			"name": c.name,
 			"content": c.content,
-			"comment_email": c.comment_email,
-			"comment_by": c.comment_by,
+			"owner": c.owner,
 			"creation": c.creation,
 		},
 		name_map,
@@ -2054,7 +2066,7 @@ def edit_comment(name, content):
 	if comment.comment_type != "Comment":
 		frappe.throw("Not permitted", frappe.PermissionError)
 	_assert_comment_visible(comment.reference_doctype, comment.reference_name)
-	if (comment.comment_email or comment.owner) != frappe.session.user:
+	if comment.owner != frappe.session.user:
 		frappe.throw("Only the author can edit this comment.", frappe.PermissionError)
 	content = (content or "").strip()
 	if not content:
@@ -2062,13 +2074,12 @@ def edit_comment(name, content):
 	comment.content = content
 	comment.save(ignore_permissions=True)
 	frappe.db.commit()
-	name_map = _user_name_map({comment.comment_email, comment.comment_by})
+	name_map = _user_name_map({comment.owner})
 	return _shape_comment(
 		{
 			"name": comment.name,
 			"content": comment.content,
-			"comment_email": comment.comment_email,
-			"comment_by": comment.comment_by,
+			"owner": comment.owner,
 			"creation": comment.creation,
 		},
 		name_map,
