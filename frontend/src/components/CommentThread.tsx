@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
-import { Send, ImagePlus, ZoomIn, Pencil, Check, X } from 'lucide-react'
+import { Send, ZoomIn, Pencil, Check, X } from 'lucide-react'
 import { useComments, useAddComment, useEditComment, useBoot } from '../hooks/useData'
 import { Spinner } from './ui'
 import { sanitizeHtml } from '../lib/format'
 import { uploadCommentImage, mobileApi } from '../lib/api'
-import type { MentionUser } from '../lib/types'
+import { MD_STRUCTURE, commentSource, isMarkdownComment, renderComment, toCommentContent } from '../lib/markdown'
 import { useToast } from './Toast'
 import ImageZoom from './ImageZoom'
+import { MarkdownEditor } from './MarkdownEditor'
 
 // Dark-mode rich text for the body + editors: mention chips, and neutralise pasted
 // inline colours (white/near-black spans copied from other apps) so they don't
@@ -14,8 +15,11 @@ import ImageZoom from './ImageZoom'
 const DARK_RICH =
   'dark:[&_[data-mention]]:bg-brand-500/15 dark:[&_[data-mention]]:text-brand-300 dark:[&_[style]]:!bg-transparent dark:[&_[style]]:!text-inherit dark:[&_font]:text-inherit'
 
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+// 81hvkl47n3: comments are written in Markdown (stored behind Frappe's own
+// <!-- markdown --> marker) and read as rendered Markdown. Older comments are
+// rich-text HTML: they still render and edit exactly as before.
+const MD_INPUT =
+  'w-full resize-none [field-sizing:content] max-h-60 min-h-[3rem] rounded-xl border border-gray-200 bg-transparent p-2 text-sm text-gray-800 focus:border-brand-500 focus:outline-none dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
 
 export default function CommentThread({
   referenceDoctype,
@@ -36,135 +40,52 @@ export default function CommentThread({
   const { data: boot } = useBoot()
   const me = boot?.user
   const [editingName, setEditingName] = useState<string | null>(null)
-  const editBodyRef = useRef<HTMLDivElement | null>(null)
+  const [editSource, setEditSource] = useState('') // a markdown comment being edited
+  const editBodyRef = useRef<HTMLDivElement | null>(null) // a legacy HTML comment being edited
   const toast = useToast()
-  const editorRef = useRef<HTMLDivElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [mentionOpen, setMentionOpen] = useState(false)
-  const [mentionQuery, setMentionQuery] = useState('')
-  const [people, setPeople] = useState<MentionUser[]>([])
-  const peopleLoaded = useRef(false)
+  const [draft, setDraft] = useState('')
   const [pending, setPending] = useState(false)
   const [zoomSrc, setZoomSrc] = useState<string | null>(null)
 
-  // Insert an HTML fragment at the current caret inside the editor.
-  const insertHtml = (html: string) => {
-    const ed = editorRef.current
-    if (!ed) return
-    ed.focus()
-    const sel = window.getSelection()
-    const frag = document.createRange().createContextualFragment(html)
-    if (sel && sel.rangeCount && ed.contains(sel.anchorNode)) {
-      const range = sel.getRangeAt(0)
-      range.deleteContents()
-      range.insertNode(frag)
-      range.collapse(false)
-      sel.removeAllRanges()
-      sel.addRange(range)
-    } else {
-      ed.appendChild(frag)
-    }
-  }
-
-  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
+  const mentionable = () => mobileApi.getMentionableUsers(referenceDoctype, referenceName)
+  const upload = async (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
       toast('error', 'Image too large (max 5 MB).')
-      return
+      throw new Error('too large')
     }
-    setUploading(true)
     try {
-      const url = await uploadCommentImage(file, referenceDoctype, referenceName)
-      insertHtml(
-        `<img src="${escapeHtml(url)}" alt="" style="max-width:100%;border-radius:0.5rem;" />`,
-      )
+      return await uploadCommentImage(file, referenceDoctype, referenceName)
     } catch (err) {
       toast('error', (err as Error).message || 'Upload failed')
-    } finally {
-      setUploading(false)
+      throw err
     }
   }
 
-  // Detect a trailing "@token" right before the caret to drive autocomplete.
-  const onInput = async () => {
-    const sel = window.getSelection()
-    const node = sel?.anchorNode
-    if (!node || node.nodeType !== Node.TEXT_NODE) {
-      setMentionOpen(false)
-      return
-    }
-    const before = (node.textContent || '').slice(0, sel!.anchorOffset)
-    const m = before.match(/@([\w.\-]*)$/)
-    if (!m) {
-      setMentionOpen(false)
-      return
-    }
-    setMentionQuery(m[1].toLowerCase())
-    setMentionOpen(true)
-    if (!peopleLoaded.current) {
-      try {
-        const list = await mobileApi.getMentionableUsers(referenceDoctype, referenceName)
-        setPeople(list)
-        peopleLoaded.current = true
-      } catch {
-        /* leave empty; retry allowed on next @ keypress since peopleLoaded stays false */
+  const startEdit = (c: { name: string; content: string }) => {
+    setEditingName(c.name)
+    if (isMarkdownComment(c.content)) setEditSource(commentSource(c.content))
+  }
+
+  const saveEdit = (c: { name: string; content: string }) => {
+    let content: string
+    if (isMarkdownComment(c.content)) {
+      if (!editSource.trim()) {
+        toast('error', 'Comment cannot be empty.')
+        return
       }
-    }
-  }
-
-  // Replace the trailing "@query" text with a mention span for the chosen user.
-  const pickMention = (u: MentionUser) => {
-    const sel = window.getSelection()
-    const node = sel?.anchorNode
-    if (sel && node && node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent || ''
-      const upto = text.slice(0, sel.anchorOffset)
-      const at = upto.lastIndexOf('@')
-      if (at >= 0) {
-        const range = document.createRange()
-        range.setStart(node, at)
-        range.setEnd(node, sel.anchorOffset)
-        range.deleteContents()
-        sel.removeAllRanges()
-        sel.addRange(range)
+      content = toCommentContent(editSource)
+    } else {
+      const ed = editBodyRef.current
+      if (!ed) return
+      content = sanitizeHtml(ed.innerHTML).trim()
+      const tmp = new DOMParser().parseFromString(content, 'text/html').body
+      if (!(tmp.textContent || '').trim() && !tmp.querySelector('img,span[data-mention]')) {
+        toast('error', 'Comment cannot be empty.')
+        return
       }
-    }
-    insertHtml(
-      `<span data-mention="${escapeHtml(u.user)}">@${escapeHtml(u.full_name)}</span>&nbsp;`,
-    )
-    setMentionOpen(false)
-    setMentionQuery('')
-  }
-
-  const filtered = [
-    // "@all" mentions every project participant — only when the record has any,
-    // and it fans out server-side in add_comment.
-    ...(people.length && 'all'.startsWith(mentionQuery)
-      ? [{ user: '@all', full_name: 'all', image: null } as MentionUser]
-      : []),
-    ...people.filter(
-      (p) =>
-        p.full_name.toLowerCase().includes(mentionQuery) ||
-        p.user.toLowerCase().includes(mentionQuery),
-    ),
-  ]
-
-  const saveEdit = (name: string) => {
-    const ed = editBodyRef.current
-    if (!ed) return
-    const html = sanitizeHtml(ed.innerHTML).trim()
-    const tmp = document.createElement('div')
-    tmp.innerHTML = html
-    const hasContent = (tmp.textContent || '').trim() || tmp.querySelector('img,span[data-mention]')
-    if (!hasContent) {
-      toast('error', 'Comment cannot be empty.')
-      return
     }
     editComment.mutate(
-      { name, content: html },
+      { name: c.name, content },
       {
         onSuccess: () => setEditingName(null),
         onError: (err) => toast('error', (err as Error).message || 'Failed to edit comment'),
@@ -173,26 +94,16 @@ export default function CommentThread({
   }
 
   const submit = () => {
-    const ed = editorRef.current
-    if (!ed) return
-    const html = sanitizeHtml(ed.innerHTML).trim()
-    // Reject empty (no text, no image, no mention) — check the sanitized output, not the raw DOM,
-    // so that content stripped by the sanitizer does not pass through as a phantom "has content".
-    const tmp = document.createElement('div')
-    tmp.innerHTML = html
-    const hasContent = (tmp.textContent || '').trim() || tmp.querySelector('img,span[data-mention]')
-    if (!hasContent) return
+    if (!draft.trim() || pending) return
     setPending(true)
-    addComment.mutate(html, {
-      onSuccess: () => {
-        ed.innerHTML = ''
-        setMentionOpen(false)
-      },
+    addComment.mutate(toCommentContent(draft), {
+      onSuccess: () => setDraft(''),
       onError: (err) => toast('error', (err as Error).message || 'Failed to add comment'),
       onSettled: () => setPending(false),
     })
   }
 
+  const actionBtn = 'flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium'
   return (
     <section className={className}>
       <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-slate-200">{title}</h3>
@@ -200,154 +111,139 @@ export default function CommentThread({
         <Spinner className="h-5 w-5 text-gray-400 dark:text-slate-400" />
       ) : (
         <ul className="space-y-3">
-          {(comments ?? []).map((c) => (
-            <li key={c.name} className="rounded-xl bg-gray-50 p-3 dark:bg-slate-800/60">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-slate-100">
-                  {c.by_name}
-                  {c.by_badge && (
-                    <span
-                      className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={
-                        c.by_badge.color
-                          ? { backgroundColor: `${c.by_badge.color}22`, color: c.by_badge.color }
-                          : undefined
-                      }
-                    >
-                      {c.by_badge.icon && <span>{c.by_badge.icon}</span>}
-                      {c.by_badge.tier_name}
-                    </span>
-                  )}
-                </span>
-                <span className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-400">
-                  {c.at_human}
-                  {c.by === me && editingName !== c.name && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingName(c.name)}
-                      className="text-gray-400 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-300"
-                      aria-label="Edit comment"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </span>
-              </div>
-              {editingName === c.name ? (
-                <div className="mt-1">
-                  <div
-                    contentEditable
-                    role="textbox"
-                    aria-label="Edit comment"
-                    ref={(el) => {
-                      editBodyRef.current = el
-                      if (el && el.dataset.seeded !== '1') {
-                        el.innerHTML = sanitizeHtml(c.content)
-                        el.dataset.seeded = '1'
-                        el.focus()
-                      }
-                    }}
-                    className={`comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none dark:border-slate-700 [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg ${DARK_RICH}`}
-                  />
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => saveEdit(c.name)}
-                      disabled={editComment.isPending}
-                      className="flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Simpan
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingName(null)}
-                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 dark:border-slate-700 dark:text-slate-300"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      Batal
-                    </button>
-                  </div>
+          {(comments ?? []).map((c) => {
+            const html = renderComment(c.content)
+            return (
+              <li key={c.name} className="rounded-xl bg-gray-50 p-3 dark:bg-slate-800/60">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-slate-100">
+                    {c.by_name}
+                    {c.by_badge && (
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={
+                          c.by_badge.color
+                            ? { backgroundColor: `${c.by_badge.color}22`, color: c.by_badge.color }
+                            : undefined
+                        }
+                      >
+                        {c.by_badge.icon && <span>{c.by_badge.icon}</span>}
+                        {c.by_badge.tier_name}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-400">
+                    {c.at_human}
+                    {c.by === me && editingName !== c.name && (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(c)}
+                        className="text-gray-400 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-300"
+                        aria-label="Edit comment"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </span>
                 </div>
-              ) : (
-                <>
-                  <div
-                    className={`comment-body mt-1 text-sm text-gray-700 dark:text-slate-200 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline dark:[&_a]:text-brand-300 [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 ${DARK_RICH}`}
-                    onClick={(e) => {
-                      const t = e.target as HTMLElement
-                      if (t.tagName === 'IMG')
-                        setZoomSrc(
-                          (t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src,
-                        )
-                    }}
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.content) }}
-                  />
-                  {c.content.includes('<img') && (
-                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-400">
-                      <ZoomIn className="h-3 w-3" />
-                      Ketuk gambar untuk memperbesar
-                    </p>
-                  )}
-                </>
-              )}
-            </li>
-          ))}
+                {editingName === c.name ? (
+                  <div className="mt-1">
+                    {isMarkdownComment(c.content) ? (
+                      <MarkdownEditor
+                        value={editSource}
+                        onChange={setEditSource}
+                        autoFocus
+                        rows={3}
+                        ariaLabel="Edit comment"
+                        className={MD_INPUT}
+                        onSubmit={() => saveEdit(c)}
+                        mentions={mentionable}
+                        onImage={upload}
+                      />
+                    ) : (
+                      <div
+                        contentEditable
+                        role="textbox"
+                        aria-label="Edit comment"
+                        ref={(el) => {
+                          editBodyRef.current = el
+                          if (el && el.dataset.seeded !== '1') {
+                            el.innerHTML = sanitizeHtml(c.content)
+                            el.dataset.seeded = '1'
+                            el.focus()
+                          }
+                        }}
+                        className={`comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none dark:border-slate-700 [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg ${DARK_RICH}`}
+                      />
+                    )}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveEdit(c)}
+                        disabled={editComment.isPending}
+                        className={`${actionBtn} bg-brand-600 text-white disabled:opacity-40`}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Simpan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingName(null)}
+                        className={`${actionBtn} border border-gray-200 text-gray-600 dark:border-slate-700 dark:text-slate-300`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      className={`comment-body mt-1 text-sm text-gray-700 dark:text-slate-200 ${MD_STRUCTURE} [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline dark:[&_a]:text-brand-300 [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 ${DARK_RICH}`}
+                      onClick={(e) => {
+                        const t = e.target as HTMLElement
+                        if (t.tagName === 'IMG') setZoomSrc((t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src)
+                      }}
+                      // eslint-disable-next-line react/no-danger -- renderComment sanitises (markdown or legacy HTML)
+                      dangerouslySetInnerHTML={{ __html: html }}
+                    />
+                    {html.includes('<img') && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-400">
+                        <ZoomIn className="h-3 w-3" />
+                        Ketuk gambar untuk memperbesar
+                      </p>
+                    )}
+                  </>
+                )}
+              </li>
+            )
+          })}
           {comments && comments.length === 0 && (
             <li className="text-sm text-gray-400 dark:text-slate-400">No comments yet.</li>
           )}
         </ul>
       )}
-      <div className="relative mt-3 flex items-end gap-2">
-        <div className="flex-1">
-          <div
-            ref={editorRef}
-            contentEditable
-            role="textbox"
-            aria-label="Add a comment"
-            data-placeholder="Add a comment…"
-            onInput={onInput}
-            className={`comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none dark:border-slate-700 empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)] dark:empty:before:text-slate-400 [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg ${DARK_RICH}`}
+      <div className="mt-3 flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <MarkdownEditor
+            value={draft}
+            onChange={setDraft}
+            rows={2}
+            placeholder="Add a comment… (Markdown, @ to mention, Ctrl+Enter to send)"
+            ariaLabel="Add a comment"
+            className={MD_INPUT}
+            onSubmit={submit}
+            mentions={mentionable}
+            onImage={upload}
           />
-          {mentionOpen && filtered.length > 0 && (
-            <ul className="absolute bottom-12 left-0 z-10 max-h-48 w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
-              {filtered.slice(0, 8).map((u) => (
-                <li key={u.user}>
-                  <button
-                    type="button"
-                    onClick={() => pickMention(u)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
-                  >
-                    <span className="font-medium text-gray-800 dark:text-slate-100">{u.full_name}</span>
-                    <span className="truncate text-xs text-gray-400 dark:text-slate-400">{u.user}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          className="hidden"
-          onChange={onPickImage}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
-          aria-label="Attach image"
-        >
-          {uploading ? <Spinner className="h-4 w-4" /> : <ImagePlus className="h-4 w-4" />}
-        </button>
         <button
           onClick={submit}
-          disabled={pending || uploading}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white disabled:opacity-40"
+          disabled={pending || !draft.trim()}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white disabled:opacity-40"
           aria-label="Send comment"
         >
-          <Send className="h-4 w-4" />
+          {pending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
         </button>
       </div>
       {zoomSrc && <ImageZoom src={zoomSrc} onClose={() => setZoomSrc(null)} />}

@@ -20,8 +20,39 @@ marked.use({
     html({ text }) {
       return escapeHtml(text)
     },
+    // [@Name](mention:user@x) -> the same mention chip span the old rich-text
+    // comments used, so styling and the server's notify path stay one shape.
+    link({ href, text }) {
+      if (!href.startsWith('mention:')) return false // every other link: marked's default
+      return `<span data-mention="${escapeHtml(href.slice(8)).replace(/"/g, '&quot;')}">${escapeHtml(text)}</span>`
+    },
   },
 })
+
+/** Frappe's own markdown marker (frappe.utils.is_markdown; base_document skips
+ *  its HTML sanitiser for marked, tag-free text). Comments written in the
+ *  markdown editor start with it; older comments are rich-text HTML. */
+export const MD_MARKER = '<!-- markdown -->'
+export const isMarkdownComment = (content: string) => (content || '').trimStart().startsWith(MD_MARKER)
+/** The markdown a comment was written as. Frappe's Comment.validate always runs its
+ *  HTML sanitiser (always_sanitize=True), which entity-escapes < > & in the text; undo
+ *  exactly that (&amp; last, so a literal "&lt;" someone typed survives). Safe: the
+ *  renderer still escapes raw HTML and sanitises its output. */
+export const commentSource = (content: string) =>
+  (content || '')
+    .trimStart()
+    .slice(MD_MARKER.length)
+    .replace(/^\n/, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+export const toCommentContent = (source: string) => `${MD_MARKER}\n${source.trim()}`
+
+/** A comment's HTML for display: markdown comments through the note renderer
+ *  (sanitised), legacy rich-text comments through the sanitiser alone. */
+export function renderComment(content: string): string {
+  return isMarkdownComment(content) ? renderNoteMarkdown(commentSource(content)) : sanitizeHtml(content)
+}
 
 // Brace: even with HTML passthrough disabled, marked does not sanitise link/
 // image URLs (its old `sanitize` option was removed years ago) -- a markdown
@@ -49,9 +80,10 @@ export function renderNoteMarkdown(source: string): string {
   return html
 }
 
-const PROSE = [
-  'text-sm leading-relaxed break-words',
-  'text-slate-600 dark:text-slate-300',
+/** Block-level markdown styling without text colour, so a host with its own colours
+ *  (CommentThread's comment body) can reuse it; NoteMarkdown adds the colours. */
+export const MD_STRUCTURE = [
+  'leading-relaxed break-words',
   '[&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0',
   '[&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-2 [&_h1]:mb-1',
   '[&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-2 [&_h2]:mb-1',
@@ -75,6 +107,7 @@ const PROSE = [
   '[&_img]:max-w-full [&_img]:rounded',
   '[&_hr]:my-2 [&_hr]:border-slate-200 dark:[&_hr]:border-slate-700',
 ].join(' ')
+const PROSE = `text-sm text-slate-600 dark:text-slate-300 ${MD_STRUCTURE}`
 
 /** Renders a Project Todo note's markdown, sanitised, wherever a note is
  * shown on /m or /w -- the one shared renderer both frontends use. Empty
