@@ -3,6 +3,7 @@
 
 import frappe
 import unittest
+from unittest.mock import patch
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days
 from vernon_project.api.mobile import get_project_detail, get_team_wall, PROTECTED_USERS
@@ -359,6 +360,39 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		self.assertEqual(row["by"], "tm_member@example.com")
 		with self.assertRaises(frappe.PermissionError):
 			edit_comment(forged.name, "rewritten by the claimed author")  # session: Administrator
+
+	def test_forged_document_cannot_carry_a_comment_into_an_unreadable_thread(self):
+		"""run_doc_method's `docs=` form checks read permission on the document the
+		CALLER sends. Marked __islocal, it skips the database comparison, so a forged
+		copy naming someone else's project, with the caller in its team_members,
+		passed the Project hook, and Document.add_comment then wrote the comment
+		onto the real project's thread."""
+		from frappe.handler import run_doc_method
+		from vernon_project.api.mobile import add_comment
+		forged = {"doctype": "Project", "name": self.project.name, "__islocal": 1,
+			"team_members": [{"user": "tm_assignee@example.com"}]}
+		# hooks.py values come from the live site's Redis cache, not this checkout:
+		# take the registration from this app's own hooks.py and serve it here.
+		ours = frappe.get_hooks("doc_events", app_name="vernon_project")["Comment"]["before_insert"]
+		doc_hooks = frappe.get_doc_hooks()
+		with patch.dict(doc_hooks, {"Comment": {**doc_hooks.get("Comment", {}), "before_insert": ours}}):
+			frappe.set_user("tm_assignee@example.com")  # not on this project
+			try:
+				frappe.local.response = frappe._dict(docs=[])
+				frappe.local.request = frappe._dict(method="POST")  # run_doc_method checks the verb
+				with self.assertRaises(frappe.PermissionError):
+					run_doc_method("add_comment", docs=frappe.as_json(forged),
+						args={"comment_type": "Comment", "text": "injected"})
+			finally:
+				frappe.set_user("Administrator")
+				del frappe.local.request
+			self.assertFalse(frappe.db.exists("Comment", {"reference_name": self.project.name, "content": "injected"}))
+			# The app's own path still works for someone who can see the project.
+			frappe.set_user("tm_member@example.com")
+			try:
+				self.assertEqual(add_comment("Project", self.project.name, "legit")["by"], "tm_member@example.com")
+			finally:
+				frappe.set_user("Administrator")
 
 	def test_markdown_comment_keeps_its_marker_and_its_mentions_notify(self):
 		"""81hvkl47n3: a comment from the markdown editor keeps Frappe's <!-- markdown -->

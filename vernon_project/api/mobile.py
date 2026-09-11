@@ -1890,6 +1890,16 @@ def _assert_comment_visible(reference_doctype, reference_name):
 		frappe.throw("Not permitted", frappe.PermissionError)
 
 
+def guard_comment_reference(doc, method=None):
+	"""Comment.before_insert: a comment on an app thread needs the same visibility the
+	app's own add_comment asks for, checked against the STORED document by name.
+	Frappe core's run_doc_method(docs=...) checks read permission on a copy the caller
+	sends, so a forged copy listing the caller in team_members otherwise let
+	Document.add_comment post onto a thread the caller cannot see."""
+	if doc.comment_type == "Comment" and doc.reference_doctype in COMMENTABLE and frappe.session.user != "Administrator":
+		_assert_comment_visible(doc.reference_doctype, doc.reference_name)
+
+
 def _shape_comment(row, name_map):
 	# The author is `owner`, the session that inserted the row. Never comment_email or
 	# comment_by: Frappe core (frappe.desk.form.utils.add_comment, Document.add_comment
