@@ -526,6 +526,23 @@ class TestProjectTodo(unittest.TestCase):
 			"Completing a recurring todo must not duplicate the scheduler's occurrence",
 		)
 
+	def test_generation_does_not_wait_for_leader_approval(self):
+		"""rrbnu45v6b: the scheduler mints today's occurrence while yesterday's still waits
+		for the leader (Done), and the later approval adds no second one. (The Sep 2026
+		"routine only appears after approval" report was the site scheduler being off —
+		the approval hook was the only path still running.)"""
+		from vernon_project.tasks import create_recurring_todos
+		head = self._make_todo(is_recurring=1, recurring_frequency="Daily",
+			deadline=add_days(nowdate(), -1))
+		frappe.db.set_value("Project Todo", head.name, "status", "🟠 Done")
+		create_recurring_todos(roots=[head.name])
+		kids = frappe.get_all("Project Todo", filters={"original_todo": head.name}, fields=["deadline"])
+		self.assertEqual([str(k.deadline) for k in kids], [nowdate()])
+		head.reload()
+		head.status = "✅ Completed"
+		head.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.count("Project Todo", {"original_todo": head.name}), 1)
+
 	def test_scheduler_does_not_pregenerate_future(self):
 		"""An up-to-date daily series (next occurrence is day-after-tomorrow) must NOT
 		get a new child from the scheduler (force=False gate)."""
