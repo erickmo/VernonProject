@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 
-from vernon_project.api.certificate_rules import PUBLISHED, REVOKED, validate_period
+from vernon_project.api.certificate_rules import DRAFT, PUBLISHED, REVOKED, is_hr, validate_period
 
 
 class InternshipCertificate(Document):
@@ -22,3 +22,19 @@ class InternshipCertificate(Document):
 
 		if self.status == REVOKED and not self.revoke_reason:
 			frappe.throw("Alasan pencabutan wajib diisi.")
+
+		self.validate_generic_save()
+
+	def validate_generic_save(self):
+		"""A published certificate is public (/verify renders it live) and frozen by
+		design, and status moves only through set_certificate_status's transition rules.
+		api/certificate.py saves with ignore_permissions after its own gates; any other
+		save (/api/resource, frappe.client, Desk) runs on role write, which every Project
+		Leader holds on every certificate. So outside HR, that path may neither touch a
+		published or revoked certificate nor change any status."""
+		if self.flags.ignore_permissions or is_hr(frappe.get_roles()):
+			return
+		old = None if self.is_new() else self.get_doc_before_save()
+		before = old.status if old else DRAFT
+		if before in (PUBLISHED, REVOKED) or self.status != before:
+			frappe.throw("Sertifikat hanya bisa diubah lewat layar sertifikat.", frappe.PermissionError)
