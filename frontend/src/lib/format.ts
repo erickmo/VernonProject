@@ -145,9 +145,9 @@ export function pickRememberedDeadline(stored: string | null, today: string, tom
 
 export function stripHtml(html: string): string {
   if (!html) return ''
-  const tmp = document.createElement('div')
-  tmp.innerHTML = html
-  return (tmp.textContent || tmp.innerText || '').trim()
+  // Inert document, as in sanitizeHtml: a live-page div runs <img onerror> and
+  // fetches remote src at parse time even though it is never shown.
+  return (new DOMParser().parseFromString(html, 'text/html').body.textContent || '').trim()
 }
 
 // Unwrap a Frappe error into plain readable text. The thrown message is often a
