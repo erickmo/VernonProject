@@ -655,13 +655,13 @@ export default function Today() {
                     onOpen={(name) => navigate(`/project-item/${encodeURIComponent(name)}`)}
                   />
                   <div id="today-groups" className="mt-5 scroll-mt-4">
-                    {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) · Done (recently finished) */}
+                    {/* Axis: Plan (by allocation) · Deadline (by due date) · Waiting (parked) · Done (finished in the last 3 days) */}
                     <PillTabs<Axis>
                       tabs={[
                         { key: 'plan', label: 'Plan' },
                         { key: 'deadline', label: 'Deadline' },
                         { key: 'waiting', label: 'Waiting', count: waitingTodos.length },
-                        { key: 'done', label: 'Done', count: doneTodos.length },
+                        { key: 'done', label: 'Done (3 days)', count: doneTodos.length },
                       ]}
                       value={axis}
                       onChange={setAxis}
@@ -738,7 +738,7 @@ export default function Today() {
                     {axis === 'done' && (
                       <>
                         {searchBox}
-                        {renderList(doneTodos, 'Nothing done yet', false, (t) => (t as DoneItem).done_at_human)}
+                        {renderList(doneTodos, 'Nothing done in the last 3 days', false, (t) => (t as DoneItem).done_at_human)}
                       </>
                     )}
                   </div>

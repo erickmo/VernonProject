@@ -622,7 +622,7 @@ def _clamp_page_limit(limit, max_limit):
 	return min(limit, max_limit)
 
 
-def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None, project_detail=None, date_from=None, date_to=None):
+def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None, project_detail=None, date_from=None, date_to=None, done_since=None):
 	"""All todos (with project + work-item context) for the given projects.
 	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
 	(full status strings) to fetch only those — lets status-scoped callers like the
@@ -638,7 +638,9 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	todo is always included regardless of the window (it doesn't belong to any
 	month, so windowing shouldn't hide it — see get_calendar). The clause
 	simply doesn't exist in the query when both are falsy, so a caller that
-	never passes them is unaffected."""
+	never passes them is unaffected. Pass `done_since` (a date) to keep only
+	todos marked Done on/after it, on the same anchor project_todo._done_time
+	sorts by (developed_at, else done_started_at, else completed_at)."""
 	if not project_names:
 		return []
 	cond = "" if include_cancelled else "AND t.status != %(cancelled)s"
@@ -659,6 +661,9 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 	if project_detail:
 		cond += " AND t.project_detail = %(project_detail)s"
 		params["project_detail"] = project_detail
+	if done_since:
+		cond += " AND COALESCE(t.developed_at, t.done_started_at, t.completed_at) >= %(done_since)s"
+		params["done_since"] = done_since
 	if date_from and date_to:
 		# OR deadline IS NULL: an undated todo doesn't belong to any month, so a
 		# month-window shouldn't hide it -- it would otherwise vanish from every

@@ -487,8 +487,18 @@ def _done_time(row):
 	return row.get("developed_at") or row.get("done_started_at") or row.get("completed_at")
 
 
-def _sort_recently_done(rows, limit):
-	"""Newest-done first, capped at `limit`.
+# Home "Done" tab = everything the assignee finished today and the 2 days before,
+# however many (owner, 8ek4eg7j87 — it used to stop at 30).
+DONE_WINDOW_DAYS = 3
+
+
+def _done_since(today=None):
+	"""First day of the Done tab's window: DONE_WINDOW_DAYS calendar days ending today."""
+	return frappe.utils.add_days(frappe.utils.getdate(today or frappe.utils.nowdate()), -(DONE_WINDOW_DAYS - 1))
+
+
+def _sort_recently_done(rows, limit=None):
+	"""Newest-done first, capped at `limit` (None = all).
 
 	Tie-break modified desc then name desc so two todos finished in the same second
 	keep one fixed order across refetches. A row with no done time at all sorts last
@@ -502,9 +512,11 @@ def _sort_recently_done(rows, limit):
 
 
 @frappe.whitelist()
-def get_recently_done(limit=30):
-	"""The current user's own recently-completed todos (assignee's Done list),
-	newest DONE time first, capped at `limit`. Powers the Home 'Done' tab.
+def get_recently_done(limit=None):
+	"""The current user's own todos completed in the last DONE_WINDOW_DAYS days
+	(assignee's Done list), newest DONE time first, all of them unless a caller
+	passes `limit`. Powers the Home 'Done' tab. The window is a SQL filter on the
+	Done time, so the user's whole completed history is never pulled to slice.
 
 	Ordered on when the assignee actually marked the todo Done (see _done_time),
 	not on the later owner approval -- a batch of old todos approved this morning
@@ -529,12 +541,13 @@ def get_recently_done(limit=30):
 	from frappe.utils import pretty_date, get_datetime, cint
 
 	user = frappe.session.user
-	limit = cint(limit) or 30
-	rows = _fetch_todos(_visible_projects(), statuses=[STATUS_COMPLETED], assigned_to=user)
+	rows = _fetch_todos(
+		_visible_projects(), statuses=[STATUS_COMPLETED], assigned_to=user, done_since=_done_since()
+	)
 	if not rows:
 		return []
 
-	mine = _sort_recently_done(rows, limit)
+	mine = _sort_recently_done(rows, cint(limit) or None)
 
 	emails = {r["assigned_to"] for r in mine}
 	for r in mine:

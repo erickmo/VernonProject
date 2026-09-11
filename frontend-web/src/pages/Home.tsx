@@ -712,7 +712,7 @@ export default function Home() {
                         { value: 'plan', label: 'Plan' },
                         { value: 'deadline', label: 'Deadline' },
                         { value: 'waiting', label: 'Waiting', badge: waitingList.length || undefined },
-                        { value: 'done', label: 'Done', badge: doneList.length || undefined },
+                        { value: 'done', label: 'Done (3 days)', badge: doneList.length || undefined },
                       ]}
                       value={axis}
                       onChange={(k) => {
@@ -877,8 +877,8 @@ export default function Home() {
 
               {axis === 'done' && (
                 <>
-                  <ListSummary count={doneList.length} minutes={sumEst(doneList)} label={doneList.length === 1 ? 'task done' : 'tasks done'} />
-                  {renderList(doneList, 'Nothing done yet', 'Nothing completed recently.', (t) => (t as DoneItem).done_at_human)}
+                  <ListSummary count={doneList.length} minutes={sumEst(doneList)} label={doneList.length === 1 ? 'task done in the last 3 days' : 'tasks done in the last 3 days'} />
+                  {renderList(doneList, 'Nothing done in the last 3 days', 'What you finish shows here for 3 days.', (t) => (t as DoneItem).done_at_human)}
                 </>
               )}
               </div>
