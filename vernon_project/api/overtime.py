@@ -70,10 +70,3 @@ def delete_overtime(name):
     _require_manager()
     frappe.delete_doc("Overtime Entry", name)
     return {"ok": True}
-
-
-@frappe.whitelist()
-def my_leave_rules_status():
-    """Accrual progress (lateness + overtime) for the current user."""
-    from vernon_project.attendance.leave_rules import accrual_status
-    return accrual_status(frappe.session.user, int(nowdate()[:4]))

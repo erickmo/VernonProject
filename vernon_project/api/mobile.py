@@ -3487,50 +3487,6 @@ def _user_badges_batch(users):
 
 
 @frappe.whitelist()
-def get_badge_settings():
-	"""All configured badge tiers for the admin editor (System Manager only).
-	Returned ascending by min_points — the order they read naturally in the form."""
-	_require_system_manager()
-	settings = frappe.get_single("Badge Settings")
-	tiers = [
-		{
-			"tier_name": t.tier_name,
-			"min_points": float(t.min_points or 0),
-			"color": t.color or "",
-			"icon": t.icon or "",
-		}
-		for t in (settings.get("tiers") or [])
-	]
-	tiers.sort(key=lambda t: t["min_points"])
-	return {"tiers": tiers}
-
-
-@frappe.whitelist()
-def save_badge_settings(tiers):
-	"""Replace the badge tier table (System Manager only). `tiers` is a JSON list
-	of {tier_name, min_points, color?, icon?}."""
-	_require_system_manager()
-	if isinstance(tiers, str):
-		tiers = frappe.parse_json(tiers) if tiers else []
-	rows = []
-	for t in tiers or []:
-		name = (t.get("tier_name") or "").strip()
-		if not name:
-			frappe.throw("Each tier needs a name")
-		rows.append({
-			"tier_name": name,
-			"min_points": float(t.get("min_points") or 0),
-			"color": (t.get("color") or "").strip(),
-			"icon": (t.get("icon") or "").strip(),
-		})
-	settings = frappe.get_single("Badge Settings")
-	settings.set("tiers", rows)
-	settings.save(ignore_permissions=True)
-	frappe.db.commit()
-	return {"ok": True}
-
-
-@frappe.whitelist()
 def get_app_settings():
 	"""Boot-time app config — called unconditionally by every signed-in user, so
 	most fields here are meant to be public (branding, thresholds, banners).
@@ -6460,11 +6416,6 @@ def get_avatar_catalog():
 		"my": _my_avatar_config(user), "balance": balance,
 		"assets": assets, "sets": sets,
 	}
-
-
-@frappe.whitelist()
-def get_my_avatar():
-	return _my_avatar_config(frappe.session.user)
 
 
 @frappe.whitelist()
