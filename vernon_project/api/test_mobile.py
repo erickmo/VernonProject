@@ -343,6 +343,23 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 		finally:
 			frappe.set_user("Administrator")
 
+	def test_comment_author_is_who_posted_it_not_a_claimed_email(self):
+		"""Frappe core lets anyone who can read a document post a comment under ANY
+		comment_email / comment_by (frappe.desk.form.utils.add_comment, and
+		Document.add_comment through run_doc_method). The thread shows who really
+		posted it, and the claimed author gets no edit rights over it."""
+		from frappe.desk.form.utils import add_comment as core_add_comment
+		from vernon_project.api.mobile import edit_comment, get_comments
+		frappe.set_user("tm_member@example.com")  # a team member: can read the project
+		try:
+			forged = core_add_comment("Project", self.project.name, "Approved, lanjut", "Administrator", "Administrator")
+		finally:
+			frappe.set_user("Administrator")
+		row = next(c for c in get_comments("Project", self.project.name) if c["name"] == forged.name)
+		self.assertEqual(row["by"], "tm_member@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			edit_comment(forged.name, "rewritten by the claimed author")  # session: Administrator
+
 	def test_markdown_comment_keeps_its_marker_and_its_mentions_notify(self):
 		"""81hvkl47n3: a comment from the markdown editor keeps Frappe's <!-- markdown -->
 		marker through Comment.validate (which always sanitises: < > & come back
