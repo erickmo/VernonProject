@@ -676,11 +676,12 @@ export const mobileApi = {
       todo,
     }),
   stationToken: (station: string, key: string) =>
-    api.get<{ station: string; counter: number; token: string }>(A + 'station_token', { station, key }),
+    api.get<{ station: string; counter: number; token: string; network?: string | null }>(A + 'station_token', { station, key }),
   attendanceScan: (station: string, counter: number, token: string) =>
     api.post<{
       status: string
       message?: string
+      duplicate?: boolean
       daily?: {
         status: string
         late_minutes: number
@@ -688,6 +689,8 @@ export const mobileApi = {
         penalty_points: number
         first_scan: string | null
         last_scan: string | null
+        station_first: string | null
+        station_last: string | null
       } | null
     }>(A + 'attendance_scan', { station, counter, token }),
   myAttendance: (limit = 30) =>
@@ -698,6 +701,8 @@ export const mobileApi = {
         status: string
         first_scan: string | null
         last_scan: string | null
+        station_first: string | null
+        station_last: string | null
         late_minutes: number
         early_minutes: number
         penalty_points: number

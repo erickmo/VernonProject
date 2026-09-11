@@ -352,3 +352,12 @@ export function externalUrl(text: string | null | undefined): string | null {
   if (/^www\.\S+\.\S+$/i.test(s)) return 'https://' + s
   return null
 }
+
+/** Attendance "first seen – last seen" as "08:03–17:05", or "08:03" when seen once.
+ * Takes the server's "YYYY-MM-DD HH:MM:SS" strings (no client clock involved). */
+export function seenRange(first: string | null | undefined, last: string | null | undefined): string {
+  if (!first) return ''
+  const a = first.slice(11, 16)
+  const b = last ? last.slice(11, 16) : a
+  return b === a ? a : `${a}–${b}`
+}

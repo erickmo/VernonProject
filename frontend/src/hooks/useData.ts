@@ -2584,6 +2584,8 @@ export function useMyAttendance() {
         status: string
         first_scan: string | null
         last_scan: string | null
+        station_first: string | null
+        station_last: string | null
         late_minutes: number
         early_minutes: number
         penalty_points: number

@@ -3,6 +3,7 @@ import { QrCode, CalendarPlus, ClipboardCheck, FileText, Inbox, Tag, Scale, Cloc
 import { TabScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useMyAttendance, useBoot, canHrApprove } from '@/hooks/useData'
+import { seenRange } from '@/lib/format'
 
 const STATUS_TONE: Record<string, string> = {
   Present: 'text-emerald-700 bg-emerald-50',
@@ -114,8 +115,9 @@ export default function MyAttendance() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-stone-800 dark:text-slate-100">{r.attendance_date}</p>
                 <p className="truncate text-xs text-stone-400">
-                  {r.first_scan ? `In ${r.first_scan.slice(11, 16)}` : '—'}
-                  {r.last_scan ? ` · Out ${r.last_scan.slice(11, 16)}` : ''}
+                  {r.first_scan ? `Seen ${seenRange(r.first_scan, r.last_scan)}` : '—'}
+                  {r.station_first ? ` · ${r.station_first}` : ''}
+                  {r.station_last && r.station_last !== r.station_first ? ` → ${r.station_last}` : ''}
                   {r.penalty_points ? ` · −${r.penalty_points} pts` : ''}
                 </p>
               </div>

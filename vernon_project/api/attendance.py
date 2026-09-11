@@ -8,56 +8,100 @@ from frappe import _
 from frappe.utils import add_days, cint, getdate, now_datetime, nowdate
 
 from vernon_project.attendance import qr
-from vernon_project.attendance.engine import recompute_daily
+from vernon_project.attendance.engine import _active_profile, recompute_daily
 from vernon_project.attendance.approval import leaders_for_projects
+
+SCAN_LIMIT_PER_MINUTE = 20  # a real phone sends ~1 per QR window; this only stops scripts
 
 
 @frappe.whitelist(allow_guest=True)
 def station_token(station, key):
-	"""Kiosk display polls this for the live rotating QR payload. Gated by display_key."""
+	"""Kiosk display polls this for the live rotating QR payload. Gated by display_key,
+	the station being active, and (when set) the station's allowed networks -- so a
+	leaked kiosk link shows nothing off-site."""
 	if not frappe.db.get_single_value("Vernon Settings", "attendance_enabled"):
 		frappe.throw(_("Attendance is disabled"), frappe.PermissionError)
-	display_key = frappe.db.get_value("Attendance Station", station, "display_key")
-	if not display_key or not hmac.compare_digest(str(key), str(display_key)):
+	st = frappe.db.get_value("Attendance Station", station, ["display_key", "active", "allowed_networks"], as_dict=True)
+	if not st or not st.display_key or not hmac.compare_digest(str(key), str(st.display_key)):
 		frappe.throw(_("Invalid station key"), frappe.PermissionError)
-	return qr.current_payload(station)
+	if not st.active:
+		frappe.throw(_("This station is switched off"), frappe.PermissionError)
+	ip = qr.client_ip()
+	if not qr.on_network(st.allowed_networks, ip):
+		frappe.throw(_("This screen is not on the station's office network ({0})").format(ip), frappe.PermissionError)
+	# `network` = the kiosk's own public IP, shown small on screen to help set Allowed Networks
+	return {**qr.current_payload(station), "network": ip}
 
 
-@frappe.whitelist()
+def _rate_limited(user):
+	"""Per-user counter (frappe's @rate_limit keys by IP, which is a shared Cloudflare edge here)."""
+	key = frappe.cache.make_key(f"vp_attendance_scan:{user}")
+	if not frappe.cache.get(key):
+		frappe.cache.setex(key, 60, 0)
+	return frappe.cache.incrby(key, 1) > SCAN_LIMIT_PER_MINUTE
+
+
+@frappe.whitelist(methods=["POST"])
 def attendance_scan(station, counter, token):
-	"""Employee scans a station QR. Returns recomputed status for today."""
+	"""Employee's phone scans a station QR. Records one immutable Attendance Scan per
+	(employee, station, QR window) and returns today's first/last seen.
+
+	Trusted facts are all server-side: who (session user), when (server clock), where
+	(the station whose secret signed the token) and from which network (client_ip).
+	Nothing else the client sends is read."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
+	if _rate_limited(user):
+		frappe.throw(_("Too many scans. Wait a minute and scan the live code again."), frappe.RateLimitExceededError)
 	if not frappe.db.get_single_value("Vernon Settings", "attendance_enabled"):
 		return {"status": "error", "message": _("Attendance is currently disabled.")}
-	if not frappe.db.exists("Attendance Profile", {"user": user, "active": 1}):
+	# Row-locks the profile until commit: the per-employee mutex that makes the
+	# duplicate check below and recompute_daily's first/last seen race-free.
+	if not _active_profile(user, for_update=True):
 		return {"status": "error", "message": _("You are not enrolled in attendance.")}
-	if not frappe.db.get_value("Attendance Station", station, "active"):
+	st = frappe.db.get_value("Attendance Station", station, ["active", "allowed_networks"], as_dict=True)
+	if not st or not st.active:
 		return {"status": "error", "message": _("Unknown or inactive station.")}
+	ip = qr.client_ip()
+	if not qr.on_network(st.allowed_networks, ip):
+		return {"status": "error", "message": _("Connect to the office Wi-Fi, then scan again.")}
 	if not qr.verify(station, counter, token):
 		return {"status": "error", "message": _("QR expired — scan the live code again.")}
 
-	frappe.get_doc({
-		"doctype": "Attendance Scan",
-		"employee": user,
-		"station": station,
-		"scan_time": now_datetime(),
-		"token_counter": cint(counter),
-	}).insert(ignore_permissions=True)
+	counter = cint(counter)
+	duplicate = bool(frappe.db.sql(
+		"""select name from `tabAttendance Scan`
+		where employee = %s and station = %s and token_counter = %s for update""",
+		(user, station, counter),
+	))
+	if not duplicate:
+		frappe.get_doc({
+			"doctype": "Attendance Scan",
+			"employee": user,
+			"station": station,
+			"scan_time": now_datetime(),
+			"token_counter": counter,
+			"ip_address": ip,
+		}).insert(ignore_permissions=True)
+		recompute_daily(user, nowdate())
+	# for_update: on a duplicate the row was committed after our snapshot
+	daily = frappe.db.get_value(
+		"Daily Attendance", {"employee": user, "attendance_date": nowdate()}, _DAILY_FIELDS,
+		as_dict=True, for_update=True,
+	)
+	return {"status": "ok", "duplicate": duplicate, "daily": _serialize(daily)}
 
-	daily = recompute_daily(user, nowdate())
-	return {"status": "ok", "daily": _serialize(daily)}
+
+_DAILY_FIELDS = ["status", "late_minutes", "early_minutes", "penalty_points",
+				 "first_scan", "last_scan", "station_first", "station_last"]
 
 
 def _serialize(daily):
 	if not daily:
 		return None
 	return {
-		"status": daily["status"],
-		"late_minutes": daily["late_minutes"],
-		"early_minutes": daily["early_minutes"],
-		"penalty_points": daily["penalty_points"],
+		**{f: daily[f] for f in _DAILY_FIELDS},
 		"first_scan": str(daily["first_scan"]) if daily["first_scan"] else None,
 		"last_scan": str(daily["last_scan"]) if daily["last_scan"] else None,
 	}
@@ -71,7 +115,7 @@ def my_attendance(limit=30):
 	rows = frappe.get_all(
 		"Daily Attendance",
 		filters={"employee": user},
-		fields=["attendance_date", "status", "first_scan", "last_scan",
+		fields=["attendance_date", "status", "first_scan", "last_scan", "station_first", "station_last",
 				"late_minutes", "early_minutes", "penalty_points"],
 		order_by="attendance_date desc",
 		limit=min(cint(limit), 200),
@@ -104,7 +148,8 @@ def attendance_report(from_date, to_date, employee=None, brand=None, status=None
 	rows = frappe.db.sql(
 		f"""
 		SELECT da.employee, ap.brand, da.attendance_date, da.status,
-			   da.first_scan, da.last_scan, da.late_minutes, da.early_minutes,
+			   da.first_scan, da.station_first, da.last_scan, da.station_last,
+			   da.late_minutes, da.early_minutes,
 			   da.penalty_points
 		FROM `tabDaily Attendance` da
 		LEFT JOIN `tabAttendance Profile` ap ON ap.user = da.employee
@@ -132,8 +177,10 @@ def attendance_report(from_date, to_date, employee=None, brand=None, status=None
 		{"label": "Brand", "fieldname": "brand", "fieldtype": "Data"},
 		{"label": "Date", "fieldname": "attendance_date", "fieldtype": "Date"},
 		{"label": "Status", "fieldname": "status", "fieldtype": "Data"},
-		{"label": "In", "fieldname": "first_scan", "fieldtype": "Datetime"},
-		{"label": "Out", "fieldname": "last_scan", "fieldtype": "Datetime"},
+		{"label": "First seen", "fieldname": "first_scan", "fieldtype": "Datetime"},
+		{"label": "First station", "fieldname": "station_first", "fieldtype": "Link"},
+		{"label": "Last seen", "fieldname": "last_scan", "fieldtype": "Datetime"},
+		{"label": "Last station", "fieldname": "station_last", "fieldtype": "Link"},
 		{"label": "Late (min)", "fieldname": "late_minutes", "fieldtype": "Int"},
 		{"label": "Early (min)", "fieldname": "early_minutes", "fieldtype": "Int"},
 		{"label": "Penalty", "fieldname": "penalty_points", "fieldtype": "Float"},
