@@ -20,9 +20,15 @@ def _require_user():
 	return user
 
 
-def _active_count(event):
-	"""Non-cancelled registrations (Pending holds a seat too)."""
-	return frappe.db.count("Vernon Event Registration", {"event": event, "status": ["!=", "Cancelled"]})
+def _active_count(event, for_update=False):
+	"""Non-cancelled registrations (Pending holds a seat too). register() passes
+	for_update: its snapshot (taken by the get_doc before it locks the event row)
+	predates any seat committed while it waited, and a plain count would miss it."""
+	return frappe.db.sql(
+		"select count(*) from `tabVernon Event Registration` where event = %s and status != 'Cancelled'"
+		+ (" for update" if for_update else ""),
+		event,
+	)[0][0]
 
 
 def _my_status(event, user):
@@ -95,17 +101,19 @@ def my_registrations():
 
 
 def _existing_active(event, user):
-	rows = frappe.get_all(
-		"Vernon Event Registration",
-		filters={"event": event, "user": user, "status": ["!=", "Cancelled"]},
-		fields=["name"], limit_page_length=1,
+	# Locking read, same reason as _active_count: a plain read here misses a
+	# registration this user's other request committed a moment ago.
+	rows = frappe.db.sql(
+		"select name from `tabVernon Event Registration`"
+		" where event = %s and user = %s and status != 'Cancelled' limit 1 for update",
+		(event, user),
 	)
-	return rows[0]["name"] if rows else None
+	return rows[0][0] if rows else None
 
 
-def _capacity_ok(ev):
+def _capacity_ok(ev, for_update=False):
 	cap = ev.capacity or 0
-	return not cap or _active_count(ev.name) < cap
+	return not cap or _active_count(ev.name, for_update=for_update) < cap
 
 
 def _make_registration(event, user, method, amount, status):
@@ -134,7 +142,7 @@ def register(event):
 	try:
 		existing = _existing_active(event, user)
 		if existing:
-			reg = frappe.get_doc("Vernon Event Registration", existing)
+			reg = frappe.get_doc("Vernon Event Registration", existing, for_update=True)
 			if reg.status == "Pending" and reg.method == "Rupiah" and reg.snap_token:
 				# ponytail: resume the abandoned Snap payment instead of dead-ending; the same order_id/token is re-opened. Midtrans expiry eventually cancels a truly-abandoned Pending, freeing the seat.
 				return {"registration": reg.name, "status": "Pending",
@@ -148,7 +156,7 @@ def register(event):
 		# redeem_reward uses (`... for update` on the shared catalog row) so that
 		# concurrent redeems cannot oversell stock.
 		frappe.db.sql("select name from `tabVernon Event` where name = %s for update", event)
-		if not _capacity_ok(ev):
+		if not _capacity_ok(ev, for_update=True):
 			frappe.throw("This event is full.", frappe.ValidationError)
 
 		if ev.pricing == "Free":
@@ -157,7 +165,7 @@ def register(event):
 
 		if ev.pricing == "Points":
 			cost = float(ev.points_cost or 0)
-			_, _, balance = _user_balance(user)
+			_, _, balance = _user_balance(user, for_update=True)
 			if cost > balance:
 				frappe.throw("Insufficient balance", frappe.ValidationError)
 			reg = _make_registration(event, user, "Points", cost, "Confirmed")
