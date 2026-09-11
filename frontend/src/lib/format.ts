@@ -205,16 +205,47 @@ function isAllowedImgSrc(src: string): boolean {
   }
 }
 
+// True when inline CSS would make the browser fetch something: url(), image-set()
+// (which also takes bare-string URLs) and CSS Values 4 src(). CSS escapes are
+// decoded first ("\75 rl(" IS url( to the CSS tokenizer) and comments dropped,
+// so neither smuggles the function name past the check. Over-matching costs one
+// element its inline styling; under-matching loads a tracking pixel — the 52 live
+// comments with pasted WhatsApp emoji sprites did exactly that on every render.
+export function styleFetchesRemote(css: string): boolean {
+  const decoded = (css || '')
+    .replace(/\\([0-9a-f]{1,6})\s?/gi, (_, hex: string) => {
+      const n = parseInt(hex, 16)
+      return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '\ufffd'
+    })
+    .replace(/\\(.)/g, '$1')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+  return /(?:url|image-set|src)\s*\(/i.test(decoded)
+}
+
+// Attributes that load a remote resource on their own (none survive the <img>
+// /files/ rule's intent otherwise): responsive-image sources, the legacy table
+// background, a video poster, and the click-tracking ping.
+const REMOTE_LOAD_ATTRS = new Set(['srcset', 'background', 'poster', 'ping'])
+
 export function sanitizeHtml(html: string): string {
   if (!html) return ''
-  const root = document.createElement('div')
-  root.innerHTML = html
-  root.querySelectorAll('script,style,iframe,object,embed,form,link,meta,base').forEach((n) => n.remove())
+  // Parse into an INERT document (no browsing context): an <img>/<video> parsed via
+  // innerHTML on a div of the live page starts fetching its src at parse time —
+  // before this function can remove it — so a "blocked" remote pixel still fired.
+  const root = new DOMParser().parseFromString(html, 'text/html').body
+  // Media elements go with the other active content: comments and notes only
+  // ever embed images, and <video>/<audio>/<source> with a remote src would
+  // fetch it just like a pixel.
+  root
+    .querySelectorAll('script,style,iframe,object,embed,form,link,meta,base,video,audio,source,track,picture')
+    .forEach((n) => n.remove())
   root.querySelectorAll('*').forEach((el) => {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase()
-      if (name.startsWith('on')) el.removeAttribute(attr.name)
+      if (name.startsWith('on') || REMOTE_LOAD_ATTRS.has(name)) el.removeAttribute(attr.name)
       else if ((name === 'href' || name === 'src') && /^\s*(javascript|data):/i.test(attr.value)) {
+        el.removeAttribute(attr.name)
+      } else if (name === 'style' && styleFetchesRemote(attr.value)) {
         el.removeAttribute(attr.name)
       }
     }
