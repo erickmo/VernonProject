@@ -8,6 +8,12 @@ import type { MentionUser } from '../lib/types'
 import { useToast } from './Toast'
 import ImageZoom from './ImageZoom'
 
+// Dark-mode rich text for the body + editors: mention chips, and neutralise pasted
+// inline colours (white/near-black spans copied from other apps) so they don't
+// show as white boxes. Light mode renders the comment exactly as authored.
+const DARK_RICH =
+  'dark:[&_[data-mention]]:bg-brand-500/15 dark:[&_[data-mention]]:text-brand-300 dark:[&_[style]]:!bg-transparent dark:[&_[style]]:!text-inherit dark:[&_font]:text-inherit'
+
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -189,15 +195,15 @@ export default function CommentThread({
 
   return (
     <section className={className}>
-      <h3 className="mb-2 text-sm font-semibold text-gray-700">{title}</h3>
+      <h3 className="mb-2 text-sm font-semibold text-gray-700 dark:text-slate-200">{title}</h3>
       {isLoading ? (
-        <Spinner className="h-5 w-5 text-gray-400" />
+        <Spinner className="h-5 w-5 text-gray-400 dark:text-slate-400" />
       ) : (
         <ul className="space-y-3">
           {(comments ?? []).map((c) => (
-            <li key={c.name} className="rounded-xl bg-gray-50 p-3">
+            <li key={c.name} className="rounded-xl bg-gray-50 p-3 dark:bg-slate-800/60">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-slate-100">
                   {c.by_name}
                   {c.by_badge && (
                     <span
@@ -213,13 +219,13 @@ export default function CommentThread({
                     </span>
                   )}
                 </span>
-                <span className="flex items-center gap-2 text-xs text-gray-400">
+                <span className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-400">
                   {c.at_human}
                   {c.by === me && editingName !== c.name && (
                     <button
                       type="button"
                       onClick={() => setEditingName(c.name)}
-                      className="text-gray-400 hover:text-brand-600"
+                      className="text-gray-400 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-300"
                       aria-label="Edit comment"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -241,7 +247,7 @@ export default function CommentThread({
                         el.focus()
                       }
                     }}
-                    className="comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg"
+                    className={`comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none dark:border-slate-700 [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg ${DARK_RICH}`}
                   />
                   <div className="mt-2 flex gap-2">
                     <button
@@ -256,7 +262,7 @@ export default function CommentThread({
                     <button
                       type="button"
                       onClick={() => setEditingName(null)}
-                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 dark:border-slate-700 dark:text-slate-300"
                     >
                       <X className="h-3.5 w-3.5" />
                       Batal
@@ -266,7 +272,7 @@ export default function CommentThread({
               ) : (
                 <>
                   <div
-                    className="comment-body mt-1 text-sm text-gray-700 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700"
+                    className={`comment-body mt-1 text-sm text-gray-700 dark:text-slate-200 [&_a]:break-words [&_a]:text-brand-600 [&_a]:underline dark:[&_a]:text-brand-300 [&_p]:my-0 [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-lg [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 ${DARK_RICH}`}
                     onClick={(e) => {
                       const t = e.target as HTMLElement
                       if (t.tagName === 'IMG')
@@ -277,7 +283,7 @@ export default function CommentThread({
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(c.content) }}
                   />
                   {c.content.includes('<img') && (
-                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400">
+                    <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-400">
                       <ZoomIn className="h-3 w-3" />
                       Ketuk gambar untuk memperbesar
                     </p>
@@ -287,7 +293,7 @@ export default function CommentThread({
             </li>
           ))}
           {comments && comments.length === 0 && (
-            <li className="text-sm text-gray-400">No comments yet.</li>
+            <li className="text-sm text-gray-400 dark:text-slate-400">No comments yet.</li>
           )}
         </ul>
       )}
@@ -300,19 +306,19 @@ export default function CommentThread({
             aria-label="Add a comment"
             data-placeholder="Add a comment…"
             onInput={onInput}
-            className="comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)] [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg"
+            className={`comment-editor max-h-40 min-h-[3rem] overflow-y-auto rounded-xl border border-gray-200 p-2 text-sm focus:border-brand-500 focus:outline-none dark:border-slate-700 empty:before:text-gray-400 empty:before:content-[attr(data-placeholder)] dark:empty:before:text-slate-400 [&_[data-mention]]:rounded [&_[data-mention]]:bg-brand-50 [&_[data-mention]]:px-1 [&_[data-mention]]:font-medium [&_[data-mention]]:text-brand-700 [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded-lg ${DARK_RICH}`}
           />
           {mentionOpen && filtered.length > 0 && (
-            <ul className="absolute bottom-12 left-0 z-10 max-h-48 w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+            <ul className="absolute bottom-12 left-0 z-10 max-h-48 w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
               {filtered.slice(0, 8).map((u) => (
                 <li key={u.user}>
                   <button
                     type="button"
                     onClick={() => pickMention(u)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
                   >
-                    <span className="font-medium text-gray-800">{u.full_name}</span>
-                    <span className="truncate text-xs text-gray-400">{u.user}</span>
+                    <span className="font-medium text-gray-800 dark:text-slate-100">{u.full_name}</span>
+                    <span className="truncate text-xs text-gray-400 dark:text-slate-400">{u.user}</span>
                   </button>
                 </li>
               ))}
@@ -330,7 +336,7 @@ export default function CommentThread({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-600 disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
           aria-label="Attach image"
         >
           {uploading ? <Spinner className="h-4 w-4" /> : <ImagePlus className="h-4 w-4" />}
