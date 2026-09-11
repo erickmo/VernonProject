@@ -36,6 +36,7 @@ import { useAutoPlanToday, useAutoFillPlan, useMoveYesterdayToToday } from '@/ho
 import { QuickCreate } from '@web/components/QuickCreate'
 import { DatePicker } from '@web/components/DatePicker'
 import { ThreeColProjectList } from '@web/components/ProjectColumns'
+import { SchedulerAlert } from '@/components/SchedulerAlert'
 import type { ProjectItem, BannerSlide, MeetingListItem, DoneItem } from '@/lib/types'
 
 // ── small building blocks ─────────────────────────────────────────────────────
@@ -667,6 +668,9 @@ export default function Home() {
 
       {/* Managed promo banners — from Settings → Home Banners */}
       <WebBanners slides={banners.data ?? []} />
+
+      {/* be86ciu75f: System Managers only — the scheduler stopped running jobs. */}
+      <SchedulerAlert />
 
       {/* DANGER: previous shift day fell below the daily-minimum minutes setting */}
       {shortfall.data?.under && (

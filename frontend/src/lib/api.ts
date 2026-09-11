@@ -142,6 +142,8 @@ export function checkAvailability(args: {
 
 export const mobileApi = {
   bootstrap: () => api.get('vernon_project.api.mobile.bootstrap'),
+  enableScheduler: () =>
+    api.post<import('./types').SchedulerHealth & { enabled: boolean }>('vernon_project.api.scheduler_health.enable_scheduler'),
   dashboard: () => api.get(M + 'get_dashboard'),
   dailyVerse: () => api.get<import('./types').DailyVerse>('vernon_project.api.verse.get_daily_verse'),
   calendar: (openOnly = false, mine = false, dateFrom?: string, dateTo?: string) =>

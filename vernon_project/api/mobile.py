@@ -1102,8 +1102,14 @@ def bootstrap():
 	employee["education"] = [r.as_dict() for r in ep.education]
 	employee["skills"] = [r.as_dict() for r in ep.skills]
 	employee["trainings"] = [r.as_dict() for r in ep.trainings]
+	# be86ciu75f: every boot is a chance to notice a dead scheduler (a scheduled job
+	# can't — it is what stopped); only System Managers see it, and get the button.
+	from vernon_project.api.scheduler_health import check_and_notify
+
+	scheduler = check_and_notify()
 	return {
 		"user": user,
+		"scheduler": scheduler if "System Manager" in roles else None,
 		"full_name": u.get("full_name") or user,
 		"image": u.get("user_image"),
 		"avatar_config": (frappe.parse_json(av_cfg) if av_cfg else None),

@@ -11,8 +11,17 @@ export interface Badge {
   icon: string | null
 }
 
+/** be86ciu75f: site scheduler health, sent to System Managers only (null for others). */
+export interface SchedulerHealth {
+  ok: boolean
+  reason: 'disabled' | 'paused' | 'stalled' | null
+  last_run: string | null
+  last_run_human: string | null
+}
+
 export interface Boot {
   user: string
+  scheduler?: SchedulerHealth | null
   full_name: string
   image: string | null
   avatar_config?: AvatarConfig | null
