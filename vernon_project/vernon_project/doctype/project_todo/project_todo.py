@@ -14,6 +14,7 @@ from vernon_project.vernon_project.doctype.project.project import get_project_ad
 # The one Planned status string, shared by the controller. `api/mobile.py` keeps
 # its own copy (STATUS_PLANNED) — importing it here would be a circular import.
 PLANNED = "⚪️ Planned"
+CANCELLED = "🚫 Cancelled"
 # Mirrors AI_WORK_MODES in api/project_todo.py — same reason as PLANNED above:
 # importing the api module from here risks a circular import.
 AI_WORK_MODES = ("AI", "Both")
@@ -323,6 +324,37 @@ class ProjectTodo(Document):
 			)
 		)
 
+	def _priority_peers_for_update(self):
+		"""Locking read of this assignee's OTHER priority todos for this deadline.
+
+		Slot occupancy is DERIVED -- "just the count of non-cancelled priority todos on
+		that (assignee, date)" -- so no unique index can ever back the cap, and the
+		check was a bare count: two concurrent claims both counted slots-1, both passed,
+		and both wrote. That costs real points, because tasks.py::charge_missed_priorities
+		deducts priority_miss_penalty per missed priority PER NIGHT, so an oversold slot
+		bleeds a penalty the assignee had no way to avoid.
+
+		`for update` holds next-key locks on the range until COMMIT, so a second
+		claimant blocks here and then counts the first one. Verified with EXPLAIN that
+		this uses assigned_to_status_index (rows=2), so it locks one assignee's todos
+		rather than every todo sharing the deadline date -- no extra index needed.
+
+		ponytail: an EMPTY range has no records to lock, only a gap, and two
+		transactions may hold the same gap lock -- so two first-ever claims for one
+		(assignee, date) resolve as an InnoDB deadlock (one side rolled back) rather
+		than a clean block. Still no oversell, which is the invariant that matters.
+		"""
+		return frappe.db.sql(
+			"""
+			select name, project from `tabProject Todo`
+			where assigned_to = %s and deadline = %s and is_priority = 1
+			  and status != %s and name != %s
+			for update
+			""",
+			(self.assigned_to, self.deadline, CANCELLED, self.name or ""),
+			as_dict=True,
+		)
+
 	def validate_priority_slot(self):
 		"""A priority claims one of the assignee's daily slots for its deadline date.
 
@@ -339,18 +371,7 @@ class ProjectTodo(Document):
 		if not self.deadline or not self.assigned_to:
 			frappe.throw(_("A priority needs both an assignee and a deadline."))
 
-		peers = frappe.get_all(
-			"Project Todo",
-			filters={
-				"is_priority": 1,
-				"assigned_to": self.assigned_to,
-				"deadline": self.deadline,
-				"status": ["!=", "🚫 Cancelled"],
-				"name": ["!=", self.name or ""],
-			},
-			fields=["name", "project"],
-			limit_page_length=0,
-		)
+		peers = self._priority_peers_for_update()
 		who = frappe.db.get_value("User", self.assigned_to, "full_name") or self.assigned_to
 		if len(peers) >= slots:
 			frappe.throw(
