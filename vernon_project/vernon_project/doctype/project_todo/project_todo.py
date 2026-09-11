@@ -6,7 +6,7 @@ import json
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_days, add_months, cint, getdate, nowdate, now_datetime, get_datetime
+from frappe.utils import add_days, add_months, cint, cstr, getdate, nowdate, now_datetime, get_datetime
 from datetime import datetime
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
@@ -47,6 +47,47 @@ def _ensure_today_minutes(
 # Recognition / Feedback (teammates' reactions) and Priority (missed-day penalties) are
 # minted elsewhere and must survive both the upsert probe and the un-complete cleanup.
 OWNED_LEDGER_SOURCES = ("Todo", "Mentoring")
+
+
+# Everything a person types into a todo, frozen once it is done (52r6l30cs4). The older
+# protected_fields in validate_done_todo_fields (assignee, estimate, dates, AI) keep their
+# own, stricter rule.
+INFO_FIELDS = {
+	"to_do": "Title",
+	"notes": "Notes",
+	"checklist": "Checklist",
+	"project": "Project",
+	"project_detail": "Work Item",
+	"ongoing": "Ongoing",
+	"mentor": "Mentor",
+	"leader_deadline": "Leader Deadline",
+	"owner_deadline": "Owner Deadline",
+	"is_priority": "Priority",
+	"blocked_by": "Blocked By",
+	"issue_of": "Issue Of",
+	"group": "Work Type",
+	"level": "Level",
+	"level_id": "Level",
+	"estimated_done_to_checked": "Review Estimate",
+	"estimated_checked_to_completed": "Approval Estimate",
+	"allocations": "Day Plan",
+	"assigned_allocation": "Leader Allocation",
+	"cancellation_reason": "Cancellation Reason",
+}
+
+
+def _rows_key(rows):
+	"""A child table's content, comparable between a loaded and an in-memory doc:
+	dependency target, or allocation date/minutes/note; order-insensitive."""
+	return sorted(
+		(
+			cstr(r.get("todo")),
+			str(getdate(r.get("allocation_date"))) if r.get("allocation_date") else "",
+			cint(r.get("estimated_minutes")),
+			cstr(r.get("note")),
+		)
+		for r in rows or []
+	)
 
 
 class ProjectTodo(Document):
@@ -403,6 +444,8 @@ class ProjectTodo(Document):
 			return (getdate(new) if new else None) != (getdate(old) if old else None)
 		if fieldtype in ("Datetime", "Date and Time"):
 			return (get_datetime(new) if new else None) != (get_datetime(old) if old else None)
+		if fieldtype in ("Table", "Table MultiSelect"):
+			return _rows_key(new) != _rows_key(old)  # row objects differ on every load
 		return True
 
 	def validate_done_todo_fields(self):
@@ -448,6 +491,24 @@ class ProjectTodo(Document):
 				f"Cannot modify {', '.join(modified_fields)} when Todo status is '{self.status}'. "
 				"These fields are locked once the todo leaves Planned status.",
 				title="Cannot Edit Completed Todo"
+			)
+
+		# 52r6l30cs4, owner: "All information in todo should be immutable after marked
+		# done, except for the comment." Once the todo was ALREADY past Planned before
+		# this save, every user-entered field is frozen too (the save that marks it done
+		# may still carry its last edits). Not frozen: workflow/system fields (status,
+		# stamps, points, phase timings, waiting, to_check), comments (their own doctype),
+		# recurring_* (they steer the whole series and the latest occurrence is often the
+		# done one), and dependency rows the system mirrors from the other todo's save.
+		if old_doc.status == PLANNED:
+			return
+		frozen = {f: label for f, label in INFO_FIELDS.items() if not (f == "blocked_by" and self.flags.get("skip_block_sync"))}
+		changed = sorted({label for f, label in frozen.items() if self._field_changed(f, old_doc)})
+		if changed:
+			frappe.throw(
+				f"Cannot modify {', '.join(changed)}: this todo is already marked done. "
+				"Only comments can still be added.",
+				title="Cannot Edit Completed Todo",
 			)
 
 	def validate_follow_up_immutable(self):

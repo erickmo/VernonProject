@@ -1041,7 +1041,6 @@ function TodoShortcuts(props: {
 function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => void }) {
   const update = useUpdateTodo(data.name)
   const toast = useToast()
-  const locked = data.fields_locked
   const [toDo, setToDo] = useState(data.to_do)
   const [assignee, setAssignee] = useState(data.assigned_to)
   const [mentor, setMentor] = useState(data.mentor ?? '')
@@ -1071,25 +1070,23 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       toast('error', 'Group and type are required')
       return
     }
-    if (!locked && !deadline) {
+    if (!deadline) {
       toast('error', 'Deadline is required')
       return
     }
-    if (!locked && !startDate) {
+    if (!startDate) {
       toast('error', 'Start date is required')
       return
     }
-    if (!locked && startDate && deadline && startDate > deadline) {
+    if (startDate && deadline && startDate > deadline) {
       toast('error', 'Start date cannot be after the deadline')
       return
     }
     const fields: Record<string, unknown> = { to_do: toDo }
-    if (!locked) {
-      fields.assigned_to = assignee
-      fields.start_date = startDate
-      fields.deadline = deadline
-      fields.estimated = estimated === '' ? 0 : Number(estimated)
-    }
+    fields.assigned_to = assignee
+    fields.start_date = startDate
+    fields.deadline = deadline
+    fields.estimated = estimated === '' ? 0 : Number(estimated)
     // Mentor credit is leader/owner-set (backend re-checks). Empty clears it.
     if (data.can_edit_estimate) {
       fields.mentor = mentor
@@ -1152,7 +1149,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <div className="mb-3">
         <SearchableSelect
           value={assignee}
-          disabled={locked}
           onChange={setAssignee}
           options={team.map((m) => ({ value: m.user, label: m.name }))}
           placeholder="Select a team member…"
@@ -1192,7 +1188,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         <label className="mb-1 block text-xs font-medium text-muted">Start date</label>
         <DatePicker
           value={startDate}
-          disabled={locked}
           onChange={(v) => setStartDate(v)}
           className={fieldCls}
         />
@@ -1203,7 +1198,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           <label className="mb-1 block text-xs font-medium text-muted">Deadline</label>
           <DatePicker
             value={deadline}
-            disabled={locked}
             onChange={(v) => setDeadline(v)}
             className={fieldCls}
           />
@@ -1215,7 +1209,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             inputMode="numeric"
             min={0}
             value={estimated}
-            disabled={locked}
             onChange={(e) => setEstimated(e.target.value)}
             className={fieldCls}
           />
@@ -1270,13 +1263,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
           />
         </div>
-      )}
-
-      {locked && (
-        <p className="mb-3 flex items-center gap-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          <Lock className="h-3.5 w-3.5" />
-          Assignee, start date, deadline &amp; estimate are locked once a todo is Done.
-        </p>
       )}
 
       {/* My plan — assignee-editable day split (moved here from the detail view) */}
@@ -1531,7 +1517,7 @@ const [followOpen, setFollowOpen] = useState(false)
   return (
     <div className="space-y-6">
       <TodoShortcuts
-        canEdit={data.can_edit}
+        canEdit={data.can_edit && !data.fields_locked}
         editing={editing}
         focusActive={focusActive}
         canDeadlineToday={canSetDeadlineToday}
@@ -1627,17 +1613,26 @@ const [followOpen, setFollowOpen] = useState(false)
                 </Button>
               ))}
 
-            {data.can_edit && (
-              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </Button>
-            )}
+            {/* 52r6l30cs4: past Planned a todo is read-only except comments (server-enforced). */}
+            {data.can_edit &&
+              (data.fields_locked ? (
+                <span
+                  title="Done todos are read-only. Comments stay open."
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400"
+                >
+                  <Lock className="h-4 w-4" /> Read-only
+                </span>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+              ))}
 
             <OverflowMenu
               size="sm"
               items={[
                 { label: focus.note ? 'Edit focus note' : 'Add focus note', icon: StickyNote, onClick: () => setShowFocusNote(true) },
-                ...(data.can_prioritize && data.status_key !== 'cancelled' && (boot?.settings?.daily_priority_slots ?? 0) > 0
+                ...(data.can_prioritize && data.status_key === 'planned' && (boot?.settings?.daily_priority_slots ?? 0) > 0
                   ? [
                       {
                         label: data.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas',
@@ -1744,7 +1739,7 @@ const [followOpen, setFollowOpen] = useState(false)
         />
       )}
 
-      {editing ? (
+      {editing && !data.fields_locked ? (
         <div className="max-w-3xl">
           <EditForm data={data} onClose={() => setEditing(false)} />
         </div>
@@ -1873,7 +1868,7 @@ const [followOpen, setFollowOpen] = useState(false)
             </div>
 
             {/* My plan — editable day split for the assignee, read-only for others */}
-            {data.is_mine ? (
+            {data.is_mine && !data.fields_locked ? (
               <AllocationCard data={data} />
             ) : (
               (data.allocations ?? []).length > 0 && (

@@ -310,6 +310,20 @@ class TestGetProjectItemFieldContract(FrappeTestCase):
 		missing = GET_PROJECT_ITEM_FIELDS_BOTH_FRONTENDS_READ - set(result.keys())
 		self.assertEqual(missing, set(), f"get_project_item is missing fields the frontends read: {missing}")
 
+	def test_edit_flags_close_once_the_todo_leaves_planned(self):
+		"""52r6l30cs4: past Planned a todo is read-only except comments, so the detail
+		stops offering its edit affordances (the doctype refuses the writes anyway).
+		can_edit stays: it also gates the workflow actions (reject/reopen)."""
+		result = get_project_item(self.todo.name)
+		self.assertFalse(result["fields_locked"])
+		self.assertTrue(result["can_edit_notes"] and result["can_edit_files"] and result["can_edit_assigned"])
+		frappe.db.set_value("Project Todo", self.todo.name, "status", "🟠 Done", update_modified=False)
+		result = get_project_item(self.todo.name)
+		self.assertTrue(result["fields_locked"])
+		for flag in ("can_edit_notes", "can_edit_files", "can_edit_estimate", "can_edit_assigned"):
+			self.assertFalse(result[flag], flag)
+		self.assertTrue(result["can_edit"])
+
 
 class TestGetProjectItemPermissionBoundary(FrappeTestCase):
 	"""6gb7lcr41q enumerated case 10: a user with no relationship to the project

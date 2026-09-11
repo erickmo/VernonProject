@@ -1167,6 +1167,11 @@ def _assert_can_edit_todo(todo_id):
 			"You are not allowed to change files on this todo.",
 			frappe.PermissionError,
 		)
+	# 52r6l30cs4: a done todo's information is frozen except comments, and its files
+	# are part of that. Files live in their own doctype, so the todo's validate()
+	# never sees them: gate here, where every upload/delete goes.
+	if todo.status != "⚪️ Planned":
+		frappe.throw("Files can't be changed: this todo is already marked done. Only comments can still be added.")
 
 
 @frappe.whitelist()

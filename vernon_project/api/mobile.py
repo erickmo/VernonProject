@@ -2299,9 +2299,12 @@ def get_project_item(project_item):
 	) or {}
 	from vernon_project.api.project_todo import parse_ai_prompts
 	shaped["ai_prompts"] = parse_ai_prompts(extra.get("ai_prompt"))
-	shaped["can_edit_notes"] = user in (
+	# 52r6l30cs4: once past Planned the todo is read-only except comments (the doctype's
+	# validate_done_todo_fields enforces it); these flags only hide the edit affordances.
+	planned = shaped["status_key"] == "planned"
+	shaped["can_edit_notes"] = planned and (user in (
 		r["assigned_to"], r["project_owner"], r["project_leader"], r.get("owner")
-	) or user in _admins
+	) or user in _admins)
 	# The assignee joins SM / owner / leader here: phase 2 is theirs to review — they
 	# update the generated prompt and confirm it before an agent runs it. Once the
 	# todo leaves Planned, the prompt is frozen (doctype validate() enforces this
@@ -2326,12 +2329,13 @@ def get_project_item(project_item):
 	# Attached files ride down with the detail (same edit gate as notes).
 	from vernon_project.api.project_todo import list_todo_files
 	shaped["files"] = list_todo_files(project_item)
-	shaped["can_edit_files"] = shaped["can_edit"]
-	shaped["fields_locked"] = shaped["status_key"] in ("done", "completed")
+	shaped["can_edit_files"] = shaped["can_edit"] and planned
+	# Every non-Planned status (Checked By PL and Cancelled too), matching the doctype.
+	shaped["fields_locked"] = not planned
 	is_leader = user == r["project_leader"]
 	is_owner = user == r["project_owner"]
-	shaped["can_edit_estimate"] = is_sm or is_leader or is_owner
-	shaped["can_edit_assigned"] = is_sm or is_leader
+	shaped["can_edit_estimate"] = planned and (is_sm or is_leader or is_owner)
+	shaped["can_edit_assigned"] = planned and (is_sm or is_leader)
 	_mentor = extra.get("mentor")
 	shaped["mentor"] = _mentor or ""
 	shaped["mentor_name"] = (frappe.db.get_value("User", _mentor, "full_name") or _mentor) if _mentor else ""
