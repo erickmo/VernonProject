@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Vernon and Contributors
 
 import frappe
+import pymysql
 import unittest
 from frappe.utils import add_days, getdate, nowdate
 from datetime import timedelta
@@ -324,3 +325,99 @@ class TestTeamPriorityCoverage(_PriorityFixture):
 		self.assertEqual(len(member["days"]), 7)
 		expected = [str(add_days(ws, i)) for i in range(7)]
 		self.assertEqual([d["date"] for d in member["days"]], expected)
+
+
+
+class TestSlotRace(_PriorityFixture):
+	"""Slot occupancy is DERIVED -- "just the count of non-cancelled priority todos on
+	that (assignee, date)" -- so no unique index can ever back the cap, and
+	validate_priority_slot was a bare count-then-write: two concurrent claims both
+	counted slots-1, both passed, and both wrote. That costs real points, because
+	tasks.py::charge_missed_priorities deducts priority_miss_penalty per missed
+	priority PER NIGHT, so an oversold slot bleeds a penalty the assignee could not
+	have avoided.
+
+	These target _priority_peers_for_update() directly rather than going through an
+	insert. A test that just inserts a second priority passes with OR without the
+	`for update`, because the probe's own range lock blocks the INSERT either way --
+	it looks green while proving nothing about the read. Verified: the first version
+	of this test survived removing `for update`.
+
+	Contends from a genuinely separate connection, seeded with a REAL row: on an empty
+	range InnoDB takes only a gap lock, and two transactions may hold the same gap
+	lock, so an unseeded contention test blocks on nothing.
+	"""
+
+	def _conn(self):
+		return pymysql.connect(
+			host=frappe.conf.db_host or "127.0.0.1",
+			port=int(frappe.conf.db_port or 3306),
+			user=frappe.conf.db_name,
+			password=frappe.conf.db_password,
+			database=frappe.conf.db_name,
+		)
+
+	def _hold_range(self, assignee):
+		"""Lock one assignee's priority rows for self.day from another connection."""
+		conn = self._conn()
+		cur = conn.cursor()
+		cur.execute("start transaction")
+		cur.execute(
+			"select name from `tabProject Todo` where assigned_to=%s and deadline=%s "
+			"and is_priority=1 for update",
+			(assignee, self.day),
+		)
+		return conn, cur.fetchall()
+
+	def test_the_slot_check_blocks_while_another_claim_holds_the_range(self):
+		claim = self._todo(0)  # real row in the range, not an empty gap
+		frappe.db.commit()
+		orig = frappe.db.sql("select @@session.innodb_lock_wait_timeout")[0][0]
+		conn, held = self._hold_range("prio_assignee@example.com")
+		try:
+			self.assertGreaterEqual(len(held), 1, "probe did not lock the assignee's range")
+			frappe.db.sql("set session innodb_lock_wait_timeout=3")
+			with self.assertRaises(Exception) as caught:
+				claim._priority_peers_for_update()
+			# Specific, not a bare Exception: asserting any Exception is what let the
+			# first version of test_cuti_grant_lock pass with its lock removed.
+			self.assertIn("lock wait timeout", str(caught.exception).lower())
+		finally:
+			try:
+				conn.rollback(); conn.close()
+			except Exception:
+				pass
+			frappe.db.rollback()
+			frappe.db.sql(f"set session innodb_lock_wait_timeout={int(orig)}")
+
+	def test_the_slot_check_does_not_block_a_different_assignee(self):
+		"""The lock must stay scoped to the assignee. EXPLAIN shows the query uses
+		assigned_to_status_index (rows=2), so it locks one person's todos rather than
+		every todo sharing the deadline date -- which is why this needs no new index.
+		Guards against that scoping regressing into a whole-date lock."""
+		self._todo(0)
+		frappe.db.commit()
+		other = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.details[1].name,
+			"to_do": "Other assignee prio", "assigned_to": "Administrator",
+			"start_date": self.day, "deadline": self.day, "estimated": 30,
+			"status": "⚪️ Planned", "is_priority": 0,
+			"group": self.group_name, "level_id": self.level_id,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		orig = frappe.db.sql("select @@session.innodb_lock_wait_timeout")[0][0]
+		conn, held = self._hold_range("prio_assignee@example.com")
+		try:
+			self.assertGreaterEqual(len(held), 1, "probe did not lock the assignee's range")
+			frappe.db.sql("set session innodb_lock_wait_timeout=3")
+			other.reload()
+			# Same deadline, different assignee -> must not queue behind the claim.
+			self.assertEqual(other._priority_peers_for_update(), [])
+		finally:
+			try:
+				conn.rollback(); conn.close()
+			except Exception:
+				pass
+			frappe.db.rollback()
+			frappe.db.sql(f"set session innodb_lock_wait_timeout={int(orig)}")
