@@ -17,7 +17,12 @@ import frappe
 from frappe.utils import cint, flt, now_datetime, add_days, get_time, getdate, nowdate
 # The gamified DiceBear avatar (config) wins over the uploaded photo everywhere
 # in the app — reuse mobile's batch resolver so superpower avatars match.
-from vernon_project.api.mobile import _avatar_config_map, _notify
+from vernon_project.api.mobile import (
+	_avatar_config_map,
+	_lock_giver_recognition,
+	_notify,
+	_recognition_cap_reached,
+)
 
 # Mirrors mobile.py STATUS_COMPLETED (the completed Project Todo status).
 _STATUS_COMPLETED = "✅ Completed"
@@ -189,23 +194,22 @@ def _recognition_credit(voter, ratee, superpower):
 	if pts <= 0:
 		return
 	note = f"Superpower: {superpower} · {_quarter_key()}"
-	if frappe.db.exists(
-		"Point Ledger", {"user": ratee, "granted_by": voter, "source": "Recognition", "note": note}
-	):
+	# One locking read answers both gates and serialises this voter against their own
+	# concurrent grants. See mobile.py::_lock_giver_recognition for why an advisory
+	# lock would not close the cap race.
+	rows = _lock_giver_recognition(voter)
+	if any(r.user == ratee and r.source == "Recognition" and r.note == note for r in rows):
 		return
 	# 2026-09-09 permission sweep: colluding low-privilege accounts could farm
 	# unlimited quarterly points for a favored user (each vote is idempotent
 	# per-ratee, but nothing capped how many DIFFERENT ratees one voter could
 	# credit). Same weekly per-giver cap as mobile.py::_recognition_credit,
 	# which this function's own docstring already claims to mirror.
+	# Counted off the locked rows above, so N concurrent votes from one voter to N
+	# different ratees can no longer all pass a cap of N-1.
 	cap = cint(frappe.get_cached_doc("Vernon Settings").recognition_weekly_cap)
-	if cap > 0:
-		given = frappe.db.count(
-			"Point Ledger",
-			{"granted_by": voter, "source": "Recognition", "credited_on": [">=", add_days(nowdate(), -7)]},
-		)
-		if given >= cap:
-			return
+	if _recognition_cap_reached(rows, cap):
+		return
 	frappe.get_doc({
 		"doctype": "Point Ledger",
 		"user": ratee,
@@ -677,6 +681,45 @@ def set_my_superpowers(user, superpowers):
 # --- voting --------------------------------------------------------------------
 
 
+def _upsert_vote(ratee, voter, superpower, quarter, score):
+	"""Set this voter's score for (ratee, superpower, quarter), inserting or updating.
+
+	The look-then-insert below races: two concurrent votes both find nothing and both
+	insert, and the duplicate rows then skew the ratee's confidence-weighted
+	aggregate. The unique index on (ratee, voter, superpower, quarter) is the real
+	backstop -- unlike a lock it is isolation-independent and covers every write
+	path -- so the loser lands in the except below and updates the winner's row
+	instead. Same outcome either way: one row, this voter's score.
+
+	Both exceptions are needed and they are NOT related classes: frappe raises
+	UniqueValidationError(ValidationError) when a composite unique INDEX rejects the
+	row, and DuplicateEntryError(NameError) only when the primary key / docname
+	collides. Catching just the latter (the obvious guess, and what verse.py wants
+	for its PK-keyed upsert) lets the real duplicate-vote case through as a 500.
+	"""
+	existing = frappe.db.exists(
+		"Superpower Vote", {"ratee": ratee, "voter": voter, "superpower": superpower, "quarter": quarter}
+	)
+	if existing:
+		frappe.db.set_value("Superpower Vote", existing, "score", score)
+		return
+	try:
+		frappe.get_doc({
+			"doctype": "Superpower Vote",
+			"ratee": ratee,
+			"voter": voter,
+			"superpower": superpower,
+			"score": score,
+			"quarter": quarter,
+		}).insert(ignore_permissions=True)
+	except (frappe.exceptions.UniqueValidationError, frappe.exceptions.DuplicateEntryError):
+		frappe.db.sql(
+			"update `tabSuperpower Vote` set score=%s "
+			"where ratee=%s and voter=%s and superpower=%s and quarter=%s",
+			(score, ratee, voter, superpower, quarter),
+		)
+
+
 @frappe.whitelist()
 def cast_vote(ratee, superpower, score):
 	"""Any logged-in user (not the ratee). Upsert the caller's 1-4 vote, mint
@@ -695,20 +738,7 @@ def cast_vote(ratee, superpower, score):
 	# Upsert within the current quarter — a new quarter starts a fresh row so past
 	# quarters stay intact for the ratee's progress trend.
 	q = _quarter_key()
-	existing = frappe.db.exists(
-		"Superpower Vote", {"ratee": ratee, "voter": voter, "superpower": superpower, "quarter": q}
-	)
-	if existing:
-		frappe.db.set_value("Superpower Vote", existing, "score", score)
-	else:
-		frappe.get_doc({
-			"doctype": "Superpower Vote",
-			"ratee": ratee,
-			"voter": voter,
-			"superpower": superpower,
-			"score": score,
-			"quarter": q,
-		}).insert(ignore_permissions=True)
+	_upsert_vote(ratee, voter, superpower, q, score)
 	_recognition_credit(voter, ratee, superpower)
 	frappe.db.commit()
 	# Anonymous & one-directional: the voter never sees the ratee's aggregate back

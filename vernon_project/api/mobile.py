@@ -5955,6 +5955,52 @@ def get_team_activity(days=14, limit=50):
 	return {"items": items}
 
 
+def _lock_giver_recognition(giver):
+	"""Locking read of every Recognition/Feedback row `giver` has already granted.
+
+	The weekly anti-farm cap is a count-then-insert. Two grants from one giver that
+	run concurrently both count the same total and both pass it, so the cap is
+	exceeded by however many raced -- re-opening the point-farm the cap was added to
+	close (see the 2026-09-09 sweep note in superpowers.py::_recognition_credit).
+	Freshness alone is not the issue on the reaction path, which commits before it
+	credits: both callers read an up-to-date count, both read it BEFORE either
+	inserts. What is missing is mutual exclusion.
+
+	`for update` supplies it: the row locks are held until COMMIT, so the second
+	grant blocks at this read and then counts the first one. It also returns the
+	latest committed rows rather than this transaction's snapshot, which is what the
+	cast_vote path needs -- it has no commit between the vote write and the credit.
+	An advisory lock gives neither property: it releases when the function returns,
+	which is before the request commits, so the loser can still count a ledger the
+	winner's row is not in yet.
+
+	`granted_by` is indexed (search_index in point_ledger.json) so this locks one
+	giver's rows; without that index it would scan and lock the whole table.
+	Callers filter these rows in Python rather than issuing a second read -- a
+	separate plain read would not be covered by these locks.
+	"""
+	return frappe.db.sql(
+		"select `user`, todo, note, source, credited_on from `tabPoint Ledger` "
+		"where granted_by=%s and source in ('Recognition', 'Feedback') for update",
+		(giver,),
+		as_dict=True,
+	)
+
+
+def _recognition_cap_reached(rows, cap):
+	"""True when `rows` (from _lock_giver_recognition) already hold `cap` Recognition
+	grants inside the rolling 7-day window. cap <= 0 disables the cap."""
+	if cap <= 0:
+		return False
+	cutoff = get_datetime(add_days(nowdate(), -7))
+	given = sum(
+		1
+		for r in rows
+		if r.source == "Recognition" and r.credited_on and get_datetime(r.credited_on) >= cutoff
+	)
+	return given >= cap
+
+
 def _recognition_credit(todo, recipient, reactor, reaction):
 	"""Mint (or refresh) a small Recognition Point Ledger row: the assignee earns
 	points because a teammate noticed their work. Keyed on (todo, granted_by, source)
@@ -5971,11 +6017,10 @@ def _recognition_credit(todo, recipient, reactor, reaction):
 		if pts <= 0 and fb_pts <= 0:
 			return
 		note = REACTION_LABELS.get(reaction, reaction)
-		existing = frappe.db.exists(
-			"Point Ledger",
-			{"todo": todo, "granted_by": reactor, "source": ["in", ["Recognition", "Feedback"]]},
-		)
-		if existing:
+		# One locking read answers both gates below and serialises this giver against
+		# a concurrent grant of their own. See _lock_giver_recognition.
+		rows = _lock_giver_recognition(reactor)
+		if any(r.todo == todo for r in rows):
 			# Already credited for this todo — just refresh the note (reaction changed).
 			frappe.db.set_value(
 				"Point Ledger",
@@ -5984,14 +6029,9 @@ def _recognition_credit(todo, recipient, reactor, reaction):
 			)
 			return
 		# Anti-farm: cap grants per giver per rolling 7 days (shared by recognition + feedback).
-		cap = int(settings.recognition_weekly_cap or 0)
-		if cap > 0:
-			given = frappe.db.count(
-				"Point Ledger",
-				{"granted_by": reactor, "source": "Recognition", "credited_on": [">=", add_days(nowdate(), -7)]},
-			)
-			if given >= cap:
-				return
+		# Counted off the locked rows above, so two concurrent grants cannot both pass it.
+		if _recognition_cap_reached(rows, int(settings.recognition_weekly_cap or 0)):
+			return
 		if pts > 0:
 			frappe.get_doc({
 				"doctype": "Point Ledger",

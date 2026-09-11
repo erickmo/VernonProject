@@ -28,7 +28,7 @@
   {"fieldname": "credited_on", "fieldtype": "Datetime", "label": "Credited On"},
   {"fieldname": "source", "fieldtype": "Select", "label": "Source", "options": "Todo\nGrant\nGift\nMeeting\nAttendance\nDaily\nReward\nAchievement\nMentoring\nRecognition\nFeedback\nLearning\nPriority", "default": "Todo", "in_list_view": 1},
   {"fieldname": "note", "fieldtype": "Small Text", "label": "Note"},
-  {"fieldname": "granted_by", "fieldtype": "Link", "label": "Granted By", "options": "User"},
+  {"fieldname": "granted_by", "fieldtype": "Link", "label": "Granted By", "options": "User", "search_index": 1},
   {"fieldname": "meeting", "fieldtype": "Link", "label": "Meeting", "options": "Meeting", "search_index": 1},
   {"fieldname": "attendance", "fieldtype": "Link", "label": "Attendance", "options": "Daily Attendance", "search_index": 1},
   {"fieldname": "course", "fieldtype": "Link", "label": "Course", "options": "Course", "search_index": 1}
