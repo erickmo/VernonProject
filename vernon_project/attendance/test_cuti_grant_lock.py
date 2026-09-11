@@ -1,12 +1,25 @@
 # Copyright (c) 2026, Vernon and contributors
 # See license.txt
 
+import threading
 import unittest
 
 import frappe
 import pymysql
 
 from vernon_project.attendance.cuti_ledger import ensure_grant
+
+
+def _grant_from_another_request(site, sites_path, employee, year):
+    """A second, independent request that mints the Grant and COMMITs."""
+    frappe.init(site=site, sites_path=sites_path)
+    frappe.connect()
+    try:
+        frappe.set_user("Administrator")
+        ensure_grant(employee, year)
+        frappe.db.commit()
+    finally:
+        frappe.destroy()
 
 # ponytail: one test, one contending connection, no fixtures.
 
@@ -53,6 +66,11 @@ class TestCutiGrantLock(unittest.TestCase):
         self._clean()
 
     def _clean(self):
+        # Rollback first, or this leaks: the second-request test commits a row on
+        # another connection AFTER this transaction took its snapshot, so a plain read
+        # here cannot see it and deletes nothing. (Caught live — one 2099 Grant row
+        # survived a run. It is the same stale-snapshot trap the test below is about.)
+        frappe.db.rollback()
         for name in frappe.get_all(
             "Cuti Ledger", filters={"employee": self.employee, "year": self.YEAR}, pluck="name"
         ):
@@ -88,6 +106,36 @@ class TestCutiGrantLock(unittest.TestCase):
         self.assertEqual(
             self._grant_count(), 0, "ensure_grant minted a Grant row through a held lock"
         )
+
+    def test_grant_committed_by_another_request_is_not_minted_twice(self):
+        """The gap the test above cannot see, and the one that actually bit.
+
+        The advisory lock is released when ensure_grant returns -- before the request
+        COMMITs -- so a second caller can hold it legitimately and, at REPEATABLE READ,
+        still read a snapshot taken before the winner's row existed. With the plain
+        SELECT this doubled the employee's annual leave (proved live 2026-09-12: two
+        Grant rows of 12 days). Restore the plain lookup in ensure_grant and this fails
+        with 2 rows; the lock-refusal test above stays green either way.
+        """
+        self.assertEqual(self._grant_count(), 0, "probe year should start clean")
+        # a real request has read something before it reaches the grant code
+        frappe.db.sql("select name from `tabCuti Ledger` limit 1")
+
+        t = threading.Thread(
+            target=_grant_from_another_request,
+            args=(frappe.local.site, frappe.local.sites_path, self.employee, self.YEAR),
+        )
+        t.start()
+        t.join(60)
+        self.assertFalse(t.is_alive(), "the other request hung")
+
+        ensure_grant(self.employee, self.YEAR)
+        rows = frappe.db.sql(
+            """select name, days from `tabCuti Ledger`
+            where employee = %s and year = %s and entry_type = 'Grant' for update""",
+            (self.employee, self.YEAR), as_dict=True,
+        )
+        self.assertEqual(len(rows), 1, f"annual quota minted twice: {rows}")
 
 
 if __name__ == "__main__":
