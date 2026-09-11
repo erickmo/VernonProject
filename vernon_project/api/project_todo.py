@@ -1253,6 +1253,26 @@ TO_DO_MAX_LENGTH = 140
 FOLLOW_UP_MARKER = "↩ "
 
 
+def _open_follow_up(source, assignee):
+	"""The still-open follow-up (not Completed/Cancelled) of `source` for `assignee`, or None.
+
+	A LOCKING read on purpose: under REPEATABLE READ a plain SELECT answers from this
+	transaction's first-read snapshot, so a call that read anything before another session
+	committed its follow-up would miss it and insert a twin. Walks the source's own
+	`blocking` mirror rows (indexed by parent) — Dependency.todo has no index, so starting
+	from it would lock the whole table."""
+	rows = frappe.db.sql(
+		"""SELECT t.name FROM `tabProject Todo Dependency` d
+		JOIN `tabProject Todo` t ON t.name = d.todo
+		WHERE d.parent = %s AND d.parenttype = 'Project Todo' AND d.parentfield = 'blocking'
+		  AND t.is_follow_up = 1 AND t.assigned_to = %s
+		  AND t.status NOT IN ('✅ Completed', '🚫 Cancelled')
+		ORDER BY t.creation LIMIT 1 FOR UPDATE""",
+		(source, assignee),
+	)
+	return rows[0][0] if rows else None
+
+
 @frappe.whitelist()
 def follow_up_check(todo_id, assignee, note=None, estimated=None, group=None, level_id=None, deadline=None):
 	"""Quick hand-off: spawn a linked follow-up todo for ANOTHER person to check
@@ -1283,6 +1303,16 @@ def follow_up_check(todo_id, assignee, note=None, estimated=None, group=None, le
 	assignee = (assignee or "").strip()
 	if not assignee:
 		frappe.throw("Pilih orang yang akan mengecek.")
+
+	# One open check per (source, checker). A repeat — two sessions closing the same todo,
+	# a retry after a lost response — gets the check already open back: no twin row, no
+	# second notification (al31hs5kej). Locking the source serialises concurrent calls.
+	source_status = frappe.db.sql(
+		"SELECT status FROM `tabProject Todo` WHERE name=%s FOR UPDATE", todo.name
+	)[0][0]
+	existing = _open_follow_up(todo.name, assignee)
+	if existing:
+		return {"name": existing, "source_status": source_status, "existing": True}
 
 	# Estimate: client default 10, floored at 5 (validate_estimated_min requires ≥5).
 	est = max(frappe.utils.cint(estimated) or CHECK_DEFAULT_ESTIMATED, 5)
