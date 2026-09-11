@@ -97,3 +97,41 @@ class TestCertificateScorePermlevel(unittest.TestCase):
 		doc.verify_code = "abc123"
 		doc.save()
 		self.assertEqual(frappe.db.get_value("Internship Certificate", self.cert.name, "cert_no"), "CERT-0001")
+
+	def test_project_leader_cannot_touch_a_published_certificate_or_any_status(self):
+		"""/verify renders a published certificate live and the app freezes it, and
+		status moves only through set_certificate_status. The generic save gives every
+		Project Leader write on every certificate (no permission hook), which could
+		rewrite who a published certificate names, or quietly un-publish it (a draft
+		verifies as not found)."""
+		frappe.db.set_value("Internship Certificate", self.cert.name,
+			{"status": "Published", "cert_no": "CSP-1", "verify_code": "csp-verify-1"})
+		frappe.set_user(self.LEADER)
+		try:
+			for field, value in (("position", "Chief Executive"), ("intern", self.LEADER), ("status", "Draft")):
+				with self.assertRaises(frappe.PermissionError, msg=field):
+					frappe.client.set_value("Internship Certificate", self.cert.name, field, value)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(
+			frappe.db.get_value("Internship Certificate", self.cert.name, ["status", "intern", "position"]),
+			("Published", self.INTERN, None))
+
+	def test_project_leader_cannot_move_a_draft_through_the_workflow(self):
+		frappe.set_user(self.LEADER)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				frappe.client.set_value("Internship Certificate", self.cert.name, "status", "Pending HR")
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Internship Certificate", self.cert.name, "status"), "Draft")
+		# The certificate screen's own path (api/certificate.py gates the caller, then
+		# saves with ignore_permissions) still moves it.
+		frappe.set_user(self.LEADER)
+		try:
+			doc = frappe.get_doc("Internship Certificate", self.cert.name)
+			doc.status = "Pending HR"
+			doc.save(ignore_permissions=True)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Internship Certificate", self.cert.name, "status"), "Pending HR")
