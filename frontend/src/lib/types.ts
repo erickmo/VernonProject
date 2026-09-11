@@ -744,13 +744,6 @@ export interface TeamDailyReportResponse {
   totals: { assigned: number; done: number }
 }
 
-export interface UserFormPayload {
-  full_name: string
-  roles: string[]
-  enabled: 0 | 1
-  member_type?: string // optional marking; omit to leave unchanged
-}
-
 export type GrantUser = { name: string; full_name: string; user_image?: string | null; avatar_config?: AvatarConfig | null }
 
 export type GiftUser = GrantUser

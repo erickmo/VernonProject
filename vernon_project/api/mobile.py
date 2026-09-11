@@ -3252,7 +3252,7 @@ def create_user(email, full_name=None, roles=None, send_welcome=1, member_type=N
 	return {"name": doc.name}
 
 
-@frappe.whitelist()
+# Not whitelisted: the admin form saves through employee_admin, which calls this.
 def update_user(user, full_name=None, roles=None, enabled=1, member_type=None):
 	"""Edit name/enabled and sync the Vernon-role set (System Manager only)."""
 	_require_system_manager()
@@ -7271,7 +7271,7 @@ def get_employee_profile(user):
 	return data
 
 
-@frappe.whitelist()
+# Not whitelisted: the admin form saves through employee_admin, which calls this.
 def update_employee_profile(
 	user, nik_ktp=None, npwp=None, bpjs_kesehatan=None, bpjs_ketenagakerjaan=None,
 	bank_name=None, bank_account_no=None, bank_account_holder=None,

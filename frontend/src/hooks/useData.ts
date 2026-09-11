@@ -40,7 +40,6 @@ import type {
   GroupTodo,
   ScoringGroup,
   ScoringGroupPayload,
-  UserFormPayload,
   Wallet,
   WalletLogEntry,
   Leaderboard,
@@ -147,7 +146,6 @@ export const keys = {
   managedEvent: (n: string) => ['managedEvent', n] as const,
   eventRoster: (e: string) => ['eventRoster', e] as const,
   bookings: ['bookings'] as const,
-  booking: (n: string) => ['booking', n] as const,
   meetingRooms: ['meeting-rooms'] as const,
   meetingRoom: (n: string) => ['meeting-room', n] as const,
   equipmentList: ['equipment-list'] as const,
@@ -1778,15 +1776,6 @@ export function useCreateUser() {
   })
 }
 
-export function useUpdateUser() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ user, payload }: { user: string; payload: UserFormPayload }) =>
-      mobileApi.updateUser(user, payload),
-    onSettled: () => qc.invalidateQueries({ queryKey: keys.users }),
-  })
-}
-
 export function useResetUserPassword() {
   return useMutation({
     mutationFn: (user: string) => mobileApi.resetUserPassword(user),
@@ -2888,14 +2877,6 @@ export function useBookings() {
           a.start.slice(11).localeCompare(b.start.slice(11)),
       )
     },
-  })
-}
-
-export function useBooking(name: string, enabled = true) {
-  return useQuery({
-    queryKey: keys.booking(name),
-    queryFn: () => resource.get<Booking>('Resource Booking', name),
-    enabled: !!name && enabled,
   })
 }
 
