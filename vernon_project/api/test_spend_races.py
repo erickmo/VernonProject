@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 
+from vernon_project.api.lms import _mint_points
 from vernon_project.api.mobile import _user_balance, gift_points
 
 SENDER = "spend-race-sender@test.local"
@@ -35,6 +36,7 @@ class TestSpendRaces(unittest.TestCase):
 		frappe.set_user("Administrator")
 		frappe.db.delete("Point Ledger", {"user": ["in", [SENDER, RECIPIENT]]})
 		frappe.db.delete("Vernon Notification", {"recipient": ["in", [SENDER, RECIPIENT]]})
+		frappe.db.delete("Course", {"title": "ZZ spend-race course"})
 		frappe.db.commit()
 
 	def _spend_in_another_session(self, fn):
@@ -69,3 +71,14 @@ class TestSpendRaces(unittest.TestCase):
 			gift_points(RECIPIENT, 100)
 		frappe.db.rollback()
 		self.assertEqual(_user_balance(SENDER)[2], 0)
+
+	def test_a_course_pays_out_once_even_from_an_old_snapshot(self):
+		course = frappe.get_doc({"doctype": "Course", "title": "ZZ spend-race course", "status": "Draft",
+			"points_reward": 25}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		_user_balance(SENDER)  # pins this transaction's snapshot
+		self._spend_in_another_session(lambda: _mint_points(course.name, SENDER))
+		_mint_points(course.name, SENDER)
+		frappe.db.commit()
+		self.assertEqual(frappe.db.count("Point Ledger", {"course": course.name, "user": SENDER}), 1)
+

@@ -52,7 +52,14 @@ def _recompute(enr, course_points=None):
 
 
 def _mint_points(course, user, course_points=None):
-	if frappe.db.exists("Point Ledger", {"course": course, "user": user}):
+	# Locking read, not frappe.db.exists: under REPEATABLE READ a plain read returns
+	# this request's old snapshot, so a completion committed by a concurrent request
+	# (a double-tap on the last lesson) was invisible and the course paid out twice.
+	# complete_lesson's get_lock can't fix that; it is released before commit.
+	if frappe.db.sql(
+		"select name from `tabPoint Ledger` where course = %s and user = %s limit 1 for update",
+		(course, user),
+	):
 		return 0.0
 	if course_points is None:
 		course_points = frappe.db.get_value("Course", course, "points_reward") or 0
