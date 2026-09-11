@@ -9,8 +9,34 @@ import { InfoDot } from '@web/components/InfoDot'
 import { Button } from '@web/components/ui'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useCertificateAccess, useCertificates, useMyScore } from '@/hooks/useData'
-import { STATUS_LABEL, certHelp, componentLabel, droppedComponents, fmtScore, gradeTone } from '@/lib/certificate'
+import { STATUS_LABEL, certHelp, certificateSteps, componentLabel, droppedComponents, fmtScore, gradeTone } from '@/lib/certificate'
 import type { CertificateRow, CertificateStatus } from '@/lib/types'
+
+/** tmot7slo7q: first visit for someone who issues certificates. The whole path at a glance
+ *  and one obvious way in, instead of an empty table. */
+function HowToTile({ isHr, onCreate }: { isHr: boolean; onCreate: () => void }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-5">
+      <p className="font-semibold text-ink">Cara membuat sertifikat</p>
+      <ol className="mt-4 grid gap-4 sm:grid-flow-col sm:auto-cols-fr">
+        {certificateSteps(null, isHr).map((s, i) => (
+          <li key={s.key} className="flex items-start gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              {i + 1}
+            </span>
+            <span className="min-w-0 text-sm">
+              <span className="font-medium text-ink">{s.label}</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-muted">{s.desc}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-5">
+        <Button onClick={onCreate}><Plus className="h-4 w-4" /> Buat sertifikat</Button>
+      </div>
+    </div>
+  )
+}
 
 const STATUS_STYLE: Record<CertificateStatus, string> = {
   Draft: 'bg-line text-muted',
@@ -203,6 +229,8 @@ export default function Certificates() {
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner /></div>
+      ) : canIssue && rows.length === 0 ? (
+        <HowToTile isHr={isHr} onCreate={() => navigate('/certificates/new')} />
       ) : (
         <DataTable
           rows={shown}

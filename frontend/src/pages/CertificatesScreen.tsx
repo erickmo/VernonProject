@@ -6,7 +6,7 @@ import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState, Segmented } from '@/components/ui'
 import { CertificateHelpSheet, InfoDot } from '@/components/CertificateHelpSheet'
 import { useCertificateAccess, useCertificates, useMyScore } from '@/hooks/useData'
-import { STATUS_LABEL, componentLabel, droppedComponents, fmtScore, gradeTone } from '@/lib/certificate'
+import { STATUS_LABEL, certificateSteps, componentLabel, droppedComponents, fmtScore, gradeTone } from '@/lib/certificate'
 import type { CertificateRow, CertificateStatus } from '@/lib/types'
 
 const card = 'rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 shadow-card'
@@ -141,6 +141,35 @@ function MyScoreCard({ onHelp }: { onHelp: (t: string) => void }) {
   )
 }
 
+/** tmot7slo7q: first visit for someone who issues certificates. The whole path at a glance
+ *  and one obvious way in, instead of an empty list and a small floating button. */
+function HowToCard({ isHr, onCreate }: { isHr: boolean; onCreate: () => void }) {
+  return (
+    <div className={clsx(card, 'p-4')}>
+      <p className="font-semibold text-stone-800 dark:text-slate-100">Cara membuat sertifikat</p>
+      <ol className="mt-3 flex flex-col gap-2.5">
+        {certificateSteps(null, isHr).map((s, i) => (
+          <li key={s.key} className="flex items-start gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+              {i + 1}
+            </span>
+            <span className="min-w-0 text-sm">
+              <span className="font-medium text-stone-700 dark:text-slate-200">{s.label}</span>
+              <span className="block text-xs leading-relaxed text-stone-500 dark:text-slate-400">{s.desc}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <button
+        onClick={onCreate}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3 font-semibold text-white transition active:scale-[0.98]"
+      >
+        <Plus className="h-4 w-4" /> Buat sertifikat
+      </button>
+    </div>
+  )
+}
+
 const TABS = [
   { value: 'action', label: 'Perlu tindakan' },
   { value: 'all', label: 'Semua' },
@@ -187,6 +216,8 @@ export default function CertificatesScreen() {
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
+      ) : canIssue && rows.length === 0 ? (
+        <HowToCard isHr={isHr} onCreate={() => navigate('/certificates/new')} />
       ) : shown.length === 0 ? (
         <EmptyState
           icon={rows.length ? SearchX : Award}

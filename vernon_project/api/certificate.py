@@ -463,10 +463,11 @@ def lookup_verify(code):
 # --- PDF ----------------------------------------------------------------------------
 
 @frappe.whitelist()
-def certificate_pdf(name):
+def certificate_pdf(name, inline=0):
 	"""The certificate as a PDF. Only a published certificate produces one — a draft is
 	refused outright rather than watermarked, because a watermarked draft still ends up
-	screenshotted into a CV."""
+	screenshotted into a CV. `inline=1` serves it for viewing in the browser (the screen's
+	"Lihat sertifikat") instead of as a download."""
 	doc = frappe.get_doc(DOCTYPE, frappe.utils.cstr(name))
 	_guard_read({"intern": doc.intern}, frappe.session.user)
 
@@ -482,7 +483,7 @@ def certificate_pdf(name):
 		"margin-top": "0mm", "margin-bottom": "0mm",
 		"margin-left": "0mm", "margin-right": "0mm",
 	})
-	frappe.local.response.type = "download"
+	frappe.local.response.type = "pdf" if frappe.utils.cint(inline) else "download"
 
 
 def _pdf_context(doc):

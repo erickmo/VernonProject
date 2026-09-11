@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  Award, Download, Link2, ShieldCheck, ShieldX, Send, Undo2, Save, AlertTriangle,
+  Award, Download, Link2, ShieldCheck, ShieldX, Send, Undo2, Save, AlertTriangle, Check, Eye,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner, EmptyState } from '@/components/ui'
@@ -11,13 +11,13 @@ import { CertificateHelpSheet, InfoDot } from '@/components/CertificateHelpSheet
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import {
-  useCertificate, useIssuableInterns, usePreviewScore, useSaveCertificate,
+  useCertificate, useCertificateAccess, useIssuableInterns, usePreviewScore, useSaveCertificate,
   useSetCertificateStatus,
 } from '@/hooks/useData'
 import { certificateApi } from '@/lib/api'
 import {
-  ACTION_LABEL, AUTO_COMPONENTS, STATUS_LABEL, canDownload, clampScore, componentLabel,
-  droppedComponents, fmtScore, gradeTone, rubricFrom, rubricProgress, rubricScore,
+  ACTION_LABEL, AUTO_COMPONENTS, STATUS_LABEL, canDownload, certificateSteps, clampScore, componentLabel,
+  droppedComponents, fmtScore, gradeTone, rubricFrom, rubricProgress, rubricScore, type CertStep,
 } from '@/lib/certificate'
 import type { CertificateStatus, ScoreComponent } from '@/lib/types'
 
@@ -98,6 +98,42 @@ function Breakdown({ components, onHelp }: { components: ScoreComponent[]; onHel
   )
 }
 
+/** tmot7slo7q: the numbered path from "no certificate" to one you can show. Only the
+ *  step you are on spells out what to do; finished steps just tick. */
+function StepsCard({ steps }: { steps: CertStep[] }) {
+  return (
+    <ol className={clsx(card, 'mb-4 flex flex-col gap-3')} aria-label="Langkah membuat sertifikat">
+      {steps.map((s, i) => (
+        <li key={s.key} className="flex items-start gap-3" aria-current={s.state === 'current' ? 'step' : undefined}>
+          <span
+            className={clsx(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+              s.state === 'done' && 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+              s.state === 'current' && 'bg-brand-600 text-white',
+              s.state === 'todo' && 'bg-paper-line text-stone-400 dark:bg-slate-700 dark:text-slate-500',
+            )}
+          >
+            {s.state === 'done' ? <Check className="h-4 w-4" /> : i + 1}
+          </span>
+          <div className="min-w-0 pt-0.5">
+            <p
+              className={clsx(
+                'text-sm font-semibold',
+                s.state === 'current' ? 'text-stone-800 dark:text-slate-100' : 'text-stone-400 dark:text-slate-500',
+              )}
+            >
+              {s.label}
+            </p>
+            {s.state === 'current' && (
+              <p className="mt-0.5 text-xs leading-relaxed text-stone-500 dark:text-slate-400">{s.desc}</p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 export default function CertificateScreen() {
   const { name } = useParams<{ name: string }>()
   const isNew = !name || name === 'new'
@@ -107,6 +143,7 @@ export default function CertificateScreen() {
   const [help, setHelp] = useState<string | null>(null)
 
   const detail = useCertificate(isNew ? undefined : name)
+  const access = useCertificateAccess()
   const interns = useIssuableInterns(isNew)
   const save = useSaveCertificate()
   const setStatus = useSetCertificateStatus()
@@ -240,6 +277,14 @@ export default function CertificateScreen() {
           )}
         </p>
       )}
+
+      {/* Issuers only: an intern opening their own certificate has nothing to do here. */}
+      {access.data?.can_issue && <StepsCard
+        steps={certificateSteps(
+          doc ? { status: doc.status, rubric } : null,
+          doc ? doc.is_hr : !!access.data?.is_hr,
+        )}
+      />}
 
       {/* ---------- the two scores, side by side, never merged ---------- */}
       <div className="mb-3 flex gap-3">
@@ -427,6 +472,14 @@ export default function CertificateScreen() {
 
         {doc && canDownload(doc) && (
           <>
+            <a
+              href={certificateApi.certificatePdfUrl(doc.name, true)}
+              target="_blank"
+              rel="noopener"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3 font-semibold text-white transition active:scale-[0.98]"
+            >
+              <Eye className="h-4 w-4" /> Lihat sertifikat
+            </a>
             <a
               href={certificateApi.certificatePdfUrl(doc.name)}
               className="flex items-center justify-center gap-2 rounded-2xl border border-paper-edge bg-paper-card px-4 py-3 font-semibold text-stone-700 transition active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"

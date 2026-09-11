@@ -1715,6 +1715,6 @@ export const certificateApi = {
       name, target, ...(reason ? { reason } : {}),
     }),
   /** Published certificates only — the server refuses a draft rather than watermarking it. */
-  certificatePdfUrl: (name: string) =>
-    `${METHOD}${CERT}certificate_pdf?name=${encodeURIComponent(name)}`,
+  certificatePdfUrl: (name: string, inline = false) =>
+    `${METHOD}${CERT}certificate_pdf?name=${encodeURIComponent(name)}${inline ? '&inline=1' : ''}`,
 }

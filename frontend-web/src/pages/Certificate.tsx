@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
-  Award, Download, Link2, ShieldCheck, ShieldX, Send, Undo2, Save, AlertTriangle,
+  Award, Download, Link2, ShieldCheck, ShieldX, Send, Undo2, Save, AlertTriangle, Check, Eye,
 } from 'lucide-react'
 import { Page, PageHeader, Section } from '@web/components/Page'
 import { BentoGrid, BentoTile } from '@web/components/bento'
@@ -15,13 +15,13 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { useToast } from '@/components/Toast'
 import { useConfirm } from '@/components/Confirm'
 import {
-  useCertificate, useIssuableInterns, usePreviewScore, useSaveCertificate,
+  useCertificate, useCertificateAccess, useIssuableInterns, usePreviewScore, useSaveCertificate,
   useSetCertificateStatus,
 } from '@/hooks/useData'
 import { certificateApi } from '@/lib/api'
 import {
-  ACTION_LABEL, STATUS_LABEL, canDownload, certHelp, clampScore, componentLabel,
-  droppedComponents, fmtScore, gradeFor, gradeTone, rubricFrom, rubricProgress, rubricScore,
+  ACTION_LABEL, STATUS_LABEL, canDownload, certHelp, certificateSteps, clampScore, componentLabel,
+  droppedComponents, fmtScore, gradeFor, gradeTone, rubricFrom, rubricProgress, rubricScore, type CertStep,
 } from '@/lib/certificate'
 import type { CertificateStatus, ScoreComponent } from '@/lib/types'
 
@@ -90,6 +90,34 @@ function Breakdown({ components }: { components: ScoreComponent[] }) {
   )
 }
 
+/** tmot7slo7q: the numbered path from "no certificate" to one you can show, left to right.
+ *  Only the step you are on spells out what to do. */
+function StepsTile({ steps }: { steps: CertStep[] }) {
+  const current = steps.find((s) => s.state === 'current')
+  return (
+    <div className="mb-5 rounded-2xl border border-line bg-surface p-4">
+      <ol className="grid gap-3 sm:grid-flow-col sm:auto-cols-fr" aria-label="Langkah membuat sertifikat">
+        {steps.map((s, i) => (
+          <li key={s.key} className="flex items-center gap-2.5" aria-current={s.state === 'current' ? 'step' : undefined}>
+            <span
+              className={clsx(
+                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                s.state === 'done' && 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+                s.state === 'current' && 'bg-brand-600 text-white',
+                s.state === 'todo' && 'bg-line text-muted',
+              )}
+            >
+              {s.state === 'done' ? <Check className="h-4 w-4" /> : i + 1}
+            </span>
+            <span className={clsx('text-sm font-medium', s.state === 'current' ? 'text-ink' : 'text-muted')}>{s.label}</span>
+          </li>
+        ))}
+      </ol>
+      {current && <p className="mt-3 border-t border-line pt-3 text-sm text-muted">{current.desc}</p>}
+    </div>
+  )
+}
+
 export default function Certificate() {
   const { name } = useParams<{ name: string }>()
   const isNew = !name || name === 'new'
@@ -98,6 +126,7 @@ export default function Certificate() {
   const confirm = useConfirm()
 
   const detail = useCertificate(isNew ? undefined : name)
+  const access = useCertificateAccess()
   const interns = useIssuableInterns(isNew)
   const save = useSaveCertificate()
   const setStatus = useSetCertificateStatus()
@@ -236,6 +265,10 @@ export default function Certificate() {
             ))}
             {doc && canDownload(doc) && (
               <>
+                <a href={certificateApi.certificatePdfUrl(doc.name, true)} target="_blank" rel="noopener"
+                   className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
+                  <Eye className="h-4 w-4" /> Lihat sertifikat
+                </a>
                 <a href={certificateApi.certificatePdfUrl(doc.name)}
                    className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink transition hover:bg-line/50">
                   <Download className="h-4 w-4" /> Unduh PDF
@@ -259,6 +292,24 @@ export default function Certificate() {
         <p className="mb-5 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
           Dicabut {doc.revoked_on}: {doc.revoke_reason}
         </p>
+      )}
+
+      {/* Issuers only: an intern opening their own certificate has nothing to do here. */}
+      {access.data?.can_issue && <StepsTile
+        steps={certificateSteps(
+          doc ? { status: doc.status, rubric } : null,
+          doc ? doc.is_hr : !!access.data?.is_hr,
+        )}
+      />}
+
+      {doc && canDownload(doc) && (
+        <Section title="Sertifikat" divider={false}>
+          <iframe
+            src={certificateApi.certificatePdfUrl(doc.name, true)}
+            title="Sertifikat"
+            className="mb-6 aspect-[297/210] w-full rounded-2xl border border-line bg-white"
+          />
+        </Section>
       )}
 
       {/* ---------- the two scores, side by side, never merged ---------- */}
