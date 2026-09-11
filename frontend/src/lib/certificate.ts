@@ -126,6 +126,70 @@ export function canDownload(detail: Pick<CertificateDetail, 'status'>): boolean 
   return detail.status === 'Published'
 }
 
+// --- step-by-step flow (tmot7slo7q) ----------------------------------------------------
+// HR could not tell how to get from "no certificate yet" to one they can show. One
+// ordered list, derived from the certificate's own state, drives the numbered steps on
+// both detail screens and the "how it works" card on both list screens. HR may publish
+// straight from a draft, so their list has no "send to HR" step.
+
+export type CertStepState = 'done' | 'current' | 'todo'
+
+export interface CertStep {
+  key: 'intern' | 'rubric' | 'submit' | 'publish' | 'share'
+  label: string
+  desc: string
+  state: CertStepState
+}
+
+export function certificateSteps(
+  doc: Pick<CertificateDetail, 'status' | 'rubric'> | null | undefined,
+  isHr: boolean,
+): CertStep[] {
+  const status = doc?.status
+  const issued = status === 'Published' || status === 'Revoked'
+  const rubric = doc ? rubricProgress(doc.rubric) : { done: 0, total: 0 }
+  const raw: (Omit<CertStep, 'state'> & { done: boolean })[] = [
+    {
+      key: 'intern',
+      label: 'Pilih peserta & periode',
+      desc: 'Pilih peserta magang, proyek dan periode magangnya, lalu tekan Simpan draf.',
+      done: !!doc,
+    },
+    {
+      key: 'rubric',
+      label: 'Isi penilaian pembimbing',
+      desc: 'Beri nilai setiap kriteria dan tulis catatan singkat yang akan dicetak di sertifikat.',
+      done: !!doc && (status !== 'Draft' || (rubric.total > 0 && rubric.done === rubric.total)),
+    },
+    ...(isHr
+      ? []
+      : [{
+          key: 'submit' as const,
+          label: 'Ajukan ke HR',
+          desc: 'Tekan Ajukan ke HR. HR akan memeriksa lalu menerbitkannya.',
+          done: status === 'Pending HR' || issued,
+        }]),
+    {
+      key: 'publish',
+      label: isHr ? 'Terbitkan' : 'HR menerbitkan',
+      desc: isHr
+        ? 'Periksa isinya, lalu tekan Terbitkan. Nomor sertifikat dan kode verifikasi dibuat otomatis.'
+        : 'Menunggu HR. Setelah terbit, nilai dikunci dan sertifikat tidak bisa diubah lagi.',
+      done: issued,
+    },
+    {
+      key: 'share',
+      label: 'Lihat & bagikan',
+      desc: status === 'Revoked'
+        ? 'Sertifikat ini sudah dicabut. Tautan verifikasinya kini menunjukkan status dicabut.'
+        : 'Tekan Lihat sertifikat untuk menampilkannya, Unduh PDF untuk menyimpan, atau salin tautan verifikasi (QR).',
+      done: status === 'Revoked',
+    },
+  ]
+  const current = raw.findIndex((s) => !s.done)
+  return raw.map(({ done, ...s }, i) => ({ ...s, state: done ? 'done' : i === current ? 'current' : 'todo' }))
+}
+
 // --- (i) help ------------------------------------------------------------------------
 // Everything here is a question a real reader asks. Keep the answers concrete.
 
