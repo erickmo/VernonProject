@@ -525,6 +525,78 @@ class TestProjectTodo(unittest.TestCase):
 		frappe.db.set_value("Project Todo", t.name, "status", "🟠 Done", update_modified=False)
 		return frappe.get_doc("Project Todo", t.name)
 
+	def _as_leader(self):
+		"""test_user as this project's leader (not owner, not System Manager)."""
+		leader = "test_user@example.com"
+		frappe.get_doc("User", leader).add_roles("Project Leader")
+		self.addCleanup(lambda: frappe.get_doc("User", leader).remove_roles("Project Leader"))
+		frappe.db.set_value("Project", self.project.name, "project_leader", leader)
+		return leader
+
+	def test_leader_cannot_skip_the_owner_approval_through_generic_saves(self):
+		"""The approval ladder lives in update_status: only the project owner takes a
+		todo to Completed, and only an owner with the Partner role sets auto-approve.
+		A leader holds write on the todo, so a generic save (PUT /api/resource, i.e.
+		frappe.client.set_value) could set status straight to Completed, or switch the
+		todo's auto-approve on, and skip the owner. Creating a task through the same
+		generic insert the frontend uses could start it Completed."""
+		leader = self._as_leader()
+		t = self._make_todo(assigned_to="test_user2@example.com")
+		frappe.db.set_value("Project Todo", t.name, "status", "🔷 Checked By PL", update_modified=False)
+		frappe.set_user(leader)
+		try:
+			for field, value in (("status", "✅ Completed"), ("auto_approve", 1)):
+				with self.assertRaises(frappe.PermissionError, msg=field):
+					frappe.client.set_value("Project Todo", t.name, field, value)
+			with self.assertRaises(frappe.PermissionError):
+				frappe.client.insert({
+					"doctype": "Project Todo", "project_detail": self.project_detail.name,
+					"to_do": "born completed", "assigned_to": "test_user2@example.com",
+					"start_date": nowdate(), "deadline": add_days(nowdate(), 3), "estimated": 30,
+					"group": self.group, "level_id": self.level_id, "status": "✅ Completed",
+				})
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Project Todo", t.name, ["status", "auto_approve"]), ("🔷 Checked By PL", 0))
+		self.assertFalse(frappe.db.exists("Point Ledger", {"todo": t.name}))
+		self.assertFalse(frappe.db.exists("Project Todo", {"to_do": "born completed"}))
+
+	def test_leader_cannot_turn_on_project_auto_approve(self):
+		"""Project auto-approve skips the owner gate for every todo in the project, and
+		set_project_auto_approve reserves it for the owner with the Partner role; the
+		owner/leader update_project endpoint must not hand it to the leader."""
+		from vernon_project.api.project import update_project
+		leader = self._as_leader()
+		frappe.set_user(leader)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				update_project(self.project.name, {"auto_approve": 1})
+			update_project(self.project.name, {"goal": "leaders still edit the rest"})
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Project", self.project.name, ["auto_approve", "goal"]),
+			(0, "leaders still edit the rest"))
+
+	def test_deleting_a_todo_takes_its_earnings_with_it(self):
+		"""Only a Planned or Cancelled todo can be deleted, and leaving Completed already
+		removes its earnings, so it never holds any, unless its status was set around
+		the controller. Test teardowns do exactly that (fake Planned, then delete), and
+		the orphaned earnings put "Test User" on the live leaderboard. Priority-miss
+		penalties are history and stay (with the link released)."""
+		t = self._make_todo()
+		frappe.db.set_value("Project Todo", t.name, "status", "✅ Completed", update_modified=False)
+		frappe.get_doc("Project Todo", t.name).sync_point_ledger()
+		frappe.get_doc({"doctype": "Point Ledger", "user": self.owner_user, "todo": t.name,
+			"source": "Priority", "points_earned": -5, "credited_on": now_datetime()}).insert(ignore_permissions=True)
+		self.assertTrue(frappe.db.exists("Point Ledger", {"todo": t.name, "source": "Todo"}))
+		frappe.db.set_value("Project Todo", t.name, "status", "⚪️ Planned", update_modified=False)
+		frappe.delete_doc("Project Todo", t.name, ignore_permissions=True, force=True)
+		self.assertFalse(frappe.db.exists("Point Ledger", {"todo": t.name}))
+		penalty = frappe.get_all("Point Ledger", filters={"source": "Priority", "points_earned": -5,
+			"user": self.owner_user, "todo": ["is", "not set"]}, pluck="name", order_by="creation desc", limit=1)
+		self.assertTrue(penalty)
+		frappe.delete_doc("Point Ledger", penalty[0], ignore_permissions=True, force=True)
+
 	def test_done_todo_rejects_edits_to_its_information(self):
 		t = self._done(notes="asli", checklist="- [ ] a")
 		blocker = self._make_todo(to_do="blocker")

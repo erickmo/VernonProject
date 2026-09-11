@@ -105,6 +105,7 @@ class ProjectTodo(Document):
 		self.validate_estimated_max()
 		self.validate_estimated_min()
 		self.validate_project_admin_status_update()
+		self.validate_workflow_fields()
 		self.calculate_total_estimated_hours()
 		self.track_phase_changes()
 		self.track_waiting()
@@ -283,6 +284,27 @@ class ProjectTodo(Document):
 		if user != owner and user != leader and user not in get_project_admins(project_name):
 			frappe.throw(
 				_("Only the Project Owner, Leader or Admin can create tasks."),
+				frappe.PermissionError,
+			)
+
+	def validate_workflow_fields(self):
+		"""Status and the auto-approve override move only through the app's own
+		endpoints (update_status, reject_status, undo_approval, set_auto_approve,
+		cancel/restore, the follow-up hand-off), which gate the caller and save with
+		ignore_permissions. A generic save (PUT /api/resource, frappe.client, Desk) runs
+		on plain write permission, which every project owner, leader and admin holds, so
+		a leader could set Completed, or switch auto-approve on, and skip the owner's
+		approval. A generically created task starts Planned for the same reason."""
+		if self.flags.ignore_permissions or "System Manager" in frappe.get_roles():
+			return
+		old = self.get_old_doc()
+		before = old or {"status": PLANNED, "auto_approve": 0, "auto_approve_opt_out": 0}
+		changed = [f for f in ("status", "auto_approve", "auto_approve_opt_out")
+				   if cstr(self.get(f) or 0) != cstr(before.get(f) or 0)]
+		if changed:
+			frappe.throw(
+				_("{0} can only be changed through the task's own actions (mark done, approve, reject, cancel).").format(
+					", ".join(changed)),
 				frappe.PermissionError,
 			)
 
@@ -933,6 +955,11 @@ class ProjectTodo(Document):
 		frappe.db.set_value(
 			"Point Ledger", {"todo": self.name, "source": "Priority"}, "todo", None
 		)
+		# Earnings belong to the todo. A Planned/Cancelled todo has none (leaving
+		# Completed already removed them) unless its status was set around the
+		# controller, which test teardowns do before deleting completed fixtures; those
+		# orphaned rows were landing on the live leaderboard.
+		frappe.db.delete("Point Ledger", {"todo": self.name, "source": ["in", OWNED_LEDGER_SOURCES]})
 		# Issues logged against this task outlive it — release the link so the delete
 		# isn't blocked by it and no dangling reference is left behind.
 		for child in frappe.get_all("Project Todo", filters={"issue_of": self.name}, pluck="name"):
