@@ -2,6 +2,7 @@
 # See license.txt
 
 import frappe
+import pymysql
 
 from vernon_project.fixtures_for_tests import ensure_user
 import unittest
@@ -622,6 +623,121 @@ class TestProjectTodo(unittest.TestCase):
 			fields=["deadline"])
 		self.assertEqual(len(kids), 1, "resume must not backfill missed occurrences")
 		self.assertEqual(str(kids[0].deadline), nowdate())
+
+	# ------------------------------------------------------------------
+	# Point Ledger ownership + the double-mint race.
+	# ------------------------------------------------------------------
+
+	def _react_to(self, todo_name, reactor="test_user2@example.com"):
+		"""A teammate's Recognition credit, exactly as _recognition_credit writes it:
+		no `role` passed. Point Ledger.role is a Select whose first option is
+		"Assignee", so frappe stamps that on the row -- which is what made the old
+		(todo, role) probe collide with it."""
+		row = frappe.get_doc({
+			"doctype": "Point Ledger", "user": "test_user@example.com",
+			"todo": todo_name, "granted_by": reactor, "source": "Recognition",
+			"points_earned": 2, "credited_on": now_datetime(),
+		}).insert(ignore_permissions=True)
+		self.addCleanup(self._drop_ledger, todo_name)
+		self.assertEqual(
+			frappe.db.get_value("Point Ledger", row.name, "role"), "Assignee",
+			"precondition: frappe defaults role to the Select's first option",
+		)
+		return row
+
+	def _drop_ledger(self, todo_name):
+		for n in frappe.get_all("Point Ledger", filters={"todo": todo_name}, pluck="name"):
+			frappe.delete_doc("Point Ledger", n, ignore_permissions=True, force=True)
+		frappe.db.commit()
+
+	def test_completion_does_not_overwrite_an_earlier_recognition_credit(self):
+		"""React-then-complete must leave the teammate's credit alone.
+
+		_upsert_ledger_row probed {todo, role, source != "Priority"}, which matched the
+		Recognition row above and doc.save()'d the assignee award straight over it --
+		silent, order-dependent data loss.
+		"""
+		todo = self._make_todo(assigned_to="test_user@example.com")
+		rec = self._react_to(todo.name)
+
+		todo.reload()
+		todo.status = "✅ Completed"
+		todo.save(ignore_permissions=True)
+
+		self.assertTrue(
+			frappe.db.exists("Point Ledger", rec.name),
+			"completion deleted or overwrote the recognition credit",
+		)
+		self.assertEqual(
+			frappe.db.get_value("Point Ledger", rec.name, "source"), "Recognition",
+			"the recognition row was rewritten into the assignee award",
+		)
+		self.assertTrue(
+			frappe.db.exists("Point Ledger", {"todo": todo.name, "role": "Assignee", "source": "Todo"}),
+			"the assignee award was not minted as its own row",
+		)
+
+	def test_uncompleting_keeps_other_peoples_recognition_credits(self):
+		"""_remove_ledger deleted every non-Priority row for the todo, so reverting out
+		of Completed wiped teammates' recognition credits too. It owns Todo/Mentoring."""
+		todo = self._make_todo(assigned_to="test_user@example.com")
+		rec = self._react_to(todo.name)
+		todo.reload(); todo.status = "✅ Completed"; todo.save(ignore_permissions=True)
+		self.assertTrue(frappe.db.exists("Point Ledger", {"todo": todo.name, "source": "Todo"}))
+
+		todo.reload(); todo.status = "⚪️ Planned"; todo.save(ignore_permissions=True)
+
+		self.assertTrue(
+			frappe.db.exists("Point Ledger", rec.name),
+			"un-completing deleted a teammate's recognition credit",
+		)
+		self.assertFalse(
+			frappe.db.exists("Point Ledger", {"todo": todo.name, "source": "Todo"}),
+			"un-completing should still remove the todo's own award rows",
+		)
+
+	def test_ledger_read_blocks_while_another_completion_holds_the_rows(self):
+		"""The double-mint guard: a second completion must block on the first one's
+		row locks until it commits, instead of finding no row and inserting again."""
+		todo = self._make_todo(assigned_to="test_user@example.com")
+		# A real row, not an empty range: two transactions may both hold the same GAP
+		# lock, so with no rows nothing would block and this would prove nothing.
+		frappe.get_doc({
+			"doctype": "Point Ledger", "user": "test_user@example.com", "todo": todo.name,
+			"role": "Assignee", "source": "Todo", "points_earned": 5,
+			"credited_on": now_datetime(),
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		self.addCleanup(self._drop_ledger, todo.name)
+
+		# keep the session timeout tweak from leaking into later tests
+		orig = frappe.db.sql("select @@session.innodb_lock_wait_timeout")[0][0]
+		other = pymysql.connect(
+			host=frappe.conf.db_host or "127.0.0.1",
+			port=int(frappe.conf.db_port or 3306),
+			user=frappe.conf.db_name,
+			password=frappe.conf.db_password,
+			database=frappe.conf.db_name,
+		)
+		try:
+			cur = other.cursor()
+			cur.execute("start transaction")
+			cur.execute("select name from `tabPoint Ledger` where todo=%s for update", (todo.name,))
+			self.assertEqual(len(cur.fetchall()), 1, "probe did not lock the todo's ledger rows")
+
+			frappe.db.sql("set session innodb_lock_wait_timeout=3")
+			with self.assertRaises(Exception) as caught:
+				todo._ledger_rows_for_update()
+			# Specific, not a bare Exception: asserting any Exception is what let the
+			# first version of test_cuti_grant_lock pass with its lock removed.
+			self.assertIn("lock wait timeout", str(caught.exception).lower())
+		finally:
+			try:
+				other.rollback(); other.close()
+			except Exception:
+				pass
+			frappe.db.rollback()
+			frappe.db.sql(f"set session innodb_lock_wait_timeout={int(orig)}")
 
 	def test_scheduler_survives_a_series_that_fails_with_a_long_error(self):
 		"""One bad series must be logged and skipped, not abort the whole nightly run.
