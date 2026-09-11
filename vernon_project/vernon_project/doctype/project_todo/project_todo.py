@@ -398,9 +398,12 @@ class ProjectTodo(Document):
 		bleeds a penalty the assignee had no way to avoid.
 
 		`for update` holds next-key locks on the range until COMMIT, so a second
-		claimant blocks here and then counts the first one. Verified with EXPLAIN that
-		this uses assigned_to_status_index (rows=2), so it locks one assignee's todos
-		rather than every todo sharing the deadline date -- no extra index needed.
+		claimant blocks here and then counts the first one. The optimizer picks the
+		range: assigned_to_status_index (one assignee's todos) or deadline_index (every
+		todo due that day -- EXPLAIN chose it, rows=75, for a busy assignee on
+		2026-09-12). Both ranges hold every row that could take this (assignee, date)
+		slot, so the cap holds either way; the deadline plan only makes a concurrent
+		save of any same-day todo wait for this commit.
 
 		ponytail: an EMPTY range has no records to lock, only a gap, and two
 		transactions may hold the same gap lock -- so two first-ever claims for one

@@ -187,16 +187,6 @@ export const mobileApi = {
       can_advance?: boolean
       next_status_label?: string | null
     }>('vernon_project.api.project_todo.update_status', { todo_id: todoId }),
-  bulkAdvance: (todoIds: string[]) =>
-    api.post<{ status: string; approved: number; failed: number }>(
-      'vernon_project.api.project_todo.bulk_update_status',
-      { todo_ids: JSON.stringify(todoIds) },
-    ),
-  bulkReject: (todoIds: string[], reason: string) =>
-    api.post<{ status: string; rejected: number; failed: number }>(
-      'vernon_project.api.project_todo.bulk_reject_status',
-      { todo_ids: JSON.stringify(todoIds), reason },
-    ),
   rejectStatus: (todoId: string, reason: string) =>
     api.post<{ status: string; message: string; status_key?: string }>(
       'vernon_project.api.project_todo.reject_status',
@@ -358,14 +348,6 @@ export const mobileApi = {
       full_name: payload.full_name,
       roles: JSON.stringify(payload.roles),
       send_welcome: payload.send_welcome ? 1 : 0,
-      member_type: payload.member_type,
-    }),
-  updateUser: (user: string, payload: import('./types').UserFormPayload) =>
-    api.post<{ name: string }>(M + 'update_user', {
-      user,
-      full_name: payload.full_name,
-      roles: JSON.stringify(payload.roles),
-      enabled: payload.enabled,
       member_type: payload.member_type,
     }),
   resetUserPassword: (user: string) =>

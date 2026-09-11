@@ -172,50 +172,6 @@ def update_status(todo_id):
 			return {"status": "error", "message": str(e)}
 
 @frappe.whitelist()
-def bulk_update_status(todo_ids):
-	"""Advance many Project Todos one step each — bulk approve from the review queue.
-
-	Reuses the per-todo, permission-checked update_status so every item obeys the same
-	gates and mints points exactly as a single approve would. Never aborts the batch on
-	one failure: collects a per-id result and returns approved/failed counts.
-	"""
-	import json
-	ids = todo_ids if isinstance(todo_ids, (list, tuple)) else json.loads(todo_ids or "[]")
-	results = []
-	approved = 0
-	for tid in ids:
-		res = update_status(tid)
-		ok = res.get("status") != "error"
-		if ok:
-			approved += 1
-		results.append({"todo_id": tid, "ok": ok, "message": res.get("message")})
-	return {"status": "ok", "approved": approved, "failed": len(ids) - approved, "results": results}
-
-@frappe.whitelist()
-def bulk_reject_status(todo_ids, reason=None):
-	"""Reject many Project Todos with ONE shared reason — bulk reject from the review queue.
-
-	Reuses the per-todo, permission-checked reject_status so every item obeys the same
-	gates (owner/leader only, review stages only) and the assignee gets notified. Never
-	aborts the batch on one failure: collects a per-id result and returns rejected/failed
-	counts. Reason is validated once up front (reject_status re-validates per item anyway).
-	"""
-	import json
-	reason = (reason or "").strip()
-	if not reason:
-		return {"status": "error", "message": "Alasan penolakan wajib diisi."}
-	ids = todo_ids if isinstance(todo_ids, (list, tuple)) else json.loads(todo_ids or "[]")
-	results = []
-	rejected = 0
-	for tid in ids:
-		res = reject_status(tid, reason)
-		ok = res.get("status") != "error"
-		if ok:
-			rejected += 1
-		results.append({"todo_id": tid, "ok": ok, "message": res.get("message")})
-	return {"status": "ok", "rejected": rejected, "failed": len(ids) - rejected, "results": results}
-
-@frappe.whitelist()
 def set_auto_approve(todo_id, mode):
 	"""Set a todo's auto-approve override: "on" (force skip Owner gate), "off"
 	(force wait, opt out of the project default), or "inherit" (follow the
@@ -1174,7 +1130,7 @@ def _assert_can_edit_todo(todo_id):
 		frappe.throw("Files can't be changed: this todo is already marked done. Only comments can still be added.")
 
 
-@frappe.whitelist()
+# Not whitelisted: files reach both frontends inside get_project_item.
 def list_todo_files(todo_id):
 	"""Files attached to a Project Todo, oldest first. A user who can open the
 	todo can list its files; downloading a private file is separately enforced by
