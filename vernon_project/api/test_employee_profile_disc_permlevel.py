@@ -13,7 +13,7 @@ class TestEmployeeProfileDiscPermlevel(unittest.TestCase):
 	disc_completed_on/personality_scores/personality_completed_on were
 	read_only:1 (form-only) at permlevel:0, so an employee could fabricate
 	their own DISC/personality result via frappe.client.set_value on their
-	own row, bypassing api/disc_test.py's submit_disc_test (which always
+	own row, bypassing api/disc.py's submit_disc_test (which always
 	scores server-side from raw answers, never trusts a client-sent score,
 	then saves with ignore_permissions=True -- unaffected by permlevel).
 	Fixed by moving those 5 fields to permlevel:1, same tier as the

@@ -116,7 +116,7 @@ const IN = 'vernon_project.api.income.'
 const R = 'vernon_project.api.report.'
 const LN = 'vernon_project.api.leader_notes.'
 const SP = 'vernon_project.api.superpowers.'
-const DT = 'vernon_project.api.disc_test.'
+const DT = 'vernon_project.api.disc.'
 const OV = 'vernon_project.api.overtime.'
 const H = 'vernon_project.api.habit.'
 const AN = 'vernon_project.api.announcement.'
@@ -272,8 +272,6 @@ export const mobileApi = {
       'vernon_project.api.project_todo.confirm_ai_prompt',
       { todo_id: todoId, confirmed: confirmed ? 1 : 0 },
     ),
-  listTodoFiles: (todoId: string) =>
-    api.get<TodoFile[]>('vernon_project.api.project_todo.list_todo_files', { todo_id: todoId }),
   deleteTodoFile: (todoId: string, fileName: string) =>
     api.post<{ status: string }>('vernon_project.api.project_todo.delete_todo_file', {
       todo_id: todoId,
@@ -634,8 +632,6 @@ export const mobileApi = {
     api.get<import('./types').CrateStatus>(M + 'get_crate_status'),
   openTaskCrate: () =>
     api.post<import('./types').CrateOpenResult>(M + 'open_task_crate', {}),
-  getMyAvatar: () =>
-    api.get<import('./types').AvatarConfig>(M + 'get_my_avatar'),
   saveMyAvatar: (config: import('./types').AvatarConfig, snapshot_dataurl?: string) =>
     api.post<import('./types').AvatarConfig>(M + 'save_my_avatar', {
       config_json: JSON.stringify(config),
@@ -866,8 +862,6 @@ export const mobileApi = {
     } as Record<string, unknown>),
   getEmployeeProfile: (user: string) =>
     api.get<import('./types').EmployeeProfileAdmin>(M + 'get_employee_profile', { user }),
-  updateEmployeeProfile: (user: string, payload: Record<string, unknown>) =>
-    api.post<{ status: string; message?: string }>(M + 'update_employee_profile', { user, ...payload }),
   // Atomic User + Employee Profile save (edit mode) — one request/transaction, no partial save.
   saveUserWithProfile: (user: string, payload: Record<string, unknown>) =>
     api.post<{ name: string }>('vernon_project.api.employee_admin.save_user_with_profile', {
@@ -911,7 +905,6 @@ export const mobileApi = {
       disc_answers: JSON.stringify(discAnswers),
       personality_answers: JSON.stringify(personalityAnswers),
     }),
-  resetDisc: (user: string) => api.post<{ status: string }>(DT + 'reset_disc', { user }),
   setMySuperpowers: (user: string, superpowers: string[]) =>
     api.post<MySuperpower[]>(SP + 'set_my_superpowers', {
       user,
@@ -1252,7 +1245,6 @@ export const overtimeApi = {
   setStatus: (name: string, status: string) =>
     api.post<{ name: string; status: string }>(OV + 'set_status', { name, status }),
   remove: (name: string) => api.post<{ ok: boolean }>(OV + 'delete_overtime', { name }),
-  myStatus: () => api.get<import('./types').LeaveRulesStatus>(OV + 'my_leave_rules_status'),
 }
 
 export const renameDoc = (doctype: string, oldName: string, newName: string, merge: boolean) =>
