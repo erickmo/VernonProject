@@ -31,20 +31,48 @@ ADJUSTMENT_TYPES = ("Carry-over", "Bonus", "Correction")
 
 # ---------------------------------------------------------------- readers
 
-def remaining(employee, year, exclude_exception=None):
+def remaining(employee, year, exclude_exception=None, for_update=False):
     """Net leave days left for (employee, year) = SUM(days).
 
     `exclude_exception` drops that exception's own Cuti rows — used by the approval
     gate so re-validating an already-minted leave never counts itself out (an edit of
     an approved cuti would otherwise see its own debit and false-reject).
+
+    `for_update` makes this a LOCKING read. The approval gate
+    (AttendanceException._check_leave_quota) is the only thing standing between two
+    concurrent approvals and an over-spent quota — leave_quota.check_request
+    deliberately lets both requests reach Pending and names this gate as the backstop.
+    An advisory lock like ensure_grant's would NOT close it, for two separate reasons:
+
+      1. InnoDB runs REPEATABLE READ here, so a plain SELECT returns the snapshot this
+         request took at its FIRST read — taken before the other approval committed.
+         The second approver would win the lock and still sum a stale ledger. A
+         locking read always reads the latest committed rows instead.
+      2. get_lock() is released when the function returns, which is before the request
+         COMMITs. The loser could acquire it in that window and read a ledger the
+         winner's debit is not in yet. Row locks are held until commit, so it blocks.
+
+    Same second layer api/events.py:143 puts on the event row for seat capacity, and
+    it serialises an approval against a concurrent ensure_grant/remint_grant too: that
+    INSERT lands in this locked range and waits. Read-only callers (statement, boot
+    payload, the HR screens) stay on the snapshot read and take no locks.
     """
-    rows = frappe.get_all(
-        DOCTYPE,
-        filters={"employee": employee, "year": int(year)},
-        fields=["days", "exception"],
-    )
+    if for_update:
+        # `employee` is indexed, so this next-key locks one employee's rows, not the table.
+        rows = frappe.db.sql(
+            "select days, exception from `tabCuti Ledger` where employee=%s and year=%s for update",
+            (employee, int(year)),
+            as_dict=True,
+        )
+    else:
+        rows = frappe.get_all(
+            DOCTYPE,
+            filters={"employee": employee, "year": int(year)},
+            fields=["days", "exception"],
+        )
+    # float(): the locking read returns Decimal where get_all returns float — keep one type.
     return sum(
-        (r.days or 0)
+        float(r.days or 0)
         for r in rows
         if not (exclude_exception and r.exception == exclude_exception)
     )
