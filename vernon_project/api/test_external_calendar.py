@@ -128,3 +128,42 @@ class TestGetCalendarMerge(unittest.TestCase):
 		keys = {e["name"] for e in result["external_events"]}
 		self.assertIn("TEST:merge-1", keys)
 		self.assertNotIn("TEST:merge-2", keys)
+
+
+class TestGenericWritesAreRefused(unittest.TestCase):
+	"""Only sync_events writes these (System Manager; it saves with ignore_permissions).
+	The role grid also gave every Project Owner and Leader write/create/delete, which no
+	flow uses: a generic save could plant a company-wide calendar event with a link, or
+	rewrite or cancel a mirrored class session."""
+
+	LEADER = "calsync-leader@test.local"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		if not frappe.db.exists("User", self.LEADER):
+			frappe.get_doc({
+				"doctype": "User", "email": self.LEADER, "first_name": "Cal Leader", "send_welcome_email": 0,
+			}).insert(ignore_permissions=True)
+		frappe.get_doc("User", self.LEADER).add_roles("Project Leader")
+		sync_events(SITE, [_event("TEST:real-1")])
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.get_doc("User", self.LEADER).remove_roles("Project Leader")
+		frappe.db.delete("External Calendar Event", {"external_key": ["like", "TEST:%"]})
+		frappe.db.commit()
+
+	def test_a_project_leader_cannot_plant_edit_or_delete_events(self):
+		frappe.set_user(self.LEADER)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				frappe.client.insert({"doctype": "External Calendar Event", **_event("TEST:planted"),
+					"source_site": SITE, "url": "https://example.invalid/login"})
+			with self.assertRaises(frappe.PermissionError):
+				frappe.client.set_value("External Calendar Event", "TEST:real-1", "cancelled", 1)
+			with self.assertRaises(frappe.PermissionError):
+				frappe.client.delete("External Calendar Event", "TEST:real-1")
+		finally:
+			frappe.set_user("Administrator")
+		self.assertFalse(frappe.db.exists("External Calendar Event", "TEST:planted"))
+		self.assertEqual(frappe.db.get_value("External Calendar Event", "TEST:real-1", "cancelled"), 0)
