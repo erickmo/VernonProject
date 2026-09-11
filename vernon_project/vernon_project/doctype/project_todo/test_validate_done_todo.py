@@ -195,14 +195,15 @@ class TestDoneTodoFieldsLockedOnSave(unittest.TestCase):
         )
 
     def test_saving_a_done_todo_with_no_protected_change_is_allowed(self):
-        """A non-Planned todo is not read-only -- only the protected fields are."""
+        """A done todo still saves when nothing a person typed changed (e.g. a workflow
+        step). Since 52r6l30cs4 its title IS locked: the owner froze all of a done
+        todo's information except comments (this test used to rename it)."""
         todo = self._done_todo()
+        todo.save(ignore_permissions=True)  # no-change save: fine
+        todo.reload()
         todo.to_do = "renamed while done"
-        todo.save(ignore_permissions=True)
-        frappe.db.commit()
-        self.assertEqual(
-            frappe.db.get_value("Project Todo", todo.name, "to_do"), "renamed while done"
-        )
+        with self.assertRaises(frappe.ValidationError):
+            todo.save(ignore_permissions=True)
 
 
 if __name__ == "__main__":

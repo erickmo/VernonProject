@@ -8,15 +8,16 @@
 # and adds it to every date field of every ACTIVE todo underneath, plus the
 # container's own dates. Delta may be negative (pull the schedule earlier).
 #
-# Active = status NOT IN the three terminal states; Done/Completed/Cancelled todos
-# are skipped so their locked-field validation never triggers. Uniform delta keeps
-# start_date <= deadline, so validate_start_date stays happy.
+# Active = still Planned. Every other status (Done, Checked By PL, Completed,
+# Cancelled) is finished work whose dates are locked (validate_done_todo_fields), so it
+# is skipped — "Checked By PL" used to be shifted too and made the whole postpone throw.
+# Uniform delta keeps start_date <= deadline, so validate_start_date stays happy.
 
 import frappe
 from frappe.utils import getdate, add_days
 
 # Terminal statuses — verbatim option strings from `tabProject Todo`.`status`.
-TERMINAL_STATUSES = ["\U0001f6ab Cancelled", "\U0001f7e0 Done", "✅ Completed"]
+PLANNED = "⚪️ Planned"
 
 
 @frappe.whitelist()
@@ -49,7 +50,7 @@ def postpone(target_type, target_name, new_date):
 			# Fall back to the latest deadline across the detail's active todos.
 			anchor = frappe.db.get_value(
 				"Project Todo",
-				{**filt, "status": ["not in", TERMINAL_STATUSES]},
+				{**filt, "status": PLANNED},
 				"max(deadline)",
 			)
 
@@ -66,12 +67,10 @@ def postpone(target_type, target_name, new_date):
 	# --- Scope ---------------------------------------------------------------
 	active_names = frappe.get_all(
 		"Project Todo",
-		filters={**filt, "status": ["not in", TERMINAL_STATUSES]},
+		filters={**filt, "status": PLANNED},
 		pluck="name",
 	)
-	skipped_count = frappe.db.count(
-		"Project Todo", {**filt, "status": ["in", TERMINAL_STATUSES]}
-	)
+	skipped_count = frappe.db.count("Project Todo", {**filt, "status": ["!=", PLANNED]})
 
 	# --- Shift each active todo ---------------------------------------------
 	for name in active_names:

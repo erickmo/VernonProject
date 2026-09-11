@@ -132,13 +132,15 @@ export function useTodoMenuGroups(
     label: t.to_do || 'Todo',
     items: [
       { key: 't-open', label: 'Open', icon: ExternalLink, onClick: go(`/project-item/${item}`) },
-      { key: 't-edit', label: 'Edit', icon: Pencil, onClick: go(`/project-item/${item}?edit=1`) },
+      // 52r6l30cs4: past Planned a todo is read-only except comments (server-enforced),
+      // so Edit, Today and priority are offered on Planned todos only.
+      ...(t.status_key === 'planned' ? [{ key: 't-edit', label: 'Edit', icon: Pencil, onClick: go(`/project-item/${item}?edit=1`) }] : []),
       { key: 't-focus', label: 'Focus', icon: Play, onClick: () => onFocusPill() },
       { key: 't-note', label: 'Add focus note', icon: StickyNote, onClick: overlays.onAddFocusNote },
       // Only the assignee sets the day-plan (backend enforces it too).
-      ...(t.is_mine ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
+      ...(t.is_mine && t.status_key === 'planned' ? [{ key: 't-today', label: planned ? 'Remove from Today' : 'Add to Today', icon: CalendarCheck, onClick: toggleToday }] : []),
       // Leader/owner/admin can flag this todo a priority for its deadline day (cap-enforced server-side).
-      ...(t.can_prioritize ? [{ key: 't-priority', label: t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas', icon: Zap, onClick: () => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority }) }] : []),
+      ...(t.can_prioritize && t.status_key === 'planned' ? [{ key: 't-priority', label: t.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas', icon: Zap, onClick: () => setPriority.mutate({ todoName: t.name, isPriority: !t.is_priority }) }] : []),
       // Flag/unflag this task as AI work — phase 0 <-> 1 of the AI ladder (only tagged todos
       // show a phase chip). Full Human/AI/Both picker lives in the edit form. Needs the "AI User"
       // role on top of assignee/leadership; untagging stays open so a revoked user can clean up.

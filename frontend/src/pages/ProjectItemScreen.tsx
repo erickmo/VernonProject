@@ -124,7 +124,6 @@ function Stepper({ current }: { current: string }) {
 function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => void }) {
   const update = useUpdateTodo(data.name)
   const toast = useToast()
-  const locked = data.fields_locked
   const [toDo, setToDo] = useState(data.to_do)
   const [assignee, setAssignee] = useState(data.assigned_to)
   const [mentor, setMentor] = useState(data.mentor ?? '')
@@ -148,26 +147,24 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       toast('error', 'Group and type are required')
       return
     }
-    if (!locked && !deadline) {
+    if (!deadline) {
       toast('error', 'Deadline is required')
       return
     }
-    if (!locked && !startDate) {
+    if (!startDate) {
       toast('error', 'Start date is required')
       return
     }
-    if (!locked && startDate && deadline && startDate > deadline) {
+    if (startDate && deadline && startDate > deadline) {
       toast('error', 'Start date cannot be after the deadline')
       return
     }
     const fields: Record<string, unknown> = { to_do: toDo }
-    if (!locked) {
-      fields.assigned_to = assignee
-      fields.start_date = startDate
-      fields.deadline = deadline
-      if (data.can_edit_estimate) {
-        fields.estimated = estimated === '' ? 0 : Number(estimated)
-      }
+    fields.assigned_to = assignee
+    fields.start_date = startDate
+    fields.deadline = deadline
+    if (data.can_edit_estimate) {
+      fields.estimated = estimated === '' ? 0 : Number(estimated)
     }
     // Mentor credit is leader/owner-set (backend re-checks). Empty clears it.
     if (data.can_edit_estimate) {
@@ -227,7 +224,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
       <div className="mb-3">
         <SearchableSelect
           value={assignee}
-          disabled={locked}
           onChange={setAssignee}
           options={team.map((m) => ({ value: m.user, label: m.name }))}
           placeholder="Select a team member…"
@@ -268,7 +264,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
         <input
           type="date"
           value={startDate}
-          disabled={locked}
           onChange={(e) => setStartDate(e.target.value)}
           className={field}
         />
@@ -280,7 +275,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           <input
             type="date"
             value={deadline}
-            disabled={locked}
             onChange={(e) => setDeadline(e.target.value)}
             className={field}
           />
@@ -293,7 +287,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
               inputMode="numeric"
               min={0}
               value={estimated}
-              disabled={locked}
               onChange={(e) => setEstimated(e.target.value)}
               className={field}
             />
@@ -336,13 +329,6 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
             options={data.detail_todos.map((t) => ({ value: t.name, label: t.to_do }))}
           />
         </div>
-      )}
-
-      {locked && (
-        <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          <Lock className="h-3.5 w-3.5" />
-          Assignee, start date, deadline &amp; estimate are locked once a todo is Done.
-        </p>
       )}
 
       {/* Assigned plan (leader/SM-editable) — moved here from the detail view */}
@@ -1466,7 +1452,15 @@ const [followOpen, setFollowOpen] = useState(false)
   const canWait = data.can_edit && data.status_key === 'planned'
 
   const editBtn =
-    data.can_edit && !editing ? (
+    // 52r6l30cs4: past Planned a todo is read-only except comments (server-enforced).
+    data.can_edit && data.fields_locked ? (
+      <span
+        title="Done todos are read-only. Comments stay open."
+        className="flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400"
+      >
+        <Lock className="h-4 w-4" /> Read-only
+      </span>
+    ) : data.can_edit && !editing ? (
       <button
         onClick={() => setEditing(true)}
         className="flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/15 px-3.5 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 transition active:scale-95"
@@ -1480,7 +1474,7 @@ const [followOpen, setFollowOpen] = useState(false)
       {editBtn}
       <TopMenu
         items={[
-          ...(data.can_prioritize && data.status_key !== 'cancelled' && (boot?.settings?.daily_priority_slots ?? 0) > 0
+          ...(data.can_prioritize && data.status_key === 'planned' && (boot?.settings?.daily_priority_slots ?? 0) > 0
             ? [
                 {
                   label: data.is_priority ? 'Lepas prioritas' : 'Jadikan prioritas',
@@ -1560,7 +1554,7 @@ const [followOpen, setFollowOpen] = useState(false)
 
   return (
     <DetailScreen title="Todo" right={topActions} headerPortalTarget={headerPortalTarget}>
-      {editing && <EditForm data={data} onClose={() => setEditing(false)} />}
+      {editing && !data.fields_locked && <EditForm data={data} onClose={() => setEditing(false)} />}
       {data.status_key === 'cancelled' && (
         <div className="mb-3">
           <CancelledNote item={data} />
@@ -1783,7 +1777,7 @@ const [followOpen, setFollowOpen] = useState(false)
         </div>
 
       {/* My day plan: editable for assignee, read-only for others */}
-      {data.is_mine ? (
+      {data.is_mine && !data.fields_locked ? (
         <AllocationCard data={data} />
       ) : (
         (data.allocations ?? []).length > 0 && (

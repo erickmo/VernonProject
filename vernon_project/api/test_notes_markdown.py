@@ -303,19 +303,19 @@ class TestNotesMarkdownBackend(NotesFixture):
 		self.assertEqual(row.ai_prompt, before_ai_prompt)
 
 	def test_notes_stay_editable_past_planned_status(self):
-		"""Corrected #13: `notes` is not in validate_done_todo_fields()'s
-		protected_fields dict, so it is NOT frozen once the todo leaves Planned.
-		Asserting it CAN still be saved at Done, not that it's locked."""
+		"""Reversed by 52r6l30cs4: the owner froze all of a done todo's information
+		except comments, so save_notes on a Done todo now refuses and the stored notes
+		stay as they were (this test used to assert they could still be saved)."""
+		before = frappe.db.get_value("Project Todo", self.todo.name, "notes")
 		frappe.db.set_value("Project Todo", self.todo.name, "status", "🟠 Done", update_modified=False)
 		frappe.set_user(self.ASSIGNEE)
 		try:
 			res = save_notes(self.todo.name, "note added while Done")
 		finally:
 			frappe.set_user("Administrator")
-		self.assertEqual(res["status"], "ok", res.get("message"))
-		self.assertEqual(
-			frappe.db.get_value("Project Todo", self.todo.name, "notes"), "note added while Done",
-		)
+		self.assertEqual(res["status"], "error", res)
+		self.assertIn("already marked done", res["message"])
+		self.assertEqual(frappe.db.get_value("Project Todo", self.todo.name, "notes"), before)
 
 
 class TestNotesQueryCount(FrappeTestCase):

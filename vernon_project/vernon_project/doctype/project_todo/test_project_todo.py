@@ -364,7 +364,9 @@ class TestProjectTodo(unittest.TestCase):
 		self.assertIn("Assigned To", str(context.exception))
 
 	def test_edit_other_fields_when_done(self):
-		"""Test that editing other fields (not protected) is still allowed when Done"""
+		"""52r6l30cs4 changed this rule: the owner wants ALL of a done todo's
+		information frozen except comments, so notes can no longer be edited once Done
+		(this test used to assert the opposite)."""
 		self.todo.reload()
 		self.todo.status = "🟠 Done"
 		self.todo.save(ignore_permissions=True)
@@ -372,19 +374,9 @@ class TestProjectTodo(unittest.TestCase):
 
 		self.todo.reload()
 		self.todo.notes = "Updated notes after completion"
-
-		try:
+		with self.assertRaises(frappe.ValidationError) as caught:
 			self.todo.save(ignore_permissions=True)
-			success = True
-		except frappe.ValidationError as e:
-			if "Cannot modify" in str(e):
-				success = False
-			else:
-				raise
-		except Exception:
-			success = True  # We only care about validation error for protected fields
-
-		self.assertTrue(success, "Should be able to edit non-protected fields when status is Done")
+		self.assertIn("already marked done", str(caught.exception))
 
 	def test_status_transition_from_done_to_planned(self):
 		"""Test that changing status back from Done to Planned allows editing again"""
@@ -525,6 +517,83 @@ class TestProjectTodo(unittest.TestCase):
 			after_complete, after_scheduler,
 			"Completing a recurring todo must not duplicate the scheduler's occurrence",
 		)
+
+	# -- 52r6l30cs4: a done todo is read-only, except comments --------------------------
+
+	def _done(self, **fields):
+		t = self._make_todo(deadline=add_days(nowdate(), 3), **fields)
+		frappe.db.set_value("Project Todo", t.name, "status", "🟠 Done", update_modified=False)
+		return frappe.get_doc("Project Todo", t.name)
+
+	def test_done_todo_rejects_edits_to_its_information(self):
+		t = self._done(notes="asli", checklist="- [ ] a")
+		blocker = self._make_todo(to_do="blocker")
+		for field, value in (("to_do", "diganti"), ("notes", "diganti"), ("checklist", "- [x] a"),
+				("is_priority", 1), ("leader_deadline", add_days(nowdate(), 9))):
+			doc = frappe.get_doc("Project Todo", t.name)
+			doc.set(field, value)
+			with self.assertRaises(frappe.ValidationError, msg=field):
+				doc.save(ignore_permissions=True)
+		doc = frappe.get_doc("Project Todo", t.name)
+		doc.append("blocked_by", {"todo": blocker.name})
+		with self.assertRaises(frappe.ValidationError):
+			doc.save(ignore_permissions=True)
+		doc = frappe.get_doc("Project Todo", t.name)
+		doc.append("allocations", {"allocation_date": nowdate(), "estimated_minutes": 30})
+		with self.assertRaises(frappe.ValidationError):
+			doc.save(ignore_permissions=True)
+
+	def test_done_todo_still_moves_through_review_and_takes_comments(self):
+		from vernon_project.api.mobile import add_comment
+		t = self._done(notes="asli")
+		t.status = "🔷 Checked By PL"  # workflow field: allowed
+		t.tested_by = "Administrator"
+		t.save(ignore_permissions=True)  # unchanged tables/fields must not read as edits
+		self.assertTrue(add_comment("Project Todo", t.name, "komentar tetap boleh")["name"])
+		root = frappe.get_doc("Project Todo", t.name)
+		root.recurring_paused = 1  # series control stays usable on a done occurrence
+		root.save(ignore_permissions=True)
+
+	def test_unchanged_child_rows_do_not_count_as_edits(self):
+		blocker = self._make_todo(to_do="blocker")
+		t = self._make_todo(deadline=add_days(nowdate(), 3), blocked_by=[{"todo": blocker.name}],
+			allocations=[{"allocation_date": nowdate(), "estimated_minutes": 30}])
+		frappe.db.set_value("Project Todo", t.name, "status", "🟠 Done", update_modified=False)
+		doc = frappe.get_doc("Project Todo", t.name)  # freshly loaded rows vs DB rows
+		doc.status = "🔷 Checked By PL"
+		doc.save(ignore_permissions=True)
+
+	def test_the_save_that_marks_done_may_carry_last_edits_and_reopen_unlocks(self):
+		t = self._make_todo(deadline=add_days(nowdate(), 3), notes="draft")
+		t.reload()
+		t.notes, t.status = "final", "🟠 Done"
+		t.save(ignore_permissions=True)  # old status Planned: allowed
+		t.reload()
+		t.status = "⚪️ Planned"  # rejected / reopened
+		t.save(ignore_permissions=True)
+		t.reload()
+		t.notes = "revised after reopen"
+		t.save(ignore_permissions=True)
+
+	def test_dependency_mirror_from_another_todo_still_reaches_a_done_todo(self):
+		other = self._make_todo(to_do="other")
+		t = self._done()
+		t.append("blocked_by", {"todo": other.name})
+		t.flags.skip_block_sync = True  # what _add_block_link / _remove_block_link set
+		t.save(ignore_permissions=True)
+
+	def test_postpone_shifts_planned_and_skips_checked_todos(self):
+		from vernon_project.api.postpone import postpone
+		planned = self._make_todo(to_do="pp planned", deadline=add_days(nowdate(), 5))
+		checked = self._make_todo(to_do="pp checked", deadline=add_days(nowdate(), 5))
+		frappe.db.set_value("Project Todo", checked.name, "status", "🔷 Checked By PL", update_modified=False)
+		before = frappe.db.get_value("Project Todo", checked.name, "deadline")
+		anchor = frappe.db.get_value("Project Todo", {"project_detail": self.project_detail.name, "status": "⚪️ Planned"}, "max(deadline)")
+		frappe.db.set_value("Project Detail", self.project_detail.name, "latest_deadline", anchor)
+		res = postpone("Project Detail", self.project_detail.name, add_days(anchor, 2))
+		self.assertGreaterEqual(res["shifted_count"], 1)
+		self.assertEqual(str(frappe.db.get_value("Project Todo", planned.name, "deadline")), add_days(nowdate(), 7))
+		self.assertEqual(frappe.db.get_value("Project Todo", checked.name, "deadline"), before)
 
 	def test_done_tab_lists_everything_done_in_the_last_3_days_uncapped(self):
 		"""8ek4eg7j87: the Home Done tab = all todos I finished today and the 2 days
@@ -1407,6 +1476,21 @@ class TestProjectTodoFiles(FrappeTestCase):
 			delete_todo_file(self.todo.name, foreign.name)
 		self.assertTrue(frappe.db.exists("File", foreign.name), "foreign file must not be deleted")
 		frappe.delete_doc("File", foreign.name, force=True, ignore_permissions=True)
+
+	def test_done_todo_files_are_frozen(self):
+		"""52r6l30cs4: files are part of a done todo's frozen information — no upload,
+		no delete (comments stay open). Reopened to Planned, both work again."""
+		from vernon_project.api.project_todo import _attach_file_to_todo, delete_todo_file, list_todo_files
+		row = _attach_file_to_todo(self.todo.name, "before.txt", b"b")
+		frappe.db.set_value("Project Todo", self.todo.name, "status", "🟠 Done", update_modified=False)
+		with self.assertRaisesRegex(frappe.ValidationError, "already marked done"):
+			_attach_file_to_todo(self.todo.name, "after.txt", b"a")
+		with self.assertRaisesRegex(frappe.ValidationError, "already marked done"):
+			delete_todo_file(self.todo.name, row["name"])
+		self.assertEqual([r["name"] for r in list_todo_files(self.todo.name)], [row["name"]])
+		frappe.db.set_value("Project Todo", self.todo.name, "status", "⚪️ Planned", update_modified=False)
+		delete_todo_file(self.todo.name, row["name"])
+		self.assertEqual(list_todo_files(self.todo.name), [])
 
 	def test_download_streams_content_for_reader(self):
 		"""A user who can read the todo gets the file bytes back as a download —
