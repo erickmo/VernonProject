@@ -55,6 +55,7 @@ class Project(Document):
 
 		# Edit scope + owner-only reassignment (updates only)
 		self.validate_edit_permission()
+		self.validate_auto_approve_change()
 
 	def before_save(self):
 		self.add_owner_and_leader_to_team()
@@ -162,6 +163,22 @@ class Project(Document):
 					"Only the Project Owner can change the owner or leader.",
 					frappe.PermissionError,
 				)
+
+	def validate_auto_approve_change(self):
+		"""auto_approve skips the owner's approval for every todo in the project, and
+		set_project_auto_approve reserves it for the owner holding the Partner role.
+		Enforced here whatever the path (update_project, /api/resource, Desk) and
+		despite ignore_permissions, which update_project itself saves with."""
+		old = None if self.is_new() else self.get_doc_before_save()
+		if not old or cint(old.auto_approve) == cint(self.auto_approve):
+			return
+		roles = frappe.get_roles()
+		if "System Manager" in roles or (frappe.session.user == old.project_owner and "Partner" in roles):
+			return
+		frappe.throw(
+			"Hanya Project Owner dengan role Partner yang bisa mengatur auto-approve.",
+			frappe.PermissionError,
+		)
 
 	def on_trash(self):
 		user = frappe.session.user
