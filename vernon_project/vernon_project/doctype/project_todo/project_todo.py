@@ -42,6 +42,12 @@ def _ensure_today_minutes(
 	return int(estimated or 0) or 30
 
 
+# The Point Ledger sources sync_point_ledger owns and may overwrite or delete.
+# Recognition / Feedback (teammates' reactions) and Priority (missed-day penalties) are
+# minted elsewhere and must survive both the upsert probe and the un-complete cleanup.
+OWNED_LEDGER_SOURCES = ("Todo", "Mentoring")
+
+
 class ProjectTodo(Document):
 
 	def validate(self):
@@ -532,11 +538,41 @@ class ProjectTodo(Document):
 		# Earned points are always whole numbers.
 		return round(assignee), round(leader), round(mentor), late_days, early_days
 
-	def _upsert_ledger_row(self, role, user, points, late_days, early_days, source="Todo"):
+	def _ledger_rows_for_update(self):
+		"""Locking read of every Point Ledger row for this todo.
+
+		Two things, one statement. It serialises concurrent completions of the same
+		todo: the probe below used to be a bare exists(), so an owner double-tapping
+		Approve could have both requests find no row and both insert, crediting the
+		assignee twice. frappe's `modified` check leaks here (api/lms.py:155 measured 1
+		double-mint in 8 concurrent trials), and the live ledger carries 3 such pairs.
+		`for update` holds row locks until COMMIT, so the second completion blocks and
+		then sees the first one's row. It also returns latest-committed rows rather than
+		this transaction's snapshot, which a plain read would not under REPEATABLE READ.
+
+		`todo` is indexed, so this locks one todo's rows rather than the table.
+		"""
+		return frappe.db.sql(
+			"select name, role, source from `tabPoint Ledger` where todo=%s for update",
+			(self.name,),
+			as_dict=True,
+		)
+
+	def _upsert_ledger_row(self, role, user, points, late_days, early_days, source="Todo", rows=None):
 		if not user:
 			return
-		existing = frappe.db.exists(
-			"Point Ledger", {"todo": self.name, "role": role, "source": ["!=", "Priority"]}
+		# Match on (todo, role, source), not "any non-Priority row for this todo".
+		# Point Ledger.role is a Select whose first option is "Assignee", so frappe
+		# stamps role="Assignee" on the Recognition/Feedback rows that
+		# _recognition_credit inserts without a role. The old probe therefore matched a
+		# teammate's recognition credit and doc.save()'d the assignee award straight
+		# over it -- silent, order-dependent data loss whenever someone reacted to a
+		# todo BEFORE it was completed. Keying on the source this call actually writes
+		# also subsumes the old "!= Priority" exclusion.
+		if rows is None:
+			rows = self._ledger_rows_for_update()
+		existing = next(
+			(r.name for r in rows if r.role == role and r.source == source), None
 		)
 		values = {
 			"user": user,
@@ -573,12 +609,17 @@ class ProjectTodo(Document):
 		)
 
 	def sync_point_ledger(self):
-		"""Credit assignee + leader (+ optional mentor). Idempotent on (todo, role)."""
+		"""Credit assignee + leader (+ optional mentor). Idempotent on (todo, role, source)."""
 		assignee_earned, leader_earned, mentor_earned, late_days, early_days = self._compute_earned()
 		self._set_earned("assignee_earned", assignee_earned)
 
+		# One locking read serves all three upserts: it takes the lock that makes this
+		# whole block safe against a concurrent completion, and each upsert targets a
+		# distinct (role, source), so no upsert invalidates the view for the next.
+		rows = self._ledger_rows_for_update()
+
 		self._upsert_ledger_row(
-			"Assignee", self.assigned_to, assignee_earned, late_days, early_days
+			"Assignee", self.assigned_to, assignee_earned, late_days, early_days, rows=rows
 		)
 		leader = None
 		if self.project:
@@ -587,7 +628,7 @@ class ProjectTodo(Document):
 			leader_earned = 0.0
 		self._set_earned("leader_earned", leader_earned)
 		self._upsert_ledger_row(
-			"Leader", leader, leader_earned, late_days, early_days
+			"Leader", leader, leader_earned, late_days, early_days, rows=rows
 		)
 
 		# Mentor credit: whoever coached the assignee on this todo earns a share
@@ -596,7 +637,7 @@ class ProjectTodo(Document):
 		mentor = self.mentor if self.mentor not in (None, "", self.assigned_to, leader) else None
 		if mentor:
 			self._upsert_ledger_row(
-				"Mentor", mentor, mentor_earned, late_days, early_days, source="Mentoring"
+				"Mentor", mentor, mentor_earned, late_days, early_days, source="Mentoring", rows=rows
 			)
 		else:
 			# Mentor cleared/invalid: drop any stale Mentor row so credit never lingers.
@@ -607,12 +648,16 @@ class ProjectTodo(Document):
 	def _remove_ledger(self):
 		"""Delete this todo's earning rows and clear earned snapshots.
 
-		Priority-miss penalties are excluded: they are a record of a day that was
-		already missed, so un-completing a todo must not refund them.
+		Only the rows sync_point_ledger itself mints (source Todo / Mentoring) are
+		this todo's to delete. Priority-miss penalties are a record of a day that was
+		already missed, so un-completing must not refund them -- and Recognition /
+		Feedback rows are teammates' reactions, not earnings. The old "!= Priority"
+		filter deleted those too, so reverting a todo out of Completed silently wiped
+		every recognition credit anyone had given it.
 		"""
 		for name in frappe.get_all(
 			"Point Ledger",
-			filters={"todo": self.name, "source": ["!=", "Priority"]},
+			filters={"todo": self.name, "source": ["in", OWNED_LEDGER_SOURCES]},
 			pluck="name",
 		):
 			frappe.delete_doc("Point Ledger", name, ignore_permissions=True, force=True)
