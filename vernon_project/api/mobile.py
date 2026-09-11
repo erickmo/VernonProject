@@ -3784,23 +3784,33 @@ def save_app_settings(
 # --------------------------------------------------------------------------------
 
 
-def _user_balance(user):
-	"""Return (earned, redeemed, balance) for a user as floats."""
+def _user_balance(user, for_update=False):
+	"""Return (earned, redeemed, balance) for a user as floats.
+
+	A spend's pre-check must pass for_update=True. This bench runs REPEATABLE READ, so
+	plain reads return the snapshot the request took at its first read, which can
+	predate a spend another request has committed since; the vernon_spend get_lock
+	can't fix that (it is released before the request commits). Locking reads see the
+	latest committed rows and hold them until this request commits, so a second spend
+	waits and then sees the first."""
+	# ponytail: Avatar Unlock has no user index (28 rows), so its locking read locks
+	# the whole table for the spend's duration; index it if unlocks ever contend.
+	lock = " for update" if for_update else ""
 	earned = frappe.db.sql(
-		"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` where user = %s",
+		"select coalesce(sum(points_earned), 0) from `tabPoint Ledger` where user = %s" + lock,
 		user,
 	)[0][0]
 	redeemed = frappe.db.sql(
-		"select coalesce(sum(point_cost), 0) from `tabReward Redemption` where user = %s",
+		"select coalesce(sum(point_cost), 0) from `tabReward Redemption` where user = %s" + lock,
 		user,
 	)[0][0]
 	earned, redeemed = float(earned), float(redeemed)
 	unlocked = frappe.db.sql(
-		"select coalesce(sum(cost),0) from `tabAvatar Unlock` where user=%s", user
+		"select coalesce(sum(cost),0) from `tabAvatar Unlock` where user=%s" + lock, user
 	)[0][0] or 0
 	events_spent = frappe.db.sql(
 		"select coalesce(sum(amount),0) from `tabVernon Event Registration` "
-		"where user=%s and method='Points' and status != 'Cancelled'",
+		"where user=%s and method='Points' and status != 'Cancelled'" + lock,
 		user,
 	)[0][0] or 0
 	balance = earned - redeemed - float(unlocked) - float(events_spent)
@@ -4444,7 +4454,7 @@ def redeem_reward(reward):
 		# Charge the promo price when one is active; the redemption row records
 		# what was actually spent.
 		cost = _effective_points(r["point_cost"], r.get("discounted_points"))
-		_, _, balance = _user_balance(user)
+		_, _, balance = _user_balance(user, for_update=True)
 		if cost > balance:
 			frappe.throw("Insufficient balance", frappe.ValidationError)
 
@@ -5068,7 +5078,7 @@ def gift_points(to_user, amount, note=None):
 		frappe.throw("Amount must be a whole number greater than zero")
 	amount = int(amount)
 
-	_, _, balance = _user_balance(sender)
+	_, _, balance = _user_balance(sender, for_update=True)
 	if balance < amount:
 		frappe.throw("Not enough points")
 
@@ -6234,7 +6244,7 @@ def buy_avatar_option(style, slot, value):
 		if frappe.db.exists("Avatar Unlock", {"user": user, "style": style, "slot": slot, "option_value": value}):
 			_, _, bal = _user_balance(user)
 			return {"balance": bal}
-		_, _, balance = _user_balance(user)
+		_, _, balance = _user_balance(user, for_update=True)
 		if balance < _premium_price():
 			frappe.throw(f"Not enough points — you need {int(round(_premium_price()))}, you have {int(round(balance))}.", frappe.ValidationError)
 		frappe.get_doc({
@@ -6274,7 +6284,7 @@ def buy_avatar_asset(asset_name):
 		if frappe.db.exists("Avatar Unlock", {"user": user, "style": "_asset", "option_value": asset_name}):
 			_, _, bal = _user_balance(user); return {"balance": bal}
 		cost = float(a["price"] or 0)
-		_, _, balance = _user_balance(user)
+		_, _, balance = _user_balance(user, for_update=True)
 		if balance < cost:
 			frappe.throw(f"Not enough points — you need {int(round(cost))}, you have {int(round(balance))}.", frappe.ValidationError)
 		frappe.get_doc({"doctype": "Avatar Unlock", "user": user, "style": "_asset",

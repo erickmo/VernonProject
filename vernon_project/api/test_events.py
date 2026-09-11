@@ -200,6 +200,50 @@ class TestEventsRegistration(FrappeTestCase):
                 "Pending",
             )
 
+    def test_the_last_seat_is_not_sold_twice_from_an_old_snapshot(self):
+        """register() reads the event with a plain get_doc before it locks the event
+        row, so its snapshot predates any seat committed while it waited; a plain seat
+        count then misses that seat and sells it again. The count must be a locking
+        read. (The test below only proves register() blocks on the row, not what it
+        reads once the row is free.)"""
+        import threading
+
+        ev = self._event(pricing="Free", capacity=1)
+        frappe.db.commit()
+        other = "spend-race-sender@test.local"
+        if not frappe.db.exists("User", other):
+            frappe.get_doc({"doctype": "User", "email": other, "first_name": "spend-race",
+                "send_welcome_email": 0}).insert(ignore_permissions=True)
+            frappe.db.commit()
+        site = frappe.local.site
+        try:
+            frappe.set_user(other)
+            frappe.db.count("Vernon Event Registration", {"event": ev.name})  # pins the snapshot
+
+            def winner():
+                frappe.init(site=site)
+                frappe.connect()
+                try:
+                    frappe.set_user("Administrator")
+                    register(ev.name)
+                    frappe.db.commit()
+                finally:
+                    frappe.destroy()
+
+            t = threading.Thread(target=winner)
+            t.start()
+            t.join(30)
+            with self.assertRaises(frappe.ValidationError):
+                register(ev.name)
+            frappe.db.rollback()
+            self.assertEqual(frappe.db.count("Vernon Event Registration",
+                {"event": ev.name, "status": ["!=", "Cancelled"]}), 1)
+        finally:
+            frappe.db.rollback()
+            frappe.set_user("Administrator")
+            frappe.db.delete("Vernon Event Registration", {"event": ev.name})
+            frappe.db.commit()
+
     def test_capacity_check_contends_on_the_event_row(self):
         """A second registrant must not slip past a full-capacity check while another
         transaction is mid-registration.
