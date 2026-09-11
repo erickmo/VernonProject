@@ -170,6 +170,22 @@ class TestReportScopeIntegration(unittest.TestCase):
 			frappe.set_user("Administrator")
 		self.assertIsInstance(data, list)  # did not raise
 
+	def test_daily_performance_report_rejects_an_unknown_status(self):
+		"""Fail closed. An unrecognised status used to fall through
+		STATUS_DATE_FIELD_MAP.get(status, "deadline") and silently produce a
+		plausible-looking report built on the WRONG date column."""
+		from vernon_project.vernon_project.report.daily_performance_report.daily_performance_report import execute
+		frappe.set_user(self.TEAMMATE)
+		try:
+			with self.assertRaises(frappe.ValidationError):
+				execute({
+					"assigned_to": self.TEAMMATE,
+					"date_range": [add_days(nowdate(), -5), add_days(nowdate(), 5)],
+					"status": "🚀 Not A Real Status",
+				})
+		finally:
+			frappe.set_user("Administrator")
+
 	def test_daily_performance_report_stranger_refused(self):
 		from vernon_project.vernon_project.report.daily_performance_report.daily_performance_report import execute
 		frappe.set_user(self.STRANGER)

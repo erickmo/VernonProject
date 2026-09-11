@@ -53,7 +53,18 @@ def execute(filters=None):
 	# ------------------------------------------------------
 	# Determine date field based on status
 	# ------------------------------------------------------
-	date_field = STATUS_DATE_FIELD_MAP.get(status, "deadline")
+	# Fail closed on an unknown status. The old `.get(status, "deadline")` silently
+	# bucketed it to the deadline column, so a stale or typo'd status filter returned a
+	# plausible-looking report built on the WRONG date field -- wrong numbers presented
+	# as right, which is worse than an error. Not an injection risk either way:
+	# date_field only ever takes a value from this map, never the caller's string.
+	if status not in STATUS_DATE_FIELD_MAP:
+		frappe.log_error(
+			title="Daily Performance Report bad status",
+			message=f"status={status!r} assigned_to={filters.get('assigned_to')!r}",
+		)
+		frappe.throw(f"Unknown status filter: {status}")
+	date_field = STATUS_DATE_FIELD_MAP[status]
 
 	# ------------------------------------------------------
 	# Query
