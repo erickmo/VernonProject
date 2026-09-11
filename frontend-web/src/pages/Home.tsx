@@ -20,7 +20,7 @@ import {
 import { deepLink } from '@/lib/notifications'
 import { DEEP_LINK_ROUTES } from '@web/lib/deepLinkRoutes'
 import { useFocusOrder } from '@/hooks/useFocusTimer'
-import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc } from '@/lib/format'
+import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc, seenRange } from '@/lib/format'
 import { focusedFirst } from '@/lib/planDay'
 import { ACTION_GROUPS, GROUP_ACCENT, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
 import { useHoldFeedback } from '@/hooks/useHoldFeedback'
@@ -896,7 +896,7 @@ export default function Home() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-ink">{attToday.status}</span>
                 <span className="text-xs text-muted">
-                  {attToday.first_scan ? `in ${attToday.first_scan.slice(11, 16)}` : 'no scan yet'}
+                  {attToday.first_scan ? `seen ${seenRange(attToday.first_scan, attToday.last_scan)}` : 'no scan yet'}
                 </span>
               </div>
               {(attToday.late_minutes > 0 || attToday.penalty_points !== 0) && (

@@ -10,6 +10,7 @@ export default function Kiosk() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [stationName, setStationName] = useState(station)
+  const [network, setNetwork] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -20,8 +21,11 @@ export default function Kiosk() {
         const payload = await mobileApi.stationToken(station, key)
         if (!alive) return
         setStationName(payload.station)
+        setNetwork(payload.network || '')
         if (canvasRef.current) {
-          await QRCode.toCanvas(canvasRef.current, JSON.stringify(payload), { width: 320, margin: 1 })
+          // only what the scan needs goes in the QR: no key, no network, no personal data
+          const { station: s, counter, token } = payload
+          await QRCode.toCanvas(canvasRef.current, JSON.stringify({ station: s, counter, token }), { width: 320, margin: 1 })
         }
         setError(null)
       } catch (e) {
@@ -47,7 +51,9 @@ export default function Kiosk() {
           <canvas ref={canvasRef} />
         </div>
       )}
-      <p className="text-sm text-muted">Scan with the Vernon app to check in / out</p>
+      <p className="text-sm text-muted">Scan with the Vernon app when you arrive and when you leave</p>
+      {/* the screen's own public IP — what an admin puts in the station's Allowed Networks */}
+      {network && <p className="text-xs text-slate-500">Network {network}</p>}
     </div>
   )
 }

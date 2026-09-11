@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rewardRedemptionStatusLabel, styleFetchesRemote } from './format'
+import { rewardRedemptionStatusLabel, seenRange, styleFetchesRemote } from './format'
 
 describe('rewardRedemptionStatusLabel', () => {
   it('labels Fulfilled correctly', () => {
@@ -41,5 +41,14 @@ describe('styleFetchesRemote (comment sanitizer: no remote pixels via inline CSS
     ]) {
       expect(styleFetchesRemote(css), css).toBe(false)
     }
+  })
+})
+
+describe('seenRange (attendance first/last seen)', () => {
+  it('shows one time when seen once and a range after a later scan', () => {
+    expect(seenRange(null, null)).toBe('')
+    expect(seenRange('2026-09-11 08:03:12', '2026-09-11 08:03:12')).toBe('08:03')
+    expect(seenRange('2026-09-11 08:03:12', null)).toBe('08:03')
+    expect(seenRange('2026-09-11 08:03:12', '2026-09-11 17:05:00')).toBe('08:03–17:05')
   })
 })

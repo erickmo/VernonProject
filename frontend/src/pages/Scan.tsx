@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, QrCode } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useScanAttendance } from '@/hooks/useData'
+import { seenRange } from '@/lib/format'
 
 type Result = { ok: boolean; title: string; detail: string }
 
@@ -14,6 +15,7 @@ export default function Scan() {
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
   const busy = useRef(false)
+  const lastText = useRef('')
   const qrRef = useRef<Html5Qrcode | null>(null)
 
   useEffect(() => {
@@ -21,7 +23,9 @@ export default function Scan() {
     qrRef.current = qr
 
     const onDecode = async (text: string) => {
-      if (busy.current) return
+      // The camera decodes the same code ~10×/s; the kiosk only changes it each QR window,
+      // so one request per code keeps a burst to one server call (the server dedupes too).
+      if (busy.current || text === lastText.current) return
       let payload: { station: string; counter: number; token: string }
       try {
         payload = JSON.parse(text)
@@ -29,6 +33,7 @@ export default function Scan() {
         return // not our QR; keep scanning
       }
       if (!payload.station || payload.token == null) return
+      lastText.current = text
       busy.current = true
       try {
         const res = await scan.mutateAsync(payload)
@@ -37,16 +42,24 @@ export default function Scan() {
         const early = d?.early_minutes ?? 0
         const pen = d?.penalty_points ?? 0
         const bits: string[] = []
+        if (d?.first_scan) bits.push(`seen ${seenRange(d.first_scan, d.last_scan)}`)
         if (late) bits.push(`late ${late} min`)
         if (early) bits.push(`left ${early} min early`)
         if (pen) bits.push(`−${pen} pts`)
         setResult({
           ok: true,
-          title: d?.status === 'Present' ? 'Checked in · on time' : `Recorded · ${d?.status ?? ''}`,
-          detail: bits.join(' · ') || 'No penalty',
+          title: res.duplicate ? 'Already recorded' : `Seen at ${d?.station_last ?? payload.station}`,
+          detail: bits.join(' · '),
         })
       } catch (e) {
-        setResult({ ok: false, title: 'Scan failed', detail: String(e instanceof Error ? e.message : e) })
+        const offline = typeof navigator !== 'undefined' && !navigator.onLine
+        setResult({
+          ok: false,
+          title: 'Scan failed',
+          detail: offline
+            ? 'You are offline. Reconnect, then scan the next code.'
+            : String(e instanceof Error ? e.message : e),
+        })
       } finally {
         // allow another scan after a short cooldown
         setTimeout(() => (busy.current = false), 1500)
@@ -102,7 +115,8 @@ export default function Scan() {
         )}
 
         <p className="flex items-center gap-2 text-xs text-stone-400">
-          <QrCode className="h-4 w-4" /> Point the camera at the station screen. The code refreshes every few seconds.
+          <QrCode className="h-4 w-4" /> Point the camera at the station screen. Your first scan of the day is your
+          first seen, the latest is your last seen.
         </p>
       </div>
     </DetailScreen>
