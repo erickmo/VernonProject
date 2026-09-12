@@ -8,6 +8,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
 
 from vernon_project.attendance.engine import evaluate_day, recompute_daily
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
 def _args(**over):
@@ -27,7 +28,7 @@ def _args(**over):
 	return base
 
 
-class TestEvaluateDay(unittest.TestCase):
+class TestEvaluateDay(NoLeakMixin, unittest.TestCase):
 	def test_off_day_when_no_assignment(self):
 		r = evaluate_day(**_args(has_assignment=False))
 		self.assertEqual(r["status"], "OffDay")
@@ -113,7 +114,7 @@ class TestEvaluateDay(unittest.TestCase):
 		self.assertEqual(evaluate_day(**_args(scans=[datetime(2026,6,1,9,6), datetime(2026,6,1,17,0)]))["late_minutes"], 1)
 
 
-class TestRecomputeDailyLock(FrappeTestCase):
+class TestRecomputeDailyLock(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q-adjacent concurrency probe (2026-09-10): recompute_daily had
 	no lock around its check-then-write critical section on Daily Attendance
 	(+ the linked penalty Point Ledger row). Unlike meeting.py's
