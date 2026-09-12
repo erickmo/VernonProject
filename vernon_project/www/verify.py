@@ -6,11 +6,16 @@
 # page cannot be enumerated, and no sequential id is ever exposed publicly.
 
 import frappe
+from frappe import _
 
 from vernon_project.api.certificate import lookup_verify
+from vernon_project.attendance.qr import client_ip
 from vernon_project.www._i18n import base_context, norm_lang
 
 ROUTE = "/verify"
+
+LOOKUP_LIMIT = 60
+LOOKUP_WINDOW = 60 * 60
 
 no_cache = 1
 
@@ -86,6 +91,28 @@ def _t(lang):
 	return {k: (v.get(lang) or v["id"]) for k, v in T.items()}
 
 
+def _lookup_budget_spent():
+	"""True once this caller has spent LOOKUP_LIMIT code lookups in the window.
+
+	Counted here rather than with frappe's @rate_limit for two reasons, both of which
+	made the previous guard useless:
+
+	1. `rate_limit(...)` is a decorator FACTORY. The old line called it as a bare
+	   statement inside `except Exception: pass`, which built a decorator, applied it
+	   to nothing and threw it away -- so this page has had NO throttle at all, and the
+	   bare except guaranteed nobody would ever find out.
+	2. Even applied correctly it keys on `frappe.local.request_ip`, which on this site
+	   is a CLOUDFLARE EDGE address: every visitor behind one edge shares a bucket, so
+	   the limit would throttle strangers together while barely slowing one attacker.
+	   client_ip() resolves the real caller behind Cloudflare (see attendance/qr.py).
+	"""
+	ip = client_ip() or "unknown"
+	key = frappe.cache.make_key(f"vp_verify_lookup:{ip}")
+	if not frappe.cache.get(key):
+		frappe.cache.setex(key, LOOKUP_WINDOW, 0)
+	return frappe.cache.incrby(key, 1) > LOOKUP_LIMIT
+
+
 def get_context(context):
 	lang = norm_lang(frappe.form_dict.get("lang"))
 	code = frappe.form_dict.get("code") or ""
@@ -94,11 +121,11 @@ def get_context(context):
 
 	# Cheap brake on someone walking the keyspace. The code is 128 bits of entropy, so
 	# this is belt-and-braces rather than the actual defence.
-	if code:
-		try:
-			frappe.rate_limiter.rate_limit(key="verify-cert", limit=60, seconds=60 * 60)
-		except Exception:
-			pass
+	if code and _lookup_budget_spent():
+		frappe.throw(
+			_("Too many verification attempts. Please try again later."),
+			frappe.RateLimitExceededError,
+		)
 
 	context.t = _t(lang)
 	context.cert = lookup_verify(code)
