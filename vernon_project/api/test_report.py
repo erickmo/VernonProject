@@ -16,9 +16,10 @@ from vernon_project.api.report import (
 	logbook, STATUS_PLANNED, STATUS_COMPLETED,
 	_build_team_report,
 )
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestBuildDailyMatrix(unittest.TestCase):
+class TestBuildDailyMatrix(NoLeakMixin, unittest.TestCase):
 	def test_date_list_inclusive(self):
 		self.assertEqual(
 			_date_list("2026-06-22", "2026-06-24"),
@@ -71,7 +72,7 @@ class TestBuildDailyMatrix(unittest.TestCase):
 		self.assertEqual(out["rows"], [])
 
 
-class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
+class TestDailyEstimatedTimeEndpoint(NoLeakMixin, unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		if frappe.db.exists("User", "report_guest@example.com"):
@@ -101,7 +102,7 @@ class TestDailyEstimatedTimeEndpoint(unittest.TestCase):
 		self.assertIsInstance(out["rows"], list)
 
 
-class TestDailyEstimatedTimeAccess(unittest.TestCase):
+class TestDailyEstimatedTimeAccess(NoLeakMixin, unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		if frappe.db.exists("User", "report_access_guest@example.com"):
@@ -122,7 +123,7 @@ class TestDailyEstimatedTimeAccess(unittest.TestCase):
 		self.assertEqual(daily_estimated_time_access(), {"can_view": False})
 
 
-class TestTemplateMinutes(unittest.TestCase):
+class TestTemplateMinutes(NoLeakMixin, unittest.TestCase):
 	def test_string_times(self):
 		self.assertEqual(_template_minutes("09:00:00", "17:00:00"), 480)
 
@@ -145,7 +146,7 @@ class TestTemplateMinutes(unittest.TestCase):
 		self.assertEqual(_template_minutes("17:00:00", "09:00:00"), 0)
 
 
-class TestResolveExpected(unittest.TestCase):
+class TestResolveExpected(NoLeakMixin, unittest.TestCase):
 	"""Pure per-user-per-day shift target resolution. Days: 2026-06-29 Mon, 30 Tue, 07-01 Wed."""
 
 	def _assign(self, user, template, eff_from, eff_to=None, **days):
@@ -209,7 +210,7 @@ class TestResolveExpected(unittest.TestCase):
 		self.assertEqual(out, [])
 
 
-class TestDailyMinimum(unittest.TestCase):
+class TestDailyMinimum(NoLeakMixin, unittest.TestCase):
 	"""Pure daily-floor decision (_daily_minimum) — no DB."""
 
 	def test_holiday_is_zero(self):
@@ -229,7 +230,7 @@ class TestDailyMinimum(unittest.TestCase):
 		self.assertEqual(_daily_minimum(False, False, None, 480), 480)
 
 
-class TestBuildUnderOccupied(unittest.TestCase):
+class TestBuildUnderOccupied(NoLeakMixin, unittest.TestCase):
 	"""Pure _build_under_occupied — per-user shift target; only shift days are evaluated."""
 
 	def test_includes_user_below_target(self):
@@ -295,7 +296,7 @@ class TestBuildUnderOccupied(unittest.TestCase):
 		self.assertEqual(out["tolerance"], 30)
 
 
-class TestUnderOccupiedEndpoint(unittest.TestCase):
+class TestUnderOccupiedEndpoint(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 
@@ -330,7 +331,7 @@ class TestUnderOccupiedEndpoint(unittest.TestCase):
 		self.assertEqual(out["day_count"], 5)
 
 
-class TestBuildOverOccupied(unittest.TestCase):
+class TestBuildOverOccupied(NoLeakMixin, unittest.TestCase):
 	"""Pure _build_over_occupied — per-user shift target; only shift days are evaluated."""
 
 	def test_includes_user_above_target(self):
@@ -379,7 +380,7 @@ class TestBuildOverOccupied(unittest.TestCase):
 		self.assertNotIn("threshold", out)
 
 
-class TestOverOccupiedEndpoint(unittest.TestCase):
+class TestOverOccupiedEndpoint(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 
@@ -414,7 +415,7 @@ class TestOverOccupiedEndpoint(unittest.TestCase):
 		self.assertEqual(out["day_count"], 5)
 
 
-class TestBuildTodosDue(unittest.TestCase):
+class TestBuildTodosDue(NoLeakMixin, unittest.TestCase):
 	"""Pure _build_todos_due — buzz list shaping: deadline-asc order, overdue flag, contact."""
 
 	TODAY = datetime.date(2026, 7, 6)
@@ -467,7 +468,7 @@ class TestBuildTodosDue(unittest.TestCase):
 		self.assertEqual(out, {"due_by": "2026-07-06", "rows": []})
 
 
-class TestTodosDueEndpoint(unittest.TestCase):
+class TestTodosDueEndpoint(NoLeakMixin, unittest.TestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		if frappe.db.exists("User", "td_guest@example.com"):
@@ -492,7 +493,7 @@ class TestTodosDueEndpoint(unittest.TestCase):
 		self.assertEqual(out["due_by"], "2026-07-31")
 
 
-class TestRunsProject(unittest.TestCase):
+class TestRunsProject(NoLeakMixin, unittest.TestCase):
 	"""Pure permission predicate for buzz_todo — owns/leads/admins the project."""
 
 	def test_owner_leader_admin_pass(self):
@@ -513,7 +514,7 @@ class TestRunsProject(unittest.TestCase):
 		self.assertFalse(_runs_project("me@x.id", {"project_owner": None, "project_leader": None, "admins": []}))
 
 
-class TestBuzzTodoEndpoint(unittest.TestCase):
+class TestBuzzTodoEndpoint(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 
@@ -528,7 +529,7 @@ class TestBuzzTodoEndpoint(unittest.TestCase):
 			buzz_todo({"assigned_to": "someone@example.com"})
 
 
-class TestLogbookEndpoint(unittest.TestCase):
+class TestLogbookEndpoint(NoLeakMixin, unittest.TestCase):
 	"""Integration: seed a target user's plan/done todos over 2026-07-01..05 and assert
 	the logbook buckets, lateness/result classification, summary, and the auth gate."""
 
@@ -684,7 +685,7 @@ class TestLogbookEndpoint(unittest.TestCase):
 		frappe.set_user("Administrator")
 
 
-class TestPreviousShiftShortfall(unittest.TestCase):
+class TestPreviousShiftShortfall(NoLeakMixin, unittest.TestCase):
 	"""Pure verdict for the home-page danger banner (_previous_shift_shortfall)."""
 
 	def test_under_when_latest_shift_day_below_minimum(self):
@@ -724,7 +725,7 @@ class TestPreviousShiftShortfall(unittest.TestCase):
 		self.assertEqual(out["assigned"], 0)
 
 
-class TestOverloadVerdict(unittest.TestCase):
+class TestOverloadVerdict(NoLeakMixin, unittest.TestCase):
 	"""Pure assignment-overload verdict (_overload_verdict) — no DB."""
 
 	def test_over_when_above_minimum_plus_tolerance(self):
@@ -754,7 +755,7 @@ class TestOverloadVerdict(unittest.TestCase):
 		self.assertFalse(out["over"])
 
 
-class TestLastSeenReport(unittest.TestCase):
+class TestLastSeenReport(NoLeakMixin, unittest.TestCase):
 	LEADER = "ls_leader@example.com"
 	MEMBER = "ls_member@example.com"
 	OUTSIDER = "ls_outsider@example.com"
@@ -828,7 +829,7 @@ class TestLastSeenReport(unittest.TestCase):
 		self.assertEqual(last_seen_access(), {"can": False, "scope": "none"})
 
 
-class TestBuildTeamReport(unittest.TestCase):
+class TestBuildTeamReport(NoLeakMixin, unittest.TestCase):
 	"""Pure aggregator — no site needed. Pins the 0/0-never-omitted rule and the
 	cross-project pivot _team_report_scope/team_daily_report build on top of."""
 
@@ -874,7 +875,7 @@ class TestBuildTeamReport(unittest.TestCase):
 		self.assertEqual(out["totals"]["done"], sum(r["done_total"] for r in out["rows"]))
 
 
-class _TeamReportFixture(unittest.TestCase):
+class _TeamReportFixture(NoLeakMixin, unittest.TestCase):
 	"""Two Projects led by one non-SM leader; member A is on both (cross-project
 	overlap), member B only on Project 1, outsider on neither. `to_do`s are seeded
 	via the real set_assigned_allocation endpoint so the assigned-minutes source

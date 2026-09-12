@@ -15,6 +15,7 @@ from vernon_project.api.mobile import (
 	get_project_item,
 )
 from vernon_project.vernon_project.doctype.project_todo.test_project_todo import _ensure_test_group
+from vernon_project.tests.no_leak import NoLeakMixin
 
 HOT_FILTER_FIELDS = ("assigned_to", "status", "deadline", "work_mode")
 
@@ -62,7 +63,7 @@ def _sql_call_sites():
 				yield path, m.start(), content[m.start():m.start() + 800]
 
 
-class TestNoUnparametrisedSql(FrappeTestCase):
+class TestNoUnparametrisedSql(NoLeakMixin, FrappeTestCase):
 	def test_no_unparametrised_sql(self):
 		"""Static scan (audit case 8): every frappe.db.sql( call's query-string
 		portion must never itself be the target of a Python % string-format —
@@ -81,7 +82,7 @@ class TestNoUnparametrisedSql(FrappeTestCase):
 		self.assertEqual(offenders, [], "Unparametrised SQL found:\n" + "\n".join(offenders))
 
 
-class TestHotFilterIndexes(FrappeTestCase):
+class TestHotFilterIndexes(NoLeakMixin, FrappeTestCase):
 	def test_hot_filter_indexes_exist(self):
 		"""assigned_to/status/deadline/work_mode were missing search_index
 		while project/project_detail already had it — exactly the hot filters
@@ -95,7 +96,7 @@ class TestHotFilterIndexes(FrappeTestCase):
 		self.assertEqual(missing, [], f"Project Todo is missing a DB index on: {missing}")
 
 
-class TestGetProjectItemNoSiblingDump(FrappeTestCase):
+class TestGetProjectItemNoSiblingDump(NoLeakMixin, FrappeTestCase):
 	"""get_project_item used to call _fetch_todos([project]) — fetch + shape
 	EVERY sibling todo in the project, then filter to one row in Python. Rows
 	returned (and the work behind them) scaled with sibling count. Fixed by
@@ -179,7 +180,7 @@ def _count_queries(fn):
 	return len(queries)
 
 
-class TestNoRedundantSingleFieldFetches(FrappeTestCase):
+class TestNoRedundantSingleFieldFetches(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q Phase 1: get_project_item and get_project_detail each made
 	several separate single/few-field frappe.get_value/frappe.db.get_value
 	calls against the SAME already-known doc (project_item, or
@@ -275,7 +276,7 @@ GET_PROJECT_ITEM_FIELDS_BOTH_FRONTENDS_READ = frozenset({
 })
 
 
-class TestGetProjectItemFieldContract(FrappeTestCase):
+class TestGetProjectItemFieldContract(NoLeakMixin, FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		group, level_id = _ensure_test_group()
@@ -325,7 +326,7 @@ class TestGetProjectItemFieldContract(FrappeTestCase):
 		self.assertTrue(result["can_edit"])
 
 
-class TestGetProjectItemPermissionBoundary(FrappeTestCase):
+class TestGetProjectItemPermissionBoundary(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q enumerated case 10: a user with no relationship to the project
 	(not owner/leader/admin/team/System Manager) must still be refused by
 	get_project_item — not previously covered by any existing test (grepped:
@@ -401,7 +402,7 @@ class TestGetProjectItemPermissionBoundary(FrappeTestCase):
 			frappe.set_user("Administrator")
 
 
-class TestCalendarDateWindowOptIn(FrappeTestCase):
+class TestCalendarDateWindowOptIn(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q Phase 1b: get_calendar's real default call (no args) measured
 	19.56 MB (PERF.md) -- no date window at all. Erick is holding the FRONTEND
 	switch to actually pass one (that's the visible-behaviour decision). This
@@ -514,7 +515,7 @@ class TestCalendarDateWindowOptIn(FrappeTestCase):
 			frappe.delete_doc("Project Todo", undated.name, force=True, ignore_permissions=True)
 
 
-class TestProjectDetailPaginationOptIn(FrappeTestCase):
+class TestProjectDetailPaginationOptIn(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q Phase 1b: get_project_detail's biggest real sub-module
 	measured 446 KB / 599 rows (PERF.md), no pagination. Same opt-in shape as
 	the calendar window: limit/start default to 0, which is exactly today's
@@ -575,7 +576,7 @@ class TestProjectDetailPaginationOptIn(FrappeTestCase):
 			get_project_detail(self.detail.name, start=-1)
 
 
-class TestProjectDetailAggregatesSurvivePagination(FrappeTestCase):
+class TestProjectDetailAggregatesSurvivePagination(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q frontend wiring: ProjectDetailScreen.tsx (/m) and its /w
 	equivalents compute open/completed/cancelled counts + minutes done/total
 	from the FULL project_items array -- correct only while that array is
@@ -667,7 +668,7 @@ class TestProjectDetailAggregatesSurvivePagination(FrappeTestCase):
 		self.assertFalse(unbounded["has_more"])
 
 
-class TestProjectItemTeamNoDeadAvatarFields(FrappeTestCase):
+class TestProjectItemTeamNoDeadAvatarFields(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q: shaped["team"] used to carry image/avatar_config per member,
 	sourced from the SAME _user_name_map()/User-Avatar batch already paid for
 	the assignee etc. Grepped both frontends (ProjectItemScreen.tsx /m,
@@ -726,7 +727,7 @@ class TestProjectItemTeamNoDeadAvatarFields(FrappeTestCase):
 		self.assertEqual(names["team_fields_member@example.com"], "Team Member")
 
 
-class TestClampPageLimit(FrappeTestCase):
+class TestClampPageLimit(NoLeakMixin, FrappeTestCase):
 	"""Pure unit test for the clamp math itself -- proving the ceiling fires
 	for an oversized request without needing hundreds of DB rows (case 7:
 	"a client asking for 10000 rows gets clamped, not obeyed")."""

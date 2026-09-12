@@ -10,9 +10,10 @@ from vernon_project.api.project import get_project_team_members
 from vernon_project.vernon_project.doctype.project.project import user_with_role_query
 from vernon_project.api.report import assignment_overload_check
 from vernon_project.api.mobile import get_member_workload
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestLowSeverityScope(unittest.TestCase):
+class TestLowSeverityScope(NoLeakMixin, unittest.TestCase):
 	"""2026-09-08 permission sweep, low-severity group: get_project_team_members,
 	user_with_role_query, assignment_overload_check, get_member_workload's
 	target-membership gap."""
@@ -116,7 +117,7 @@ class TestLowSeverityScope(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
-class TestFoodInviteSelfEnrollScope(unittest.TestCase):
+class TestFoodInviteSelfEnrollScope(NoLeakMixin, unittest.TestCase):
 	"""food_invite.respond()'s self-enroll must only fire for Link-audience
 	invites — a Specific/Internal/Project invite's recipient list is supposed
 	to be closed."""
