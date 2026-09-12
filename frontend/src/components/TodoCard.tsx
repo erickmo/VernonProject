@@ -138,6 +138,8 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   // Any AI phase keeps the cyan card; the chip carries WHICH phase (see AI_PHASES).
   const aiPhase = aiPhaseOf(todo)
   const isAI = aiPhase > 0
+  // Orthogonal to the phase: a confirmed task may be idle or have an agent on it.
+  const running = isAI && !!todo.ai_in_progress
   // Reject is unavailable for AI-tagged work (ujkfag8r5v) — offer the follow-up
   // flow in its place, but only where Reject would otherwise have been offered.
   const followUpInstead =
@@ -211,9 +213,15 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
           )}
           {isAI && (
             <span
-              title={`Fase ${aiPhase} · ${AI_PHASES[aiPhase].label}`}
-              aria-label={`AI fase ${aiPhase}, ${AI_PHASES[aiPhase].label}`}
-              className="mb-1.5 mr-1.5 inline-flex items-center justify-center gap-0.5 rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 px-1.5 py-1 text-white shadow-sm"
+              title={`Fase ${aiPhase} · ${AI_PHASES[aiPhase].label}${running ? ' · AI sedang mengerjakan' : ''}`}
+              aria-label={`AI fase ${aiPhase}, ${AI_PHASES[aiPhase].label}${running ? ', AI sedang mengerjakan' : ''}`}
+              className={
+                'mb-1.5 mr-1.5 inline-flex items-center justify-center gap-0.5 rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 px-1.5 py-1 text-white shadow-sm' +
+                // Running state is carried by the ring AND the label, never by the
+                // animation alone — the pulse is motion-safe so reduced-motion users
+                // still see the ring.
+                (running ? ' ring-2 ring-cyan-300 ring-offset-1 motion-safe:animate-pulse dark:ring-offset-slate-900' : '')
+              }
             >
               <Bot className="h-4 w-4" />
               <span className="text-[11px] font-bold leading-none">{aiPhase}</span>

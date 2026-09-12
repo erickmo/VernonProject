@@ -98,8 +98,7 @@
   "completed_by",
   "rejection_reason",
   "rejected_at",
-  "rejected_by"
- ],
+  "rejected_by", "ai_in_progress"],
  "fields": [
   {
    "fieldname": "project",
@@ -732,6 +731,13 @@
    "label": "Rejected By",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "ai_in_progress",
+   "fieldtype": "Check",
+   "label": "AI In Progress",
+   "default": "0",
+   "description": "An AI session is working on this task right now. Orthogonal to the AI phase ladder \u2014 the ladder tracks the PROMPT (tagged, drafted, human-confirmed) while this tracks whether an agent is actually running. A confirmed task may be idle or running; finishing clears it."
   }
  ],
  "grid_page_length": 50,
