@@ -344,13 +344,32 @@ def reconcile_signed(employee, year, entry_type, unit_days, target_count, reason
     feature off (target 0) removes every row it once minted. Used by
     leave_rules.reconcile_penalty / reconcile_overtime.
     """
-    names = frappe.get_all(
-        DOCTYPE,
-        filters={"employee": employee, "year": int(year), "entry_type": entry_type},
-        pluck="name",
-    )
-    existing = len(names)
+    year = int(year)
     target = max(0, int(target_count))
+    # The count-then-insert/delete below is the same check-then-write as ensure_grant,
+    # on the same table, at the same REPEATABLE READ: a plain count returns this
+    # request's snapshot, so two callers racing here both see the pre-race count and
+    # both insert. Same advisory lock as ensure_grant -- these rows share a SUM, so
+    # they are one resource -- and a LOCKING read, which reads the latest committed
+    # rows and blocks on a contender's uncommitted insert until it commits. The lock
+    # is always taken BEFORE any Cuti Ledger row lock (here and in ensure_grant), so
+    # the named lock stays out of any row-lock wait cycle.
+    lock_key = f"vernon_cuti:{employee}:{year}"
+    if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+        frappe.throw(_("Kuota cuti sedang diproses, coba lagi."))
+    try:
+        return _reconcile_locked(employee, year, entry_type, unit_days, target, reason)
+    finally:
+        frappe.db.sql("select release_lock(%s)", lock_key)
+
+
+def _reconcile_locked(employee, year, entry_type, unit_days, target, reason):
+    names = [r.name for r in frappe.db.sql(
+        f"""select name from `tab{DOCTYPE}`
+        where employee = %s and year = %s and entry_type = %s for update""",
+        (employee, year, entry_type), as_dict=True,
+    )]
+    existing = len(names)
     if target > existing:
         for _i in range(target - existing):
             frappe.get_doc({

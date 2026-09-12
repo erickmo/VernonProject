@@ -71,6 +71,11 @@ class TestMidtransNotificationRace(unittest.TestCase):
 		frappe.set_user("Administrator")
 		frappe.db.delete("Vernon Event Registration", {"event": self.event.name})
 		frappe.db.delete("Vernon Event", {"title": TITLE})
+		# This runs against a LIVE site, so take the probe user back out too. It is
+		# created with no password and no welcome email, but a test account left
+		# enabled on prod is a standing hazard, not a tidiness point.
+		if frappe.db.exists("User", USER):
+			frappe.delete_doc("User", USER, force=True, ignore_permissions=True)
 		frappe.db.commit()
 
 	def _in_another_session(self, fn):
