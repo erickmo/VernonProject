@@ -8,6 +8,7 @@
  "field_order": [
   "group_name",
   "description",
+  "group_type",
   "base_rate_per_minute",
   "weights_section",
   "late_penalty",
@@ -22,6 +23,7 @@
  "fields": [
   {"fieldname": "group_name", "fieldtype": "Data", "label": "Group Name", "reqd": 1, "unique": 1, "in_list_view": 1},
   {"fieldname": "description", "fieldtype": "Small Text", "label": "Description"},
+  {"fieldname": "group_type", "fieldtype": "Select", "label": "Group Type", "options": "\nCoding", "description": "Coding swaps this group's free-form todo note for the structured brief."},
   {"fieldname": "base_rate_per_minute", "fieldtype": "Float", "label": "Base Rate (points / minute)", "default": "1", "non_negative": 1, "description": "Points per estimated minute, before difficulty %"},
   {"fieldname": "weights_section", "fieldtype": "Section Break", "label": "Point Weights (%)"},
   {"fieldname": "late_penalty", "fieldtype": "Percent", "label": "Late Penalty (per day)", "default": "0"},

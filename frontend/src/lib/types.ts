@@ -611,6 +611,8 @@ export interface GroupLevelOption {
   group: string
   group_name: string
   base_rate: number
+  /** "Coding" swaps the free-form note for the structured brief (k9b82d4lkh); "" otherwise. */
+  group_type: string
 }
 
 export interface GroupTodo {

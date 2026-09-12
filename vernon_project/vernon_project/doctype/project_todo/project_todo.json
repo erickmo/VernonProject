@@ -29,6 +29,7 @@
   "blocking",
   "issue_of",
   "notes",
+  "coding_brief",
   "checklist",
   "points_section",
   "group",
@@ -247,6 +248,13 @@
    "fieldname": "notes",
    "fieldtype": "Text Editor",
    "label": "Notes"
+  },
+  {
+   "description": "Structured answers behind a Coding group's note, as JSON. The controller renders Notes from it.",
+   "fieldname": "coding_brief",
+   "fieldtype": "Long Text",
+   "label": "Coding Brief",
+   "read_only": 1
   },
   {
    "description": "JSON array of {t: text, d: done} sub-items. Edited in-app, not in Desk.",

@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import add_days, add_months, cint, cstr, getdate, nowdate, now_datetime, get_datetime
 from datetime import datetime
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
+from vernon_project import coding_brief
 
 
 # The one Planned status string, shared by the controller. `api/mobile.py` keeps
@@ -61,6 +62,7 @@ OWNED_LEDGER_SOURCES = ("Todo", "Mentoring")
 INFO_FIELDS = {
 	"to_do": "Title",
 	"notes": "Notes",
+	"coding_brief": "Coding Brief",
 	"checklist": "Checklist",
 	"project": "Project",
 	"project_detail": "Work Item",
@@ -174,6 +176,7 @@ class ProjectTodo(Document):
 	def validate(self):
 		self.validate_ai_in_progress()
 		self.sync_project_from_detail()
+		self.apply_coding_brief()
 		self.snapshot_point_from_level()
 		self.validate_to_do_length()
 		self.validate_create_permission()
@@ -194,6 +197,50 @@ class ProjectTodo(Document):
 		self.validate_recurrence_rule()
 		self._ensure_today_allocation()
 		self.validate_priority_slot()
+
+	def apply_coding_brief(self):
+		"""k9b82d4lkh — a todo in a Coding group carries a structured brief instead of a
+		free-form note, and its `notes` is RENDERED from that brief here, on every save.
+
+		Enforcement has to live in the controller: the app creates todos through
+		frappe.client.insert (frontend/src/lib/api.ts `createTask`), the generic path,
+		so a check in any api/ function would never run — and `mandatory_depends_on`
+		binds only Desk's client JS, not /api/resource either.
+
+		Because the note is re-rendered rather than accepted, a caller cannot submit a
+		note that disagrees with the brief; there is nothing to validate, the value is
+		simply replaced.
+
+		The brief is required only when a PERSON creates the todo. Engine paths insert
+		with ignore_permissions (follow_up_check's check todo, the recurring generator),
+		and those must not be blocked by a form's requirement — they carry no brief and
+		keep their own note. A group with any other type is left completely alone.
+
+		Both fields are new, so everything is read with .get(): a doc loaded before the
+		schema reloads has no attribute at all.
+		"""
+		group = self.get("group")
+		if not group:
+			return
+		# Cached: Group is small and rarely edited, and this runs on every todo save.
+		if frappe.get_cached_value("Group", group, "group_type") != "Coding":
+			return
+
+		brief = coding_brief.parse(self.get("coding_brief"))
+		if self.is_new() and not self.flags.ignore_permissions:
+			blank = coding_brief.missing(brief)
+			if blank:
+				frappe.throw(
+					_("Fill in the coding brief before saving: {0}.").format(", ".join(blank)),
+					frappe.MandatoryError,
+					title=_("Coding Brief Incomplete"),
+				)
+		if not brief or not any(brief.values()):
+			return  # an engine-created todo in a Coding group keeps its own note
+		# Canonical form, so re-saving the same answers in a different key order is
+		# not seen as an edit by the done-todo field lock.
+		self.set("coding_brief", json.dumps(brief, sort_keys=True))
+		self.set("notes", coding_brief.render_note(brief))
 
 	def validate_ai_in_progress(self):
 		"""`ai_in_progress` = an AI session is working on this task RIGHT NOW.
