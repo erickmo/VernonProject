@@ -240,8 +240,45 @@ def list_passkeys():
 # DIAGNOSTIC (temporary): the browser's WebAuthn errors are invisible server-side
 # and hard to read on mobile. The client posts the exact DOMException here so it
 # lands in the Error Log. Safe to delete once the passkey rollout is stable.
+CLIENT_LOG_LIMIT = 20
+CLIENT_LOG_WINDOW = 3600
+
+
+def _client_log_count():
+	"""Diagnostic posts this caller has made in the window, counting this one.
+
+	Counted here rather than with frappe's @rate_limit because that decorator keys on
+	`frappe.local.request_ip`, which on this site is a CLOUDFLARE EDGE address: every
+	visitor behind one edge shares a bucket, so it would throttle strangers together
+	while barely slowing one attacker. client_ip() resolves the real caller behind
+	Cloudflare. Same reason and same shape as www/verify.py:_lookup_budget_spent.
+	"""
+	from vernon_project.attendance.qr import client_ip
+
+	ip = client_ip() or "unknown"
+	key = frappe.cache.make_key(f"vp_passkey_client_log:{ip}")
+	if not frappe.cache.get(key):
+		frappe.cache.setex(key, CLIENT_LOG_WINDOW, 0)
+	return frappe.cache.incrby(key, 1)
+
+
 @frappe.whitelist(allow_guest=True)
 def client_log(detail):
+	n = _client_log_count()
+	if n > CLIENT_LOG_LIMIT:
+		# Guest-reachable and it writes a row to the Error Log, so an attacker could
+		# grow that table without bound on any string they like. Past the budget we
+		# drop the post and still return ok, so a prober learns nothing about where
+		# the limit sits. One marker the first time the budget goes, so a throttle is
+		# VISIBLE to whoever reads the log rather than silently swallowing the
+		# diagnostics this endpoint exists to surface.
+		if n == CLIENT_LOG_LIMIT + 1:
+			frappe.log_error(
+				title="Passkey client diagnostic throttled",
+				message=f"budget of {CLIENT_LOG_LIMIT} posts per {CLIENT_LOG_WINDOW}s spent; "
+				"further posts from this caller are dropped for the rest of the window",
+			)
+		return {"ok": True}
 	frappe.log_error(message=str(detail)[:2000], title="Passkey client diagnostic")
 	return {"ok": True}
 
