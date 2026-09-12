@@ -49,13 +49,20 @@ def _spent(bucket, identity, limit, window):
 	return frappe.cache.incrby(key, 1) > limit
 
 
-def enforce(bucket, limit, seconds, identity=None):
+def enforce(bucket, limit, seconds, identity=None, ip_multiplier=IP_MULTIPLIER):
 	"""Spend one request against `bucket`'s IP and identity budgets, or throw.
 
 	`identity` is the business identity when the request carries one (NIK, attempt id,
 	email). When it is absent the IP budget still bounds the caller.
+
+	`ip_multiplier` exists because the multiplier is only correct when there are TWO
+	budgets: it stops an office or CGNAT pool tripping the per-identity limit for
+	everyone. On an endpoint with no business identity the IP budget is the ONLY
+	bound, and multiplying it silently loosens the stated limit (30/min would admit
+	120/min). Such callers pass ip_multiplier=1 so the number they ask for is the
+	number they get.
 	"""
-	if _spent(f"{bucket}:ip", client_ip() or "unknown", limit * IP_MULTIPLIER, seconds):
+	if _spent(f"{bucket}:ip", client_ip() or "unknown", limit * ip_multiplier, seconds):
 		_too_many()
 	identity = (identity or "").strip().lower()
 	if identity and _spent(f"{bucket}:id", identity, limit, seconds):

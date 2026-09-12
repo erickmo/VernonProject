@@ -20,7 +20,6 @@ import hashlib
 import json
 
 import frappe
-from frappe.rate_limiter import rate_limit
 from frappe.utils import cint, now_datetime
 
 import webauthn
@@ -34,6 +33,29 @@ from webauthn.helpers.structs import (
 
 RP_NAME = "Vernon"
 CHALLENGE_TTL_SEC = 300
+
+# Budget for the two GUEST authentication endpoints. Deliberately not frappe's
+# @rate_limit: that keys on frappe.local.request_ip, which is the FIRST
+# X-Forwarded-For entry (frappe/auth.py:65-66) with no trusted-proxy check. Our
+# nginx APPENDS the peer, so a caller that sends its own X-Forwarded-For lands
+# first and picks its own bucket -- the limit bounded nothing. On this site that
+# value is also a Cloudflare edge address, so honest visitors behind one edge
+# shared a single bucket while an attacker had unlimited ones.
+# utilities/throttle.enforce keys on qr.client_ip(), which takes the LAST hop (the
+# peer our own nginx wrote) and believes CF-Connecting-IP only when that peer
+# really is Cloudflare. This file already applies that reasoning to client_log
+# below; the auth endpoints had simply been left on the broken primitive.
+# ip_multiplier=1: a discoverable credential carries no username, so there is no
+# business identity and the IP budget is the only bound -- it must not be
+# quietly multiplied.
+LOGIN_LIMIT = 30
+LOGIN_WINDOW = 60
+
+
+def _spend_login_budget():
+	from vernon_project.utilities.throttle import enforce
+
+	enforce("passkey_login", LOGIN_LIMIT, LOGIN_WINDOW, ip_multiplier=1)
 
 
 # --------------------------------------------------------------------------------
@@ -155,8 +177,8 @@ def register_complete(credential, label=None):
 # Login (guest — discoverable credential, no username required)
 # --------------------------------------------------------------------------------
 @frappe.whitelist(allow_guest=True)
-@rate_limit(limit=30, seconds=60)
 def login_begin():
+	_spend_login_budget()
 	handle = frappe.generate_hash(length=32)
 	options = webauthn.generate_authentication_options(
 		rp_id=_rp_id(),
@@ -169,8 +191,8 @@ def login_begin():
 
 
 @frappe.whitelist(allow_guest=True)
-@rate_limit(limit=30, seconds=60)
 def login_complete(credential, handle):
+	_spend_login_budget()
 	credential = _as_dict(credential)
 	challenge = _pop_challenge("auth", handle)
 

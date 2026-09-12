@@ -119,7 +119,20 @@ def add_user_note(user, body, note_date=None, shared_with_user=0, project=None):
 		note_date = None
 	if isinstance(project, str) and not project.strip():
 		project = None
-	if project and not frappe.db.exists("Project", project):
+	# Existence alone was not enough. The shaped note this returns carries
+	# `project_title`, resolved through _project_meta_map -> frappe.get_all, which
+	# does NOT check permissions; Project is named by naming_series, so the names
+	# are guessable. An author could therefore tag a note with ANY project id and
+	# read back that project's title, then delete the note again — a directory of
+	# every project on the site, for anyone who can note one user. The author must
+	# be able to SEE the project they are writing the note under.
+	#
+	# Same message for "does not exist" and "not yours" on purpose: telling those
+	# apart would leave the enumeration oracle open with the title removed.
+	if project and not (
+		frappe.db.exists("Project", project)
+		and frappe.has_permission("Project", "read", project)
+	):
 		frappe.throw("Project not found.", frappe.DoesNotExistError)
 	doc = frappe.get_doc({
 		"doctype": "Leader Note",

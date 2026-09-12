@@ -10,6 +10,7 @@ import frappe
 import unittest
 from frappe.utils import nowdate, add_days
 from vernon_project.fixtures_for_tests import ensure_user
+from vernon_project.tests.no_leak import NoLeakMixin
 from vernon_project.api.leader_notes import (
 	_can_note,
 	add_user_note,
@@ -33,7 +34,7 @@ USERS = (
 )
 
 
-class TestLeaderNotes(unittest.TestCase):
+class TestLeaderNotes(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		leaders = {LEADER1, LEADER2, CLOSED_LEADER}
@@ -139,7 +140,11 @@ class TestLeaderNotes(unittest.TestCase):
 	def test_list_scoped_to_project(self):
 		frappe.set_user(LEADER1)
 		add_user_note(SUBJECT, "on p1", project=self.p_active1)
-		add_user_note(SUBJECT, "on p2", project=self.p_active2)
+		# p_owned, not p_active2: an author may only tag a project they can SEE,
+		# and LEADER1 is nothing to p_active2 (LEADER2 leads it). This test is
+		# about list scoping, so any second project LEADER1 leads does the job --
+		# it was only ever incidental which one. See test_leader_note_project_scope.
+		add_user_note(SUBJECT, "on p2", project=self.p_owned)
 		add_user_note(SUBJECT, "untagged")
 		# unscoped ⇒ all three
 		self.assertEqual(len(list_user_notes(SUBJECT)["notes"]), 3)
