@@ -80,7 +80,7 @@ class TestProjectTodoIdempotency(NoLeakMixin, unittest.TestCase):
 		frappe.db.rollback()
 		frappe.set_user("Administrator")
 		for name in frappe.get_all("Project Todo", filters={"to_do": ["like", "ZZ idempotency%"]}, pluck="name"):
-			frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True)
+			frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True, delete_permanently=True)
 		frappe.db.commit()
 		frappe.cache.delete_keys("vp_todo_create:")
 

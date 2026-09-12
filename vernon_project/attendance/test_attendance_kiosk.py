@@ -88,10 +88,10 @@ def _purge_rows():
 def _purge_fixtures():
 	_purge_rows()
 	for s in (ST_A, ST_B):
-		frappe.delete_doc("Attendance Station", s, force=True, ignore_permissions=True, ignore_missing=True)
+		frappe.delete_doc("Attendance Station", s, force=True, ignore_permissions=True, ignore_missing=True, delete_permanently=True)
 	for u in (EMP, OTHER):
-		frappe.delete_doc("Attendance Profile", u, force=True, ignore_permissions=True, ignore_missing=True)
-		frappe.delete_doc("User", u, force=True, ignore_permissions=True, ignore_missing=True)
+		frappe.delete_doc("Attendance Profile", u, force=True, ignore_permissions=True, ignore_missing=True, delete_permanently=True)
+		frappe.delete_doc("User", u, force=True, ignore_permissions=True, ignore_missing=True, delete_permanently=True)
 
 
 def _at(hhmm):
