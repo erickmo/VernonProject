@@ -13,8 +13,15 @@ EDITABLE = [
 	"location", "capacity", "pricing", "points_cost", "price", "status",
 	"category", "is_featured", "parent_event",
 ]  # NOTE: 'organizer' deliberately excluded — never set from client payload.
-# ponytail: parent_event ownership isn't re-checked; all organizers are trusted staff.
-# Add a _can_manage(parent) check here if untrusted organizers are ever introduced.
+# parent_event IS ownership-checked (see save_event). It used to carry a note
+# deferring that check because "all organizers are trusted staff" — but nothing
+# gates who becomes one: save_event stamps organizer = session user on create, so
+# any authenticated account is an organizer on its first call. Untrusted
+# organizers were never "introduced", they were always possible, and a zero-role
+# account could publish an event with parent_event pointing at someone else's,
+# where events.get_event renders it as a sub_event of theirs. The victim cannot
+# remove it — manage_list_events filters by organizer and _can_manage refuses —
+# so only a System Manager could clean it up.
 
 
 def _is_sm(user=None):
@@ -61,6 +68,12 @@ def save_event(payload, name=None):
 	else:
 		doc = frappe.new_doc("Vernon Event")
 		doc.organizer = user
+	# Attaching to a parent puts this event on the parent's page, so it needs the
+	# parent's permission, not this event's. Checked before the fields are applied
+	# so a refusal cannot leave a half-updated doc.
+	parent = data.get("parent_event")
+	if parent and parent != doc.parent_event:
+		_can_manage(parent)
 	for f in EDITABLE:
 		if f in data:
 			doc.set(f, data[f])
