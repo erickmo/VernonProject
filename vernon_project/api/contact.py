@@ -7,8 +7,9 @@ boundary, so validation is not skipped.
 import re
 
 import frappe
-from frappe.rate_limiter import rate_limit
 from frappe.utils import escape_html
+
+from vernon_project.utilities.throttle import enforce
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -50,10 +51,12 @@ _ERROR_MESSAGES = {
 
 
 @frappe.whitelist(allow_guest=True)
-@rate_limit(key="contact", limit=5, seconds=3600)
 def submit_inquiry(name=None, email=None, message=None, company_website=None, lang="id"):
     name = " ".join((name or "").split())  # collapse newlines/whitespace (subject-header safety)
     email = (email or "").strip()
+    # Was @rate_limit(key="contact", ...): "contact" names no parameter, so every
+    # sender behind one Cloudflare edge shared a single 5/hour bucket.
+    enforce("contact_inquiry", limit=5, seconds=3600, identity=email)
     message = (message or "").strip()
     honeypot = (company_website or "").strip()  # bots fill this hidden field
     lang = lang if lang in ("id", "en") else "id"
