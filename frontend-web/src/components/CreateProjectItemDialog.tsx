@@ -12,6 +12,8 @@ import { DatePicker } from '@web/components/DatePicker'
 import { RecurrenceEditor } from '@web/components/RecurrenceEditor'
 import { emptyRecurrence, serializeRecurrence, type Recurrence, type Frequency, type MonthlyMode, type Nth } from '@/lib/recurrence'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
+import { CodingBrief, briefIsComplete } from '@/components/CodingBrief'
+import { useCodingBriefSchema, useIsCodingGroup } from '@/hooks/useData'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 
 const initialRecurrence = (i?: CreateTodoInitial): Recurrence => ({
@@ -71,6 +73,10 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const [deadline, setDeadline] = useState(initial?.deadline ?? '')
   const [estimated, setEstimated] = useState(initial?.estimated ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
+  const [codingBrief, setCodingBrief] = useState('')
+  const [briefTouched, setBriefTouched] = useState(false)
+  const isCoding = useIsCodingGroup(group)
+  const briefFields = useCodingBriefSchema().data?.fields ?? []
   const [rec, setRec] = useState<Recurrence>(() => initialRecurrence(initial))
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
@@ -81,7 +87,7 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
 
   const reset = () => {
     setToDo(''); setAssignedTo(''); setStartDate(''); setDeadline(''); setEstimated('')
-    setNotes(''); setRec({ ...emptyRecurrence })
+    setNotes(''); setCodingBrief(''); setBriefTouched(false); setRec({ ...emptyRecurrence })
     setGroup(defaultGroup ?? ''); setLevelId(''); setBlockedBy([]); setBlocking([])
   }
 
@@ -113,16 +119,24 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
       toast('error', 'Estimated time is required and must be at least 5 minutes')
       return
     }
+    // Same rule the controller enforces, named here so the form says which
+    // answer is missing instead of bouncing off a server error.
+    if (isCoding && !briefIsComplete(codingBrief, briefFields)) {
+      setBriefTouched(true)
+      toast('error', 'Fill in the coding brief before creating this todo')
+      return
+    }
     const fields: Record<string, unknown> = {
       to_do: toDo.trim(),
       assigned_to: assignedTo,
       start_date: startDate,
       deadline,
-      notes,
+      notes: isCoding ? '' : notes,
       group,
       level_id: levelId,
     }
     fields.estimated = est
+    if (isCoding) fields.coding_brief = codingBrief
     if (issueOf) fields.issue_of = issueOf.name
     if (blockedBy.length) fields.blocked_by = blockedBy.map((todo) => ({ todo }))
     if (blocking.length) fields.blocking = blocking.map((todo) => ({ todo }))
@@ -273,10 +287,14 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
 
         <section className="space-y-3">
           <h3 className={sectionHead}>Notes &amp; recurrence</h3>
-          <label className="text-sm font-medium text-muted">
-            Notes
-            <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </label>
+          {isCoding ? (
+            <CodingBrief value={codingBrief} onChange={setCodingBrief} showErrors={briefTouched} />
+          ) : (
+            <label className="text-sm font-medium text-muted">
+              Notes
+              <textarea className={field + ' mt-1'} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </label>
+          )}
 
           <label className="flex items-center gap-2 text-sm font-medium text-muted">
             <input type="checkbox" checked={rec.isRecurring} onChange={(e) => setRec({ ...rec, isRecurring: e.target.checked })} />

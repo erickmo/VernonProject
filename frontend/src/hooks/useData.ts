@@ -1115,8 +1115,12 @@ export function useCreateProjectItems(projectDetail: string) {
 export function useSaveNotes(todoId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (notes: string) => {
-      const res = await mobileApi.saveNotes(todoId, notes)
+    // A Coding todo saves its brief instead; the server renders the note from it
+    // and ignores whatever `notes` is sent (k9b82d4lkh).
+    mutationFn: async (input: string | { notes: string; codingBrief: string }) => {
+      const { notes, codingBrief } =
+        typeof input === 'string' ? { notes: input, codingBrief: undefined } : input
+      const res = await mobileApi.saveNotes(todoId, notes, codingBrief)
       if (res.status === 'error') throw new Error(res.message)
       return res
     },
@@ -1469,6 +1473,15 @@ export function useGroupLevels() {
     queryFn: () => mobileApi.getGroupLevels(),
     staleTime: 5 * 60 * 1000,
   })
+}
+
+/** Whether a work type uses the structured coding brief instead of a free-form
+ *  note. Read off the group catalog the todo form already loads, so this costs
+ *  no extra request (k9b82d4lkh). */
+export function useIsCodingGroup(group: string | null | undefined) {
+  const { data: rows } = useGroupLevels()
+  if (!group) return false
+  return (rows ?? []).some((r) => r.group === group && r.group_type === 'Coding')
 }
 
 /** The Coding brief's questions. Static on the server, so it is cached like the
