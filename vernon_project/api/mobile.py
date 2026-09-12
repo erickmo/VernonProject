@@ -4295,8 +4295,25 @@ def _earned_credit_rows(user, limit=100):
 	todo_ids = [c["todo"] for c in credits if c.get("todo")]
 	subj = {}
 	if todo_ids:
-		for r in frappe.get_all("Project Todo", filters={"name": ["in", todo_ids]}, fields=["name", "to_do"]):
-			subj[r["name"]] = r["to_do"]
+		# Titles are scoped to what the CALLER may see, not to the target. This
+		# feeds get_user_points_log, which every logged-in user can call for
+		# anyone (it is the leaderboard tap-through), and a task title is real
+		# content — unscoped it hands out titles from projects the caller has no
+		# access to, the same leak data_health was fixed for on 2026-09-08.
+		# A title we may not show simply stays out of `subj`, so the row falls
+		# back to the generic label below; the POINTS stay visible either way,
+		# which is all the leaderboard needs.
+		visible = set(_visible_projects())
+		for r in frappe.db.sql(
+			"""SELECT t.name, t.to_do, pd.project
+			   FROM `tabProject Todo` t
+			   LEFT JOIN `tabProject Detail` pd ON pd.name = t.project_detail
+			   WHERE t.name IN %(ids)s""",
+			{"ids": tuple(todo_ids)},
+			as_dict=True,
+		):
+			if r.project and r.project in visible:
+				subj[r.name] = r.to_do
 	rows = []
 	for c in credits:
 		amt = float(c["amount"] or 0)
@@ -5141,7 +5158,17 @@ def gift_points(to_user, amount, note=None):
 		frappe.throw("Amount must be a whole number greater than zero")
 	amount = int(amount)
 
-	_, _, balance = _user_balance(sender, for_update=True)
+	# Lock BOTH parties, in a canonical order, before touching either ledger.
+	# This transaction writes a Point Ledger row for each side but used to lock
+	# the sender only, so two people gifting each other at the same moment
+	# deadlocked: each request held its own sender's ledger range and then
+	# reached into the other's (reproduced live, MariaDB 1213). Sorting the two
+	# ids gives every gift the same acquisition order, which is what makes the
+	# cycle impossible — a bigger lock would not.
+	balances = {}
+	for party in sorted({sender, to_user}):
+		balances[party] = _user_balance(party, for_update=True)[2]
+	balance = balances[sender]
 	if balance < amount:
 		frappe.throw("Not enough points")
 
