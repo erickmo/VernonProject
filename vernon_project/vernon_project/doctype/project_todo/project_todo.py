@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Vernon and contributors
 # For license information, please see license.txt
 
+import hashlib
 import json
 
 import frappe
@@ -90,7 +91,80 @@ def _rows_key(rows):
 	)
 
 
+# --- duplicate-save guard -----------------------------------------------------
+# Owner report: "Sometimes a user click save on form and data created twice or more."
+# The frontend already disables submit while the request is in flight
+# (CreateProjectItemSheet.tsx `disabled={create.isPending}`), so what survives is a
+# retry after an apparently-failed-but-actually-succeeded save -- a second request no
+# client-side guard can suppress. Measured before this: 37 duplicate pairs within 30s
+# of each other, 9 in the same second, over 20 dates and 5 creators.
+#
+# The identity includes deadline and start_date deliberately: duplicate groups by
+# (to_do, project_detail, assigned_to) number 589 on this site and are overwhelmingly
+# legitimate recurring series, but only 57 by this fuller key. Occurrences of a series
+# are skipped outright -- they carry original_todo and repeat the identity by design.
+#
+# ponytail: redis SETNX, not a unique index and not a SELECT-then-insert.
+#   * a unique index on business identity cannot be created over those 589 groups, and
+#     would block the recurring series if it could
+#   * a SELECT-then-insert guard is the check-then-write this bench keeps losing to:
+#     at REPEATABLE READ the loser's read predates the winner's commit, exactly as in
+#     the Midtrans, cuti-reconcile and annual-grant races
+#   SETNX decides in one atomic round trip and is unaffected by MVCC.
+#   Ceiling: the window is 15s, so it catches a double-submit or a fast network-blip
+#   retry but not someone retrying a hung request a minute later; and a redis flush
+#   drops in-flight guards, which only re-opens that window -- it cannot corrupt
+#   anything. For a durable guard, swap to an advisory lock plus a locking read over a
+#   composite index (that needs a migration).
+DUPLICATE_SAVE_WINDOW_SECONDS = 15
+
+_SAVE_IDENTITY_FIELDS = (
+	"project_detail", "to_do", "assigned_to", "deadline", "start_date",
+	"group", "level_id", "estimated",
+)
+
+
+def duplicate_save_key(doc, user=None):
+	"""Cache key for one logical save: the user-supplied payload plus who saved it."""
+	raw = "|".join(cstr(doc.get(f) or "") for f in _SAVE_IDENTITY_FIELDS)
+	raw = f"{raw}|{cstr(user or frappe.session.user)}"
+	return frappe.cache.make_key("vp_todo_create:" + hashlib.sha1(raw.encode()).hexdigest())
+
+
 class ProjectTodo(Document):
+
+	def before_insert(self):
+		self.refuse_duplicate_save()
+
+	def refuse_duplicate_save(self):
+		"""One logical save creates at most one todo. See the notes above the class.
+
+		Two exemptions, and both are load-bearing -- the first version of this guard had
+		neither and broke 30 existing tests plus, more importantly, the project-template
+		fan-out:
+
+		* No HTTP request means no browser to double-submit: the scheduler, a patch, a
+		  bench call and a test fixture all create todos in bulk and legitimately repeat
+		  an identity. Same test frappe.local uses everywhere else (cf. qr.client_ip).
+		* ONE request may legitimately create N identical todos -- api/project.py's
+		  template fan-out does exactly that when two template rows match. The retry
+		  this guard exists for is always a SECOND request, so remembering the
+		  identities this request already created separates them cleanly.
+		"""
+		if self.get("original_todo"):
+			return  # a recurring occurrence repeats the identity by design
+		if not getattr(frappe.local, "request", None):
+			return
+		key = duplicate_save_key(self)
+		seen = frappe.local.flags.setdefault("vp_todo_saves_seen", set())
+		if key in seen:
+			return  # this same request already made one; a fan-out, not a retry
+		if not frappe.cache.set(key, b"1", nx=True, ex=DUPLICATE_SAVE_WINDOW_SECONDS):
+			frappe.throw(
+				_("Todo ini baru saja disimpan. Muat ulang halaman sebelum menyimpan lagi."),
+				frappe.ValidationError,
+			)
+		seen.add(key)
 
 	def validate(self):
 		self.sync_project_from_detail()
