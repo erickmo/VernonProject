@@ -6298,7 +6298,17 @@ def _record_claim(user, claim_type, claim_ref):
 	try:
 		frappe.get_doc({"doctype": "Avatar Reward Claim", "user": user, "claim_type": claim_type, "claim_ref": str(claim_ref)}).insert(ignore_permissions=True)
 		return True
-	except frappe.exceptions.DuplicateEntryError:
+	except (frappe.exceptions.UniqueValidationError, frappe.exceptions.DuplicateEntryError):
+		# Both, and they are NOT related classes — same reasoning as
+		# superpowers.py's _upsert_vote: frappe raises UniqueValidationError
+		# (ValidationError) for a composite unique INDEX and DuplicateEntryError
+		# (NameError) for a primary-key/docname collision. This doctype collides on
+		# the docname, so it is the latter — but only since its JSON stopped
+		# declaring autoname "hash": base_document.py treats a PK violation on a
+		# hash-named doctype as a hash collision and retries 5x with the (here
+		# deterministic) same name before re-raising the RAW IntegrityError, which
+		# neither of these would have caught. Losing the race must return False,
+		# not abort the caller's loop over the remaining rewards.
 		return False
 
 
