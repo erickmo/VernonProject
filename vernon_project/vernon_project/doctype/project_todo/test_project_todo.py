@@ -4,7 +4,7 @@
 import frappe
 import pymysql
 
-from vernon_project.fixtures_for_tests import ensure_user
+from vernon_project.fixtures_for_tests import ensure_user, restore_fixture_users
 import unittest
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days, getdate, now_datetime, add_to_date
@@ -83,26 +83,12 @@ class TestProjectTodo(unittest.TestCase):
 
 	def setUp(self):
 		"""Set up test data before each test"""
-		# Create test user if not exists
-		if not frappe.db.exists("User", "test_user@example.com"):
-			test_user = frappe.get_doc({
-				"doctype": "User",
-				"email": "test_user@example.com",
-				"first_name": "Test",
-				"last_name": "User",
-				"send_welcome_email": 0
-			})
-			test_user.insert(ignore_permissions=True)
-
-		if not frappe.db.exists("User", "test_user2@example.com"):
-			test_user2 = frappe.get_doc({
-				"doctype": "User",
-				"email": "test_user2@example.com",
-				"first_name": "Test2",
-				"last_name": "User2",
-				"send_welcome_email": 0
-			})
-			test_user2.insert(ignore_permissions=True)
+		# ensure_user, not create-if-missing: Project.validate drops DISABLED users
+		# from team_members, so a disabled fixture account makes every todo assigned
+		# to it fail "is not a team member". restore_fixture_users() in tearDown hands
+		# the enabled flag back -- this suite runs against the live DB.
+		ensure_user("test_user@example.com", "Test", ensure_enabled=True)
+		ensure_user("test_user2@example.com", "Test2", ensure_enabled=True)
 
 		# Create test brand if not exists. company is mandatory on Brand (schema
 		# added it after this fixture was written); any existing Company will do.
@@ -175,6 +161,7 @@ class TestProjectTodo(unittest.TestCase):
 
 	def tearDown(self):
 		"""Clean up test data after each test"""
+		restore_fixture_users()  # hand back any 'enabled' the fixture switched on
 		frappe.set_user("Administrator")
 		# Reset all standalone todo statuses to Planned so on_trash does not block deletion
 		todos = frappe.get_all(
@@ -1022,15 +1009,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 	def setUp(self):
 		"""Set up test data before each test"""
 		# Create test user if not exists
-		if not frappe.db.exists("User", "test_user@example.com"):
-			test_user = frappe.get_doc({
-				"doctype": "User",
-				"email": "test_user@example.com",
-				"first_name": "Test",
-				"last_name": "User",
-				"send_welcome_email": 0
-			})
-			test_user.insert(ignore_permissions=True)
+		ensure_user("test_user@example.com", "Test", ensure_enabled=True)
 
 		# Create test brand if not exists
 		if not frappe.db.exists("Brand", "Test Customer Phase"):
@@ -1099,6 +1078,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 
 	def tearDown(self):
 		"""Clean up test data after each test"""
+		restore_fixture_users()  # hand back any 'enabled' the fixture switched on
 		frappe.set_user("Administrator")
 		# Reset all standalone todo statuses to Planned so on_trash does not block deletion
 		todos = frappe.get_all(
@@ -1373,6 +1353,7 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		frappe.db.commit()
 
 	def tearDown(self):
+		restore_fixture_users()  # hand back any 'enabled' the fixture switched on
 		frappe.set_user("Administrator")
 		for name in frappe.get_all("Project Todo", filters={"project_detail": self.detail}, pluck="name"):
 			frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
@@ -1489,6 +1470,7 @@ class TestProjectTodoFiles(FrappeTestCase):
 		frappe.db.commit()
 
 	def tearDown(self):
+		restore_fixture_users()  # hand back any 'enabled' the fixture switched on
 		frappe.set_user("Administrator")
 		for fn in frappe.get_all("File", filters={"attached_to_doctype": "Project Todo", "attached_to_name": self.todo.name}, pluck="name"):
 			frappe.delete_doc("File", fn, force=True, ignore_permissions=True)
@@ -1656,6 +1638,7 @@ class TestUndoApproval(unittest.TestCase):
 		self.todo = self._make_todo()
 
 	def tearDown(self):
+		restore_fixture_users()  # hand back any 'enabled' the fixture switched on
 		frappe.set_user("Administrator")
 		for name in frappe.get_all(
 			"Project Todo", filters={"project_detail": self.project_detail.name}, pluck="name"
