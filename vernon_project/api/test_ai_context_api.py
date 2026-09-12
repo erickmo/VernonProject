@@ -13,9 +13,10 @@ from frappe.utils import add_days, nowdate
 from vernon_project.api.project_todo import get_ai_project_context, get_ai_todo_context
 from vernon_project.api.test_project_todo_api import _count_queries
 from vernon_project.fixtures_for_tests import ensure_brand, ensure_group, ensure_user
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestGetAiTodoContext(FrappeTestCase):
+class TestGetAiTodoContext(NoLeakMixin, FrappeTestCase):
 	"""Lean replacement for get_project_item when writing an AI prompt."""
 
 	ASSIGNEE = "gatc_assignee@example.com"
@@ -236,7 +237,7 @@ class TestGetAiTodoContext(FrappeTestCase):
 		self.assertEqual(len(few), len(many))
 
 
-class TestGetAiProjectContext(FrappeTestCase):
+class TestGetAiProjectContext(NoLeakMixin, FrappeTestCase):
 	"""Lean replacement for get_project when writing an AI prompt."""
 
 	ASSIGNEE = "gapc_assignee@example.com"

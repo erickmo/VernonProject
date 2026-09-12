@@ -7,9 +7,10 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.api.project_roles import bulk_assign_project_roles
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestBulkAssignProjectRoles(unittest.TestCase):
+class TestBulkAssignProjectRoles(NoLeakMixin, unittest.TestCase):
 	"""Regression for the 2026-09-08 permission sweep finding: the entry gate
 	only proved the caller held the (global) 'Project Owner' role, never that
 	they may touch the SPECIFIC project passed in — any project owner could

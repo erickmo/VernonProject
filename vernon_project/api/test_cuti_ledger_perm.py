@@ -4,9 +4,10 @@
 import unittest
 
 import frappe
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestCutiLedgerPerm(unittest.TestCase):
+class TestCutiLedgerPerm(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: Cuti Ledger's controller is deliberately
 	empty ("exactly like Point Ledger"), so the permission table was the only
 	gate -- and HR Manager held unconditional create/write/delete directly.

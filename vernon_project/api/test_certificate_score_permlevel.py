@@ -5,9 +5,10 @@ import unittest
 
 import frappe
 from frappe.utils import add_days, nowdate
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestCertificateScorePermlevel(unittest.TestCase):
+class TestCertificateScorePermlevel(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: Internship Certificate's validate() only
 	checked cert_no/verify_code are non-empty when Published/Revoked -- never
 	that they were system-generated. cert_no/verify_code/auto_score/auto_grade/

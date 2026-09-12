@@ -4,9 +4,10 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_days
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestIncomeOpportunityClaim(unittest.TestCase):
+class TestIncomeOpportunityClaim(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		for email, first in (("claim_u1@example.com", "C1"), ("claim_u2@example.com", "C2")):
 			if not frappe.db.exists("User", email):

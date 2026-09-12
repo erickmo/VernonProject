@@ -7,9 +7,10 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.api.mobile import data_health
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestDataHealthScope(unittest.TestCase):
+class TestDataHealthScope(NoLeakMixin, unittest.TestCase):
 	"""Regression for the 2026-09-08 permission sweep #4: data_health() was
 	role-gated (System Manager/Group Manager/Project Owner) but queried Project
 	Todo directly with no project scoping at all -- a Project Owner on one

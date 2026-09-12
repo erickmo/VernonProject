@@ -8,9 +8,10 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.api.focus import list_focus, reorder_focus, save_timer, set_note, stop_timer
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class _FocusFixture(unittest.TestCase):
+class _FocusFixture(NoLeakMixin, unittest.TestCase):
 	"""Two real users on one project, three todos assigned to focus_owner. Holds no
 	tests itself — TestReorderFocus and TestFocusPersistence both build on it."""
 

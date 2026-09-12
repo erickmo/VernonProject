@@ -7,9 +7,10 @@ import frappe
 from frappe.utils import add_days, now_datetime
 
 from vernon_project.api.food_invite import get_invite
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestFoodInviteGetInviteScope(unittest.TestCase):
+class TestFoodInviteGetInviteScope(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: get_invite(invite) had no ownership or
 	recipient check at all -- any logged-in user who knew or guessed an
 	invite's name could read a Specific-audience invite's full content

@@ -7,9 +7,10 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.api.project import update_project, update_project_detail
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestUpdateProjectAllowlist(unittest.TestCase):
+class TestUpdateProjectAllowlist(NoLeakMixin, unittest.TestCase):
 	"""Regression for the 2026-09-08 permission sweep: update_project's field
 	filter was a blocklist (identity/audit fields only) that missed
 	project_owner/project_leader/project_admins entirely -- a Project Leader

@@ -4,9 +4,10 @@
 import unittest
 
 import frappe
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestEmployeeProfileDiscPermlevel(unittest.TestCase):
+class TestEmployeeProfileDiscPermlevel(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: has_permission scopes Employee Profile
 	writes to the caller's own row ("All" role), correctly walling off
 	bank/NIK fields at permlevel:1 -- but disc_scores/disc_type/

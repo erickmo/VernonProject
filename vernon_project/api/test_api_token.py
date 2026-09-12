@@ -21,6 +21,7 @@ from vernon_project.api.api_token import (
 	get_api_token_status,
 	revoke_api_token,
 )
+from vernon_project.tests.no_leak import NoLeakMixin
 
 OWNER = "api_token_owner@example.com"
 OTHER = "api_token_other@example.com"
@@ -35,7 +36,7 @@ def _ensure_user(email):
 		frappe.db.commit()
 
 
-class TestApiTokenStatusDoesNotLeakTheKey(FrappeTestCase):
+class TestApiTokenStatusDoesNotLeakTheKey(NoLeakMixin, FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		_ensure_user(OWNER)
@@ -102,7 +103,7 @@ class TestApiTokenStatusDoesNotLeakTheKey(FrappeTestCase):
 		self.assertIsNone(result["masked_key"])
 
 
-class TestApiTokenRotation(FrappeTestCase):
+class TestApiTokenRotation(NoLeakMixin, FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		_ensure_user(OWNER)
@@ -146,7 +147,7 @@ class TestApiTokenRotation(FrappeTestCase):
 		self.assertEqual(len(seen), 10, "api_secret repeated across regenerates")
 
 
-class TestApiTokenPermissionBoundary(FrappeTestCase):
+class TestApiTokenPermissionBoundary(NoLeakMixin, FrappeTestCase):
 	"""SECURITY GATE (c)/(f): scoped to the logged-in user; there is no
 	`user` parameter on any of these three methods for a client to forge, so
 	the boundary is structural, not a check that can be bypassed by a
