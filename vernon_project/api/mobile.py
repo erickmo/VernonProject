@@ -5150,7 +5150,17 @@ def gift_points(to_user, amount, note=None):
 		frappe.throw("Amount must be a whole number greater than zero")
 	amount = int(amount)
 
-	_, _, balance = _user_balance(sender, for_update=True)
+	# Lock BOTH parties, in a canonical order, before touching either ledger.
+	# This transaction writes a Point Ledger row for each side but used to lock
+	# the sender only, so two people gifting each other at the same moment
+	# deadlocked: each request held its own sender's ledger range and then
+	# reached into the other's (reproduced live, MariaDB 1213). Sorting the two
+	# ids gives every gift the same acquisition order, which is what makes the
+	# cycle impossible — a bigger lock would not.
+	balances = {}
+	for party in sorted({sender, to_user}):
+		balances[party] = _user_balance(party, for_update=True)[2]
+	balance = balances[sender]
 	if balance < amount:
 		frappe.throw("Not enough points")
 
