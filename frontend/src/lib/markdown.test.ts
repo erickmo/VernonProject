@@ -57,6 +57,29 @@ describe('renderNoteMarkdown — rendering (AC1, AC2, AC4, AC8)', () => {
   })
 })
 
+describe('notes carry images and mentions too (41j1jiea7l)', () => {
+  it('renders a note image as a picture, not the markdown URL', () => {
+    const html = renderNoteMarkdown('lihat ![](/files/a.png) ini')
+    expect(html).toContain('<img')
+    expect(html).toContain('src="/files/a.png"')
+    expect(html).not.toContain('![](')
+  })
+
+  it('renders a note mention as a chip with the address kept out of the text', () => {
+    const html = renderNoteMarkdown('halo [@Budi](mention:b@x.com)')
+    expect(html).toContain('data-mention="b@x.com"')
+    expect(html).toContain('@Budi')
+    expect(html).not.toContain('mention:b@x.com<')
+    expect(html).not.toContain('](mention:')
+  })
+
+  it('still shows an image whose stored URL the server &-escaped', () => {
+    // A note containing any real HTML tag goes through bleach, which escapes &
+    // across the whole value — verified live on project.vernon.id.
+    expect(renderNoteMarkdown('![](/files/a.png?x=1&amp;y=2)')).toContain('/files/a.png?x=1&amp;y=2')
+  })
+})
+
 describe('renderNoteMarkdown — security (belt: HTML passthrough disabled)', () => {
   it('a literal <script> in the source is shown as text, never live markup', () => {
     const html = renderNoteMarkdown('<script>alert(1)</script>')

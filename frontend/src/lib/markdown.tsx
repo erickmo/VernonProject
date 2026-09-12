@@ -105,6 +105,11 @@ export const MD_STRUCTURE = [
   '[&_th]:border [&_th]:border-slate-200 dark:[&_th]:border-slate-700 [&_th]:px-2 [&_th]:py-1 [&_th]:bg-slate-50 dark:[&_th]:bg-slate-800 [&_th]:text-left',
   '[&_td]:border [&_td]:border-slate-200 dark:[&_td]:border-slate-700 [&_td]:px-2 [&_td]:py-1',
   '[&_img]:max-w-full [&_img]:rounded',
+  // 41j1jiea7l: a mention reads as a chip wherever a note or comment is shown —
+  // the same tokens the composer draws it with, so writing and reading match.
+  '[&_[data-mention]]:rounded [&_[data-mention]]:px-1 [&_[data-mention]]:py-0.5',
+  '[&_[data-mention]]:bg-brand-500/10 [&_[data-mention]]:text-brand-700',
+  'dark:[&_[data-mention]]:bg-brand-500/15 dark:[&_[data-mention]]:text-brand-300',
   '[&_hr]:my-2 [&_hr]:border-slate-200 dark:[&_hr]:border-slate-700',
 ].join(' ')
 const PROSE = `text-sm text-slate-600 dark:text-slate-300 ${MD_STRUCTURE}`

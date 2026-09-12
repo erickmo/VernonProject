@@ -3,11 +3,11 @@ import { Send, ZoomIn, Pencil, Check, X } from 'lucide-react'
 import { useComments, useAddComment, useEditComment, useBoot } from '../hooks/useData'
 import { Spinner } from './ui'
 import { sanitizeHtml } from '../lib/format'
-import { uploadCommentImage, mobileApi } from '../lib/api'
 import { MD_STRUCTURE, commentSource, isMarkdownComment, renderComment, toCommentContent } from '../lib/markdown'
 import { useToast } from './Toast'
 import ImageZoom from './ImageZoom'
 import { MarkdownEditor } from './MarkdownEditor'
+import { useMarkdownAttachments } from '../hooks/useMarkdownAttachments'
 
 // Dark-mode rich text for the body + editors: mention chips, and neutralise pasted
 // inline colours (white/near-black spans copied from other apps) so they don't
@@ -47,19 +47,7 @@ export default function CommentThread({
   const [pending, setPending] = useState(false)
   const [zoomSrc, setZoomSrc] = useState<string | null>(null)
 
-  const mentionable = () => mobileApi.getMentionableUsers(referenceDoctype, referenceName)
-  const upload = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast('error', 'Image too large (max 5 MB).')
-      throw new Error('too large')
-    }
-    try {
-      return await uploadCommentImage(file, referenceDoctype, referenceName)
-    } catch (err) {
-      toast('error', (err as Error).message || 'Upload failed')
-      throw err
-    }
-  }
+  const { mentions, onImage } = useMarkdownAttachments(referenceDoctype, referenceName)
 
   const startEdit = (c: { name: string; content: string }) => {
     setEditingName(c.name)
@@ -157,8 +145,8 @@ export default function CommentThread({
                         ariaLabel="Edit comment"
                         className={MD_INPUT}
                         onSubmit={() => saveEdit(c)}
-                        mentions={mentionable}
-                        onImage={upload}
+                        mentions={mentions}
+                        onImage={onImage}
                       />
                     ) : (
                       <div
@@ -233,8 +221,8 @@ export default function CommentThread({
             ariaLabel="Add a comment"
             className={MD_INPUT}
             onSubmit={submit}
-            mentions={mentionable}
-            onImage={upload}
+            mentions={mentions}
+            onImage={onImage}
           />
         </div>
         <button
