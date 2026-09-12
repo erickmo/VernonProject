@@ -168,14 +168,35 @@ class Project(Document):
 
 	def validate_auto_approve_change(self):
 		"""auto_approve skips the owner's approval for every todo in the project, and
-		set_project_auto_approve reserves it for the owner holding the Partner role.
-		Enforced here whatever the path (update_project, /api/resource, Desk) and
-		despite ignore_permissions, which update_project itself saves with."""
+		set_project_auto_approve reserves it for the Project Owner holding the
+		"Partner" role. Enforced here on every path that CHANGES it — update_project,
+		/api/resource, Desk, and a generic create — and despite ignore_permissions on
+		an update, which is what update_project itself saves with.
+
+		A new project has no previous version, so it is compared against the safe
+		default of 0 rather than skipped. The early return on is_new() this used to do
+		let a Project Owner WITHOUT the Partner role create a project that already
+		skipped the owner gate — and one-way, since they then could not turn it back
+		off. Same baseline-substitution shape as Project Todo's
+		validate_workflow_fields, for the same reason.
+
+		The single insert-time exemption is an internal creator that explicitly passes
+		ignore_permissions: duplicate_project copies a source project's ALREADY
+		authorised flag rather than granting a new one. Deliberately NOT extended to
+		updates, where update_project uses that same flag and this gate must still bind.
+		"""
 		old = None if self.is_new() else self.get_doc_before_save()
-		if not old or cint(old.auto_approve) == cint(self.auto_approve):
+		before = cint(old.auto_approve) if old else 0
+		if before == cint(self.auto_approve):
 			return
+		if old is None and self.flags.ignore_permissions:
+			return
+		# On an update the authority is the STORED owner, so naming yourself owner in
+		# the same save cannot grant it. On a create there is no stored owner, so the
+		# caller must be the owner they are naming.
+		owner = old.project_owner if old else self.project_owner
 		roles = frappe.get_roles()
-		if "System Manager" in roles or (frappe.session.user == old.project_owner and "Partner" in roles):
+		if "System Manager" in roles or (frappe.session.user == owner and "Partner" in roles):
 			return
 		frappe.throw(
 			"Hanya Project Owner dengan role Partner yang bisa mengatur auto-approve.",
