@@ -12,12 +12,26 @@ missing" silently leaves it role-less. Ensure the state, not just the row.
 import frappe
 
 
-def ensure_user(email, first_name=None, roles=()):
+# Fixture users we had to switch on, and what their `enabled` was beforehand.
+# These suites run against the LIVE DB with no rollback, so a fixture that simply
+# sets enabled=1 permanently re-enables the account -- which would undo a security
+# cleanup. Enable for the test, hand it back in tearDown.
+_ENABLED_BY_FIXTURE = {}
+
+
+def ensure_user(email, first_name=None, roles=(), ensure_enabled=False):
 	"""A test User that exists AND holds `roles`.
 
 	Project validates that its owner/leader carry the matching role, and reading a
 	Project Todo needs one of the project roles at all — so a bare user fails in
 	ways that look like permission bugs.
+
+	`ensure_enabled` also switches a disabled account on for the duration of the
+	test. Project.validate calls remove_disabled_team_members(), so a DISABLED
+	fixture user is silently dropped from team_members and every todo assigned to it
+	then fails "is not a team member" -- 50 tests went red exactly that way when
+	three fixture accounts were disabled on 2026-09-12. Pair it with
+	restore_fixture_users() in tearDown; see that function for why.
 	"""
 	if not frappe.db.exists("User", email):
 		try:
@@ -32,6 +46,9 @@ def ensure_user(email, first_name=None, roles=()):
 			# whose tearDown died leaves the row behind while the cache says it is
 			# gone. The row is what we wanted anyway.
 			frappe.db.rollback()
+	if ensure_enabled and not frappe.db.get_value("User", email, "enabled"):
+		_ENABLED_BY_FIXTURE.setdefault(email, 0)
+		frappe.db.set_value("User", email, "enabled", 1, update_modified=False)
 	if roles:
 		doc = frappe.get_doc("User", email)
 		missing = [r for r in roles if r not in {x.role for x in doc.roles}]
@@ -40,6 +57,24 @@ def ensure_user(email, first_name=None, roles=()):
 				doc.append("roles", {"role": role})
 			doc.save(ignore_permissions=True)
 	return email
+
+
+def restore_fixture_users():
+	"""Put back the `enabled` of every account ensure_user had to switch on.
+
+	Call it from tearDown. Without this, running the suite quietly re-enables any
+	deliberately-disabled account it touched, on the live site, and the next person
+	to audit accounts finds them on again with no idea why.
+
+	Known gap, and it is the reason this is a restore rather than a permanent set: a
+	run killed between setUp and tearDown leaves the account enabled. That is a
+	strictly smaller window than "enabled forever", and the account it affects has no
+	password and no api_key, so it cannot authenticate either way.
+	"""
+	for email, was in list(_ENABLED_BY_FIXTURE.items()):
+		if frappe.db.exists("User", email):
+			frappe.db.set_value("User", email, "enabled", was, update_modified=False)
+		_ENABLED_BY_FIXTURE.pop(email, None)
 
 
 def ensure_brand(name):
