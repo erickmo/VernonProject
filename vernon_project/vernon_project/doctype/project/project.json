@@ -33,8 +33,7 @@
   "bonus_amount",
   "column_break_reward",
   "discount",
-  "total"
- ],
+  "total", "ai_management_section", "is_ai_managed", "ai_device", "ai_session_name"],
  "fields": [
   {
    "fieldname": "section_break_azxo",
@@ -211,6 +210,30 @@
    "label": "Total",
    "non_negative": 1,
    "read_only": 1
+  },
+  {"fieldname": "ai_management_section", "fieldtype": "Section Break", "label": "AI Management"},
+  {
+   "fieldname": "is_ai_managed",
+   "fieldtype": "Check",
+   "label": "Managed by AI",
+   "default": "0",
+   "description": "Tag this project as handled by an AI session. Separate from a todo's own AI work mode \u2014 tagging here does not change any todo."
+  },
+  {
+   "fieldname": "ai_device",
+   "fieldtype": "Data",
+   "label": "AI Device",
+   "depends_on": "eval:doc.is_ai_managed",
+   "mandatory_depends_on": "eval:doc.is_ai_managed",
+   "description": "Which device/machine runs the session that handles this project."
+  },
+  {
+   "fieldname": "ai_session_name",
+   "fieldtype": "Data",
+   "label": "AI Session Name",
+   "depends_on": "eval:doc.is_ai_managed",
+   "mandatory_depends_on": "eval:doc.is_ai_managed",
+   "description": "Name of the session on that device. Required once Managed by AI is on (enforced in the controller \u2014 mandatory_depends_on is Desk-form only)."
   }
  ],
  "grid_page_length": 50,

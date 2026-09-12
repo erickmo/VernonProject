@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate, cint
 
@@ -35,6 +36,7 @@ class Project(Document):
 		self.total = bonus if self.reward_type == "Point" else bonus - discount
 
 	def validate(self):
+		validate_ai_management(self)
 		# Start Date < Deadline
 		if self.start_date and self.deadline:
 			if getdate(self.start_date) > getdate(self.deadline):
@@ -273,3 +275,41 @@ def has_permission(doc, ptype, user):
 		return True
 
 	return False
+
+# --- AI management ------------------------------------------------------------
+# A Project / Project Detail can be tagged as handled by an AI session, recording
+# WHICH device and session. Deliberately separate from a Project Todo's own
+# work_mode AI ladder: tagging here changes no todo, and nothing here reads
+# work_mode / ai_prompt / ai_prompt_confirmed.
+#
+# Enforced HERE, not by the schema. The fields carry mandatory_depends_on so the
+# Desk form marks them required, but frappe evaluates that ONLY in client JS
+# (public/js/frappe/form/layout.js) -- there is no python evaluator, and
+# _get_missing_mandatory_fields looks at reqd=1 alone. Both of this app's
+# frontends save a Project through the generic /api/resource PUT
+# (useUpdateProject -> resource.update), so a form-level rule would bind nothing
+# that matters. reqd:1 was not an option either: it applies to EVERY row, so
+# every existing untagged Project would have become unsaveable after the
+# migration.
+AI_FIELD_MAX = 140
+
+
+def validate_ai_management(doc):
+	"""Require device+session while tagged, clear them when untagged.
+
+	Reads through doc.get() on purpose: the code can be live for a moment before
+	the doctype reload lands, and attribute access on a field the loaded schema
+	does not know about raises instead of returning None.
+	"""
+	if not cint(doc.get("is_ai_managed")):
+		# Clear rather than leave stale values a consumer would read as live.
+		doc.ai_device = None
+		doc.ai_session_name = None
+		return
+	doc.ai_device = (doc.get("ai_device") or "").strip()[:AI_FIELD_MAX] or None
+	doc.ai_session_name = (doc.get("ai_session_name") or "").strip()[:AI_FIELD_MAX] or None
+	if not (doc.ai_device and doc.ai_session_name):
+		frappe.throw(
+			_("AI Device and AI Session Name are required while Managed by AI is on."),
+			frappe.MandatoryError,
+		)

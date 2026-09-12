@@ -1290,6 +1290,12 @@ export function useCreateProjectDetail(project: string) {
         ...(input.failure_condition != null ? { failure_condition: input.failure_condition } : {}),
         ...(input.context != null ? { context: input.context } : {}),
         ...(input.glossaries ? { glossaries: input.glossaries } : {}),
+        // AI management. This payload is an explicit allowlist, so a field absent
+        // here is silently dropped on CREATE while working fine on update (which
+        // passes the whole object through resource.update).
+        ...(input.is_ai_managed != null ? { is_ai_managed: input.is_ai_managed } : {}),
+        ...(input.ai_device != null ? { ai_device: input.ai_device } : {}),
+        ...(input.ai_session_name != null ? { ai_session_name: input.ai_session_name } : {}),
       }),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.project(project) })

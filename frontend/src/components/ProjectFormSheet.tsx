@@ -33,6 +33,7 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
     project_admins: [], blocked_by: '', start_date: '', deadline: '',
     goal: '', success_condition: '', failure_condition: '', context: '',
     status: 'Ongoing', reward_type: 'Rupiah', bonus_amount: 0, discount: 0, team_members: [],
+    is_ai_managed: 0, ai_device: '', ai_session_name: '',
   })
 
   useEffect(() => {
@@ -55,6 +56,9 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
         bonus_amount: project.bonus_amount ?? 0,
         discount: project.discount ?? 0,
         team_members: project.team.map((t) => ({ user: t.user })),
+        is_ai_managed: project.is_ai_managed ? 1 : 0,
+        ai_device: project.ai_device ?? '',
+        ai_session_name: project.ai_session_name ?? '',
       })
     }
   }, [project])
@@ -76,6 +80,12 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
     }
     if (f.start_date > f.deadline) {
       toast('error', 'Start date cannot be after the deadline')
+      return
+    }
+    // Mirrors Project.validate_ai_management: the server refuses a tagged project
+    // with no device/session, so say so here instead of bouncing off a 417.
+    if (f.is_ai_managed && (!f.ai_device?.trim() || !f.ai_session_name?.trim())) {
+      toast('error', 'AI device and session name are required when Managed by AI is on')
       return
     }
     const onDone = (r: { name: string }) => {
@@ -189,6 +199,28 @@ export function ProjectFormSheet({ open, onClose, project, canReassign = true, o
             Context
             <textarea className={field + ' mt-1'} rows={2} placeholder="Constraints, stack, audience — extra context for AI" value={f.context ?? ''} onChange={(e) => set('context', e.target.value)} />
           </label>
+
+          <div className={head}>AI management</div>
+          <span className="-mt-1 block text-xs font-normal text-slate-400 dark:text-slate-500">Which AI session handles this project. Separate from a task&rsquo;s own AI tag &mdash; this changes no task.</span>
+          <label className="flex items-start justify-between text-sm font-medium text-slate-600 dark:text-slate-300">
+            <span>
+              Managed by AI
+              <span className="mt-0.5 block text-xs font-normal text-slate-400 dark:text-slate-500">Record which device and session is handling this project.</span>
+            </span>
+            <input type="checkbox" checked={!!f.is_ai_managed} onChange={(e) => set('is_ai_managed', e.target.checked ? 1 : 0)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
+          </label>
+          {!!f.is_ai_managed && (
+            <>
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                AI device
+                <input className={field + ' mt-1'} value={f.ai_device ?? ''} placeholder="Device running the session" onChange={(e) => set('ai_device', e.target.value)} />
+              </label>
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                AI session name
+                <input className={field + ' mt-1'} value={f.ai_session_name ?? ''} placeholder="Session name on that device" onChange={(e) => set('ai_session_name', e.target.value)} />
+              </label>
+            </>
+          )}
 
           <div className={head}>Reward</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">

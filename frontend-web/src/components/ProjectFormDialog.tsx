@@ -47,6 +47,9 @@ export function ProjectFormDialog({
     failure_condition: '',
     context: '',
     status: 'Ongoing',
+    is_ai_managed: 0,
+    ai_device: '',
+    ai_session_name: '',
     reward_type: 'Rupiah',
     bonus_amount: 0,
     discount: 0,
@@ -73,6 +76,9 @@ export function ProjectFormDialog({
         bonus_amount: project.bonus_amount ?? 0,
         discount: project.discount ?? 0,
         team_members: project.team.map((t) => ({ user: t.user })),
+        is_ai_managed: project.is_ai_managed ? 1 : 0,
+        ai_device: project.ai_device ?? '',
+        ai_session_name: project.ai_session_name ?? '',
       })
     }
   }, [project])
@@ -94,6 +100,12 @@ export function ProjectFormDialog({
     }
     if (f.start_date > f.deadline) {
       toast('error', 'Start date cannot be after the deadline')
+      return
+    }
+    // Mirrors Project.validate_ai_management: the server refuses a tagged project
+    // with no device/session, so say so here rather than bouncing off the error.
+    if (f.is_ai_managed && (!f.ai_device?.trim() || !f.ai_session_name?.trim())) {
+      toast('error', 'AI device and session name are required when Managed by AI is on')
       return
     }
     const onDone = (r: { name: string }) => {
@@ -310,6 +322,45 @@ export function ProjectFormDialog({
               />
             </label>
           </div>
+        </section>
+
+        {/* ---- AI management ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>AI management</h3>
+          <p className="-mt-1 text-xs text-muted">
+            Which AI session handles this project. Separate from a task&rsquo;s own AI tag &mdash; this changes no task.
+          </p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!f.is_ai_managed}
+              onChange={(e) => set('is_ai_managed', e.target.checked ? 1 : 0)}
+              className="h-4 w-4 accent-brand-600"
+            />
+            <span className="text-sm font-medium text-muted">Managed by AI</span>
+          </label>
+          {!!f.is_ai_managed && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-muted">AI device</span>
+                <input
+                  value={f.ai_device ?? ''}
+                  onChange={(e) => set('ai_device', e.target.value)}
+                  placeholder="Device running the session"
+                  className={inputCls}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-muted">AI session name</span>
+                <input
+                  value={f.ai_session_name ?? ''}
+                  onChange={(e) => set('ai_session_name', e.target.value)}
+                  placeholder="Session name on that device"
+                  className={inputCls}
+                />
+              </label>
+            </div>
+          )}
         </section>
 
         {/* ---- Reward ---- */}

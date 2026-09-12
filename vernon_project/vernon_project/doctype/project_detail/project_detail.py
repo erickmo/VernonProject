@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate
-from vernon_project.vernon_project.doctype.project.project import get_project_admins
+from vernon_project.vernon_project.doctype.project.project import validate_ai_management, get_project_admins
 
 
 class ProjectDetail(Document):
@@ -14,6 +14,7 @@ class ProjectDetail(Document):
 		self._apply_rollups()
 
 	def validate(self):
+		validate_ai_management(self)  # one implementation, see project.py
 		if not self.project:
 			frappe.throw("Project is required.")
 

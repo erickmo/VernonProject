@@ -76,11 +76,13 @@ _PROJECT_ALLOWED_FIELDS = {
 	"project_name", "start_date", "deadline", "goal", "success_condition",
 	"failure_condition", "context", "brand", "status", "auto_approve",
 	"blocked_by", "reward_type", "bonus_amount", "discount",
+	"is_ai_managed", "ai_device", "ai_session_name",
 }
 _PROJECT_DETAIL_ALLOWED_FIELDS = {
 	"title", "project_deadline", "current_condition", "expected_outcome",
 	"goal", "success_condition", "failure_condition", "context",
 	"keterangan_di_sow", "grouping", "status",
+	"is_ai_managed", "ai_device", "ai_session_name",
 }
 
 

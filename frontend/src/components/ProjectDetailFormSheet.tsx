@@ -22,10 +22,13 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
   const [outcome, setOutcome] = useState('')
   const [sow, setSow] = useState('')
   const [glossaries, setGlossaries] = useState<string[]>([])
+  const [aiManaged, setAiManaged] = useState(false)
+  const [aiDevice, setAiDevice] = useState('')
+  const [aiSession, setAiSession] = useState('')
 
   const reset = () => {
     setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
-    setSow(''); setGlossaries([])
+    setSow(''); setGlossaries([]); setAiManaged(false); setAiDevice(''); setAiSession('')
   }
   const close = () => { reset(); onClose() }
 
@@ -42,6 +45,11 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
       toast('error', 'Title is required')
       return
     }
+    // Mirrors ProjectDetail.validate_ai_management.
+    if (aiManaged && (!aiDevice.trim() || !aiSession.trim())) {
+      toast('error', 'AI device and session name are required when Managed by AI is on')
+      return
+    }
     create.mutate(
       {
         title: title.trim(),
@@ -50,6 +58,9 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
         expected_outcome: outcome,
         keterangan_di_sow: sow,
         glossaries: glossaries.map((g) => ({ glossary: g })),
+        is_ai_managed: aiManaged ? (1 as const) : (0 as const),
+        ai_device: aiDevice.trim(),
+        ai_session_name: aiSession.trim(),
       },
       {
         onSuccess: () => { toast('success', 'Project detail created'); close() },
@@ -82,6 +93,25 @@ export function ProjectDetailFormSheet({ open, onClose, project }: Props) {
             </span>
             <input type="checkbox" checked={isPending} onChange={(e) => setIsPending(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
           </label>
+
+          <div className={head}>AI management</div>
+          <span className="-mt-1 block text-xs font-normal text-slate-400 dark:text-slate-500">Which AI session handles this sub-goal. Separate from a task&rsquo;s own AI tag.</span>
+          <label className="flex items-start justify-between text-sm font-medium text-slate-600 dark:text-slate-300">
+            <span>Managed by AI</span>
+            <input type="checkbox" checked={aiManaged} onChange={(e) => setAiManaged(e.target.checked)} className="ml-3 h-5 w-5 shrink-0 accent-brand-600" />
+          </label>
+          {aiManaged && (
+            <>
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                AI device
+                <input className={field + ' mt-1'} value={aiDevice} onChange={(e) => setAiDevice(e.target.value)} placeholder="Device running the session" />
+              </label>
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                AI session name
+                <input className={field + ' mt-1'} value={aiSession} onChange={(e) => setAiSession(e.target.value)} placeholder="Session name on that device" />
+              </label>
+            </>
+          )}
 
           <div className={head}>Analysis</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
