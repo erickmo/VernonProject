@@ -4363,6 +4363,14 @@ def _period_start(period):
 	return None
 
 
+# RFC 2606 reserves example.com, so no real account can ever hold one: a Point
+# Ledger row with that domain is test data that outlived a suite's teardown.
+# Excluded from the ranking rather than deleted — the cleanup is a data decision
+# for the owner, and meanwhile real people should not be ranked against fixtures
+# (2026-09-12: two such accounts were sitting on the live monthly board).
+RESERVED_TEST_DOMAIN = "%@example.com"
+
+
 @frappe.whitelist()
 def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 	"""Top 50 users by points earned in the period; plus the caller's own rank.
@@ -4377,8 +4385,8 @@ def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 	brand = brand or None
 
 	start = _period_start(period)
-	conds = []
-	params = {}
+	conds = ["pl.user not like %(reserved_domain)s"]
+	params = {"reserved_domain": RESERVED_TEST_DOMAIN}
 	join = ""
 	if dimension == "character":
 		conds.append("coalesce(pl.source, 'Todo') in ('Recognition', 'Mentoring')")

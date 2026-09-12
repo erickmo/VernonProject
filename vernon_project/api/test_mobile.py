@@ -637,9 +637,13 @@ class TestLeaderboard(unittest.TestCase):
 	50th-place cutoff actually is right now, so it lands outside the returned top
 	50 — the exact case the fix must still resolve `me` for."""
 
-	A = "lb_a@example.com"
-	B = "lb_b@example.com"
-	C = "lb_c@example.com"
+	# NOT @example.com, and that is load-bearing: get_leaderboard now excludes that
+	# domain, because fixture accounts from these very suites had leaked onto the
+	# live board and were being ranked against real employees. These users have to
+	# be rankable to test ranking, so they use another reserved domain instead.
+	A = "lb_a@vernon.test"
+	B = "lb_b@vernon.test"
+	C = "lb_c@vernon.test"
 
 	def setUp(self):
 		frappe.set_user("Administrator")
