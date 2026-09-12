@@ -2146,9 +2146,16 @@ def get_project_detail(project_detail, include_cancelled=0, limit=0, start=0):
 	detail["latest_deadline"] = str(detail["latest_deadline"]) if detail.get("latest_deadline") else None
 	detail["project_deadline"] = str(detail["project_deadline"]) if detail.get("project_deadline") else None
 
+	# Always fetch cancelled rows, then drop them from the RETURNED items below if
+	# the caller did not ask for them. The counts are the reason: they used to be
+	# computed from a row set the SQL had already filtered, so `cancelled_count`
+	# could only ever be 0 and `total_count` was short by exactly the number of
+	# cancelled todos -- silently, on every call, for every detail (found 2026-09-12
+	# on PD-PRJ-2601-00002-00005: API said 253/cancelled 0, the DB held 254/1).
+	# Same single query as before: the filtering moved from SQL into Python.
 	rows = _fetch_todos(
 		[detail["project"]],
-		include_cancelled=frappe.utils.cint(include_cancelled),
+		include_cancelled=True,
 		project_detail=project_detail,
 	)
 	# Computed over the FULL row set, before any pagination slice below, so the
@@ -2164,6 +2171,8 @@ def get_project_detail(project_detail, include_cancelled=0, limit=0, start=0):
 	detail["completed_count"] = sum(1 for r in rows if _status_key(r["status"]) == "completed")
 	detail["cancelled_count"] = sum(1 for r in rows if _status_key(r["status"]) == "cancelled")
 	_not_cancelled = [r for r in rows if _status_key(r["status"]) != "cancelled"]
+	if not frappe.utils.cint(include_cancelled):
+		rows = _not_cancelled
 	detail["minutes_total"] = sum(r["estimated"] or 0 for r in _not_cancelled)
 	detail["minutes_done"] = sum(
 		r["estimated"] or 0 for r in _not_cancelled if _status_key(r["status"]) == "completed"

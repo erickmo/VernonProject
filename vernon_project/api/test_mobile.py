@@ -1474,3 +1474,62 @@ class TestMobileGetProjectBlueprint(FrappeTestCase):
 				get_project_blueprint(self.project.name)
 		finally:
 			frappe.set_user("Administrator")
+
+
+class TestProjectDetailCancelledCounts(FrappeTestCase):
+	"""get_project_detail's header counts were computed from a row set the SQL had
+	already filtered (include_cancelled defaulted to 0), so `cancelled_count` could
+	only ever be 0 and `total_count` was short by exactly the number of cancelled
+	todos -- on every call, for every detail, silently. Found 2026-09-12 on
+	PD-PRJ-2601-00002-00005: the API reported 253 items / 0 cancelled where the
+	database held 254 / 1. Revert the include_cancelled=True fetch and these fail."""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		if not frappe.db.exists("Brand", "Test Customer"):
+			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
+		if not frappe.db.exists("Group", "Test Group"):
+			frappe.get_doc({"doctype": "Group", "group_name": "Test Group"}).insert(ignore_permissions=True)
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "Cancelled Count Test", "brand": "Test Customer",
+			"project_owner": "Administrator", "project_leader": "Administrator", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+		}).insert(ignore_permissions=True)
+		self.gl = frappe.get_doc({
+			"doctype": "Glossary", "glossary": "Cancelled Count Grouping", "project": self.project.name,
+		}).insert(ignore_permissions=True).name
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "Cancelled Count Detail",
+			"grouping": self.gl, "project_deadline": add_days(nowdate(), 30), "estimated": 10,
+		}).insert(ignore_permissions=True)
+		for subject, status in (("Kept open", "⚪️ Planned"), ("Scrapped", "🚫 Cancelled")):
+			frappe.get_doc({
+				"doctype": "Project Todo", "project_detail": self.detail.name, "to_do": subject,
+				"assigned_to": "Administrator", "status": status, "start_date": nowdate(),
+				"deadline": add_days(nowdate(), 5), "estimated": 30,
+				"group": "Test Group", "level": "1",
+			}).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.delete("Project Todo", {"project_detail": self.detail.name})
+		frappe.delete_doc("Project Detail", self.detail.name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Glossary", self.gl, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
+
+	def test_cancelled_todo_is_counted_even_when_not_returned(self):
+		r = get_project_detail(self.detail.name)
+		self.assertEqual(r["cancelled_count"], 1, "cancelled_count is structurally 0 again")
+		self.assertEqual(r["total_count"], 2, "total_count must include cancelled todos")
+		self.assertEqual(r["open_count"], 1)
+		# the cancelled row is counted but NOT returned unless asked for
+		self.assertEqual([i["to_do"] for i in r["project_items"]], ["Kept open"])
+
+	def test_include_cancelled_returns_the_row_and_same_counts(self):
+		r = get_project_detail(self.detail.name, include_cancelled=1)
+		self.assertEqual(sorted(i["to_do"] for i in r["project_items"]), ["Kept open", "Scrapped"])
+		self.assertEqual((r["total_count"], r["cancelled_count"]), (2, 1))
+
+	def test_minutes_still_ignore_cancelled_work(self):
+		r = get_project_detail(self.detail.name)
+		self.assertEqual(r["minutes_total"], 30, "a cancelled todo's estimate must not count as work")
