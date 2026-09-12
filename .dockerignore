@@ -1,0 +1,23 @@
+# r2dfiifbj5 — what never belongs in the build context.
+# Without this the context is hundreds of megabytes and, worse, could carry the
+# operator's own secrets into a layer.
+
+deploy/.env
+**/.env
+**/.env.*
+!deploy/.env.example
+
+.git
+.gitignore
+node_modules
+**/node_modules
+__pycache__
+**/__pycache__
+*.pyc
+scratchpad/
+mcp_server/.venv/
+mcp_server/*.log
+*.log
+docs/
+.claude/
+.superpowers/
