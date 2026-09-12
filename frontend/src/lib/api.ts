@@ -1089,17 +1089,18 @@ export async function uploadBannerImage(file: File): Promise<string> {
 }
 
 // Multipart upload of a comment image to a whitelisted method. Access is gated
-// server-side by comment visibility on the referenced record. Returns the saved
+// server-side by comment visibility on the referenced record, which is why the
+// reference is required here and there — the server rejects a call without it. Returns the saved
 // public file URL (served from /files/...).
 export async function uploadCommentImage(
   file: File,
-  refDoctype?: string,
-  refName?: string,
+  refDoctype: string,
+  refName: string,
 ): Promise<string> {
   const fd = new FormData()
   fd.append('file', file)
-  if (refDoctype) fd.append('reference_doctype', refDoctype)
-  if (refName) fd.append('reference_name', refName)
+  fd.append('reference_doctype', refDoctype)
+  fd.append('reference_name', refName)
   const res = await fetch(METHOD + 'vernon_project.api.mobile.upload_comment_image', {
     method: 'POST',
     headers: { Accept: 'application/json', 'X-Frappe-CSRF-Token': csrf() },

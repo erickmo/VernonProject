@@ -4747,7 +4747,15 @@ def _has_face(content):
 		_, faces = _FACE_DETECTOR.detect(img)
 		return faces is not None and len(faces) > 0
 	except Exception:
-		frappe.log_error(title="profile photo face-detect failed (fail-open)")
+		# Fail open — a broken detector must not block people from setting a photo.
+		# Bounded because this is reachable by any authenticated upload and Error
+		# Log is a MyISAM table that survives rollback: a detector that is broken
+		# is broken for everyone, so ONE row an hour carries the same diagnostic
+		# as thousands. Same reasoning as passkey.client_log's budget.
+		key = frappe.cache.make_key("vp_face_detect_failed")
+		if frappe.cache.get(key) is None:
+			frappe.cache.setex(key, 3600, 1)
+			frappe.log_error(title="profile photo face-detect failed (fail-open)")
 		return True
 
 
@@ -4845,12 +4853,23 @@ def upload_comment_image(reference_doctype=None, reference_name=None):
 	caller (CommentThread) then inlines the URL as an <img src="/files/..."> in
 	the comment HTML content.
 
-	Access is gated by comment visibility on the target record. Only raster image
-	types are accepted: the file is served public, so SVG/HTML (stored-XSS
-	vectors) and other content are rejected by extension and MIME, mirroring
-	upload_reward_image."""
-	if reference_doctype and reference_name:
-		_assert_comment_visible(reference_doctype, reference_name)
+	Access is gated by comment visibility on the target record, and the reference
+	is REQUIRED so that sentence is always true. It used to be optional — both
+	params defaulted to None and the check was skipped when they were absent, so
+	any authenticated caller could upload an unreferenced public file while two
+	comments (here and in the frontend wrapper) claimed visibility was enforced.
+	No caller ever relied on that: useMarkdownAttachments takes both as required
+	strings and is the only call site.
+
+	Only raster image types are accepted: the file is served public, so SVG/HTML
+	(stored-XSS vectors) and other content are rejected by extension and MIME,
+	mirroring upload_reward_image."""
+	if not reference_doctype or not reference_name:
+		frappe.throw(
+			"A comment image must name the record it belongs to.",
+			frappe.ValidationError,
+		)
+	_assert_comment_visible(reference_doctype, reference_name)
 	import os
 	from frappe.utils.file_manager import save_file
 
