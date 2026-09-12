@@ -780,13 +780,28 @@ def confirm_ai_prompt(todo_id, confirmed=1):
 
 
 @frappe.whitelist()
-def get_confirmed_ai_todos():
+def get_confirmed_ai_todos(lean=0):
 	"""Phase 3 queue: Planned AI todos assigned to the caller whose prompt a human has
 	confirmed, i.e. the work an AI agent may pick up right now.
 
-	The mirror of ``get_ai_todos_needing_prompt`` (phase 1). Carries the prompts so the
-	agent needs no second round-trip. When the agent finishes it should raise its own
-	"Ask other to check" todo — nothing here does that for it."""
+	The mirror of ``get_ai_todos_needing_prompt`` (phase 1). By default it carries the
+	prompts so the agent needs no second round-trip. When the agent finishes it should
+	raise its own "Ask other to check" todo — nothing here does that for it.
+
+	``lean=1`` (152j8iaa6j) returns the SAME todos, filtered, ordered and permitted
+	identically, with the prompt bodies replaced by ``ai_prompts_count`` and a handful
+	of naming fields added — the shape a caller needs to CHOOSE a todo, before fetching
+	the one it picked with ``get_ai_todo_context``. On a real board that is 215 KB down
+	to about 5 KB, and this endpoint is polled on a loop.
+
+	The lean fields are a different projection, not a subset: project_name,
+	project_detail_title, ai_phase, group and level_type are added. The two titles come
+	from ``_batch_field_map`` — one query per doctype however many todos there are,
+	never one per todo.
+
+	Comes in as a string over the whitelisted HTTP path, so ``lean`` is coerced with
+	cint(): "0" must read as falsy, not as a truthy non-empty string.
+	"""
 	user = frappe.session.user
 	rows = frappe.get_all(
 		"Project Todo",
@@ -796,19 +811,43 @@ def get_confirmed_ai_todos():
 			"status": "⚪️ Planned",
 			"ai_prompt_confirmed": 1,
 		},
-		fields=["name", "to_do", "project", "project_detail", "status", "work_mode", "deadline", "ai_prompt"],
+		# group/level_type are selected always (two more columns on one query) but
+		# emitted only when lean — the default response must not change shape.
+		fields=[
+			"name", "to_do", "project", "project_detail", "status", "work_mode", "deadline",
+			"ai_prompt", "group", "level_type",
+		],
 		order_by="deadline asc",
 	)
-	out = []
+	kept = []
 	for r in rows:
 		prompts = parse_ai_prompts(r.ai_prompt)
 		if not prompts:
 			continue  # confirmed but emptied out of band — not runnable
-		out.append(
-			{k: r[k] for k in ("name", "to_do", "project", "project_detail", "status", "work_mode", "deadline")}
-			| {"ai_prompts": prompts}
-		)
-	return out
+		kept.append((r, prompts))
+
+	if not cint(lean):
+		return [
+			{k: r[k] for k in _AI_QUEUE_BASE_FIELDS} | {"ai_prompts": prompts}
+			for r, prompts in kept
+		]
+
+	projects = _batch_field_map("Project", [r.project for r, _ in kept], ["project_name"])
+	details = _batch_field_map("Project Detail", [r.project_detail for r, _ in kept], ["title"])
+	return [
+		{k: r[k] for k in _AI_QUEUE_BASE_FIELDS}
+		| {
+			"project_name": (projects.get(r.project) or {}).get("project_name"),
+			"project_detail_title": (details.get(r.project_detail) or {}).get("title"),
+			"group": r.get("group"),
+			"level_type": r.get("level_type"),
+			# Every row here is confirmed and has a prompt by the filter above, so this
+			# is 3 — derived rather than hardcoded so it follows if the filter changes.
+			"ai_phase": ai_phase(r.work_mode, True, True),
+			"ai_prompts_count": len(prompts),
+		}
+		for r, prompts in kept
+	]
 
 
 _AI_QUEUE_BASE_FIELDS = ("name", "to_do", "project", "project_detail", "status", "work_mode", "deadline")
