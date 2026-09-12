@@ -5,7 +5,7 @@ import {
   AlertTriangle, Clock, ChevronRight, CalendarDays, ArrowRight, Repeat, Play, Timer, Plus, Check, Pause, X, StickyNote, Undo2, ListChecks, Bot, Target, Eye, Reply,
 } from 'lucide-react'
 import { STATUS } from '@/lib/status'
-import { formatEstimate, todayISO } from '@/lib/format'
+import { formatEstimate, todayISO, addDaysISO } from '@/lib/format'
 import { NoteMarkdown } from '@/lib/markdown'
 import { Avatar, Pill } from './ui'
 import { useAdvance } from '@/components/AdvanceProvider'
@@ -13,7 +13,7 @@ import { useReject } from '@/components/RejectProvider'
 import { useUndo } from '@/components/UndoProvider'
 import { useFocusPill } from '@/hooks/useFocusPill'
 import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useBoot, canUseAi } from '@/hooks/useData'
-import { buildNext } from '@/lib/planDay'
+import { buildNext, planOnlyOn } from '@/lib/planDay'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
 import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
 import type { ProjectItem } from '@/lib/types'
@@ -52,8 +52,12 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   // the useTodoMenu items so a card never toggles something its menu wouldn't.
   const setCheckFlag = useSetTodoCheck()
   const setWorkModeFlag = useSetTodoWorkMode()
+  const setAlloc = useSetTodoAllocations(todo.name)
   const { data: boot } = useBoot()
   const aiAllowed = canUseAi(boot)
+  // Mirrors the Today chip's gate: only the assignee plans their own day, and only
+  // while the task is still open. The backend enforces it too (set_todo_allocations).
+  const canPlan = todo.is_mine && todo.status_key !== 'completed'
   const [hovered, setHovered] = useState(false)
   useEffect(() => {
     if (!hovered) return
@@ -70,12 +74,22 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
       } else if (e.key === 'f' && todo.status_key !== 'completed') {
         e.preventDefault()
         onFocusPill()
+      } else if (/^[1-9]$/.test(e.key) && canPlan) {
+        // 1 = today, 2 = tomorrow, ... 9 = today+8. Puts this todo's whole plan on
+        // that one day; planOnlyOn keeps rows before today, which are the record of
+        // what was already planned and worked. Same gate and same minutes convention
+        // as the Today chip, and set_todo_allocations re-checks on the server.
+        e.preventDefault()
+        if (setAlloc.isPending) return
+        const target = addDaysISO(todayISO(), Number(e.key) - 1)
+        const minutes = todo.estimated > 0 ? todo.estimated : 30
+        setAlloc.mutate(planOnlyOn(todo.allocations ?? [], target, todayISO(), minutes))
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, aiAllowed])
+  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, aiAllowed, canPlan, todo.estimated, todo.allocations])
 
   // A quick bounce whenever the context menu is summoned (long-press on touch,
   // right-click on desktop) so the trigger feels tactile. `pressing` gives live
@@ -133,7 +147,6 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
     undoConfirm(todo.name, todo.to_do)
   }
 
-  const setAlloc = useSetTodoAllocations(todo.name)
   const planned = todo.today_allocation > 0
   // Any AI phase keeps the cyan card; the chip carries WHICH phase (see AI_PHASES).
   const aiPhase = aiPhaseOf(todo)

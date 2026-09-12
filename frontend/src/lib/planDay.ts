@@ -60,6 +60,25 @@ export function buildNext(allocations: Alloc[], today: string, minutes: number):
   ]
 }
 
+// The 1-9 hover shortcuts on a todo card: put this todo's whole plan on ONE day.
+//
+// The spec says "pressing 1 will move the my plan for today (and delete other plan)",
+// and in the same breath forbids deleting "another todo, historical record, unrelated
+// plan, or any plan outside the specified replacement behaviour". Allocations are
+// dated rows, and rows BEFORE today are the record of what was planned and worked —
+// so "other plan" means this todo's other today-or-future rows, and history survives.
+// A blanket replace would have read as correct and quietly destroyed it.
+//
+// Not buildNext(): that MERGES, keeping rows on other dates, which is the opposite of
+// what "(and delete other plan)" asks for.
+export function planOnlyOn(allocations: Alloc[], date: string, today: string, minutes: number): Alloc[] {
+  const history = allocations.filter((a) => a.date < today)
+  if (!(minutes > 0)) return history
+  // Keep a note the user already wrote against the target day.
+  const existing = allocations.find((a) => a.date === date)
+  return [...history, existing?.note ? { date, minutes, note: existing.note } : { date, minutes }]
+}
+
 // "Carry over" button: move a todo's yesterday-dated allocation row onto today's
 // row, merged with whatever's already planned today. Other rows (today, future,
 // older-than-yesterday leftovers) untouched. No-op if there's no yesterday row.
