@@ -426,6 +426,9 @@ export interface MemberTodo {
 
 export interface ProjectFull {
   name: string
+  is_ai_managed?: boolean
+  ai_device?: string | null
+  ai_session_name?: string | null
   project_name: string
   status: string
   brand: string
@@ -531,6 +534,10 @@ export interface ProjectInput {
   bonus_amount?: number
   discount?: number
   team_members?: { user: string }[]
+  /** AI management: tag + which device/session handles it. Separate from a todo's work_mode. */
+  is_ai_managed?: 0 | 1
+  ai_device?: string | null
+  ai_session_name?: string | null
 }
 
 export interface ProjectDetailInput {
@@ -545,6 +552,10 @@ export interface ProjectDetailInput {
   failure_condition?: string
   context?: string
   glossaries?: { glossary: string }[]
+  /** AI management: tag + which device/session handles it. Separate from a todo's work_mode. */
+  is_ai_managed?: 0 | 1
+  ai_device?: string | null
+  ai_session_name?: string | null
 }
 
 export interface Comment {

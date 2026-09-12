@@ -35,6 +35,9 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
   const [failure, setFailure] = useState('')
   const [ctx, setCtx] = useState('')
   const [glossaries, setGlossaries] = useState<string[]>([])
+  const [aiManaged, setAiManaged] = useState(false)
+  const [aiDevice, setAiDevice] = useState('')
+  const [aiSession, setAiSession] = useState('')
 
   // Hydrate from the loaded detail when editing.
   useEffect(() => {
@@ -50,12 +53,16 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       setFailure(d.failure_condition ?? '')
       setCtx(d.context ?? '')
       setGlossaries(d.glossaries ?? [])
+      setAiManaged(!!d.is_ai_managed)
+      setAiDevice(d.ai_device ?? '')
+      setAiSession(d.ai_session_name ?? '')
     }
   }, [open, detail, detailQuery.data])
 
   const reset = () => {
     setTitle(''); setIsPending(false); setCondition(''); setOutcome('')
     setSow(''); setGoal(''); setSuccess(''); setFailure(''); setCtx(''); setGlossaries([])
+    setAiManaged(false); setAiDevice(''); setAiSession('')
   }
   const close = () => { reset(); onClose() }
 
@@ -69,6 +76,12 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       toast('error', 'Title is required')
       return
     }
+    // Mirrors ProjectDetail.validate_ai_management, which refuses a tagged detail
+    // with no device/session.
+    if (aiManaged && (!aiDevice.trim() || !aiSession.trim())) {
+      toast('error', 'AI device and session name are required when Managed by AI is on')
+      return
+    }
     const payload = {
       title: title.trim(),
       is_pending: isPending ? 1 : 0,
@@ -80,6 +93,9 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
       failure_condition: failure,
       context: ctx,
       glossaries: glossaries.map((g) => ({ glossary: g })),
+      is_ai_managed: aiManaged ? (1 as const) : (0 as const),
+      ai_device: aiDevice.trim(),
+      ai_session_name: aiSession.trim(),
     }
     const handlers = {
       onSuccess: () => { toast('success', isEdit ? 'Project detail updated' : 'Project detail created'); close() },
@@ -199,6 +215,37 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
             </label>
           </div>
         </section>
+        {/* ---- AI management ---- */}
+        <section className="space-y-3">
+          <h3 className={sectionHead}>AI management</h3>
+          <p className="-mt-1 text-xs text-muted">
+            Which AI session handles this sub-goal. Separate from a task&rsquo;s own AI tag.
+          </p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={aiManaged}
+              onChange={(e) => setAiManaged(e.target.checked)}
+              className="h-4 w-4 accent-brand-600"
+            />
+            <span className="text-sm font-medium text-muted">Managed by AI</span>
+          </label>
+          {aiManaged && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-muted">AI device</span>
+                <input value={aiDevice} onChange={(e) => setAiDevice(e.target.value)}
+                  placeholder="Device running the session" className={inputCls} />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-muted">AI session name</span>
+                <input value={aiSession} onChange={(e) => setAiSession(e.target.value)}
+                  placeholder="Session name on that device" className={inputCls} />
+              </label>
+            </div>
+          )}
+        </section>
+
       </div>
       )}
     </Drawer>

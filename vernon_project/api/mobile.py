@@ -1783,6 +1783,12 @@ def get_project(project):
 		"project_leader": doc.project_leader,
 		"project_admins": get_project_admins(doc),
 		"auto_approve": bool(doc.auto_approve),
+		# AI management. doc.get() because the code can be live for a moment before
+		# the doctype reload lands, and attribute access on a field the loaded schema
+		# does not know raises instead of returning None.
+		"is_ai_managed": bool(doc.get("is_ai_managed")),
+		"ai_device": doc.get("ai_device"),
+		"ai_session_name": doc.get("ai_session_name"),
 		"can_set_auto_approve": _can_set_auto_approve({"project_owner": doc.project_owner}, user),
 		"blocked_by": doc.blocked_by,
 		"blocked_by_name": frappe.get_value("Project", doc.blocked_by, "project_name") if doc.blocked_by else None,
@@ -2130,16 +2136,29 @@ def get_project_detail(project_detail, include_cancelled=0, limit=0, start=0):
 	MAX_PROJECT_ITEMS_PAGE server-side regardless of what's requested.
 	"""
 	user = frappe.session.user
+	columns = [
+		"name", "title", "project", "status", "is_pending", "current_condition",
+		"expected_outcome", "grouping", "keterangan_di_sow",
+		"goal", "success_condition", "failure_condition", "context",
+		"latest_deadline", "project_deadline",
+	]
+	# AI management columns only when the schema actually has them. Unlike
+	# get_project (which loads a doc and can doc.get() a field the loaded schema
+	# does not know), this names columns in SQL -- so asking for them before the
+	# doctype reload lands is a hard "Unknown column" 500 on the detail screen.
+	# Guarding here means code and schema can deploy in either order.
+	ai_columns = ["is_ai_managed", "ai_device", "ai_session_name"]
+	has_ai_columns = frappe.db.has_column("Project Detail", "is_ai_managed")
 	detail = frappe.get_value(
 		"Project Detail", project_detail,
-		["name", "title", "project", "status", "is_pending", "current_condition",
-		 "expected_outcome", "grouping", "keterangan_di_sow",
-		 "goal", "success_condition", "failure_condition", "context",
-		 "latest_deadline", "project_deadline"],
+		columns + (ai_columns if has_ai_columns else []),
 		as_dict=True,
 	)
 	if not detail:
 		frappe.throw("Not found", frappe.DoesNotExistError)
+	for column in ai_columns:
+		detail.setdefault(column, None)  # same payload shape before and after the reload
+	detail["is_ai_managed"] = bool(detail.get("is_ai_managed"))
 	if detail["project"] not in _visible_projects():
 		frappe.throw("Not permitted", frappe.PermissionError)
 	detail["deadline_human"] = _humanize_date(detail.get("latest_deadline"))
