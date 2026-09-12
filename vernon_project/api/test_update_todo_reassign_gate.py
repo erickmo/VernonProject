@@ -7,9 +7,10 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.api.mobile import update_todo
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestUpdateTodoReassignGate(unittest.TestCase):
+class TestUpdateTodoReassignGate(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: update_todo's outer gate lets
 	is_sm/owner/leader/THE CURRENT ASSIGNEE/admin in, but once inside,
 	`assigned_to` was applied unconditionally -- unlike `estimated` and

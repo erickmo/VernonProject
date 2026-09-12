@@ -7,9 +7,10 @@ from unittest.mock import patch
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days
 from vernon_project.api.mobile import get_project_detail, get_team_wall, PROTECTED_USERS
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestMobileGetWorkItem(unittest.TestCase):
+class TestMobileGetWorkItem(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({
@@ -67,7 +68,7 @@ class TestMobileGetWorkItem(unittest.TestCase):
 		self.assertTrue(result["can_create"])
 
 
-class TestMobileGetProjectExtras(unittest.TestCase):
+class TestMobileGetProjectExtras(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
@@ -100,7 +101,7 @@ class TestMobileGetProjectExtras(unittest.TestCase):
 		self.assertIn("Extras Grouping", r["groupings"])
 
 
-class TestMobileFormOptions(unittest.TestCase):
+class TestMobileFormOptions(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
@@ -128,7 +129,7 @@ class TestMobileFormOptions(unittest.TestCase):
 		self.assertTrue(all("value" in o and "label" in o for o in r["users"]))
 
 
-class TestMobileGetWorkItemExtras(unittest.TestCase):
+class TestMobileGetWorkItemExtras(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
@@ -166,7 +167,7 @@ class TestMobileGetWorkItemExtras(unittest.TestCase):
 		self.assertIn("WIX Grouping", r["groupings"])
 
 
-class TestMobileGetProjectTeam(unittest.TestCase):
+class TestMobileGetProjectTeam(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
@@ -428,7 +429,7 @@ class TestMobileGetProjectTeam(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
-class TestMobileWallet(unittest.TestCase):
+class TestMobileWallet(NoLeakMixin, unittest.TestCase):
 	"""Money paths: gift (zero-sum transfer) and redeem (instant deduct). These
 	mutate balances, so a regression here loses or mints points silently."""
 
@@ -534,7 +535,7 @@ class TestMobileWallet(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
-class TestPointLedgerCreatePermission(unittest.TestCase):
+class TestPointLedgerCreatePermission(NoLeakMixin, unittest.TestCase):
 	"""Point Ledger has no controller — every writer is expected to validate its own
 	amount then insert/save with ignore_permissions=True (grant_points, meeting/lms/
 	attendance engines, etc). No role but System Manager should hold doctype-level
@@ -625,7 +626,7 @@ class TestPointLedgerCreatePermission(unittest.TestCase):
 		self.assertTrue(frappe.db.exists("Point Ledger", doc.name))
 
 
-class TestLeaderboard(unittest.TestCase):
+class TestLeaderboard(NoLeakMixin, unittest.TestCase):
 	"""get_leaderboard() ranks purely from the SQL query (order by points desc, user
 	asc) — shape()/badge computation must never change WHO is returned or in what
 	order, only decorate. Regression for the 2026-09-08 perf fix that stopped
@@ -705,7 +706,7 @@ class TestLeaderboard(unittest.TestCase):
 			self.assertEqual(r["me"]["rank"], matching["rank"])
 
 
-class TestTeamWall(unittest.TestCase):
+class TestTeamWall(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		self.enabled_user = "team_wall_enabled@example.com"
 		self.disabled_user = "team_wall_disabled@example.com"
@@ -750,7 +751,7 @@ class TestTeamWall(unittest.TestCase):
 		self.assertEqual(by_name[self.enabled_user]["job_title"], "QA Lead")
 
 
-class TestUntagAiPreservesPrompt(unittest.TestCase):
+class TestUntagAiPreservesPrompt(NoLeakMixin, unittest.TestCase):
 	"""3tl61rrg9a's untag-safety trap: clearing work_mode (the "AI" tag) must
 	only ever HIDE ai_prompt from the UI, never delete the stored data — a
 	prompt someone spent time writing shouldn't vanish because a checkbox was
@@ -823,7 +824,7 @@ class TestUntagAiPreservesPrompt(unittest.TestCase):
 		self.assertEqual(ai_prompt, "Do the thing carefully.")
 
 
-class TestMobileRecurring(unittest.TestCase):
+class TestMobileRecurring(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		if not frappe.db.exists("Brand", "Test Customer"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Customer"}).insert(ignore_permissions=True)
@@ -934,7 +935,7 @@ class TestMobileRecurring(unittest.TestCase):
 		self.assertEqual(rec4["state"], "active", "re-enabled recurring must be active")
 
 
-class TestMobileDeleteUser(unittest.TestCase):
+class TestMobileDeleteUser(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		self.user = "del_target@example.com"
 		if not frappe.db.exists("User", self.user):
@@ -979,7 +980,7 @@ class TestMobileDeleteUser(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
-class TestUserPointsLog(unittest.TestCase):
+class TestUserPointsLog(NoLeakMixin, unittest.TestCase):
 	"""Transparent earned-points log: any logged-in user reads any user's earned
 	credits (Grant + Gift excluded); Guest and missing users are rejected."""
 
@@ -1034,7 +1035,7 @@ class TestUserPointsLog(unittest.TestCase):
 			get_user_points_log("nobody@example.com")
 
 
-class TestDeleteProjectAndDetail(unittest.TestCase):
+class TestDeleteProjectAndDetail(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		from vernon_project.api.mobile import delete_project_detail
 		self.delete_project_detail = delete_project_detail
@@ -1181,7 +1182,7 @@ class TestDeleteProjectAndDetail(unittest.TestCase):
 			frappe.db.commit()
 
 
-class TestMoveProjectDetail(unittest.TestCase):
+class TestMoveProjectDetail(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		from vernon_project.api.mobile import move_project_detail, list_move_destinations
 		self.move_project_detail = move_project_detail
@@ -1356,7 +1357,7 @@ class TestMoveProjectDetail(unittest.TestCase):
 		self.assertNotIn(closed.name, names)
 
 
-class TestProfilePhoto(FrappeTestCase):
+class TestProfilePhoto(NoLeakMixin, FrappeTestCase):
 	def test_update_my_profile_sets_photo(self):
 		from vernon_project.api.mobile import update_my_profile
 		frappe.set_user("Administrator")
@@ -1367,7 +1368,7 @@ class TestProfilePhoto(FrappeTestCase):
 		)
 
 
-class TestEduRank(unittest.TestCase):
+class TestEduRank(NoLeakMixin, unittest.TestCase):
 	def test_prefers_higher_level_then_year(self):
 		from vernon_project.api.mobile import _edu_rank
 		self.assertGreater(_edu_rank({"level": "S1", "year": 2020}),
@@ -1378,7 +1379,7 @@ class TestEduRank(unittest.TestCase):
 			_edu_rank({"level": "SD", "year": 2000}))
 
 
-class TestFaceDetect(unittest.TestCase):
+class TestFaceDetect(NoLeakMixin, unittest.TestCase):
 	def _jpg(self, img):
 		import cv2
 		ok, buf = cv2.imencode(".jpg", img)
@@ -1397,7 +1398,7 @@ class TestFaceDetect(unittest.TestCase):
 		self.assertIsNone(_has_face(b"definitely not an image"))
 
 
-class TestOnlineWindowSetting(unittest.TestCase):
+class TestOnlineWindowSetting(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 
@@ -1408,7 +1409,7 @@ class TestOnlineWindowSetting(unittest.TestCase):
 		self.assertGreaterEqual(int(out["online_window_minutes"]), 10)
 
 
-class TestMobileGetProjectBlueprint(FrappeTestCase):
+class TestMobileGetProjectBlueprint(NoLeakMixin, FrappeTestCase):
 	"""get_project_blueprint: goal + subgoals + actions (incl. undated) + edges."""
 
 	def setUp(self):
@@ -1480,7 +1481,7 @@ class TestMobileGetProjectBlueprint(FrappeTestCase):
 			frappe.set_user("Administrator")
 
 
-class TestProjectDetailCancelledCounts(FrappeTestCase):
+class TestProjectDetailCancelledCounts(NoLeakMixin, FrappeTestCase):
 	"""get_project_detail's header counts were computed from a row set the SQL had
 	already filtered (include_cancelled defaulted to 0), so `cancelled_count` could
 	only ever be 0 and `total_count` was short by exactly the number of cancelled

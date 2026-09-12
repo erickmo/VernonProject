@@ -10,6 +10,7 @@ import frappe
 from frappe.utils import now_datetime
 
 import vernon_project.api.scheduler_health as sh
+from vernon_project.tests.no_leak import NoLeakMixin
 
 TEST_KEYS = {"_HEALTH_KEY": "vp_test_sched_health", "_NOTIFIED_KEY": "vp_test_sched_notified"}
 
@@ -17,7 +18,7 @@ TEST_KEYS = {"_HEALTH_KEY": "vp_test_sched_health", "_NOTIFIED_KEY": "vp_test_sc
 PLAIN = "sched-health-plain@example.com"
 
 
-class TestSchedulerHealth(unittest.TestCase):
+class TestSchedulerHealth(NoLeakMixin, unittest.TestCase):
 	@classmethod
 	def tearDownClass(cls):
 		frappe.set_user("Administrator")

@@ -2,9 +2,10 @@
 
 import frappe
 import unittest
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestAssignedAllocationMeta(unittest.TestCase):
+class TestAssignedAllocationMeta(NoLeakMixin, unittest.TestCase):
 	def test_assigned_allocation_field_exists(self):
 		meta = frappe.get_meta("Project Todo")
 		field = meta.get_field("assigned_allocation")
@@ -22,7 +23,7 @@ class TestAssignedAllocationMeta(unittest.TestCase):
 from vernon_project.api.mobile import _alloc_sum_error, _assigned_allocation_for, _assigned_allocations_map
 
 
-class TestAllocationHelpers(unittest.TestCase):
+class TestAllocationHelpers(NoLeakMixin, unittest.TestCase):
 	def test_sum_error_none_when_matches(self):
 		rows = [{"minutes": 30}, {"minutes": 30}]
 		self.assertIsNone(_alloc_sum_error(rows, 60))
@@ -53,7 +54,7 @@ class TestAllocationHelpers(unittest.TestCase):
 from frappe.utils import nowdate, add_days
 
 
-class _AllocFixture(unittest.TestCase):
+class _AllocFixture(NoLeakMixin, unittest.TestCase):
 	"""Project (owner+leader=Administrator) / Detail / Todo assigned to a
 	non-leader user, mirroring test_project_todo.py's setup."""
 
