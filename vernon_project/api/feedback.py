@@ -53,10 +53,15 @@ def submit_feedback(feedback_type, message, is_anonymous=0):
 	}).insert(ignore_permissions=True)
 
 	if anon:
-		# Frappe stamps owner = session user on insert; scrub it so anonymous
-		# feedback is unattributable even to admins.
+		# Frappe stamps BOTH owner and modified_by with the session user on insert,
+		# so scrubbing owner alone left every anonymous row still naming its author
+		# (update_modified=False is what keeps modified_by — it does not clear it).
+		# submitted_by is already NULL and Vernon Notification's `actor` is already
+		# None for anon: the explicit attribution was right, it was the implicit
+		# audit columns that carried it.
 		frappe.db.set_value(
-			"Company Feedback", doc.name, "owner", "Administrator",
+			"Company Feedback", doc.name,
+			{"owner": "Administrator", "modified_by": "Administrator"},
 			update_modified=False,
 		)
 
@@ -70,6 +75,18 @@ def submit_feedback(feedback_type, message, is_anonymous=0):
 			admin, "Feedback", f"New {feedback_type.lower()} feedback",
 			preview, "Company Feedback", doc.name, actor=actor,
 		)
+
+	if anon:
+		# Those notifications were inserted inside the SUBMITTER'S request, so they
+		# carry the same two stamps — and each one points back here by
+		# reference_name. Scrubbed at the call site rather than inside _notify:
+		# it has 28 callers across 12 modules and only this one promises anonymity.
+		frappe.db.sql(
+			"update `tabVernon Notification` set owner=%s, modified_by=%s "
+			"where reference_doctype='Company Feedback' and reference_name=%s",
+			("Administrator", "Administrator", doc.name),
+		)
+		frappe.db.commit()
 
 	return {"status": "ok"}
 
