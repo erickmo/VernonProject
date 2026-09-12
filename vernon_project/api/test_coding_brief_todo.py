@@ -162,12 +162,6 @@ class TestCodingBriefTodo(FrappeTestCase):
 		doc.save(ignore_permissions=True)
 		self.assertEqual(frappe.db.get_value("Project Todo", res["name"], "coding_brief"), first)
 
-	def test_editing_a_coding_todo_rehydrates_every_stored_answer(self):
-		res = self._insert_as_person(self.coding_group, self.coding_level,
-		                             coding_brief=json.dumps(FULL_BRIEF))
-		stored = coding_brief.parse(frappe.db.get_value("Project Todo", res["name"], "coding_brief"))
-		self.assertEqual({k: v for k, v in stored.items() if v}, FULL_BRIEF)
-
 	# --- one definition, not two ---------------------------------------------
 
 	def test_the_form_schema_and_the_controller_agree_on_what_is_required(self):

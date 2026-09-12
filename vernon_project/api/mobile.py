@@ -691,7 +691,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
-			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check, t.ai_prompt_confirmed, t.is_follow_up,
+			t.ongoing, t.notes, t.coding_brief, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check, t.ai_prompt_confirmed, t.is_follow_up,
 			{_ai_in_progress_column()}
 			(t.ai_prompt IS NOT NULL AND t.ai_prompt NOT IN ('', '[]')) AS has_ai_prompt,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
@@ -1012,6 +1012,9 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 	out["allocated_total"] = sum((a["minutes"] or 0) for a in allocs)
 	out["today_allocation"] = today_alloc
 	if include_notes:
+		# k9b82d4lkh: the structured answers behind a Coding group's note, so the
+		# detail screen can edit them. Lists never need it.
+		out["coding_brief"] = row.get("coding_brief") or ""
 		out["timeline"] = [
 			t
 			for t in [

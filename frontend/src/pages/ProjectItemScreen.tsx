@@ -59,7 +59,8 @@ import { formatClock, formatEstimate, dateSub, todayISO } from '@/lib/format'
 import { NoteMarkdown } from '@/lib/markdown'
 import { MarkdownEditor } from '@/components/MarkdownEditor'
 import { useMarkdownAttachments } from '@/hooks/useMarkdownAttachments'
-import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
+import { CodingBrief } from '@/components/CodingBrief'
+import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode, useIsCodingGroup } from '@/hooks/useData'
 import type { ChecklistItem, AiPrompt } from '@/lib/types'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { useToast } from '@/components/Toast'
@@ -599,19 +600,22 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
   )
 }
 
-function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; canEdit: boolean }) {
+function Notes({ todoId, initial, canEdit, group, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string; brief?: string }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
   const { mentions, onImage } = useMarkdownAttachments('Project Todo', todoId)
+  const isCoding = useIsCodingGroup(group)
   // The RAW stored value, not stripHtml(initial): editing must show and save
   // exactly what's in the database, byte-identical on a no-op edit. Legacy
   // rows with real HTML (this field predates markdown rendering) still get
   // neutralised on display below, by the renderer's sanitiser rather than by
   // mangling what the textarea shows and would save back.
   const [text, setText] = useState(initial)
+  const [briefText, setBriefText] = useState(brief ?? '')
   const [saved, setSaved] = useState(false)
   const [editing, setEditing] = useState(false)
   const baseline = useRef(initial)
+  const briefBaseline = useRef(brief ?? '')
 
   useEffect(() => {
     if (baseline.current === text) {
@@ -621,6 +625,19 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
   }, [initial]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = () => {
+    if (isCoding) {
+      if (briefText === briefBaseline.current) return
+      save.mutate({ notes: '', codingBrief: briefText }, {
+        onSuccess: (res) => {
+          briefBaseline.current = briefText
+          setSaved(true)
+          setTimeout(() => setSaved(false), 2000)
+          toast('success', res.message)
+        },
+        onError: (err) => toast('error', (err as Error).message),
+      })
+      return
+    }
     if (text === baseline.current) return
     save.mutate(text, {
       onSuccess: (res) => {
@@ -671,6 +688,17 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
 
   return (
     <div>
+      {isCoding ? (
+        <div
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+            commit()
+            setEditing(false)
+          }}
+        >
+          <CodingBrief value={briefText} onChange={setBriefText} />
+        </div>
+      ) : (
       <MarkdownEditor
         autoFocus
         value={text}
@@ -686,6 +714,7 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
         placeholder="Add a quick note about your progress… (Markdown, @ to mention)"
         className="w-full resize-none [field-sizing:content] rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
       />
+      )}
       <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-slate-400 dark:text-slate-500">
         {save.isPending ? (
           <span className="inline-flex items-center gap-1">
@@ -1941,7 +1970,7 @@ const [followOpen, setFollowOpen] = useState(false)
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <FileText className="h-3.5 w-3.5" /> Notes
         </p>
-        <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} />
+        <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} group={data.group} brief={data.coding_brief} />
       </div>
 
       {/* Checklist */}

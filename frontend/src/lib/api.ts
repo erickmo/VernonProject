@@ -244,10 +244,10 @@ export const mobileApi = {
     api.post<{ status: string; message?: string }>(M + 'delete_todo', {
       project_item: projectItem,
     }),
-  saveNotes: (todoId: string, notes: string) =>
+  saveNotes: (todoId: string, notes: string, codingBrief?: string) =>
     api.post<{ status: string; message: string }>(
       'vernon_project.api.project_todo.save_notes',
-      { todo_id: todoId, notes },
+      codingBrief === undefined ? { todo_id: todoId, notes } : { todo_id: todoId, notes, coding_brief: codingBrief },
     ),
   saveChecklist: (todoId: string, checklist: string) =>
     api.post<{ status: string; message: string }>(

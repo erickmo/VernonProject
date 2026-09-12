@@ -256,6 +256,8 @@ export interface TodoFile {
 
 export interface ProjectItemDetail extends ProjectItem {
   notes: string
+  /** Structured answers behind a Coding group's note, as JSON (k9b82d4lkh). Detail payload only. */
+  coding_brief?: string
   can_edit_notes: boolean
   can_edit: boolean
   can_edit_files: boolean

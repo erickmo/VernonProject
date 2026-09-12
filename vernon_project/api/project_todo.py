@@ -541,11 +541,17 @@ def get_recently_done(limit=None):
 
 
 @frappe.whitelist()
-def save_notes(todo_id, notes):
+def save_notes(todo_id, notes, coding_brief=None):
 	"""
 	Save notes for a project todo item.
 	Only assigned_to, project_owner, project_leader, or the todo creator
 	(todo.owner) can save.
+
+	``coding_brief`` (k9b82d4lkh) is the structured answers for a todo in a Coding
+	group. It rides along here rather than on its own endpoint because the gate is
+	identical — whoever may write the note may write the brief the note is rendered
+	from. The controller regenerates ``notes`` from it on save, so ``notes`` is
+	ignored for such a todo whatever the caller sends.
 	"""
 	try:
 		todo = frappe.get_doc("Project Todo", todo_id)
@@ -562,6 +568,8 @@ def save_notes(todo_id, notes):
 			}
 
 		todo.notes = notes
+		if coding_brief is not None:
+			todo.coding_brief = coding_brief
 		todo.save(ignore_permissions=True)
 		return {"status": "ok", "message": "Catatan berhasil disimpan."}
 
