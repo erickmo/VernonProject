@@ -19,3 +19,6 @@ mcp_server/.venv/
 mcp_server/.env
 mcp_server/.env.http
 mcp_server/*.log
+
+# Portable deployment: the operator's real values (r2dfiifbj5). Never committed.
+deploy/.env
