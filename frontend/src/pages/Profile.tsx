@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageBusinessUnits, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, canManageRecruitment, canSeeHrHub, isSystemManager, usePasskeys, useEnrollPasskey, useRevokePasskey, useApiTokenStatus, useGenerateApiToken, useRevokeApiToken, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
+import { CONNECTOR_STEPS, connectorUrlFor, copiedMessage, hasRealConnector } from '@/lib/mcpConnector'
 import { useConfirm } from '@/components/Confirm'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
@@ -565,17 +566,6 @@ function PasskeyCard() {
 // api_secret are only ever in the Generate response; every later read
 // (get_api_token_status) returns has_token + a masked trailing hint, never
 // the key itself (94cops8ldi — the key used to be shown in full forever).
-const MCP_URL = 'https://mcp.vernon.id/mcp'
-// What you actually paste into claude.ai. The bare URL 401s on every path, which
-// clients report as "Authorization server not found" — so never hand it out alone.
-// Fallback only: System Managers get the real, token-filled URL from the API
-// (get_api_token_status.mcp_connector_url). A placeholder shown next to the
-// user's own API key made people paste the key instead, which 401s.
-const MCP_CONNECTOR_URL = `${MCP_URL}?token=<VERNON_MCP_TOKEN>`
-
-function Code({ children }: { children: React.ReactNode }) {
-  return <code className="rounded bg-black/5 px-1 py-0.5 font-mono dark:bg-white/10">{children}</code>
-}
 
 function ApiTokenCard() {
   const { data, isLoading } = useApiTokenStatus()
@@ -620,18 +610,17 @@ function ApiTokenCard() {
   }
 
   // The real URL when we're allowed to have it, the placeholder otherwise.
-  const connectorUrl = data?.mcp_connector_url || MCP_CONNECTOR_URL
-  const hasRealToken = !!data?.mcp_connector_url
+  const connectorUrl = connectorUrlFor(data?.mcp_connector_url)
+  const hasRealToken = hasRealConnector(data?.mcp_connector_url)
+  // 5acr99ev9t: the connector link is admin-equivalent access (one static token,
+  // every call runs as the server's own account), so it is not painted on screen
+  // the moment the page loads — someone has to ask for it.
+  const [linkShown, setLinkShown] = useState(false)
 
   const copyMcpUrl = async () => {
     try {
       await navigator.clipboard.writeText(connectorUrl)
-      toast(
-        'success',
-        hasRealToken
-          ? 'Disalin — tempel apa adanya ke claude.ai'
-          : 'Disalin — ganti <VERNON_MCP_TOKEN> dengan token dari admin',
-      )
+      toast('success', copiedMessage(data?.mcp_connector_url))
     } catch {
       toast('error', 'Could not copy')
     }
@@ -656,14 +645,33 @@ function ApiTokenCard() {
           <p className="mb-2 text-xs text-stone-500 dark:text-slate-400">
             Runs as the shared Vernon Project connector account, not your personal permissions.
           </p>
-          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-paper px-3 py-2 dark:bg-slate-900/40">
-            <span className="min-w-0 truncate font-mono text-xs font-semibold text-brand-600">
-              {connectorUrl}
-            </span>
-            <button onClick={copyMcpUrl} className="shrink-0 text-stone-400 active:scale-95 dark:text-slate-500" aria-label="Copy MCP link">
-              <Copy className="h-3.5 w-3.5" />
+          {linkShown ? (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-paper px-3 py-2 dark:bg-slate-900/40">
+              <span className="min-w-0 truncate font-mono text-xs font-semibold text-brand-600">
+                {connectorUrl}
+              </span>
+              <button onClick={copyMcpUrl} className="shrink-0 text-stone-400 active:scale-95 dark:text-slate-500" aria-label="Copy MCP link">
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setLinkShown(true)}
+              className="mb-3 w-full rounded-xl border border-paper-edge bg-paper py-2 text-xs font-semibold text-brand-600 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900/40"
+            >
+              Show connector link
             </button>
-          </div>
+          )}
+          <details className="mb-3 rounded-xl bg-paper px-3 py-2 text-xs text-stone-600 dark:bg-slate-900/40 dark:text-slate-300">
+            <summary className="cursor-pointer select-none font-semibold text-stone-700 dark:text-slate-200">
+              How to use this link
+            </summary>
+            <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+              {CONNECTOR_STEPS.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </details>
         </>
       ) : (
         <p className="mb-3 rounded-xl bg-paper px-3 py-2 text-xs text-stone-500 dark:bg-slate-900/40 dark:text-slate-400">
@@ -672,26 +680,12 @@ function ApiTokenCard() {
       )}
 
       <p className="mb-1 text-xs font-semibold text-stone-700 dark:text-slate-200">
-        Self-hosted MCP server (your own account)
+        Your own API key
       </p>
       <p className="mb-3 text-xs text-stone-500 dark:text-slate-400">
-        Your own key, for running your own local <Code>mcp_server</Code> — runs with your own permissions.
+        A personal credential for scripts and your own tooling. It runs with your
+        permissions, and it is not the connector link above.
       </p>
-
-      <details className="mb-3 rounded-xl bg-paper px-3 py-2 text-xs text-stone-600 dark:bg-slate-900/40 dark:text-slate-300">
-        <summary className="cursor-pointer select-none font-semibold text-stone-700 dark:text-slate-200">
-          How to set it up
-        </summary>
-        <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-          <li>Clone this repo, then <Code>cd mcp_server</Code></li>
-          <li>
-            One-time: <Code>python3 -m venv .venv</Code>, <Code>.venv/bin/pip install -r requirements.txt</Code>,{' '}
-            <Code>cp .env.example .env</Code>
-          </li>
-          <li>Generate a token below, paste it into <Code>mcp_server/.env</Code> as <Code>VERNON_API_KEY</Code> / <Code>VERNON_API_SECRET</Code></li>
-          <li>Claude Code picks it up automatically via <Code>.mcp.json</Code> — run <Code>/mcp</Code> to check</li>
-        </ol>
-      </details>
 
       {fresh ? (
         <div className="mb-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 p-3">
