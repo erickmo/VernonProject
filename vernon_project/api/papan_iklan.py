@@ -265,11 +265,20 @@ def update_ad(name, payload):
 @frappe.whitelist()
 def set_status(name, status):
 	"""Owner or admin flips between Active and Fulfilled. (Removed is admin-only,
-	via remove_ad, so the author gets a notification.)"""
+	via remove_ad, so the author gets a notification.)
+
+	Gating the target status is not enough on its own: it left the status a caller
+	may move it FROM unguarded, so the author of an ad a moderator had removed
+	could set it back to Active and put it on the board again — while banned, too,
+	since only create_ad and update_ad call _assert_not_banned. Refusing to move a
+	Removed ad at all closes both, and needs no ban check of its own: a banned
+	author's removed ad is still Removed."""
 	_require_user()
 	_can_manage(name)
 	if status not in ("Active", "Fulfilled"):
 		frappe.throw("Invalid status.")
+	if frappe.db.get_value("Papan Iklan", name, "status") == "Removed" and not _is_sm():
+		frappe.throw("This ad was removed by an admin.", frappe.PermissionError)
 	frappe.db.set_value("Papan Iklan", name, "status", status)
 	return {"status": "ok"}
 

@@ -25,11 +25,18 @@ class TestCompleteLessonRace(FrappeTestCase):
 				"doctype": "User", "email": "lms_race_user@example.com", "first_name": "LmsRace",
 				"send_welcome_email": 0,
 			}).insert(ignore_permissions=True)
+		# "published": 1 and "sort_order": 1 were the fields this fixture used until
+		# 2026-09-12; neither exists (Course has `status`, Course Lesson has
+		# `position`), so frappe dropped them and the course was left at status's
+		# "Draft" default. It went unnoticed because complete_lesson did not check
+		# the course was Published — the check that now exists is what surfaced it.
 		self.course = frappe.get_doc({
-			"doctype": "Course", "title": "Lock Test Course", "points_reward": 50, "published": 1,
+			"doctype": "Course", "title": "Lock Test Course", "points_reward": 50,
+			"status": "Published",
 		}).insert(ignore_permissions=True)
 		self.lesson = frappe.get_doc({
-			"doctype": "Course Lesson", "course": self.course.name, "title": "Only Lesson", "sort_order": 1,
+			"doctype": "Course Lesson", "course": self.course.name, "title": "Only Lesson",
+			"position": 1,
 		}).insert(ignore_permissions=True)
 
 	def tearDown(self):

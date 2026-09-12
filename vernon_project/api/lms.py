@@ -174,6 +174,15 @@ def complete_lesson(course, lesson):
 	try:
 		enr = _enrollment(course, user)
 		if not enr:
+			# Enrolling yourself here has to answer to the same gate as enroll():
+			# Course and Course Lesson are readable by role "All", so an unpublished
+			# course's name, lessons and points_reward are all listable, and without
+			# this a draft course could be completed and paid out before it ships.
+			# Only the IMPLICIT path is gated -- an enrollment that already exists
+			# keeps working, so unpublishing a course mid-flight strands nobody, and
+			# assign_course stays deliberately status-agnostic.
+			if frappe.db.get_value("Course", course, "status") != "Published":
+				frappe.throw("Course not available")
 			enr = frappe.get_doc({
 				"doctype": "Course Enrollment", "course": course, "user": user,
 				"assigned": 0, "status": "In Progress",
