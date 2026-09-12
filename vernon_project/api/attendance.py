@@ -617,7 +617,15 @@ def pending_exception_approvals():
 def team_leave():
 	"""Approved Leave (Cuti) across the whole team for the calendar's Team Leave
 	lens — who's out, when. Any logged-in user can see it; it carries no reasons
-	or proof, just name + leave category + span."""
+	or proof, just name + span.
+
+	The CATEGORY is withheld from everyone but HR and the person themselves. Half
+	this catalogue is a medical fact (Cuti Sakit, Keguguran, Haid, Melahirkan) or a
+	religious one (Khitan Anak, Baptis Anak), and the module already treats a
+	category as personal in both directions: list_leave_types hides the other
+	gender's types from the picker, and _exc_label collapses every category to
+	"Cuti"/"WFH" in the approval notifications. This is the same treatment, not a
+	new policy. The calendar loses nothing — its fallback renders "Cuti"."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
@@ -641,8 +649,11 @@ def team_leave():
 			"User", filters={"name": ["in", list(names)]}, fields=["name", "full_name"]
 		)
 	} if names else {}
+	hide_category = not _is_hr(user)
 	for r in rows:
 		r["employee_name"] = name_map.get(r["employee"]) or r["employee"]
+		if hide_category and r["employee"] != user:
+			r["leave_type"] = None
 	return {"status": "ok", "rows": rows}
 
 
