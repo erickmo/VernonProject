@@ -5,6 +5,7 @@ import pymysql
 import unittest
 from frappe.utils import add_days, getdate, nowdate
 from datetime import timedelta
+from vernon_project.tests.no_leak import NoLeakMixin, needs_real_commits
 
 
 def _set(**kw):
@@ -12,7 +13,7 @@ def _set(**kw):
 		frappe.db.set_single_value("Vernon Settings", k, v)
 
 
-class _PriorityFixture(unittest.TestCase):
+class _PriorityFixture(NoLeakMixin, unittest.TestCase):
 	"""Two Projects / Details / two todos on one day for a non-leader assignee. Mirrors
 	test_allocations.py's setup. Prio Project 1 is led by prio_leader@example.com — a
 	genuinely non-System-Manager leader, so occupancy tests can walk the real leader
@@ -76,13 +77,13 @@ class _PriorityFixture(unittest.TestCase):
 		for d in self.details:
 			for name in frappe.get_all("Project Todo", filters={"project_detail": d.name}, pluck="name"):
 				for pl in frappe.get_all("Point Ledger", filters={"todo": name}, pluck="name"):
-					frappe.delete_doc("Point Ledger", pl, ignore_permissions=True, force=True)
+					frappe.delete_doc("Point Ledger", pl, ignore_permissions=True, force=True, delete_permanently=True)
 				frappe.db.set_value("Project Todo", name, "status", "⚪️ Planned", update_modified=False)
-				frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True)
-			frappe.delete_doc("Project Detail", d.name, ignore_permissions=True, force=True)
+				frappe.delete_doc("Project Todo", name, ignore_permissions=True, force=True, delete_permanently=True)
+			frappe.delete_doc("Project Detail", d.name, ignore_permissions=True, force=True, delete_permanently=True)
 		for p, g in self.projects:
-			frappe.delete_doc("Glossary", g.name, ignore_permissions=True, force=True)
-			frappe.delete_doc("Project", p.name, ignore_permissions=True, force=True)
+			frappe.delete_doc("Glossary", g.name, ignore_permissions=True, force=True, delete_permanently=True)
+			frappe.delete_doc("Project", p.name, ignore_permissions=True, force=True, delete_permanently=True)
 		_set(**self._prev)
 		frappe.db.commit()
 
@@ -369,6 +370,7 @@ class TestSlotRace(_PriorityFixture):
 		)
 		return conn, cur.fetchall()
 
+	@needs_real_commits  # holds a range lock from a raw second connection: the commit must be real or nothing contends
 	def test_the_slot_check_blocks_while_another_claim_holds_the_range(self):
 		claim = self._todo(0)  # real row in the range, not an empty gap
 		frappe.db.commit()
@@ -390,6 +392,7 @@ class TestSlotRace(_PriorityFixture):
 			frappe.db.rollback()
 			frappe.db.sql(f"set session innodb_lock_wait_timeout={int(orig)}")
 
+	@needs_real_commits  # holds a range lock from a raw second connection: the commit must be real or nothing contends
 	def test_the_slot_check_does_not_block_a_different_assignee(self):
 		"""The lock must stay scoped to the assignee. EXPLAIN shows the query uses
 		assigned_to_status_index (rows=2), so it locks one person's todos rather than

@@ -10,6 +10,7 @@ from vernon_project.api.project_todo import FOLLOW_UP_MARKER, follow_up_check
 DONE = "🟠 Done"
 PLANNED = "⚪️ Planned"
 CHECKER = "followup-checker@test.local"
+OUTSIDER = "followup-outsider@test.local"
 
 
 class FollowUpCheckTest(unittest.TestCase):
@@ -199,7 +200,7 @@ class FollowUpCheckTest(unittest.TestCase):
 		self.assertEqual(len(self._follow_ups()), 1)
 
 	def test_unauthorized_caller_gets_permission_error_and_no_row(self):
-		outsider = "followup-outsider@test.local"
+		outsider = OUTSIDER
 		if not frappe.db.exists("User", outsider):
 			frappe.get_doc({"doctype": "User", "email": outsider, "first_name": "FU Outsider",
 				"send_welcome_email": 0}).insert(ignore_permissions=True)
@@ -209,6 +210,26 @@ class FollowUpCheckTest(unittest.TestCase):
 			follow_up_check(self.todo.name, CHECKER)
 		frappe.set_user("Administrator")
 		self.assertEqual(self._follow_ups(), [])
+
+	@classmethod
+	def tearDownClass(cls):
+		"""Delete the accounts and the group this suite creates.
+
+		setUp creates them behind `if not exists`, so they were never removed and
+		simply accumulated on the live site -- followup-checker@test.local is an
+		ENABLED SYSTEM USER on project.vernon.id today because of this, and
+		followup-outsider@test.local a Website User. Both are named here and
+		nowhere else in the app, so this suite owns them outright and deleting
+		them cannot strand another test.
+
+		The "Test Customer" Brand is deliberately NOT deleted: ten other suites
+		use that name and it may belong to a real record.
+		"""
+		frappe.set_user("Administrator")
+		for doctype, name in (("User", CHECKER), ("User", OUTSIDER), ("Group", "Test Group FU")):
+			if frappe.db.exists(doctype, name):
+				frappe.delete_doc(doctype, name, force=True, ignore_permissions=True, delete_permanently=True)
+		frappe.db.commit()
 
 	def tearDown(self):
 		# Drop this transaction's read snapshot first: a test that pinned an old one would
@@ -222,7 +243,7 @@ class FollowUpCheckTest(unittest.TestCase):
 		for name in todos:
 			frappe.db.set_value("Project Todo", name, "status", PLANNED, update_modified=False)
 		for name in todos:
-			frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True)
+			frappe.delete_doc("Project Todo", name, force=True, ignore_permissions=True, delete_permanently=True)
 		frappe.db.delete("Vernon Notification", {"recipient": CHECKER})
 		for dt, name in (
 			("Project Detail", self.detail.name),
@@ -230,5 +251,5 @@ class FollowUpCheckTest(unittest.TestCase):
 			("Project", self.project.name),
 		):
 			if frappe.db.exists(dt, name):
-				frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
+				frappe.delete_doc(dt, name, force=True, ignore_permissions=True, delete_permanently=True)
 		frappe.db.commit()
