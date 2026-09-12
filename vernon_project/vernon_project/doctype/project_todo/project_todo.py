@@ -19,6 +19,11 @@ CANCELLED = "🚫 Cancelled"
 # Mirrors AI_WORK_MODES in api/project_todo.py — same reason as PLANNED above:
 # importing the api module from here risks a circular import.
 AI_WORK_MODES = ("AI", "Both")
+COMPLETED = "✅ Completed"
+# Statuses where nothing can still be running. Done / Checked By PL are deliberately
+# NOT here: those are pending approval, and a rework there may legitimately still have
+# an agent on it.
+AI_TERMINAL_STATUSES = (COMPLETED, CANCELLED)
 
 
 def _ensure_today_minutes(
@@ -167,6 +172,7 @@ class ProjectTodo(Document):
 		seen.add(key)
 
 	def validate(self):
+		self.validate_ai_in_progress()
 		self.sync_project_from_detail()
 		self.snapshot_point_from_level()
 		self.validate_to_do_length()
@@ -188,6 +194,44 @@ class ProjectTodo(Document):
 		self.validate_recurrence_rule()
 		self._ensure_today_allocation()
 		self.validate_priority_slot()
+
+	def validate_ai_in_progress(self):
+		"""`ai_in_progress` = an AI session is working on this task RIGHT NOW.
+
+		Orthogonal to the ai_phase ladder on purpose. The ladder tracks the PROMPT
+		(tagged -> drafted -> human-confirmed) and is monotonic; this tracks whether an
+		agent is actually running, which comes and goes. A confirmed task may be idle
+		or running, so folding this in as a fourth phase would both break that
+		monotonicity and perturb the phase queues and the ai1/ai2/ai3 tag filter the
+		dashboards use. Never conflated with work_mode (the tag) or ai_prompt_confirmed
+		(the human gate) -- that is what the todo's scope note asks for.
+
+		Three behaviours, and they are deliberately different:
+		  * a terminal status clears it -- completing a task must not be blocked just
+		    because a flag was left on
+		  * untagging a RUNNING task clears it -- the user is stopping AI work, which
+		    is legitimate, not an error
+		  * setting it on a task that was never AI-tagged throws -- that is the
+		    conflation the scope note names
+		"""
+		if self.status in AI_TERMINAL_STATUSES:
+			self.ai_in_progress = 0
+			return
+		if not cint(self.get("ai_in_progress")):
+			return
+		if self.get("work_mode") in AI_WORK_MODES:
+			return
+
+		# .get() throughout: the code can be live for a moment before the doctype
+		# reload lands, and get_doc_before_save() is None on some paths.
+		before = None if self.is_new() else self.get_doc_before_save()
+		if before and cint(before.get("ai_in_progress")):
+			self.ai_in_progress = 0
+			return
+		frappe.throw(
+			_("Only a task tagged for AI work can be marked AI in progress."),
+			frappe.ValidationError,
+		)
 
 	def validate_to_do_length(self):
 		"""to_do is a Data field — Frappe's default DB column length, 140. A hand

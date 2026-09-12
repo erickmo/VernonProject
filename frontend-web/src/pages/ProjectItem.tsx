@@ -1566,8 +1566,18 @@ const [followOpen, setFollowOpen] = useState(false)
           {(aiPhaseOf(data) > 0 || data.to_check) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {aiPhaseOf(data) > 0 && (
-                <span title={`Fase ${aiPhaseOf(data)} · ${AI_PHASES[aiPhaseOf(data)].label}`} className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+                <span
+                  title={`Fase ${aiPhaseOf(data)} · ${AI_PHASES[aiPhaseOf(data)].label}${data.ai_in_progress ? ' · AI sedang mengerjakan' : ''}`}
+                  aria-label={`AI fase ${aiPhaseOf(data)}, ${AI_PHASES[aiPhaseOf(data)].label}${data.ai_in_progress ? ', AI sedang mengerjakan' : ''}`}
+                  className={
+                    'inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm' +
+                    // Running state is carried by the ring AND the label, never the
+                    // animation alone; the pulse is motion-safe.
+                    (data.ai_in_progress ? ' ring-2 ring-cyan-300 ring-offset-1 motion-safe:animate-pulse' : '')
+                  }
+                >
                   <Bot className="h-3.5 w-3.5" /> AI {aiPhaseOf(data)} · {AI_PHASES[aiPhaseOf(data)].label}
+                  {data.ai_in_progress && <span className="ml-0.5">· berjalan</span>}
                 </span>
               )}
               {data.to_check && (

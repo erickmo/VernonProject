@@ -160,6 +160,9 @@ export interface ProjectItem {
    work_mode?: 'Human' | 'AI' | 'Both' | ''
   /** 3-phase AI ladder, derived server-side. 0 non-AI, 1 tagged, 2 prompt drafted, 3 confirmed. */
   ai_phase?: AiPhase
+  /** An AI session is running on this task right now. Orthogonal to ai_phase:
+   *  the ladder tracks the prompt, this tracks the agent. */
+  ai_in_progress?: boolean
   /** Bahasa name of `ai_phase` (detail payload only; lists use AI_PHASES locally). */
   ai_phase_name?: string
   ai_prompts?: AiPrompt[]

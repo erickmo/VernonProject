@@ -622,6 +622,18 @@ def _clamp_page_limit(limit, max_limit):
 	return min(limit, max_limit)
 
 
+
+def _ai_in_progress_column():
+	"""`t.ai_in_progress,` once the doctype reload has added the column, else nothing.
+
+	The todo-list SELECTs name their columns explicitly, so asking for this one before
+	the reload lands is a hard "Unknown column" on the dashboard's hottest query. The
+	row shaper reads it with row.get(), so absent simply means False -- which keeps
+	code and schema deployable in either order, same as get_project_detail.
+	"""
+	return "t.ai_in_progress," if frappe.db.has_column("Project Todo", "ai_in_progress") else ""
+
+
 def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned_to=None, names=None, project_detail=None, date_from=None, date_to=None, done_since=None):
 	"""All todos (with project + work-item context) for the given projects.
 	Cancelled todos are excluded unless include_cancelled is True. Pass `statuses`
@@ -680,6 +692,7 @@ def _fetch_todos(project_names, include_cancelled=False, statuses=None, assigned
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
 			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.to_check, t.ai_prompt_confirmed, t.is_follow_up,
+			{_ai_in_progress_column()}
 			(t.ai_prompt IS NOT NULL AND t.ai_prompt NOT IN ('', '[]')) AS has_ai_prompt,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at, t.issue_of,
@@ -933,6 +946,10 @@ def _shape_todo(row, user, name_map, include_notes=False, alloc_map=None, admins
 		"ai_phase": ai_phase(
 			row.get("work_mode") or "", bool(row.get("has_ai_prompt")), bool(row.get("ai_prompt_confirmed"))
 		),
+		# An AI session is running on this task right now. Orthogonal to ai_phase: the
+		# ladder tracks the prompt, this tracks the agent. .get() so a row built before
+		# the reload reads False rather than raising.
+		"ai_in_progress": bool(row.get("ai_in_progress")),
 		"to_check": bool(row.get("to_check")),
 		"is_follow_up": bool(row.get("is_follow_up")),
 		# Issue links. `issue_of` = this task is an issue raised on that task;
@@ -1346,12 +1363,13 @@ def get_priority_occupancy(users, date):
 	# user's priority todos can sit in projects the requester can't see. A targeted query
 	# here is also the fix for the old scan-every-visible-project performance cost.
 	rows = frappe.db.sql(
-		"""
+		f"""
 		SELECT
 			t.name, t.to_do, t.status, t.owner, t.creation, t.modified, t.start_date, t.deadline, t.leader_deadline, t.owner_deadline,
 			t.estimated, t.assigned_to,
 			t.is_waiting, t.waiting_reason, t.waiting_since, t.waiting_by,
 			t.ongoing, t.notes, t.checklist, t.cancellation_reason, t.cancelled_on, t.is_recurring, t.auto_approve, t.auto_approve_opt_out, t.is_priority, t.work_mode, t.ai_prompt_confirmed,
+			{_ai_in_progress_column()}
 			(t.ai_prompt IS NOT NULL AND t.ai_prompt NOT IN ('', '[]')) AS has_ai_prompt,
 			t.`group` AS `group`, t.level, t.level_id, t.level_type, t.point, t.assignee_earned, t.leader_earned,
 			t.developed_by, t.developed_at, t.tested_by, t.tested_at,
@@ -2554,6 +2572,7 @@ def update_todo(
 	is_priority=None,
 	work_mode=None,
 	ai_prompt=None,
+	ai_in_progress=None,
 	to_check=None,
 	waiting_reason=None,
 	recurring_interval=None,
@@ -2651,6 +2670,11 @@ def update_todo(
 			row.ai_prompt = ai_prompt or None
 		# "To Check" is the assignee's own working reminder — a plain flag with no
 		# scoring/workflow effect, so anyone who can edit the task may set it.
+		if ai_in_progress is not None:
+			# The controller decides whether the flag is allowed (a task that was never
+			# AI-tagged is refused, untagging a running task clears it, a terminal
+			# status clears it) -- this only carries the caller's intent to it.
+			row.ai_in_progress = 1 if str(ai_in_progress) in ("1", "true", "True") else 0
 		if to_check is not None:
 			row.to_check = 1 if str(to_check) in ("1", "true", "True") else 0
 		if group is not None and group:
