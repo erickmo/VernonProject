@@ -3,6 +3,7 @@ import json
 import frappe
 from frappe.utils import cint
 
+from vernon_project import coding_brief
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
 
@@ -30,7 +31,7 @@ def get_group_levels():
 	"""
 	groups = {
 		g.name: g
-		for g in frappe.get_all('Group', fields=['name', 'group_name', 'base_rate_per_minute'])
+		for g in frappe.get_all('Group', fields=['name', 'group_name', 'base_rate_per_minute', 'group_type'])
 	}
 	rows = frappe.get_all(
 		'Group Level',
@@ -52,9 +53,25 @@ def get_group_levels():
 				'group': r.parent,
 				'group_name': g.group_name,
 				'base_rate': g.base_rate_per_minute,
+				# k9b82d4lkh: the picker already holds this row, so the todo form knows
+				# whether to show the coding brief without a second request.
+				'group_type': g.group_type or '',
 			}
 		)
 	return out
+
+
+@frappe.whitelist()
+def get_coding_brief_schema():
+	"""The questions a Coding group's todo form asks, straight from the module the
+	controller validates and renders with (vernon_project/coding_brief.py) — one
+	definition, so the form can never ask for a field the server does not require.
+
+	Static, so it is not per-group: which groups are Coding is already on every row
+	get_group_levels returns. Read-only and harmless, hence no extra gate beyond
+	being a logged-in call.
+	"""
+	return {'fields': [dict(f) for f in coding_brief.FIELDS], 'heading': coding_brief.HEADING}
 
 def _auto_advance(todo, project_leader, project_owner, project_auto_approve=0):
 	"""Collapse redundant self-approval gates in place (mutates todo, no save).

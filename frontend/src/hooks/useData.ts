@@ -1471,6 +1471,16 @@ export function useGroupLevels() {
   })
 }
 
+/** The Coding brief's questions. Static on the server, so it is cached like the
+ *  group catalog rather than fetched per form. */
+export function useCodingBriefSchema() {
+  return useQuery({
+    queryKey: ['coding-brief-schema'],
+    queryFn: () => mobileApi.getCodingBriefSchema(),
+    staleTime: 60 * 60 * 1000,
+  })
+}
+
 export function useScoringGroup(name: string, enabled = true) {
   return useQuery({
     queryKey: keys.scoringGroup(name),

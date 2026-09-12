@@ -521,6 +521,10 @@ export const mobileApi = {
     api.get<AppRelease[]>('vernon_project.api.app_release.get_app_releases', platform ? { platform } : {}),
   getGroupLevels: () =>
     api.get<import('./types').GroupLevelOption[]>('vernon_project.api.project_todo.get_group_levels'),
+  getCodingBriefSchema: () =>
+    api.get<{ fields: import('./codingBrief').BriefField[]; heading: string }>(
+      'vernon_project.api.project_todo.get_coding_brief_schema',
+    ),
   markNotificationRead: (name: string) =>
     api.post<{ ok: boolean }>(M + 'mark_notification_read', { name }),
   markAllRead: () => api.post<{ ok: boolean; marked: number }>(M + 'mark_all_read'),
