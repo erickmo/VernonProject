@@ -9,6 +9,7 @@ import unittest
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days, getdate, now_datetime, add_to_date
 from time import sleep
+from vernon_project.tests.no_leak import NoLeakMixin, needs_real_commits
 
 
 def _ensure_test_group():
@@ -28,7 +29,7 @@ def _ensure_test_group():
 	return "Test Group Recurring", "TESTLVL1"
 
 
-class TestEnsureTodayMinutes(unittest.TestCase):
+class TestEnsureTodayMinutes(NoLeakMixin, unittest.TestCase):
 	"""Pure decision test for the today-deadline auto-plan rule. No DB."""
 
 	def setUp(self):
@@ -78,7 +79,7 @@ class TestEnsureTodayMinutes(unittest.TestCase):
 		self.assertIsNone(self._run(assigned_to=None))
 
 
-class TestProjectTodo(unittest.TestCase):
+class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 	"""Test cases for Project Todo DocType"""
 
 	def setUp(self):
@@ -860,6 +861,7 @@ class TestProjectTodo(unittest.TestCase):
 			"un-completing should still remove the todo's own award rows",
 		)
 
+	@needs_real_commits  # drives two connections: holding the commit removes the contention it pins
 	def test_ledger_read_blocks_while_another_completion_holds_the_rows(self):
 		"""The double-mint guard: a second completion must block on the first one's
 		row locks until it commits, instead of finding no row and inserting again."""
@@ -1003,7 +1005,7 @@ class TestProjectTodo(unittest.TestCase):
 			self._make_todo(group=None)
 
 
-class TestProjectTodoPhaseTracking(unittest.TestCase):
+class TestProjectTodoPhaseTracking(NoLeakMixin, unittest.TestCase):
 	"""Test cases for Phase Estimation and Time Tracking"""
 
 	def setUp(self):
@@ -1321,7 +1323,7 @@ class TestProjectTodoPhaseTracking(unittest.TestCase):
 			"Total should equal the main estimate when no phase estimates are set")
 
 
-class TestProjectTodoWaiting(FrappeTestCase):
+class TestProjectTodoWaiting(NoLeakMixin, FrappeTestCase):
 	def setUp(self):
 		# Minimal project + detail so validate_create_permission passes (Admin = owner+leader).
 		if not frappe.db.exists("Brand", "Test Customer Waiting"):
@@ -1419,7 +1421,7 @@ class TestProjectTodoWaiting(FrappeTestCase):
 		self.assertFalse(todo.waiting_since)
 
 
-class TestProjectTodoFiles(FrappeTestCase):
+class TestProjectTodoFiles(NoLeakMixin, FrappeTestCase):
 	"""Multiple file attachments on a Project Todo via native Frappe File
 	attachments. Edit gate mirrors save_notes: assignee / owner / leader / SM."""
 
@@ -1580,7 +1582,7 @@ class TestProjectTodoFiles(FrappeTestCase):
 		frappe.delete_doc("File", foreign.name, force=True, ignore_permissions=True)
 
 
-class TestUndoApproval(unittest.TestCase):
+class TestUndoApproval(NoLeakMixin, unittest.TestCase):
 	"""undo_approval: self-service one-step-back on the approval gates, plus the
 	Completed branch's point/recurrence reversal.
 
@@ -1788,7 +1790,7 @@ if __name__ == "__main__":
 	run_tests()
 
 
-class TestLatenessCountsFromCreation(unittest.TestCase):
+class TestLatenessCountsFromCreation(NoLeakMixin, unittest.TestCase):
 	"""A todo can't be late for days before it existed: a backfilled routine occurrence
 	(created 2026-09-11 for a 2026-09-07 date the dead scheduler skipped) must not be
 	charged 30%/day for the outage. Normal todos (created before their deadline) unchanged."""
