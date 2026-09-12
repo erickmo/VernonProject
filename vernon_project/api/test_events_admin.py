@@ -10,6 +10,7 @@ from vernon_project.api.events_admin import (
 )
 from vernon_project.api.events import _active_count
 from vernon_project.api.mobile import _user_balance
+from vernon_project.tests.no_leak import NoLeakMixin
 
 # Stable test-user emails (created once, never deleted between tests)
 _USER_A = "test_evadmin_a@example.com"
@@ -59,7 +60,7 @@ def _grant_points(user, amount):
     }).insert(ignore_permissions=True)
 
 
-class TestEventsAdmin(FrappeTestCase):
+class TestEventsAdmin(NoLeakMixin, FrappeTestCase):
 
     def setUp(self):
         frappe.set_user("Administrator")

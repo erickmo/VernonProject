@@ -13,6 +13,7 @@ from frappe.utils import add_days, nowdate
 
 from vernon_project.api.project_todo import search_todos
 from vernon_project.vernon_project.doctype.project_todo.test_project_todo import _ensure_test_group
+from vernon_project.tests.no_leak import NoLeakMixin
 
 USER = "search_todos_user@example.com"
 
@@ -34,7 +35,7 @@ def _count_queries(fn):
 	return len(queries)
 
 
-class TestSearchTodos(FrappeTestCase):
+class TestSearchTodos(NoLeakMixin, FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		group, level_id = _ensure_test_group()

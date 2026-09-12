@@ -6,9 +6,10 @@ import unittest
 
 from vernon_project.fixtures_for_tests import ensure_brand, ensure_group, ensure_user
 from frappe.utils import nowdate, add_days
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class MeetingTestBase(unittest.TestCase):
+class MeetingTestBase(NoLeakMixin, unittest.TestCase):
 	def setUp(self):
 		for email, first in (("m_user1@example.com", "M1"), ("m_user2@example.com", "M2")):
 			# Reading a Meeting needs one of the project roles at all.

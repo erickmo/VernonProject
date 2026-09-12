@@ -4,9 +4,10 @@
 import unittest
 
 import frappe
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestJobApplicationScorePermlevel(unittest.TestCase):
+class TestJobApplicationScorePermlevel(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: score/disc_fit/personality_fit/overall_fit/
 	ketelitian_score/psych_result/test_violations/blacklist_flag were
 	read_only:1 (form-only) at permlevel:0 on Job Application, while a

@@ -8,9 +8,10 @@ from frappe.utils import add_days, nowdate
 
 from vernon_project.vernon_project.doctype.project_todo.project_todo import has_permission as todo_has_permission
 from vernon_project.vernon_project.doctype.meeting.meeting import has_permission as meeting_has_permission
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestPtypeBlindPermission(unittest.TestCase):
+class TestPtypeBlindPermission(NoLeakMixin, unittest.TestCase):
 	"""2026-09-09 permission sweep: project_todo/meeting has_permission() took a
 	`ptype` argument and never read it, so a plain Project Team member (whose
 	JSON grant is create-only) got an unconditional True for write and delete

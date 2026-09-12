@@ -45,6 +45,7 @@ from frappe.utils import add_days, nowdate
 
 from vernon_project.api.project_todo import get_notes, save_notes
 from vernon_project.api.mobile import get_project_item
+from vernon_project.tests.no_leak import NoLeakMixin
 
 BRAND = "Test Customer"
 
@@ -55,7 +56,7 @@ def _ensure_group():
 	return "Test Group"
 
 
-class NotesFixture(unittest.TestCase):
+class NotesFixture(NoLeakMixin, unittest.TestCase):
 	"""One Project/Detail/Todo chain, fresh per test. assigned_to is the only
 	allowed saver by default (matches save_notes' allowed list: assigned_to,
 	project_owner, project_leader, or todo.owner)."""
@@ -318,7 +319,7 @@ class TestNotesMarkdownBackend(NotesFixture):
 		self.assertEqual(frappe.db.get_value("Project Todo", self.todo.name, "notes"), before)
 
 
-class TestNotesQueryCount(FrappeTestCase):
+class TestNotesQueryCount(NoLeakMixin, FrappeTestCase):
 	"""Separate FrappeTestCase (not NotesFixture) for assertQueryCount -- it
 	needs Frappe's own class-transaction wrapper, and combining that via
 	multiple inheritance with a plain unittest.TestCase mixin risks the wrong

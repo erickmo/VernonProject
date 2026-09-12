@@ -16,6 +16,7 @@ from frappe.utils import add_days, get_datetime, nowdate
 from vernon_project.api import attendance as api
 from vernon_project.attendance import qr
 from vernon_project.attendance.engine import recompute_daily
+from vernon_project.tests.no_leak import NoLeakMixin, needs_real_commits
 
 EMP = "attn_kiosk_emp@example.com"
 OTHER = "attn_kiosk_other@example.com"
@@ -27,7 +28,7 @@ CF_EDGE = "172.69.176.152"
 EXPIRED = "QR expired — scan the live code again."
 
 
-class TestRealIp(unittest.TestCase):
+class TestRealIp(NoLeakMixin, unittest.TestCase):
 	def test_cloudflare_hop_trusts_cf_connecting_ip(self):
 		self.assertEqual(qr.real_ip(CF_EDGE, OFFICE), OFFICE)
 
@@ -43,7 +44,7 @@ class TestRealIp(unittest.TestCase):
 		self.assertIsNone(qr.real_ip("garbage", None))
 
 
-class TestOnNetwork(unittest.TestCase):
+class TestOnNetwork(NoLeakMixin, unittest.TestCase):
 	def test_empty_list_allows_any_network(self):
 		self.assertTrue(qr.on_network("", HOME))
 		self.assertTrue(qr.on_network(None, None))
@@ -97,7 +98,7 @@ def _at(hhmm):
 	return get_datetime(f"{nowdate()} {hhmm}:00")
 
 
-class TestKioskScan(FrappeTestCase):
+class TestKioskScan(NoLeakMixin, FrappeTestCase):
 	def setUp(self):
 		_ensure_fixtures()
 		for s in (ST_A, ST_B):
@@ -282,7 +283,7 @@ def _winner(site, sites_path, day):
 		frappe.destroy()
 
 
-class TestConcurrentFirstSeen(FrappeTestCase):
+class TestConcurrentFirstSeen(NoLeakMixin, FrappeTestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
@@ -301,6 +302,7 @@ class TestConcurrentFirstSeen(FrappeTestCase):
 		_purge_rows()
 		frappe.db.commit()
 
+	@needs_real_commits  # second connection: holding the commit removes the contention it pins
 	def test_concurrent_scans_keep_one_correct_first_and_last_seen(self):
 		day = nowdate()
 		# Pin this transaction's snapshot the way a real request does with its first reads.

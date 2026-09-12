@@ -7,6 +7,7 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.fixtures_for_tests import ensure_brand, ensure_group, ensure_user
+from vernon_project.tests.no_leak import NoLeakMixin
 
 # Rewritten 2026-09-10. The previous version of this file had ten tests that each
 # built a Project Todo object by hand, patched `frappe.throw`, called
@@ -28,7 +29,7 @@ DONE = "🟠 Done"
 PLANNED = "⚪️ Planned"
 
 
-class TestDoneTodoFieldsLockedOnSave(unittest.TestCase):
+class TestDoneTodoFieldsLockedOnSave(NoLeakMixin, unittest.TestCase):
     """Once a todo leaves Planned, assigned_to / estimated / start_date / deadline
     and the AI tag+prompt fields are frozen -- enforced in validate(), so every write
     path that ends in doc.save() is covered."""
@@ -123,12 +124,17 @@ class TestDoneTodoFieldsLockedOnSave(unittest.TestCase):
             before, new_value, f"{field}: probe value must actually differ, or this proves nothing"
         )
 
+        # Scoped to a savepoint, not a bare rollback: the point here is to discard
+        # the REFUSED SAVE, and a bare rollback also discards the fixture this test
+        # just built -- which is invisible while the fixture happens to be committed
+        # and reads back as "the field became None" the moment it is not.
+        frappe.db.savepoint("frozen_field_probe")
         todo.set(field, new_value)
         with self.assertRaises(frappe.ValidationError) as caught:
             todo.save(ignore_permissions=True)
         self.assertIn("locked once the todo leaves Planned", str(caught.exception))
 
-        frappe.db.rollback()
+        frappe.db.rollback(save_point="frozen_field_probe")
         after = frappe.db.get_value("Project Todo", todo.name, field)
         self.assertEqual(after, before, f"{field} was changed on a non-Planned todo")
 
@@ -145,11 +151,12 @@ class TestDoneTodoFieldsLockedOnSave(unittest.TestCase):
         todo = self._done_todo()
         stored = frappe.db.get_value("Project Todo", todo.name, "deadline")
 
+        frappe.db.savepoint("frozen_save_path_probe")
         todo.deadline = add_days(nowdate(), 99)
         with self.assertRaises(frappe.ValidationError):
             todo.save(ignore_permissions=True)  # no direct call to the validator anywhere
 
-        frappe.db.rollback()
+        frappe.db.rollback(save_point="frozen_save_path_probe")
         self.assertEqual(frappe.db.get_value("Project Todo", todo.name, "deadline"), stored)
 
     # ------------------------------------------------------- per-field freezes

@@ -7,9 +7,10 @@ import frappe
 from frappe.utils import add_days, nowdate
 
 from vernon_project.api.mobile import _can_see_user_work
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestCanSeeUserWork(unittest.TestCase):
+class TestCanSeeUserWork(NoLeakMixin, unittest.TestCase):
 	"""Core predicate shared by get_priority_occupancy and the five reports
 	fixed in the 2026-09-08 permission sweep (run_report + the Desk report
 	endpoint both land in each report's execute(), which is why the guard
@@ -73,7 +74,7 @@ class TestCanSeeUserWork(unittest.TestCase):
 		self.assertTrue(_can_see_user_work("Administrator", self.STRANGER))
 
 
-class TestReportScopeIntegration(unittest.TestCase):
+class TestReportScopeIntegration(NoLeakMixin, unittest.TestCase):
 	"""One assignee-scoped report (daily_performance_report) and one
 	project-scoped report (todo_report) exercised end to end through their
 	real execute(), proving the guard is actually wired in, not just that the

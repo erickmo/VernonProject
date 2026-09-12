@@ -12,6 +12,7 @@ from frappe.utils import now_datetime
 from vernon_project.api.events import _apply_notification, register
 from vernon_project.api.midtrans import verify_signature
 from vernon_project.api.mobile import _user_balance
+from vernon_project.tests.no_leak import NoLeakMixin, needs_real_commits
 
 # ponytail: single class, setUp/tearDown explicit cleanup; no fixtures/factories.
 
@@ -23,7 +24,7 @@ def _sha512_sig(order_id, status_code, gross_amount, server_key=_TEST_KEY):
     return hashlib.sha512(raw.encode()).hexdigest()
 
 
-class TestEventsRegistration(FrappeTestCase):
+class TestEventsRegistration(NoLeakMixin, FrappeTestCase):
 
     def setUp(self):
         self._created = []  # list of (doctype, name) to delete in tearDown
@@ -200,6 +201,7 @@ class TestEventsRegistration(FrappeTestCase):
                 "Pending",
             )
 
+    @needs_real_commits  # second connection: holding the commit removes the contention it pins
     def test_the_last_seat_is_not_sold_twice_from_an_old_snapshot(self):
         """register() reads the event with a plain get_doc before it locks the event
         row, so its snapshot predates any seat committed while it waited; a plain seat
@@ -244,6 +246,7 @@ class TestEventsRegistration(FrappeTestCase):
             frappe.db.delete("Vernon Event Registration", {"event": ev.name})
             frappe.db.commit()
 
+    @needs_real_commits  # second connection: holding the commit removes the contention it pins
     def test_capacity_check_contends_on_the_event_row(self):
         """A second registrant must not slip past a full-capacity check while another
         transaction is mid-registration.

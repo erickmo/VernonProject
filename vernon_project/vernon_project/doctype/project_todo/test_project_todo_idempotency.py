@@ -5,6 +5,7 @@ import threading
 import unittest
 
 import frappe
+from vernon_project.tests.no_leak import NoLeakMixin, needs_real_commits
 
 DETAIL = "PD-PRJ-2601-00002-00005"
 ASSIGNEE = "mo@vernon.id"
@@ -30,7 +31,7 @@ def _payload(**over):
 	return base
 
 
-class TestProjectTodoIdempotency(unittest.TestCase):
+class TestProjectTodoIdempotency(NoLeakMixin, unittest.TestCase):
 	"""Owner report: "Sometimes a user click save on form and data created twice or
 	more." Measured on this site before the fix: 37 duplicate pairs created within 30s
 	of each other, 9 of them in the same second, across 20 dates and 5 creators, 18 of
@@ -102,6 +103,7 @@ class TestProjectTodoIdempotency(unittest.TestCase):
 		with self.assertRaises(frappe.ValidationError):
 			frappe.get_doc(_payload()).insert(ignore_permissions=True)
 
+	@needs_real_commits  # second connection: holding the commit removes the contention it pins
 	def test_two_concurrent_identical_saves_create_exactly_one_todo(self):
 		"""The retry arriving while the first request is still in flight. Two real
 		connections, released together -- a SELECT-then-insert guard also fails this."""

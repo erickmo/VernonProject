@@ -12,11 +12,12 @@ from vernon_project.api.mobile import (
 	STATUS_CANCELLED, STATUS_CHECKED, STATUS_COMPLETED, STATUS_DONE, STATUS_PLANNED,
 	issue_counts, is_issue_resolved,
 )
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
 # --- pure counting -------------------------------------------------------------------
 
-class TestIssueCounts(unittest.TestCase):
+class TestIssueCounts(NoLeakMixin, unittest.TestCase):
 	def test_empty(self):
 		self.assertEqual(issue_counts([]), {"open": 0, "resolved": 0, "cancelled": 0})
 
@@ -55,7 +56,7 @@ class TestIssueCounts(unittest.TestCase):
 
 # --- controller + endpoints ----------------------------------------------------------
 
-class TodoIssueFixture(unittest.TestCase):
+class TodoIssueFixture(NoLeakMixin, unittest.TestCase):
 	"""One project / detail / host todo, plus a helper to spawn issue todos."""
 
 	def setUp(self):

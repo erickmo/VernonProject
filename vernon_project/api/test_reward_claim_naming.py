@@ -6,12 +6,13 @@ import unittest
 import frappe
 
 from vernon_project.api.mobile import _has_claim, _record_claim
+from vernon_project.tests.no_leak import NoLeakMixin
 
 USER = "claim-naming@test.local"
 DOCTYPE = "Avatar Reward Claim"
 
 
-class TestRewardClaimNaming(unittest.TestCase):
+class TestRewardClaimNaming(NoLeakMixin, unittest.TestCase):
 	"""Avatar Reward Claim's docname IS its natural key (user|claim_type|claim_ref),
 	set by the controller's autoname(), and that primary key is the only thing
 	stopping a reward being claimed twice — there is no unique index, and the

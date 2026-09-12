@@ -4,6 +4,7 @@
 import unittest
 
 import frappe
+from vernon_project.tests.no_leak import NoLeakMixin
 
 REWARD = "ZZ redemption-guard reward"
 REWARD2 = "ZZ redemption-guard reward alt"  # Marketplace Reward is autonamed by reward_name
@@ -19,7 +20,7 @@ def _non_sm_user():
 	return None
 
 
-class TestRewardRedemptionGuards(unittest.TestCase):
+class TestRewardRedemptionGuards(NoLeakMixin, unittest.TestCase):
 	"""The points wallet is credits - redemptions (api/mobile.py:3790), so a row here
 	moves a balance. Point Ledger is System-Manager-only so points cannot be minted;
 	before these guards the other half of the equation was open to Marketplace Manager

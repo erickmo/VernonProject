@@ -16,6 +16,7 @@ from vernon_project.api.project_todo import (
 	save_ai_prompt,
 )
 from vernon_project.fixtures_for_tests import ensure_brand, ensure_group, ensure_user
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
 @contextmanager
@@ -37,7 +38,7 @@ def _count_queries():
 		frappe.db.__class__.sql = orig_sql
 
 
-class TestGetNotesAndListTodoFilesPermission(unittest.TestCase):
+class TestGetNotesAndListTodoFilesPermission(NoLeakMixin, unittest.TestCase):
 	"""Regression for the 2026-09-08 permission sweep: get_notes had NO check at
 	all ("accessible by all logged-in users"), and list_todo_files's docstring
 	claimed a check ("a user who can open the todo can list its files") that
@@ -141,7 +142,7 @@ class TestGetNotesAndListTodoFilesPermission(unittest.TestCase):
 			frappe.set_user("Administrator")
 
 
-class TestAppSettingsPrankFieldsGated(unittest.TestCase):
+class TestAppSettingsPrankFieldsGated(NoLeakMixin, unittest.TestCase):
 	"""Regression: get_app_settings() leaked prank_target_users (spoils the gag,
 	names who's targeted) and all_users (a full active-user directory) to any
 	signed-in user. Both are now settings-manager-only; everything else in the
@@ -181,7 +182,7 @@ class TestAppSettingsPrankFieldsGated(unittest.TestCase):
 		self.assertGreater(len(r["all_users"]), 0)
 
 
-class TestGetAiTodosNeedingPromptPayload(FrappeTestCase):
+class TestGetAiTodosNeedingPromptPayload(NoLeakMixin, FrappeTestCase):
 	"""Payload-size cut for the hourly AI-agent poll (2026-09-09): `envelope` gives
 	an unambiguous empty-queue marker instead of a blank body, `include_context`
 	carries the fields the caller was fetching per-todo via get_project_item, and
@@ -381,7 +382,7 @@ class TestGetAiTodosNeedingPromptPayload(FrappeTestCase):
 		self.assertEqual(enveloped["todos"], [])
 
 
-class TestSaveAiPromptReturnPrompts(FrappeTestCase):
+class TestSaveAiPromptReturnPrompts(NoLeakMixin, FrappeTestCase):
 	"""save_ai_prompt(return_prompts=0) drops the ~20 KB prompt-body echo — count
 	and names confirm the write just as well as the full body did."""
 
