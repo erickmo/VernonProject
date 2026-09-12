@@ -55,14 +55,17 @@ def resolve(employee):
 
 # --- accrual sources --------------------------------------------------------
 
-def accrued_penalty_minutes(employee, year, count_early):
-    """Sum of late (+ optionally early-leave) minutes over the year's attendance."""
+def accrued_penalty_minutes(employee, year, count_early, for_update=False):
+    """Sum of late (+ optionally early-leave) minutes over the year's attendance.
+
+    for_update: LOCKING read, for the reconcile path -- see _approved_overtime_minutes.
+    """
     import frappe
-    rows = frappe.get_all(
-        "Daily Attendance",
-        filters={"employee": employee,
-                 "attendance_date": ["between", [f"{year}-01-01", f"{year}-12-31"]]},
-        fields=["late_minutes", "early_minutes"],
+    rows = frappe.db.sql(
+        """select late_minutes, early_minutes from `tabDaily Attendance`
+        where employee = %s and attendance_date between %s and %s"""
+        + (" for update" if for_update else ""),
+        (employee, f"{year}-01-01", f"{year}-12-31"), as_dict=True,
     )
     total = 0
     for r in rows:
@@ -72,13 +75,28 @@ def accrued_penalty_minutes(employee, year, count_early):
     return total
 
 
-def _approved_overtime_minutes(employee, year):
+def _approved_overtime_minutes(employee, year, for_update=False):
+    """for_update: a LOCKING read, which the reconcile path needs and the UI does not.
+
+    The reconcile target is derived from this sum, and at REPEATABLE READ a plain read
+    returns the request's own snapshot. Two concurrent deletes therefore each still see
+    the OTHER's entry, each compute a target of 1, and a bonus leave day survives with
+    no overtime behind it. No lock on the ledger can fix that -- by the time
+    reconcile_signed runs, the wrong number is already the target. A locking read sees
+    the latest committed rows and blocks on the contender's uncommitted delete.
+
+    ponytail: two genuinely simultaneous deletes now deadlock in InnoDB instead
+    (each holds the X lock on the row it deleted and wants the other's), which the
+    server detects and rolls one back -- an error and a retry, not a wrong balance.
+    If that retry is ever hit in practice, the upgrade is to reconcile from on_trash
+    with the row excluded by name, so no X lock is held across this read.
+    """
     import frappe
-    rows = frappe.get_all(
-        "Overtime Entry",
-        filters={"employee": employee, "status": "Approved",
-                 "date": ["between", [f"{year}-01-01", f"{year}-12-31"]]},
-        fields=["minutes"],
+    rows = frappe.db.sql(
+        """select minutes from `tabOvertime Entry`
+        where employee = %s and status = 'Approved' and date between %s and %s"""
+        + (" for update" if for_update else ""),
+        (employee, f"{year}-01-01", f"{year}-12-31"), as_dict=True,
     )
     return sum(int(r.minutes or 0) for r in rows)
 
@@ -92,7 +110,8 @@ def reconcile_penalty(employee, year):
     if not s["late_penalty_enabled"]:
         target = 0
     else:
-        accrued = accrued_penalty_minutes(employee, year, s["count_early_leave_in_penalty"])
+        accrued = accrued_penalty_minutes(employee, year, s["count_early_leave_in_penalty"],
+                                          for_update=True)
         target = days_owed(accrued, s["lateness_deduction_threshold_minutes"])
     return cuti_ledger.reconcile_signed(employee, year, "Late Penalty", -1, target,
                                         "Auto: lateness/early-leave accrual")
@@ -105,7 +124,7 @@ def reconcile_overtime(employee, year):
     if not s["overtime_bonus_enabled"]:
         target = 0
     else:
-        accrued = _approved_overtime_minutes(employee, year)
+        accrued = _approved_overtime_minutes(employee, year, for_update=True)
         target = days_owed(accrued, s["overtime_bonus_threshold_minutes"])
     return cuti_ledger.reconcile_signed(employee, year, "Overtime Bonus", 1, target,
                                         "Auto: approved overtime accrual")
