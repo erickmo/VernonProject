@@ -203,9 +203,12 @@ def _apply_notification(payload):
 		frappe.log_error(title="Events Midtrans unknown order", message=f"order_id={order_id}")
 		return "ignored"
 
-	# Row-lock to serialise duplicate/concurrent notifications.
-	frappe.db.get_value("Vernon Event Registration", name, "name", for_update=True)
-	reg = frappe.get_doc("Vernon Event Registration", name)
+	# Row-lock to serialise duplicate/concurrent notifications, and read THROUGH the
+	# lock: for_update re-reads the committed row, while a plain get_doc would return
+	# this request's pre-lock snapshot and make the idempotency guard below decide on a
+	# stale status -- a cancel/expire racing a settlement would un-Confirm a paid
+	# registration. Same reason as line 145 and cuti_ledger.py:166.
+	reg = frappe.get_doc("Vernon Event Registration", name, for_update=True)
 	reg.db_set("transaction_status", payload.get("transaction_status"), update_modified=False)
 
 	if reg.status == "Confirmed":
