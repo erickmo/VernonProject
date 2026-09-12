@@ -4295,8 +4295,25 @@ def _earned_credit_rows(user, limit=100):
 	todo_ids = [c["todo"] for c in credits if c.get("todo")]
 	subj = {}
 	if todo_ids:
-		for r in frappe.get_all("Project Todo", filters={"name": ["in", todo_ids]}, fields=["name", "to_do"]):
-			subj[r["name"]] = r["to_do"]
+		# Titles are scoped to what the CALLER may see, not to the target. This
+		# feeds get_user_points_log, which every logged-in user can call for
+		# anyone (it is the leaderboard tap-through), and a task title is real
+		# content — unscoped it hands out titles from projects the caller has no
+		# access to, the same leak data_health was fixed for on 2026-09-08.
+		# A title we may not show simply stays out of `subj`, so the row falls
+		# back to the generic label below; the POINTS stay visible either way,
+		# which is all the leaderboard needs.
+		visible = set(_visible_projects())
+		for r in frappe.db.sql(
+			"""SELECT t.name, t.to_do, pd.project
+			   FROM `tabProject Todo` t
+			   LEFT JOIN `tabProject Detail` pd ON pd.name = t.project_detail
+			   WHERE t.name IN %(ids)s""",
+			{"ids": tuple(todo_ids)},
+			as_dict=True,
+		):
+			if r.project and r.project in visible:
+				subj[r.name] = r.to_do
 	rows = []
 	for c in credits:
 		amt = float(c["amount"] or 0)
