@@ -12,13 +12,27 @@ def bulk_assign_project_roles(projects, set_leader=0, leader=None, admins=None, 
 	Gated to System Manager / Project Owner *as an entry check* — that only
 	proves the caller may use this tool at all, not that they may touch any
 	given project, since "Project Owner" is a global role (anyone ever set as
-	ANY project's owner holds it, per Project.validate_lead_roles). The actual
-	per-project authority check is `frappe.has_permission("Project", "write",
-	name)` inside the loop, below — the same registered hook Project.has_permission
-	already enforces everywhere else (postpone.py uses the identical call), so
-	this can't drift from the one real definition of "may write this project".
-	A project the caller may not write is skipped and reported, exactly like a
-	project that fails to save for any other reason.
+	ANY project's owner holds it, per Project.validate_lead_roles).
+
+	The per-project check below mirrors Project.validate_edit_permission,
+	because this function saves with ignore_permissions=True and that is
+	precisely the flag validate_edit_permission returns early on — so the
+	controller's own "only the Owner may change the owner or leader" rule
+	cannot run here and has to be restated at the gate.
+
+	It deliberately does NOT use `frappe.has_permission("Project", "write")`,
+	which it used to. That verb does not mean administrative authority here:
+	Project's DocPerm row for "Project Leader" is write=1 with no if_owner, so
+	holding that global role is write-on-every-project at the role level, and
+	Project.has_permission then returns True for anyone in doc.team_members.
+	The result was that a plain team member holding Project Owner + Project
+	Leader could set themselves as the sole Project Admin of a project they
+	neither owned nor led, evicting the real admins (proved live, 2026-09-12).
+	A controller hook can only deny, never grant, so the DocPerm table is the
+	floor — which is why reading the hook alone made this look safe.
+
+	A project the caller may not administer is skipped and reported, exactly
+	like a project that fails to save for any other reason.
 
 	Each project saves inside its own savepoint, so a project that can't be
 	saved (permission refused, or e.g. a leader missing the 'Project Leader'
@@ -47,11 +61,22 @@ def bulk_assign_project_roles(projects, set_leader=0, leader=None, admins=None, 
 	for name in projects or []:
 		frappe.db.savepoint("bulk_role")
 		try:
-			# Per-record check: entry gate above only proves the caller may use
-			# this tool, not that they may touch THIS project. Same hook
-			# Project.has_permission enforces everywhere else in the app.
-			frappe.has_permission("Project", "write", name, throw=True)
+			# Per-record check: the entry gate above only proves the caller may
+			# use this tool, not that they may touch THIS project. Same rule as
+			# Project.validate_edit_permission, which the ignore_permissions
+			# save below switches off.
 			doc = frappe.get_doc("Project", name)
+			if "System Manager" not in roles:
+				if frappe.session.user not in (doc.project_owner, doc.project_leader):
+					frappe.throw(
+						_("Only the Project Owner or Project Leader can edit this project."),
+						frappe.PermissionError,
+					)
+				if set_leader and frappe.session.user != doc.project_owner:
+					frappe.throw(
+						_("Only the Project Owner can change the owner or leader."),
+						frappe.PermissionError,
+					)
 			if set_leader:
 				doc.project_leader = leader
 			if admins or admin_mode == "replace":
