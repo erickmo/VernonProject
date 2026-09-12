@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Vernon and contributors
 # See license.txt
 
+import time
 import unittest
 
 import frappe
@@ -12,6 +13,24 @@ LEADER = "pl-scope-leader@test.local"
 OUTSIDER = "pl-scope-outsider@test.local"
 TITLE = "ZZ points-log scope probe todo"
 GENERIC = "Points earned"
+
+
+def _insert_retrying(doc):
+	"""Insert, retrying a deadlock. This bench is shared and live: every point
+	spend takes a table-wide locking read on Avatar Unlock (no index on `user`)
+	plus per-user ranges on Point Ledger, so a bare ledger insert can lose a
+	deadlock to unrelated traffic. Reproduced against unfixed code too, so this
+	is the bench's ambient contention, not anything these tests changed — but a
+	security test that flakes gets muted, so it retries instead.
+	"""
+	for attempt in range(4):
+		try:
+			return frappe.get_doc(doc).insert(ignore_permissions=True)
+		except frappe.QueryDeadlockError:
+			if attempt == 3:
+				raise
+			frappe.db.rollback()
+			time.sleep(0.3 * (attempt + 1))
 
 
 class TestPointsLogTitleScope(unittest.TestCase):
@@ -60,11 +79,11 @@ class TestPointsLogTitleScope(unittest.TestCase):
 			"status": "⚪️ Planned",
 		}).insert(ignore_permissions=True)
 
-		self.ledger = frappe.get_doc({
+		self.ledger = _insert_retrying({
 			"doctype": "Point Ledger", "user": LEADER, "todo": self.todo.name,
 			"points_earned": 7, "point": 7, "source": "Todo",
 			"credited_on": frappe.utils.now(),
-		}).insert(ignore_permissions=True)
+		})
 
 	def tearDown(self):
 		frappe.set_user("Administrator")

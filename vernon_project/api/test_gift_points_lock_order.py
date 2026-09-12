@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Vernon and contributors
 # See license.txt
 
+import time
 import unittest
 
 import frappe
@@ -9,6 +10,24 @@ from vernon_project.api.mobile import gift_points
 
 SENDER = "gift-lock-sender@test.local"
 RECIPIENT = "gift-lock-recipient@test.local"
+
+
+def _insert_retrying(doc):
+	"""Insert, retrying a deadlock. This bench is shared and live: every point
+	spend takes a table-wide locking read on Avatar Unlock (no index on `user`)
+	plus per-user ranges on Point Ledger, so a bare ledger insert can lose a
+	deadlock to unrelated traffic. Reproduced against unfixed code too, so this
+	is the bench's ambient contention, not anything these tests changed — but a
+	security test that flakes gets muted, so it retries instead.
+	"""
+	for attempt in range(4):
+		try:
+			return frappe.get_doc(doc).insert(ignore_permissions=True)
+		except frappe.QueryDeadlockError:
+			if attempt == 3:
+				raise
+			frappe.db.rollback()
+			time.sleep(0.3 * (attempt + 1))
 
 
 class TestGiftPointsLocksBothParties(unittest.TestCase):
@@ -38,15 +57,15 @@ class TestGiftPointsLocksBothParties(unittest.TestCase):
 					"doctype": "User", "email": email, "first_name": email.split("@")[0],
 					"send_welcome_email": 0,
 				}).insert(ignore_permissions=True)
-		frappe.get_doc({
+		_insert_retrying({
 			"doctype": "Point Ledger", "user": SENDER, "points_earned": 50, "point": 50,
 			"source": "Grant", "credited_on": frappe.utils.now(),
-		}).insert(ignore_permissions=True)
+		})
 		# the recipient needs a row of its own, so the range we lock below exists
-		frappe.get_doc({
+		_insert_retrying({
 			"doctype": "Point Ledger", "user": RECIPIENT, "points_earned": 1, "point": 1,
 			"source": "Grant", "credited_on": frappe.utils.now(),
-		}).insert(ignore_permissions=True)
+		})
 		frappe.db.commit()
 
 	def tearDown(self):
