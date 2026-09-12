@@ -14,9 +14,9 @@ import random
 import re
 
 import frappe
-from frappe.rate_limiter import rate_limit
 from frappe.utils import now_datetime, today
 
+from vernon_project.utilities.throttle import enforce
 from vernon_project.api import recruitment_instruments as ri
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -189,8 +189,11 @@ def list_open_jobs():
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(key="can_apply", limit=30, seconds=3600)
 def check_can_apply(job, nik_ktp=None, email=None):
+	# Was @rate_limit(key="can_apply", ...): "can_apply" names no request parameter, so
+	# every applicant behind one Cloudflare edge shared a single 30/hour bucket.
+	enforce("can_apply", limit=30, seconds=3600,
+		identity=(nik_ktp or "").strip() or (email or "").strip())
 	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
 	if not name:
 		return {"ok": False, "reason": "Lowongan tidak ditemukan atau sudah ditutup."}
@@ -200,11 +203,13 @@ def check_can_apply(job, nik_ktp=None, email=None):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(key="start_test", limit=120, seconds=3600)
 def start_test(attempt_id, job, test, prev=None):
 	attempt_id = _clean_attempt(attempt_id)
 	if not attempt_id:
 		frappe.throw("Sesi tes tidak valid.")
+	# Was @rate_limit(key="start_test", ...): inert, so one shared 120/hour bucket could
+	# lock a candidate out MID-TIMED-TEST. Budgeted per attempt now.
+	enforce("start_test", limit=120, seconds=3600, identity=attempt_id)
 	if test not in TIMED_TESTS:
 		frappe.throw("Tes tidak dikenal.")
 	name = frappe.db.get_value("Job Opening", {"slug": job, "status": "Open"}, "name")
@@ -277,7 +282,6 @@ def _ket_bank(attempt_id):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(key="ket_items", limit=60, seconds=3600)
 def get_ketelitian(attempt_id, job):
 	"""Per-attempt randomized accuracy bank, answers stripped. Idempotent: a reload returns the
 	SAME items (seed persists), so the server timer and the item set stay consistent across reloads."""
@@ -289,6 +293,7 @@ def get_ketelitian(attempt_id, job):
 		frappe.throw("Lowongan tidak ditemukan.", frappe.DoesNotExistError)
 	if not frappe.db.get_value("Job Opening", name, "test_ketelitian"):
 		frappe.throw("Tes tidak aktif.")
+	enforce("ket_items", limit=60, seconds=3600, identity=attempt_id)
 	seed, n = _ket_seed(attempt_id)
 	return {"items": ri.public_ketelitian_from(ri.gen_ketelitian(seed, n))}
 
@@ -322,7 +327,6 @@ def get_job(slug):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(key="job_application", limit=6, seconds=3600)
 def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp=None,
 					   cover_letter=None, answers=None, company_website=None,
 					   disc_answers=None, personality_answers=None, logical_answers=None,
@@ -335,6 +339,12 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 	phone = (phone or "").strip()
 	nik_ktp = (nik_ktp or "").strip()
 	cover_letter = (cover_letter or "").strip()
+
+	# Was @rate_limit(key="job_application", ...): "job_application" names no request
+	# parameter, so ALL applicants behind one Cloudflare edge shared a single 6/hour
+	# bucket -- the 7th genuine applicant in an hour was refused. Per applicant now; the
+	# IP budget still bounds someone who simply varies the NIK.
+	enforce("job_application", limit=6, seconds=3600, identity=nik_ktp or email)
 
 	if not (job and full_name and email and phone and nik_ktp):
 		frappe.throw("Mohon lengkapi nama, email, telepon, dan NIK.")
