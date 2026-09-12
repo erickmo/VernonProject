@@ -58,6 +58,7 @@ import { STATUS, STATUS_ORDER } from '@/lib/status'
 import { formatClock, formatEstimate, dateSub, todayISO } from '@/lib/format'
 import { NoteMarkdown } from '@/lib/markdown'
 import { MarkdownEditor } from '@/components/MarkdownEditor'
+import { useMarkdownAttachments } from '@/hooks/useMarkdownAttachments'
 import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode } from '@/hooks/useData'
 import type { ChecklistItem, AiPrompt } from '@/lib/types'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
@@ -601,6 +602,7 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
 function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; canEdit: boolean }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
+  const { mentions, onImage } = useMarkdownAttachments('Project Todo', todoId)
   // The RAW stored value, not stripHtml(initial): editing must show and save
   // exactly what's in the database, byte-identical on a no-op edit. Legacy
   // rows with real HTML (this field predates markdown rendering) still get
@@ -679,7 +681,9 @@ function Notes({ todoId, initial, canEdit }: { todoId: string; initial: string; 
         }}
         rows={4}
         ariaLabel="Notes"
-        placeholder="Add a quick note about your progress… (Markdown)"
+        mentions={mentions}
+        onImage={onImage}
+        placeholder="Add a quick note about your progress… (Markdown, @ to mention)"
         className="w-full resize-none [field-sizing:content] rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-sm leading-relaxed text-slate-700 dark:text-slate-200 outline-none transition focus:border-brand-400 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-brand-100 dark:placeholder-slate-500"
       />
       <div className="mt-1.5 flex h-5 items-center justify-end text-xs text-slate-400 dark:text-slate-500">

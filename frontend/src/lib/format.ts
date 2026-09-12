@@ -194,7 +194,7 @@ export function deleteErrorMessage(e: unknown, entity: string): string {
 // True when an <img src> is a safe inline comment image: an app-served file
 // (/files/...) or any same-origin URL. Cross-origin/remote and data: URLs are
 // dropped to avoid tracking pixels and external content in user HTML.
-function isAllowedImgSrc(src: string): boolean {
+export function isAllowedImgSrc(src: string): boolean {
   const s = (src || '').trim()
   if (s.startsWith('/files/')) return true
   try {
