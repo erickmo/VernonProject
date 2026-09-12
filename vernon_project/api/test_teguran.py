@@ -53,9 +53,45 @@ EMPLOYEE_A = "tgr_employee_a@example.com"
 EMPLOYEE_B = "tgr_employee_b@example.com"
 
 
+# One savepoint per test, rolled back in tearDown. This suite is a plain
+# unittest.TestCase, which Frappe gives NO transaction handling — so before this,
+# setUp and tearDown each committed and every Teguran a test issued was written
+# permanently to the site. One did: a disciplinary record against
+# tgr_employee_a@example.com survived a run on 2026-09-09, and because it sat
+# inside the escalation window it then made two of these very tests fail until
+# someone deleted it by hand.
+#
+# The savepoint is taken before the fixture users exist and rolled back after the
+# test, so EVERYTHING a test writes is undone — including anything it forgot to
+# register for cleanup, which is exactly how the leak happened.
+SAVEPOINT = "teguran_test"
+
+
+def _hold_commits(case):
+	"""Stop this test's writes from becoming permanent, and keep the savepoint alive.
+
+	The test's own commits were only half the story. api/mobile.py::_notify commits
+	immediately after inserting a Vernon Notification — deliberately, because it then
+	enqueues a web push and the worker has to be able to see the row. Issuing one
+	Teguran runs _notify eight times, so the Teguran was committed to the live site
+	whatever the test did, and every COMMIT silently discards every open savepoint,
+	which is why rolling back to one failed with "SAVEPOINT does not exist".
+
+	So the commit is held for the duration of the test and released afterwards. This
+	is a test-only measure: _notify's commit is correct in production, it has 28 call
+	sites across 12 modules, and changing it is a separate decision with a much wider
+	blast radius than this file.
+	"""
+	real = frappe.db.commit
+	frappe.db.commit = lambda *a, **kw: None
+	case.addCleanup(lambda: setattr(frappe.db, "commit", real))
+
+
 class TeguranFixture(unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
+		_hold_commits(self)
+		frappe.db.savepoint(SAVEPOINT)
 		for email in (HR, LEADER, EMPLOYEE_A, EMPLOYEE_B):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc({
@@ -71,24 +107,14 @@ class TeguranFixture(unittest.TestCase):
 			if not any(r.role == role for r in lu.roles):
 				lu.append("roles", {"role": role})
 		lu.save(ignore_permissions=True)
-		self._created = []
-		# Reset HR Settings-equivalent (Vernon Settings) escalation fields so
-		# threshold tests don't leak into each other or other test files.
-		self._settings = frappe.get_single("Vernon Settings")
-		self._orig_batas = self._settings.teguran_batas_sebelum_sp
-		self._orig_window = self._settings.teguran_jendela_bulan
-		frappe.db.commit()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-		frappe.db.set_value(
-			"Vernon Settings", None,
-			{"teguran_batas_sebelum_sp": self._orig_batas, "teguran_jendela_bulan": self._orig_window},
-		)
-		for dt, name in reversed(self._created):
-			if frappe.db.exists(dt, name):
-				frappe.delete_doc(dt, name, force=True, ignore_permissions=True)
-		frappe.db.commit()
+		# Undoes the Teguran rows AND the Vernon Settings edits the threshold tests
+		# make. Vernon Settings is a Single doctype, global to the whole site: a run
+		# killed between these two lines used to leave production's disciplinary
+		# escalation threshold at whatever a test wanted.
+		frappe.db.rollback(save_point=SAVEPOINT)
 
 	def _issue(self, as_user=HR, karyawan=EMPLOYEE_A, deskripsi=None, tanggal=None):
 		frappe.set_user(as_user)
@@ -100,7 +126,6 @@ class TeguranFixture(unittest.TestCase):
 			)
 		finally:
 			frappe.set_user("Administrator")
-		self._created.append(("Teguran", res["name"]))
 		return res["name"]
 
 
@@ -385,15 +410,20 @@ class TestBootstrapHrManagerRoleFix(unittest.TestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		# Same discipline as TeguranFixture. This one committed an HR-Manager
+		# account, and tgr_bootstrap_hr@example.com is on the live site today
+		# because of it — an enabled account holding a real HR role.
+		_hold_commits(self)
+		frappe.db.savepoint(SAVEPOINT)
 		if not frappe.db.exists("User", self.USER):
 			frappe.get_doc({
 				"doctype": "User", "email": self.USER, "first_name": "Bootstrap HR",
 				"send_welcome_email": 0, "roles": [{"role": "HR Manager"}],
 			}).insert(ignore_permissions=True)
-			frappe.db.commit()
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
+		frappe.db.rollback(save_point=SAVEPOINT)
 
 	def test_bootstrap_reports_hr_manager_role(self):
 		from vernon_project.api.mobile import bootstrap
