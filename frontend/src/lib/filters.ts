@@ -290,6 +290,18 @@ export function aiPhaseOf(t: ProjectItem): AiPhase {
 }
 
 /**
+ * Whether the "AI is running" toggle may be offered for this todo.
+ *
+ * Mirrors the controller (`ProjectTodo.validate_ai_in_progress`): only an AI-tagged
+ * task can be marked running, and a terminal status clears the flag server-side, so
+ * offering it there would only round-trip into a no-op. Done / Checked By PL stay
+ * open on purpose — those await approval and a rework may still have an agent on it.
+ */
+export function canToggleAiInProgress(t: ProjectItem): boolean {
+  return aiPhaseOf(t) > 0 && t.status_key !== 'completed' && t.status_key !== 'cancelled'
+}
+
+/**
  * Todo "tags" — the icon flags shown on a TodoCard. `focus` = has a live focus
  * timer (transient, membership from `useFocusedTaskIds`), `ai1`/`ai2`/`ai3` = the AI
  * phase, `to_check` = the To Check flag, `untagged` = none of them. Drives the

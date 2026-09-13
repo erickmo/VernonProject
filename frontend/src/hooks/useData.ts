@@ -994,6 +994,29 @@ export function useSetTodoCheck() {
   })
 }
 
+// Start/stop the "an AI agent is working on this right now" flag. Orthogonal to the
+// AI phase ladder (that tracks the prompt, this tracks the agent), so it gets its own
+// mutation rather than riding useSetTodoWorkMode. The controller owns the rules — it
+// refuses a task that was never AI-tagged and clears the flag on a terminal status.
+export function useSetAiInProgress() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: async ({ todoName, running }: { todoName: string; running: boolean }) => {
+      const res = await mobileApi.updateTodo(todoName, { ai_in_progress: running ? 1 : 0 })
+      if (res.status === 'error') throw new Error(res.message)
+      return res
+    },
+    onError: (e) => toast('error', (e as Error).message || 'Could not update AI in progress'),
+    onSettled: (_res, _err, vars) => {
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projectItem(vars.todoName) })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}
+
 // Quick check-handoff: create a follow-up todo for someone else, mark mine Done.
 export function useFollowUpCheck() {
   const qc = useQueryClient()

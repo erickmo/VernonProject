@@ -1627,8 +1627,18 @@ const [followOpen, setFollowOpen] = useState(false)
           {(aiPhaseOf(data) > 0 || data.to_check || data.is_missed || data.recurring.is_recurring || data.phase_estimates.total > 0 || data.is_waiting) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {aiPhaseOf(data) > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                <span
+                  title={`Fase ${aiPhaseOf(data)} · ${AI_PHASES[aiPhaseOf(data)].label}${data.ai_in_progress ? ' · AI sedang mengerjakan' : ''}`}
+                  aria-label={`AI fase ${aiPhaseOf(data)}, ${AI_PHASES[aiPhaseOf(data)].label}${data.ai_in_progress ? ', AI sedang mengerjakan' : ''}`}
+                  className={
+                    'inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm' +
+                    // Same treatment as /w's detail chip and the shared card: the ring plus
+                    // the word carry the state, the pulse is motion-safe decoration.
+                    (data.ai_in_progress ? ' ring-2 ring-cyan-300 ring-offset-1 motion-safe:animate-pulse dark:ring-offset-slate-900' : '')
+                  }
+                >
                   <Bot className="h-3.5 w-3.5" /> AI {aiPhaseOf(data)} · {AI_PHASES[aiPhaseOf(data)].label}
+                  {data.ai_in_progress && <span className="ml-0.5">· berjalan</span>}
                 </span>
               )}
               {data.to_check && (

@@ -20,7 +20,8 @@ import {
 } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations, useSetTodoPriority, useSetTodoWorkMode, useSetTodoCheck, useBoot, canUseAi } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoPriority, useSetTodoWorkMode, useSetTodoCheck, useSetAiInProgress, useBoot, canUseAi } from '@/hooks/useData'
+import { canToggleAiInProgress } from '@/lib/filters'
 import { buildNext } from '@/lib/planDay'
 import { todayISO } from '@/lib/format'
 import { useConfirm } from '@/components/Confirm'
@@ -77,6 +78,7 @@ export function useTodoMenuGroups(
   const setPriority = useSetTodoPriority()
   const setWorkMode = useSetTodoWorkMode()
   const setCheck = useSetTodoCheck()
+  const setAiInProgress = useSetAiInProgress()
   const { data: boot } = useBoot()
   const aiAllowed = canUseAi(boot)
 
@@ -147,6 +149,11 @@ export function useTodoMenuGroups(
       // Frozen once the todo leaves Planned (doctype validate() rejects the write too) — hide
       // the control rather than let it round-trip into an error toast.
       ...(t.status_key === 'planned' && (t.is_mine || t.can_prioritize) && (aiAllowed || t.work_mode === 'AI') ? [{ key: 't-ai', label: t.work_mode === 'AI' ? 'Lepas tanda AI' : 'Tandai kerja AI', icon: Bot, onClick: () => setWorkMode.mutate({ todoName: t.name, workMode: t.work_mode === 'AI' ? '' : 'AI' }) }] : []),
+      // Start/stop the running marker: "an AI agent is on this right now". Separate from
+      // the AI tag above — that says the task is FOR an AI, this says one is working on it
+      // now, so the card and detail chip show the running ring. Offered on AI-tagged tasks
+      // that are not Completed/Cancelled (the controller clears the flag there anyway).
+      ...(canToggleAiInProgress(t) && (t.is_mine || t.can_prioritize) ? [{ key: 't-aiprog', label: t.ai_in_progress ? 'Lepas tanda AI jalan' : 'Tandai AI sedang jalan', icon: Bot, onClick: () => setAiInProgress.mutate({ todoName: t.name, running: !t.ai_in_progress }) }] : []),
       // Assignee's own "still needs checking" reminder — a plain flag, no scoring/workflow effect.
       ...(t.is_mine ? [{ key: 't-check', label: t.to_check ? 'Lepas tanda cek' : 'Tandai perlu dicek', icon: Eye, onClick: () => setCheck.mutate({ todoName: t.name, toCheck: !t.to_check }) }] : []),
       // Hand this todo to a teammate to verify — opens FollowUpCheckDialog via the ?check deep-link on the detail.

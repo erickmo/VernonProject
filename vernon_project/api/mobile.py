@@ -2671,13 +2671,13 @@ def update_todo(
 		# Lead-only field: silently ignored for anyone but SM / owner / leader.
 		if ai_prompt is not None and (is_sm or user in (project.project_owner, project.project_leader)):
 			row.ai_prompt = ai_prompt or None
-		# "To Check" is the assignee's own working reminder — a plain flag with no
-		# scoring/workflow effect, so anyone who can edit the task may set it.
 		if ai_in_progress is not None:
 			# The controller decides whether the flag is allowed (a task that was never
 			# AI-tagged is refused, untagging a running task clears it, a terminal
 			# status clears it) -- this only carries the caller's intent to it.
 			row.ai_in_progress = 1 if str(ai_in_progress) in ("1", "true", "True") else 0
+		# "To Check" is the assignee's own working reminder — a plain flag with no
+		# scoring/workflow effect, so anyone who can edit the task may set it.
 		if to_check is not None:
 			row.to_check = 1 if str(to_check) in ("1", "true", "True") else 0
 		if group is not None and group:
