@@ -31,12 +31,19 @@
       })()
     </script>
     <script>
-      // TEMP DEBUG (blank-page diagnosis): surface any uncaught module-load or
-      // unhandled render error on screen instead of a white page. Remove once fixed.
+      // Blank-page guard: if the module bundle fails to load, React never mounts
+      // and #root stays empty — show the error instead of a white page. Once React
+      // HAS mounted (#root has children), stay out of the way: the ErrorBoundary
+      // handles render errors and toasts handle the rest. Never react to benign
+      // "ResizeObserver loop" warnings (empty source, no stack) — they are not errors.
       (function () {
         var shown = false
+        function mounted() {
+          var r = document.getElementById('root')
+          return !!(r && r.childElementCount > 0)
+        }
         function show(msg) {
-          if (shown) return
+          if (shown || mounted()) return
           shown = true
           var r = document.getElementById('root') || document.body
           r.innerHTML =
@@ -45,6 +52,7 @@
             '</pre>'
         }
         window.addEventListener('error', function (e) {
+          if (/ResizeObserver loop/i.test(e.message || '')) return
           show((e.message || 'error') + '\n' + ((e.error && e.error.stack) || e.filename + ':' + e.lineno))
         })
         window.addEventListener('unhandledrejection', function (e) {
