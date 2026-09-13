@@ -100,6 +100,63 @@ def _apply_fields(doc, fields, allowed_fields):
 
 
 @frappe.whitelist()
+def get_ai_managed():
+	"""Which Projects and Project Details an AI session is responsible for.
+
+	Answers "what am I supposed to be handling, and from which device and session"
+	for an agent reading through the MCP connector. The connector finds this method
+	with its own list_api_methods scan, so nothing about the MCP protocol, schema or
+	capabilities changes to make it reachable -- the docstring you are reading IS the
+	contract the client discovers.
+
+	Separate from a Project Todo's AI tag, and deliberately so: this says WHO RUNS a
+	project or a sub-goal, while the todo ladder says whether one task is meant for an
+	AI. Nothing here reads work_mode, ai_phase, a prompt, or ai_in_progress. A Project
+	Detail's tag is independent of its parent Project's, so an untagged project can
+	hold a tagged sub-goal and is not reported as managed.
+
+	Scoped with _visible_projects(), the same helper the dashboards use, because
+	frappe.get_all does NOT apply permissions -- without that scope this would hand
+	every caller the device and session name of every project on the site. System
+	Managers see all, everyone else sees the projects they are involved in.
+
+	Two queries plus the scope lookup, whatever the number of mappings.
+
+	Returns {"projects": [{name, project_name, ai_device, ai_session_name}],
+	         "details":  [{name, title, project, ai_device, ai_session_name}]}.
+	"""
+	from vernon_project.api.mobile import _visible_projects
+
+	empty = {"projects": [], "details": []}
+	# Same deploy-order guard the rest of these fields use: readable before the
+	# doctype reload lands, rather than a hard "Unknown column".
+	if not (
+		frappe.db.has_column("Project", "is_ai_managed")
+		and frappe.db.has_column("Project Detail", "is_ai_managed")
+	):
+		return empty
+	names = _visible_projects()
+	if not names:
+		return empty
+	return {
+		"projects": frappe.get_all(
+			"Project",
+			filters={"name": ["in", names], "is_ai_managed": 1},
+			fields=["name", "project_name", "ai_device", "ai_session_name"],
+			order_by="project_name",
+			limit_page_length=0,
+		),
+		"details": frappe.get_all(
+			"Project Detail",
+			filters={"project": ["in", names], "is_ai_managed": 1},
+			fields=["name", "title", "project", "ai_device", "ai_session_name"],
+			order_by="title",
+			limit_page_length=0,
+		),
+	}
+
+
+@frappe.whitelist()
 def update_project(project, fields):
 	"""Update a Project's own content fields (not its team/details/todos, which
 	have their own endpoints, and not owner/leader/admins — see
