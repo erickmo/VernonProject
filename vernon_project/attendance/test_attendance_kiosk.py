@@ -261,11 +261,21 @@ class TestKioskScan(NoLeakMixin, FrappeTestCase):
 
 		with patch.object(qr, "verify", return_value=True):  # explicit counters, no clock flake
 			self._scan(ST_A, counter=100, token="t", at=_at("08:00"))  # Daily Attendance insert path
-			few = count(101, _at("09:00"))
+			# Warm the measurement on ST_B too. Frappe validates a Link field by
+			# SELECTing the target once per process and then memoises it, so the
+			# FIRST insert naming ST_B spends one query the second never repeats
+			# ("select name from `tabAttendance Station` where name=..."). Without
+			# this the two samples differ by that one query and the test failed
+			# 20 != 19 -- in the SAFE direction, and for a reason that has nothing
+			# to do with how many scans the day already has, which is the only
+			# thing this test is about. Warming it keeps the assertion exact
+			# rather than relaxing it to "not more".
+			self._scan(ST_B, counter=101, token="t", at=_at("08:30"))
+			few = count(102, _at("09:00"))
 			for i in range(30):
 				frappe.get_doc({"doctype": "Attendance Scan", "employee": EMP, "station": ST_A,
 								"scan_time": _at("10:00"), "token_counter": i}).insert(ignore_permissions=True)
-			many = count(102, _at("11:00"))
+			many = count(103, _at("11:00"))
 		self.assertEqual(few, many)
 
 

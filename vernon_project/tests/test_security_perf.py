@@ -628,15 +628,28 @@ class TestProjectDetailAggregatesSurvivePagination(NoLeakMixin, FrappeTestCase):
 			self.names.append(doc.name)
 
 	def test_aggregates_correct_on_the_unbounded_default_call(self):
-		"""include_cancelled defaults to 0 (matches the frontend's `showCancelled`
-		toggle -- see useProjectDetail), so _fetch_todos never returns the
-		Cancelled row here at all: 4 rows, not 5. cancelled_count is correctly 0
-		in this mode, same as the Cancelled section being hidden client-side."""
+		"""The counts span EVERY todo; project_items spans the non-cancelled ones.
+
+		This test used to assert total_count 4 / cancelled_count 0, describing
+		include_cancelled=0 as meaning the Cancelled row "is never returned here
+		at all". That was the bug, not the contract: the counts were derived from
+		a row set SQL had already filtered, so cancelled_count could only ever be
+		0 and total_count was short by exactly the number of cancelled todos --
+		silently, on every call (found 2026-09-12 on PD-PRJ-2601-00002-00005,
+		where the API said 253 with cancelled 0 and the DB held 254 with 1).
+		get_project_detail now fetches with include_cancelled=True and filters in
+		Python, so the header counts describe the whole detail while the list and
+		its pagination still honour the frontend's showCancelled toggle.
+		"""
 		result = get_project_detail(self.detail.name)
-		self.assertEqual(result["total_count"], 4)
+		self.assertEqual(result["total_count"], 5)
 		self.assertEqual(result["open_count"], 3)
 		self.assertEqual(result["completed_count"], 1)
-		self.assertEqual(result["cancelled_count"], 0)
+		self.assertEqual(result["cancelled_count"], 1)
+		# ...while the list itself still leaves the Cancelled row out by default
+		self.assertEqual(len(result["project_items"]), 4)
+		# minutes deliberately still exclude cancelled, matching the frontend's
+		# `notCancelled` filter
 		self.assertEqual(result["minutes_total"], 50)  # 3*10 + 20
 		self.assertEqual(result["minutes_done"], 20)
 
@@ -648,13 +661,13 @@ class TestProjectDetailAggregatesSurvivePagination(NoLeakMixin, FrappeTestCase):
 
 	def test_aggregates_unchanged_on_a_page_that_omits_most_statuses(self):
 		"""The whole point: a 2-row page (both Planned) must still report the
-		TRUE totals across all 4 (non-cancelled) rows, not just what's on this
-		page."""
+		TRUE totals across every row, not just what is on this page."""
 		result = get_project_detail(self.detail.name, limit=2, start=0)
 		self.assertEqual(len(result["project_items"]), 2)
-		self.assertEqual(result["total_count"], 4)
+		self.assertEqual(result["total_count"], 5)
 		self.assertEqual(result["open_count"], 3)
 		self.assertEqual(result["completed_count"], 1)
+		self.assertEqual(result["cancelled_count"], 1)
 		self.assertEqual(result["minutes_total"], 50)
 		self.assertEqual(result["minutes_done"], 20)
 
