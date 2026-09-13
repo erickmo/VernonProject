@@ -9,6 +9,7 @@ import frappe
 frappe.utils.now = lambda: "2026-07-11 00:00:00"
 
 from vernon_project.api.project_todo import _auto_advance
+from vernon_project.tests.collect import collect_module_tests
 
 
 def _todo(**kw):
@@ -65,6 +66,10 @@ def test_project_default_inherit_no_owner_stays():
 	_auto_advance(todo, "leader@x", None, 1)
 	assert todo.status == "🔷 Checked By PL"
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestAutoApproveAdvance = collect_module_tests(globals(), "TestAutoApproveAdvance")
 
 if __name__ == "__main__":
 	for fn in list(globals().values()):

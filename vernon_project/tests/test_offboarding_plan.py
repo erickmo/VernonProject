@@ -2,6 +2,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from vernon_project.offboarding_plan import plan_lead_reassignments
+from vernon_project.tests.collect import collect_module_tests
 
 U = "u@x"  # the disabled user
 
@@ -49,6 +50,10 @@ def test_unrelated_project_ignored():
         [{"name": "P6", "project_owner": "x@x", "project_leader": "y@x"}], U, {"x@x", "y@x"})
     assert plan == [] and blockers == []
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestOffboardingPlan = collect_module_tests(globals(), "TestOffboardingPlan")
 
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):

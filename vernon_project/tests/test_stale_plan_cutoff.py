@@ -2,6 +2,7 @@
 from datetime import date
 
 from vernon_project.tasks import _stale_plan_cutoff
+from vernon_project.tests.collect import collect_module_tests
 
 TODAY = date(2026, 8, 5)
 
@@ -13,6 +14,10 @@ def test_cutoff_never_reaches_today_or_future():
     assert _stale_plan_cutoff(TODAY, 1) == date(2026, 8, 4)
     assert _stale_plan_cutoff(TODAY, 3) == date(2026, 8, 2)
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestStalePlanCutoff = collect_module_tests(globals(), "TestStalePlanCutoff")
 
 if __name__ == "__main__":
     test_cutoff_never_reaches_today_or_future()

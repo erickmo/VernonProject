@@ -5,6 +5,7 @@
 from datetime import date, timedelta
 
 from vernon_project.tasks import _due_message
+from vernon_project.tests.collect import collect_module_tests
 
 
 def test_due_message():
@@ -30,6 +31,10 @@ def test_due_message():
 
     print("test_due_message ok")
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestDueMessage = collect_module_tests(globals(), "TestDueMessage")
 
 if __name__ == "__main__":
     test_due_message()

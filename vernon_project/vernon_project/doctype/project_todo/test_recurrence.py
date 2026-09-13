@@ -8,6 +8,7 @@ from vernon_project.vernon_project.doctype.project_todo.recurrence import (
     advance_over_zero_days, advance_while_blocked, parse_monthdays, parse_ranges,
     Exceptions,
 )
+from vernon_project.tests.collect import collect_module_tests
 
 MON, TUE, WED, THU, FRI, SAT, SUN = range(7)
 
@@ -215,6 +216,10 @@ def _run():
         if name.startswith("test_") and callable(fn):
             fn(); print(f"{name} ok")
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestRecurrenceMath = collect_module_tests(globals(), "TestRecurrenceMath")
 
 if __name__ == "__main__":
     _run()

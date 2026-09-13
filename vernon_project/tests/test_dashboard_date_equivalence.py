@@ -12,6 +12,7 @@ overdue / due-today / upcoming lists.
 from datetime import date, datetime
 
 from frappe.utils import getdate
+from vernon_project.tests.collect import collect_module_tests
 
 # The shaper's own expression, mirrored so the test breaks if it ever changes shape.
 def _shaped_deadline(raw):
@@ -52,6 +53,10 @@ def test_empty_deadline_never_reaches_getdate():
 	"""
 	assert _shaped_deadline(None) is None
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestDashboardDateEquivalence = collect_module_tests(globals(), "TestDashboardDateEquivalence")
 
 if __name__ == "__main__":
 	for name, fn in sorted(globals().items()):

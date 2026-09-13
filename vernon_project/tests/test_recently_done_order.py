@@ -6,6 +6,7 @@ over the rows _fetch_todos returns, so plain dicts are enough. No DB, no fixture
 from datetime import date, datetime
 
 from vernon_project.api.project_todo import DONE_WINDOW_DAYS, _done_since, _done_time, _sort_recently_done
+from vernon_project.tests.collect import collect_module_tests
 
 
 def _row(name, developed_at=None, done_started_at=None, completed_at=None, modified=None):
@@ -74,6 +75,10 @@ def test_no_limit_means_every_row():
 	rows = [_row(str(i), developed_at=datetime(2026, 9, 11, 8, i)) for i in range(40)]
 	assert len(_sort_recently_done(rows)) == 40
 
+# These are pytest-style bare functions and pytest is not installed in the bench env;
+# Frappe's runner collects TestCase subclasses only, so without this line the file
+# runs nowhere. A function added above is picked up with no edit here.
+TestRecentlyDoneOrder = collect_module_tests(globals(), "TestRecentlyDoneOrder")
 
 if __name__ == "__main__":
 	for name, fn in sorted(globals().items()):
