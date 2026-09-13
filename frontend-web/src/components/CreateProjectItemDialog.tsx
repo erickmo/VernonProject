@@ -75,10 +75,12 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [codingBrief, setCodingBrief] = useState('')
   const [briefTouched, setBriefTouched] = useState(false)
-  const isCoding = useIsCodingGroup(group)
   const briefFields = useCodingBriefSchema().data?.fields ?? []
   const [rec, setRec] = useState<Recurrence>(() => initialRecurrence(initial))
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
+  // Must follow `group`'s declaration: reading it above would hit the const's
+  // temporal dead zone (crashed the create form as a minified-'ae' TDZ). k9b82d4lkh
+  const isCoding = useIsCodingGroup(group)
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
   const [blockedBy, setBlockedBy] = useState<string[]>(initial?.blockedBy ?? [])
   const [blocking, setBlocking] = useState<string[]>(initial?.blocking ?? [])
