@@ -34,7 +34,7 @@ describe('deepLink for Teguran', () => {
   it('resolves to a real path for every route the mobile map declares', () => {
     // The drift itself: a missing key produced undefined, which is neither a path
     // nor the '/' fallback. Nothing may resolve to undefined.
-    for (const doctype of ['Teguran', 'Attendance Exception', 'Attendance Exception HR', 'Attendance Exception Approval']) {
+    for (const doctype of ['Teguran', 'Attendance Exception', 'Attendance Exception HR', 'Attendance Exception Approval', 'Stalled Recurring Series']) {
       const to = deepLink({ reference_doctype: doctype, reference_name: 'X' } as Parameters<typeof deepLink>[0], DEEP_LINK_ROUTES)
       expect(to, `${doctype} deep link`).toMatch(/^\//)
     }

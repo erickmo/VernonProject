@@ -1930,5 +1930,8 @@ export type StalledSeriesRow = {
   reason_label: string
   /** Leader-then-owner suggestion, prefilled in the picker. */
   suggested: string | null
+  /** Enabled members of the series' project — the same set the server will
+   * enforce on reassign, so the picker cannot offer someone it would refuse. */
+  candidates: { user: string; full_name: string }[]
   paused: number
 }

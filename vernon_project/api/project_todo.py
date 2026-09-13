@@ -1602,6 +1602,25 @@ def stalled_series():
 		     AND recurring_frequency != '' AND project_detail IN %(d)s""",
 		{"d": tuple(details)}, as_dict=True,
 	)
+	# One team lookup per project, reused by every row on it: the picker needs
+	# the same set validate_assigned_to_team_member will enforce on save, so a
+	# lead can never pick someone the reassign would then refuse.
+	team_cache = {}
+
+	def candidates(project):
+		if project not in team_cache:
+			members = frappe.get_all(
+				"Project Team", filters={"parent": project, "parenttype": "Project"}, pluck="user"
+			)
+			team_cache[project] = [
+				{"user": u["name"], "full_name": u["full_name"] or u["name"]}
+				for u in frappe.get_all(
+					"User", filters={"name": ["in", members or [""]], "enabled": 1},
+					fields=["name", "full_name"], order_by="full_name asc",
+				)
+			] if members else []
+		return team_cache[project]
+
 	rows = []
 	for r in roots:
 		anchor = latest_occurrence(r.root)
@@ -1610,6 +1629,7 @@ def stalled_series():
 		problem = series_assignee_problem(anchor)
 		if not problem:
 			continue
+		project = frappe.get_value("Project Detail", anchor.project_detail, "project")
 		rows.append({
 			"series": r.root,
 			"latest": anchor.name,
@@ -1623,6 +1643,7 @@ def stalled_series():
 			"reason_label": "Akun dinonaktifkan" if problem == ASSIGNEE_DISABLED
 				else "Tidak lagi di tim proyek",
 			"suggested": series_stand_in(anchor),
+			"candidates": candidates(project),
 			"paused": cint(frappe.db.get_value("Project Todo", r.root, "recurring_paused")),
 		})
 	rows.sort(key=lambda x: (x["last_deadline"] or "", x["to_do"]))

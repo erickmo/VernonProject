@@ -116,6 +116,7 @@ import AttendanceProfiles from '@web/pages/AttendanceProfiles'
 import ExceptionApprovals from '@web/pages/ExceptionApprovals'
 import RequestException from '@web/pages/RequestException'
 import MyExceptions from '@web/pages/MyExceptions'
+import StalledSeries from '@web/pages/StalledSeries'
 import CutiLedger from '@web/pages/CutiLedger'
 import CutiLedgerAdmin from '@web/pages/CutiLedgerAdmin'
 import Teguran from '@web/pages/Teguran'
@@ -396,6 +397,7 @@ export default function App() {
           <Route path="/attendance/my-approvals" element={<ExceptionApprovals />} />
           <Route path="/attendance/request" element={<RequestException />} />
           <Route path="/attendance/my-requests" element={<MyExceptions />} />
+          <Route path="/routines/stalled" element={<StalledSeries />} />
           <Route path="/attendance/cuti" element={<CutiLedger />} />
           <Route path="/attendance/overtime" element={<Overtime />} />
           <Route path="/attendance/teguran" element={<Teguran />} />

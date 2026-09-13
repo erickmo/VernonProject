@@ -154,6 +154,20 @@ class TestStalledRecurringSeries(NoLeakMixin, unittest.TestCase):
         self.assertEqual(mine[0]["reason"], ASSIGNEE_DISABLED)
         self.assertEqual(mine[0]["assigned_to"], WORKER)
 
+    def test_the_picker_only_offers_people_the_server_would_accept(self):
+        s = self._series()
+        self._disable(WORKER)
+        frappe.set_user(LEADER)
+        row = [r for r in stalled_series()["rows"] if r["series"] == s.name][0]
+        frappe.set_user("Administrator")
+        offered = {c["user"] for c in row["candidates"]}
+        # The disabled assignee must not be offered back, and nobody off the team
+        # may appear — reassign_series refuses both, so offering them would be a
+        # picker that produces errors.
+        self.assertNotIn(WORKER, offered)
+        self.assertIn(OTHER, offered)
+        self.assertNotIn("Administrator", offered)
+
     def test_someone_who_runs_no_project_sees_nothing(self):
         s = self._series()
         self._disable(WORKER)
