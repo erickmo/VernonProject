@@ -17,4 +17,5 @@ export const DEEP_LINK_ROUTES: DeepLinkRoutes = {
   myExceptions: '/attendance/my-requests',
   hrExceptions: '/attendance/exceptions',
   teguran: '/attendance/teguran',
+  stalledSeries: '/routines/stalled',
 }

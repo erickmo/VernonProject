@@ -45,6 +45,11 @@ export interface DeepLinkRoutes {
   myExceptions: string
   /** HR's inbox — the only screen that can actually decide a cuti. */
   hrExceptions: string
+  /** A lead's list of recurring routines that have stopped because their
+   * assignee was offboarded or left the project team. The notification goes to
+   * the leader (else the owner), and this is the only screen that can restart
+   * one, so both apps need a destination for it. */
+  stalledSeries: string
   /** The recipient's own Teguran list. Every Teguran notification (new/acknowledged/
    * SP-eligible) lands here regardless of which of the three it is — issuer/HR can
    * always reach the admin list from the HR menu, but the employee who just got one
@@ -96,6 +101,8 @@ export function deepLink(n: AppNotification, routes: DeepLinkRoutes): string {
       return name ? `/food/${enc}` : '/'
     case 'Teguran':
       return routes.teguran
+    case 'Stalled Recurring Series':
+      return routes.stalledSeries
     default:
       return '/'
   }

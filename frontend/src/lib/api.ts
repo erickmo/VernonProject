@@ -197,6 +197,17 @@ export const mobileApi = {
       'vernon_project.api.project_todo.undo_approval',
       { todo_id: todoId },
     ),
+  // Recurring routines that stopped generating because their assignee was
+  // offboarded or left the project team. Leader/owner only, server-side.
+  stalledSeries: () =>
+    api.get<{ rows: import('./types').StalledSeriesRow[] }>(
+      'vernon_project.api.project_todo.stalled_series',
+    ),
+  reassignSeries: (series: string, toUser: string) =>
+    api.post<{ ok: boolean; series: string; assigned_to: string; next: string | null }>(
+      'vernon_project.api.project_todo.reassign_series',
+      { series, to_user: toUser },
+    ),
   // Quick hand-off: spawn a follow-up "(Follow Up)" todo for `assignee` to check
   // this one, mark the source Done, and notify the checker. Server does it atomically.
   // estimated/group/levelId are the check task's scoring inputs (server defaults them).

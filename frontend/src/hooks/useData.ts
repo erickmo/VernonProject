@@ -3439,3 +3439,33 @@ export function useFoodInvitableUsers(txt = '') {
     queryFn: () => mobileApi.foodInvitableUsers(txt),
   })
 }
+
+// --- stalled recurring series -----------------------------------------------
+// Routines that stopped generating because their assignee was offboarded or
+// left the project team. Leader/owner only; the server decides what is stalled
+// (project_todo.series_assignee_problem), the screen only renders the verdict.
+
+export function useStalledSeries() {
+  return useQuery({
+    queryKey: ['stalled-series'],
+    queryFn: async () => (await mobileApi.stalledSeries()).rows,
+  })
+}
+
+export function useReassignSeries() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (vars: { series: string; toUser: string }) =>
+      mobileApi.reassignSeries(vars.series, vars.toUser),
+    onSettled: () => {
+      // The routine reappears as real work for its new owner, so the same lists
+      // an approval touches have to refresh — plus the stalled list itself,
+      // which should lose the row.
+      qc.invalidateQueries({ queryKey: ['stalled-series'] })
+      qc.invalidateQueries({ queryKey: keys.calendar })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+      qc.invalidateQueries({ queryKey: keys.projects })
+      qc.invalidateQueries({ queryKey: ['project-detail'] })
+    },
+  })
+}

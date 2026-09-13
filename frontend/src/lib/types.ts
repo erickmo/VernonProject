@@ -1914,3 +1914,21 @@ export interface Breakdown {
   project_detail: string | null
   subgoals: BreakdownSubgoal[]
 }
+
+/** One recurring series that has stopped generating. `reason` is the server's
+ * own verdict (see project_todo.series_assignee_problem) — the screen never
+ * re-derives it, so the list and the nightly scheduler cannot disagree. */
+export type StalledSeriesRow = {
+  series: string
+  latest: string
+  to_do: string
+  frequency: string | null
+  last_deadline: string | null
+  assigned_to: string
+  assigned_to_name: string
+  reason: 'assignee_disabled' | 'assignee_off_team'
+  reason_label: string
+  /** Leader-then-owner suggestion, prefilled in the picker. */
+  suggested: string | null
+  paused: number
+}
