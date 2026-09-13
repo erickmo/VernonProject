@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc --noEmit",
     "build": "vite build --base=/assets/vernon_project/frontend/ && npm run copy-html",
     "preview": "vite preview",
     "copy-html": "node ./copy-html.mjs",

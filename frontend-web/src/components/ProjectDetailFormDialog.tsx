@@ -235,12 +235,12 @@ export function ProjectDetailFormDialog({ open, onClose, project, detail }: Prop
               <label className="space-y-1">
                 <span className="text-sm font-medium text-muted">AI device</span>
                 <input value={aiDevice} onChange={(e) => setAiDevice(e.target.value)}
-                  placeholder="Device running the session" className={inputCls} />
+                  placeholder="Device running the session" className={field} />
               </label>
               <label className="space-y-1">
                 <span className="text-sm font-medium text-muted">AI session name</span>
                 <input value={aiSession} onChange={(e) => setAiSession(e.target.value)}
-                  placeholder="Session name on that device" className={inputCls} />
+                  placeholder="Session name on that device" className={field} />
               </label>
             </div>
           )}

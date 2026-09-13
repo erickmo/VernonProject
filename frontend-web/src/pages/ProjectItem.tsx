@@ -423,7 +423,7 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
   )
 }
 
-function Notes({ todoId, initial, canEdit, group, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string; brief?: string }) {
+function Notes({ todoId, initial, canEdit, group, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string | null; brief?: string }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
   const { mentions, onImage } = useMarkdownAttachments('Project Todo', todoId)

@@ -471,6 +471,11 @@ export interface ProjectDetail {
   current_condition: string | null
   expected_outcome: string | null
   keterangan_di_sow: string | null
+  /** Which AI session runs this sub-goal. Server sends them behind a has_column
+   *  guard (api/mobile.py get_project_detail), hence optional. */
+  is_ai_managed?: boolean
+  ai_device?: string | null
+  ai_session_name?: string | null
   goal?: string | null
   success_condition?: string | null
   failure_condition?: string | null
