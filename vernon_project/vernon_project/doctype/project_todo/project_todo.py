@@ -1440,6 +1440,155 @@ def build_occurrence(anchor, next_date, anchor_date=None):
     return doc
 
 
+# --- offboarded / off-team assignees --------------------------------------------
+# A series carries its assignee on each occurrence, and build_occurrence copies it
+# straight off the anchor. So when that person is disabled or leaves the project
+# team, every new occurrence fails validate_assigned_to_team_member, the nightly
+# create_recurring_todos logs it and rolls back, and the routine dies with nobody
+# told. Offboarding makes this the NORMAL outcome rather than an edge case:
+# user_offboarding._transfer_open_todos deliberately skips TERMINAL_STATUSES to
+# preserve history, and a healthy daily routine's latest occurrence is exactly
+# that -- ✅ Completed.
+
+ASSIGNEE_DISABLED = "assignee_disabled"
+ASSIGNEE_OFF_TEAM = "assignee_off_team"
+
+# Pseudo reference_doctype for the stalled-series notification + its screen.
+STALLED_SERIES_REF = "Stalled Recurring Series"
+
+
+def series_assignee_problem(anchor):
+    """Why this series' assignee cannot receive the NEXT occurrence, or None.
+
+    ONE definition, read by generate_next (which acts on it) and by
+    api/project_todo.stalled_series (which lists it for the leader), so the
+    nightly run and the leader's screen can never disagree about what is stuck.
+    Deliberately says nothing about history: the anchor itself is never judged
+    or rewritten, only who the next occurrence can go to.
+    """
+    user = anchor.assigned_to
+    if not user:
+        return None
+    if not cint(frappe.db.get_value("User", user, "enabled")):
+        return ASSIGNEE_DISABLED
+    project = frappe.get_value("Project Detail", anchor.project_detail, "project")
+    if not project:
+        return None
+    team = frappe.get_all(
+        "Project Team", filters={"parent": project, "parenttype": "Project"}, pluck="user"
+    )
+    return ASSIGNEE_OFF_TEAM if user not in team else None
+
+
+def series_stand_in(anchor):
+    """An enabled lead who can carry the series on: leader, else owner, else None.
+
+    Same rule and same fallback order as user_offboarding._resolve_target, which
+    is what offboarding already uses to rehome a leaver's open tasks — so a
+    routine lands on the same desk its sibling tasks did.
+    """
+    project = frappe.get_value("Project Detail", anchor.project_detail, "project")
+    if not project:
+        return None
+    leader, owner = frappe.get_value(
+        "Project", project, ["project_leader", "project_owner"]
+    ) or (None, None)
+    for cand in (leader, owner):
+        if cand and cand != anchor.assigned_to and cint(frappe.db.get_value("User", cand, "enabled")):
+            return cand
+    return None
+
+
+def restart_series_on(anchor, new_assignee, on_date=None):
+    """Continue a series under a new assignee. Returns the new occurrence or None.
+
+    The successor carries the change forward; the anchor is left exactly as it
+    is. That is the whole trick — a finished occurrence records who really did
+    that work, and Point Ledger rows are attributed off it, so rewriting its
+    assigned_to to "fix" the series would falsify history.
+
+    on_date defaults to the series' own next rule date, so a rehomed routine
+    keeps its rhythm instead of restarting from today. One definition, shared by
+    the lead's reassign action and by offboarding.
+    """
+    if not new_assignee:
+        return None
+    head = frappe.get_doc("Project Todo", anchor.name)
+    next_date = getdate(on_date) if on_date else head.calculate_next_occurrence(
+        anchor.recurring_anchor_date or anchor.deadline
+    )
+    if not next_date:
+        return None
+    next_date = getdate(next_date)
+    root = series_root(anchor.name, anchor.original_todo)
+    # The same three bounds generate_next honours, restated here because this
+    # bypasses it: a paused series stays paused, a finished one stays finished,
+    # and an occurrence that already exists is never doubled.
+    if frappe.db.get_value("Project Todo", root, "recurring_paused"):
+        return None
+    until = getdate(anchor.recurring_until) if anchor.recurring_until else None
+    if until and next_date > until:
+        return None
+    if occurrence_exists(root, next_date):
+        return None
+    anchor.assigned_to = new_assignee
+    return build_occurrence(anchor, next_date)
+
+
+_STALL_NOTICE_DAYS = 7
+
+
+def notify_series_stalled(anchor, problem):
+    """Tell the lead a routine has stopped, at most once a week per series.
+
+    Recipient is leader-then-owner, the same order series_stand_in and
+    user_offboarding._resolve_target use, so whoever inherits the leaver's tasks
+    is who hears about their routines.
+
+    Deduped off the notification rows themselves rather than a flag on the todo:
+    the nightly run would otherwise re-send every night until someone acts, and a
+    new field here would mean a schema change and a migrate for a reminder.
+    """
+    from vernon_project.api.mobile import _notify
+
+    root = series_root(anchor.name, anchor.original_todo)
+    recipient = series_stand_in(anchor)
+    if not recipient:
+        return None
+    recent = frappe.get_all(
+        "Vernon Notification",
+        filters={
+            "reference_doctype": STALLED_SERIES_REF,
+            "reference_name": root,
+            "recipient": recipient,
+            "creation": [">=", add_days(nowdate(), -_STALL_NOTICE_DAYS)],
+        },
+        limit=1,
+    )
+    if recent:
+        return None
+    who = frappe.db.get_value("User", anchor.assigned_to, "full_name") or anchor.assigned_to
+    why = (
+        _("{0} is no longer an active account").format(who)
+        if problem == ASSIGNEE_DISABLED
+        else _("{0} is no longer on this project's team").format(who)
+    )
+    _notify(
+        recipient,
+        "Warning",
+        _("A recurring task stopped"),
+        _("“{0}” is not being created any more — {1}. Reassign it to keep it running.").format(
+            anchor.to_do, why
+        ),
+        # Pseudo-doctype, same routing trick the attendance approvals use: the
+        # real doctype is Project Todo, but this notification belongs to a
+        # different screen, so the apps can tell them apart.
+        STALLED_SERIES_REF,
+        root,
+    )
+    return recipient
+
+
 def generate_next(anchor, force=False):
     """Idempotent single-step roll-forward for a series. Returns the new doc or None.
 
@@ -1451,6 +1600,14 @@ def generate_next(anchor, force=False):
         return None
     root = series_root(anchor.name, anchor.original_todo)
     if frappe.db.get_value("Project Todo", root, "recurring_paused"):
+        return None
+    # An assignee who cannot receive work stalls the series rather than throwing.
+    # It used to throw from validate_assigned_to_team_member deep inside
+    # build_occurrence, which create_recurring_todos caught, logged and rolled
+    # back -- taking the caller's uncommitted rows with it and telling nobody.
+    # Stalling here is quiet on purpose; create_recurring_todos is what raises
+    # the alarm, so the notification is sent once per series, not once per path.
+    if series_assignee_problem(anchor):
         return None
     head = frappe.get_doc("Project Todo", anchor.name)
     # Basis is the un-shifted rule date so a prior Shift never drifts the series rhythm.

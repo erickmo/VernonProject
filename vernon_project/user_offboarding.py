@@ -70,7 +70,51 @@ def offboard_user(user):
     frappe.db.delete("Project Team", {"user": user, "parenttype": "Project"})
     frappe.db.delete("Project Admin User", {"user": user, "parenttype": "Project"})
 
+    _rehome_recurring_series(user)
+
     _scrub_upcoming_meetings(user)
+
+
+def _rehome_recurring_series(user):
+    """Keep the leaver's recurring routines running under the new lead.
+
+    _transfer_open_todos already moved their open work, but it preserves history
+    by skipping TERMINAL_STATUSES -- and a healthy routine's latest occurrence is
+    exactly that, a Completed one. Without this the series keeps pointing at a
+    disabled account, every new occurrence fails the team check, and the routine
+    dies with nobody told. That silent death is the reason this function exists.
+
+    The successor is created on the stand-in; the finished occurrence is never
+    rewritten, so who actually did past work stays true. Runs after the lead plan
+    is applied so the stand-in is the INCOMING leader, not the one being replaced.
+    A series with no enabled lead is left alone on purpose -- the stalled-series
+    screen surfaces it for a human instead of guessing.
+    """
+    from vernon_project.vernon_project.doctype.project_todo.project_todo import (
+        latest_occurrence,
+        restart_series_on,
+        series_stand_in,
+    )
+
+    roots = frappe.db.sql(
+        """SELECT DISTINCT COALESCE(NULLIF(original_todo,''), name) AS root
+           FROM `tabProject Todo`
+           WHERE is_recurring = 1 AND recurring_frequency IS NOT NULL
+             AND recurring_frequency != '' AND assigned_to = %s""",
+        user,
+        as_dict=True,
+    )
+    rehomed = []
+    for r in roots:
+        anchor = latest_occurrence(r.root)
+        if not anchor or anchor.assigned_to != user:
+            continue  # its latest occurrence was open, so _transfer_open_todos got it
+        stand_in = series_stand_in(anchor)
+        if not stand_in:
+            continue
+        if restart_series_on(anchor, stand_in):
+            rehomed.append(r.root)
+    return rehomed
 
 
 def _ensure_role(user, role):

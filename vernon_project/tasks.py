@@ -22,7 +22,7 @@ def create_recurring_todos(roots=None):
     empty result. The real nightly cron always calls this with no argument.
     """
     from vernon_project.vernon_project.doctype.project_todo.project_todo import (
-        latest_occurrence, generate_next,
+        latest_occurrence, generate_next, notify_series_stalled, series_assignee_problem,
     )
 
     only, values = "", []
@@ -43,9 +43,19 @@ def create_recurring_todos(roots=None):
     )
 
     created = 0
+    stalled = 0
     for r in rows:
         try:
             anchor = latest_occurrence(r.root)
+            # A series whose assignee was offboarded or dropped from the team used
+            # to die here silently: build_occurrence threw, the except below logged
+            # it and rolled back, and no human ever saw it. Tell the lead instead.
+            problem = anchor and series_assignee_problem(anchor)
+            if problem:
+                if notify_series_stalled(anchor, problem):
+                    frappe.db.commit()
+                stalled += 1
+                continue
             if anchor and generate_next(anchor):  # scheduler path: force=False
                 created += 1
                 frappe.db.commit()
@@ -57,8 +67,8 @@ def create_recurring_todos(roots=None):
             # when the title contains a newline, which an f-string like this never does.
             frappe.log_error(title="Recurring Todo Error", message=f"Error creating recurring todo: {e}")
 
-    if created:
-        frappe.logger().info(f"Created {created} recurring todos")
+    if created or stalled:
+        frappe.logger().info(f"Created {created} recurring todos, {stalled} stalled on their assignee")
     return created
 
 

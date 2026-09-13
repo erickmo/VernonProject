@@ -1549,3 +1549,145 @@ def search_todos(
 		r["web_url"] = f"{site_url}/w/project-item/{r['name']}"
 		r["mobile_url"] = f"{site_url}/m/project-item/{r['name']}"
 	return {"total": total, "rows": rows}
+
+
+# --- stalled recurring series ----------------------------------------------------
+# A series stops generating when its assignee is disabled or leaves the project
+# team (see project_todo.series_assignee_problem). Offboarding makes that the
+# normal outcome, because _transfer_open_todos preserves history by skipping
+# TERMINAL_STATUSES and a healthy routine's latest occurrence is ✅ Completed.
+# These two endpoints are the lead's way to see and fix it.
+
+
+def _lead_projects(user=None):
+	"""Projects this caller leads or owns — who may see and fix a stalled series.
+
+	Leader-then-owner is the same responsibility order user_offboarding._resolve_target
+	uses to rehome a leaver's open tasks, so routines surface to the same desk.
+	Project Admins are deliberately NOT included: they can already be granted
+	broadly, and this action changes who does recurring work indefinitely.
+	"""
+	user = user or frappe.session.user
+	return set(
+		frappe.get_all("Project", filters={"project_leader": user}, pluck="name")
+	) | set(frappe.get_all("Project", filters={"project_owner": user}, pluck="name"))
+
+
+@frappe.whitelist()
+def stalled_series():
+	"""Recurring series on the caller's projects that have stopped generating.
+
+	Reads the SAME series_assignee_problem the scheduler acts on rather than
+	re-deriving "is it stuck?", so this screen and the nightly run can never
+	disagree — the divergence risk this app's approval-ladder audit called out.
+	"""
+	if frappe.session.user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	from vernon_project.vernon_project.doctype.project_todo.project_todo import (
+		ASSIGNEE_DISABLED, latest_occurrence, series_assignee_problem, series_stand_in,
+	)
+
+	projects = _lead_projects()
+	if not projects:
+		return {"rows": []}
+	details = frappe.get_all(
+		"Project Detail", filters={"project": ["in", list(projects)]}, pluck="name"
+	)
+	if not details:
+		return {"rows": []}
+	roots = frappe.db.sql(
+		"""SELECT DISTINCT COALESCE(NULLIF(original_todo,''), name) AS root
+		   FROM `tabProject Todo`
+		   WHERE is_recurring = 1 AND recurring_frequency IS NOT NULL
+		     AND recurring_frequency != '' AND project_detail IN %(d)s""",
+		{"d": tuple(details)}, as_dict=True,
+	)
+	rows = []
+	for r in roots:
+		anchor = latest_occurrence(r.root)
+		if not anchor:
+			continue
+		problem = series_assignee_problem(anchor)
+		if not problem:
+			continue
+		rows.append({
+			"series": r.root,
+			"latest": anchor.name,
+			"to_do": anchor.to_do,
+			"frequency": anchor.recurring_frequency,
+			"last_deadline": str(anchor.deadline) if anchor.deadline else None,
+			"assigned_to": anchor.assigned_to,
+			"assigned_to_name": frappe.db.get_value("User", anchor.assigned_to, "full_name")
+				or anchor.assigned_to,
+			"reason": problem,
+			"reason_label": "Akun dinonaktifkan" if problem == ASSIGNEE_DISABLED
+				else "Tidak lagi di tim proyek",
+			"suggested": series_stand_in(anchor),
+			"paused": cint(frappe.db.get_value("Project Todo", r.root, "recurring_paused")),
+		})
+	rows.sort(key=lambda x: (x["last_deadline"] or "", x["to_do"]))
+	return {"rows": rows}
+
+
+@frappe.whitelist(methods=["POST"])
+def reassign_series(series, to_user):
+	"""Hand a stalled series to someone else and restart it.
+
+	Restarting IS the reassignment: the next occurrence is generated now, on the
+	new assignee, and becomes the anchor the series continues from. Nothing else
+	has to be stored, and — the point — no finished occurrence is rewritten, so
+	who actually did past work (and the Point Ledger rows attributed off it)
+	stays true. force=True because the whole reason we are here is that the
+	series is overdue.
+	"""
+	if frappe.session.user == "Guest":
+		frappe.throw("Not logged in", frappe.AuthenticationError)
+	from frappe.utils import nowdate
+	from vernon_project.vernon_project.doctype.project_todo.project_todo import (
+		latest_occurrence, restart_series_on,
+	)
+
+	series = frappe.utils.cstr(series)
+	to_user = frappe.utils.cstr(to_user)
+	anchor = latest_occurrence(series)
+	if not anchor:
+		frappe.throw("Series not found", frappe.DoesNotExistError)
+	project = frappe.get_value("Project Detail", anchor.project_detail, "project")
+	if project not in _lead_projects():
+		frappe.throw(
+			"Only the project leader or owner can reassign a recurring task.",
+			frappe.PermissionError,
+		)
+	if not cint(frappe.db.get_value("User", to_user, "enabled")):
+		frappe.throw("Pick an active user.")
+	team = frappe.get_all(
+		"Project Team", filters={"parent": project, "parenttype": "Project"}, pluck="user"
+	)
+	if to_user not in team:
+		# The same rule validate_assigned_to_team_member would apply, refused up
+		# front with a message that says what to do instead of a validation throw.
+		frappe.throw("That person is not on this project's team — add them first.")
+
+	created = None
+	if anchor.status not in ("✅ Completed", "🚫 Cancelled"):
+		# The latest occurrence is still live work, so handing THAT over is the
+		# whole fix — the series is no longer stalled and the nightly run rolls it
+		# forward from here as usual. Generating a successor as well would put two
+		# copies of the routine on the new assignee.
+		frappe.db.set_value("Project Todo", anchor.name, "assigned_to", to_user)
+		# Day-plan rows belong to the outgoing assignee (see report.py); left in
+		# place they would be misattributed, exactly as _transfer_open_todos warns.
+		frappe.db.delete(
+			"Project Todo Allocation", {"parent": anchor.name, "parenttype": "Project Todo"}
+		)
+	else:
+		# The anchor is finished, so it keeps its real assignee and the successor
+		# carries the change forward. Restarting the series IS the reassignment.
+		# Dated today rather than the series' own next rule date: the lead is
+		# acting because the routine is already overdue, so it should resume now.
+		created = restart_series_on(anchor, to_user, on_date=nowdate())
+		if not created:
+			frappe.throw("This series already has an occurrence for today.")
+	frappe.db.commit()
+	return {"ok": True, "series": series, "assigned_to": to_user,
+		"next": created.name if created else None}
