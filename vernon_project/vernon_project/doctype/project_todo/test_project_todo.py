@@ -6,6 +6,8 @@ import pymysql
 
 from vernon_project.fixtures_for_tests import ensure_user, restore_fixture_users
 import unittest
+from contextlib import contextmanager
+from unittest.mock import patch
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate, add_days, getdate, now_datetime, add_to_date
 from time import sleep
@@ -218,6 +220,32 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 		# start_date must be <= deadline; default to the (possibly overridden) deadline.
 		fields.setdefault("start_date", fields["deadline"])
 		return frappe.get_doc(fields).insert(ignore_permissions=True)
+
+	@contextmanager
+	def _assignee_works_every_day(self):
+		"""Make the roll-forward target a working day whatever day the suite runs.
+
+		generate_next() blocks any date the assignee does not work
+		(_resolve_min_minutes(assignee, date) <= 0) and then, with force=False,
+		refuses to pre-generate a date after today. On this site Sunday is 0
+		minutes, so every test below that asserts the new occurrence lands on
+		nowdate() was correct Mon-Sat and failed every Sunday: the scheduler
+		pushed the date to Monday and then declined it as future. Six tests
+		failed exactly that way on Sunday 2026-09-13.
+
+		Stubbed only for this suite's own assignee, so the real calendar still
+		applies to everyone else. The behaviour this hides is deliberately
+		covered on its own in
+		test_scheduler_waits_when_the_assignee_does_not_work_that_day.
+		"""
+		from vernon_project.api import report
+		real = report._resolve_min_minutes
+
+		def stub(user, day, *a, **k):
+			return 300 if user == self.owner_user else real(user, day, *a, **k)
+
+		with patch.object(report, "_resolve_min_minutes", side_effect=stub):
+			yield
 
 	def _make_recurring_todo(self, frequency=None, weekdays=None, **over):
 		"""Valid Planned recurring todo; maps friendly kwargs to recurring_* fields."""
@@ -479,7 +507,8 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 			recurring_frequency="Daily",
 			deadline=add_days(nowdate(), -1),
 		)
-		create_recurring_todos(roots=[head.name])
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[head.name])
 		kids = frappe.get_all("Project Todo", filters={"original_todo": head.name},
 			fields=["name", "deadline"])
 		self.assertEqual(len(kids), 1)
@@ -494,12 +523,13 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 			recurring_frequency="Daily",
 			deadline=add_days(nowdate(), -1),
 		)
-		create_recurring_todos(roots=[head.name])
-		after_scheduler = frappe.db.count("Project Todo", {"original_todo": head.name})
-		head.reload()
-		head.status = "✅ Completed"
-		head.save(ignore_permissions=True)
-		frappe.db.commit()
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[head.name])
+			after_scheduler = frappe.db.count("Project Todo", {"original_todo": head.name})
+			head.reload()
+			head.status = "✅ Completed"
+			head.save(ignore_permissions=True)
+			frappe.db.commit()
 		after_complete = frappe.db.count("Project Todo", {"original_todo": head.name})
 		self.assertEqual(
 			after_complete, after_scheduler,
@@ -683,12 +713,13 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 		head = self._make_todo(is_recurring=1, recurring_frequency="Daily",
 			deadline=add_days(nowdate(), -1))
 		frappe.db.set_value("Project Todo", head.name, "status", "🟠 Done")
-		create_recurring_todos(roots=[head.name])
-		kids = frappe.get_all("Project Todo", filters={"original_todo": head.name}, fields=["deadline"])
-		self.assertEqual([str(k.deadline) for k in kids], [nowdate()])
-		head.reload()
-		head.status = "✅ Completed"
-		head.save(ignore_permissions=True)
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[head.name])
+			kids = frappe.get_all("Project Todo", filters={"original_todo": head.name}, fields=["deadline"])
+			self.assertEqual([str(k.deadline) for k in kids], [nowdate()])
+			head.reload()
+			head.status = "✅ Completed"
+			head.save(ignore_permissions=True)
 		self.assertEqual(frappe.db.count("Project Todo", {"original_todo": head.name}), 1)
 
 	def test_scheduler_does_not_pregenerate_future(self):
@@ -702,13 +733,43 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 		# next_date = deadline+1 = day-after-tomorrow > today → gated by force=False
 		self.assertEqual(frappe.db.count("Project Todo", {"original_todo": t.name}), before)
 
+	def test_scheduler_waits_when_the_assignee_does_not_work_that_day(self):
+		"""A due occurrence landing on a non-working day is deferred, not created.
+
+		generate_next() blocks any date with _resolve_min_minutes(assignee, date)
+		<= 0, advances to the next open day, and then force=False refuses it for
+		being after today — so the series waits rather than booking work on a day
+		off. Previously nothing asserted this on purpose: the suite's other
+		recurrence tests exercised it only by accident, every Sunday, by failing
+		(six of them did on 2026-09-13). Pinned here so it is checked every run
+		and the others can be made day-independent.
+		"""
+		from vernon_project.tasks import create_recurring_todos
+		from vernon_project.api import report
+		t = self._make_todo(is_recurring=1, recurring_frequency="Daily",
+			deadline=add_days(nowdate(), -1))
+		real = report._resolve_min_minutes
+
+		def no_work_today(user, day, *a, **k):
+			if user == self.owner_user:
+				return 0 if str(day) == nowdate() else 300
+			return real(user, day, *a, **k)
+
+		with patch.object(report, "_resolve_min_minutes", side_effect=no_work_today):
+			create_recurring_todos(roots=[t.name])
+		self.assertEqual(
+			frappe.db.count("Project Todo", {"original_todo": t.name}), 0,
+			"an occurrence due on a day the assignee does not work must wait, not be created",
+		)
+
 	def test_scheduler_cancelled_latest_continues_series(self):
 		"""A cancelled latest occurrence rolls the series forward exactly once."""
 		from vernon_project.tasks import create_recurring_todos
 		t = self._make_todo(is_recurring=1, recurring_frequency="Daily",
 			start_date=add_days(nowdate(), -2), deadline=add_days(nowdate(), -1))
 		frappe.db.set_value("Project Todo", t.name, "status", "🚫 Cancelled")
-		create_recurring_todos(roots=[t.name])
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[t.name])
 		kids = frappe.get_all("Project Todo", filters={"original_todo": t.name}, fields=["deadline"])
 		self.assertEqual(len(kids), 1, kids)
 		self.assertEqual(str(kids[0].deadline), nowdate())           # rolled (yesterday+1) → today
@@ -765,7 +826,8 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 		# Reset status before delete so on_trash doesn't block
 		frappe.db.set_value("Project Todo", occ2.name, "status", "⚪️ Planned", update_modified=False)
 		frappe.delete_doc("Project Todo", occ2.name, ignore_permissions=True, force=True)
-		create_recurring_todos(roots=[occ1.name])
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[occ1.name])
 		# Scheduler should roll from occ1 (remaining latest) → next=yesterday → clamped to today
 		got = frappe.get_all("Project Todo",
 			filters={"original_todo": occ1.name, "deadline": nowdate()})
@@ -778,12 +840,14 @@ class TestProjectTodo(NoLeakMixin, unittest.TestCase):
 		root = self._make_recurring_todo(frequency="Daily",
 			start_date=add_days(nowdate(), -10), deadline=add_days(nowdate(), -10))
 		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 1)
-		create_recurring_todos(roots=[root.name])
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[root.name])
 		self.assertFalse(
 			frappe.get_all("Project Todo", filters={"original_todo": root.name}),
 			"paused series should not generate")
 		frappe.db.set_value("Project Todo", root.name, "recurring_paused", 0)
-		create_recurring_todos(roots=[root.name])
+		with self._assignee_works_every_day():
+			create_recurring_todos(roots=[root.name])
 		kids = frappe.get_all("Project Todo", filters={"original_todo": root.name},
 			fields=["deadline"])
 		self.assertEqual(len(kids), 1, "resume must not backfill missed occurrences")
