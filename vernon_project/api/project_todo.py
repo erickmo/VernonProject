@@ -319,12 +319,34 @@ def reject_status(todo_id, reason=None):
 		return {"status": "error", "message": str(e)}
 
 
+def _untouched_since_generated(name):
+	"""True while this occurrence is still byte-for-byte what build_occurrence inserted.
+
+	`developed_at is not set` used to stand in for this, and was wrong in the one case
+	that costs real work: reject_status clears developed_at (so the timeline doesn't
+	show a stale "Marked Done"), so an occurrence the assignee had submitted, had
+	bounced back, and was revising looked freshly generated — and the undo deleted it,
+	notes, checklist and attachments with it.
+
+	insert() sets modified == creation, and every save moves modified, so that
+	comparison covers every field edit at once. Attachments and comments are written
+	AROUND the doc (File rows, and _comments via raw SQL), so they are asked about
+	separately rather than trusted to bump modified."""
+	row = frappe.db.get_value("Project Todo", name, ["creation", "modified"], as_dict=True)
+	if not row or row.creation != row.modified:
+		return False
+	if frappe.db.exists("File", {"attached_to_doctype": "Project Todo", "attached_to_name": name}):
+		return False
+	return not frappe.db.exists("Comment", {"reference_doctype": "Project Todo", "reference_name": name})
+
+
 def _undo_recurring_followup(todo, since):
 	"""Delete the next recurrence occurrence a just-undone Completion auto-generated
 	(on_change's generate_next(force=True)) — but ONLY if it is still exactly as
-	generated: still Planned, never marked Done. Best-effort cleanup; a next
-	occurrence someone has already started on is left alone. Returns the deleted
-	todo's name, or None if nothing matched."""
+	generated (see _untouched_since_generated). Best-effort cleanup; a next occurrence
+	someone has already started on, or been sent back to revise, is left alone — an
+	extra occurrence is a row a human can delete, deleted work is not. Returns the
+	deleted todo's name, or None if nothing matched."""
 	if not todo.is_recurring or not since:
 		return None
 	from vernon_project.vernon_project.doctype.project_todo.project_todo import series_root
@@ -335,14 +357,13 @@ def _undo_recurring_followup(todo, since):
 		filters={
 			"original_todo": root,
 			"status": "⚪️ Planned",
-			"developed_at": ["is", "not set"],
 			"creation": [">=", since],
 		},
 		fields=["name"],
 		order_by="creation desc",
 		limit_page_length=1,
 	)
-	if not candidates:
+	if not candidates or not _untouched_since_generated(candidates[0]["name"]):
 		return None
 	frappe.delete_doc("Project Todo", candidates[0]["name"], ignore_permissions=True)
 	return candidates[0]["name"]
