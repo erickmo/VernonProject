@@ -3,6 +3,7 @@ import { Drawer } from '@web/components/overlays/Drawer'
 import ProjectItem from '@web/pages/ProjectItem'
 import { safeDecode } from '@web/lib/route'
 import { useProjectItem } from '@/hooks/useData'
+import { isAiWorking } from '@/lib/filters'
 
 // Renders the full todo detail page inside the app's right-side Drawer.
 // Mounted by App.tsx under a <Route path="/project-item/:name">, so
@@ -17,6 +18,10 @@ export default function TodoDrawer({ onClose }: { onClose: () => void }) {
   // to one fetch, so reading the AI flag here for the panel tint costs no extra request.
   const { data } = useProjectItem(safeDecode(params.name ?? ''))
   const aiOn = data?.work_mode === 'AI' || data?.work_mode === 'Both'
+  // An agent actually running gets its own, colder tint so the drawer reads as a
+  // live machine rather than merely an AI-tagged task. Colour only: a scanline
+  // sweeping a full detail page would fight the text you came here to read.
+  const aiRunning = !!data && isAiWorking(data)
 
   return (
     <Drawer
@@ -25,7 +30,13 @@ export default function TodoDrawer({ onClose }: { onClose: () => void }) {
       title="Todo details"
       widthClass="w-full sm:w-[75vw] max-w-none"
       zClass="z-40"
-      tintClass={aiOn ? 'bg-violet-50/40 dark:bg-violet-500/[0.06]' : undefined}
+      tintClass={
+        aiRunning
+          ? 'bg-cyan-50/70 dark:bg-cyan-500/[0.10]'
+          : aiOn
+          ? 'bg-violet-50/40 dark:bg-violet-500/[0.06]'
+          : undefined
+      }
     >
       <ProjectItem />
     </Drawer>

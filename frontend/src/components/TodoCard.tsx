@@ -15,7 +15,8 @@ import { useFocusPill } from '@/hooks/useFocusPill'
 import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useBoot, canUseAi } from '@/hooks/useData'
 import { buildNext, planOnlyOn } from '@/lib/planDay'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
-import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
+import { AI_PHASES, aiPhaseOf, isAiWorking } from '@/lib/filters'
+import { AiWorkingBackdrop } from '@/components/AiWorkingBackdrop'
 import type { ProjectItem } from '@/lib/types'
 
 const LONG_MS = 450
@@ -152,7 +153,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   const aiPhase = aiPhaseOf(todo)
   const isAI = aiPhase > 0
   // Orthogonal to the phase: a confirmed task may be idle or have an agent on it.
-  const running = isAI && !!todo.ai_in_progress
+  const running = isAiWorking(todo)
   // Reject is unavailable for AI-tagged work (ujkfag8r5v) — offer the follow-up
   // flow in its place, but only where Reject would otherwise have been offered.
   const followUpInstead =
@@ -187,7 +188,13 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
         pressing && 'ring-2 ring-brand-400/70 dark:ring-brand-500/50',
         // Focus no longer owns the background — it's an animated border overlay below,
         // so an AI task keeps its cyan card while focused.
-        isAI
+        // A running agent gets its own, more saturated cyan — the background colour
+        // is the at-a-glance cue and the animated backdrop sits on top of it. Kept in
+        // the same light/dark family as the idle AI card on purpose: inverting to a
+        // dark "console" card would have needed every inner text colour re-checked.
+        running
+          ? 'border-cyan-400 bg-gradient-to-br from-cyan-200 via-sky-50 to-violet-200 ring-2 ring-cyan-400/80 dark:border-cyan-300 dark:from-cyan-500/35 dark:via-slate-800 dark:to-violet-500/35 dark:ring-cyan-300/60'
+          : isAI
           ? 'border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-violet-100 ring-2 ring-cyan-400/60 shadow-[0_2px_18px_rgba(6,182,212,0.30)] dark:border-cyan-400 dark:from-cyan-500/25 dark:via-slate-800 dark:to-violet-500/25 dark:ring-cyan-400/40'
           : clsx('bg-paper-card dark:bg-slate-800', todo.is_overdue ? 'border-rose-400' : meta.ring),
       )}
@@ -210,13 +217,15 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
           />
         </svg>
       )}
-      {isAI && (
+      {running ? (
+        <AiWorkingBackdrop />
+      ) : isAI ? (
         <Bot
           aria-hidden
           className="pointer-events-none absolute -bottom-4 -right-3 h-28 w-28 rotate-12 text-cyan-500/15 dark:text-cyan-400/15"
         />
-      )}
-      <div className="flex items-start gap-3">
+      ) : null}
+      <div className="relative flex items-start gap-3">
         <div className="min-w-0 flex-1">
           {/* Icon-only status tags — colour distinguishes them; title/aria-label carry the name. */}
           {focusActive && (
@@ -238,6 +247,8 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
             >
               <Bot className="h-4 w-4" />
               <span className="text-[11px] font-bold leading-none">{aiPhase}</span>
+              {/* Words, not just motion: this is what a reduced-motion user reads. */}
+              {running && <span className="text-[11px] font-bold leading-none">· AI sedang mengerjakan</span>}
             </span>
           )}
           {todo.to_check && (

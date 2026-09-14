@@ -290,6 +290,19 @@ export function aiPhaseOf(t: ProjectItem): AiPhase {
 }
 
 /**
+ * An AI agent is working on this todo RIGHT NOW — the one predicate behind the
+ * "working" animation on the card, the web row and the detail drawer.
+ *
+ * Deliberately not a fourth AI phase: the ladder tracks the PROMPT and is
+ * monotonic, this comes and goes (see `ProjectTodo.validate_ai_in_progress`).
+ * The phase check is what stops a stale cached payload animating a human task —
+ * the controller refuses that combination, but the client must not depend on it.
+ */
+export function isAiWorking(t: ProjectItem): boolean {
+  return aiPhaseOf(t) > 0 && !!t.ai_in_progress
+}
+
+/**
  * Whether the "AI is running" toggle may be offered for this todo.
  *
  * Mirrors the controller (`ProjectTodo.validate_ai_in_progress`): only an AI-tagged

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { AI_PHASES, aiPhaseOf, canToggleAiInProgress } from './filters'
+import { AI_PHASES, aiPhaseOf, canToggleAiInProgress, isAiWorking } from './filters'
 import type { ProjectItem } from './types'
 
 // `ai_in_progress` is orthogonal to the phase ladder: the ladder tracks the PROMPT
@@ -46,7 +46,9 @@ describe('the running state is visible in both frontends', () => {
   ] as const) {
     it(`${label} extends the existing AI chip rather than forking it`, () => {
       expect(src).toMatch(/AI_PHASES\[/)
-      expect(src).toMatch(/ai_in_progress/)
+      // Either the raw field or the shared predicate that reads it (ir3j5rjmk6
+      // moved the card onto isAiWorking); both mean "asks the running flag".
+      expect(src).toMatch(/ai_in_progress|isAiWorking/)
     })
 
     it(`${label} states the running state in text, not colour or motion alone`, () => {
@@ -106,5 +108,49 @@ describe('the marker can actually be set from the product', () => {
 
   it('wires it to the dedicated mutation, not the AI tag one', () => {
     expect(MENU).toMatch(/setAiInProgress\.mutate\(\{ todoName: t\.name, running: !t\.ai_in_progress \}\)/)
+  })
+})
+
+// ir3j5rjmk6 — the "AI is working right now" visual. `isAiWorking` is the one
+// predicate every surface asks; the source checks below pin that they ask IT and
+// not a private copy of the same boolean.
+const BACKDROP = resolve(__dirname, '../components/AiWorkingBackdrop.tsx')
+const DRAWER = resolve(__dirname, '../../../frontend-web/src/components/TodoDrawer.tsx')
+const TABLE = resolve(__dirname, '../../../frontend-web/src/lib/todoTable.tsx')
+
+describe('isAiWorking', () => {
+  it('is true only when an AI-tagged todo has an agent on it', () => {
+    expect(isAiWorking(todo({ ai_in_progress: true }))).toBe(true)
+    expect(isAiWorking(todo({ ai_in_progress: false }))).toBe(false)
+    expect(isAiWorking(todo({}))).toBe(false)
+  })
+
+  it('stays false for a human task even if the flag somehow got set', () => {
+    // The controller throws on this, but a stale cached payload must not animate.
+    expect(isAiWorking(todo({ work_mode: 'Human', ai_phase: 0, ai_in_progress: true }))).toBe(false)
+  })
+
+  it('is true at every AI phase, not just the confirmed one', () => {
+    expect(isAiWorking(todo({ ai_phase: 1, ai_in_progress: true }))).toBe(true)
+    expect(isAiWorking(todo({ ai_phase: 2, ai_in_progress: true }))).toBe(true)
+  })
+})
+
+describe('the working visual is wired to that one predicate', () => {
+  it('ships a shared backdrop both frontends can mount', () => {
+    const src = readFileSync(BACKDROP, 'utf8')
+    expect(src).toMatch(/aria-hidden/) // decoration, never announced
+    expect(src).toMatch(/pointer-events-none/) // never eats a click on the card
+  })
+
+  it('drives the mobile card, the web row and the web drawer from isAiWorking', () => {
+    for (const src of [CARD, readFileSync(TABLE, 'utf8'), readFileSync(DRAWER, 'utf8')]) {
+      expect(src).toMatch(/isAiWorking/)
+    }
+  })
+
+  it('keeps a non-animated cue alongside the animation', () => {
+    // prefers-reduced-motion kills the animation; the text/label must survive it.
+    expect(CARD).toMatch(/AI sedang mengerjakan/)
   })
 })
