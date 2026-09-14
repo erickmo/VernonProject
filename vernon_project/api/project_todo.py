@@ -1459,7 +1459,13 @@ def search_todos(
 	server-side regardless of what's requested — this is reachable from an
 	MCP client, so nothing here trusts the caller to behave. `include_done=0`
 	(the default) drops Done/Checked By PL/Completed/Cancelled; pass 1 to see
-	everything. Returns {"total": <count before limit>, "rows": [...]}."""
+	everything. Returns {"total": <count before limit>, "rows": [...]}.
+
+	`offset` (default 0) skips that many rows for paging; a negative value raises
+	frappe.ValidationError. `total` is the match count BEFORE limit and offset are
+	applied, so page while `offset < total`. Note that offset slices the single
+	ordered result, and the exact-id match is merely sorted FIRST within it — so any
+	offset above 0 pages straight past it. Look up a known id with offset 0."""
 	from vernon_project.api.mobile import (
 		STATUS_CANCELLED,
 		STATUS_CHECKED,

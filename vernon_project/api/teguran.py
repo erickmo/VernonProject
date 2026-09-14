@@ -144,7 +144,20 @@ def get_teguran_all(status=None, start=0, page_length=20):
 	per-team scoping exists to offer a narrower view). Paginated and optionally
 	filtered by status server-side -- this list has no natural per-employee
 	bound, unlike get_teguran_saya. karyawan/diberikan_oleh names ride the
-	query via link-field fetch (karyawan.full_name), not a per-row lookup."""
+	query via link-field fetch (karyawan.full_name), not a per-row lookup.
+
+	Anyone else gets frappe.PermissionError. Returns a BARE LIST of rows (not an
+	envelope, and no total count), ordered by tanggal desc then creation desc.
+
+	Optional arguments:
+
+	* `status` — one exact value: "Diterbitkan" (issued), "Diakui" (acknowledged)
+	  or "Dibatalkan" (cancelled). Omit for all three. An unknown value is not
+	  rejected; it just matches nothing.
+	* `start` — row offset for paging, default 0.
+	* `page_length` — rows per page, default 20 and NOT capped. Note `page_length=0`
+	  falls back to 20 rather than meaning "no limit". Since no total is returned,
+	  the only end-of-list signal is a page shorter than `page_length`."""
 	_require_hr()
 	filters = {"status": status} if status else {}
 	return frappe.get_all(
