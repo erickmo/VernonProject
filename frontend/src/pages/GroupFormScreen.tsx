@@ -19,6 +19,7 @@ import {
   canManageGroups,
 } from '@/hooks/useData'
 import type { GroupLevel, ScoringGroupPayload } from '@/lib/types'
+import { GROUP_TYPES, GROUP_TYPE_HINT, GROUP_TYPE_LABELS } from '@/lib/groupType'
 
 const field =
   'w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500'
@@ -74,6 +75,7 @@ export default function GroupFormScreen() {
   const [form, setForm] = useState<FormState>({
     group_name: '',
     description: '',
+    group_type: '',
     base_rate_per_minute: 1,
     late_penalty: 0,
     early_bonus: 0,
@@ -87,6 +89,7 @@ export default function GroupFormScreen() {
       setForm({
         group_name: existing.group_name,
         description: existing.description ?? '',
+        group_type: existing.group_type ?? '',
         base_rate_per_minute: existing.base_rate_per_minute ?? 1,
         late_penalty: existing.late_penalty ?? 0,
         early_bonus: existing.early_bonus ?? 0,
@@ -286,6 +289,31 @@ export default function GroupFormScreen() {
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">Group type</label>
+          <select
+            className={field}
+            value={form.group_type ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, group_type: e.target.value }))}
+          >
+            {GROUP_TYPES.map((t) => (
+              <option key={t || 'standard'} value={t}>
+                {GROUP_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{GROUP_TYPE_HINT}</p>
+          {form.group_type && linkedTodos && linkedTodos.length > 0 && (
+            // The brief is mandatory the moment this is saved, for every todo
+            // already in the group — not just new ones. Engineering alone holds
+            // thousands, so the count is worth seeing before pressing Save.
+            <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+              {linkedTodos.length} existing {linkedTodos.length === 1 ? 'todo' : 'todos'} in this group will
+              require the brief on their next save.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">

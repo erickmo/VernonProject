@@ -600,6 +600,9 @@ export interface ScoringGroup {
   name: string
   group_name: string
   description?: string
+  /** The doctype's Select: '' or 'Coding'. Optional because every existing row
+   *  predates the field and reads back NULL. */
+  group_type?: string
   late_penalty: number
   early_bonus: number
   leader_weight: number
@@ -633,6 +636,9 @@ export interface GroupTodo {
 export interface ScoringGroupPayload {
   group_name: string
   description?: string
+  /** '' = an ordinary group; 'Coding' swaps the todo note for the structured
+   *  brief. See lib/groupType for the options the forms offer. */
+  group_type?: string
   late_penalty: number
   early_bonus: number
   leader_weight: number
