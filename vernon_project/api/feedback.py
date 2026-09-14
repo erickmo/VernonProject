@@ -50,7 +50,13 @@ def submit_feedback(feedback_type, message, is_anonymous=0):
 		"is_anonymous": 1 if anon else 0,
 		"submitted_by": None if anon else user,
 		"status": "New",
-	}).insert(ignore_permissions=True)
+	})
+	# Frappe queues a `list_update` realtime event per insert whose payload carries
+	# frappe.session.user, published to the DOCTYPE room — which any user holding read
+	# on that doctype may subscribe to. For an anonymous submission that announces the
+	# submitter live to every System Manager, the audience this is protected from.
+	doc.flags.suppress_realtime = anon
+	doc.insert(ignore_permissions=True)
 
 	if anon:
 		# Frappe stamps BOTH owner and modified_by with the session user on insert,
@@ -71,9 +77,12 @@ def submit_feedback(feedback_type, message, is_anonymous=0):
 	preview = message[:140]
 	actor = None if anon else user
 	for admin in _admins():
+		# Each notification is inserted in the SUBMITTER'S request and names the
+		# feedback by reference_name, so its own realtime event leaks the same way.
 		_notify(
 			admin, "Feedback", f"New {feedback_type.lower()} feedback",
 			preview, "Company Feedback", doc.name, actor=actor,
+			suppress_realtime=anon,
 		)
 
 	if anon:

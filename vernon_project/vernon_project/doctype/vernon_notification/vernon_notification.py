@@ -6,7 +6,14 @@ from frappe.model.document import Document
 
 
 class VernonNotification(Document):
-	pass
+	def notify_update(self):
+		# Same leak as Company Feedback: `list_update` carries frappe.session.user to
+		# the doctype room, and these rows are inserted inside the SUBMITTER'S request
+		# while naming the feedback by reference_name. Set via _notify's
+		# suppress_realtime, which only api/feedback.py's anonymous path passes.
+		if self.flags.suppress_realtime:
+			return
+		super().notify_update()
 
 
 def on_doctype_update():
