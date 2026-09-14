@@ -46,7 +46,35 @@ def save_user_with_profile(
 	Both callees also enforce System Manager; the guard here just fails fast
 	before either write. Both write via `doc.save()` with no intermediate
 	`frappe.db.commit()`, so they commit together at request end (or roll back
-	together on error)."""
+	together on error).
+
+	TWO ARGUMENTS ARE NOT "LEAVE ALONE" WHEN OMITTED, and both are destructive:
+
+	* `roles` — replaces the user's VERNON_ROLES set wholesale (Project Owner,
+	  Project Leader, Project Admin, Project Team, Points Granter, HR Manager,
+	  AI User). Roles outside that set, System Manager included, are untouched.
+	  Omitting it parses as the EMPTY list, so it STRIPS EVERY VERNON ROLE the
+	  user has. Always send the complete list you want them to end up with, even
+	  when you only meant to change a profile field.
+	* `enabled` — defaults to 1, not None, and is written every call, so omitting
+	  it RE-ENABLES a disabled account. Pass the current value explicitly.
+
+	Every other argument is skipped when None, i.e. genuinely "leave as is".
+
+	Account fields (go to the User record): `full_name`, `roles`, `enabled`,
+	`member_type` ("", "Internal Team" or "Intern"; anything else raises).
+
+	Employee Profile fields: `nik_ktp`, `npwp`, `bpjs_kesehatan`,
+	`bpjs_ketenagakerjaan`, `bank_name`, `bank_account_no`, `bank_account_holder`,
+	`employment_status`, `job_title`, `date_joined`, `contract_start`,
+	`contract_end`, `annual_leave_quota`, `prior_leave_taken`. These are the
+	legal/contract/quota fields a person cannot set on themselves — the
+	self-service counterpart is `mobile.update_my_profile`, which reaches none of
+	them.
+
+	Guest and Administrator cannot be edited here, and you cannot disable your own
+	account. Disabling one also drops that user from every project team roster.
+	"""
 	_require_system_manager()
 	update_user(
 		user,
