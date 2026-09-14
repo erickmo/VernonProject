@@ -34,8 +34,16 @@ def postpone(target_type, target_name, new_date):
 	if target_type not in ("Project", "Project Detail"):
 		frappe.throw("Invalid target_type")
 
-	# Trust boundary: caller must be able to write the container.
-	frappe.has_permission(target_type, "write", target_name, throw=True)
+	# Trust boundary: caller must be able to EDIT this project — the rule of
+	# Project.validate_edit_permission and get_project_detail's can_edit. Not
+	# has_permission("write"): the doctype hook says yes to any team member, so a
+	# global Project Leader who is merely a member here passed it, and every save
+	# below skips validation with ignore_permissions.
+	project = target_name if target_type == "Project" else frappe.db.get_value("Project Detail", target_name, "project")
+	owner, leader = frappe.db.get_value("Project", project, ["project_owner", "project_leader"]) or (None, None)
+	user = frappe.session.user
+	if "System Manager" not in frappe.get_roles(user) and user not in (owner, leader):
+		frappe.throw("Only the Project Owner or Project Leader can postpone this.", frappe.PermissionError)
 
 	is_project = target_type == "Project"
 	scope_field = "project" if is_project else "project_detail"
