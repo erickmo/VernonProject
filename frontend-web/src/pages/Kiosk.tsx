@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { mobileApi } from '@/lib/api'
+import { networkFromError } from '@/lib/stations'
 
 export default function Kiosk() {
   const { station = '' } = useParams()
@@ -29,7 +30,13 @@ export default function Kiosk() {
         }
         setError(null)
       } catch (e) {
-        if (alive) setError((e as Error).message || 'Station error')
+        if (alive) {
+          const message = (e as Error).message || 'Station error'
+          setError(message)
+          // A network refusal names the IP the server saw — show it so an admin can allow it.
+          const ip = networkFromError(message)
+          if (ip) setNetwork(ip)
+        }
       }
       // re-poll a bit faster than the validity window so the code never goes stale on screen
       if (alive) timer = window.setTimeout(tick, 5000)
@@ -45,7 +52,14 @@ export default function Kiosk() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-950 text-white">
       <h1 className="text-3xl font-bold">{stationName}</h1>
       {error ? (
-        <p className="text-rose-400">{error}</p>
+        <div className="max-w-md text-center">
+          <p className="text-rose-400">{error}</p>
+          {network && (
+            <p className="mt-2 text-sm text-slate-400">
+              Add this network to the station&apos;s Allowed networks on the Stations page, then this screen retries on its own.
+            </p>
+          )}
+        </div>
       ) : (
         <div className="rounded-2xl bg-white p-4">
           <canvas ref={canvasRef} />

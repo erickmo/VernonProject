@@ -80,8 +80,12 @@ async function request<T>(
     cache: 'no-store', // real-time reads: never serve a GET from the browser HTTP cache
   })
 
-  if (res.status === 401 || res.status === 403) {
-    throw new ApiError('Not authenticated', res.status)
+  // Only 401 means "not logged in". A 403 is a real refusal and carries its reason — e.g. the
+  // kiosk's "not on the station's office network (<ip>)", which used to reach the screen as a
+  // bare "Not authenticated" (dk0otn66u1). The status is kept, and the login walls key off the
+  // status, not this message.
+  if (res.status === 401) {
+    throw new ApiError('Not authenticated', 401)
   }
 
   let data: any = null
@@ -96,7 +100,8 @@ async function request<T>(
     // every whitelisted-method call in the app throws from, so fixing it here
     // fixes raw-JSON error toasts nearly everywhere at once, per-call-site
     // fixes were never needed.
-    throw new ApiError(frappeMessage(data, `Request failed (${res.status})`), res.status)
+    const fallback = res.status === 403 ? 'Not authenticated' : `Request failed (${res.status})`
+    throw new ApiError(frappeMessage(data, fallback), res.status)
   }
 
   return (data?.message ?? data) as T
