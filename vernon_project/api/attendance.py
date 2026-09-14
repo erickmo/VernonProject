@@ -445,6 +445,33 @@ def sync_holidays(list_name, year):
 
 @frappe.whitelist()
 def request_exception(from_date, to_date, exception_type, reason=None, leave_type=None, proof=None):
+	"""File a WFH or Leave request for the LOGGED-IN user.
+
+	The employee is always frappe.session.user — there is no argument for filing on
+	someone else's behalf, by design. Always lands as Pending (HR is the final
+	approver, so a leaderless request waits like any other) and notifies the
+	employee's leaders and HR.
+
+	Returns `{"status": "ok", "name": ..., "approval_status": "Pending"}` on
+	success. IMPORTANT for a caller: most refusals come back as a normal 200 with
+	`{"status": "error", "message": ...}` rather than an exception — an unknown
+	`exception_type`, a reversed date range, and an overlap with an existing
+	Pending/Approved request all look like success at the HTTP level. Check
+	`status` before reporting it as done. The leave-quota gate is the exception:
+	it raises frappe.ValidationError, with a message in Bahasa.
+
+	`exception_type` must be exactly "WFH" or "Leave".
+
+	Optional arguments:
+
+	* `reason` — free text, stored as given.
+	* `leave_type` — REQUIRED when exception_type is "Leave" (a missing one returns
+	  the error shape above); the quota rules for that type are then enforced.
+	  Ignored and forced to None for "WFH".
+	* `proof` — attachment/evidence. Also ignored for "WFH". For "Leave" it is not
+	  merely stored: whether proof is present is passed to the quota check, so some
+	  leave types accept a request WITH proof that they refuse without it.
+	"""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)

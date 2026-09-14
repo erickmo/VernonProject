@@ -128,7 +128,29 @@ def reorder_focus(order):
 
 @frappe.whitelist()
 def save_timer(task, task_title=None, estimated_ms=0, status="running", started_at_ms=0, elapsed_before_ms=0, meta=None):
-	"""Upsert the active-timer state for a task (client is the source of truth)."""
+	"""Upsert the active-timer state for a task (client is the source of truth).
+
+	AGENTS: do not call this on a person's behalf. The minutes this records are
+	REAL tracked time, and points, lateness and the daily reports all derive from
+	it — an agent inventing minutes corrupts a human's numbers. To show that a
+	task is being worked on without accruing time, use `focus.set_note`, which
+	creates an idle focus row (no timer running).
+
+	Optional arguments, all with a default, so an omitted one is NOT "leave as is":
+
+	* `task_title` — display title. Falsy keeps the stored one; this is the only
+	  argument here that treats omission as "leave alone".
+	* `estimated_ms`, `started_at_ms`, `elapsed_before_ms` — milliseconds, coerced
+	  with flt(). Each DEFAULTS TO 0 and is written unconditionally, so omitting
+	  one zeroes it on an existing row.
+	* `status` — "running", "paused" or "idle". Anything else is silently coerced
+	  to "running" rather than rejected.
+	* `meta` — free-form client state; a dict is JSON-encoded, a string is stored
+	  as given. Stored on the `task_meta` field (a field literally named `meta`
+	  would shadow Frappe's Document.meta).
+
+	Writes with ignore_permissions=True on the caller's own row.
+	"""
 	doc = _row(task)
 	doc.task_title = task_title or doc.task_title
 	doc.estimated_ms = frappe.utils.flt(estimated_ms)

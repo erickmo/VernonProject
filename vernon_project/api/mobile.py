@@ -2862,6 +2862,28 @@ def create_todo(
 	Manager / Project Owner / Project Leader / Project Team-read/write). Add
 	the role name to external_calendar.ALLOWED_ROLES once it exists; nothing
 	else here needs to change.
+
+	Required arguments are all positional. `estimated` is minutes and must be at
+	least 5 (below that raises); a non-numeric value becomes 0 and therefore also
+	raises. The new todo is always created with status "⚪️ Planned".
+
+	Optional arguments, each applied only when not None, so an omitted one is
+	simply not set:
+
+	* `notes` — the task's note body.
+	* `mentor` — a user; empty string clears it.
+	* `is_priority` — truthy ONLY for 1, "1", "true" or "True"; every other value,
+	  including "yes" and "TRUE", reads as false rather than raising.
+	* `work_mode` — "Human", "AI" or "Both". Anything else is silently ignored and
+	  the todo stays unset, so check your spelling. This is the AI tag: a todo must
+	  carry "AI" or "Both" before `update_todo` will accept `ai_in_progress`.
+	* `issue_of` — the todo this one is a follow-up of; empty clears it.
+	* `blocked_by`, `blocking` — a list of Project Todo ids, or a JSON string of
+	  one. Each REPLACES that dependency set rather than adding to it.
+
+	Not accepted here: `ai_prompt`, `ai_prompt_confirmed` and the recurring_*
+	fields. Set them afterwards with `update_todo` — and note that confirming an AI
+	prompt is a human gate that no agent may perform.
 	"""
 	if not external_calendar.ALLOWED_ROLES & set(frappe.get_roles()):
 		frappe.throw("Not permitted to create todos.", frappe.PermissionError)
@@ -7346,7 +7368,33 @@ def update_my_profile(
 	education=None, skills=None, trainings=None,
 	religion=None, verse_enabled=None, focus_mode=None, gender=None,
 ):
-	"""Self-service: caller edits ONLY their own soft fields. Legal/contract/quota unreachable here."""
+	"""Self-service: caller edits ONLY their own soft fields. Legal/contract/quota unreachable here.
+
+	There is no `user` argument: this always writes frappe.session.user's own
+	record, so it cannot be pointed at anyone else. Editing someone else, or any
+	legal/contract/quota field, is `employee_admin.save_user_with_profile`
+	(System Manager only).
+
+	Every argument defaults to None and None means "leave as is", so a caller sends
+	only what it is changing — with one exception, below.
+
+	User record: `phone`, `birthdate` (empty clears it), `bio`.
+
+	Employee Profile: `photo` (empty clears), `home_address`,
+	`emergency_contact_name`, `emergency_contact_phone`,
+	`emergency_contact_relation`, `religion`, `verse_enabled` (0/1).
+
+	Two are validated by silently IGNORING anything unrecognised rather than
+	raising, so a typo here looks like success and changes nothing: `focus_mode`
+	accepts only "fullscreen" or "inline", `gender` only "Male" or "Female".
+
+	THE EXCEPTION — `education`, `skills` and `trainings` are child tables and each
+	one REPLACES the whole table, it does not append. Send the complete list every
+	time; sending one row leaves exactly one row, and sending [] deletes them all.
+	Omitting the argument is the only way to leave a table untouched. Each accepts
+	a list of dicts or a JSON string, and only the keys in EMPLOYEE_SOFT_CHILDREN
+	are read — anything else in a row is dropped.
+	"""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)

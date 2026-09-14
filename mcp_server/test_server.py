@@ -79,6 +79,77 @@ class TestManifestDocumentsAiInProgress(unittest.TestCase):
         # the ladder is monotonic and this flag is not. Say so where agents read.
         doc = self._doc("vernon_project.api.mobile.update_todo")
         self.assertIn("NOT a fourth AI phase", doc)
+# Every @frappe.whitelist() in vernon_project/api is published as an MCP tool whose
+# DESCRIPTION IS ITS DOCSTRING, verbatim. So for a write endpoint, an argument the
+# docstring never names is an argument no agent can use correctly — and on the six
+# below, several of them mutate data when guessed wrong. These pin the audited set;
+# 28% of the 319-tool manifest still has no description at all, so this is a floor
+# to grow, not a finished job.
+# mobile.update_todo belongs in this set and is audited on the ai/ir3j5rjmk6 branch,
+# which carries both its docstring and its own assertions. It is left out HERE so this
+# branch is green standing alone; add it to this tuple once the two have merged.
+AUDITED_WRITE_TOOLS = (
+    "vernon_project.api.mobile.update_my_profile",
+    "vernon_project.api.mobile.create_todo",
+    "vernon_project.api.employee_admin.save_user_with_profile",
+    "vernon_project.api.focus.save_timer",
+    "vernon_project.api.announcement.save_announcement",
+    "vernon_project.api.attendance.request_exception",
+)
+
+
+class TestAuditedWriteToolsDocumentTheirArguments(unittest.TestCase):
+    def _tool(self, method):
+        return next(t for t in srv._MANIFEST if t["method"] == method)
+
+    def _optional_args(self, signature):
+        """Argument names carrying a default, read back off the scanned signature."""
+        inner = signature[signature.index("(") + 1 : signature.rindex(")")]
+        out, depth, part = [], 0, ""
+        for ch in inner:  # a default can itself contain a comma, e.g. f(x=(1, 2))
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+            if ch == "," and depth == 0:
+                out.append(part)
+                part = ""
+            else:
+                part += ch
+        out.append(part)
+        return [p.split("=")[0].strip() for p in out if "=" in p]
+
+    def test_every_optional_argument_is_named_in_the_description(self):
+        for method in AUDITED_WRITE_TOOLS:
+            tool = self._tool(method)
+            doc = tool["doc"]
+            self.assertTrue(doc.strip(), f"{method} has an empty MCP description")
+            for arg in self._optional_args(tool["signature"]):
+                self.assertIn(arg, doc, f"{method}: optional arg {arg!r} is undocumented")
+
+    def test_the_destructive_defaults_are_spelled_out(self):
+        """Four arguments do NOT mean "leave as is" when omitted. An agent that
+        assumes they do will strip a user's roles, re-enable a disabled account,
+        unpublish a live banner, or wipe a child table. Say so, or nobody knows."""
+        admin = self._tool("vernon_project.api.employee_admin.save_user_with_profile")["doc"]
+        self.assertIn("STRIPS EVERY VERNON ROLE", admin)
+        self.assertIn("RE-ENABLES", admin)
+
+        profile = self._tool("vernon_project.api.mobile.update_my_profile")["doc"]
+        self.assertIn("REPLACES the whole table", profile)
+
+        ann = self._tool("vernon_project.api.announcement.save_announcement")["doc"]
+        self.assertIn("DEFAULTS TO 0", ann)
+
+    def test_request_exception_warns_that_failures_arrive_as_200(self):
+        """Its refusals are a normal 200 with status:"error", so a caller that only
+        checks the HTTP status reports a rejected leave request as filed."""
+        doc = self._tool("vernon_project.api.attendance.request_exception")["doc"]
+        self.assertIn('"status": "error"', doc)
+
+    def test_save_timer_warns_agents_off_inventing_tracked_time(self):
+        doc = self._tool("vernon_project.api.focus.save_timer")["doc"]
+        self.assertIn("focus.set_note", doc)
 
 
 # NOTE: this must stay at the BOTTOM. It used to sit mid-file, and since the module

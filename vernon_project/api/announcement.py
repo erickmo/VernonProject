@@ -57,6 +57,25 @@ def list_announcements():
 
 @frappe.whitelist()
 def save_announcement(message, start_date, end_date, name=None, link=None, published=0):
+	"""Create or edit the site-wide announcement banner. System Manager or HR
+	Manager only (MANAGE_ROLES) — anyone else gets PermissionError.
+
+	`message`, `start_date` and `end_date` are required; a blank message, a missing
+	date, or an end date before the start date each raise. Commits immediately, so
+	the write is visible before the request finishes.
+
+	Optional arguments:
+
+	* `name` — omit to CREATE a new announcement, pass an existing Announcement id
+	  to EDIT that one. There is no separate create/update pair; this is both.
+	* `link` — must start with http://, https:// or / and raises otherwise. It
+	  becomes an <a href> shown to every user, so javascript:/data: are rejected.
+	  Empty clears it.
+	* `published` — 0/1, DEFAULTS TO 0. An announcement saved without it is stored
+	  but not shown, so pass published=1 to actually put it on screen. Omitting it
+	  on an EDIT unpublishes a live announcement, because it is written every time
+	  rather than only when supplied.
+	"""
 	_require_manage()
 	message = (message or "").strip()
 	if not message:
