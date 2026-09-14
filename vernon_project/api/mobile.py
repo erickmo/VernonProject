@@ -374,7 +374,22 @@ def _notify(recipient, type, title, body, reference_doctype=None, reference_name
 
 @frappe.whitelist()
 def get_notifications(limit=30, start=0):
-	"""One newest-first page of the session user's notifications + unread count."""
+	"""One newest-first page of the session user's notifications + unread count.
+
+	Always frappe.session.user's own; Guest gets frappe.AuthenticationError. There
+	is no argument for reading another user's notifications.
+
+	Returns `{"items": [...], "unread": <int>, "has_more": <bool>}`. `unread` is the
+	total unread count for the user, NOT a count within the page.
+
+	Optional arguments:
+
+	* `limit` — page size, default 30, clamped to 200. `limit=0` falls back to 30
+	  rather than meaning "no limit".
+	* `start` — offset for paging, default 0; a negative value is clamped to 0.
+	* `has_more` is the heuristic `len(items) == limit`, so a last page that happens
+	  to be exactly full reports `has_more: true` and the next call returns an empty
+	  page. Stop on empty, not on the flag alone."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
@@ -2150,12 +2165,27 @@ MAX_PROJECT_ITEMS_PAGE = 500
 def get_project_detail(project_detail, include_cancelled=0, limit=0, start=0):
 	"""A Project Detail with its project items.
 
-	limit/start (optional, default 0): pagination over project_items, for the
-	~446KB/599-row worst case measured in PERF.md (todo 6gb7lcr41q). limit=0
-	(every caller today) returns every item exactly as before this param
-	existed — a capability, not a behaviour change. limit is clamped to
-	MAX_PROJECT_ITEMS_PAGE server-side regardless of what's requested.
-	"""
+	Gate: the caller must be able to see the parent project (`_visible_projects()` —
+	assigned to them, or they own/lead/admin/team-member it). An unknown id raises
+	frappe.DoesNotExistError; a real id in an invisible project raises
+	frappe.PermissionError, so the two are distinguishable.
+
+	Optional arguments:
+
+	* `include_cancelled` — 0 (default) drops cancelled todos from the returned
+	  `project_items` array ONLY. The counters are always computed over the full row
+	  set first, so with the default `total_count` is deliberately LARGER than
+	  `len(project_items)` by exactly `cancelled_count`. Do not derive counts by
+	  measuring the array. `minutes_total`/`minutes_done` always exclude cancelled
+	  work regardless of this flag.
+	* `limit`/`start` — pagination over project_items, for the ~446KB/599-row worst
+	  case measured in PERF.md (todo 6gb7lcr41q). `limit=0` (every caller today)
+	  returns every item exactly as before this param existed — a capability, not a
+	  behaviour change. limit is clamped to MAX_PROJECT_ITEMS_PAGE (500) server-side
+	  regardless of what's requested, and a negative `start` raises
+	  frappe.ValidationError. Paging is applied AFTER the `include_cancelled` filter,
+	  so page offsets shift when that flag changes. `has_more` is exact here (unlike
+	  get_notifications) and is always False when `limit=0`."""
 	user = frappe.session.user
 	columns = [
 		"name", "title", "project", "status", "is_pending", "current_condition",
@@ -2596,14 +2626,65 @@ def update_todo(
 	@frappe.whitelist() in this package), so the flags an agent is expected to drive
 	are named here rather than left to be guessed from the signature.
 
-	``ai_in_progress`` (0/1) — set 1 when an AI session STARTS working on the task and
+	`project_item` (a Project Todo id) is the only required argument. EVERY other
+	argument means "leave as is" when omitted — each one is applied only when it is
+	not None — so send just the fields being changed.
+
+	IMPORTANT: almost every refusal comes back as a normal 200 with
+	`{"status": "error", "message": ...}`, not an exception. A caller that checks
+	only the HTTP status will report a rejected edit as saved. Success is
+	`{"status": "ok", "message": "Task updated."}`.
+
+	Leader/owner-gated (System Manager, project_owner or project_leader; anyone else
+	gets the 200-error above): `estimated` when it actually changes the value,
+	`assigned_to` when it actually changes the assignee, and `mentor`. `is_priority`
+	takes the same gate plus project admins. Changing `estimated` also DISCARDS any
+	explicit assigned_allocation split on the task, falling back to the default.
+
+	`ai_in_progress` (0/1) — set 1 when an AI session STARTS working on the task and
 	0 when it stops. It is what the "AI is working right now" animation on the card,
 	the web todo row and the detail drawer reads. It is NOT a fourth AI phase: the
 	ai_phase ladder tracks the PROMPT (tagged -> drafted -> human-confirmed) and only
 	moves forward, while this comes and goes with each run. Only a task tagged for AI
-	work (``work_mode`` AI or Both) accepts it — anything else throws — and a terminal
+	work (`work_mode` AI or Both) accepts it — anything else throws — and a terminal
 	status clears it server-side, so finishing a task never leaves the flag stuck on.
-	"""
+
+	The other AI fields: `work_mode` is "Human", "AI" or "Both" (any other value,
+	including "", clears it); setting it to AI or Both requires the AI User role,
+	while clearing never does. `ai_prompt` is lead-only and is SILENTLY IGNORED for
+	anyone else — no error, a plain "Task updated" and the prompt unchanged.
+
+	Plain fields, settable by anyone who can edit the task: `to_do` (title),
+	`start_date`, `deadline`, `leader_deadline`, `owner_deadline`, `group`, `level_id`
+	(the stable reference; `level` is still accepted for older clients but `level_id`
+	is the truth), `to_check` (the assignee's own reminder flag, no scoring effect),
+	`is_waiting` and `waiting_reason` (the controller enforces reason-required and
+	Planned-only). Note which ones an EMPTY STRING clears and which it does not:
+	`leader_deadline`, `owner_deadline`, `mentor`, `level`, `level_id`,
+	`waiting_reason` and `work_mode` treat "" as "clear this field", while `to_do`,
+	`group`, `assigned_to` and `estimated` ignore a blank rather than clearing.
+
+	`blocked_by` and `blocking` are arrays of todo ids (a JSON string or a list) and
+	REPLACE the whole link list rather than appending; `[]` clears it. A self-
+	reference is dropped, and the controller mirrors the link onto the other todo.
+
+	Per-phase estimates are in MINUTES: `estimated_done_to_checked` and
+	`estimated_checked_to_completed`. `estimated_planned_to_done` is still ACCEPTED
+	BY THE SIGNATURE BUT DISCARDED — it is deprecated (the main `estimated` field
+	covers it), and passing it returns a successful "Task updated" having changed
+	nothing. Use `estimated` instead.
+
+	Recurrence: `is_recurring` (0/1) is the switch, and setting it to 0 WIPES the
+	whole recurrence configuration below and un-pauses the series root, so
+	re-enabling later starts from defaults rather than from what was there before.
+	`recurring_frequency` and `recurring_until` apply either way, but the ten detail
+	arguments — `recurring_interval`, `recurring_weekdays`, `recurring_monthly_mode`,
+	`recurring_day_of_month`, `recurring_nth`, `recurring_paused`,
+	`recurring_exception_weekdays`, `recurring_exception_monthdays`,
+	`recurring_exception_dates` and `recurring_exception_behavior` — are applied ONLY
+	when the task is recurring at that point in the call. Send them together with
+	`is_recurring=1`, or on a task that already recurs; sent alone to a non-recurring
+	task they are silently dropped with a successful response."""
 	try:
 		user = frappe.session.user
 		project_detail = frappe.get_value("Project Todo", project_item, "project_detail")
@@ -3181,7 +3262,26 @@ def get_report_options():
 
 @frappe.whitelist()
 def run_report(report, filters=None):
-	"""Run one of the whitelisted Script Reports and return columns + rows."""
+	"""Run one of the whitelisted Script Reports and return columns + rows.
+
+	`report` must be one of exactly five names, and anything else raises
+	frappe.ValidationError ("Unknown report."): "Progress Report", "Todo Report",
+	"Project Todo Deadline Report", "Daily Assignment Report", "Daily Performance
+	Report". Each report applies its own permission rules; there is no extra gate here.
+
+	Returns `{"columns": [...], "rows": [...], "total": <int>, "messages": [...]}`.
+	IMPORTANT: `rows` is TRUNCATED to the first 300 while `total` is the untruncated
+	count, and there is no offset/page argument — so when `total > 300` the missing
+	rows are simply unreachable through this endpoint. Narrow `filters` instead of
+	trying to page. `messages` carries any frappe.msgprint() the report emitted
+	(e.g. "select a project"), which is usually why an empty result is empty.
+
+	Optional arguments:
+
+	* `filters` — the report's own filter dict, accepted either as a dict or as a
+	  JSON string. Keys whose value is None, "" or [] are STRIPPED before the run,
+	  so passing a filter explicitly empty does not mean "match everything" — it
+	  means "use the report's own default", which may be quite different."""
 	if report not in ALLOWED_REPORTS:
 		frappe.throw("Unknown report.")
 
@@ -4390,7 +4490,21 @@ def get_user_points_log(user, limit=100):
 	"""Transparent earned-points log for any user — opened by tapping a leaderboard
 	row. Login required (no Guest); no admin gate. Earned credits only (Grant/Gift
 	excluded), read-only: no spends, no balance, no mutation. Returns the target's
-	name/avatar for the header so the view is self-sufficient on a deep link."""
+	name/avatar for the header so the view is self-sufficient on a deep link.
+
+	`user` is a User id and is REQUIRED; an unknown one raises
+	frappe.DoesNotExistError. Any logged-in caller may read any user's log — that is
+	the point of the screen, not an oversight.
+
+	Returns `{"user", "full_name", "image", "avatar_config", "total_earned", "rows"}`,
+	where `total_earned` is the user's LIFETIME earned total and is NOT limited by
+	`limit` — only `rows` is. The two will not agree for an active user.
+
+	Optional arguments:
+
+	* `limit` — how many ledger rows, default 100, clamped to the range 1..500. A
+	  non-numeric value falls back to 100 instead of raising. There is no offset, so
+	  500 rows is the ceiling of what this endpoint can reach."""
 	if frappe.session.user == "Guest":
 		frappe.throw("Login required.", frappe.PermissionError)
 	if not frappe.db.exists("User", user):
@@ -4448,7 +4562,29 @@ def get_leaderboard(period="monthly", brand=None, dimension="productivity"):
 
 	dimension='productivity' (default) ranks earned work (excludes gifts/grants and
 	the character sources). dimension='character' ranks gifts of attention —
-	Recognition (kudos) + Mentoring — so helping is celebrated on its own board."""
+	Recognition (kudos) + Mentoring — so helping is celebrated on its own board.
+
+	Returns `{"period", "brand", "dimension", "brands", "entries", "me"}`. `entries`
+	is the top 50 only; `me` is the caller's own row at its true rank even when that
+	falls outside the 50, and is None when the caller has earned nothing in the
+	period. Accounts on the reserved example.com domain (leftover test fixtures) are
+	excluded from the ranking.
+
+	Optional arguments:
+
+	* `period` — "weekly" (from the first day of this week), "monthly" (default,
+	  from the first of this month) or "all" (no date bound). An unrecognised value
+	  is silently coerced to "monthly", never rejected — so a typo returns a
+	  plausible-looking board for the wrong period. Check `period` in the response.
+	* `dimension` — "productivity" (default) or "character"; an unrecognised value
+	  is likewise silently coerced to "productivity".
+	* `brand` — restrict to one brand. This is applied by JOINing Point Ledger to
+	  Project and matching Project.brand, so EVERY ledger row with no project
+	  (gifts, daily claims, achievements, most Recognition) drops out of the board
+	  as soon as `brand` is set. A brand-filtered board is therefore not a slice of
+	  the unfiltered one and the two will not reconcile — this bites `character`
+	  hardest, which can go empty. The response's own `brands` array lists the valid
+	  values (Brand is named by brand_name, so those strings are what to pass back)."""
 	if period not in ("weekly", "monthly", "all"):
 		period = "monthly"
 	if dimension not in ("productivity", "character"):
@@ -5885,6 +6021,24 @@ def delete_meeting(meeting):
 
 @frappe.whitelist()
 def list_meetings(project=None):
+	"""Every Meeting the caller may see, farthest-scheduled first.
+
+	Reads through `frappe.get_list`, so the Meeting doctype's own permission rules
+	are the gate — there is no extra check here. No page cap: the whole visible set
+	comes back in one response, deliberately, because the descending order would
+	otherwise let a default page size drop the NEAREST meetings the home reminder
+	needs.
+
+	Returns `{"meetings": [...]}`. Each row carries the meeting fields, its full
+	recurrence configuration, a resolved `participants` list and `project_name`, plus
+	`can_mark_done` — true for a System Manager, the organizer, or the project's
+	owner/leader/admin. A meeting whose project was deleted still lists, with
+	`project_name` falling back to the raw id.
+
+	Optional arguments:
+
+	* `project` — restrict to one Project id (exact match, not a search). Omit it for
+	  every visible meeting across all projects."""
 	filters = {}
 	if project:
 		filters["project"] = project
@@ -5980,6 +6134,25 @@ def reopen_meeting(meeting):
 
 @frappe.whitelist()
 def meeting_invitable_users(project, txt=""):
+	"""Project Team members who can be invited to a meeting, for the invitee picker.
+
+	`project` is REQUIRED. WARNING for a caller: this endpoint NEVER raises. Every
+	refusal is the same empty success `{"users": []}` — a missing/blank `project`, a
+	caller who is not a System Manager and not the project's owner/leader/admin and
+	not on its team, a project with no Project Team rows, and a `txt` that simply
+	matches nobody are all indistinguishable. An empty list is not evidence that the
+	project has no members.
+
+	Only Project Team rows are candidates. A project owner or leader who is not
+	themselves on the team is NOT returned, even though they can see the project.
+
+	Returns `{"users": [{"user", "full_name"}]}` ordered by full_name.
+
+	Optional arguments:
+
+	* `txt` — substring filter, matched with SQL LIKE against BOTH the user id and
+	  the full name. The default "" matches every team member. `%` and `_` are NOT
+	  escaped, so they act as SQL wildcards rather than literal characters."""
 	if not project:
 		return {"users": []}
 	user = frappe.session.user
@@ -6037,7 +6210,23 @@ def _reaction_counts(todo, me=None):
 def get_team_activity(days=14, limit=50):
 	"""Recent Completed todos in the caller's projects, newest first, each with a
 	reaction-count summary, the caller's own reaction, and a few recent reactor
-	names. Drives the /activity feed."""
+	names. Drives the /activity feed.
+
+	Guest gets frappe.AuthenticationError. Scoped to projects the caller is
+	INVOLVED in (owner/leader/admin, team member, or assignee) — this scoping
+	applies to System Managers too, who see every project elsewhere in this module
+	but not here. An empty feed usually means "not on any project", not "nothing
+	happened".
+
+	Optional arguments:
+
+	* `days` — trailing window on the completion date, default 14. `days=0` falls
+	  back to 14 rather than meaning today.
+	* `limit` — how many todos, default 50. `limit=0` falls back to 50.
+
+	NEITHER is capped. The filtering and sorting happen in Python over every todo in
+	every involved project, so a large `days` on a well-used account is a slow, large
+	response — raise them deliberately, not by default."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
@@ -6504,6 +6693,18 @@ def _crate_pool(user):
 
 @frappe.whitelist()
 def get_crate_status():
+	"""The caller's task-crate keys and progress toward the next one.
+
+	Takes no arguments and always reports on frappe.session.user. Pure read — it
+	grants nothing (`open_task_crate` is the endpoint that spends a key).
+
+	Returns `{"keys", "key_cost", "progress", "progress_pct", "daily_cap",
+	"opened_today", "remaining"}`, where `keys` is the number of unspent keys
+	(lifetime todo points // key_cost, minus crates already opened), `progress` is
+	the points into the current key, `opened_today` counts against `daily_cap`, and
+	`remaining` is how many cosmetics the caller does not own yet. `keys > 0` is not
+	sufficient to open one: `opened_today >= daily_cap` or `remaining == 0` both
+	make `open_task_crate` raise."""
 	user = frappe.session.user
 	pts = _lifetime_todo_points(user)
 	earned = int(pts // CRATE_KEY_COST)
@@ -7232,6 +7433,25 @@ def _daily_state(user, s):
 
 @frappe.whitelist()
 def get_gamification():
+	"""The caller's level, XP, achievements and daily-claim state — AND it GRANTS.
+
+	Despite the `get_` name this endpoint is NOT read-only. On every call it awards
+	any level reward and any achievement the caller has become eligible for since
+	last time: it writes Point Ledger rows (sources "Reward" and "Achievement"),
+	grants avatar assets, and records the claims. Calling it repeatedly is safe
+	(each reward is claim-guarded and serialised by a per-user lock) but it is never
+	free of side effects, so do not poll it, and do not call it merely to read a
+	level. Whatever it just granted is listed in `newly_granted`.
+
+	Takes no arguments and always acts on frappe.session.user.
+
+	Returns `{"level", "lifetime", "points_per_level", "xp_into", "xp_to_next",
+	"balance", "newly_granted", "achievements", "daily"}`, with `level` and
+	`lifetime` recomputed AFTER the grants so the numbers already include them.
+
+	If the per-user lock is contended the read still returns, but grants are skipped
+	for that call — an achievement can therefore show `met: true, claimed: true`
+	while its points land on a later call."""
 	user = frappe.session.user
 	s = _gami_settings()
 	ppl = float(s.points_per_level or 100) or 100
@@ -7312,6 +7532,18 @@ def claim_daily():
 
 @frappe.whitelist()
 def get_gamification_settings():
+	"""The gamification config for the admin screen: level rewards, achievements
+	and the avatar-asset catalogue.
+
+	Takes no arguments. Gate: the marketplace admin check — System Manager OR
+	Marketplace Manager; anyone else gets frappe.PermissionError. This is the
+	ADMIN view of the rules. A normal user's own progress against them is
+	`get_gamification` (which also grants), and the cosmetics they can buy are the
+	marketplace endpoints.
+
+	Returns the Vernon Settings gamification fields (premium_price,
+	points_per_level, daily_reward_points, streak_bonus_points, streak_cap), the
+	level_rewards and achievements tables, and every ACTIVE Avatar Asset."""
 	_require_marketplace_manager()  # reuse existing admin gate (System Manager / Marketplace Manager)
 	s = _gami_settings()
 	return {

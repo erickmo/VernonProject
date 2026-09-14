@@ -181,9 +181,16 @@ def respond(invite, response):
 
 @frappe.whitelist()
 def get_invite(invite):
-	# 2026-09-09 permission sweep: this had no ownership/recipient check at
-	# all -- any logged-in user who knew or guessed an invite name could read
-	# a Specific/Internal/Project invite's full content.
+	"""One food invite in full, for whoever may see it.
+
+	Any logged-in user may call it, but not on any invite: `invite` must be one the
+	caller can view — they created it, or they are a recipient, or it is open to
+	their audience. Anything else raises frappe.PermissionError. (Before the
+	2026-09-09 permission sweep there was no check at all, and any logged-in user
+	who guessed an invite name could read a Specific/Internal/Project invite.)
+
+	`invite` is the document name and is required. Returns the serialized invite —
+	its content, audience, recipients and the caller's own response."""
 	user = _require_login()
 	doc = frappe.get_doc(DOCTYPE, invite)
 	if not _can_view(doc, user):
@@ -242,7 +249,21 @@ def get_active_invites():
 @frappe.whitelist()
 def food_invitable_users(txt=""):
 	"""Enabled Internal-Team + Intern users for the 'specific people' picker.
-	Any logged-in user may search — a social invite, not sensitive data."""
+	Any logged-in user may search — a social invite, not sensitive data.
+
+	Scope is fixed and cannot be widened: enabled Users whose custom_member_type is
+	"Internal Team" or "Intern", minus the protected system accounts. Someone on a
+	different member type is not invitable through this picker at all.
+
+	Returns `{"users": [{"user", "full_name"}]}` ordered by full_name and capped at
+	500 rows with no offset, so on a large directory the tail is unreachable — rely
+	on `txt` rather than on reading the whole list.
+
+	Optional arguments:
+
+	* `txt` — substring filter, matched with SQL LIKE against BOTH the user id and
+	  the full name, and trimmed before use. The default "" matches everyone in
+	  scope. `%` and `_` are NOT escaped, so they act as SQL wildcards."""
 	_require_login()
 	like = f"%{(txt or '').strip()}%"
 	rows = frappe.db.sql(

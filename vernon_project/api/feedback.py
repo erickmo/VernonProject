@@ -93,7 +93,24 @@ def submit_feedback(feedback_type, message, is_anonymous=0):
 
 @frappe.whitelist()
 def list_feedback(status=None):
-	"""Admin-only. Newest-first feedback with a display submitter."""
+	"""Admin-only. Newest-first feedback with a display submitter.
+
+	Gate: System Manager only; anyone else gets frappe.PermissionError. Returns
+	`{"items": [...]}` — the whole set, no paging.
+
+	Anonymity is enforced in the payload, not just the UI: a row submitted
+	anonymously comes back with `submitter` set to the literal "Anonymous", and the
+	underlying submitted_by user is NOT included in the response at all, so there is
+	nothing here to correlate. Do not try to re-identify an anonymous submitter from
+	this endpoint's output.
+
+	Optional arguments:
+
+	* `status` — one of "New", "Reviewed", "Resolved" or "Rejected". CAUTION: an
+	  unrecognised value is not an error and does not match nothing — the filter is
+	  dropped entirely and EVERY row comes back. A typo here widens the result to
+	  the full list rather than emptying it, so check `status` on the rows rather
+	  than trusting that the filter applied."""
 	_require_admin()
 	filters = {}
 	if status and status in STATUSES:

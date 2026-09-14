@@ -22,7 +22,24 @@ def _require_manager():
 
 @frappe.whitelist()
 def list_overtime(employee=None, status=None, year=None):
-    """Own entries for anyone; any employee's for HR / System Manager."""
+    """Own entries for anyone; any employee's for HR / System Manager.
+
+    Scope is implicit and silent. An HR Manager or System Manager may pass
+    `employee` to read someone else's entries, or omit it to read EVERYONE's.
+    Anyone else is forced to their own rows and their `employee` argument is
+    IGNORED rather than refused — so a non-manager asking for a colleague's
+    overtime gets a successful 200 containing their own entries, which is easy to
+    misread as "that colleague has the same overtime as me".
+
+    Returns a BARE LIST ordered by date desc, with no paging and no total.
+
+    Optional arguments:
+
+    * `employee` — a User id; manager-only in effect, see above.
+    * `status` — one exact value: "Pending", "Approved" or "Rejected". An unknown
+      value matches nothing rather than raising.
+    * `year` — a four-digit year, filtering on the entry date. It is passed through
+      int(), so a non-numeric value raises rather than being ignored."""
     filters = {}
     if _is_manager():
         if employee:

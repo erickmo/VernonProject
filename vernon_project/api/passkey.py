@@ -247,6 +247,16 @@ def login_complete(credential, handle):
 # --------------------------------------------------------------------------------
 @frappe.whitelist()
 def list_passkeys():
+	"""The caller's own registered passkeys, newest first.
+
+	Any logged-in user; Guest gets frappe.AuthenticationError. Takes no arguments
+	and is always frappe.session.user's own — there is no argument for listing
+	another user's devices.
+
+	Returns `{"passkeys": [{"name", "label", "creation", "last_used"}]}`. Only the
+	device label and timestamps are exposed; no public key, credential id or
+	counter, so nothing here is usable to authenticate. `last_used` is null on a
+	passkey that has been registered but never used to sign in."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)

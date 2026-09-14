@@ -111,6 +111,21 @@ def _serialize(daily):
 
 @frappe.whitelist()
 def my_attendance(limit=30):
+	"""Daily Attendance rows for the LOGGED-IN user, newest date first.
+
+	There is no `employee` argument — the rows are always frappe.session.user's
+	own. Any logged-in user may call it; Guest gets frappe.PermissionError. To read
+	someone else's attendance use `attendance_report`, which is System-Manager-only.
+
+	Returns `{"status": "ok", "rows": [...]}`; each row carries attendance_date,
+	status, first_scan/last_scan, station_first/station_last, late_minutes,
+	early_minutes and penalty_points.
+
+	Optional arguments:
+
+	* `limit` — how many days back, default 30. SILENTLY CLAMPED to 200: a larger
+	  number is not an error and returns 200 rows, and there is no offset/cursor, so
+	  the 200 most recent days are the hard ceiling of what this endpoint can reach."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
@@ -132,7 +147,32 @@ def _require_attendance_admin():
 
 @frappe.whitelist()
 def attendance_report(from_date, to_date, employee=None, brand=None, status=None):
-	"""Daily Attendance rows for the admin report, with summary stats."""
+	"""Daily Attendance rows for the admin report, with summary stats.
+
+	Gate: "System Manager" ONLY. Note this is stricter than the rest of the module —
+	the HR helpers here accept HR Manager OR System Manager, but this one does not,
+	so an HR Manager without System Manager gets frappe.PermissionError.
+
+	`from_date` and `to_date` are inclusive (SQL BETWEEN) and both required. There is
+	no limit or paging: the whole range comes back in one response, so narrow the
+	dates rather than asking for a year.
+
+	Returns `{"columns": [...], "rows": [...], "stats": {...}}`. `stats` counts
+	present / late / absent / excused and sums penalty, where "late" is the three
+	statuses Late, EarlyLeave and Late+EarlyLeave together.
+
+	Optional arguments:
+
+	* `employee` — a User id (e.g. "someone@vernon.id"), matched exactly. Not a
+	  full name, and not a substring search.
+	* `brand` — matched against Attendance Profile.brand, which is LEFT JOINed. An
+	  employee with NO Attendance Profile row therefore DISAPPEARS from the result
+	  as soon as `brand` is set, even though their rows are present when it is not.
+	  Unfiltered totals and brand-filtered totals need not add up.
+	* `status` — one exact Daily Attendance status: "OffDay", "Holiday",
+	  "Excused-WFH", "Excused-Leave", "Present", "Late", "EarlyLeave",
+	  "Late+EarlyLeave" or "Absent". An unknown value is not rejected; it just
+	  matches nothing."""
 	_require_attendance_admin()
 	conditions = ["da.attendance_date BETWEEN %(from_date)s AND %(to_date)s"]
 	params = {"from_date": from_date, "to_date": to_date}
@@ -338,6 +378,19 @@ _LEAVE_TYPE_FIELDS = ("leave_name", "enabled", "limit_kind", "day_limit", "gende
 
 @frappe.whitelist()
 def admin_list_leave_types():
+	"""Every Leave Type, for the HR admin screen.
+
+	Takes no arguments. Gate: HR Manager OR System Manager; anyone else gets
+	frappe.PermissionError.
+
+	Unlike `list_leave_types` — which is what a normal employee picks from — this
+	returns the catalogue UNFILTERED: disabled types are included, and so are types
+	restricted to the other gender. Use `list_leave_types` to find out what a given
+	caller may actually request, and this one only to administer the catalogue.
+
+	Returns `{"status": "ok", "types": [...]}` ordered by sort_order, each row
+	carrying name, leave_name, enabled, limit_kind, day_limit, gender,
+	requires_proof, paid, is_default_annual, description and sort_order."""
 	if not _is_hr(frappe.session.user):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 	rows = frappe.get_all("Leave Type", fields=["name", *_LEAVE_TYPE_FIELDS], order_by="sort_order asc")
@@ -626,6 +679,19 @@ def hr_pending_exceptions():
 
 @frappe.whitelist()
 def pending_exception_approvals():
+	"""WFH / Leave requests waiting on THIS caller's decision.
+
+	Takes no arguments and is scoped to frappe.session.user; Guest gets
+	frappe.PermissionError. A request is listed only when both are true: the caller
+	has an Attendance Exception Approver row on it still marked "Pending", AND the
+	request itself is still Pending overall.
+
+	This is NOT "every request awaiting approval". Nobody sees the queue by virtue
+	of a role — an HR Manager sees only the requests that were routed to them as an
+	approver, so an empty list means nothing is assigned to you, not that the
+	company has no open requests.
+
+	Returns `{"status": "ok", "rows": [...]}` in the same shape as `my_exceptions`."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)
@@ -686,6 +752,21 @@ def team_leave():
 
 @frappe.whitelist()
 def my_exceptions(limit=30):
+	"""WFH / Leave requests filed BY the logged-in user, newest first.
+
+	Always frappe.session.user's own requests — there is no argument for reading
+	someone else's. Any logged-in user may call it; Guest gets
+	frappe.PermissionError. The mirror endpoint for requests awaiting YOUR decision
+	is `pending_exception_approvals`.
+
+	Returns `{"status": "ok", "rows": [...]}`; each row carries the request
+	(exception_type, from_date, to_date, status, reason, leave_type, proof), the HR
+	verdict (hr_decision, hr_by, hr_reason) and the per-approver decisions.
+
+	Optional arguments:
+
+	* `limit` — how many requests, default 30, SILENTLY CLAMPED to 200. There is no
+	  offset, so 200 is the ceiling."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please log in"), frappe.PermissionError)

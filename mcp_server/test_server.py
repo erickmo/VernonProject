@@ -79,53 +79,126 @@ class TestManifestDocumentsAiInProgress(unittest.TestCase):
         # the ladder is monotonic and this flag is not. Say so where agents read.
         doc = self._doc("vernon_project.api.mobile.update_todo")
         self.assertIn("NOT a fourth AI phase", doc)
+
+
 # Every @frappe.whitelist() in vernon_project/api is published as an MCP tool whose
-# DESCRIPTION IS ITS DOCSTRING, verbatim. So for a write endpoint, an argument the
-# docstring never names is an argument no agent can use correctly — and on the six
-# below, several of them mutate data when guessed wrong. These pin the audited set;
-# 28% of the 319-tool manifest still has no description at all, so this is a floor
-# to grow, not a finished job.
-# mobile.update_todo belongs in this set and is audited on the ai/ir3j5rjmk6 branch,
-# which carries both its docstring and its own assertions. It is left out HERE so this
-# branch is green standing alone; add it to this tuple once the two have merged.
+# DESCRIPTION IS ITS DOCSTRING, verbatim. So an argument the docstring never names is
+# an argument no agent can use correctly — on the writes because guessing one mutates
+# data, and on the reads because guessing one quietly returns the wrong rows. These
+# two tuples pin the audited set; the rest of the 319-tool manifest is still being
+# worked through, so this is a floor to grow, not a finished job.
 AUDITED_WRITE_TOOLS = (
     "vernon_project.api.mobile.update_my_profile",
     "vernon_project.api.mobile.create_todo",
+    "vernon_project.api.mobile.update_todo",
     "vernon_project.api.employee_admin.save_user_with_profile",
     "vernon_project.api.focus.save_timer",
     "vernon_project.api.announcement.save_announcement",
     "vernon_project.api.attendance.request_exception",
 )
 
+# The reads an MCP client reaches for first. Same rule, and the same test below runs
+# over both tuples — the split is only so a reviewer can see which slice is which.
+AUDITED_READ_TOOLS = (
+    "vernon_project.api.attendance.my_attendance",
+    "vernon_project.api.attendance.my_exceptions",
+    "vernon_project.api.attendance.pending_exception_approvals",
+    "vernon_project.api.attendance.attendance_report",
+    "vernon_project.api.attendance.admin_list_leave_types",
+    "vernon_project.api.mobile.get_notifications",
+    "vernon_project.api.mobile.get_project_detail",
+    "vernon_project.api.mobile.run_report",
+    "vernon_project.api.mobile.get_team_activity",
+    "vernon_project.api.mobile.get_user_points_log",
+    "vernon_project.api.mobile.get_leaderboard",
+    "vernon_project.api.mobile.list_meetings",
+    "vernon_project.api.mobile.meeting_invitable_users",
+    "vernon_project.api.mobile.get_crate_status",
+    "vernon_project.api.mobile.get_gamification",
+    "vernon_project.api.mobile.get_gamification_settings",
+    "vernon_project.api.project_todo.search_todos",
+    "vernon_project.api.teguran.get_teguran_all",
+    "vernon_project.api.certificate.list_certificates",
+    "vernon_project.api.certificate.my_score",
+    # chunk 2: the recruitment surface (three of these answer Guest) and LMS.
+    "vernon_project.api.recruitment.list_open_jobs",
+    "vernon_project.api.recruitment.get_job",
+    "vernon_project.api.recruitment.check_can_apply",
+    "vernon_project.api.recruitment.list_openings",
+    "vernon_project.api.recruitment.get_opening",
+    "vernon_project.api.recruitment.list_applications",
+    "vernon_project.api.recruitment.get_application",
+    "vernon_project.api.recruitment.list_blacklist",
+    "vernon_project.api.recruitment.preview_score",
+    "vernon_project.api.lms.get_catalog",
+    "vernon_project.api.lms.get_course",
+    "vernon_project.api.lms.my_learning",
+    "vernon_project.api.lms.manage_courses",
+    "vernon_project.api.lms.course_report",
+    "vernon_project.api.lms.list_assignable_users",
+    # chunk 3: the remaining reads — events, social, and the small single-purpose
+    # modules. With these the read side of the manifest is covered.
+    "vernon_project.api.events.list_events",
+    "vernon_project.api.events.get_event",
+    "vernon_project.api.events.my_registrations",
+    "vernon_project.api.events_admin.manage_list_events",
+    "vernon_project.api.events_admin.event_roster",
+    "vernon_project.api.food_invite.get_invite",
+    "vernon_project.api.food_invite.food_invitable_users",
+    "vernon_project.api.app_release.get_app_releases",
+    "vernon_project.api.api_token.get_api_token_status",
+    "vernon_project.api.midtrans.pay_config",
+    "vernon_project.api.booking.check_availability",
+    "vernon_project.api.feedback.list_feedback",
+    "vernon_project.api.overtime.list_overtime",
+    "vernon_project.api.papan_iklan.list_ads",
+    "vernon_project.api.habit.get_habits",
+    "vernon_project.api.passkey.list_passkeys",
+    "vernon_project.api.certificate.get_certificate",
+    "vernon_project.api.certificate.preview_score",
+)
 
-class TestAuditedWriteToolsDocumentTheirArguments(unittest.TestCase):
+
+def _tool(method):
+    return next(t for t in srv._MANIFEST if t["method"] == method)
+
+
+def _optional_args(signature):
+    """Argument names carrying a default, read back off the scanned signature."""
+    inner = signature[signature.index("(") + 1 : signature.rindex(")")]
+    out, depth, part = [], 0, ""
+    for ch in inner:  # a default can itself contain a comma, e.g. f(x=(1, 2))
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(part)
+            part = ""
+        else:
+            part += ch
+    out.append(part)
+    return [p.split("=")[0].strip() for p in out if "=" in p]
+
+
+class TestAuditedToolsDocumentTheirArguments(unittest.TestCase):
     def _tool(self, method):
-        return next(t for t in srv._MANIFEST if t["method"] == method)
-
-    def _optional_args(self, signature):
-        """Argument names carrying a default, read back off the scanned signature."""
-        inner = signature[signature.index("(") + 1 : signature.rindex(")")]
-        out, depth, part = [], 0, ""
-        for ch in inner:  # a default can itself contain a comma, e.g. f(x=(1, 2))
-            if ch in "([{":
-                depth += 1
-            elif ch in ")]}":
-                depth -= 1
-            if ch == "," and depth == 0:
-                out.append(part)
-                part = ""
-            else:
-                part += ch
-        out.append(part)
-        return [p.split("=")[0].strip() for p in out if "=" in p]
+        return _tool(method)
 
     def test_every_optional_argument_is_named_in_the_description(self):
-        for method in AUDITED_WRITE_TOOLS:
-            tool = self._tool(method)
+        for method in AUDITED_WRITE_TOOLS + AUDITED_READ_TOOLS:
+            tool = _tool(method)
             doc = tool["doc"]
             self.assertTrue(doc.strip(), f"{method} has an empty MCP description")
-            for arg in self._optional_args(tool["signature"]):
+            for arg in _optional_args(tool["signature"]):
                 self.assertIn(arg, doc, f"{method}: optional arg {arg!r} is undocumented")
+
+    def test_the_audited_names_are_all_real_tools(self):
+        """A typo in either tuple would otherwise make the loop above scan nothing
+        for that entry and still pass."""
+        known = {t["method"] for t in srv._MANIFEST}
+        for method in AUDITED_WRITE_TOOLS + AUDITED_READ_TOOLS:
+            self.assertIn(method, known, f"{method} is not in the scanned manifest")
 
     def test_omission_is_documented_as_safe_on_the_repaired_arguments(self):
         """roles, enabled and published used to be written on every call, so
@@ -156,6 +229,123 @@ class TestAuditedWriteToolsDocumentTheirArguments(unittest.TestCase):
     def test_save_timer_warns_agents_off_inventing_tracked_time(self):
         doc = self._tool("vernon_project.api.focus.save_timer")["doc"]
         self.assertIn("focus.set_note", doc)
+
+
+class TestAuditedReadToolsWarnAboutTheirTraps(unittest.TestCase):
+    """A read that silently returns the wrong rows is worse than one that fails:
+    the agent reports the number it got. These are the six shapes where the
+    description is the only thing standing between a caller and a confident wrong
+    answer, so each one has to keep saying so."""
+
+    def _doc(self, method):
+        return _tool(method)["doc"]
+
+    def test_get_gamification_is_declared_a_write(self):
+        """It is named get_ and it GRANTS: level rewards, achievement points and
+        avatar assets land on every call. An agent polling it to read a level is
+        awarding points as a side effect."""
+        doc = self._doc("vernon_project.api.mobile.get_gamification")
+        self.assertIn("GRANTS", doc)
+        self.assertIn("do not poll it", doc)
+
+    def test_run_report_admits_it_truncates_rows_but_not_total(self):
+        """rows stops at 300, total does not, and there is no offset — so above
+        300 the rest is unreachable rather than paginated."""
+        doc = self._doc("vernon_project.api.mobile.run_report")
+        self.assertIn("TRUNCATED", doc)
+        self.assertIn("300", doc)
+
+    def test_get_project_detail_warns_the_counts_outlive_the_filter(self):
+        """include_cancelled filters the array and not the counters, so counting
+        project_items under-reports by exactly cancelled_count."""
+        doc = self._doc("vernon_project.api.mobile.get_project_detail")
+        self.assertIn("Do not derive counts by", doc)
+
+    def test_leaderboard_brand_filter_names_what_it_drops(self):
+        """brand JOINs through Project, so every project-less ledger row (gifts,
+        daily, achievements, most Recognition) leaves the board when it is set."""
+        doc = self._doc("vernon_project.api.mobile.get_leaderboard")
+        self.assertIn("no project", doc)
+        self.assertIn("silently coerced", doc)  # a typo'd period is not rejected
+
+    def test_meeting_invitable_users_warns_that_it_never_raises(self):
+        """No permission, no project, no team and no match are the same empty
+        success, so an empty list is not evidence of an empty team."""
+        doc = self._doc("vernon_project.api.mobile.meeting_invitable_users")
+        self.assertIn("NEVER raises", doc)
+
+    def test_my_score_warns_the_future_clamp_is_defaults_only(self):
+        """An explicitly supplied future period_end is not pulled back to today,
+        so it scores over days not yet worked."""
+        doc = self._doc("vernon_project.api.certificate.my_score")
+        self.assertIn("explicitly supplied pair is NOT", doc)
+
+    def test_the_capped_reads_say_the_cap_is_a_ceiling_not_a_page(self):
+        """Each of these clamps limit and offers no offset, so the clamp is the
+        most the endpoint can ever reach — worth saying, because the caller's own
+        larger limit comes back as success."""
+        for method, cap in (
+            ("vernon_project.api.attendance.my_attendance", "200"),
+            ("vernon_project.api.attendance.my_exceptions", "200"),
+            ("vernon_project.api.mobile.get_user_points_log", "500"),
+        ):
+            doc = self._doc(method)
+            self.assertIn(cap, doc, f"{method} does not name its cap")
+            self.assertIn("ceiling", doc, f"{method} does not call the cap a ceiling")
+
+
+    def test_the_public_job_endpoints_say_which_one_holds_the_answer_key(self):
+        """get_job answers Guest and get_opening is HR-only, and the difference that
+        matters is the answer key. Both descriptions have to keep saying which is
+        which, because the payloads otherwise look like the same object."""
+        public = self._doc("vernon_project.api.recruitment.get_job")
+        self.assertIn("The answer key is deliberately absent", public)
+        hr = self._doc("vernon_project.api.recruitment.get_opening")
+        self.assertIn("answer key", hr)
+
+    def test_check_can_apply_is_labelled_an_existence_oracle(self):
+        """It answers Guest, and its rate limit is keyed on the very value being
+        probed — so the limit does not bound enumeration across many values. An
+        agent must not be told to bulk-check people through it."""
+        doc = self._doc("vernon_project.api.recruitment.check_can_apply")
+        self.assertIn("existence oracle", doc)
+        self.assertIn("does not bound enumeration", doc)
+
+    def test_preview_score_warns_that_a_missing_instrument_scores_zero(self):
+        """All four instruments always count, so an omitted answer set is scored
+        0/max and drags overall_fit down rather than being skipped."""
+        doc = self._doc("vernon_project.api.recruitment.preview_score")
+        self.assertIn("omitting one does NOT skip it", doc)
+
+    def test_api_token_status_calls_the_mcp_url_a_credential(self):
+        """mcp_connector_url is populated for a System Manager only, and the token
+        in it runs every MCP call as the SERVER's key, not the caller's. An agent
+        that treats it as a convenience link will paste admin access somewhere."""
+        doc = self._doc("vernon_project.api.api_token.get_api_token_status")
+        self.assertIn("admin-equivalent access", doc)
+        self.assertIn("Treat it as a credential", doc)
+
+    def test_pay_config_says_which_midtrans_key_it_returns(self):
+        """It answers Guest on purpose. The description has to be explicit that
+        this is the publishable key, or the next reader files it as a leak — or,
+        worse, assumes the server key is available the same way."""
+        doc = self._doc("vernon_project.api.midtrans.pay_config")
+        self.assertIn("publishable half", doc)
+
+    def test_the_filters_that_widen_instead_of_narrowing_are_flagged(self):
+        """Three list endpoints answer a bad or extra filter by returning MORE,
+        not less: an unknown feedback status drops the filter entirely, mine=1
+        replaces the Active filter rather than adding to it, and a non-manager's
+        employee argument is dropped in favour of their own rows. Each is a 200
+        that looks like it honoured the request."""
+        self.assertIn("widens the result to", self._doc("vernon_project.api.feedback.list_feedback"))
+        self.assertIn("REPLACES that filter", self._doc("vernon_project.api.papan_iklan.list_ads"))
+        self.assertIn("IGNORED rather than refused", self._doc("vernon_project.api.overtime.list_overtime"))
+
+    def test_event_roster_says_it_includes_cancelled(self):
+        """Counting its rows over-reports attendance."""
+        doc = self._doc("vernon_project.api.events_admin.event_roster")
+        self.assertIn("CANCELLED registrations are in here too", doc)
 
 
 # NOTE: this must stay at the BOTTOM. It used to sit mid-file, and since the module

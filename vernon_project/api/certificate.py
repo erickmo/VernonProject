@@ -165,7 +165,26 @@ def issuable_interns():
 
 @frappe.whitelist()
 def list_certificates(intern=None, status=None):
-	"""Certificates the caller may see, newest first."""
+	"""Certificates the caller may see, newest (by modified) first.
+
+	Scope is automatic and is reported back as `scope`: "all" for HR/System Manager,
+	"team" for someone who runs a project (the interns on it, plus themselves),
+	"self" for everyone else. There is no argument to widen it.
+
+	Returns `{"rows": [...], "scope": "all"|"team"|"self"}`. `verify_code` is nulled
+	out on any row not in Published/Revoked status — it is a public key to the
+	certificate page, so it is only ever handed out for certificates that have one.
+	Capped at 200 rows with no offset argument, so that is the ceiling here.
+
+	Optional arguments:
+
+	* `intern` — a User id. This REPLACES the automatic scope filter rather than
+	  narrowing it, and is then permission-checked separately: an intern outside the
+	  caller's scope raises frappe.PermissionError. So filtering by someone else's
+	  id is the one call shape in this endpoint that can fail loudly, where an
+	  unfiltered call merely returns less.
+	* `status` — one exact value: "Draft", "Pending HR", "Published" or "Revoked".
+	  An unknown value matches nothing rather than raising."""
 	me = frappe.session.user
 	scope, allowed = _scope(me)
 
@@ -240,6 +259,16 @@ def _frozen_components(raw):
 
 @frappe.whitelist()
 def get_certificate(name):
+	"""One internship certificate in full.
+
+	`name` is the certificate document name and is required. Gate: the intern
+	themselves, someone who runs a project that intern is on, or HR / System
+	Manager; anyone else gets frappe.PermissionError. An unknown name raises
+	frappe.DoesNotExistError from the document load, before the permission check.
+
+	Returns the decorated certificate — its scores, rubric components and status.
+	Unlike `list_certificates`, the verify_code is not blanked here, so treat the
+	payload as the certificate's public key when its status is Published."""
 	doc = frappe.get_doc(DOCTYPE, frappe.utils.cstr(name))
 	_guard_read({"intern": doc.intern}, frappe.session.user)
 	return _decorate(doc, frappe.session.user)
@@ -249,7 +278,28 @@ def get_certificate(name):
 def preview_score(intern, period_start, period_end, project=None):
 	"""The auto score for a period, before any certificate exists. Lets a leader see
 	what the numbers say while they are still deciding, and lets an intern watch their
-	own score during the placement."""
+	own score during the placement.
+
+	Gate: the same read scope as the rest of this module — the intern themselves,
+	someone who runs a project that intern is on, or HR / System Manager. Writes
+	nothing, so it is safe to call repeatedly.
+
+	`intern` (a User id), `period_start` and `period_end` (YYYY-MM-DD, inclusive)
+	are all REQUIRED. Unlike `my_score` there is no defaulting and no clamp of any
+	kind: the only validation is that the end must not precede the start, so a
+	future `period_end` scores over days not yet worked and drags the rate-based
+	numbers down. Pass today as the end unless you mean otherwise.
+
+	Optional arguments:
+
+	* `project` — restrict the scored work to one Project. Omitted (the default)
+	  scores the intern's work across every project in the period, which is what a
+	  certificate uses; pass it only when you specifically want a per-project view,
+	  and do not compare the two numbers.
+
+	Returns the live auto-score fields plus an EMPTY `rubric` — the rubric rows come
+	back with score None and comment "" because a human has not filled them in yet.
+	That is the normal response here, not missing data."""
 	intern = frappe.utils.cstr(intern)
 	me = frappe.session.user
 	_guard_read({"intern": intern}, me)
@@ -272,7 +322,27 @@ def my_score(period_start=None, period_end=None):
 
 	The period defaults to their Employee Profile contract dates, falling back to the
 	last 180 days -- an intern should not have to know their own start date to see a
-	number about themselves."""
+	number about themselves.
+
+	Always frappe.session.user; there is no argument for scoring someone else (that
+	is `preview_score`, which is scoped to whoever runs the intern's project).
+
+	Optional arguments:
+
+	* `period_start` / `period_end` — YYYY-MM-DD, inclusive. They are defaulted as a
+	  PAIR: the fallback chain runs unless BOTH are supplied, so passing just one
+	  still lets the other come from the contract dates.
+	* The same all-or-nothing rule governs the future clamp. When the dates are
+	  defaulted, `period_end` is pulled back to today so an open contract cannot
+	  score against days not yet worked — but an explicitly supplied pair is NOT
+	  clamped, so passing a future `period_end` scores over empty days and quietly
+	  drags the rate-based numbers down. The only validation applied to an explicit
+	  pair is that end must not precede start (which raises, with a message in
+	  Bahasa).
+
+	Returns the live auto-score fields plus the resolved `period_start`/`period_end`
+	(always echo these back — they are frequently not what was asked for) and
+	`certificates`, the caller's already-issued Published/Revoked certificates."""
 	me = frappe.session.user
 
 	if not (period_start and period_end):

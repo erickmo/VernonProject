@@ -138,7 +138,25 @@ PUBLIC_FIELDS = [
 @frappe.whitelist()
 def list_ads(ad_type=None, q=None, mine=0, limit_start=0, limit_page_length=30):
 	"""One page of Active ads newest-first (or the caller's own ads of any status
-	when mine=1). Returns {items, has_more} — has_more drives the "Muat lagi" button."""
+	when mine=1). Returns {items, has_more} — has_more drives the "Muat lagi" button.
+
+	Any logged-in user. `has_more` is exact, not a heuristic: the query fetches one
+	sentinel row beyond the page rather than counting, so a full last page reports
+	has_more false correctly.
+
+	Optional arguments:
+
+	* `mine` — 0 (default) lists Active ads by anyone. 1 REPLACES that filter with
+	  "authored by the caller" and therefore drops the status filter entirely, so
+	  Fulfilled and Removed ads of the caller's own appear. It is a different list,
+	  not a narrowing of the first one, and the two can never be combined.
+	* `ad_type` — "Sell", "Buy" or "Rent". An unrecognised value is silently
+	  ignored and every type comes back, rather than matching nothing.
+	* `q` — substring search over title OR description, ANDed with the filters
+	  above. Whitespace-only is treated as absent.
+	* `limit_start` — row offset, default 0.
+	* `limit_page_length` — page size, default 30 and NOT capped. Note 0 falls back
+	  to 30 rather than meaning "no limit"."""
 	user = _require_user()
 	mine = frappe.utils.cint(mine)
 	start = frappe.utils.cint(limit_start)

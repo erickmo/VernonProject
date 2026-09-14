@@ -86,6 +86,16 @@ def _effective_status(enr, ref_today):
 
 @frappe.whitelist()
 def get_catalog():
+	"""The published course catalogue, with the caller's own progress on each.
+
+	Any logged-in user; Guest gets frappe.PermissionError. Takes no arguments. Only
+	Published courses appear — Draft and Archived ones are invisible here even to an
+	LMS Manager, who sees them through `manage_courses`.
+
+	Returns `{"courses": [...]}` ordered by modified desc. Each card carries the
+	course fields plus `lesson_count`, and the caller's own `my_status`
+	("Assigned" / "In Progress" / "Completed", or null when not enrolled) and
+	`my_progress` (percent, 0.0 when not enrolled)."""
 	_require_login()
 	user = frappe.session.user
 	rows = frappe.get_all(
@@ -104,6 +114,19 @@ def get_catalog():
 
 @frappe.whitelist()
 def get_course(name):
+	"""One course with its ordered lessons and the caller's enrollment.
+
+	Any logged-in user for a Published course; Guest gets frappe.PermissionError.
+	`name` is the Course document name. An unknown course raises a plain
+	frappe.ValidationError ("Course not found"), while a real but unpublished one
+	(Draft/Archived) raises frappe.PermissionError unless the caller holds System
+	Manager or LMS Manager — so the two failures are distinguishable.
+
+	Returns `{"course": {...}, "lessons": [...], "enrollment": {...} | null}`.
+	Lessons come back in `position` order with their body, video_url, attached
+	`files`, and a per-lesson `done` flag reflecting THIS caller's progress.
+	`enrollment` is null when the caller has never enrolled — that is the normal
+	state for browsing, not an error."""
 	_require_login()
 	user = frappe.session.user
 	course = frappe.db.get_value(
@@ -202,6 +225,17 @@ def complete_lesson(course, lesson):
 
 @frappe.whitelist()
 def my_learning():
+	"""The caller's own course enrollments, most recently touched first.
+
+	Any logged-in user; Guest gets frappe.PermissionError. Takes no arguments and is
+	always frappe.session.user's own — there is no argument for reading someone
+	else's progress (`course_report` is the manager view, per course).
+
+	Returns `{"enrollments": [...]}`, each with course, `course_title`, status
+	("Assigned" / "In Progress" / "Completed"), progress_pct, due_date, completed_on,
+	the `assigned` flag, and a computed `overdue`. Note `overdue` is true only for
+	an ASSIGNED, not-yet-Completed course past its due date: a self-enrolled course
+	is never marked overdue no matter how old its due date."""
 	_require_login()
 	user = frappe.session.user
 	ref_today = today()
@@ -225,6 +259,16 @@ def my_learning():
 
 @frappe.whitelist()
 def manage_courses():
+	"""Every course in any status, with enrollment counts, for the LMS console.
+
+	Gate: System Manager or LMS Manager; anyone else gets frappe.PermissionError.
+	Takes no arguments.
+
+	This is the counterpart to `get_catalog`: Draft and Archived courses are
+	included here. Returns `{"courses": [...]}` ordered by modified desc, each with
+	`lesson_count`, `enrolled` (total enrollments) and `completed`. Note these
+	counts are over ALL enrollments ever created, so `enrolled` does not shrink when
+	someone finishes — `completed` is a subset of it, not a separate group."""
 	_require_manage()
 	rows = frappe.get_all(
 		"Course",
@@ -322,6 +366,19 @@ def assign_course(course, users, due_date=None):
 
 @frappe.whitelist()
 def course_report(course):
+	"""Per-learner progress on ONE course, for the LMS console.
+
+	Gate: System Manager or LMS Manager; anyone else gets frappe.PermissionError.
+	`course` is the Course document name and is required.
+
+	Returns `{"course_title": ..., "rows": [...]}` ordered by status then user, each
+	row carrying user, `user_name`, the `assigned` flag, due_date, status,
+	progress_pct, completed_on and a computed `overdue` (assigned-only, same rule as
+	`my_learning`). Rows are enrollments, so someone who never enrolled does not
+	appear at all — an empty report is "nobody enrolled", not "nobody started".
+
+	An unknown course name is not rejected: it returns a null course_title and no
+	rows."""
 	_require_manage()
 	ref_today = today()
 	rows = frappe.get_all(
@@ -337,6 +394,17 @@ def course_report(course):
 
 @frappe.whitelist()
 def list_assignable_users():
+	"""Users an LMS manager may assign a course to, for the assignee picker.
+
+	Gate: System Manager or LMS Manager; anyone else gets frappe.PermissionError.
+	Takes no arguments and is not searchable — it returns the whole list, ordered by
+	full_name, with no paging.
+
+	Scope is every ENABLED User except the protected system accounts (the
+	PROTECTED_USERS set shared with the mobile API). It is not scoped to a project,
+	a team or a brand, so this is the full staff list.
+
+	Returns `{"users": [{"name", "full_name"}]}`."""
 	_require_manage()
 	from vernon_project.api.mobile import PROTECTED_USERS
 	users = frappe.get_all(
