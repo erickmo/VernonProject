@@ -1155,6 +1155,10 @@ def team_daily_report(from_date, to_date, project=None, member=None):
 			frappe.throw("Not permitted", frappe.PermissionError)
 		members = [m for m in members if m["name"] == member]
 	if project:
+		# Same rule as `member`: a team-scoped caller may only narrow to a project they
+		# run, else project=<other> reads shared members' minutes on it.
+		if allowed is not None and project not in _projects_i_run(frappe.session.user):
+			frappe.throw("Not permitted", frappe.PermissionError)
 		on_project = _users_on_projects([project])
 		members = [m for m in members if m["name"] in on_project]
 
