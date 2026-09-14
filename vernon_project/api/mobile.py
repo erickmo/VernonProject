@@ -333,16 +333,21 @@ def _push_to_subscriptions(recipient, payload):
 			pass  # network / encoding error — drop this push, keep the loop alive
 
 
-def _notify(recipient, type, title, body, reference_doctype=None, reference_name=None, actor=None):
+def _notify(recipient, type, title, body, reference_doctype=None, reference_name=None, actor=None,
+			suppress_realtime=False):
 	"""Insert an in-app Vernon Notification and send Web Push. Best-effort:
 	any failure is swallowed so the triggering mutation never breaks. Skips
-	self-notification (recipient == actor)."""
+	self-notification (recipient == actor).
+
+	`suppress_realtime` drops the row's realtime event, whose payload names
+	frappe.session.user — the caller is anonymous to the recipient (only
+	api/feedback.py's anonymous path passes it). The in-app row still lands."""
 	try:
 		if not recipient or recipient in PROTECTED_USERS:
 			return
 		if actor and recipient == actor:
 			return
-		frappe.get_doc({
+		doc = frappe.get_doc({
 			"doctype": "Vernon Notification",
 			"recipient": recipient,
 			"type": type,
@@ -352,7 +357,9 @@ def _notify(recipient, type, title, body, reference_doctype=None, reference_name
 			"reference_name": reference_name,
 			"actor": actor,
 			"is_read": 0,
-		}).insert(ignore_permissions=True)
+		})
+		doc.flags.suppress_realtime = suppress_realtime
+		doc.insert(ignore_permissions=True)
 		frappe.db.commit()
 		# Web Push is a blocking HTTPS POST per subscription — run it on a worker so
 		# the triggering mutation (mark-done, approve, reject) returns without waiting
