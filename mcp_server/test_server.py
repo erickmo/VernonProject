@@ -58,8 +58,6 @@ class TestCallApiMethod(unittest.TestCase):
             self.assertEqual(srv.call_api_method(METHOD), {"created_todos": 0})
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TestManifestDocumentsAiInProgress(unittest.TestCase):
@@ -81,3 +79,10 @@ class TestManifestDocumentsAiInProgress(unittest.TestCase):
         # the ladder is monotonic and this flag is not. Say so where agents read.
         doc = self._doc("vernon_project.api.mobile.update_todo")
         self.assertIn("NOT a fourth AI phase", doc)
+
+
+# NOTE: this must stay at the BOTTOM. It used to sit mid-file, and since the module
+# body runs top to bottom, every test class defined below it was never collected —
+# the file printed OK while silently skipping them.
+if __name__ == "__main__":
+    unittest.main()
