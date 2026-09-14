@@ -7,7 +7,7 @@ from datetime import datetime, time
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_days, get_datetime, getdate, now_datetime, nowdate
+from frappe.utils import add_days, cint, cstr, get_datetime, getdate, now_datetime, nowdate
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 
 MEETING_SCHEDULED = "⚪️ Scheduled"
@@ -18,10 +18,32 @@ class Meeting(Document):
 	def validate(self):
 		if self.is_new() and not self.organizer:
 			self.organizer = frappe.session.user
+		self.guard_direct_write()
 		self.snapshot_point_from_level()
 		self.validate_has_participant()
 		self.validate_participants_in_team()
 		self.validate_recurrence_rule()
+
+	POINT_FIELDS = ("status", "estimated", "group", "level", "level_id")
+
+	def guard_direct_write(self):
+		"""Status and point inputs move only through mobile.py (create/update/mark
+		done/reopen), which run their own manage checks and save with
+		ignore_permissions. Project Owner/Leader hold create/write on Meeting, so a raw
+		/api/resource insert or save reaches here without that flag — and on_change
+		would mint Point Ledger rows for whatever status/estimated it carried."""
+		if self.flags.ignore_permissions or "System Manager" in frappe.get_roles():
+			return
+		if self.is_new():
+			self.status = MEETING_SCHEDULED
+			return
+		old = self.get_doc_before_save()
+		if not old:
+			return
+		norm = lambda f, v: cint(v) if f == "estimated" else cstr(v)
+		changed = [f for f in self.POINT_FIELDS if norm(f, old.get(f)) != norm(f, self.get(f))]
+		if changed:
+			frappe.throw(_("{0} can only be changed from the Meetings screen.").format(", ".join(changed)))
 
 	# ---- Recurrence (mirrors Project Todo; reuses the pure recurrence engine) ----
 	def _rule(self):

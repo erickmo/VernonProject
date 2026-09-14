@@ -146,6 +146,77 @@ class TestMeetingAward(TestMeetingPoints):
 		self.assertEqual(len(self._ledger_for(m.name)), 0)
 
 
+class TestMeetingRestMintGuard(TestMeetingPoints):
+	"""Project Owner/Leader hold create/write on Meeting, so /api/resource reaches the
+	controller directly (frappe.client.insert/save — no ignore_permissions). Status and
+	point inputs must only move through the mobile.py endpoints."""
+
+	LEADER = "m_leader@example.com"
+
+	def setUp(self):
+		super().setUp()
+		ensure_user(self.LEADER, "ML", roles=("Project Leader",))
+		self.project.append("team_members", {"user": self.LEADER})
+		# write on Meeting needs owner/leader/admin of THIS project (has_permission).
+		self.project.append("project_admins", {"user": self.LEADER})
+		self.project.save(ignore_permissions=True)
+		frappe.db.commit()
+
+	def _ledger(self, meeting):
+		return frappe.get_all("Point Ledger", filters={"meeting": meeting}, pluck="name")
+
+	def test_rest_insert_done_does_not_mint(self):
+		frappe.set_user(self.LEADER)
+		try:
+			doc = frappe.client.insert({
+				"doctype": "Meeting", "project": self.project.name, "title": "mint",
+				"group": self.group_name, "level_id": self.level_id, "estimated": 1000000,
+				"status": "✅ Done", "participants": [{"user": self.LEADER}],
+			})
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(doc["status"], "⚪️ Scheduled")
+		self.assertEqual(self._ledger(doc["name"]), [])
+
+	def test_rest_save_status_or_points_rejected(self):
+		m = self.make_meeting(group=self.group_name, level_id=self.level_id, estimated=30,
+			participants=[self.LEADER])
+		for field, value in (("status", "✅ Done"), ("estimated", 1000000)):
+			d = frappe.get_doc("Meeting", m.name).as_dict()
+			d[field] = value
+			frappe.set_user(self.LEADER)
+			try:
+				with self.assertRaises(frappe.ValidationError):
+					frappe.client.save(d)
+			finally:
+				frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Meeting", m.name, "status"), "⚪️ Scheduled")
+		self.assertEqual(self._ledger(m.name), [])
+
+	def test_rest_save_other_fields_still_allowed(self):
+		m = self.make_meeting(participants=[self.LEADER], organizer=self.LEADER)
+		d = frappe.get_doc("Meeting", m.name).as_dict()
+		d["title"] = "renamed"
+		frappe.set_user(self.LEADER)
+		try:
+			frappe.client.save(d)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.get_value("Meeting", m.name, "title"), "renamed")
+
+	def test_api_mark_done_still_awards(self):
+		from vernon_project.api.mobile import mark_meeting_done, update_meeting
+		m = self.make_meeting(group=self.group_name, level_id=self.level_id, estimated=30,
+			participants=[self.LEADER], organizer=self.LEADER)
+		frappe.set_user(self.LEADER)
+		try:
+			self.assertEqual(update_meeting(m.name, estimated=40)["status"], "success")
+			self.assertEqual(mark_meeting_done(m.name)["status"], "success")
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(len(self._ledger(m.name)), 1)
+
+
 class TestMeetingPermissions(MeetingTestBase):
 	def test_team_member_can_read_non_member_cannot(self):
 		m = self.make_meeting(participants=["m_user1@example.com"])
