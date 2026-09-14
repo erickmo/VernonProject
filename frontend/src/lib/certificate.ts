@@ -190,6 +190,50 @@ export function certificateSteps(
   return raw.map(({ done, ...s }, i) => ({ ...s, state: done ? 'done' : i === current ? 'current' : 'todo' }))
 }
 
+// --- form sections follow the steps (cqf4pucpee) ---------------------------------------
+// The detail form used to show scores first and the intern/period fields last, so it read in
+// a different order from the steps card above it. Both detail screens now render these four
+// sections in THIS order, and each section's badge is the number of the step it covers —
+// derived from certificateSteps, so the card and the form cannot drift apart again.
+
+export type CertSectionKey = 'intern' | 'rubric' | 'status' | 'share'
+
+export const CERT_SECTIONS: { key: CertSectionKey; steps: CertStep['key'][]; plain: string }[] = [
+  { key: 'intern', steps: ['intern'], plain: 'Data peserta' },
+  { key: 'rubric', steps: ['rubric'], plain: 'Penilaian' },
+  { key: 'status', steps: ['submit', 'publish'], plain: 'Status' },
+  { key: 'share', steps: ['share'], plain: 'Sertifikat' },
+]
+
+export interface CertSection {
+  key: CertSectionKey
+  /** Step number of the first step this section covers. */
+  n: number
+  /** Issuer-facing title, in the steps card's own words. */
+  title: string
+  /** Title for a viewer who only reads their certificate (no steps shown). */
+  plain: string
+  /** What to do here — the current step's text, else the section's last step. */
+  desc: string
+  state: CertStepState
+}
+
+export function certSections(steps: CertStep[]): CertSection[] {
+  return CERT_SECTIONS.map(({ key, steps: keys, plain }) => {
+    const mine = steps.filter((s) => keys.includes(s.key))
+    const current = mine.find((s) => s.state === 'current')
+    return {
+      key,
+      n: steps.indexOf(mine[0]) + 1,
+      // A leader's status section covers "Ajukan ke HR" and "HR menerbitkan".
+      title: mine.length > 1 ? 'Ajukan & terbitkan' : mine[0].label,
+      plain,
+      desc: (current ?? mine[mine.length - 1]).desc,
+      state: current ? 'current' : mine.every((s) => s.state === 'done') ? 'done' : 'todo',
+    }
+  })
+}
+
 // --- (i) help ------------------------------------------------------------------------
 // Everything here is a question a real reader asks. Keep the answers concrete.
 

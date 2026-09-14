@@ -18,7 +18,9 @@ function HowToTile({ isHr, onCreate }: { isHr: boolean; onCreate: () => void }) 
   return (
     <div className="rounded-2xl border border-line bg-surface p-5">
       <p className="font-semibold text-ink">Cara membuat sertifikat</p>
-      <ol className="mt-4 grid gap-4 sm:grid-flow-col sm:auto-cols-fr">
+      {/* cqf4pucpee: wrap whole steps onto a new row instead of squeezing five long
+          descriptions into equal columns until they break every few letters. */}
+      <ol className="mt-4 grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))]">
         {certificateSteps(null, isHr).map((s, i) => (
           <li key={s.key} className="flex items-start gap-2.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">

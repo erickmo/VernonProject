@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   Award, Download, Link2, ShieldCheck, ShieldX, Send, Undo2, Save, AlertTriangle, Check, Eye,
 } from 'lucide-react'
-import { Page, PageHeader, Section } from '@web/components/Page'
-import { BentoGrid, BentoTile } from '@web/components/bento'
+import { Page, PageHeader } from '@web/components/Page'
 import { InfoDot } from '@web/components/InfoDot'
 import { DatePicker } from '@web/components/DatePicker'
 // Button is web's own primitive; Spinner/EmptyState are shared from the mobile tree.
@@ -20,37 +19,95 @@ import {
 } from '@/hooks/useData'
 import { certificateApi } from '@/lib/api'
 import {
-  ACTION_LABEL, STATUS_LABEL, canDownload, certHelp, certificateSteps, clampScore, componentLabel,
-  droppedComponents, fmtScore, gradeFor, gradeTone, rubricFrom, rubricProgress, rubricScore, type CertStep,
+  ACTION_LABEL, STATUS_LABEL, canDownload, certHelp, certSections, certificateSteps, clampScore, componentLabel,
+  droppedComponents, fmtScore, gradeFor, gradeTone, rubricFrom, rubricProgress, rubricScore,
+  type CertSection, type CertSectionKey, type CertStep, type CertStepState,
 } from '@/lib/certificate'
 import type { CertificateStatus, ScoreComponent } from '@/lib/types'
 
 const field = 'w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-600 focus:outline-none'
-const label = 'mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted'
+// cqf4pucpee: grids wrap to a new row before a cell gets narrower than its label needs,
+// instead of squeezing every cell into equal columns until labels break every few letters.
+const FIELDS = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]'
+const PANELS = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]'
 
 const GRADE_STYLE: Record<string, string> = {
   good: 'bg-emerald-500 text-white', ok: 'bg-brand-600 text-white',
   warn: 'bg-amber-500 text-white', bad: 'bg-rose-500 text-white', none: 'bg-line text-muted',
 }
 
+function StepBadge({ n, state }: { n: number; state: CertStepState }) {
+  return (
+    <span
+      aria-hidden
+      className={clsx(
+        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+        state === 'done' && 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+        state === 'current' && 'bg-brand-600 text-white',
+        state === 'todo' && 'bg-line text-muted',
+      )}
+    >
+      {state === 'done' ? <Check className="h-4 w-4" /> : n}
+    </span>
+  )
+}
+
+/** One form section. For issuers it carries the number of the step it covers, and the
+ *  section holding the current step is highlighted and says what to do. */
+function SectionCard({ section, numbered, children }: { section: CertSection; numbered: boolean; children: ReactNode }) {
+  const current = numbered && section.state === 'current'
+  return (
+    <section
+      aria-labelledby={`cert-${section.key}`}
+      className={clsx(
+        'rounded-2xl border bg-surface p-5 transition',
+        current ? 'border-brand-600/50 ring-1 ring-brand-600/20' : 'border-line',
+      )}
+    >
+      <header className="mb-4 flex items-start gap-3">
+        {numbered && <StepBadge n={section.n} state={section.state} />}
+        <div className="min-w-0">
+          <h2 id={`cert-${section.key}`} className="text-base font-semibold leading-7 text-ink">
+            {numbered ? section.title : section.plain}
+          </h2>
+          {current && <p className="text-sm leading-relaxed text-muted">{section.desc}</p>}
+        </div>
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function Field({ label, hint, className, children }: { label: string; hint?: string; className?: string; children: ReactNode }) {
+  return (
+    <div className={clsx('min-w-0', className)}>
+      <span className="mb-1.5 flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium text-ink">
+        {label}
+        {hint && <span className="text-xs font-normal text-muted">{hint}</span>}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 function ScoreTile({
   title, score, grade, hint, term,
 }: { title: string; score: number | null; grade: string | null; hint: string; term: string }) {
   return (
-    <BentoTile span="lg">
-      <p className="flex items-center text-xs font-semibold uppercase tracking-wide text-muted">
+    <div className="rounded-xl border border-line bg-canvas p-4">
+      <p className="flex items-center text-sm font-medium text-muted">
         {title}<InfoDot term={term} lookup={certHelp} />
       </p>
-      <p className="mt-2 flex items-baseline gap-2.5">
-        <span className="text-5xl font-bold tabular-nums text-ink">{fmtScore(score)}</span>
+      <p className="mt-1 flex items-baseline gap-2.5">
+        <span className="text-4xl font-bold tabular-nums text-ink">{fmtScore(score)}</span>
         {grade && (
           <span className={clsx('rounded-full px-2.5 py-0.5 text-sm font-bold', GRADE_STYLE[gradeTone(grade)])}>
             {grade}
           </span>
         )}
       </p>
-      <p className="mt-2 text-xs leading-relaxed text-muted">{hint}</p>
-    </BentoTile>
+      <p className="mt-1.5 text-xs leading-relaxed text-muted">{hint}</p>
+    </div>
   )
 }
 
@@ -64,9 +121,9 @@ function Breakdown({ components }: { components: ScoreComponent[] }) {
         <div className="flex flex-col gap-3">
           {components.map((c) => (
             <div key={c.key}>
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-ink">{c.label}</span>
-                <span className="shrink-0 tabular-nums text-ink">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                <span className="min-w-0 text-ink">{c.label}</span>
+                <span className="tabular-nums text-ink">
                   {Math.round(c.value)}%
                   <span className="ml-1.5 text-xs text-muted">{c.detail}</span>
                   <span className="ml-3 text-xs text-muted">bobot {c.weight}</span>
@@ -90,31 +147,18 @@ function Breakdown({ components }: { components: ScoreComponent[] }) {
   )
 }
 
-/** tmot7slo7q: the numbered path from "no certificate" to one you can show, left to right.
- *  Only the step you are on spells out what to do. */
+/** tmot7slo7q: the numbered path from "no certificate" to one you can show. Whole steps wrap
+ *  to the next line rather than being squeezed into equal columns (cqf4pucpee). */
 function StepsTile({ steps }: { steps: CertStep[] }) {
-  const current = steps.find((s) => s.state === 'current')
   return (
-    <div className="mb-5 rounded-2xl border border-line bg-surface p-4">
-      <ol className="grid gap-3 sm:grid-flow-col sm:auto-cols-fr" aria-label="Langkah membuat sertifikat">
-        {steps.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2.5" aria-current={s.state === 'current' ? 'step' : undefined}>
-            <span
-              className={clsx(
-                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                s.state === 'done' && 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
-                s.state === 'current' && 'bg-brand-600 text-white',
-                s.state === 'todo' && 'bg-line text-muted',
-              )}
-            >
-              {s.state === 'done' ? <Check className="h-4 w-4" /> : i + 1}
-            </span>
-            <span className={clsx('text-sm font-medium', s.state === 'current' ? 'text-ink' : 'text-muted')}>{s.label}</span>
-          </li>
-        ))}
-      </ol>
-      {current && <p className="mt-3 border-t border-line pt-3 text-sm text-muted">{current.desc}</p>}
-    </div>
+    <ol className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-line bg-surface px-5 py-4" aria-label="Langkah membuat sertifikat">
+      {steps.map((s, i) => (
+        <li key={s.key} className="flex items-center gap-2.5 whitespace-nowrap" aria-current={s.state === 'current' ? 'step' : undefined}>
+          <StepBadge n={i + 1} state={s.state} />
+          <span className={clsx('text-sm font-medium', s.state === 'current' ? 'text-ink' : 'text-muted')}>{s.label}</span>
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -236,35 +280,226 @@ export default function Certificate() {
     )
   }
 
+  // Issuers see the numbered steps; an intern opening their own certificate just reads it.
+  const isIssuer = !!access.data?.can_issue
+  const steps = certificateSteps(doc ? { status: doc.status, rubric } : null, doc ? doc.is_hr : !!access.data?.is_hr)
+  const sec = Object.fromEntries(certSections(steps).map((s) => [s.key, s])) as Record<CertSectionKey, CertSection>
+  const actions = doc?.actions ?? []
+
+  // Save lives in the section whose step it completes: step 1 until the draft exists, then step 2.
+  const saveButton = editable && (
+    <div className="mt-5 flex justify-end border-t border-line pt-4">
+      <Button onClick={onSave} disabled={save.isPending}>
+        {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Simpan draf
+      </Button>
+    </div>
+  )
+
   return (
     <Page>
       <PageHeader
         icon={Award}
         title={isNew ? 'Sertifikat Baru' : (doc?.intern_name ?? 'Sertifikat')}
         subtitle={doc ? `${STATUS_LABEL[doc.status]}${doc.cert_no ? ` · ${doc.cert_no}` : ''}` : undefined}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {editable && (
-              <Button onClick={onSave} disabled={save.isPending}>
-                {save.isPending ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />} Simpan draf
-              </Button>
-            )}
-            {(doc?.actions ?? []).map((target) => (
-              <Button
-                key={target}
-                variant={target === 'Published' ? 'primary' : 'secondary'}
-                onClick={() => onTransition(target)}
-                disabled={setStatus.isPending}
-              >
-                {target === 'Published' && <ShieldCheck className="h-4 w-4" />}
-                {target === 'Revoked' && <ShieldX className="h-4 w-4" />}
-                {target === 'Pending HR' && <Send className="h-4 w-4" />}
-                {target === 'Draft' && <Undo2 className="h-4 w-4" />}
-                {ACTION_LABEL[target]}
-              </Button>
+      />
+
+      <div className="flex flex-col gap-5">
+        {doc?.status === 'Revoked' && doc.revoke_reason && (
+          <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
+            Dicabut {doc.revoked_on}: {doc.revoke_reason}
+          </p>
+        )}
+
+        {isIssuer && <StepsTile steps={steps} />}
+
+        {/* ---------- 1 · who and when ---------- */}
+        <SectionCard section={sec.intern} numbered={isIssuer}>
+          <div className={FIELDS}>
+            <Field label="Peserta magang" className="col-span-full">
+              {isNew ? (
+                <SearchableSelect
+                  value={form.intern}
+                  onChange={(v) => setForm((f) => ({ ...f, intern: v, project: '' }))}
+                  options={internOptions}
+                  placeholder="Pilih peserta magang"
+                />
+              ) : (
+                <p className="text-sm font-medium text-ink">{doc?.intern_name}</p>
+              )}
+            </Field>
+
+            <Field label="Proyek" hint="opsional">
+              {editable ? (
+                <SearchableSelect
+                  value={form.project}
+                  onChange={(v) => setForm((f) => ({ ...f, project: v }))}
+                  options={projectOptions}
+                  placeholder="Seluruh masa magang"
+                  allowClear
+                />
+              ) : (
+                <p className="text-sm text-ink">{doc?.project_name || 'Seluruh masa magang'}</p>
+              )}
+            </Field>
+
+            <Field label="Posisi">
+              {editable ? (
+                <input
+                  className={field} value={form.position} placeholder="mis. Frontend Developer Intern"
+                  onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                />
+              ) : (
+                <p className="text-sm text-ink">{doc?.position || '—'}</p>
+              )}
+            </Field>
+
+            {(['period_start', 'period_end'] as const).map((k) => (
+              <Field key={k} label={k === 'period_start' ? 'Mulai magang' : 'Selesai magang'}>
+                {editable ? (
+                  <DatePicker value={form[k]} onChange={(v: string) => setForm((f) => ({ ...f, [k]: v }))} />
+                ) : (
+                  <p className="text-sm text-ink">{doc?.[k]}</p>
+                )}
+              </Field>
             ))}
-            {doc && canDownload(doc) && (
+          </div>
+          {!doc && saveButton}
+        </SectionCard>
+
+        {/* ---------- 2 · the two scores (never merged), the leader's rubric and the printed note ---------- */}
+        <SectionCard section={sec.rubric} numbered={isIssuer}>
+          <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
+            <ScoreTile
+              title="Nilai Kinerja" score={autoScore} grade={autoGrade} term="dua-nilai"
+              hint="Dihitung otomatis dari tugas, ketepatan waktu, kehadiran, poin dan pembelajaran."
+            />
+            <ScoreTile
+              title="Nilai Penilaian" score={liveRubric} grade={rubricGrade} term="kriteria-kosong"
+              hint={frozen ? 'Penilaian pembimbing.' : `${progress.done}/${progress.total} kriteria terisi.`}
+            />
+          </div>
+
+          {!frozen && (
+            <p className="mt-3 flex items-center rounded-xl bg-line/50 p-3 text-xs leading-relaxed text-muted">
+              Nilai Kinerja masih dihitung ulang setiap kali halaman ini dibuka. Angkanya dibekukan saat HR menerbitkan.
+              <InfoDot term="nilai-berubah" lookup={certHelp} />
+            </p>
+          )}
+
+          <div className={clsx(PANELS, 'mt-5')}>
+            {/* the objective numbers, with the leader's judgement entered beside them on purpose */}
+            <div className="rounded-xl border border-line p-4">
+              <h3 className="mb-3 text-sm font-semibold text-ink">Rincian Nilai Kinerja</h3>
+              <Breakdown components={components} />
+            </div>
+
+            <div className="rounded-xl border border-line p-4">
+              <h3 className="flex items-center text-sm font-semibold text-ink">
+                Penilaian Pembimbing<InfoDot term="kriteria-kosong" lookup={certHelp} />
+              </h3>
+              <p className="mb-3 mt-0.5 text-xs text-muted">
+                Kosongkan kriteria yang tidak dinilai — yang kosong diabaikan, bukan dihitung nol.
+              </p>
+              <div className="flex flex-col gap-3">
+                {rubric.map((r, i) => (
+                  <div key={r.key} className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-ink">
+                        {r.label}<span className="ml-1.5 whitespace-nowrap text-xs text-muted">bobot {r.weight}</span>
+                      </p>
+                      {editable ? (
+                        <input
+                          className={clsx(field, 'mt-1.5 text-xs')} placeholder="Catatan (opsional)"
+                          aria-label={`Catatan ${r.label}`}
+                          value={r.comment}
+                          onChange={(e) => setRubric((rows) => rows.map((x, j) => (j === i ? { ...x, comment: e.target.value } : x)))}
+                        />
+                      ) : r.comment ? (
+                        <p className="mt-0.5 text-xs text-muted">{r.comment}</p>
+                      ) : null}
+                    </div>
+                    {editable ? (
+                      <input
+                        type="number" min={0} max={100} inputMode="numeric"
+                        aria-label={`Nilai ${r.label}`}
+                        className={clsx(field, 'w-20 shrink-0 text-right tabular-nums')}
+                        value={draftText[r.key] ?? (r.score === null ? '' : String(r.score))}
+                        onChange={(e) => setDraftText((d) => ({ ...d, [r.key]: e.target.value }))}
+                        onBlur={(e) => {
+                          // Clamp on commit, never per keystroke.
+                          const v = clampScore(e.target.value)
+                          setRubric((rows) => rows.map((x, j) => (j === i ? { ...x, score: v } : x)))
+                          setDraftText((d) => { const n = { ...d }; delete n[r.key]; return n })
+                        }}
+                      />
+                    ) : (
+                      <span className="w-20 shrink-0 text-right text-sm tabular-nums text-ink">
+                        {r.score === null ? '—' : r.score}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <Field label="Catatan pembimbing" hint="dicetak di sertifikat" className="mt-5">
+            {editable ? (
+              <textarea
+                className={clsx(field, 'min-h-[90px] resize-y')} value={form.summary}
+                placeholder="Kalimat singkat yang akan dicetak di sertifikat."
+                onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+              />
+            ) : (
+              <p className="text-sm text-ink">{doc?.summary || '—'}</p>
+            )}
+          </Field>
+          {doc && saveButton}
+        </SectionCard>
+
+        {/* ---------- 3 · send to HR / publish (and revoke, once issued) ---------- */}
+        {(isIssuer || actions.length > 0) && (
+          <SectionCard section={sec.status} numbered={isIssuer}>
+            {doc ? (
               <>
+                <p className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="rounded-full bg-line px-2.5 py-0.5 font-medium text-ink">{STATUS_LABEL[doc.status]}</span>
+                  {doc.cert_no && <span className="font-mono text-muted">{doc.cert_no}</span>}
+                </p>
+                {actions.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {actions.map((target) => (
+                      <Button
+                        key={target}
+                        variant={target === 'Published' ? 'primary' : 'secondary'}
+                        onClick={() => onTransition(target)}
+                        disabled={setStatus.isPending}
+                      >
+                        {target === 'Published' && <ShieldCheck className="h-4 w-4" />}
+                        {target === 'Revoked' && <ShieldX className="h-4 w-4" />}
+                        {target === 'Pending HR' && <Send className="h-4 w-4" />}
+                        {target === 'Draft' && <Undo2 className="h-4 w-4" />}
+                        {ACTION_LABEL[target]}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted">Tidak ada tindakan untukmu saat ini.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted">
+                Simpan draf dulu — tombol untuk mengajukan atau menerbitkan muncul setelah sertifikat tersimpan.
+              </p>
+            )}
+          </SectionCard>
+        )}
+
+        {/* ---------- 4 · view and share ---------- */}
+        <SectionCard section={sec.share} numbered={isIssuer}>
+          {doc && canDownload(doc) ? (
+            <>
+              <div className="mb-4 flex flex-wrap gap-2">
                 <a href={certificateApi.certificatePdfUrl(doc.name, true)} target="_blank" rel="noopener"
                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700">
                   <Eye className="h-4 w-4" /> Lihat sertifikat
@@ -278,190 +513,24 @@ export default function Certificate() {
                     onClick={() => { navigator.clipboard?.writeText(doc.verify_url!); toast('success', 'Tautan verifikasi disalin.') }}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium text-muted transition hover:text-ink"
                   >
-                    <Link2 className="h-4 w-4" /> Salin tautan
+                    <Link2 className="h-4 w-4" /> Salin tautan verifikasi
                     <InfoDot term="qr" lookup={certHelp} />
                   </button>
                 )}
-              </>
-            )}
-          </div>
-        }
-      />
-
-      {doc?.status === 'Revoked' && doc.revoke_reason && (
-        <p className="mb-5 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
-          Dicabut {doc.revoked_on}: {doc.revoke_reason}
-        </p>
-      )}
-
-      {/* Issuers only: an intern opening their own certificate has nothing to do here. */}
-      {access.data?.can_issue && <StepsTile
-        steps={certificateSteps(
-          doc ? { status: doc.status, rubric } : null,
-          doc ? doc.is_hr : !!access.data?.is_hr,
-        )}
-      />}
-
-      {doc && canDownload(doc) && (
-        <Section title="Sertifikat" divider={false}>
-          <iframe
-            src={certificateApi.certificatePdfUrl(doc.name, true)}
-            title="Sertifikat"
-            className="mb-6 aspect-[297/210] w-full rounded-2xl border border-line bg-white"
-          />
-        </Section>
-      )}
-
-      {/* ---------- the two scores, side by side, never merged ---------- */}
-      <BentoGrid>
-        <ScoreTile
-          title="Nilai Kinerja" score={autoScore} grade={autoGrade} term="dua-nilai"
-          hint="Dihitung otomatis dari tugas, ketepatan waktu, kehadiran, poin dan pembelajaran."
-        />
-        <ScoreTile
-          title="Nilai Penilaian" score={liveRubric} grade={rubricGrade} term="kriteria-kosong"
-          hint={frozen ? 'Penilaian pembimbing.' : `${progress.done}/${progress.total} kriteria terisi.`}
-        />
-      </BentoGrid>
-
-      {!frozen && (
-        <p className="mt-4 flex items-center rounded-xl bg-line/50 p-3 text-xs leading-relaxed text-muted">
-          Nilai Kinerja masih dihitung ulang setiap kali halaman ini dibuka. Angkanya dibekukan saat HR menerbitkan.
-          <InfoDot term="nilai-berubah" lookup={certHelp} />
-        </p>
-      )}
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        {/* ---------- left: the objective numbers ---------- */}
-        <Section title="Rincian Nilai Kinerja" divider={false}>
-          <Breakdown components={components} />
-        </Section>
-
-        {/* ---------- right: the leader's judgement, entered beside them on purpose ---------- */}
-        <Section
-          title={<span className="inline-flex items-center">Penilaian Pembimbing<InfoDot term="kriteria-kosong" lookup={certHelp} /></span>}
-          divider={false}
-        >
-          <p className="mb-3 text-xs text-muted">
-            Kosongkan kriteria yang tidak dinilai — yang kosong diabaikan, bukan dihitung nol.
-          </p>
-          <div className="flex flex-col gap-3">
-            {rubric.map((r, i) => (
-              <div key={r.key} className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-ink">
-                    {r.label}<span className="ml-1.5 text-xs text-muted">bobot {r.weight}</span>
-                  </p>
-                  {editable ? (
-                    <input
-                      className={clsx(field, 'mt-1.5 text-xs')} placeholder="Catatan (opsional)"
-                      value={r.comment}
-                      onChange={(e) => setRubric((rows) => rows.map((x, j) => (j === i ? { ...x, comment: e.target.value } : x)))}
-                    />
-                  ) : r.comment ? (
-                    <p className="mt-0.5 text-xs text-muted">{r.comment}</p>
-                  ) : null}
-                </div>
-                {editable ? (
-                  <input
-                    type="number" min={0} max={100} inputMode="numeric"
-                    aria-label={`Nilai ${r.label}`}
-                    className={clsx(field, 'w-24 shrink-0 text-right tabular-nums')}
-                    value={draftText[r.key] ?? (r.score === null ? '' : String(r.score))}
-                    onChange={(e) => setDraftText((d) => ({ ...d, [r.key]: e.target.value }))}
-                    onBlur={(e) => {
-                      // Clamp on commit, never per keystroke.
-                      const v = clampScore(e.target.value)
-                      setRubric((rows) => rows.map((x, j) => (j === i ? { ...x, score: v } : x)))
-                      setDraftText((d) => { const n = { ...d }; delete n[r.key]; return n })
-                    }}
-                  />
-                ) : (
-                  <span className="w-24 shrink-0 text-right text-sm tabular-nums text-ink">
-                    {r.score === null ? '—' : r.score}
-                  </span>
-                )}
               </div>
-            ))}
-          </div>
-        </Section>
-      </div>
-
-      {/* ---------- identity ---------- */}
-      <Section title="Data sertifikat">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <span className={label}>Peserta magang</span>
-            {isNew ? (
-              <SearchableSelect
-                value={form.intern}
-                onChange={(v) => setForm((f) => ({ ...f, intern: v, project: '' }))}
-                options={internOptions}
-                placeholder="Pilih peserta magang"
+              <iframe
+                src={certificateApi.certificatePdfUrl(doc.name, true)}
+                title="Sertifikat"
+                className="aspect-[297/210] w-full rounded-xl border border-line bg-white"
               />
-            ) : (
-              <p className="text-sm font-medium text-ink">{doc?.intern_name}</p>
-            )}
-          </div>
-
-          <div>
-            <span className={label}>Proyek (opsional)</span>
-            {editable ? (
-              <SearchableSelect
-                value={form.project}
-                onChange={(v) => setForm((f) => ({ ...f, project: v }))}
-                options={projectOptions}
-                placeholder="Seluruh masa magang"
-                allowClear
-              />
-            ) : (
-              <p className="text-sm text-ink">{doc?.project_name || 'Seluruh masa magang'}</p>
-            )}
-          </div>
-
-          <div>
-            <span className={label}>Posisi</span>
-            {editable ? (
-              <input
-                className={field} value={form.position} placeholder="mis. Frontend Developer Intern"
-                onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
-              />
-            ) : (
-              <p className="text-sm text-ink">{doc?.position || '—'}</p>
-            )}
-          </div>
-
-          {(['period_start', 'period_end'] as const).map((k) => (
-            <div key={k}>
-              <span className={label}>{k === 'period_start' ? 'Mulai magang' : 'Selesai magang'}</span>
-              {editable ? (
-                <DatePicker value={form[k]} onChange={(v: string) => setForm((f) => ({ ...f, [k]: v }))} />
-              ) : (
-                <p className="text-sm text-ink">{doc?.[k]}</p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4">
-          <span className={label}>Catatan pembimbing</span>
-          {editable ? (
-            <textarea
-              className={clsx(field, 'min-h-[90px] resize-y')} value={form.summary}
-              placeholder="Kalimat singkat yang akan dicetak di sertifikat."
-              onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
-            />
+            </>
           ) : (
-            <p className="text-sm text-ink">{doc?.summary || '—'}</p>
+            <p className="text-sm text-muted">
+              {doc?.status === 'Revoked' ? sec.share.desc : 'PDF dan QR baru tersedia setelah HR menerbitkan sertifikat ini.'}
+            </p>
           )}
-        </div>
-
-        {doc && doc.status !== 'Published' && (
-          <p className="mt-4 text-xs text-muted">
-            PDF dan QR baru tersedia setelah HR menerbitkan sertifikat ini.
-          </p>
-        )}
-      </Section>
+        </SectionCard>
+      </div>
     </Page>
   )
 }
