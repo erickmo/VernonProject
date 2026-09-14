@@ -1,6 +1,37 @@
 import { describe, it, expect } from 'vitest'
-import { planOnlyOn, buildNext } from './planDay'
+import { planOnlyOn, buildNext, sortTodoCards } from './planDay'
 import { addDaysISO, todayISO } from './format'
+import type { ProjectItem } from './types'
+
+// Todo-card list order (todo p9is7hu28u): AI running → focused → estimate ascending.
+describe('sortTodoCards', () => {
+  const t = (name: string, estimated: number, over: Partial<ProjectItem> = {}) =>
+    ({ name, estimated, deadline: null, work_mode: 'AI', ai_phase: 3, ...over }) as ProjectItem
+  const names = (l: ProjectItem[]) => l.map((x) => x.name)
+
+  it('AI running first, then focused in focus-list order, then estimate ascending', () => {
+    const list = [
+      t('big', 90),
+      t('small', 15),
+      t('focusA', 60),
+      t('ai', 120, { ai_in_progress: true }),
+      t('focusC', 5),
+      t('mid', 30),
+    ]
+    expect(names(sortTodoCards(list, ['focusC', 'focusA']))).toEqual(['ai', 'focusC', 'focusA', 'small', 'mid', 'big'])
+  })
+
+  it('a stale ai_in_progress on a human todo does not float it (isAiWorking)', () => {
+    const list = [t('quick', 10), t('human', 50, { work_mode: 'Human', ai_phase: 0, ai_in_progress: true })]
+    expect(names(sortTodoCards(list, []))).toEqual(['quick', 'human'])
+  })
+
+  it('does not mutate its input', () => {
+    const list = [t('b', 20), t('a', 10)]
+    sortTodoCards(list, [])
+    expect(names(list)).toEqual(['b', 'a'])
+  })
+})
 
 // planOnlyOn backs the 1-9 hover shortcuts on a todo card: put this todo's whole
 // plan on ONE day. The spec says "(and delete other plan)" but in the same breath

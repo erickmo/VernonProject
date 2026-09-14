@@ -21,7 +21,7 @@ import { deepLink } from '@/lib/notifications'
 import { DEEP_LINK_ROUTES } from '@web/lib/deepLinkRoutes'
 import { useFocusOrder } from '@/hooks/useFocusTimer'
 import { formatEstimate, todayISO, byAllocationAsc, byDeadlineAsc, byDeadlineDesc, seenRange } from '@/lib/format'
-import { focusedFirst } from '@/lib/planDay'
+import { sortTodoCards } from '@/lib/planDay'
 import { ACTION_GROUPS, GROUP_ACCENT, MOBILE_ONLY, type ActionItem } from '@/lib/actions'
 import { useHoldFeedback } from '@/hooks/useHoldFeedback'
 import { MeetingReminder, upcomingMeetings } from '@/components/MeetingReminder'
@@ -391,7 +391,7 @@ export default function Home() {
     const isToday = (t: ProjectItem) => allocOn(t, (d) => d === todayStr)
     const isPast = (t: ProjectItem) => allocOn(t, (d) => d < todayStr)
     return {
-      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusOrder),
+      today: sortTodoCards(filteredActive.filter(isToday), focusOrder),
       past: filteredActive.filter((t) => !isToday(t) && isPast(t)).slice().sort(byDeadlineAsc),
       upcoming: filteredActive
         .filter((t) => !isToday(t) && !isPast(t) && allocOn(t, (d) => d > todayStr))

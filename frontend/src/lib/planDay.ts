@@ -1,6 +1,6 @@
 import type { ProjectItem } from './types'
-import { matchProjectItem } from './filters'
-import { addDaysISO } from './format'
+import { isAiWorking, matchProjectItem } from './filters'
+import { addDaysISO, byEstimatedAsc } from './format'
 
 export type Alloc = { date: string; minutes: number; note?: string }
 
@@ -90,16 +90,18 @@ export function moveYesterdayToToday(allocations: Alloc[], yesterday: string, to
   return [...rest, { date: today, minutes: todayMinutes }]
 }
 
-// Focused todos float to the top, in the user's own drag-to-reorder focus-list
-// order (see useFocusOrder); the rest keep their input order.
-export function focusedFirst(list: ProjectItem[], focusedOrder: string[]): ProjectItem[] {
-  if (!focusedOrder.length) return list
+// Todo-card list order: (1) todos an AI agent is running right now (isAiWorking),
+// (2) focused todos, in the user's own drag-to-reorder focus-list order (see
+// useFocusOrder), (3) the rest by estimate ascending (deadline tiebreak).
+export function sortTodoCards(list: ProjectItem[], focusedOrder: string[]): ProjectItem[] {
   const rank = new Map(focusedOrder.map((id, i) => [id, i]))
-  const yes: ProjectItem[] = []
-  const no: ProjectItem[] = []
-  for (const t of list) (rank.has(t.name) ? yes : no).push(t)
-  yes.sort((a, b) => rank.get(a.name)! - rank.get(b.name)!)
-  return [...yes, ...no]
+  const focusRank = (t: ProjectItem) => rank.get(t.name) ?? focusedOrder.length
+  return list
+    .slice()
+    .sort(
+      (a, b) =>
+        Number(isAiWorking(b)) - Number(isAiWorking(a)) || focusRank(a) - focusRank(b) || byEstimatedAsc(a, b),
+    )
 }
 
 // Auto-fill today's plan toward the daily minimum. Base = every today-deadline

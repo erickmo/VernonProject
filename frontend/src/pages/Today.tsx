@@ -56,9 +56,9 @@ import { MeetingSheet } from '@/components/MeetingSheet'
 import CheerPop from '@/components/CheerPop'
 import type { MeetingListItem } from '@/lib/types'
 import { useFocusOrder } from '@/hooks/useFocusTimer'
-import { focusedFirst } from '@/lib/planDay'
+import { sortTodoCards } from '@/lib/planDay'
 import { matchProjectItem } from '@/lib/filters'
-import { byAllocationAsc, byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
+import { byDeadlineAsc, byDeadlineDesc, formatEstimate, formatEstimateRatio, todayISO } from '@/lib/format'
 import type { ProjectItem, DoneItem } from '@/lib/types'
 
 function greeting() {
@@ -311,7 +311,7 @@ export default function Today() {
     const isToday = (t: ProjectItem) => allocOn(t, (d) => d === todayStr)
     const isPast = (t: ProjectItem) => allocOn(t, (d) => d < todayStr)
     return {
-      today: focusedFirst(filteredActive.filter(isToday).slice().sort(byAllocationAsc), focusOrder),
+      today: sortTodoCards(filteredActive.filter(isToday), focusOrder),
       past: filteredActive.filter((t) => !isToday(t) && isPast(t)).slice().sort(byDeadlineAsc),
       upcoming: filteredActive
         .filter((t) => !isToday(t) && !isPast(t) && allocOn(t, (d) => d > todayStr))
