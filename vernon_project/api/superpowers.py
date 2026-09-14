@@ -726,6 +726,12 @@ def cast_vote(ratee, superpower, score):
 	recognition points, and return the trait's updated aggregate."""
 	_require_login()
 	voter = frappe.session.user
+	# User ids are case-insensitive in the DB (MO@ finds mo@), so resolve the stored
+	# id first — the self-vote guard and _recognition_credit's idempotency key both
+	# compare in Python, where a case variant would slip past.
+	ratee = frappe.db.get_value("User", ratee, "name")
+	if not ratee:
+		frappe.throw("Unknown user.", frappe.DoesNotExistError)
 	if ratee == voter:
 		frappe.throw("You cannot vote on yourself.")
 	score = cint(score)
