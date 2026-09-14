@@ -106,19 +106,25 @@ class TestAuditedWriteToolsDocumentTheirArguments(unittest.TestCase):
             for arg in self._optional_args(tool["signature"]):
                 self.assertIn(arg, doc, f"{method}: optional arg {arg!r} is undocumented")
 
-    def test_the_destructive_defaults_are_spelled_out(self):
-        """Four arguments do NOT mean "leave as is" when omitted. An agent that
-        assumes they do will strip a user's roles, re-enable a disabled account,
-        unpublish a live banner, or wipe a child table. Say so, or nobody knows."""
+    def test_omission_is_documented_as_safe_on_the_repaired_arguments(self):
+        """roles, enabled and published used to be written on every call, so
+        omitting one stripped a user's roles, re-enabled a disabled account, or
+        unpublished a live banner. They are guarded now — and the descriptions have
+        to SAY they are guarded, because an agent that still believes the old
+        behaviour will keep sending defensive values it no longer needs, and an
+        agent that never knew it cannot tell [] from "not editing roles"."""
         admin = self._tool("vernon_project.api.employee_admin.save_user_with_profile")["doc"]
-        self.assertIn("STRIPS EVERY VERNON ROLE", admin)
-        self.assertIn("RE-ENABLES", admin)
-
-        profile = self._tool("vernon_project.api.mobile.update_my_profile")["doc"]
-        self.assertIn("REPLACES the whole table", profile)
+        self.assertIn('EVERY argument means "leave as is" when omitted', admin)
+        self.assertIn("send [] to clear them", admin)
 
         ann = self._tool("vernon_project.api.announcement.save_announcement")["doc"]
-        self.assertIn("DEFAULTS TO 0", ann)
+        self.assertIn('Omitted means "leave as is"', ann)
+
+    def test_the_replace_not_append_child_tables_stay_flagged(self):
+        """This one is NOT a bug and was not changed: present means replace. It is
+        the wrapper in api.ts that has to omit them, and its comment says so."""
+        profile = self._tool("vernon_project.api.mobile.update_my_profile")["doc"]
+        self.assertIn("REPLACES the whole table", profile)
 
     def test_request_exception_warns_that_failures_arrive_as_200(self):
         """Its refusals are a normal 200 with status:"error", so a caller that only
