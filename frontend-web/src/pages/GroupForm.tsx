@@ -21,6 +21,7 @@ import {
   canManageGroups,
 } from '@/hooks/useData'
 import type { GroupLevel, ScoringGroupPayload } from '@/lib/types'
+import { GROUP_TYPES, GROUP_TYPE_HINT, GROUP_TYPE_LABELS } from '@/lib/groupType'
 
 const field =
   'w-full rounded-xl border border-line px-3 py-2 text-sm text-ink placeholder:text-muted bg-hover/[0.04] focus:border-brand-600 focus:outline-none'
@@ -76,6 +77,7 @@ export default function GroupForm() {
   const [form, setForm] = useState<FormState>({
     group_name: '',
     description: '',
+    group_type: '',
     base_rate_per_minute: 1,
     late_penalty: 0,
     early_bonus: 0,
@@ -92,6 +94,7 @@ export default function GroupForm() {
       setForm({
         group_name: existing.group_name,
         description: existing.description ?? '',
+        group_type: existing.group_type ?? '',
         base_rate_per_minute: existing.base_rate_per_minute ?? 1,
         late_penalty: existing.late_penalty ?? 0,
         early_bonus: existing.early_bonus ?? 0,
@@ -367,6 +370,34 @@ export default function GroupForm() {
                   />
                 )}
               </Field>
+
+              <Field label="Group type" hint={GROUP_TYPE_HINT}>
+                {(id) => (
+                  <select
+                    id={id}
+                    className={field}
+                    value={form.group_type ?? ''}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, group_type: e.target.value }))
+                      setDirty(true)
+                    }}
+                  >
+                    {GROUP_TYPES.map((t) => (
+                      <option key={t || 'standard'} value={t}>
+                        {GROUP_TYPE_LABELS[t]}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+              {form.group_type && linkedTodos && linkedTodos.length > 0 && (
+                // Mandatory from the next save onwards for every todo already in
+                // the group, not only new ones — show the count before Save.
+                <p className="-mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  {linkedTodos.length} existing {linkedTodos.length === 1 ? 'todo' : 'todos'} in this group will
+                  require the brief on their next save.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
