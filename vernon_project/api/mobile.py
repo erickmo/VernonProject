@@ -5210,14 +5210,19 @@ def list_transfer_users():
 
 @frappe.whitelist()
 def transfer_tasks(from_user, to_user, project=None, dry_run=0):
-	"""Reassign one user's open Project Todos to another (all projects, or one).
+	"""Reassign one user's Planned Project Todos to another (all projects, or one).
 
-	Open = status not in TERMINAL_STATUSES; completed/cancelled stay put as
-	historical record. Atomic team gate: if to_user is not on the Project Team
-	of any affected project, the whole transfer is refused and nothing moves.
-	dry_run=1 returns {count, blocked_projects} without writing.
+	Only Planned todos move. Once a todo is Done / Checked By PL its assignee is
+	frozen and its approval credits whoever holds it, so finished work stays with
+	the person who did it; completed/cancelled stay put as historical record. A
+	priority that would overfill to_user's daily slots is moved without its
+	priority flag (listed in `deprioritized`). Atomic team gate: if to_user is not
+	on the Project Team of any affected project, the whole transfer is refused and
+	nothing moves. dry_run=1 returns {count, blocked_projects} without writing.
 	"""
-	from vernon_project.user_offboarding import TERMINAL_STATUSES
+	from vernon_project.vernon_project.doctype.project_todo.project_todo import (
+		PLANNED, reassign_planned_todo,
+	)
 
 	_require_system_manager()
 	from_user = (from_user or "").strip()
@@ -5235,7 +5240,7 @@ def transfer_tasks(from_user, to_user, project=None, dry_run=0):
 	if project and not frappe.db.exists("Project", project):
 		frappe.throw("Unknown project")
 
-	filters = {"assigned_to": from_user, "status": ["not in", TERMINAL_STATUSES]}
+	filters = {"assigned_to": from_user, "status": PLANNED}
 	if project:
 		filters["project"] = project
 	todos = frappe.get_all("Project Todo", filters=filters, fields=["name", "project"])
@@ -5260,13 +5265,12 @@ def transfer_tasks(from_user, to_user, project=None, dry_run=0):
 			f"{to_user} is not on the Project Team of: " + ", ".join(blocked_projects)
 		)
 
-	# Raw update mirrors user_offboarding: intended admin override, skips
-	# re-running point-ledger/recurrence hooks (open tasks have 0 earned).
+	# Raw update mirrors user_offboarding: intended admin override that skips the
+	# point-ledger/recurrence hooks; reassign_planned_todo keeps the priority-slot cap.
 	# Recurrence still follows — next-occurrence reads assigned_to fresh from DB.
-	for t in todos:
-		frappe.db.set_value("Project Todo", t.name, "assigned_to", to_user)
+	deprioritized = [t.name for t in todos if reassign_planned_todo(t.name, to_user)]
 	frappe.db.commit()
-	return {"moved": len(todos)}
+	return {"moved": len(todos), "deprioritized": deprioritized}
 
 
 EDU_LEVELS = ("SD", "SMP", "SMA/SMK", "D1", "D2", "D3", "D4", "S1", "S2", "S3")
