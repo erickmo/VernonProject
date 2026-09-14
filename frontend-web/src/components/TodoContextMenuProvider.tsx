@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronRight } from 'lucide-react'
 import type { ProjectItem } from '@/lib/types'
+import { flipSubmenu, placeCursorMenu, shiftIntoView } from '@/lib/menuPlacement'
 import {
   TodoMenuContextProvider,
   useTodoMenuGroups,
@@ -24,6 +25,9 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
   const [hovered, setHovered] = useState<string | null>(null)
   const targetRef = useRef<ProjectItem | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const subRef = useRef<HTMLDivElement>(null)
+  // px the open fly-out is lifted by so its bottom stays on screen (0 = fits).
+  const [subShift, setSubShift] = useState(0)
 
   // Overlays (platform-specific, opened from the shared menu model).
   const [meetingOpen, setMeetingOpen] = useState(false)
@@ -77,13 +81,42 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeMenu()
     }
+    // The menu is anchored to a cursor POINT in viewport coords, so once the page
+    // scrolls that point no longer marks the card it was opened on — it just hangs
+    // there. Close, like every native context menu. Capture phase so a scrolling
+    // container counts too; scrolling inside the menu itself does not.
+    const onScroll = (e: Event) => {
+      if (menuRef.current?.contains(e.target as Node)) return
+      closeMenu()
+    }
+    // A resize (window, zoom, mobile URL bar, rotation) only changes the CLAMP, so
+    // re-place instead of closing: same coords, fresh render.
+    const onResize = () => setCoords((c) => (c ? { ...c } : c))
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onResize)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onResize)
     }
   }, [coords])
+
+  // The fly-out opens level with its group row, so a row low in the viewport puts
+  // its items off the bottom edge. Measure both and lift. offsetHeight ignores the
+  // transform we apply and the row's rect ignores its child's, so this settles in
+  // one pass — no measure/apply loop.
+  useLayoutEffect(() => {
+    const el = subRef.current
+    const row = el?.parentElement
+    if (!el || !row) {
+      setSubShift(0)
+      return
+    }
+    setSubShift(shiftIntoView(row.getBoundingClientRect().top, el.offsetHeight, window.innerHeight))
+  }, [hovered, coords])
 
   const run = (it: TodoMenuItem) => {
     it.onClick()
@@ -93,12 +126,12 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
   // Clamp to viewport, then decide which side the fly-out opens toward.
   let popup = null
   if (coords) {
+    // Rows are a fixed height and truncate rather than wrap, so this over-estimates
+    // by a few px per group — the safe direction. No overflow-y here on purpose: a
+    // scroll container would clip the absolutely-positioned fly-outs.
     const estH = groups.length * 40 + 12
-    let x = coords.x
-    let y = coords.y
-    if (x + MENU_W > window.innerWidth) x = Math.max(8, x - MENU_W)
-    if (y + estH > window.innerHeight) y = Math.max(8, window.innerHeight - estH - 8)
-    const flipSub = x + MENU_W + SUB_W > window.innerWidth
+    const { left: x, top: y } = placeCursorMenu(coords, window.innerWidth, window.innerHeight, MENU_W, estH)
+    const flipSub = flipSubmenu(x, MENU_W, SUB_W, window.innerWidth)
 
     popup = createPortal(
       <div
@@ -125,7 +158,9 @@ export function TodoContextMenuProvider({ children }: { children: ReactNode }) {
             </button>
             {hovered === g.key && (
               <div
-                className={`absolute top-0 w-56 animate-fade-in rounded-xl border border-line bg-surface py-1 shadow-card ${
+                ref={subRef}
+                style={{ transform: `translateY(${subShift}px)` }}
+                className={`absolute top-0 max-h-[calc(100vh-16px)] w-56 overflow-y-auto animate-fade-in rounded-xl border border-line bg-surface py-1 shadow-card ${
                   flipSub ? 'right-full mr-1' : 'left-full ml-1'
                 }`}
               >
