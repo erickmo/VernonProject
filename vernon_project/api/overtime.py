@@ -26,10 +26,9 @@ def list_overtime(employee=None, status=None, year=None):
 
     Scope is implicit and silent. An HR Manager or System Manager may pass
     `employee` to read someone else's entries, or omit it to read EVERYONE's.
-    Anyone else is forced to their own rows and their `employee` argument is
-    IGNORED rather than refused — so a non-manager asking for a colleague's
-    overtime gets a successful 200 containing their own entries, which is easy to
-    misread as "that colleague has the same overtime as me".
+    Anyone else is forced to their own rows; passing an `employee` other than
+    themselves is REFUSED with frappe.PermissionError, not silently answered with
+    their own entries.
 
     Returns a BARE LIST ordered by date desc, with no paging and no total.
 
@@ -45,6 +44,8 @@ def list_overtime(employee=None, status=None, year=None):
         if employee:
             filters["employee"] = employee
     else:
+        if employee and employee != frappe.session.user:
+            frappe.throw(frappe._("Kamu hanya boleh membaca lembur milikmu sendiri."), frappe.PermissionError)
         filters["employee"] = frappe.session.user
     if status:
         filters["status"] = status

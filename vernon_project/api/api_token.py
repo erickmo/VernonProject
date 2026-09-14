@@ -70,18 +70,33 @@ def get_api_token_status():
 	last 4 characters of the API key and nothing more; the secret is never returned
 	by this endpoint, so what comes back cannot be used to authenticate.
 
-	`mcp_connector_url` is the exception and the payload is NOT the same for every
-	caller: it is populated only for a System Manager and is None for everyone else.
-	When populated it contains a live token for the remote MCP server, which runs
-	every call as the SERVER's own API key rather than the caller's — so that URL is
-	admin-equivalent access, not a convenience link. Treat it as a credential: never
-	log it, echo it into a ticket, or hand it to another user."""
+	`can_reveal_mcp` is true only for a System Manager; the admin-only connector URL
+	itself is NOT returned here — call `reveal_mcp_connector_url` for it, so the live
+	server-key token never sits in a status payload fetched on page load."""
 	key = frappe.db.get_value("User", _self(), "api_key")
 	return {
 		"has_token": bool(key),
 		"masked_key": _mask_key(key),
-		"mcp_connector_url": _mcp_connector_url(),
+		# 5acr99ev9t hardening: the admin-equivalent connector URL no longer rides in
+		# this status payload (fetched on every profile load). We return only whether
+		# the caller MAY reveal it; the URL itself comes from reveal_mcp_connector_url
+		# on a deliberate call.
+		"can_reveal_mcp": "System Manager" in frappe.get_roles(),
 	}
+
+
+@frappe.whitelist(methods=["POST"])
+def reveal_mcp_connector_url():
+	"""The admin-only MCP connector URL — System Manager only, deliberate action.
+
+	Split out of get_api_token_status so the live server-key token (admin-equivalent
+	access; the remote MCP server runs every call as its OWN API key) is never in a
+	status payload fetched on page load. Returns `{"url": <str|None>}`; None if the
+	server's .env.http is unreadable. Anyone but a System Manager gets
+	frappe.PermissionError. Treat the URL as a credential: never log or forward it."""
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(frappe._("System Manager only."), frappe.PermissionError)
+	return {"url": _mcp_connector_url()}
 
 
 @frappe.whitelist(methods=["POST"])

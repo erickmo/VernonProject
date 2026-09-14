@@ -12,11 +12,11 @@ def get_app_releases(platform=None):
     Optional arguments:
 
     * `platform` — "Mobile" or "Web". Either one returns the rows targeted at that
-      platform PLUS the rows marked "Both". Any other value, including omitting it,
-      is not an error and not a rejection: the filter is simply skipped and every
-      published release for every platform comes back. So a typo here silently
-      widens the result rather than narrowing it."""
+      platform PLUS the rows marked "Both". Omitting it (None) returns every
+      platform's releases; any OTHER value RAISES rather than silently widening."""
     filters = {"published": 1}
+    if platform is not None and platform not in ("Mobile", "Web"):
+        frappe.throw(frappe._("Platform tidak dikenal: {0}").format(platform))
     if platform in ("Mobile", "Web"):
         # rows targeted at this platform OR at Both
         rows = frappe.get_all(

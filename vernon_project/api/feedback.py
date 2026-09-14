@@ -107,13 +107,13 @@ def list_feedback(status=None):
 	Optional arguments:
 
 	* `status` — one of "New", "Reviewed", "Resolved" or "Rejected". CAUTION: an
-	  unrecognised value is not an error and does not match nothing — the filter is
-	  dropped entirely and EVERY row comes back. A typo here widens the result to
-	  the full list rather than emptying it, so check `status` on the rows rather
-	  than trusting that the filter applied."""
+	  unrecognised value RAISES (frappe.ValidationError) rather than silently
+	  widening the result to the full list."""
 	_require_admin()
 	filters = {}
-	if status and status in STATUSES:
+	if status:
+		if status not in STATUSES:
+			frappe.throw(frappe._("Filter status tidak dikenal: {0}").format(status))
 		filters["status"] = status
 
 	rows = frappe.get_all(

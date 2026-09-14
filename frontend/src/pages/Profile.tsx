@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useBoot, canManageGroups, canManageBrands, canManageCompanies, canManageBusinessUnits, canManageUsers, canManageBadges, canManageAttendance, canManageResources, canManageIncome, canManageLms, canManageRecruitment, canSeeHrHub, isSystemManager, usePasskeys, useEnrollPasskey, useRevokePasskey, useApiTokenStatus, useGenerateApiToken, useRevokeApiToken, useAvatarCatalog, useGamification, useClaimDaily, useFocusMode, useSaveMyProfile } from '@/hooks/useData'
 import { AvatarScene } from '@/avatar/AvatarScene'
 import { useToast } from '@/components/Toast'
-import { CONNECTOR_STEPS, connectorUrlFor, copiedMessage, hasRealConnector } from '@/lib/mcpConnector'
+import { CONNECTOR_STEPS, connectorUrlFor, copiedMessage } from '@/lib/mcpConnector'
 import { useConfirm } from '@/components/Confirm'
 import { logout } from '@/lib/api'
 import { ChangePasswordSheet } from '@/components/ChangePasswordSheet'
@@ -610,17 +610,22 @@ function ApiTokenCard() {
   }
 
   // The real URL when we're allowed to have it, the placeholder otherwise.
-  const connectorUrl = connectorUrlFor(data?.mcp_connector_url)
-  const hasRealToken = hasRealConnector(data?.mcp_connector_url)
+  const hasRealToken = !!data?.can_reveal_mcp
+  const [revealedUrl, setRevealedUrl] = useState<string | null>(null)
+  const connectorUrl = connectorUrlFor(revealedUrl)
   // 5acr99ev9t: the connector link is admin-equivalent access (one static token,
   // every call runs as the server's own account), so it is not painted on screen
   // the moment the page loads — someone has to ask for it.
-  const [linkShown, setLinkShown] = useState(false)
+  const linkShown = revealedUrl !== null
+  const revealLink = async () => {
+    try { setRevealedUrl((await apiTokenApi.revealMcp()).url) }
+    catch { toast('error', 'Could not load the connector link') }
+  }
 
   const copyMcpUrl = async () => {
     try {
       await navigator.clipboard.writeText(connectorUrl)
-      toast('success', copiedMessage(data?.mcp_connector_url))
+      toast('success', copiedMessage(revealedUrl))
     } catch {
       toast('error', 'Could not copy')
     }
@@ -656,7 +661,7 @@ function ApiTokenCard() {
             </div>
           ) : (
             <button
-              onClick={() => setLinkShown(true)}
+              onClick={revealLink}
               className="mb-3 w-full rounded-xl border border-paper-edge bg-paper py-2 text-xs font-semibold text-brand-600 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900/40"
             >
               Show connector link

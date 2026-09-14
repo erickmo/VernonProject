@@ -1335,7 +1335,8 @@ export const passkeyApi = {
 const AT = 'vernon_project.api.api_token.'
 
 export const apiTokenApi = {
-  status: () => api.get<{ has_token: boolean; masked_key: string | null; mcp_connector_url: string | null }>(AT + 'get_api_token_status'),
+  status: () => api.get<{ has_token: boolean; masked_key: string | null; can_reveal_mcp: boolean }>(AT + 'get_api_token_status'),
+  revealMcp: () => api.post<{ url: string | null }>(AT + 'reveal_mcp_connector_url'),
   generate: () => api.post<{ api_key: string; api_secret: string }>(AT + 'generate_api_token'),
   revoke: () => api.post<{ ok: boolean }>(AT + 'revoke_api_token'),
 }

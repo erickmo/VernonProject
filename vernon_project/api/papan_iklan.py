@@ -150,8 +150,8 @@ def list_ads(ad_type=None, q=None, mine=0, limit_start=0, limit_page_length=30):
 	  "authored by the caller" and therefore drops the status filter entirely, so
 	  Fulfilled and Removed ads of the caller's own appear. It is a different list,
 	  not a narrowing of the first one, and the two can never be combined.
-	* `ad_type` — "Sell", "Buy" or "Rent". An unrecognised value is silently
-	  ignored and every type comes back, rather than matching nothing.
+	* `ad_type` — "Sell", "Buy" or "Rent". An unrecognised value RAISES rather
+	  than silently returning every type.
 	* `q` — substring search over title OR description, ANDed with the filters
 	  above. Whitespace-only is treated as absent.
 	* `limit_start` — row offset, default 0.
@@ -162,7 +162,9 @@ def list_ads(ad_type=None, q=None, mine=0, limit_start=0, limit_page_length=30):
 	start = frappe.utils.cint(limit_start)
 	page = frappe.utils.cint(limit_page_length) or 30
 	filters = {"author": user} if mine else {"status": "Active"}
-	if ad_type and ad_type in AD_TYPES:
+	if ad_type:
+		if ad_type not in AD_TYPES:
+			frappe.throw(frappe._("Jenis iklan tidak dikenal: {0}").format(ad_type))
 		filters["ad_type"] = ad_type
 
 	or_filters = None

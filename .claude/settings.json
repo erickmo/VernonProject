@@ -7,10 +7,17 @@
             "type": "command",
             "command": "/home/frappe/frappe-bench/apps/vernon_project/.claude/hooks/whats-new-reminder.sh",
             "timeout": 10,
-            "statusMessage": "Checking What's New…"
+            "statusMessage": "Checking What's New\u2026"
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_VernonProject-MCP__list_api_methods",
+      "Bash(tmux capture-pane *)",
+      "mcp__plugin_cloudflare_cloudflare-docs__search_cloudflare_documentation"
     ]
   }
 }
