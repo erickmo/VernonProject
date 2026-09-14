@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Megaphone, ExternalLink } from 'lucide-react'
 import { useActiveAnnouncements } from '@/hooks/useData'
 import type { ActiveAnnouncement } from '@/lib/types'
+import { isSafeUrl } from '@/lib/format'
 
 // Shared top-of-page ticker for BOTH frontends (/m and /w). A thin brand bar,
 // fixed to the very top, non-dismissible, rendering every active announcement in
@@ -15,7 +16,10 @@ function Segment({ a }: { a: ActiveAnnouncement }) {
   const text = <span className="px-1 font-medium">{a.message}</span>
   return (
     <span className="inline-flex items-center">
-      {a.link ? (
+      {/* isSafeUrl: the server's link check lives in the whitelisted API only, and a
+          direct REST write of an Announcement skips it — React 18 renders a
+          javascript: href as-is, so the ticker gates the scheme itself. */}
+      {a.link && isSafeUrl(a.link) ? (
         <a
           href={a.link}
           target="_blank"

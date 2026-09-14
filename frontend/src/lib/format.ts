@@ -227,6 +227,24 @@ export function styleFetchesRemote(css: string): boolean {
 // background, a video poster, and the click-tracking ping.
 const REMOTE_LOAD_ATTRS = new Set(['srcset', 'background', 'poster', 'ping'])
 
+// Attributes the browser follows as a URL: links, sources, SVG links, form targets.
+const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction'])
+const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
+
+// Allowlist, not blocklist: the browser's own URL parser resolves the scheme, so
+// every spelling it would execute ("java\tscript:", a leading control char,
+// vbscript:, data:) lands outside the list. The old /^\s*(javascript|data):/
+// blocklist let `[x](java&#9;script:...)` through: marked emits the entity
+// verbatim, DOMParser decodes it to a tab, and URL parsing strips the tab.
+// Relative paths and #anchors resolve against this origin, so they pass.
+export function isSafeUrl(url: string): boolean {
+  try {
+    return SAFE_PROTOCOLS.has(new URL(url, window.location.origin).protocol)
+  } catch {
+    return false
+  }
+}
+
 export function sanitizeHtml(html: string): string {
   if (!html) return ''
   // Parse into an INERT document (no browsing context): an <img>/<video> parsed via
@@ -243,7 +261,7 @@ export function sanitizeHtml(html: string): string {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase()
       if (name.startsWith('on') || REMOTE_LOAD_ATTRS.has(name)) el.removeAttribute(attr.name)
-      else if ((name === 'href' || name === 'src') && /^\s*(javascript|data):/i.test(attr.value)) {
+      else if (URL_ATTRS.has(name) && !isSafeUrl(attr.value)) {
         el.removeAttribute(attr.name)
       } else if (name === 'style' && styleFetchesRemote(attr.value)) {
         el.removeAttribute(attr.name)

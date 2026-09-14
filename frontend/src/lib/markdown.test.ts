@@ -114,6 +114,13 @@ describe('renderNoteMarkdown — security (brace: sanitizeHtml on the output)', 
     expect(html).not.toMatch(/href=["']?\s*data:/i)
   })
 
+  it('a scheme with an encoded tab inside (java&#9;script:) is not clickable either', () => {
+    // marked keeps the entity; DOMParser decodes it to a real tab, which a
+    // /^\s*javascript:/ blocklist misses and the browser's URL parser strips.
+    const html = renderNoteMarkdown('[x](java&#9;script:alert(1))')
+    expect(html).not.toMatch(/href=/i)
+  })
+
   it('a normal https:// link keeps its href and gets rel="noopener noreferrer"', () => {
     const html = renderNoteMarkdown('[click](https://example.com)')
     expect(html).toContain('href="https://example.com"')
