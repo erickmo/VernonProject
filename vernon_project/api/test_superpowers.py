@@ -246,6 +246,22 @@ class TestSuperpowers(unittest.TestCase):
 		frappe.set_user("Administrator")
 		self.assertEqual(self._rec_count(), 1)
 
+	def test_ratee_case_variant_is_the_same_user(self):
+		"""User ids are case-insensitive in the DB (Link fields resolve MO@ to mo@), but
+		the self-vote guard and the idempotent credit compared raw strings."""
+		voter = self._voter(0)
+		self._set_vote_points(2)
+		frappe.set_user(voter)
+		try:
+			with self.assertRaises(frappe.ValidationError):
+				cast_vote(voter.upper(), self.SPA, VOTE_MAX)  # self-vote in another case
+			cast_vote(RATEE, self.SPA, VOTE_MAX)
+			cast_vote(RATEE.upper(), self.SPA, VOTE_MAX)  # re-vote in another case → no extra mint
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(self._rec_count(), 1)
+		self.assertEqual(frappe.db.count("Point Ledger", {"user": voter, "source": "Recognition"}), 0)
+
 	def test_cast_vote_giver_capped_per_week(self):
 		"""2026-09-09 permission sweep: one voter crediting three DIFFERENT
 		ratees used to mint three uncapped Recognition rows -- the only
