@@ -2590,7 +2590,20 @@ def update_todo(
 	recurring_exception_behavior=None,
 ):
 	"""Edit a task's fields. Returns a clean status/message so the mobile UI can
-	show friendly feedback instead of a raw traceback."""
+	show friendly feedback instead of a raw traceback.
+
+	This docstring IS the MCP tool description (mcp_server/server.py scans every
+	@frappe.whitelist() in this package), so the flags an agent is expected to drive
+	are named here rather than left to be guessed from the signature.
+
+	``ai_in_progress`` (0/1) — set 1 when an AI session STARTS working on the task and
+	0 when it stops. It is what the "AI is working right now" animation on the card,
+	the web todo row and the detail drawer reads. It is NOT a fourth AI phase: the
+	ai_phase ladder tracks the PROMPT (tagged -> drafted -> human-confirmed) and only
+	moves forward, while this comes and goes with each run. Only a task tagged for AI
+	work (``work_mode`` AI or Both) accepts it — anything else throws — and a terminal
+	status clears it server-side, so finishing a task never leaves the flag stuck on.
+	"""
 	try:
 		user = frappe.session.user
 		project_detail = frappe.get_value("Project Todo", project_item, "project_detail")

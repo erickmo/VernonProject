@@ -58,5 +58,31 @@ class TestCallApiMethod(unittest.TestCase):
             self.assertEqual(srv.call_api_method(METHOD), {"created_todos": 0})
 
 
+
+
+class TestManifestDocumentsAiInProgress(unittest.TestCase):
+    """The scanned docstring IS the tool description an MCP client reads, so an
+    agent can only drive `ai_in_progress` if update_todo's docstring names it and
+    says what it means. This is what breaks if someone trims that docstring back
+    to its old one-liner — the flag would still work and no agent would know."""
+
+    def _doc(self, method):
+        return next(t["doc"] for t in srv._MANIFEST if t["method"] == method)
+
+    def test_update_todo_description_names_the_flag_and_its_gate(self):
+        doc = self._doc("vernon_project.api.mobile.update_todo")
+        self.assertIn("ai_in_progress", doc)
+        self.assertIn("work_mode", doc)  # the tag an agent must set first
+
+    def test_update_todo_description_does_not_call_it_a_phase(self):
+        # ir3j5rjmk6 asked whether this should become "AI tag = 4". It must not:
+        # the ladder is monotonic and this flag is not. Say so where agents read.
+        doc = self._doc("vernon_project.api.mobile.update_todo")
+        self.assertIn("NOT a fourth AI phase", doc)
+
+
+# NOTE: this must stay at the BOTTOM. It used to sit mid-file, and since the module
+# body runs top to bottom, every test class defined below it was never collected —
+# the file printed OK while silently skipping them.
 if __name__ == "__main__":
     unittest.main()

@@ -117,5 +117,34 @@ body { padding-top: var(--tk-h, 0px); }
 .tk-runner { animation: tk-runner 2.4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .tk-runner { animation: none; } }
 
+/* "AI is working" backdrop (AiWorkingBackdrop.tsx): a faint circuit grid, a cyan
+   scanline sweeping down the card, and the bot watermark breathing. Pure CSS on
+   purpose — no WebGL/3D library for card decoration. Every layer is decorative,
+   so all three stop under reduced-motion and the card keeps its text label. */
+.tk-grid {
+  background-image:
+    linear-gradient(to right, rgba(6, 182, 212, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(6, 182, 212, 0.12) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+@keyframes tk-scan {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(300%); }
+}
+.tk-scan {
+  background: linear-gradient(to bottom, transparent, rgba(34, 211, 238, 0.18), transparent);
+  animation: tk-scan 2.8s linear infinite;
+}
+/* rotate is part of the resting pose, so it has to be re-stated in every frame. */
+@keyframes tk-bob {
+  0%, 100% { transform: rotate(12deg) translateY(0); }
+  50% { transform: rotate(12deg) translateY(-6px); }
+}
+.tk-bob { animation: tk-bob 2.4s ease-in-out infinite; transform: rotate(12deg); }
+@media (prefers-reduced-motion: reduce) {
+  .tk-scan, .tk-bob { animation: none; }
+}
+
+
 /* Flat design: no elevation box-shadows anywhere (drop-shadow filters kept). */
 [class*="shadow"] { box-shadow: none; }

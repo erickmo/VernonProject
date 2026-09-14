@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import type { MouseEvent } from 'react'
-import { AlertTriangle, Play, Timer, Plus, Check } from 'lucide-react'
+import { AlertTriangle, Play, Timer, Plus, Check, Bot } from 'lucide-react'
 import {
   StatusCell,
   EditableAssigneeCell,
@@ -12,6 +12,7 @@ import { useTodoContextMenu } from '@/hooks/useTodoMenu'
 import { useToast } from '@/components/Toast'
 import { useSetTodoAllocations } from '@/hooks/useData'
 import { buildNext } from '@/lib/planDay'
+import { isAiWorking } from '@/lib/filters'
 import { formatEstimate, todayISO } from '@/lib/format'
 import { ListProgress } from '@web/components/PlanList'
 import type { ProjectItem } from '@/lib/types'
@@ -69,6 +70,18 @@ export const TODO_COLUMNS: Column<ProjectItem>[] = [
         >
           {r.to_do}
         </span>
+        {/* An agent is on this row right now. A table row has no card to wash in
+            colour, so the cue is a chip: the bot bobs (same keyframe as the card's
+            backdrop) and the words carry it when motion is off. */}
+        {isAiWorking(r) && (
+          <span
+            className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-cyan-100 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-cyan-800 ring-1 ring-cyan-400/60 dark:bg-cyan-500/20 dark:text-cyan-200"
+            title="AI sedang mengerjakan"
+          >
+            <Bot className="tk-bob h-3 w-3" />
+            AI jalan
+          </span>
+        )}
         {r.open_issues > 0 && (
           <span
             className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"

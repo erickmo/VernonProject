@@ -76,7 +76,8 @@ import { AutoApproveSegment } from '@/components/AutoApproveSegment'
 import { todoDuplicateInitial, todoFollowUpInitial } from '@/lib/duplicateTodo'
 import { FollowUpCheckDialog } from '@/components/FollowUpCheckDialog'
 import { AiPhaseBanner } from '@/components/AiPhaseBanner'
-import { AI_PHASES, aiPhaseOf } from '@/lib/filters'
+import { AI_PHASES, aiPhaseOf, isAiWorking } from '@/lib/filters'
+import { AiWorkingBackdrop } from '@/components/AiWorkingBackdrop'
 import { ISSUE_HELP, issueCounts, issueLabel, todoIssueInitial } from '@/lib/todoIssues'
 import { HelpSheet, InfoDot } from '@/components/HelpSheet'
 import type { ProjectItemDetail, TodoFile } from '@/lib/types'
@@ -1612,7 +1613,18 @@ const [followOpen, setFollowOpen] = useState(false)
           </span>
         </Link>
       )}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+      {/* The detail header is /m's equivalent of /w's todo drawer, so it carries the
+          same "an agent is on this" treatment: its own colder background plus the
+          animated backdrop. relative+overflow-hidden so the backdrop is clipped to
+          the rounded card. */}
+      <div
+        className={
+          isAiWorking(data)
+            ? 'relative overflow-hidden rounded-2xl border border-cyan-300 dark:border-cyan-400/50 bg-gradient-to-br from-cyan-50 via-white to-violet-50 dark:from-cyan-500/15 dark:via-slate-800 dark:to-violet-500/15 p-4 shadow-sm'
+            : 'rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm'
+        }
+      >
+          {isAiWorking(data) && <AiWorkingBackdrop />}
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {data.project_name}
           </p>
