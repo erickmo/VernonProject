@@ -163,18 +163,29 @@ def get_course(name):
 
 @frappe.whitelist()
 def enroll(course):
+	"""Serialized per user on the same lock complete_lesson takes, held across a
+	whole transaction — see complete_lesson for why releasing before commit let a
+	second call read "not enrolled" from a stale snapshot and insert a duplicate."""
 	_require_login()
 	user = frappe.session.user
 	if frappe.db.get_value("Course", course, "status") != "Published":
 		frappe.throw("Course not available")
-	existing = _enrollment(course, user)
-	if existing:
-		return {"ok": True, "name": existing.name}
-	doc = frappe.get_doc({
-		"doctype": "Course Enrollment", "course": course, "user": user,
-		"assigned": 0, "status": "In Progress",
-	}).insert(ignore_permissions=True)
-	return {"ok": True, "name": doc.name}
+	lock_key = f"vernon_lms:{user}"
+	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
+		frappe.throw("Busy, please retry", frappe.ValidationError)
+	try:
+		frappe.db.commit()  # fresh snapshot: see any enrollment committed before we got the lock
+		existing = _enrollment(course, user)
+		if existing:
+			return {"ok": True, "name": existing.name}
+		doc = frappe.get_doc({
+			"doctype": "Course Enrollment", "course": course, "user": user,
+			"assigned": 0, "status": "In Progress",
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()  # before release_lock, so the next caller sees this enrollment
+		return {"ok": True, "name": doc.name}
+	finally:
+		frappe.db.sql("select release_lock(%s)", lock_key)
 
 
 @frappe.whitelist()
@@ -186,7 +197,19 @@ def complete_lesson(course, lesson):
 	live (6gb7lcr41q-adjacent concurrency probe, 2026-09-10): 1 double-mint in
 	8 genuinely-concurrent trials, the other 7 either deadlocked or hit a
 	TimestampMismatchError on enr.save() -- so even short of a double-mint,
-	the endpoint was unreliable under ordinary double-tap/retry concurrency."""
+	the endpoint was unreliable under ordinary double-tap/retry concurrency.
+
+	The lock spans a whole transaction (same as open_task_crate): commit right
+	after taking it so every read below is a fresh snapshot, and commit before
+	releasing it so the next caller sees these rows. Releasing before commit left
+	the IMPLICIT enrollment below racing -- a second call reading its pre-commit
+	snapshot found no enrollment and inserted a duplicate for the same
+	(course, user), which nothing in the schema forbids.
+
+	ponytail: assign_course creates enrollments without this lock, so an admin
+	assignment racing a self-enrol can still duplicate. The unique index on
+	(course, user) is the backstop that covers every path -- see
+	patches/v1_0/course_enrollment_unique_index.py, which binds on migrate."""
 	_require_login()
 	user = frappe.session.user
 	if frappe.db.get_value("Course Lesson", lesson, "course") != course:
@@ -195,6 +218,7 @@ def complete_lesson(course, lesson):
 	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
 		frappe.throw("Busy, please retry", frappe.ValidationError)
 	try:
+		frappe.db.commit()  # fresh snapshot: see any completion committed before we got the lock
 		enr = _enrollment(course, user)
 		if not enr:
 			# Enrolling yourself here has to answer to the same gate as enroll():
@@ -215,6 +239,7 @@ def complete_lesson(course, lesson):
 			enr.append("lessons_done", {"lesson": lesson, "completed_on": now_datetime()})
 		awarded = _recompute(enr)
 		enr.save(ignore_permissions=True)
+		frappe.db.commit()  # before release_lock, so the next call sees this enrollment
 		return {
 			"ok": True, "progress_pct": enr.progress_pct,
 			"completed": enr.status == "Completed", "points_awarded": awarded,

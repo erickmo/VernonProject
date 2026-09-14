@@ -5,9 +5,10 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from vernon_project.api.lms import complete_lesson
+from vernon_project.tests.no_leak import NoLeakMixin
 
 
-class TestCompleteLessonRace(FrappeTestCase):
+class TestCompleteLessonRace(NoLeakMixin, FrappeTestCase):
 	"""6gb7lcr41q-adjacent concurrency probe (2026-09-10): complete_lesson had
 	no lock around its check-then-write critical section (_mint_points checks
 	Point Ledger existence, then inserts). Live-proved with two genuinely
@@ -16,7 +17,12 @@ class TestCompleteLessonRace(FrappeTestCase):
 	deadlocked or hit a TimestampMismatchError on enr.save() -- unreliable
 	even short of the double-mint. Fixed with the same get_lock/release_lock
 	pattern mobile.py already uses for spend/gami paths (vernon_lms:{user}).
-	complete_lesson had ZERO test coverage before this file (grepped)."""
+	complete_lesson had ZERO test coverage before this file (grepped).
+
+	NoLeakMixin because complete_lesson now commits inside the lock (the
+	enrollment-race fix): a real COMMIT escapes FrappeTestCase's rollback, so this
+	suite left its course, lesson and enrollment on the live site. The mixin holds
+	db.commit for the duration of each test, which puts the cleanup back in reach."""
 
 	def setUp(self):
 		frappe.set_user("Administrator")
