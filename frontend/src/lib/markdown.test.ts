@@ -179,4 +179,23 @@ describe('comments in markdown (81hvkl47n3)', () => {
   it('still renders legacy rich-text comments as before', () => {
     expect(renderComment('<p>lama <span data-mention="a@x.com">@A</span></p>')).toBe('<p>lama <span data-mention="a@x.com">@A</span></p>')
   })
+
+  // h1n29go5db, reported verbatim: "In Todo Comment, the image is showing
+  // ![](/files/Screenshot 2026-09-13 at 7.51.36 PMf1df4f.png) I want it to show
+  // the image directly". A space ends a bare markdown destination, so marked
+  // emits the source as paragraph text. These comments are already stored that
+  // way, so repairing them has to happen on the way out.
+  it('renders an already-stored image whose filename has spaces', () => {
+    const html = renderComment(toCommentContent('![](/files/Screenshot 2026-09-13 at 7.51.36 PMf1df4f.png)'))
+    expect(html).toContain('<img')
+    expect(html).toContain('/files/Screenshot%202026-09-13%20at%207.51.36%20PMf1df4f.png')
+    expect(html).not.toContain('![](')
+  })
+
+  it('still renders a spaceless image URL, and leaves prose brackets alone', () => {
+    expect(renderComment(toCommentContent('![](/files/53058894050.webp)'))).toContain(
+      '<img src="/files/53058894050.webp"',
+    )
+    expect(renderComment(toCommentContent('lihat (ini) dan [itu](https://x.example/a b)'))).toContain('(ini)')
+  })
 })
