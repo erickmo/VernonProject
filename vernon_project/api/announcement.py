@@ -21,6 +21,8 @@ def _clean_link(link):
 	link = (link or "").strip()
 	if not link:
 		return None
+	if any(ord(c) < 32 or ord(c) == 127 for c in link):
+		frappe.throw(_("Link must not contain control characters"))
 	if link.startswith(("http://", "https://", "/")):
 		return link
 	frappe.throw(_("Link must start with http://, https:// or /"))
