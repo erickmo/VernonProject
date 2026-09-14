@@ -120,6 +120,22 @@ AUDITED_READ_TOOLS = (
     "vernon_project.api.teguran.get_teguran_all",
     "vernon_project.api.certificate.list_certificates",
     "vernon_project.api.certificate.my_score",
+    # chunk 2: the recruitment surface (three of these answer Guest) and LMS.
+    "vernon_project.api.recruitment.list_open_jobs",
+    "vernon_project.api.recruitment.get_job",
+    "vernon_project.api.recruitment.check_can_apply",
+    "vernon_project.api.recruitment.list_openings",
+    "vernon_project.api.recruitment.get_opening",
+    "vernon_project.api.recruitment.list_applications",
+    "vernon_project.api.recruitment.get_application",
+    "vernon_project.api.recruitment.list_blacklist",
+    "vernon_project.api.recruitment.preview_score",
+    "vernon_project.api.lms.get_catalog",
+    "vernon_project.api.lms.get_course",
+    "vernon_project.api.lms.my_learning",
+    "vernon_project.api.lms.manage_courses",
+    "vernon_project.api.lms.course_report",
+    "vernon_project.api.lms.list_assignable_users",
 )
 
 
@@ -256,6 +272,30 @@ class TestAuditedReadToolsWarnAboutTheirTraps(unittest.TestCase):
             doc = self._doc(method)
             self.assertIn(cap, doc, f"{method} does not name its cap")
             self.assertIn("ceiling", doc, f"{method} does not call the cap a ceiling")
+
+
+    def test_the_public_job_endpoints_say_which_one_holds_the_answer_key(self):
+        """get_job answers Guest and get_opening is HR-only, and the difference that
+        matters is the answer key. Both descriptions have to keep saying which is
+        which, because the payloads otherwise look like the same object."""
+        public = self._doc("vernon_project.api.recruitment.get_job")
+        self.assertIn("The answer key is deliberately absent", public)
+        hr = self._doc("vernon_project.api.recruitment.get_opening")
+        self.assertIn("answer key", hr)
+
+    def test_check_can_apply_is_labelled_an_existence_oracle(self):
+        """It answers Guest, and its rate limit is keyed on the very value being
+        probed — so the limit does not bound enumeration across many values. An
+        agent must not be told to bulk-check people through it."""
+        doc = self._doc("vernon_project.api.recruitment.check_can_apply")
+        self.assertIn("existence oracle", doc)
+        self.assertIn("does not bound enumeration", doc)
+
+    def test_preview_score_warns_that_a_missing_instrument_scores_zero(self):
+        """All four instruments always count, so an omitted answer set is scored
+        0/max and drags overall_fit down rather than being skipped."""
+        doc = self._doc("vernon_project.api.recruitment.preview_score")
+        self.assertIn("omitting one does NOT skip it", doc)
 
 
 # NOTE: this must stay at the BOTTOM. It used to sit mid-file, and since the module

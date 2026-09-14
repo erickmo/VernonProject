@@ -184,12 +184,48 @@ def _require_hr():
 
 @frappe.whitelist(allow_guest=True)
 def list_open_jobs():
+	"""Every currently OPEN Job Opening, for the public careers list.
+
+	PUBLIC: allow_guest=True, so it answers without a session. Takes no arguments,
+	and there is no way to widen it — Draft, Closed and On Hold openings never
+	appear here (`list_openings` is the HR view that shows those, behind an HR gate).
+
+	Returns a BARE LIST (no envelope, no total), newest posted_on first, carrying
+	only the card fields: name, slug, title, brand, location, employment_type,
+	posted_on, closes_on. The description, requirements and test questions are not
+	here — fetch one opening with `get_job(slug)`.
+
+	Note `closes_on` is informational: this filters on status alone, so an opening
+	whose closes_on has passed is still listed until someone closes it."""
 	return frappe.get_all("Job Opening", filters={"status": "Open"}, fields=JOB_LIST_FIELDS,
 		order_by="posted_on desc, creation desc")
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 def check_can_apply(job, nik_ktp=None, email=None):
+	"""Whether this applicant may still apply to an open job — the pre-submit check.
+
+	PUBLIC: allow_guest=True, POST. `job` is the SLUG. Returns
+	`{"ok": true}` or `{"ok": false, "reason": <Bahasa message>}`; a closed or
+	unknown opening is a normal `ok: false`, NOT an exception, so check `ok`.
+
+	Optional arguments — supply at least one, or the answer is meaningless:
+
+	* `nik_ktp` — the applicant's national ID number.
+	* `email` — the applicant's email.
+
+	Either one alone is enough to get an answer: a previous application matching
+	EITHER the nik_ktp or the email on that opening returns ok:false. With neither,
+	the duplicate check has nothing to match and always returns ok:true.
+
+	Two things a caller should understand before using this. First, it is an
+	existence oracle on data it does not own: a guest learns whether a given NIK or
+	email has applied to a given opening. Second, the rate limit is keyed on the
+	SUPPLIED nik_ktp/email (30 per hour), not on the caller — that is deliberate,
+	since keying on IP put every applicant behind one Cloudflare edge in a single
+	bucket, but it does mean each distinct value probed gets its own fresh budget,
+	so the limit does not bound enumeration across many values. Do not build a
+	bulk "has this person applied" check on top of this endpoint."""
 	# Was @rate_limit(key="can_apply", ...): "can_apply" names no request parameter, so
 	# every applicant behind one Cloudflare edge shared a single 30/hour bucket.
 	enforce("can_apply", limit=30, seconds=3600,
@@ -300,6 +336,21 @@ def get_ketelitian(attempt_id, job):
 
 @frappe.whitelist(allow_guest=True)
 def get_job(slug):
+	"""One open Job Opening plus its PUBLIC test items, for the apply page.
+
+	PUBLIC: allow_guest=True. `job` here is the SLUG, not the document name — the
+	same value `list_open_jobs` returns as `slug`. Only an opening with status
+	"Open" resolves; anything else (unknown slug, or a real opening now closed)
+	raises frappe.DoesNotExistError, so the two are indistinguishable by design.
+
+	Returns the opening's descriptive fields plus `questions` (each with idx,
+	question_text, qtype and options) and, for whichever instruments the opening
+	enables, `disc_items` / `bigfive_items` / `logic_items` / `ketelitian_items`
+	with their matching test_* flags.
+
+	The answer key is deliberately absent: `correct_answer` and `points` are never
+	included on this endpoint, for any caller. An agent that needs them is asking
+	for `get_opening`, which is HR-gated."""
 	name = frappe.db.get_value("Job Opening", {"slug": slug, "status": "Open"}, "name")
 	if not name:
 		frappe.throw("Job not found", frappe.DoesNotExistError)
@@ -533,7 +584,26 @@ def preview_score(disc_answers=None, personality_answers=None,
 	"""HR-only 'try the test' scorer. Runs the SAME instrument scoring as
 	submit_application but persists nothing and creates no Job Application —
 	so HR can experience the applicant test and see how it grades. Targets are
-	neutral (blank → 50), so fit reflects the raw profile, not any opening."""
+	neutral (blank → 50), so fit reflects the raw profile, not any opening.
+
+	Gate: HR Manager or System Manager. POST. Nothing is written, so it is safe to
+	call repeatedly.
+
+	Optional arguments — each is that instrument's answers, accepted either as a
+	JSON string or as the parsed value, and each silently falls back to empty when
+	missing or unparseable:
+
+	* `disc_answers` — a dict (object) of DISC answers.
+	* `personality_answers` — a dict of Big Five answers.
+	* `logical_answers` — a LIST aligned by question index.
+	* `ketelitian_answers` — a LIST aligned by question index (the accuracy bank).
+
+	WARNING: omitting one does NOT skip it. All four instruments are always counted
+	as enabled, so an absent set is scored as zero out of its full maximum and drags
+	`overall_fit` (the mean of the four contributions) down accordingly. A preview
+	built from only the DISC answers is not comparable to a real applicant's
+	overall_fit. Read the per-instrument blocks — `disc`, `personality`, `logical`,
+	`ketelitian` — rather than the single number."""
 	_require_hr()
 
 	def _lj(v, default):
@@ -573,6 +643,16 @@ def preview_score(disc_answers=None, personality_answers=None,
 
 @frappe.whitelist()
 def list_openings():
+	"""Every Job Opening in ANY status, for the HR console.
+
+	Gate: HR Manager or System Manager (Guest gets frappe.AuthenticationError,
+	other logged-in users frappe.PermissionError). Takes no arguments.
+
+	This is the counterpart to the public `list_open_jobs`: Draft, Closed and On
+	Hold openings are included here, and each row carries `application_count`.
+
+	Returns a BARE LIST ordered by modified desc, with the same card fields as the
+	public list plus `status` and `application_count`. No paging."""
 	_require_hr()
 	rows = frappe.get_all("Job Opening",
 		fields=["name", "slug", "title", "brand", "location", "employment_type", "status",
@@ -589,6 +669,18 @@ def list_openings():
 
 @frappe.whitelist()
 def get_opening(name):
+	"""One Job Opening as the full stored document, for the HR editor.
+
+	Gate: HR Manager or System Manager. `name` is the DOCUMENT NAME, not the slug —
+	`get_job` is the slug-addressed public endpoint, and the two are not
+	interchangeable.
+
+	This returns `doc.as_dict()` unfiltered, so unlike `get_job` it DOES include the
+	answer key: every question's `correct_answer` and `points`, along with the
+	per-test time limits and scoring targets. Never relay this payload to a
+	candidate-facing surface; use `get_job` there.
+
+	Any status resolves here, including Draft and Closed."""
 	_require_hr()
 	doc = frappe.get_doc("Job Opening", name)
 	return doc.as_dict()
@@ -664,6 +756,23 @@ def _unique_slug(base, exclude):
 
 @frappe.whitelist()
 def list_applications(job=None, status=None):
+	"""Job Applications for the HR console, newest submission first.
+
+	Gate: HR Manager or System Manager. Returns a BARE LIST (no envelope, no total)
+	capped at 500 rows with NO offset argument, so on a busy opening that cap is a
+	hard ceiling — narrow with the filters rather than trying to page.
+
+	Each row carries the applicant's contact details (full_name, email, phone plus a
+	normalised `wa` WhatsApp number), their scoring (score, max_score,
+	grading_status, overall_fit, disc_type, test_violations), status, blacklist_flag,
+	submitted_on, interview_at, and the resolved `job_title`.
+
+	Optional arguments:
+
+	* `job` — a Job Opening DOCUMENT NAME (what `list_openings` returns as `name`),
+	  matched exactly. Not the slug the public endpoints use.
+	* `status` — one exact value: "Submitted", "Screening", "Interview", "Offered",
+	  "Hired" or "Rejected". An unknown value matches nothing rather than raising."""
 	_require_hr()
 	filters = {}
 	if job:
@@ -703,6 +812,16 @@ def list_interviews():
 
 @frappe.whitelist()
 def get_application(name):
+	"""One Job Application in full, for the HR review screen.
+
+	Gate: HR Manager or System Manager — there is no applicant-facing version of
+	this, so it is never the right endpoint for showing someone their own
+	application. `name` is the Job Application document name.
+
+	Returns the applicant's identity and contact details (including nik_ktp and the
+	CV attachment), their cover letter, status and blacklist flags, the interview
+	slot and notes, the graded score, and `psych_result` — the decoded instrument
+	results. Treat the whole payload as personal data."""
 	_require_hr()
 	doc = frappe.get_doc("Job Application", name)
 	return {
@@ -785,6 +904,14 @@ def schedule_interview(name, interview_at, interview_notes=None):
 
 @frappe.whitelist()
 def list_blacklist():
+	"""The recruitment blacklist, most recently added first.
+
+	Gate: HR Manager or System Manager. Takes no arguments and returns a BARE LIST
+	with no paging.
+
+	Each row is keyed by `nik_ktp` (the national ID is the document name), plus
+	full_name, reason, blacklisted_by and blacklisted_on. Note the blacklist matches
+	on NIK only — an application with a new NIK is not caught by it."""
 	_require_hr()
 	return frappe.get_all("Recruitment Blacklist",
 		fields=["name", "nik_ktp", "full_name", "reason", "blacklisted_by", "blacklisted_on"],
