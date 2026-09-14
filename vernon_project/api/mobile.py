@@ -6724,14 +6724,26 @@ def get_crate_status():
 
 @frappe.whitelist()
 def open_task_crate():
-	"""Spend one work-earned key → grant a random NEW cosmetic. Row-locked so
-	concurrent opens can't double-spend a key."""
+	"""Spend one work-earned key → grant a random NEW cosmetic.
+
+	Serialized per user by the vernon_spend lock, and the lock spans a whole
+	transaction: commit right after taking it, so every read below is a fresh
+	snapshot that sees the previous open's commit, and commit before releasing it,
+	so the next open waits for this one's rows. Releasing before commit (this bench
+	runs REPEATABLE READ) let a second open read the key as unspent and pay out
+	twice while its key-index claim collided silently.
+
+	ponytail: the other vernon_spend holders (buy_avatar_asset, redeem_reward) still
+	release before commit, so a crate racing a purchase may re-grant the item just
+	bought (a duplicate unlock; no key is spent twice). Commit-before-release there
+	too if that ever matters."""
 	import random
 	user = frappe.session.user
 	lock_key = f"vernon_spend:{user}"
 	if not frappe.db.sql("select get_lock(%s, 10)", lock_key)[0][0]:
 		frappe.throw("Busy, please retry", frappe.ValidationError)
 	try:
+		frappe.db.commit()  # fresh snapshot: see any open committed before we got the lock
 		earned = int(_lifetime_todo_points(user) // CRATE_KEY_COST)
 		opened = _crate_opened_total(user)
 		if earned - opened <= 0:
@@ -6743,8 +6755,12 @@ def open_task_crate():
 			frappe.throw("You've collected every cosmetic! 🎉", frappe.ValidationError)
 		pick = random.choice(pool)
 		_grant_asset(user, pick["asset_name"])
-		_record_claim(user, "task_crate", opened)  # claim_ref = key index (unique under lock)
+		# claim_ref = key index, unique per user: a collision means another open spent
+		# this key, so refuse (rolling back the grant) rather than pay out twice.
+		if not _record_claim(user, "task_crate", opened):
+			frappe.throw("Busy, please retry", frappe.ValidationError)
 		completed = _maybe_complete_set(user, pick["asset_name"])
+		frappe.db.commit()  # before release_lock, so the next open sees this key spent
 		return {"asset": pick, "keys_left": earned - opened - 1, "remaining": len(pool) - 1, "completed": completed}
 	finally:
 		frappe.db.sql("select release_lock(%s)", lock_key)
