@@ -320,7 +320,7 @@ export function useFocusTimers() {
 
 // Ordered taskIds of every active timer — for floating focused todos to the top
 // of a project/today list in the SAME order as the FAB focus list (see
-// planDay.focusedFirst). Order-only; membership alone is useFocusedTaskIds.
+// planDay.sortTodoCards). Order-only; membership alone is useFocusedTaskIds.
 export function useFocusOrder(): string[] {
   const timers = useSyncExternalStore(subscribe, () => current, () => current)
   return useMemo(() => timers.map((t) => t.taskId), [timers])
