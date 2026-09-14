@@ -589,9 +589,10 @@ class ProjectTodo(Document):
 	def validate_priority_slot(self):
 		"""A priority claims one of the assignee's daily slots for its deadline date.
 
-		Enforced in the controller rather than the API so every write path shares the
-		cap: update_todo, the desk form, bulk add, move-todos, a deadline change and a
-		reassignment all land here. Slots are derived, never stored — occupancy is just
+		Enforced in the controller rather than the API so write paths share the cap:
+		update_todo, the desk form, bulk add and a deadline change land here via save();
+		the raw reassignment paths (transfer_tasks, offboarding, reassign_series) call it
+		through reassign_planned_todo. Slots are derived, never stored — occupancy is just
 		the count of non-cancelled priority todos on that (assignee, date).
 		"""
 		if not self.is_priority:
@@ -644,9 +645,11 @@ class ProjectTodo(Document):
 
 		The AI fields are included here rather than in a separate helper: this is
 		already the single place that diffs a todo's protected fields against the
-		last-saved version, so every write path (save_ai_prompt, delete_ai_prompt,
-		confirm_ai_prompt, update_todo, even a raw frappe.client.set_value) is covered
-		for free — they all end in doc.save(), which always runs validate()."""
+		last-saved version, so the doc.save() write paths (save_ai_prompt,
+		delete_ai_prompt, confirm_ai_prompt, update_todo, even a raw
+		frappe.client.set_value) are covered for free. The raw frappe.db.set_value
+		reassignment paths skip validate(), so they move Planned todos only (see
+		reassign_planned_todo)."""
 		# Skip validation for new documents
 		if self.is_new():
 			return
@@ -1377,6 +1380,30 @@ _ROLL = ("name, project_detail, to_do, assigned_to, start_date, deadline, leader
 
 def series_root(name, original_todo):
     return original_todo or name
+
+
+def reassign_planned_todo(name, to_user):
+	"""Hand a Planned todo to `to_user` for the raw reassignment paths (transfer_tasks,
+	offboarding, reassign_series), which write assigned_to with frappe.db.set_value to
+	skip hooks and the team check, and so never run validate().
+
+	Keeps the two guards validate() would apply to a reassignment. Callers pass only
+	Planned todos, because validate_done_todo_fields freezes assigned_to after that.
+	And the priority-slot cap: a priority that would overfill the new assignee's day is
+	moved without its flag rather than refused, so offboarding (a User disable hook)
+	is never blocked. Returns True when the priority flag was dropped."""
+	doc = frappe.get_doc("Project Todo", name)
+	doc.assigned_to = to_user
+	try:
+		doc.validate_priority_slot()
+		dropped = False
+	except frappe.ValidationError:
+		dropped = True
+	values = {"assigned_to": to_user}
+	if dropped:
+		values["is_priority"] = 0
+	frappe.db.set_value("Project Todo", name, values)
+	return dropped
 
 
 def latest_occurrence(root):

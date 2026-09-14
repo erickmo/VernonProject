@@ -108,7 +108,12 @@ def _rehome_recurring_series(user):
     for r in roots:
         anchor = latest_occurrence(r.root)
         if not anchor or anchor.assigned_to != user:
-            continue  # its latest occurrence was open, so _transfer_open_todos got it
+            continue  # its latest occurrence was Planned, so _transfer_open_todos got it
+        if anchor.status not in TERMINAL_STATUSES:
+            # Done / Checked By PL: awaiting approval and kept by its doer. A successor
+            # now would duplicate the one approval generates; once approved, the
+            # stalled-series screen offers the lead a reassignment.
+            continue
         stand_in = series_stand_in(anchor)
         if not stand_in:
             continue
@@ -159,16 +164,24 @@ def _scrub_upcoming_meetings(user):
 
 
 def _transfer_open_todos(user):
-    """Move the user's open Project Todos to project_leader, else project_owner.
+    """Move the user's Planned Project Todos to project_leader, else project_owner.
 
     Raw update: bypasses validate_assigned_to_team_member (leader/owner may not
     be on the team — intended system override) and skips re-running
-    point-ledger/recurrence hooks (open tasks have 0 earned). Recurrence still
-    follows: next-occurrence generation reads assigned_to fresh from the DB.
+    point-ledger/recurrence hooks. Recurrence still follows: next-occurrence
+    generation reads assigned_to fresh from the DB.
+
+    Only Planned todos move (reassign_planned_todo): Done / Checked By PL work keeps
+    the assignee whose approval points it earns, and a priority that would overfill
+    the lead's daily slots loses its flag instead of blocking the disable.
     """
+    from vernon_project.vernon_project.doctype.project_todo.project_todo import (
+        PLANNED, reassign_planned_todo,
+    )
+
     todos = frappe.get_all(
         "Project Todo",
-        filters={"assigned_to": user, "status": ["not in", TERMINAL_STATUSES]},
+        filters={"assigned_to": user, "status": PLANNED},
         fields=["name", "project"],
     )
     if not todos:
@@ -181,7 +194,7 @@ def _transfer_open_todos(user):
         if not target:
             orphans.append(t.name)
             continue
-        frappe.db.set_value("Project Todo", t.name, "assigned_to", target)
+        reassign_planned_todo(t.name, target)
         # Wipe the outgoing assignee's day-plan allocation rows (see report.py):
         # left in place they get misattributed to the new assignee.
         frappe.db.delete("Project Todo Allocation", {"parent": t.name, "parenttype": "Project Todo"})

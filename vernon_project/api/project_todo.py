@@ -1671,7 +1671,7 @@ def reassign_series(series, to_user):
 		frappe.throw("Not logged in", frappe.AuthenticationError)
 	from frappe.utils import nowdate
 	from vernon_project.vernon_project.doctype.project_todo.project_todo import (
-		latest_occurrence, restart_series_on,
+		PLANNED, latest_occurrence, reassign_planned_todo, restart_series_on,
 	)
 
 	series = frappe.utils.cstr(series)
@@ -1697,11 +1697,15 @@ def reassign_series(series, to_user):
 
 	created = None
 	if anchor.status not in ("✅ Completed", "🚫 Cancelled"):
+		if anchor.status != PLANNED:
+			# Done / Checked By PL: finished work awaiting approval. Its assignee is
+			# frozen and earns those points, so it is not handed over.
+			frappe.throw("The latest occurrence is awaiting approval — approve or reject it first, then reassign.")
 		# The latest occurrence is still live work, so handing THAT over is the
 		# whole fix — the series is no longer stalled and the nightly run rolls it
 		# forward from here as usual. Generating a successor as well would put two
 		# copies of the routine on the new assignee.
-		frappe.db.set_value("Project Todo", anchor.name, "assigned_to", to_user)
+		reassign_planned_todo(anchor.name, to_user)
 		# Day-plan rows belong to the outgoing assignee (see report.py); left in
 		# place they would be misattributed, exactly as _transfer_open_todos warns.
 		frappe.db.delete(
