@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { describe, it } from 'vitest'
 
 // The 22 *.selfcheck.ts files assert at import time (node:assert, top level), but
@@ -14,7 +15,7 @@ const mobile = import.meta.glob('./*.selfcheck.ts')
 const web = import.meta.glob('../../../frontend-web/src/lib/*.selfcheck.ts')
 
 describe('selfcheck files actually run', () => {
-  for (const [path, load] of Object.entries({ ...mobile, ...web })) {
+  for (const [path, load] of Object.entries<() => Promise<unknown>>({ ...mobile, ...web })) {
     it(`${path} passes its own assertions`, async () => {
       await load()
     })

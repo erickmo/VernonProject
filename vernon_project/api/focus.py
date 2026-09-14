@@ -40,6 +40,13 @@ def _row(task):
 	doc = frappe.new_doc(DOCTYPE)
 	doc.user = _user()
 	doc.task = task
+	# A newly focused task goes to the END of the user's list. Every row used to
+	# default to 0, and list_focus breaks a sort_order tie with started_at_ms
+	# DESC — so a brand-new timer floated to the TOP of a list the user had just
+	# dragged into shape, while the client had appended it at the bottom. The two
+	# disagreed the moment the page rehydrated, which reads as "my order was lost".
+	top = frappe.db.sql(f"SELECT MAX(sort_order) FROM `tab{DOCTYPE}` WHERE user=%s", doc.user)[0][0]
+	doc.sort_order = 0 if top is None else top + 1
 	return doc
 
 

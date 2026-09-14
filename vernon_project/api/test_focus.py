@@ -83,6 +83,35 @@ class TestReorderFocus(_FocusFixture):
 		active = [r["taskId"] for r in rows if r["status"] in ("running", "paused")]
 		self.assertEqual(active, [c, a, b])
 
+	def test_a_newly_focused_task_is_appended_not_floated_to_the_top(self):
+		"""Focusing a new task after arranging the list must APPEND it. Every row
+		defaulted to sort_order 0 and list_focus breaks that tie with started_at_ms
+		DESC, so the newest timer jumped to the top of an order the user had just
+		set — while the client appended it at the bottom. Same user, same moment,
+		two different orders: exactly what "the order isn't saved" looks like."""
+		a, b, c = self.tasks
+		self._start("focus_owner@example.com", a)
+		self._start("focus_owner@example.com", b)
+		frappe.set_user("focus_owner@example.com")
+		reorder_focus([b, a])
+		# Later wall-clock than the fixture's started_at_ms=1, so under the old
+		# tie-break this task sorted FIRST — the assertion below could not pass by luck.
+		save_timer(task=c, task_title=c, estimated_ms=0, status="running",
+			started_at_ms=1700000000000, elapsed_before_ms=0)
+		order = [r["taskId"] for r in list_focus() if r["status"] in ("running", "paused")]
+		self.assertEqual(order, [b, a, c], "a new focus lands last, behind the arranged order")
+
+	def test_stopping_one_timer_leaves_the_others_in_the_same_order(self):
+		"""Completing/stopping a focus must not reshuffle what is left."""
+		a, b, c = self.tasks
+		for t in (a, b, c):
+			self._start("focus_owner@example.com", t)
+		frappe.set_user("focus_owner@example.com")
+		reorder_focus([c, a, b])
+		stop_timer(a)
+		order = [r["taskId"] for r in list_focus() if r["status"] in ("running", "paused")]
+		self.assertEqual(order, [c, b], "the survivors keep their relative order")
+
 	def test_rejects_payload_missing_one_of_the_callers_own_tasks(self):
 		a, b = self.tasks[0], self.tasks[1]
 		self._start("focus_owner@example.com", a)

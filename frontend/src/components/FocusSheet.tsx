@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Timer, Square, X } from 'lucide-react'
 import { useFocusTimers, type EnrichedTimer } from '@/hooks/useFocusTimer'
@@ -24,8 +24,11 @@ export function FocusSheet({ open, onClose }: { open: boolean; onClose: () => vo
   // but not mid-drag, so live swaps here don't get overwritten by the store's
   // still-stale order before reorder() below has round-tripped.
   const [ids, setIds] = useState<string[]>([])
+  const dragging = useRef(false)
   const storeOrder = timers.map((t) => t.taskId).join(',')
-  useEffect(() => setIds(timers.map((t) => t.taskId)), [storeOrder])
+  useEffect(() => {
+    if (!dragging.current) setIds(timers.map((t) => t.taskId))
+  }, [storeOrder])
 
   // Last timer stopped while the sheet is up → nothing left to show.
   useEffect(() => {
@@ -34,13 +37,20 @@ export function FocusSheet({ open, onClose }: { open: boolean; onClose: () => vo
 
   if (!open) return null
 
-  const move = (from: number, to: number) =>
+  const move = (from: number, to: number) => {
+    dragging.current = true
     setIds((prev) => {
       const next = prev.slice()
       const [moved] = next.splice(from, 1)
       next.splice(to, 0, moved)
       return next
     })
+  }
+
+  const persist = () => {
+    dragging.current = false
+    reorder(ids)
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col justify-end">
@@ -65,7 +75,7 @@ export function FocusSheet({ open, onClose }: { open: boolean; onClose: () => vo
             items={ids}
             keyFor={(id) => id}
             onReorder={move}
-            onDragEnd={() => reorder(ids)}
+            onDragEnd={persist}
             renderItem={(id) => {
               const t = byId.get(id)
               if (!t) return null
