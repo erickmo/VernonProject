@@ -3343,12 +3343,19 @@ def create_user(email, full_name=None, roles=None, send_welcome=1, member_type=N
 
 
 # Not whitelisted: the admin form saves through employee_admin, which calls this.
-def update_user(user, full_name=None, roles=None, enabled=1, member_type=None):
-	"""Edit name/enabled and sync the Vernon-role set (System Manager only)."""
+def update_user(user, full_name=None, roles=None, enabled=None, member_type=None):
+	"""Edit name/enabled and sync the Vernon-role set (System Manager only).
+
+	Every argument means "leave as is" when omitted. `roles` and `enabled` did not
+	used to: omitting `roles` parsed as the empty list and removed every Vernon role
+	the user had, and `enabled` defaulted to 1 and was written every call, so a
+	profile-only edit silently re-enabled a disabled account. Pass `roles=[]`
+	explicitly to clear them — which is what both user forms already do, since the
+	api.ts wrapper always sends the full list."""
 	_require_system_manager()
 	if user in PROTECTED_USERS:
 		frappe.throw("This account cannot be modified here")
-	enabled = 1 if frappe.utils.cint(enabled) else 0
+	enabled = None if enabled is None else (1 if frappe.utils.cint(enabled) else 0)
 	if enabled == 0 and user == frappe.session.user:
 		frappe.throw("You cannot disable your own account")
 
@@ -3357,12 +3364,31 @@ def update_user(user, full_name=None, roles=None, enabled=1, member_type=None):
 		doc.full_name = full_name.strip()
 		# first_name drives full_name for single-field names.
 		doc.first_name = full_name.strip()
-	doc.enabled = enabled
+	if enabled is not None:
+		doc.enabled = enabled
 	if member_type is not None:
 		doc.custom_member_type = _clean_member_type(member_type)
 	doc.save(ignore_permissions=True)
 
 	# Sync only the Vernon-role subset; leave System Manager etc. untouched.
+	# `roles is None` means the caller is not editing roles at all. Without this the
+	# empty parse below removes every Vernon role, so an edit that only touched a
+	# job title stripped the person's access.
+	if roles is not None:
+		_sync_vernon_roles(doc, roles)
+
+	# Offboarding: a disabled account should not linger on project teams.
+	# ponytail: only chokepoint is this SysMgr endpoint; disabling via Desk won't
+	# trigger it — re-run _drop_user_from_project_teams as a sweep if that happens.
+	if enabled == 0:
+		_drop_user_from_project_teams(user)
+	return {"name": doc.name}
+
+
+def _sync_vernon_roles(doc, roles):
+	"""Make the user's VERNON_ROLES set equal `roles`, leaving every other role
+	(System Manager included) alone. Split out so update_user can skip it entirely
+	when the caller did not mention roles."""
 	wanted = set(_clean_roles(roles))
 	current = {
 		r.role for r in doc.get("roles") if r.role in VERNON_ROLES
@@ -3373,13 +3399,6 @@ def update_user(user, full_name=None, roles=None, enabled=1, member_type=None):
 		doc.add_roles(*to_add)
 	if to_remove:
 		doc.remove_roles(*to_remove)
-
-	# Offboarding: a disabled account should not linger on project teams.
-	# ponytail: only chokepoint is this SysMgr endpoint; disabling via Desk won't
-	# trigger it — re-run _drop_user_from_project_teams as a sweep if that happens.
-	if enabled == 0:
-		_drop_user_from_project_teams(user)
-	return {"name": doc.name}
 
 
 def _drop_user_from_project_teams(user):

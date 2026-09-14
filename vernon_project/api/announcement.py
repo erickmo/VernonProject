@@ -56,7 +56,7 @@ def list_announcements():
 
 
 @frappe.whitelist()
-def save_announcement(message, start_date, end_date, name=None, link=None, published=0):
+def save_announcement(message, start_date, end_date, name=None, link=None, published=None):
 	"""Create or edit the site-wide announcement banner. System Manager or HR
 	Manager only (MANAGE_ROLES) — anyone else gets PermissionError.
 
@@ -71,10 +71,10 @@ def save_announcement(message, start_date, end_date, name=None, link=None, publi
 	* `link` — must start with http://, https:// or / and raises otherwise. It
 	  becomes an <a href> shown to every user, so javascript:/data: are rejected.
 	  Empty clears it.
-	* `published` — 0/1, DEFAULTS TO 0. An announcement saved without it is stored
-	  but not shown, so pass published=1 to actually put it on screen. Omitting it
-	  on an EDIT unpublishes a live announcement, because it is written every time
-	  rather than only when supplied.
+	* `published` — 0/1. Omitted means "leave as is" on an edit, and draft (0) on a
+	  new announcement, so pass published=1 to actually put one on screen. It used
+	  to default to 0 and be written on every save, so an edit that omitted it
+	  silently unpublished a live banner.
 	"""
 	_require_manage()
 	message = (message or "").strip()
@@ -90,7 +90,10 @@ def save_announcement(message, start_date, end_date, name=None, link=None, publi
 	doc.link = _clean_link(link)
 	doc.start_date = start_date
 	doc.end_date = end_date
-	doc.published = 1 if int(published or 0) else 0
+	if published is not None:
+		doc.published = 1 if int(published) else 0
+	elif not name:
+		doc.published = 0  # a brand-new announcement starts as a draft
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()
 	return {"ok": True, "name": doc.name}

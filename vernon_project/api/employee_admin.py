@@ -24,7 +24,7 @@ def save_user_with_profile(
 	user,
 	full_name=None,
 	roles=None,
-	enabled=1,
+	enabled=None,
 	member_type=None,
 	nik_ktp=None,
 	npwp=None,
@@ -48,18 +48,19 @@ def save_user_with_profile(
 	`frappe.db.commit()`, so they commit together at request end (or roll back
 	together on error).
 
-	TWO ARGUMENTS ARE NOT "LEAVE ALONE" WHEN OMITTED, and both are destructive:
+	EVERY argument means "leave as is" when omitted. Two of them did not, and both
+	were destructive, so if you have seen older code or notes about this endpoint:
 
 	* `roles` — replaces the user's VERNON_ROLES set wholesale (Project Owner,
 	  Project Leader, Project Admin, Project Team, Points Granter, HR Manager,
 	  AI User). Roles outside that set, System Manager included, are untouched.
-	  Omitting it parses as the EMPTY list, so it STRIPS EVERY VERNON ROLE the
-	  user has. Always send the complete list you want them to end up with, even
-	  when you only meant to change a profile field.
-	* `enabled` — defaults to 1, not None, and is written every call, so omitting
-	  it RE-ENABLES a disabled account. Pass the current value explicitly.
-
-	Every other argument is skipped when None, i.e. genuinely "leave as is".
+	  Send the COMPLETE list you want them to end up with; send [] to clear them
+	  all. Omitting it used to parse as the empty list and strip every Vernon role
+	  the user had, so a job-title edit removed their access — it now leaves roles
+	  untouched instead.
+	* `enabled` — used to default to 1 and be written every call, so omitting it
+	  re-enabled a disabled account. Omitting it now leaves the account as it is;
+	  pass 0 or 1 to change it.
 
 	Account fields (go to the User record): `full_name`, `roles`, `enabled`,
 	`member_type` ("", "Internal Team" or "Intern"; anything else raises).
