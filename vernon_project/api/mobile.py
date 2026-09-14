@@ -7357,7 +7357,10 @@ def _maybe_complete_set(user, asset_name):
 	if cap:
 		_grant_asset(user, cap)
 	if rebate:
-		_grant_points(user, rebate, "Set")
+		# "Achievement", not "Set": the source is a Select and "Set" was never an
+		# option, so the insert threw and rolled back every set completion. Achievement
+		# stays out of crate keys (Todo only), badge tiers and the leaderboard.
+		_grant_points(user, rebate, "Achievement")
 	return {"set": s, "capstone": cap, "rebate": rebate}
 
 

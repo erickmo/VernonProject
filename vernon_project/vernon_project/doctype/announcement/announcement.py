@@ -6,4 +6,9 @@ from frappe.model.document import Document
 
 
 class Announcement(Document):
-	pass
+	def validate(self):
+		# HR Manager holds create/write, so /api/resource saves skip save_announcement;
+		# the link is an <a href> in every user's ticker — clean it on every save.
+		from vernon_project.api.announcement import _clean_link
+
+		self.link = _clean_link(self.link)
