@@ -259,6 +259,16 @@ def _frozen_components(raw):
 
 @frappe.whitelist()
 def get_certificate(name):
+	"""One internship certificate in full.
+
+	`name` is the certificate document name and is required. Gate: the intern
+	themselves, someone who runs a project that intern is on, or HR / System
+	Manager; anyone else gets frappe.PermissionError. An unknown name raises
+	frappe.DoesNotExistError from the document load, before the permission check.
+
+	Returns the decorated certificate — its scores, rubric components and status.
+	Unlike `list_certificates`, the verify_code is not blanked here, so treat the
+	payload as the certificate's public key when its status is Published."""
 	doc = frappe.get_doc(DOCTYPE, frappe.utils.cstr(name))
 	_guard_read({"intern": doc.intern}, frappe.session.user)
 	return _decorate(doc, frappe.session.user)
@@ -268,7 +278,28 @@ def get_certificate(name):
 def preview_score(intern, period_start, period_end, project=None):
 	"""The auto score for a period, before any certificate exists. Lets a leader see
 	what the numbers say while they are still deciding, and lets an intern watch their
-	own score during the placement."""
+	own score during the placement.
+
+	Gate: the same read scope as the rest of this module — the intern themselves,
+	someone who runs a project that intern is on, or HR / System Manager. Writes
+	nothing, so it is safe to call repeatedly.
+
+	`intern` (a User id), `period_start` and `period_end` (YYYY-MM-DD, inclusive)
+	are all REQUIRED. Unlike `my_score` there is no defaulting and no clamp of any
+	kind: the only validation is that the end must not precede the start, so a
+	future `period_end` scores over days not yet worked and drags the rate-based
+	numbers down. Pass today as the end unless you mean otherwise.
+
+	Optional arguments:
+
+	* `project` — restrict the scored work to one Project. Omitted (the default)
+	  scores the intern's work across every project in the period, which is what a
+	  certificate uses; pass it only when you specifically want a per-project view,
+	  and do not compare the two numbers.
+
+	Returns the live auto-score fields plus an EMPTY `rubric` — the rubric rows come
+	back with score None and comment "" because a human has not filled them in yet.
+	That is the normal response here, not missing data."""
 	intern = frappe.utils.cstr(intern)
 	me = frappe.session.user
 	_guard_read({"intern": intern}, me)

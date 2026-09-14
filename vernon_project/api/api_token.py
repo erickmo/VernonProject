@@ -60,6 +60,22 @@ def _mask_key(key):
 
 @frappe.whitelist()
 def get_api_token_status():
+	"""Whether the caller has a personal API token, plus an admin-only MCP URL.
+
+	Always about frappe.session.user's own token; Guest gets
+	frappe.AuthenticationError. Pure read — `generate_api_token` is what creates or
+	rotates one.
+
+	Returns `{"has_token", "masked_key", "mcp_connector_url"}`. `masked_key` is the
+	last 4 characters of the API key and nothing more; the secret is never returned
+	by this endpoint, so what comes back cannot be used to authenticate.
+
+	`mcp_connector_url` is the exception and the payload is NOT the same for every
+	caller: it is populated only for a System Manager and is None for everyone else.
+	When populated it contains a live token for the remote MCP server, which runs
+	every call as the SERVER's own API key rather than the caller's — so that URL is
+	admin-equivalent access, not a convenience link. Treat it as a credential: never
+	log it, echo it into a ticket, or hand it to another user."""
 	key = frappe.db.get_value("User", _self(), "api_key")
 	return {
 		"has_token": bool(key),

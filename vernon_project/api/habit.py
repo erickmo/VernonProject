@@ -207,6 +207,16 @@ def _suggestions_for(existing_titles, disc):
 
 @frappe.whitelist()
 def get_habits():
+	"""The caller's own active habits with streaks and the last 7 days.
+
+	Any logged-in user; Guest is refused. Takes no arguments and is always
+	frappe.session.user's own — there is no argument for reading anyone else's
+	habits, and none is intended.
+
+	Only habits with active=1 are returned, oldest first; an archived habit is
+	invisible here even though its logs still exist. Each habit carries its cadence
+	and weekdays, the current and best streak computed against that cadence, and a
+	7-entry `week` array ending today."""
 	user = _require_user()
 	today = frappe.utils.getdate(frappe.utils.today())
 	rows = frappe.get_all(

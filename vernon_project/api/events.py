@@ -52,6 +52,21 @@ def _decorate(row, user):
 
 @frappe.whitelist()
 def list_events():
+	"""Published TOP-LEVEL events, soonest start first, decorated for the caller.
+
+	Any logged-in user; Guest gets frappe.AuthenticationError. Takes no arguments —
+	there is no period, category, pricing or text filter, and no paging: the whole
+	published set comes back and the client filters it.
+
+	Two things are silently excluded. Only status "Published" appears (Draft,
+	Cancelled and Completed never do), and any event with a `parent_event` is
+	dropped — sub-events are reachable only nested inside `get_event` of their
+	parent. There is also no date bound, so events whose start has already passed
+	stay in this list until someone changes their status.
+
+	Returns a BARE LIST. Each row carries the card fields plus `registered_count`,
+	`is_full` (capacity reached; always false when capacity is 0, meaning
+	unlimited) and `my_status` — this caller's own registration state."""
 	user = _require_user()
 	rows = frappe.get_all(
 		"Vernon Event",
@@ -66,6 +81,19 @@ def list_events():
 
 @frappe.whitelist()
 def get_event(event):
+	"""One published event with its description and published sub-events.
+
+	Any logged-in user; Guest gets frappe.AuthenticationError. `event` is the
+	document name. An unknown id raises frappe.DoesNotExistError; a real event that
+	is not Published raises frappe.PermissionError, so the two are distinguishable
+	(note the second is not really about permission — nobody can read a Draft event
+	through this endpoint, organizer included; that view is `manage_list_events`).
+
+	Returns the event's fields plus description, organizer and status, the same
+	`registered_count` / `is_full` / `my_status` decoration `list_events` applies,
+	and `sub_events` — the Published children of this event, each decorated the same
+	way. Ask for a sub-event directly and it returns normally; the nesting is a
+	convenience, not a restriction."""
 	user = _require_user()
 	if not frappe.db.exists("Vernon Event", event):
 		frappe.throw("Event not found", frappe.DoesNotExistError)
@@ -87,6 +115,15 @@ def get_event(event):
 
 @frappe.whitelist()
 def my_registrations():
+	"""The caller's own event registrations, newest first.
+
+	Any logged-in user; Guest gets frappe.AuthenticationError. Takes no arguments
+	and is always frappe.session.user's own — the per-event attendee list is
+	`events_admin.event_roster`, which is organizer-gated.
+
+	Cancelled registrations are excluded, so this is "what I am currently signed up
+	for", not a history. Returns a BARE LIST with name, event, `event_title`,
+	`start_datetime`, registered_on, status, method and amount. No paging."""
 	user = _require_user()
 	rows = frappe.get_all(
 		"Vernon Event Registration",

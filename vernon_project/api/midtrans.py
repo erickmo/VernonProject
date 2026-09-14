@@ -62,5 +62,16 @@ def snap_create(order_id, gross_amount, customer, items):
 
 @frappe.whitelist(allow_guest=True)
 def pay_config():
+	"""The Midtrans Snap front-end configuration: client key + Snap JS URL.
+
+	PUBLIC on purpose: allow_guest=True, takes no arguments. Returns
+	`{"client_key", "snap_js"}`, both of which are meant to be embedded in a browser
+	page. The client key is the publishable half of the Midtrans pair — the server
+	key never appears here and is never sent to a client.
+
+	`client_key` is "" when Midtrans has not been configured on this site; that is a
+	normal response, not an error, and payment simply cannot start. `snap_js` points
+	at the sandbox or production Snap script depending on the site's own setting, so
+	never hard-code the URL — read it from here."""
 	s = _settings()
 	return {"client_key": s.midtrans_client_key or "", "snap_js": _snap_js_url()}

@@ -39,6 +39,18 @@ def _can_manage(event):
 
 @frappe.whitelist()
 def manage_list_events():
+	"""Events the caller may manage, in ANY status, latest start first.
+
+	Any logged-in user; Guest gets frappe.AuthenticationError. Takes no arguments.
+	Scope is implicit: a System Manager sees every event, anyone else sees only the
+	events they organize. An empty list means "you organize nothing", not "no events
+	exist".
+
+	This is the counterpart to `events.list_events`: Draft, Cancelled and Completed
+	events appear here, and sub-events are NOT filtered out.
+
+	Returns a BARE LIST of name, title, start_datetime, status, pricing, capacity —
+	the console fields only. No paging."""
 	user = _require_user()
 	filters = {} if _is_sm(user) else {"organizer": user}
 	rows = frappe.get_all(
@@ -96,6 +108,17 @@ ROSTER_FIELDS = ["name", "user", "status", "method", "amount", "attended", "regi
 
 @frappe.whitelist()
 def event_roster(event):
+	"""Everyone registered for one event, newest registration first.
+
+	`event` is the event document name and is required. Gate: the event's ORGANIZER
+	or a System Manager — anyone else gets frappe.PermissionError, and an unknown
+	event gets frappe.DoesNotExistError from the same check.
+
+	Returns a BARE LIST with the registration name, user, `full_name`, status,
+	method, amount, attended flag and registered_on. Note this is unfiltered by
+	status, so CANCELLED registrations are in here too — filter on `status` before
+	using it as an attendee count (`events.list_events` computes the live count
+	correctly if that is all you need)."""
 	_require_user()
 	_can_manage(event)
 	rows = frappe.get_all(

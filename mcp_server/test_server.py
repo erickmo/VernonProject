@@ -136,6 +136,26 @@ AUDITED_READ_TOOLS = (
     "vernon_project.api.lms.manage_courses",
     "vernon_project.api.lms.course_report",
     "vernon_project.api.lms.list_assignable_users",
+    # chunk 3: the remaining reads — events, social, and the small single-purpose
+    # modules. With these the read side of the manifest is covered.
+    "vernon_project.api.events.list_events",
+    "vernon_project.api.events.get_event",
+    "vernon_project.api.events.my_registrations",
+    "vernon_project.api.events_admin.manage_list_events",
+    "vernon_project.api.events_admin.event_roster",
+    "vernon_project.api.food_invite.get_invite",
+    "vernon_project.api.food_invite.food_invitable_users",
+    "vernon_project.api.app_release.get_app_releases",
+    "vernon_project.api.api_token.get_api_token_status",
+    "vernon_project.api.midtrans.pay_config",
+    "vernon_project.api.booking.check_availability",
+    "vernon_project.api.feedback.list_feedback",
+    "vernon_project.api.overtime.list_overtime",
+    "vernon_project.api.papan_iklan.list_ads",
+    "vernon_project.api.habit.get_habits",
+    "vernon_project.api.passkey.list_passkeys",
+    "vernon_project.api.certificate.get_certificate",
+    "vernon_project.api.certificate.preview_score",
 )
 
 
@@ -296,6 +316,36 @@ class TestAuditedReadToolsWarnAboutTheirTraps(unittest.TestCase):
         0/max and drags overall_fit down rather than being skipped."""
         doc = self._doc("vernon_project.api.recruitment.preview_score")
         self.assertIn("omitting one does NOT skip it", doc)
+
+    def test_api_token_status_calls_the_mcp_url_a_credential(self):
+        """mcp_connector_url is populated for a System Manager only, and the token
+        in it runs every MCP call as the SERVER's key, not the caller's. An agent
+        that treats it as a convenience link will paste admin access somewhere."""
+        doc = self._doc("vernon_project.api.api_token.get_api_token_status")
+        self.assertIn("admin-equivalent access", doc)
+        self.assertIn("Treat it as a credential", doc)
+
+    def test_pay_config_says_which_midtrans_key_it_returns(self):
+        """It answers Guest on purpose. The description has to be explicit that
+        this is the publishable key, or the next reader files it as a leak — or,
+        worse, assumes the server key is available the same way."""
+        doc = self._doc("vernon_project.api.midtrans.pay_config")
+        self.assertIn("publishable half", doc)
+
+    def test_the_filters_that_widen_instead_of_narrowing_are_flagged(self):
+        """Three list endpoints answer a bad or extra filter by returning MORE,
+        not less: an unknown feedback status drops the filter entirely, mine=1
+        replaces the Active filter rather than adding to it, and a non-manager's
+        employee argument is dropped in favour of their own rows. Each is a 200
+        that looks like it honoured the request."""
+        self.assertIn("widens the result to", self._doc("vernon_project.api.feedback.list_feedback"))
+        self.assertIn("REPLACES that filter", self._doc("vernon_project.api.papan_iklan.list_ads"))
+        self.assertIn("IGNORED rather than refused", self._doc("vernon_project.api.overtime.list_overtime"))
+
+    def test_event_roster_says_it_includes_cancelled(self):
+        """Counting its rows over-reports attendance."""
+        doc = self._doc("vernon_project.api.events_admin.event_roster")
+        self.assertIn("CANCELLED registrations are in here too", doc)
 
 
 # NOTE: this must stay at the BOTTOM. It used to sit mid-file, and since the module
