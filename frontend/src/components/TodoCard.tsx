@@ -12,10 +12,10 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { useUndo } from '@/components/UndoProvider'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useBoot, canUseAi } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useMoveTodoDeadline, useBoot, canUseAi } from '@/hooks/useData'
 import { buildNext, planOnlyOn } from '@/lib/planDay'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
-import { AI_PHASES, aiPhaseOf, isAiWorking } from '@/lib/filters'
+import { AI_PHASES, aiPhaseOf, canMoveDeadlineToday, isAiWorking } from '@/lib/filters'
 import { AiWorkingBackdrop } from '@/components/AiWorkingBackdrop'
 import type { ProjectItem } from '@/lib/types'
 
@@ -48,12 +48,14 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   const [notesExpanded, setNotesExpanded] = useState(false)
 
   // Desktop-only convenience: while the pointer hovers a card, `c` toggles the
-  // assignee's To Check flag and `a` toggles the AI flag — same keys as the
-  // open-task shortcuts on /w. Inert on /m (no hover, no keyboard). Same gates as
-  // the useTodoMenu items so a card never toggles something its menu wouldn't.
+  // assignee's To Check flag, `a` toggles the AI flag and `t` pulls the deadline to
+  // today — same keys as the open-task shortcuts on /w. Inert on /m (no hover, no
+  // keyboard). Same gates as the useTodoMenu items / open-task actions so a card
+  // never does something its menu or detail screen wouldn't.
   const setCheckFlag = useSetTodoCheck()
   const setWorkModeFlag = useSetTodoWorkMode()
   const setAlloc = useSetTodoAllocations(todo.name)
+  const moveDeadline = useMoveTodoDeadline()
   const { data: boot } = useBoot()
   const aiAllowed = canUseAi(boot)
   // Mirrors the Today chip's gate: only the assignee plans their own day, and only
@@ -75,6 +77,10 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
       } else if (e.key === 'f' && todo.status_key !== 'completed') {
         e.preventDefault()
         onFocusPill()
+      } else if (e.key === 't' && canMoveDeadlineToday(todo, todayISO())) {
+        e.preventDefault()
+        if (moveDeadline.isPending) return
+        moveDeadline.mutate({ todo, date: todayISO() })
       } else if (/^[1-9]$/.test(e.key) && canPlan) {
         // 1 = today, 2 = tomorrow, ... 9 = today+8. Puts this todo's whole plan on
         // that one day; planOnlyOn keeps rows before today, which are the record of
@@ -90,7 +96,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, aiAllowed, canPlan, todo.estimated, todo.allocations])
+  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, aiAllowed, canPlan, todo.estimated, todo.allocations, todo.deadline])
 
   // A quick bounce whenever the context menu is summoned (long-press on touch,
   // right-click on desktop) so the trigger feels tactile. `pressing` gives live

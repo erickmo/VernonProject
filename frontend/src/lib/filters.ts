@@ -315,6 +315,18 @@ export function canToggleAiInProgress(t: ProjectItem): boolean {
 }
 
 /**
+ * Whether the hover `t` shortcut may pull this todo's deadline to `today`.
+ *
+ * Mirrors the open-task "Deadline → today" action (`canSetDeadlineToday`): its
+ * `can_edit` is SM / owner / leader / assignee / project admin, which on a list row
+ * is exactly `is_mine || can_prioritize`; its `fields_locked` is every non-Planned
+ * status. Already due today → nothing to do. update_todo re-checks on the server.
+ */
+export function canMoveDeadlineToday(t: ProjectItem, today: string): boolean {
+  return (t.is_mine || t.can_prioritize) && t.status_key === 'planned' && t.deadline !== today
+}
+
+/**
  * Todo "tags" — the icon flags shown on a TodoCard. `focus` = has a live focus
  * timer (transient, membership from `useFocusedTaskIds`), `ai1`/`ai2`/`ai3` = the AI
  * phase, `to_check` = the To Check flag, `untagged` = none of them. Drives the
