@@ -12,7 +12,29 @@ export type RichToken =
   | { t: 'mention'; email: string; name: string }
 
 // ![alt](url)  |  [@Name](mention:email)
-const TOKEN_RE = /!\[([^\]]*)\]\(([^)\s]+)\)|\[@([^\]]*)\]\(mention:([^)\s]+)\)/g
+//
+// The image URL is `[^)]+`, NOT `[^)\s]+`: an upload is named after the file the
+// user picked, so "/files/Screenshot 2026-09-13 at 7.51.36 PM.png" is the normal
+// case, not an exotic one. Excluding spaces meant that token was never matched and
+// the composer drew the raw `![](...)` source instead of the picture. A mention's
+// address still cannot contain a space.
+const TOKEN_RE = /!\[([^\]]*)\]\(([^)]+)\)|\[@([^\]]*)\]\(mention:([^)\s]+)\)/g
+
+/** A URL made safe to sit inside a markdown `(...)` destination.
+ *
+ *  CommonMark ends a bare destination at the first space, so `![](/files/a b.png)`
+ *  is not an image at all — marked emits the source text, which is exactly what the
+ *  report "the image is showing ![](...)" describes. Markdown's other legal form,
+ *  `![](</files/a b.png>)`, is unusable here: Frappe's Comment.validate runs its
+ *  sanitiser on every save and entity-escapes < and >, so the brackets come back as
+ *  &lt;/&gt;. Percent-encoding is what survives the round trip.
+ *
+ *  Only the three characters that actually break a destination are touched, so this
+ *  is idempotent (it introduces no `%` that a second pass would re-encode) and it
+ *  leaves a query string alone — an `&` arriving `&amp;`-escaped is a different bug
+ *  with its own fix, see decodeAmp. */
+export const encodeMdUrl = (url: string) =>
+  url.replace(/[ ()]/g, (c) => (c === ' ' ? '%20' : c === '(' ? '%28' : '%29'))
 
 /** Frappe escapes & to &amp; across a whole field once the value contains any
  *  real HTML tag (Text Editor notes go through bleach; Comment.content always
