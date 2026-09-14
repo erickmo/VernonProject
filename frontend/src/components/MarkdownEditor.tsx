@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Bold, Code, ImagePlus, Italic, Link2, List, ListChecks, Quote } from 'lucide-react'
 import { applyFormat, mentionQueryAt, mentionToken, type Format } from '@/lib/markdownEdit'
-import { domPosition, fromDom, sourceOffset, toNodes } from '@/lib/markdownRich'
+import { domPosition, encodeMdUrl, fromDom, sourceOffset, toNodes } from '@/lib/markdownRich'
 import { isAllowedImgSrc } from '@/lib/format'
 import type { MentionUser } from '@/lib/types'
 
@@ -202,7 +202,10 @@ export function MarkdownEditor({
                 uploadingRef.current = true
                 setUploading(true)
                 try {
-                  insert(`![](${await onImage(file)})`, imageAt.current ?? undefined)
+                  // encodeMdUrl, not the raw file_url: an upload keeps the name the
+                  // user picked, and a space in it ends the markdown destination —
+                  // the image would store as source text that never renders.
+                  insert(`![](${encodeMdUrl(await onImage(file))})`, imageAt.current ?? undefined)
                 } catch {
                   /* the caller already told the user why (size, network) */
                 } finally {
