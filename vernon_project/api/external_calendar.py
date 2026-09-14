@@ -81,9 +81,14 @@ CALENDAR_FIELDS = (
 
 
 def visible_events():
-	"""One query: every non-cancelled synced event, respecting the caller's
-	own doctype permissions (External Calendar Event is Project Team-read),
-	for get_calendar's merge — this is the whole read-side cost."""
-	return frappe.get_all(
-		"External Calendar Event", filters={"cancelled": 0}, fields=list(CALENDAR_FIELDS), order_by="starts_on asc",
+	"""One query: every non-cancelled synced event the caller may read, for
+	get_calendar's merge — this is the whole read-side cost. frappe.get_list applies
+	the doctype's role permissions (External Calendar Event is Project Team-read;
+	get_all would skip them). A caller without read gets [] rather than get_list's
+	PermissionError, so the rest of their calendar still loads."""
+	if not frappe.has_permission("External Calendar Event", "read"):
+		return []
+	return frappe.get_list(
+		"External Calendar Event", filters={"cancelled": 0}, fields=list(CALENDAR_FIELDS),
+		order_by="starts_on asc", limit_page_length=0,
 	)
