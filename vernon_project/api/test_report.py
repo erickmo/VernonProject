@@ -1001,6 +1001,28 @@ class TestTeamDailyReport(_TeamReportFixture):
 		names = {r["user"] for r in out["rows"]}
 		self.assertEqual(names, {self.LEADER, self.MEMBER_A, self.MEMBER_B})
 
+	def test_leader_cannot_filter_to_a_project_they_do_not_run(self):
+		"""Only `member` was scope-checked: a leader could pass project=<someone else's>
+		and read their shared members' per-day minutes on it."""
+		from vernon_project.api.report import team_daily_report
+		foreign = frappe.get_doc({
+			"doctype": "Project", "project_name": "Team Report Foreign", "brand": "Team Report Brand",
+			"project_owner": "Administrator", "project_leader": "Administrator", "status": "Ongoing",
+			"start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": self.MEMBER_A}, {"user": self.LEADER}],
+		}).insert(ignore_permissions=True)
+		self.projects.append(foreign)  # tearDown deletes it
+		frappe.db.commit()
+		frappe.set_user(self.LEADER)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				team_daily_report(self.d1, self.d2, project=foreign.name)
+			# a project they do run still filters
+			out = team_daily_report(self.d1, self.d2, project=self.projects[1].name)
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual({r["user"] for r in out["rows"]}, {self.LEADER, self.MEMBER_A})
+
 	def test_outsider_denied(self):
 		from vernon_project.api.report import team_daily_report
 		frappe.set_user(self.OUTSIDER)
