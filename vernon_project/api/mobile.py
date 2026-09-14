@@ -2626,14 +2626,65 @@ def update_todo(
 	@frappe.whitelist() in this package), so the flags an agent is expected to drive
 	are named here rather than left to be guessed from the signature.
 
-	``ai_in_progress`` (0/1) — set 1 when an AI session STARTS working on the task and
+	`project_item` (a Project Todo id) is the only required argument. EVERY other
+	argument means "leave as is" when omitted — each one is applied only when it is
+	not None — so send just the fields being changed.
+
+	IMPORTANT: almost every refusal comes back as a normal 200 with
+	`{"status": "error", "message": ...}`, not an exception. A caller that checks
+	only the HTTP status will report a rejected edit as saved. Success is
+	`{"status": "ok", "message": "Task updated."}`.
+
+	Leader/owner-gated (System Manager, project_owner or project_leader; anyone else
+	gets the 200-error above): `estimated` when it actually changes the value,
+	`assigned_to` when it actually changes the assignee, and `mentor`. `is_priority`
+	takes the same gate plus project admins. Changing `estimated` also DISCARDS any
+	explicit assigned_allocation split on the task, falling back to the default.
+
+	`ai_in_progress` (0/1) — set 1 when an AI session STARTS working on the task and
 	0 when it stops. It is what the "AI is working right now" animation on the card,
 	the web todo row and the detail drawer reads. It is NOT a fourth AI phase: the
 	ai_phase ladder tracks the PROMPT (tagged -> drafted -> human-confirmed) and only
 	moves forward, while this comes and goes with each run. Only a task tagged for AI
-	work (``work_mode`` AI or Both) accepts it — anything else throws — and a terminal
+	work (`work_mode` AI or Both) accepts it — anything else throws — and a terminal
 	status clears it server-side, so finishing a task never leaves the flag stuck on.
-	"""
+
+	The other AI fields: `work_mode` is "Human", "AI" or "Both" (any other value,
+	including "", clears it); setting it to AI or Both requires the AI User role,
+	while clearing never does. `ai_prompt` is lead-only and is SILENTLY IGNORED for
+	anyone else — no error, a plain "Task updated" and the prompt unchanged.
+
+	Plain fields, settable by anyone who can edit the task: `to_do` (title),
+	`start_date`, `deadline`, `leader_deadline`, `owner_deadline`, `group`, `level_id`
+	(the stable reference; `level` is still accepted for older clients but `level_id`
+	is the truth), `to_check` (the assignee's own reminder flag, no scoring effect),
+	`is_waiting` and `waiting_reason` (the controller enforces reason-required and
+	Planned-only). Note which ones an EMPTY STRING clears and which it does not:
+	`leader_deadline`, `owner_deadline`, `mentor`, `level`, `level_id`,
+	`waiting_reason` and `work_mode` treat "" as "clear this field", while `to_do`,
+	`group`, `assigned_to` and `estimated` ignore a blank rather than clearing.
+
+	`blocked_by` and `blocking` are arrays of todo ids (a JSON string or a list) and
+	REPLACE the whole link list rather than appending; `[]` clears it. A self-
+	reference is dropped, and the controller mirrors the link onto the other todo.
+
+	Per-phase estimates are in MINUTES: `estimated_done_to_checked` and
+	`estimated_checked_to_completed`. `estimated_planned_to_done` is still ACCEPTED
+	BY THE SIGNATURE BUT DISCARDED — it is deprecated (the main `estimated` field
+	covers it), and passing it returns a successful "Task updated" having changed
+	nothing. Use `estimated` instead.
+
+	Recurrence: `is_recurring` (0/1) is the switch, and setting it to 0 WIPES the
+	whole recurrence configuration below and un-pauses the series root, so
+	re-enabling later starts from defaults rather than from what was there before.
+	`recurring_frequency` and `recurring_until` apply either way, but the ten detail
+	arguments — `recurring_interval`, `recurring_weekdays`, `recurring_monthly_mode`,
+	`recurring_day_of_month`, `recurring_nth`, `recurring_paused`,
+	`recurring_exception_weekdays`, `recurring_exception_monthdays`,
+	`recurring_exception_dates` and `recurring_exception_behavior` — are applied ONLY
+	when the task is recurring at that point in the call. Send them together with
+	`is_recurring=1`, or on a task that already recurs; sent alone to a non-recurring
+	task they are silently dropped with a successful response."""
 	try:
 		user = frappe.session.user
 		project_detail = frappe.get_value("Project Todo", project_item, "project_detail")
