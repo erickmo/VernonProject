@@ -109,19 +109,23 @@ class TestGetCalendarMerge(unittest.TestCase):
 
 		sync_events(SITE, [_event("TEST:merge-1"), _event("TEST:merge-2", cancelled=1)])
 
+		# visible_events reads through frappe.get_list so the doctype's role
+		# permissions apply; count every External Calendar Event fetch on either API.
 		calls = {"external": 0}
-		orig_get_all = frappe.get_all
+		orig = {"get_all": frappe.get_all, "get_list": frappe.get_list}
 
-		def counting_get_all(doctype, *args, **kwargs):
-			if doctype == "External Calendar Event":
-				calls["external"] += 1
-			return orig_get_all(doctype, *args, **kwargs)
+		def counting(api):
+			def wrapper(doctype, *args, **kwargs):
+				if doctype == "External Calendar Event":
+					calls["external"] += 1
+				return orig[api](doctype, *args, **kwargs)
+			return wrapper
 
-		frappe.get_all = counting_get_all
+		frappe.get_all, frappe.get_list = counting("get_all"), counting("get_list")
 		try:
 			result = get_calendar()
 		finally:
-			frappe.get_all = orig_get_all
+			frappe.get_all, frappe.get_list = orig["get_all"], orig["get_list"]
 
 		self.assertEqual(calls["external"], 1)
 		self.assertIn("external_events", result)
