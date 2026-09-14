@@ -1,6 +1,7 @@
 import { marked } from 'marked'
 import { useMemo } from 'react'
 import { sanitizeHtml } from './format'
+import { encodeMdUrl } from './markdownRich'
 
 function escapeHtml(s: string): string {
   return s
@@ -63,6 +64,20 @@ export function renderComment(content: string): string {
 // event-handler attributes, and restricts image sources to /files/.
 const cache = new Map<string, string>()
 
+// h1n29go5db: every image already stored was written with its filename verbatim —
+// "/files/Screenshot 2026-09-13 at 7.51.36 PM.png" — and a space ends a bare
+// markdown destination, so marked renders the `![](...)` source as text. Those
+// comments and notes cannot be rewritten in place (the stored format is the
+// contract), so the destination is encoded on the way OUT. New ones are already
+// encoded at insert; encodeMdUrl is idempotent, so both paths land the same.
+//
+// ponytail: a literal `![](a b)` inside a fenced code block is encoded too and will
+// read `%20`. Telling the two apart needs a full tokenizer pass; not worth it for a
+// case nobody has written.
+const IMG_DEST_RE = /(!\[[^\]]*\]\()([^)]+)(\))/g
+const encodeImageUrls = (source: string) =>
+  source.replace(IMG_DEST_RE, (_m, open: string, url: string, close: string) => open + encodeMdUrl(url) + close)
+
 /** Markdown source -> sanitised HTML, memoised per exact source string so a
  * long list (or a re-render from unrelated state) never re-parses a note
  * it has already rendered. */
@@ -70,7 +85,7 @@ export function renderNoteMarkdown(source: string): string {
   if (!source) return ''
   const cached = cache.get(source)
   if (cached !== undefined) return cached
-  const html = sanitizeHtml(marked.parse(source, { async: false }) as string)
+  const html = sanitizeHtml(marked.parse(encodeImageUrls(source), { async: false }) as string)
   cache.set(source, html)
   if (cache.size > 500) {
     // ponytail: unbounded-cache guard, not an LRU -- notes are short-lived
