@@ -249,3 +249,46 @@ Playwright E2E suite the todo's other two AI-prompt entries ask for were
 also not built this pass — out of proportion to what was actually asked
 ("measure, fix the biggest real costs, prove it"); flagged back to the hub
 rather than silently skipped.
+
+## Phase 2 — static N+1 sweep beyond mobile.py (2026-09-15, @16db1a0, read-only)
+
+Extended the audit into the paths Phase 0/1 did NOT cover: `api/report.py`
+(occupancy / daily-estimated / team-daily / intern-allocation), the attendance
+engine, and every other `api/*.py` list endpoint. Method: AST-ish scan for a
+`frappe.(db.)?get_value/get_doc/count` textually inside a `for`/`while` body,
+across all non-test `api/*.py`, then read each hit to separate a real per-row
+N+1 from a batched loop or a bounded write-path.
+
+**report.py + attendance are clean.** The occupancy/daily reports fetch through
+batched helpers (`_expected_minutes`, `_assigned_minutes`, `_holidays_by_user`
+all take a `names` list and issue ONE query each); `_resolve_min_minutes` is
+only ever called single-user (assignment_overload_check, my_previous_shift_
+shortfall), never in a user×date loop. `recompute_range`'s day loop is a
+Shift-Assignment write-trigger + the nightly scheduled job, off the request
+path and bounded by the assignment window. No missing-index plan found.
+
+**Four real structural N+1s, all on LOW-VOLUME or COLD surfaces — negligible
+today, listed with the batched fix and the row-count ceiling at which they
+start to matter.** Deliberately NOT fixed this pass: with the live counts below
+(Course=1, Course Enrollment=0, Vernon Event=1, Vernon Event Registration=1) a
+fix optimizes a 0–1-row loop = zero measurable gain and a diff to land for
+nothing. This is the profiler saying "not yet". Fix opportunistically when the
+feature is touched or its table crosses ~50 rows.
+
+| Endpoint | Pattern | Cost today | Fix | Matters at |
+|---|---|---|---|---|
+| `events.get_my_registrations` | 2× `get_value("Vernon Event", r.event, …)` per registration (both from the same doc) | 1 reg site-wide → ~0 | one `get_all("Vernon Event", {"name":["in",ids]}, ["name","title","start_datetime"])` → dict, map onto rows | a power user with dozens of active registrations |
+| `lms.get_my_courses` | `get_value("Course", r.course, "title")` per enrollment | 0 enrollments → 0 | batch course titles into a dict keyed by the row `course` set | any real LMS adoption |
+| `lms.manage_courses` | per course: `_lesson_count` + 2× `db.count("Course Enrollment", …)` = 3 queries × N | 1 course → 3 queries | 2 `GROUP BY course` aggregates (lesson count; enrollment total+completed) → ~3 queries regardless of N | a catalog of more than a handful of courses (admin console) |
+| `project_todo.stalled_series` | per stalled row: `get_value("Project Detail" project)`, `get_value("User" full_name)`, `get_value("Project Todo" recurring_paused)` | rows = only stalled recurring series (tiny), admin-only | batch the Project Detail→project and User→full_name maps; team already cached per project | many broken recurring series at once (unlikely) |
+
+None needs a schema or index change — all four are pure query-batching in
+Python, zero behaviour/response change. Recorded as leads with a known ceiling
+rather than shipped, per the "no optimization a profiler hasn't asked for" rule.
+
+**Net:** no new hot-path finding. The real cost centres remain the two MB-scale
+`get_calendar()` / `get_project_detail` items from Phase 0, still gated on
+Erick's scope confirmation (windowing/pagination capability already built in
+Phase 1b, frontend switch held). The high-volume todo/plan/dashboard paths were
+already optimized in Phase 0/1. This pass confirms the *rest* of the surface is
+clean apart from four cold/low-volume structural N+1s not worth a diff yet.
