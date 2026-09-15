@@ -165,6 +165,16 @@ def _make_registration(event, user, method, amount, status):
 
 @frappe.whitelist()
 def register(event):
+	"""Register the CURRENT user for a published event (points or Rupiah).
+
+	Logged-in (`_require_user()`). The event must be "Published". Serialised per user by
+	the `vernon_spend` advisory lock (the same one the wallet uses) so concurrent
+	seat/points spends can't race. An abandoned Pending Rupiah registration is resumed
+	(same Snap token) rather than dead-ended; an already-active registration is refused.
+
+	`event` is the event id. Returns the registration + its status (and Snap token/
+	order id for a Rupiah payment).
+	"""
 	from vernon_project.api.mobile import _user_balance
 	user = _require_user()
 	ev = frappe.get_doc("Vernon Event", event)
@@ -268,6 +278,14 @@ def _apply_notification(payload):
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 def midtrans_notify():
+	"""Midtrans payment webhook — apply a Snap transaction notification.
+
+	PUBLIC: `allow_guest=True` — Midtrans posts here server-to-server, so there is no
+	session. Parses the JSON payload and applies it (`_apply_notification`) to the
+	matching registration, then commits. Not for interactive callers.
+
+	Returns `{"status": <result>}`.
+	"""
 	try:
 		payload = json.loads(frappe.request.get_data() or b"{}")
 	except ValueError:

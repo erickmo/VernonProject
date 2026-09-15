@@ -225,6 +225,14 @@ def list_ads(ad_type=None, q=None, mine=0, limit_start=0, limit_page_length=30):
 
 @frappe.whitelist()
 def get_ad(name):
+	"""One classified-ad (Papan Iklan) with its photos.
+
+	Any logged-in user (`_require_user()`). A "Removed" ad is visible only to its author
+	or an admin — to everyone else it reads as not found, so a moderated ad can't be
+	enumerated.
+
+	`name` is the ad id. Returns the ad fields plus `photos` (ordered image URLs).
+	"""
 	user = _require_user()
 	doc = frappe.db.get_value(
 		"Papan Iklan", name,
@@ -255,6 +263,14 @@ def get_ad(name):
 
 @frappe.whitelist()
 def create_ad(payload):
+	"""Post a new classified ad (Papan Iklan).
+
+	Any logged-in user who is not banned (`_assert_not_banned`); the caller becomes the
+	`author` and the ad starts "Active". Fields are cleaned/validated (title, ad_type,
+	contact) before insert.
+
+	`payload` is the ad dict (or JSON string). Returns `{"name"}`.
+	"""
 	user = _require_user()
 	_assert_not_banned(user)
 	data = json.loads(payload) if isinstance(payload, str) else payload
@@ -270,6 +286,15 @@ def create_ad(payload):
 
 @frappe.whitelist()
 def update_ad(name, payload):
+	"""Edit a classified ad.
+
+	Logged-in, gated by `_can_manage` (the ad's author or an admin) and blocked for a
+	banned user. Applies the cleaned fields only — it never changes `author` or
+	`status` (status moves go through `set_status`/`remove_ad`).
+
+	`name` is the ad id; `payload` is the field dict (or JSON string). Returns
+	`{"name"}`.
+	"""
 	user = _require_user()
 	_can_manage(name)
 	_assert_not_banned(user)
@@ -305,6 +330,11 @@ def set_status(name, status):
 
 @frappe.whitelist()
 def delete_ad(name):
+	"""Delete a classified ad.
+
+	Logged-in, gated by `_can_manage` (the ad's author or an admin). `name` is the ad
+	id. Returns `{"ok": True}`.
+	"""
 	_require_user()
 	_can_manage(name)
 	frappe.delete_doc("Papan Iklan", name, ignore_permissions=True)

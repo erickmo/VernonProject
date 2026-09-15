@@ -101,6 +101,16 @@ def reveal_mcp_connector_url():
 
 @frappe.whitelist(methods=["POST"])
 def generate_api_token():
+	"""Generate (or rotate) the CURRENT user's API key + secret.
+
+	Self-service — acts only on the caller's own User (`_self()`). Keeps the existing
+	`api_key` if set, always mints a fresh `api_secret`. The plaintext secret is
+	captured before save and returned ONCE here — Frappe replaces the in-memory
+	Password field with a placeholder after save, so this is the only chance to read it.
+
+	Takes no arguments. Returns `{"api_key", "api_secret"}` (the secret in plaintext,
+	shown once).
+	"""
 	doc = frappe.get_doc("User", _self())
 	if not doc.api_key:
 		doc.api_key = frappe.generate_hash(length=15)
@@ -117,6 +127,13 @@ def generate_api_token():
 
 @frappe.whitelist(methods=["POST"])
 def revoke_api_token():
+	"""Revoke the CURRENT user's API key + secret.
+
+	Self-service — acts only on the caller's own User (`_self()`); POST. Clears both
+	`api_key` and `api_secret`, immediately invalidating token auth for the account.
+
+	Takes no arguments. Returns `{"ok": True}`.
+	"""
 	doc = frappe.get_doc("User", _self())
 	doc.api_key = ""
 	doc.api_secret = ""

@@ -72,6 +72,17 @@ def get_managed_event(name):
 
 @frappe.whitelist()
 def save_event(payload, name=None):
+	"""Create or update a Vernon Event (organizer console).
+
+	Logged-in, and gated by `_can_manage`: the event's organizer or a System Manager
+	(create sets the caller as organizer). Attaching to a `parent_event` additionally
+	requires manage permission on the PARENT (the event shows on the parent's page),
+	checked before any field is applied so a refusal can't half-update the doc. Only
+	the `EDITABLE` fields are written; the controller's `validate()` enforces the
+	pricing/cost rules on save.
+
+	`payload` is the event dict (or JSON string); `name` omitted creates a new event.
+	"""
 	user = _require_user()
 	data = json.loads(payload) if isinstance(payload, str) else payload
 	if name:
@@ -95,6 +106,14 @@ def save_event(payload, name=None):
 
 @frappe.whitelist()
 def delete_event(name):
+	"""Delete a Vernon Event.
+
+	Logged-in, gated by `_can_manage` (organizer or System Manager). If registrations
+	still reference the event, Frappe raises `LinkExistsError`, surfaced to the client
+	so it can prompt to cancel registrations / set status Cancelled first.
+
+	`name` is the event id. Returns `{"ok": True}`.
+	"""
 	_require_user()
 	_can_manage(name)
 	# Frappe raises LinkExistsError if registrations reference the event — surfaced
@@ -139,6 +158,15 @@ def _reg_event(name):
 
 @frappe.whitelist()
 def cancel_registration(name):
+	"""Cancel one event registration (organizer console).
+
+	Logged-in, gated by `_can_manage` on the registration's event (organizer or System
+	Manager). Sets the registration to "Cancelled"; points auto-refund and the seat
+	auto-frees because both sums ignore Cancelled rows. Idempotent. Rupiah money
+	refunds are out of scope (handled manually).
+
+	`name` is the registration id. Returns `{"ok": True}`.
+	"""
 	_require_user()
 	_can_manage(_reg_event(name))
 	# Sets Cancelled. Points auto-refund (_user_balance sums only non-Cancelled
@@ -150,6 +178,12 @@ def cancel_registration(name):
 
 @frappe.whitelist()
 def mark_attended(name, attended):
+	"""Mark an event registration attended or not (organizer console).
+
+	Logged-in, gated by `_can_manage` on the registration's event (organizer or System
+	Manager). `name` is the registration id; `attended` is truthy/falsy. Returns
+	`{"ok": True}`.
+	"""
 	_require_user()
 	_can_manage(_reg_event(name))
 	frappe.db.set_value(

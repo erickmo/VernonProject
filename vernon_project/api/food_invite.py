@@ -100,6 +100,16 @@ def _serialize(doc, user):
 
 @frappe.whitelist()
 def create_invite(message, order_by, audience_type="Specific", place=None, users=None, projects=None):
+	"""Create a "Makan Bareng" (eat-together) invite.
+
+	Logged-in (`_require_login()`); the caller is the inviter. `message` is required and
+	`order_by` must be in the future. `audience_type` is one of `AUDIENCES`
+	("Specific"/"Internal"/"Project"/"Link"); recipients are resolved from `users`/
+	`projects` for the non-Link audiences (at least one required), while "Link" opens
+	enrollment to anyone with the link.
+
+	Returns the created invite.
+	"""
 	inviter = _require_login()
 	message = (message or "").strip()
 	if not message:
@@ -150,6 +160,16 @@ def _can_view(doc, user):
 
 @frappe.whitelist()
 def respond(invite, response):
+	"""Respond Yes/No to a food invite.
+
+	Logged-in (`_require_login()`). `response` must be "Yes" or "No". A closed invite
+	(past its order-by time) returns `{"status": "closed"}`. Self-enrolment is allowed
+	ONLY for a "Link" audience — on a Specific/Internal/Project invite a user not on the
+	recipient list is refused with `frappe.PermissionError`, so the closed lists stay
+	closed.
+
+	`invite` is the invite id. Returns the response result.
+	"""
 	user = _require_login()
 	if response not in ("Yes", "No"):
 		frappe.throw(_("Invalid response"))

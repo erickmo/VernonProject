@@ -103,6 +103,12 @@ def save_announcement(message, start_date, end_date, name=None, link=None, publi
 
 @frappe.whitelist()
 def delete_announcement(name):
+	"""Delete an announcement.
+
+	Gated by `_require_manage()` — System Manager or HR Manager (`MANAGE_ROLES`);
+	`frappe.PermissionError` otherwise. `name` is the Announcement id. Returns
+	`{"ok": True}`.
+	"""
 	_require_manage()
 	frappe.delete_doc("Announcement", name, ignore_permissions=True)
 	frappe.db.commit()

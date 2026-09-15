@@ -399,6 +399,16 @@ def admin_list_leave_types():
 
 @frappe.whitelist()
 def save_leave_type(name=None, **fields):
+	"""Create or update a Leave Type (HR).
+
+	Gated to HR (`_is_hr`; `frappe.PermissionError` otherwise). `name` omitted creates
+	a new type. `**fields` are applied only when present and not None; `limit_kind`
+	("Annual Quota"/"Per Event"/"Documented") and `gender` ("Any"/"Male"/"Female") are
+	validated. The single default-annual type cannot be disabled, and after save it is
+	de-duplicated so at most one type carries `is_default_annual`.
+
+	Returns `{"status": "ok", "name"}` or `{"status": "error", "message"}`.
+	"""
 	if not _is_hr(frappe.session.user):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 	if fields.get("limit_kind") and fields["limit_kind"] not in ("Annual Quota", "Per Event", "Documented"):
@@ -421,6 +431,15 @@ def save_leave_type(name=None, **fields):
 
 @frappe.whitelist()
 def delete_leave_type(name):
+	"""Delete a Leave Type (HR).
+
+	Gated to HR (`_is_hr`; `frappe.PermissionError` otherwise). Refuses to delete the
+	default-annual type, or one already referenced by an Attendance Exception (asks the
+	caller to disable it instead).
+
+	`name` is the Leave Type id. Returns `{"status": "ok"}` or `{"status": "error",
+	"message"}`.
+	"""
 	if not _is_hr(frappe.session.user):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 	if frappe.db.get_value("Leave Type", name, "is_default_annual"):
@@ -614,11 +633,29 @@ def _vote_exception(exception_id, decision, reason, as_hr=False):
 
 @frappe.whitelist()
 def approve_exception(exception_id, as_hr=0):
+	"""Approve an attendance exception (leave/permission request).
+
+	Delegates to `_vote_exception`, which holds the gate: with `as_hr=1` the caller must
+	be HR (`_is_hr`); otherwise the caller must be a designated approver on this
+	request's approver list (an error dict is returned if they are not). Records an
+	"Approved" vote.
+
+	`exception_id` is the Attendance Exception id. Returns the vote result dict.
+	"""
 	return _vote_exception(exception_id, "Approved", None, as_hr=cint(as_hr) == 1)
 
 
 @frappe.whitelist()
 def reject_exception(exception_id, reason=None, as_hr=0):
+	"""Reject an attendance exception, with a required reason.
+
+	A non-empty `reason` is required. Delegates to `_vote_exception` for the gate: with
+	`as_hr=1` the caller must be HR; otherwise a designated approver on this request
+	(error dict if not). Records a "Rejected" vote and surfaces the reason to the
+	employee.
+
+	`exception_id` is the Attendance Exception id. Returns the vote result dict.
+	"""
 	reason = (reason or "").strip()
 	if not reason:
 		return {"status": "error", "message": _("Alasan penolakan wajib diisi.")}

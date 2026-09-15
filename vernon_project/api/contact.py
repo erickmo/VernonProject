@@ -52,6 +52,16 @@ _ERROR_MESSAGES = {
 
 @frappe.whitelist(allow_guest=True)
 def submit_inquiry(name=None, email=None, message=None, company_website=None, lang="id"):
+    """Submit a public "contact us" inquiry from the VernonCorp site (emails HR).
+
+    PUBLIC: `allow_guest=True` — the marketing site has no session. Defends the trust
+    boundary: a filled `company_website` honeypot is silently dropped as a bot, the
+    sender is rate limited per email (5/hour), and name/email/message are validated
+    (`lang` picks the id/en error text). A valid inquiry is emailed to the configured
+    inbox.
+
+    Returns `{"ok": True}` (also on a silently-dropped bot, so a prober learns nothing).
+    """
     name = " ".join((name or "").split())  # collapse newlines/whitespace (subject-header safety)
     email = (email or "").strip()
     # Was @rate_limit(key="contact", ...): "contact" names no parameter, so every

@@ -57,6 +57,14 @@ def list_overtime(employee=None, status=None, year=None):
 
 @frappe.whitelist()
 def create_overtime(employee, date, minutes, reason=None):
+    """Log an extra-time (overtime) entry for an employee (manager).
+
+    Gated by `_require_manager()` (HR Manager or System Manager). `minutes` must be
+    positive and `reason` non-empty; the entry starts "Pending".
+
+    `employee` is the user, `date` the day it applies to. Returns the new Overtime
+    Entry id.
+    """
     _require_manager()
     minutes = int(minutes)
     if minutes <= 0:
@@ -85,6 +93,11 @@ def set_status(name, status):
 
 @frappe.whitelist()
 def delete_overtime(name):
+    """Delete an Overtime Entry (manager).
+
+    Gated by `_require_manager()` (HR Manager or System Manager). `name` is the Overtime
+    Entry id. Returns `{"ok": True}`.
+    """
     _require_manager()
     frappe.delete_doc("Overtime Entry", name)
     return {"ok": True}
