@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Flame, Plus, Check, Trash2, Sparkles } from 'lucide-react'
+import { Flame, Plus, Check, Trash2, Sparkles, Pencil } from 'lucide-react'
 import { TabScreen, PullToRefresh } from '@/components/Layout'
 import { EmptyState, FullScreenLoader } from '@/components/ui'
 import { useConfirm } from '@/components/Confirm'
+import { EditHabitSheet } from '@/components/EditHabitSheet'
 import { useHabits, useToggleHabit, useCreateHabit, useDeleteHabit, useAdoptSuggestion } from '@/hooks/useData'
 import type { Habit, HabitWeekDot } from '@/lib/types'
 
@@ -31,7 +32,9 @@ function HabitCard({ h }: { h: Habit }) {
   const toggle = useToggleHabit()
   const del = useDeleteHabit()
   const confirm = useConfirm()
+  const [editing, setEditing] = useState(false)
   return (
+    <>
     <div className="flex items-start gap-3 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-4 shadow-card">
       <button
         aria-label={h.done_today ? 'Batalkan centang' : 'Tandai selesai'}
@@ -50,16 +53,25 @@ function HabitCard({ h }: { h: Habit }) {
           <p className="truncate font-semibold text-stone-800 dark:text-slate-50">
             {h.icon} {h.title}
           </p>
-          <button
-            aria-label="Arsipkan"
-            onClick={async () => {
-              if (await confirm({ title: 'Hapus kebiasaan ini?', confirmLabel: 'Hapus', destructive: true }))
-                del.mutate(h.name)
-            }}
-            className="shrink-0 text-stone-300 transition active:scale-90 active:text-rose-500 dark:text-slate-600"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            <button
+              aria-label="Ubah kebiasaan"
+              onClick={() => setEditing(true)}
+              className="text-stone-300 transition active:scale-90 active:text-brand-600 dark:text-slate-600"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              aria-label="Arsipkan"
+              onClick={async () => {
+                if (await confirm({ title: 'Hapus kebiasaan ini?', confirmLabel: 'Hapus', destructive: true }))
+                  del.mutate(h.name)
+              }}
+              className="text-stone-300 transition active:scale-90 active:text-rose-500 dark:text-slate-600"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="mt-0.5 flex items-center gap-1 text-sm text-orange-500">
           <Flame className="h-3.5 w-3.5" /> {h.current_streak} hari
@@ -70,6 +82,8 @@ function HabitCard({ h }: { h: Habit }) {
         <WeekStrip week={h.week} />
       </div>
     </div>
+    <EditHabitSheet open={editing} onClose={() => setEditing(false)} habit={h} />
+    </>
   )
 }
 
@@ -106,8 +120,8 @@ export default function HabitsScreen() {
               </div>
             )}
 
-            {/* add new — Daily-only quick-add; a full edit sheet with the weekday
-                picker is deferred until someone needs custom weekdays on their own habit. */}
+            {/* add new — Daily-only quick-add; the weekday picker lives in the edit
+                sheet on each card (EditHabitSheet), so adding stays one tap. */}
             <div className="flex items-center gap-2 rounded-2xl border border-paper-edge dark:border-slate-700 bg-paper-card dark:bg-slate-800 p-3 shadow-card">
               <input
                 value={icon}

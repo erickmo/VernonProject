@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Flame, Plus, Check, Trash2, Sparkles } from 'lucide-react'
+import { Flame, Plus, Check, Trash2, Sparkles, Pencil } from 'lucide-react'
 import { Spinner, EmptyState } from '@/components/ui'
 import { useConfirm } from '@/components/Confirm'
+import { EditHabitDialog } from '@web/components/EditHabitDialog'
 import { Button } from '@web/components/ui'
 import { BentoGrid, BentoTile } from '@web/components/bento'
 import { useHabits, useToggleHabit, useCreateHabit, useDeleteHabit, useAdoptSuggestion } from '@/hooks/useData'
@@ -28,6 +29,7 @@ function HabitTile({ h }: { h: Habit }) {
   const toggle = useToggleHabit()
   const del = useDeleteHabit()
   const confirm = useConfirm()
+  const [editing, setEditing] = useState(false)
   return (
     <div className="rounded-2xl border border-line bg-surface p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between">
@@ -41,16 +43,25 @@ function HabitTile({ h }: { h: Habit }) {
         >
           {h.done_today ? <Check className="h-5 w-5" /> : <span className="text-lg">{h.icon || '•'}</span>}
         </button>
-        <button
-          aria-label="Arsipkan"
-          onClick={async () => {
-            if (await confirm({ title: 'Hapus kebiasaan ini?', confirmLabel: 'Hapus', destructive: true }))
-              del.mutate(h.name)
-          }}
-          className="text-muted hover:text-rose-500 transition active:scale-90"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            aria-label="Ubah kebiasaan"
+            onClick={() => setEditing(true)}
+            className="text-muted hover:text-brand-600 transition active:scale-90"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            aria-label="Arsipkan"
+            onClick={async () => {
+              if (await confirm({ title: 'Hapus kebiasaan ini?', confirmLabel: 'Hapus', destructive: true }))
+                del.mutate(h.name)
+            }}
+            className="text-muted hover:text-rose-500 transition active:scale-90"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       <p className="font-semibold truncate text-ink">
         {h.icon} {h.title}
@@ -60,6 +71,7 @@ function HabitTile({ h }: { h: Habit }) {
         {h.best_streak > h.current_streak && <span className="text-muted ml-1">· rekor {h.best_streak}</span>}
       </div>
       <WeekStrip week={h.week} />
+      <EditHabitDialog open={editing} onClose={() => setEditing(false)} habit={h} />
     </div>
   )
 }
