@@ -3899,6 +3899,15 @@ def save_app_settings(
 	prank_interval_minutes=None,
 	home_banners=None,
 ):
+	"""Update site-wide app settings (Vernon Settings single) — branding, the nametag
+	value, the estimate ceiling, occupancy tolerance, the online-presence window, and
+	the per-weekday minimum estimated minutes.
+
+	Gated by `_require_settings_manager()`. Every argument defaults to None and is
+	written only when provided, so an omitted field is left at its current value.
+	The per-weekday `min_minutes_*` values feed the daily-minimum floor
+	(`report._resolve_min_minutes`) for users without a Brand.
+	"""
 	_require_settings_manager()
 
 	settings = frappe.get_single("Vernon Settings")
@@ -5869,6 +5878,18 @@ def create_meeting(project, title, scheduled_at=None, estimated=0, group=None,
 				   recurring_day_of_month=None, recurring_nth=None, recurring_until=None,
 				   recurring_exception_weekdays=None, recurring_exception_monthdays=None,
 				   recurring_exception_dates=None, recurring_exception_behavior=None):
+	"""Create a Meeting on a project (optionally recurring), with participants.
+
+	Only a System Manager, or the project's Owner / Leader / Admin, may create one
+	(returns an error dict otherwise); the caller becomes the `organizer`.
+	Participants are filtered to enabled users. Recurrence is opt-in via
+	`is_recurring` truthy ("1"/"true"/"True") plus the `recurring_*` fields, mirroring
+	`create_todo`'s recurrence contract; omitted recurrence fields leave the meeting
+	non-recurring.
+
+	`participants` is a list of user ids or a JSON string of one. Returns
+	`{"status": "success"|"error", "message", ...}`.
+	"""
 	try:
 		if not frappe.db.exists("Project", project):
 			return {"status": "error", "message": "Project not found."}
@@ -5925,6 +5946,17 @@ def update_meeting(meeting, title=None, scheduled_at=None, estimated=None,
 				   recurring_paused=None, recurring_exception_weekdays=None,
 				   recurring_exception_monthdays=None, recurring_exception_dates=None,
 				   recurring_exception_behavior=None):
+	"""Edit an existing Meeting — fields, and its recurrence settings.
+
+	Permission is `_meeting_can_manage`: System Manager, or the meeting's organizer /
+	project Owner / Leader / Admin (error dict otherwise). A "✅ Done" meeting cannot
+	be edited. Every field argument is applied only when not None, so an omitted one
+	is left unchanged. `recurring_paused` is a series-level flag written to the series
+	root after save (so a self-referential save can't clobber it), matching
+	`update_todo`'s recurrence handling.
+
+	`meeting` is the Meeting id. Returns `{"status", "message"}`.
+	"""
 	try:
 		doc = frappe.get_doc("Meeting", meeting)
 		if not _meeting_can_manage(doc):
@@ -6002,6 +6034,15 @@ def update_meeting(meeting, title=None, scheduled_at=None, estimated=None,
 
 @frappe.whitelist()
 def set_meeting_participants(meeting, users):
+	"""Replace a Meeting's participant list.
+
+	Permission is `_meeting_can_manage` (System Manager, or organizer / project Owner /
+	Leader / Admin); a "✅ Done" meeting is refused. The list REPLACES the existing
+	participants and is filtered to enabled users.
+
+	`users` is a list of user ids or a JSON string of one. Returns `{"status",
+	"message"}`.
+	"""
 	try:
 		doc = frappe.get_doc("Meeting", meeting)
 		if not _meeting_can_manage(doc):
@@ -6019,6 +6060,14 @@ def set_meeting_participants(meeting, users):
 
 @frappe.whitelist()
 def delete_meeting(meeting):
+	"""Delete a Meeting.
+
+	Permission is `_meeting_can_manage` (System Manager, or organizer / project Owner /
+	Leader / Admin). The Meeting's own `on_trash` claws back any points it awarded
+	before the row is removed, so deletion never leaves minted points behind.
+
+	`meeting` is the Meeting id. Returns `{"status", "message"}`.
+	"""
 	try:
 		doc = frappe.get_doc("Meeting", meeting)
 		if not _meeting_can_manage(doc):
@@ -6130,6 +6179,14 @@ def mark_meeting_done(meeting, awardees=None):
 
 @frappe.whitelist()
 def reopen_meeting(meeting):
+	"""Reopen a completed Meeting back to "Scheduled", removing its awarded points.
+
+	Permission is `_meeting_can_manage` (System Manager, or organizer / project Owner /
+	Leader / Admin). Already-scheduled is a no-op. Moving off Done re-runs the
+	controller's status handling, which removes any points the completion minted.
+
+	`meeting` is the Meeting id. Returns `{"status", "message"}`.
+	"""
 	try:
 		doc = frappe.get_doc("Meeting", meeting)
 		if not _meeting_can_manage(doc):
@@ -6640,6 +6697,18 @@ def _asset_owned(user):
 
 @frappe.whitelist()
 def buy_avatar_asset(asset_name):
+	"""Buy one avatar Asset (a whole outfit/item) with the caller's own points.
+
+	Self-service — always spends `frappe.session.user`'s balance, so no role gate.
+	Serialized per user by the `vernon_spend` advisory lock, and every guard is
+	re-checked inside it: the asset must be `active`, not `is_default` (those are
+	free), not `earn_only` (those unlock by completing their set, never by buying),
+	not already owned (a second buy is a no-op that just returns the balance), and
+	the balance must cover `price`. Buying may complete a set and grant its reward.
+
+	`asset_name` is the Avatar Asset id. Returns `{"balance"}`, plus `"completed"`
+	(the set-completion result) when this purchase finished a set.
+	"""
 	user = frappe.session.user
 	a = frappe.db.get_value("Avatar Asset", asset_name, ["asset_type", "is_default", "price", "active", "earn_only"], as_dict=True)
 	if not a or not a["active"]:
@@ -7535,6 +7604,17 @@ def get_gamification():
 
 @frappe.whitelist()
 def claim_daily():
+	"""Claim the once-per-day login reward for the caller, advancing their streak.
+
+	Self-service (acts on `frappe.session.user`), serialized per user by the
+	`vernon_gami` lock. A second claim the same day is a no-op. The streak
+	increments only when the last claim was yesterday, otherwise it resets to 1;
+	the reward is `daily_reward_points + streak_bonus_points × (min(streak, cap) - 1)`
+	(all from Gamification settings), minted as a "Daily" Point Ledger entry.
+
+	Takes no arguments. Returns `{"streak", "granted", "balance", "last_claim"}`, or
+	`{"already": True, "streak", "granted": 0, "balance"}` when already claimed today.
+	"""
 	user = frappe.session.user
 	s = _gami_settings()
 	lock_key = f"vernon_gami:{user}"
@@ -7590,6 +7670,14 @@ def get_gamification_settings():
 
 @frappe.whitelist()
 def save_gamification_settings(premium_price=None, points_per_level=None, daily_reward_points=None, streak_bonus_points=None, streak_cap=None, level_rewards=None, achievements=None, assets=None):
+	"""Save the gamification configuration — premium price, points-per-level, the daily/
+	streak reward amounts and cap, plus the level-reward, achievement and avatar-asset
+	tables.
+
+	Gated by `_require_marketplace_manager()`. `level_rewards`, `achievements` and
+	`assets` are lists (or JSON strings of lists) that replace their respective
+	tables; an asset row naming an unknown Avatar Asset is dropped.
+	"""
 	_require_marketplace_manager()
 	import json as _json
 	s = _gami_settings()
