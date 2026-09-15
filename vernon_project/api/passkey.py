@@ -112,6 +112,15 @@ def _as_dict(credential):
 # --------------------------------------------------------------------------------
 @frappe.whitelist()
 def register_begin():
+	"""Begin registering a new passkey for the CURRENT user.
+
+	Logged-in only — Guest raises `frappe.AuthenticationError`. Generates registration
+	options (resident key + user verification required) for the session user, excluding
+	the credentials they have already registered so the same authenticator can't be
+	enrolled twice, and stores the challenge server-side.
+
+	Takes no arguments; returns the options JSON.
+	"""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
@@ -138,6 +147,15 @@ def register_begin():
 
 @frappe.whitelist()
 def register_complete(credential, label=None):
+	"""Verify a passkey registration and store it as a User Passkey for the current user.
+
+	Logged-in only — Guest raises `frappe.AuthenticationError`. Verifies the
+	attestation against the stored challenge, expected RP id and origin, with user
+	verification required, and refuses a credential id already registered to anyone.
+
+	`credential` is the WebAuthn attestation (dict or JSON string); `label` names the
+	device (defaults to "This device", capped at 140 chars).
+	"""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
@@ -178,6 +196,16 @@ def register_complete(credential, label=None):
 # --------------------------------------------------------------------------------
 @frappe.whitelist(allow_guest=True)
 def login_begin():
+	"""Begin a passkey (WebAuthn) sign-in: issue authentication options + a challenge.
+
+	PUBLIC: `allow_guest=True` — this runs before the user is authenticated. Rate
+	limited by `_spend_login_budget()`. Generates authentication options with user
+	verification required, stores the challenge server-side under a random `_handle`,
+	and returns the options JSON with that `_handle` added for the client to echo back
+	to `login_complete`.
+
+	Takes no arguments.
+	"""
 	_spend_login_budget()
 	handle = frappe.generate_hash(length=32)
 	options = webauthn.generate_authentication_options(
@@ -192,6 +220,17 @@ def login_begin():
 
 @frappe.whitelist(allow_guest=True)
 def login_complete(credential, handle):
+	"""Complete a passkey sign-in and log the user in.
+
+	PUBLIC: `allow_guest=True`; rate limited. Pops the challenge stored under `handle`,
+	looks the credential up by id, cross-checks the authenticator's userHandle against
+	the stored one, and — because `login_as` bypasses the normal credential check —
+	explicitly refuses a disabled account. On success the session is authenticated as
+	the passkey's owner.
+
+	`credential` is the WebAuthn assertion (dict or JSON string); `handle` is the value
+	from `login_begin`.
+	"""
 	_spend_login_budget()
 	credential = _as_dict(credential)
 	challenge = _pop_challenge("auth", handle)
@@ -296,6 +335,17 @@ def _client_log_count():
 
 @frappe.whitelist(allow_guest=True)
 def client_log(detail):
+	"""Record a passkey client-side diagnostic message to the Error Log.
+
+	PUBLIC: `allow_guest=True` — the passkey flow runs pre-auth, so failures must be
+	reportable without a session. Because it writes to the Error Log and is
+	guest-reachable, it is budget-capped (`CLIENT_LOG_LIMIT` posts per window): past
+	the budget the post is dropped and `{"ok": True}` still returned so a prober learns
+	nothing, with a single marker logged the first time the budget is spent so the
+	throttle is visible to whoever reads the log.
+
+	`detail` is the client message (truncated to 2000 chars). Returns `{"ok": True}`.
+	"""
 	n = _client_log_count()
 	if n > CLIENT_LOG_LIMIT:
 		# Guest-reachable and it writes a row to the Error Log, so an attacker could
@@ -317,6 +367,14 @@ def client_log(detail):
 
 @frappe.whitelist()
 def revoke_passkey(name):
+	"""Delete one of the CURRENT user's registered passkeys.
+
+	Logged-in only — Guest raises `frappe.AuthenticationError`. Own-passkey only: a
+	passkey whose `user` is not the session user raises `frappe.PermissionError`, so a
+	caller can never revoke someone else's credential.
+
+	`name` is the User Passkey id. Returns `{"ok": True}`.
+	"""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
