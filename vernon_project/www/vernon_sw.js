@@ -21,7 +21,11 @@
 // v31: flush stale /m shell for the root back-button guard (back on home no longer blanks).
 // v32: gesture-armed root back guard (installed-PWA only) so back keeps home after first tap.
 // v33: launch+gesture seeded root back guard.
-const ASSET_CACHE = 'vernon-assets-v42'
+// v43: flush the cached manifest.webmanifest so the installed PWA picks up
+//      share_target and starts appearing in the OS share sheet. The manifest
+//      is NOT content-hashed, so cache-first would otherwise serve the old one
+//      to every existing install forever.
+const ASSET_CACHE = 'vernon-assets-v43'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
