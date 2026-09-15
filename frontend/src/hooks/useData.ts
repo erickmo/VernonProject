@@ -2813,6 +2813,32 @@ export function useUnderOccupied(fromDate: string, toDate: string, enabled: bool
   })
 }
 
+export function useOverOccupied(fromDate: string, toDate: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['over-occupied', fromDate, toDate],
+    queryFn: () => mobileApi.overOccupied(fromDate, toDate),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useDailyEstimatedTime(fromDate: string, toDate: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['daily-estimated-time', fromDate, toDate],
+    queryFn: () => mobileApi.dailyEstimatedTime(fromDate, toDate),
+    enabled,
+    staleTime: 1000 * 30,
+  })
+}
+
+export function useDailyEstimatedTimeAccess() {
+  return useQuery({
+    queryKey: ['daily-estimated-time-access'],
+    queryFn: () => mobileApi.dailyEstimatedTimeAccess(),
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 export function useTodosDue(dueBy: string, enabled: boolean) {
   return useQuery({
     queryKey: ['todos-due', dueBy],

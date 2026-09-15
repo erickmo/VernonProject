@@ -773,6 +773,50 @@ export interface TeamDailyReportResponse {
   totals: { assigned: number; done: number }
 }
 
+// Occupancy reports (report.py::under_occupied / over_occupied). One envelope,
+// one row shape — only the verdict pair differs: under_days/deficit vs
+// over_days/surplus. Both are minutes; day_count is the whole range, so a user
+// can be listed with fewer flagged days than that.
+export interface OccupancyRowBase {
+  user: string
+  full_name: string
+  assigned_total: number
+  expected_total: number
+}
+
+export type OccupancyRow<M extends 'under' | 'over'> = OccupancyRowBase &
+  (M extends 'under' ? { under_days: number; deficit: number } : { over_days: number; surplus: number })
+
+export interface OccupancyReport<M extends 'under' | 'over'> {
+  tolerance: number
+  day_count: number
+  from_date: string
+  to_date: string
+  rows: OccupancyRow<M>[]
+}
+
+export interface DailyEstimatedTimeRow {
+  user: string
+  full_name: string
+  /** date -> minutes already allocated for that day */
+  per_day_assigned: Record<string, number>
+  /** date -> minutes planned on the todo's own allocation rows */
+  per_day_planned: Record<string, number>
+  assigned_total: number
+  planned_total: number
+  /** days whose assigned minutes fall under the site-wide threshold */
+  flagged_dates: string[]
+}
+
+export interface DailyEstimatedTimeReport {
+  /** Vernon Settings.min_daily_estimated_minutes at the time of the call */
+  threshold: number
+  from_date: string
+  to_date: string
+  dates: string[]
+  rows: DailyEstimatedTimeRow[]
+}
+
 export type GrantUser = { name: string; full_name: string; user_image?: string | null; avatar_config?: AvatarConfig | null }
 
 export type GiftUser = GrantUser

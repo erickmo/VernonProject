@@ -113,7 +113,8 @@ import RecruitmentApplicationScreen from './pages/RecruitmentApplicationScreen'
 import RecruitmentBlacklistScreen from './pages/RecruitmentBlacklistScreen'
 import AttendanceHolidaysScreen from './pages/AttendanceHolidaysScreen'
 import AttendanceReportAdminScreen from './pages/AttendanceReportAdminScreen'
-import UnderOccupiedScreen from './pages/UnderOccupiedScreen'
+import OccupancyScreen from './pages/OccupancyScreen'
+import DailyEstimatedTimeScreen from './pages/DailyEstimatedTimeScreen'
 import TodosDueScreen from './pages/TodosDueScreen'
 import LastSeenScreen from './pages/LastSeenScreen'
 import InternAllocationScreen from './pages/InternAllocationScreen'
@@ -275,7 +276,11 @@ export default function App() {
           </>
         )}
         {boot?.roles.includes('System Manager') && (
-          <Route path="/reports/under-occupied" element={<UnderOccupiedScreen />} />
+          <>
+            <Route path="/reports/under-occupied" element={<OccupancyScreen mode="under" />} />
+            <Route path="/reports/over-occupied" element={<OccupancyScreen mode="over" />} />
+            <Route path="/reports/daily-estimated-time" element={<DailyEstimatedTimeScreen />} />
+          </>
         )}
         {canManageBrands(boot) && (
           <>

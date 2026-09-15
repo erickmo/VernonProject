@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck, GraduationCap, Users } from 'lucide-react'
+import { BarChart3, AlarmClock, Search, X, SearchX, UserRoundCheck, GraduationCap, Users, UserMinus, UserPlus, CalendarClock } from 'lucide-react'
 import { REPORTS } from '@/lib/reports'
-import { useLastSeenAccess, useInternAllocationAccess, useTeamDailyReportAccess } from '@/hooks/useData'
+import { useBoot, useLastSeenAccess, useInternAllocationAccess, useTeamDailyReportAccess, useDailyEstimatedTimeAccess } from '@/hooks/useData'
 import { Card, CardList } from '@web/components/Card'
 import { EmptyState } from '@/components/ui'
 import { Page, PageHeader, rise } from '@web/components/Page'
@@ -31,16 +31,49 @@ export default function Reports() {
   const { data: lastSeenAccess } = useLastSeenAccess()
   const { data: internAccess } = useInternAllocationAccess()
   const { data: teamDailyAccess } = useTeamDailyReportAccess()
+  const { data: dailyTimeAccess } = useDailyEstimatedTimeAccess()
+  const { data: boot } = useBoot()
+  // Both occupancy reports are System-Manager-only server-side and have no access
+  // endpoint of their own, so the role from boot is the gate.
+  const isSystemManager = !!boot?.roles.includes('System Manager')
+  const GATED = [
+    {
+      key: 'under-occupied',
+      title: 'Under-Occupied',
+      desc: 'Anggota yang tugas hariannya di bawah target shift',
+      icon: UserMinus,
+      accent: 'from-amber-500 to-yellow-600',
+      can: isSystemManager,
+    },
+    {
+      key: 'over-occupied',
+      title: 'Over-Occupied',
+      desc: 'Anggota yang tugas hariannya melebihi target shift',
+      icon: UserPlus,
+      accent: 'from-rose-500 to-red-600',
+      can: isSystemManager,
+    },
+    {
+      key: 'daily-estimated-time',
+      title: 'Daily Estimated Time',
+      desc: 'Menit teralokasi per orang per hari, menandai hari di bawah minimum',
+      icon: CalendarClock,
+      accent: 'from-violet-500 to-purple-600',
+      can: !!dailyTimeAccess?.can_view,
+    },
+  ]
+  const allowed = GATED.filter((g) => g.can)
+  const shownGated = allowed.filter((g) => match(g.title, g.desc))
   const showTodosDue = match(TODOS_DUE.title, TODOS_DUE.desc)
   const showLastSeen = !!lastSeenAccess?.can && match('Last Seen', 'When each teammate was last active')
   const showIntern = !!internAccess?.can && match('Employee Allocation', 'Matriks tugas magang per hari + sinyal pengelolaan pemimpin')
   const showTeamDaily = !!teamDailyAccess?.can && match('Team Daily Report', 'Menit ditugaskan vs selesai per anggota per hari, lintas semua proyek')
   const filtered = useMemo(() => REPORTS.filter((r) => match(r.title, r.desc)), [query])
-  const count = filtered.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0) + (showIntern ? 1 : 0) + (showTeamDaily ? 1 : 0)
+  const count = filtered.length + shownGated.length + (showTodosDue ? 1 : 0) + (showLastSeen ? 1 : 0) + (showIntern ? 1 : 0) + (showTeamDaily ? 1 : 0)
 
   return (
     <Page>
-      <PageHeader icon={BarChart3} title="Reports" subtitle={`${count} of ${REPORTS.length + 1 + (internAccess?.can ? 1 : 0) + (lastSeenAccess?.can ? 1 : 0) + (teamDailyAccess?.can ? 1 : 0)} reports`} />
+      <PageHeader icon={BarChart3} title="Reports" subtitle={`${count} of ${REPORTS.length + 1 + allowed.length + (internAccess?.can ? 1 : 0) + (lastSeenAccess?.can ? 1 : 0) + (teamDailyAccess?.can ? 1 : 0)} reports`} />
 
       {/* Search — filters the catalogue by title or description. */}
       <div className="relative mb-4">
@@ -110,6 +143,16 @@ export default function Reports() {
               />
             </div>
           )}
+          {shownGated.map((g, i) => (
+            <div key={g.key} {...rise(i + 1)}>
+              <Card
+                onClick={() => navigate(`/reports/${g.key}`)}
+                eyebrow={<ReportBadge icon={g.icon} accent={g.accent} />}
+                title={g.title}
+                meta={g.desc}
+              />
+            </div>
+          ))}
           {filtered.map((r, i) => (
             <div key={r.name} {...rise(i + 1)}>
               <Card

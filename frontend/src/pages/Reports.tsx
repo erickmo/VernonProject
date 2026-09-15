@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck, GraduationCap, Users } from 'lucide-react'
+import { ChevronRight, BarChart3, Sparkles, AlarmClock, BookOpen, UserRoundCheck, GraduationCap, Users, UserMinus, UserPlus, CalendarClock } from 'lucide-react'
 import { TabScreen } from '@/components/Layout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { REPORTS } from '@/lib/reports'
-import { useLastSeenAccess, useInternAllocationAccess, useTeamDailyReportAccess } from '@/hooks/useData'
+import { useBoot, useLastSeenAccess, useInternAllocationAccess, useTeamDailyReportAccess, useDailyEstimatedTimeAccess } from '@/hooks/useData'
 
 // Bespoke reports with their own screens (not the generic /report/:name engine).
 const BESPOKE = [
@@ -30,7 +30,39 @@ export default function Reports() {
   const { data: lastSeenAccess } = useLastSeenAccess()
   const { data: internAccess } = useInternAllocationAccess()
   const { data: teamDailyAccess } = useTeamDailyReportAccess()
+  const { data: dailyTimeAccess } = useDailyEstimatedTimeAccess()
+  const { data: boot } = useBoot()
+  // The two occupancy reports are System-Manager-only server-side and have no
+  // access endpoint of their own, so the role from boot is the gate.
+  const isSystemManager = !!boot?.roles.includes('System Manager')
   const bespoke = [
+    ...(isSystemManager
+      ? [{
+          key: 'under-occupied',
+          title: 'Under-Occupied',
+          desc: 'Anggota yang tugas hariannya di bawah target shift',
+          icon: UserMinus,
+          accent: 'from-amber-500 to-yellow-600',
+          to: '/reports/under-occupied',
+        }, {
+          key: 'over-occupied',
+          title: 'Over-Occupied',
+          desc: 'Anggota yang tugas hariannya melebihi target shift',
+          icon: UserPlus,
+          accent: 'from-rose-500 to-red-600',
+          to: '/reports/over-occupied',
+        }]
+      : []),
+    ...(dailyTimeAccess?.can_view
+      ? [{
+          key: 'daily-estimated-time',
+          title: 'Daily Estimated Time',
+          desc: 'Menit teralokasi per orang per hari, menandai hari di bawah minimum',
+          icon: CalendarClock,
+          accent: 'from-violet-500 to-purple-600',
+          to: '/reports/daily-estimated-time',
+        }]
+      : []),
     ...(internAccess?.can
       ? [{
           key: 'intern-allocation',

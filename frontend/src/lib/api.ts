@@ -820,12 +820,24 @@ export const mobileApi = {
       rows: Record<string, unknown>[]
       stats: { present: number; late: number; absent: number; excused: number; penalty: number }
     }>(A + 'attendance_report', filters),
+  // Both occupancy reports share one envelope (report.py::_occupancy_envelope).
+  // It carries NO `threshold`/`effective`, and rows carry no `avg_daily` — the
+  // types here claimed all three until 2026-09-15, so the screen rendered them
+  // as undefined. Verified against a live call before correcting.
   underOccupied: (from_date: string, to_date: string) =>
-    api.get<{
-      threshold: number; tolerance: number; effective: number
-      from_date: string; to_date: string; day_count: number
-      rows: { user: string; full_name: string; assigned_total: number; avg_daily: number; under_days: number; deficit: number }[]
-    }>('vernon_project.api.report.under_occupied', { from_date, to_date }),
+    api.get<import('./types').OccupancyReport<'under'>>(
+      'vernon_project.api.report.under_occupied', { from_date, to_date },
+    ),
+  overOccupied: (from_date: string, to_date: string) =>
+    api.get<import('./types').OccupancyReport<'over'>>(
+      'vernon_project.api.report.over_occupied', { from_date, to_date },
+    ),
+  dailyEstimatedTime: (from_date: string, to_date: string) =>
+    api.get<import('./types').DailyEstimatedTimeReport>(
+      'vernon_project.api.report.daily_estimated_time', { from_date, to_date },
+    ),
+  dailyEstimatedTimeAccess: () =>
+    api.get<{ can_view: boolean }>('vernon_project.api.report.daily_estimated_time_access'),
   todosDue: (due_by: string) =>
     api.get<{
       due_by: string

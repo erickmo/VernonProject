@@ -45,6 +45,8 @@ import TodosDue from '@web/pages/TodosDue'
 import LastSeen from '@web/pages/LastSeen'
 import InternAllocation from '@web/pages/InternAllocation'
 import TeamDailyReport from '@web/pages/TeamDailyReport'
+import OccupancyReport from '@web/pages/OccupancyReport'
+import DailyEstimatedTime from '@web/pages/DailyEstimatedTime'
 import Certificates from '@web/pages/Certificates'
 import Certificate from '@web/pages/Certificate'
 import Income from '@web/pages/Income'
@@ -296,6 +298,9 @@ export default function App() {
           <Route path="/reports/last-seen" element={<LastSeen />} />
           <Route path="/reports/intern-allocation" element={<InternAllocation />} />
 <Route path="/reports/team-daily" element={<TeamDailyReport />} />
+          <Route path="/reports/under-occupied" element={<OccupancyReport mode="under" />} />
+          <Route path="/reports/over-occupied" element={<OccupancyReport mode="over" />} />
+          <Route path="/reports/daily-estimated-time" element={<DailyEstimatedTime />} />
 <Route path="/certificates" element={<Certificates />} />
 <Route path="/certificates/:name" element={<Certificate />} />
           <Route path="/logbook" element={<Logbook />} />
