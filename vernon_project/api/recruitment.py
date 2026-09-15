@@ -240,6 +240,17 @@ def check_can_apply(job, nik_ktp=None, email=None):
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 def start_test(attempt_id, job, test, prev=None):
+	"""Start (or resume) the server-side timer for one timed recruitment test.
+
+	PUBLIC: `allow_guest=True`, POST — part of the unauthenticated apply flow. Rate
+	limited per `attempt_id` (120/hour) so a candidate is never locked out mid-test by
+	a shared bucket. The timer is authoritative and lives in the cache keyed by
+	attempt+test: the first call stamps the start and returns the full limit;
+	subsequent calls return the remaining seconds, so a refresh cannot reset the clock.
+	Passing `prev` (the test just left) stamps that test's end so its window closes.
+
+	`test` must be a known `TIMED_TESTS` value. Returns `{"remaining_sec", "limit_sec"}`.
+	"""
 	attempt_id = _clean_attempt(attempt_id)
 	if not attempt_id:
 		frappe.throw("Sesi tes tidak valid.")
@@ -382,6 +393,19 @@ def submit_application(job=None, full_name=None, email=None, phone=None, nik_ktp
 					   cover_letter=None, answers=None, company_website=None,
 					   disc_answers=None, personality_answers=None, logical_answers=None,
 					   ketelitian_answers=None, attempt_id=None, violations=None, violation_reasons=None):
+	"""Submit a public job application, with test answers, and score it.
+
+	PUBLIC: `allow_guest=True`, POST — the careers apply form. Defends itself at the
+	trust boundary: a filled `company_website` honeypot silently drops bots; rate
+	limited per applicant (NIK/email, 6/hour); required fields, length caps and email
+	format validated; a duplicate application for the same opening (by NIK or email)
+	is refused; a blacklisted NIK is flagged. Accuracy/logic/DISC/personality answers
+	are scored against a FRESH per-attempt bank (no static answer key), so the public
+	test items carry no pre-solvable key.
+
+	`job` is the opening slug; `attempt_id` ties the submission to its timed-test
+	session. Returns the created application result.
+	"""
 	if (company_website or "").strip():
 		return {"ok": True}  # honeypot — silently drop bots
 
@@ -691,6 +715,19 @@ def save_opening(name=None, title=None, brand=None, location=None, employment_ty
 				 description=None, requirements=None, status=None, closes_on=None,
 				 slug=None, questions=None, test_disc=None, test_personality=None,
 				 test_logical=None, targets=None, test_ketelitian=None, times=None):
+	"""Create or update a Job Opening and its screening questions.
+
+	Gated by `_require_hr()` (HR Manager or System Manager). `name` omitted creates a
+	new opening, otherwise it edits that one. Every field is applied only when given,
+	so an omitted one keeps its current value. `slug` is used as given (slugified),
+	else the existing one is kept, else derived from the title and deduped. Moving to
+	status "Open" for the first time stamps `posted_on`/`posted_by`. `questions` (a
+	list, or a JSON string of one) REPLACES the question set, each with question_text,
+	qtype, options, correct_answer and points — the answer key lives here and is never
+	exposed by the public `get_job`.
+
+	Returns the saved opening's identifiers.
+	"""
 	user = _require_hr()
 	qrows = json.loads(questions) if isinstance(questions, str) else (questions or [])
 	if name:
@@ -874,6 +911,11 @@ def grade_application(name, grades):
 
 @frappe.whitelist(methods=["POST"])
 def set_status(name, status):
+	"""Set a Job Application's pipeline status (HR).
+
+	Gated by `_require_hr()`; POST. `status` must be one of the known `STATUSES`
+	(rejected otherwise). `name` is the Job Application id. Returns `{"ok": True}`.
+	"""
 	_require_hr()
 	if status not in STATUSES:
 		frappe.throw("Status tidak valid.")
@@ -886,6 +928,15 @@ def set_status(name, status):
 
 @frappe.whitelist(methods=["POST"])
 def schedule_interview(name, interview_at, interview_notes=None):
+	"""Record an interview time on a Job Application (HR).
+
+	Gated by `_require_hr()`; POST. Sets `interview_at` and `interview_notes`, and
+	advances a "Submitted"/"Screening" application to "Interview" (other statuses are
+	left as-is). `interview_at` is the source of truth; there is no calendar/Meeting
+	hook yet.
+
+	`name` is the Job Application id. Returns `{"ok": True}`.
+	"""
 	_require_hr()
 	doc = frappe.get_doc("Job Application", name)
 	doc.interview_at = interview_at
@@ -920,6 +971,15 @@ def list_blacklist():
 
 @frappe.whitelist(methods=["POST"])
 def add_blacklist(nik_ktp, full_name=None, reason=None):
+	"""Add or update a recruitment blacklist entry, keyed by national ID (NIK).
+
+	Gated by `_require_hr()`; POST. NIK and reason are required. An existing entry for
+	the same NIK is updated in place. Retro-flags every existing Job Application with
+	this NIK (`blacklist_flag`/`blacklist_reason`). Matching is by NIK only — a new
+	application under a different NIK is not caught.
+
+	Returns `{"ok": True}`.
+	"""
 	user = _require_hr()
 	nik_ktp = (nik_ktp or "").strip()
 	if not nik_ktp or not (reason or "").strip():
@@ -946,6 +1006,14 @@ def add_blacklist(nik_ktp, full_name=None, reason=None):
 
 @frappe.whitelist(methods=["POST"])
 def remove_blacklist(nik_ktp):
+	"""Remove a recruitment blacklist entry and clear its flags.
+
+	Gated by `_require_hr()`; POST. Deletes the Recruitment Blacklist row for `nik_ktp`
+	(a no-op if absent) and clears `blacklist_flag`/`blacklist_reason` on every Job
+	Application with that NIK.
+
+	Returns `{"ok": True}`.
+	"""
 	_require_hr()
 	if frappe.db.exists("Recruitment Blacklist", nik_ktp):
 		frappe.delete_doc("Recruitment Blacklist", nik_ktp, ignore_permissions=True)
