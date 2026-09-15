@@ -3078,6 +3078,14 @@ export function useCheckAvailability() {
   return useMutation({ mutationFn: checkAvailability })
 }
 
+export function useResetDisc() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (user: string) => mobileApi.resetDisc(user),
+    onSettled: (_d, _e, user) => qc.invalidateQueries({ queryKey: keys.employeeProfile(user) }),
+  })
+}
+
 export function useEmployeeProfile(user: string, enabled = true) {
   return useQuery({
     queryKey: keys.employeeProfile(user),

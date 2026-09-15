@@ -1,5 +1,7 @@
-import { Brain } from 'lucide-react'
+import { Brain, RotateCcw } from 'lucide-react'
 import { BentoTile } from '@web/components/bento'
+import { useConfirm } from '@/components/Confirm'
+import { useResetDisc } from '@/hooks/useData'
 
 // Read-only web bento tile for DISC + Big Five results. Fed by either the admin
 // EmployeeProfile view (UserDashboard) or the caller's own get_my_disc self-view
@@ -10,6 +12,9 @@ export interface PsychometricTileProps {
   personality_scores?: string | null
   disc_completed_on?: string | null
   personality_completed_on?: string | null
+  /** Set to a user id to show the admin reset action (disc.reset_disc, System
+   *  Manager only). The self-view leaves it off. */
+  resetUser?: string
 }
 
 // Big Five axis labels (Bahasa). Order matches OCEAN.
@@ -32,9 +37,29 @@ function parseScores(s?: string | null): Record<string, number> {
 }
 
 export default function PsychometricTile(p: PsychometricTileProps) {
+  const confirm = useConfirm()
+  const reset = useResetDisc()
   if (!p.disc_completed_on && !p.personality_completed_on) return null
   return (
     <BentoTile span="md" tone="plain" title="DISC & Kepribadian">
+      {p.resetUser && (
+        <button
+          type="button"
+          disabled={reset.isPending}
+          onClick={async () => {
+            const ok = await confirm({
+              title: 'Reset hasil DISC & kepribadian?',
+              message: 'Hasil tersimpan akan dihapus dan orang ini akan diminta mengisi tesnya lagi. Tidak bisa dibatalkan.',
+              confirmLabel: 'Reset',
+              destructive: true,
+            })
+            if (ok) reset.mutate(p.resetUser as string)
+          }}
+          className="float-right flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:text-rose-600 disabled:opacity-40"
+        >
+          <RotateCcw className="h-3.5 w-3.5" /> Reset
+        </button>
+      )}
       {p.disc_completed_on && p.disc_type && (
         <div className="mt-1 mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">

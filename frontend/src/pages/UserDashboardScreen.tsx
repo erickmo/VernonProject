@@ -184,7 +184,10 @@ export default function UserDashboardScreen() {
         )}
 
         {/* Psychometric results (read-only) — only when the user has completed a test */}
-        <PsychometricCard emp={emp} />
+        <PsychometricCard
+          emp={emp}
+          resetUser={boot?.roles.includes('System Manager') ? u.name : undefined}
+        />
 
         {/* Related menu, grouped */}
         <div className="flex flex-col gap-5">

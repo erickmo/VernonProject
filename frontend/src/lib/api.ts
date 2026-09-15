@@ -913,6 +913,9 @@ export const mobileApi = {
     api.get<UserSuperpowersView>(SP + 'get_user_superpowers', { user }),
   // DISC + personality (Big Five) test reminder. Answer maps are sent as JSON strings.
   getDiscReminder: () => api.get<DiscReminder>(DT + 'get_disc_reminder'),
+  /** Clear a user's stored DISC + Big Five results so they are asked again.
+   *  System Manager only — the endpoint raises PermissionError for anyone else. */
+  resetDisc: (user: string) => api.post<{ status: string }>(DT + 'reset_disc', { user }),
   // Forced real-photo upload gate: does the session user still owe a profile photo?
   getPhotoGate: () => api.get<PhotoGate>(M + 'get_photo_gate'),
   getDiscQuestions: () => api.get<DiscQuestions>(DT + 'get_disc_questions'),

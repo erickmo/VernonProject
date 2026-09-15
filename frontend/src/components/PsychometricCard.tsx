@@ -1,4 +1,6 @@
-import { Brain } from 'lucide-react'
+import { Brain, RotateCcw } from 'lucide-react'
+import { useConfirm } from '@/components/Confirm'
+import { useResetDisc } from '@/hooks/useData'
 
 // Big Five axis labels (Bahasa). Order matches OCEAN.
 const BIG5: { k: string; label: string }[] = [
@@ -31,7 +33,13 @@ export type PsychometricResult = {
 
 // Read-only psychometric summary. The DISC test flow (DiscReminderPopup) writes these
 // fields; nothing here is editable. Renders nothing until at least one test is completed.
-export function PsychometricCard({ emp }: { emp?: PsychometricResult }) {
+//
+// `resetUser` turns on the one admin action there is: clearing the stored results so
+// the reminder comes back (disc.reset_disc, System Manager only). Pass it from the
+// admin per-user view; the self-view leaves it off.
+export function PsychometricCard({ emp, resetUser }: { emp?: PsychometricResult; resetUser?: string }) {
+  const confirm = useConfirm()
+  const reset = useResetDisc()
   if (!emp || (!emp.disc_completed_on && !emp.personality_completed_on)) return null
   const big5 = parseScores(emp.personality_scores)
   return (
@@ -41,6 +49,24 @@ export function PsychometricCard({ emp }: { emp?: PsychometricResult }) {
           <Brain className="h-4 w-4" />
         </span>
         <p className="text-sm font-bold text-stone-800 dark:text-slate-100">DISC &amp; Kepribadian</p>
+        {resetUser && (
+          <button
+            aria-label="Reset hasil DISC"
+            disabled={reset.isPending}
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Reset hasil DISC & kepribadian?',
+                message: 'Hasil tersimpan akan dihapus dan orang ini akan diminta mengisi tesnya lagi. Tidak bisa dibatalkan.',
+                confirmLabel: 'Reset',
+                destructive: true,
+              })
+              if (ok) reset.mutate(resetUser)
+            }}
+            className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-stone-400 transition active:scale-95 active:text-rose-600 disabled:opacity-40 dark:text-slate-500"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reset
+          </button>
+        )}
       </div>
 
       {emp.disc_completed_on && emp.disc_type && (

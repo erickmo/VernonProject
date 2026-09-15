@@ -214,6 +214,7 @@ export default function UserDashboard() {
             personality_scores={emp.personality_scores}
             disc_completed_on={emp.disc_completed_on}
             personality_completed_on={emp.personality_completed_on}
+            resetUser={boot?.roles.includes('System Manager') ? u.name : undefined}
           />
         )}
 
