@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useProjects, useProject, useProjectDetail, useLinkTask } from '@/hooks/useData'
+import { useLinkTask } from '@/hooks/useData'
+import { useProjectDetailPicker } from '@/hooks/useProjectDetailPicker'
 import type { FeedbackItem } from '@/lib/types'
 
 /** First line of the message, trimmed to a title-sized length. */
@@ -19,35 +20,17 @@ function firstLine(s: string, max = 140): string {
  */
 export function useFeedbackToTask() {
   const [feedback, setFeedback] = useState<FeedbackItem | null>(null)
-  const [project, setProject] = useState('')
-  const [detail, setDetail] = useState('')
-  const [dialogOpen, setDialogOpen] = useState(false)
-
-  const projects = useProjects()
-  const projectDoc = useProject(project)
-  const detailDoc = useProjectDetail(detail)
+  const picker = useProjectDetailPicker()
   const link = useLinkTask()
 
   const start = (fb: FeedbackItem) => {
     setFeedback(fb)
-    setProject('')
-    setDetail('')
-    setDialogOpen(false)
+    picker.reset()
   }
   const cancel = () => {
     setFeedback(null)
-    setProject('')
-    setDetail('')
-    setDialogOpen(false)
+    picker.reset()
   }
-
-  // Changing project invalidates the chosen detail (details are project-scoped).
-  const chooseProject = (p: string) => {
-    setProject(p)
-    setDetail('')
-  }
-  const chooseDetail = (d: string) => setDetail(d)
-  const openDialog = () => setDialogOpen(true)
 
   const onCreated = (todoName: string) => {
     if (!feedback || !todoName) {
@@ -66,18 +49,18 @@ export function useFeedbackToTask() {
 
   return {
     feedback, // non-null while the flow is active
-    picking: !!feedback && !dialogOpen, // show the project/detail picker
-    dialogOpen, // show the todo dialog
+    picking: !!feedback && !picker.dialogOpen, // show the project/detail picker
+    dialogOpen: picker.dialogOpen, // show the todo dialog
     start,
     cancel,
-    openDialog,
-    project,
-    chooseProject,
-    detail,
-    chooseDetail,
-    projectCards: projects.data ?? [], // ProjectCard[] — {name, project_name}
-    projectDetails: projectDoc.data?.project_details ?? [], // {name, title}[]
-    detailData: detailDoc.data, // {team, default_group}
+    openDialog: picker.openDialog,
+    project: picker.project,
+    chooseProject: picker.chooseProject,
+    detail: picker.detail,
+    chooseDetail: picker.chooseDetail,
+    projectCards: picker.projectCards,
+    projectDetails: picker.projectDetails,
+    detailData: picker.detailData,
     initial, // { toDo, notes } prefill for the dialog
     onCreated,
     linking: link.isPending,

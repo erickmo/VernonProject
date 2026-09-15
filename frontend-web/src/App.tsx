@@ -79,6 +79,7 @@ import Notes from '@web/pages/Notes'
 import NoteForm from '@web/pages/NoteForm'
 import Feedback from '@web/pages/Feedback'
 import Help from '@web/pages/Help'
+import ShareTarget from '@web/pages/ShareTarget'
 import FeedbackInbox from '@web/pages/FeedbackInbox'
 import GamificationSettings from '@web/pages/GamificationSettings'
 import Settings from '@web/pages/Settings'
@@ -291,6 +292,8 @@ export default function App() {
           <Route path="/bookings/new" element={<BookingForm />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/help" element={<Help />} />
+          {/* Web half of the share target — same query contract as /m/share. */}
+          <Route path="/share" element={<ShareTarget />} />
           {/* Rewards / reports (all users) */}
           <Route path="/reports" element={<Reports />} />
           <Route path="/report/:name" element={<ReportPage />} />

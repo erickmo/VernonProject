@@ -84,6 +84,7 @@ import FeedbackScreen from './pages/FeedbackScreen'
 import FeedbackInboxScreen from './pages/FeedbackInboxScreen'
 import HelpScreen from './pages/HelpScreen'
 import WhatsNew from './pages/WhatsNew'
+import ShareTargetScreen from './pages/ShareTargetScreen'
 import { MeetingsScreen } from './pages/MeetingsScreen'
 import ActivityScreen from './pages/ActivityScreen'
 import NotificationsScreen from './pages/NotificationsScreen'
@@ -366,6 +367,8 @@ export default function App() {
         <Route path="/feedback" element={<FeedbackScreen />} />
         <Route path="/help" element={<HelpScreen />} />
         <Route path="/whats-new" element={<WhatsNew />} />
+        {/* Web Share Target (manifest share_target): IG/Threads -> prefilled todo form. */}
+        <Route path="/share" element={<ShareTargetScreen />} />
         <Route path="/meetings" element={<MeetingsScreen />} />
         <Route path="/activity" element={<ActivityScreen />} />
         <Route path="/notifications" element={<NotificationsScreen />} />
