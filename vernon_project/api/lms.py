@@ -310,6 +310,16 @@ def manage_courses():
 @frappe.whitelist()
 def save_course(title, points_reward, status, name=None, category=None, summary=None,
                 description=None, cover_image=None, estimated_minutes=None):
+	"""Create or update a Course.
+
+	Gated by `_require_manage()` (System Manager or LMS Manager). `name` omitted
+	creates a new course, otherwise it edits that one. The required fields (title,
+	points_reward, status) are always written; optional fields (category, summary,
+	description, cover_image, estimated_minutes) only when the caller sends a value, so
+	a partial edit (e.g. a status toggle) never blanks existing data.
+
+	Returns `{"ok": True, "name"}`.
+	"""
 	_require_manage()
 	# ponytail: required fields always written; optional only when caller sent a value — prevents
 	# blanking existing data when the edit form omits a field (e.g. quick status toggle).
@@ -331,6 +341,14 @@ def save_course(title, points_reward, status, name=None, category=None, summary=
 @frappe.whitelist()
 def save_lesson(course, title, name=None, position=None, body=None, video_url=None,
                 estimated_minutes=None, files=None):
+	"""Create or update a Course Lesson, including its attached files.
+
+	Gated by `_require_manage()` (System Manager or LMS Manager). `name` omitted
+	creates a new lesson, otherwise it edits that one. `files` (a list, or a JSON
+	string of one, of `{file, label}`) REPLACES the lesson's file rows.
+
+	`course` is the parent Course id. Returns `{"ok": True, "name"}`.
+	"""
 	_require_manage()
 	file_rows = json.loads(files) if isinstance(files, str) else (files or [])
 	values = {
@@ -351,6 +369,11 @@ def save_lesson(course, title, name=None, position=None, body=None, video_url=No
 
 @frappe.whitelist()
 def delete_lesson(name):
+	"""Delete a Course Lesson.
+
+	Gated by `_require_manage()` (System Manager or LMS Manager). `name` is the Course
+	Lesson id. Returns `{"ok": True}`.
+	"""
 	_require_manage()
 	frappe.delete_doc("Course Lesson", name, ignore_permissions=True, force=1)
 	return {"ok": True}
@@ -358,6 +381,12 @@ def delete_lesson(name):
 
 @frappe.whitelist()
 def delete_course(name):
+	"""Delete a Course and everything under it.
+
+	Gated by `_require_manage()` (System Manager or LMS Manager). Cascade: removes the
+	course's Lessons and all its Course Enrollments (learner progress included), then
+	the Course itself. `name` is the Course id. Returns `{"ok": True}`.
+	"""
 	_require_manage()
 	for ls in frappe.get_all("Course Lesson", filters={"course": name}, pluck="name"):
 		frappe.delete_doc("Course Lesson", ls, ignore_permissions=True, force=1)
@@ -369,6 +398,15 @@ def delete_course(name):
 
 @frappe.whitelist()
 def assign_course(course, users, due_date=None):
+	"""Assign a Course to one or more users, enrolling and notifying each.
+
+	Gated by `_require_manage()` (System Manager or LMS Manager). `users` is a list (or
+	JSON string of one) of user ids; a user already enrolled is skipped, so re-assigning
+	is safe. Each new enrollment is marked assigned (with `assigned_by`/`due_date`) and
+	the learner is notified.
+
+	Returns `{"ok": True, "created"}` — how many new enrollments were made.
+	"""
 	_require_manage()
 	user_list = json.loads(users) if isinstance(users, str) else users
 	title = frappe.db.get_value("Course", course, "title")

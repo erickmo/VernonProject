@@ -272,6 +272,16 @@ def get_habits():
 
 @frappe.whitelist()
 def create_habit(title, icon=None, cadence="Daily", weekdays=None, disc_axis=None):
+	"""Create a personal habit for the CURRENT user.
+
+	Self-service — always the caller's own habit (`_require_user()`; Guest refused).
+	`title` is required. `cadence` is "Daily" or "Weekdays" (anything else coerced to
+	"Daily"); `weekdays` is a comma/list of weekday numbers, parsed and stored as a
+	csv. `disc_axis` optionally links the habit to a DISC trait. The habit starts
+	active.
+
+	Returns `{"name"}` — the new Habit id.
+	"""
 	user = _require_user()
 	title = (title or "").strip()
 	if not title:
@@ -297,6 +307,15 @@ def _owned(habit, user):
 
 @frappe.whitelist()
 def update_habit(habit, title=None, icon=None, cadence=None, weekdays=None):
+	"""Edit one of the CURRENT user's habits — title, icon, cadence, weekday schedule.
+
+	Own-habit only: `_owned` raises `frappe.PermissionError` for a habit that is not
+	the caller's. Each field is applied only when provided, so an omitted one is left
+	unchanged; a blank title is rejected, cadence is honoured only when "Daily"/
+	"Weekdays", and `weekdays` is normalised to a weekday-number csv.
+
+	`habit` is the Habit id. Returns `{"ok": 1}`.
+	"""
 	user = _require_user()
 	name = _owned(habit, user)
 	doc = frappe.get_doc("Habit", name)
@@ -318,6 +337,13 @@ def update_habit(habit, title=None, icon=None, cadence=None, weekdays=None):
 
 @frappe.whitelist()
 def delete_habit(habit):
+	"""Deactivate one of the CURRENT user's habits (soft delete).
+
+	Own-habit only (`_owned` → `frappe.PermissionError` otherwise). Sets `active = 0`
+	rather than removing the row, so the habit's log history survives.
+
+	`habit` is the Habit id. Returns `{"ok": 1}`.
+	"""
 	user = _require_user()
 	name = _owned(habit, user)
 	frappe.db.set_value("Habit", name, "active", 0)
@@ -327,6 +353,16 @@ def delete_habit(habit):
 
 @frappe.whitelist()
 def toggle_habit(habit, date=None):
+	"""Toggle the CURRENT user's completion of a habit for one date, and recompute its streak.
+
+	Own-habit only (`_owned` → `frappe.PermissionError` otherwise). Adds a Habit Log
+	for `date` (defaults to today) if none exists, or removes the existing one — so
+	calling twice is a no-op. Then recomputes the streak against the habit's cadence
+	and weekday schedule.
+
+	`habit` is the Habit id; `date` is `YYYY-MM-DD` (today if omitted). Returns
+	`{"done_today", "current_streak", "best_streak"}`.
+	"""
 	user = _require_user()
 	name = _owned(habit, user)
 	d = frappe.utils.getdate(date) if date else frappe.utils.getdate(frappe.utils.today())
@@ -346,6 +382,14 @@ def toggle_habit(habit, date=None):
 
 @frappe.whitelist()
 def adopt_suggestion(key):
+	"""Create a habit for the CURRENT user from a built-in suggestion.
+
+	Self-service (`_require_user()`). Looks `key` up in the curated suggestion catalog
+	(keyed by DISC axis) and creates the matching habit via `create_habit`, carrying
+	the suggestion's title/icon/cadence/weekdays and DISC axis. An unknown key raises.
+
+	Returns `create_habit`'s `{"name"}`.
+	"""
 	user = _require_user()
 	for axis, items in _SUGGESTIONS.items():
 		for s in items:
