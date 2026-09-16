@@ -142,6 +142,7 @@ class ProjectTodo(Document):
 
 	def before_insert(self):
 		self.refuse_duplicate_save()
+		self.refuse_past_dates_on_create()
 
 	def refuse_duplicate_save(self):
 		"""One logical save creates at most one todo. See the notes above the class.
@@ -172,6 +173,46 @@ class ProjectTodo(Document):
 				frappe.ValidationError,
 			)
 		seen.add(key)
+
+	def refuse_past_dates_on_create(self):
+		"""A todo someone creates today cannot already be in the past.
+
+		Named `refuse_*`, not `validate_*`, on purpose: on this class that prefix means
+		"called by validate() on every save", and test_validate_wiring enforces it. This
+		one belongs to before_insert, like its sibling refuse_duplicate_save.
+
+		Owner rule: start_date >= today and deadline >= today. (The third rule,
+		deadline >= start_date, is validate_start_date's job and runs on every save.)
+
+		before_insert, not validate, so this binds the CREATE only. Hundreds of live
+		todos already have dates behind them; a validate() check would make every one
+		of them unsaveable the moment anyone edited it.
+
+		Two exemptions -- the same two refuse_duplicate_save needs, and for the same
+		reason: this is the interactive create path's rule, not a data invariant.
+
+		* No HTTP request means no person filling in a form: the nightly scheduler, a
+		  patch, a bench call and the test fixtures all create todos in bulk, and
+		  create_recurring_todos legitimately rolls a series that is already behind.
+		* A recurring occurrence (`original_todo`) is generated, not typed.
+		  build_occurrence runs under a REAL request when someone completes a recurring
+		  todo, and the next rule date is in the past whenever the series is behind --
+		  refusing it there would silently end the series (tasks.py swallows the error
+		  and clears next_occurrence).
+		"""
+		if self.get("original_todo"):
+			return
+		if not getattr(frappe.local, "request", None):
+			return
+		today = getdate(nowdate())
+		if self.start_date and getdate(self.start_date) < today:
+			frappe.throw(
+				_("Tanggal mulai tidak boleh sebelum hari ini."), frappe.ValidationError
+			)
+		if self.deadline and getdate(self.deadline) < today:
+			frappe.throw(
+				_("Deadline tidak boleh sebelum hari ini."), frappe.ValidationError
+			)
 
 	def validate(self):
 		self.validate_ai_in_progress()

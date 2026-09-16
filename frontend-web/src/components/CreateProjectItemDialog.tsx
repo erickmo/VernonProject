@@ -15,6 +15,8 @@ import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { CodingBrief, briefIsComplete } from '@/components/CodingBrief'
 import { useCodingBriefSchema, useIsCodingGroup } from '@/hooks/useData'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
+import { todoCreateDateError } from '@/lib/todoDates'
+import { todayISO } from '@/lib/format'
 
 const initialRecurrence = (i?: CreateTodoInitial): Recurrence => ({
   ...emptyRecurrence,
@@ -49,6 +51,9 @@ interface Props {
 
 export function CreateProjectItemDialog({ open, onClose, projectDetail = '', team: teamProp, defaultGroup, siblings: siblingsProp = [], initial, onCreated, issueOf }: Props) {
   const toast = useToast()
+  // A new todo cannot start or fall due in the past; the pickers stop it being
+  // chosen and todoCreateDateError says why if it arrives some other way.
+  const today = todayISO()
   // No fixed detail → let the user pick a project then one of its details.
   const pickMode = !projectDetail
   const [pickProject, setPickProject] = useState('')
@@ -112,8 +117,9 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
       toast('error', 'Name, assignee, start date, deadline, group and level are required')
       return
     }
-    if (startDate > deadline) {
-      toast('error', 'Start date cannot be after the deadline')
+    const dateError = todoCreateDateError(startDate, deadline)
+    if (dateError) {
+      toast('error', dateError)
       return
     }
     const est = Number(estimated)
@@ -235,13 +241,13 @@ export function CreateProjectItemDialog({ open, onClose, projectDetail = '', tea
           <h3 className={sectionHead}>Schedule</h3>
           <label className="text-sm font-medium text-muted">
             Start date<span className="text-red-500"> *</span>
-            <DatePicker className={field + ' mt-1'} value={startDate} onChange={(v) => setStartDate(v)} />
+            <DatePicker className={field + ' mt-1'} min={today} value={startDate} onChange={(v) => setStartDate(v)} />
           </label>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm font-medium text-muted">
               Deadline<span className="text-red-500"> *</span>
-              <DatePicker className={field + ' mt-1'} value={deadline} onChange={(v) => setDeadline(v)} />
+              <DatePicker className={field + ' mt-1'} min={startDate || today} value={deadline} onChange={(v) => setDeadline(v)} />
             </label>
             <label className="text-sm font-medium text-muted">
               Estimated (minutes)<span className="text-red-500"> *</span>

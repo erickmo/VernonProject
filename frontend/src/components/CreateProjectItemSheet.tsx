@@ -10,6 +10,8 @@ import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { CodingBrief, briefIsComplete } from '@/components/CodingBrief'
 import { useCodingBriefSchema, useIsCodingGroup } from '@/hooks/useData'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
+import { todoCreateDateError } from '@/lib/todoDates'
+import { todayISO } from '@/lib/format'
 import { emptyRecurrence, recurrenceFromDetail, serializeRecurrence, type Recurrence } from '@/lib/recurrence'
 import { RecurrenceEditor } from '@/components/RecurrenceEditor'
 
@@ -33,6 +35,9 @@ interface CreateProjectItemSheetProps {
 export function CreateProjectItemSheet({ open, onClose, projectDetail, team, defaultGroup, siblings = [], initial, onCreated, issueOf }: CreateProjectItemSheetProps) {
   const toast = useToast()
   const create = useCreateProjectItem(projectDetail)
+  // A new todo cannot start or fall due in the past; the pickers stop it being
+  // chosen and todoCreateDateError says why if it arrives some other way.
+  const today = todayISO()
 
   const [toDo, setToDo] = useState(initial?.toDo ?? '')
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? '')
@@ -68,8 +73,9 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
       toast('error', 'Name, assignee, start date, deadline, group and level are required')
       return
     }
-    if (startDate > deadline) {
-      toast('error', 'Start date cannot be after the deadline')
+    const dateError = todoCreateDateError(startDate, deadline)
+    if (dateError) {
+      toast('error', dateError)
       return
     }
     const est = Number(estimated)
@@ -150,13 +156,13 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
           <div className={head}>Schedule</div>
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Start date<span className="text-red-500"> *</span>
-            <input type="date" className={field + ' mt-1'} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input type="date" min={today} className={field + ' mt-1'} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </label>
 
           <div className="flex gap-3">
             <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Deadline<span className="text-red-500"> *</span>
-              <input type="date" className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+              <input type="date" min={startDate || today} className={field + ' mt-1'} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </label>
             <label className="flex-1 text-sm font-medium text-slate-600 dark:text-slate-300">
               Estimated (minutes)<span className="text-red-500"> *</span>

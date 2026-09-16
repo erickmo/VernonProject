@@ -196,7 +196,7 @@ def update_project_detail(project_detail, fields):
 # structured draft a human reviews, edits, then persists. See test_project_breakdown.py.
 # ================================================================================
 
-from frappe.utils import nowdate  # noqa: E402
+from frappe.utils import getdate, nowdate  # noqa: E402
 
 _CTX_FIELDS = ("goal", "success_condition", "failure_condition", "context")
 _MAX_LEN = 4000          # per context field, on persist (sanitise + length-limit)
@@ -340,6 +340,20 @@ def _allowed_work_mode(mode):
 	return mode
 
 
+def _not_past(d):
+	"""Clamp a drafted date forward to today.
+
+	The controller refuses a NEW todo whose start_date or deadline is already behind
+	(refuse_past_dates_on_create), and this fan-out runs under a real request, so it
+	is subject to that rule. Its date fallbacks come from the PROJECT, which for any
+	project already underway are in the past -- without this, generating a breakdown
+	for an in-flight project would throw instead of drafting anything. A drafted date
+	is a suggestion, so moving it to today is the right answer, not an error.
+	"""
+	today = getdate(nowdate())
+	return max(getdate(d), today) if d else d
+
+
 def _create_todo(project, detail_name, td, defaults, valid_groups, max_estimated):
 	"""Insert one Project Todo from a reviewed draft. Returns True if inserted,
 	False if skipped (blank). Throws if a non-blank todo lacks group/level, or
@@ -372,8 +386,8 @@ def _create_todo(project, detail_name, td, defaults, valid_groups, max_estimated
 		"project_detail": detail_name,
 		"to_do": _clip(td.get("to_do"), 500),
 		"assigned_to": td.get("assigned_to") or defaults["assignee"],
-		"start_date": td.get("start_date") or defaults["start"],
-		"deadline": td.get("deadline") or defaults["deadline"],
+		"start_date": _not_past(td.get("start_date") or defaults["start"]),
+		"deadline": _not_past(td.get("deadline") or defaults["deadline"]),
 		"group": td.get("group"),
 		"level": td.get("level"),
 		"level_id": td.get("level_id"),

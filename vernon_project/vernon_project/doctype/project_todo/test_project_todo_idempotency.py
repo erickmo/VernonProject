@@ -24,8 +24,12 @@ def _payload(**over):
 		"group": GROUP,
 		"level_id": LEVEL,
 		"estimated": 60,
-		"start_date": "2026-09-12",
-		"deadline": "2026-09-12",
+		# Not a fixed date: this suite stands in for a browser (it fakes
+		# frappe.local.request), so it is subject to refuse_past_dates_on_create --
+		# a hard-coded date goes stale and starts failing on "start date is in the
+		# past" instead of on anything this file is about.
+		"start_date": frappe.utils.nowdate(),
+		"deadline": frappe.utils.nowdate(),
 	}
 	base.update(over)
 	return base
@@ -191,7 +195,7 @@ class TestProjectTodoIdempotency(NoLeakMixin, unittest.TestCase):
 
 		out = create_todo(
 			project_detail=DETAIL, to_do=TITLE + " api", assigned_to=ASSIGNEE,
-			start_date="2026-09-12", deadline="2026-09-12", group=GROUP,
+			start_date=frappe.utils.nowdate(), deadline=frappe.utils.nowdate(), group=GROUP,
 			level_id=LEVEL, estimated=60,
 		)
 		self.assertTrue(out)
