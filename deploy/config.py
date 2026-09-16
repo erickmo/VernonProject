@@ -11,6 +11,7 @@ Two rules the whole module is built around:
   * the password is never rendered anywhere except the .env file itself.
 """
 
+import ipaddress
 import os
 import re
 
@@ -37,6 +38,8 @@ FIELDS = (
 	{"key": "DB_USER", "prompt": "Database user", "required": True, "secret": False},
 	{"key": "DB_PASSWORD", "prompt": "Database password", "required": True, "secret": True},
 	{"key": "DB_SSL_CA", "prompt": "Path to the DB's CA certificate (blank for none)", "required": False, "secret": False},
+	{"key": "REDIS_CACHE", "prompt": "Redis URL for the cache", "required": True, "secret": False, "default": "redis://10.0.0.11:6379/0"},
+	{"key": "REDIS_QUEUE", "prompt": "Redis URL for the job queue", "required": True, "secret": False, "default": "redis://10.0.0.11:6379/1"},
 	{"key": "SETUP_MODE", "prompt": "Attach to an existing database, or create a new site?", "required": True, "secret": False, "default": ATTACH},
 	{"key": "ADMIN_PASSWORD", "prompt": "Administrator password for the NEW site", "required": False, "secret": True},
 	{"key": "BIND_ADDRESS", "prompt": "Address to publish on (the one your nginx reaches)", "required": True, "secret": False, "default": "127.0.0.1"},
@@ -44,6 +47,9 @@ FIELDS = (
 	{"key": "SOCKETIO_PORT", "prompt": "Port for realtime (socket.io)", "required": True, "secret": False, "default": "9000"},
 )
 KEYS = tuple(f["key"] for f in FIELDS)
+# 8n5c5rgaqa: Redis is the operator's, exactly as MariaDB is. Two addresses, not
+# three — realtime shares the queue's Redis, which is what Frappe itself does.
+REDIS_KEYS = ("REDIS_CACHE", "REDIS_QUEUE")
 SECRET_KEYS = frozenset(f["key"] for f in FIELDS if f["secret"])
 REDACTED = "********"
 
@@ -51,6 +57,40 @@ _HOSTNAME = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.\-]*[A-Za-z0-9])?$")
 # A bundled database is the thing this deployment deliberately does not have, so
 # pointing DB_HOST at the container itself is a configuration error, not a choice.
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
+# redis://[user:password@]host[:port][/db] — and rediss:// for the TLS version.
+# ponytail: an IPv6 literal must be bracketed, as in a URL anywhere else.
+_REDIS_URL = re.compile(
+	r"^(?P<scheme>rediss?)://(?:(?P<userinfo>[^@/]*)@)?"
+	r"(?P<host>\[[0-9A-Fa-f:]+\]|[^:/?@#\[\]]+)"
+	r"(?::(?P<port>\d+))?(?:/(?P<db>\d+))?$"
+)
+# What .env.example ships as a stand-in. Reaching validation still set means the
+# operator copied the example and did not finish filling it in.
+_PLACEHOLDER = re.compile(r"change[_-]?me", re.I)
+
+
+def _valid_host(host):
+	"""A hostname, or an IP address literal. Never resolved — see _is_public_ip."""
+	if _HOSTNAME.match(host):
+		return True
+	try:
+		ipaddress.ip_address(host)
+		return True
+	except ValueError:
+		return False
+
+
+def _is_public_ip(host):
+	"""True only for an address literal routable on the open internet.
+
+	A NAME is never resolved: validating a configuration must cost the same
+	whether or not the host exists, and must create no traffic of its own.
+	"""
+	try:
+		return ipaddress.ip_address(host).is_global
+	except ValueError:
+		return False
 
 
 def parse_env(text):
@@ -114,7 +154,14 @@ def redact(config):
 	not it is set, so the mask itself never reveals which secrets exist."""
 	out = {}
 	for key, value in (config or {}).items():
-		out[key] = REDACTED if key in SECRET_KEYS and value else value
+		if key in SECRET_KEYS and value:
+			out[key] = REDACTED
+		elif key in REDIS_KEYS and value:
+			# A Redis URL may carry a password. The host is worth showing back in
+			# the summary; what precedes the @ never is.
+			out[key] = re.sub(r"(?<=//)[^@/]*@", REDACTED + "@", str(value))
+		else:
+			out[key] = value
 	return out
 
 
@@ -136,12 +183,46 @@ def validate(config):
 	if mode == CREATE and not str(config.get("ADMIN_PASSWORD", "") or "").strip():
 		errors.append("ADMIN_PASSWORD is required when SETUP_MODE is create.")
 
+	ca = str(config.get("DB_SSL_CA", "") or "").strip()
+
 	host = str(config.get("DB_HOST", "") or "").strip()
 	if host:
 		if host.lower() in _LOCAL_HOSTS:
 			errors.append("DB_HOST must not point at the container itself — this deployment has no bundled database.")
-		elif not _HOSTNAME.match(host):
+		elif not _valid_host(host):
 			errors.append("DB_HOST is not a valid hostname or IP address.")
+		elif _is_public_ip(host) and not ca:
+			errors.append(
+				"DB_HOST is a public address and DB_SSL_CA is empty — the password would cross "
+				"the internet in the clear. Use a private address, or set DB_SSL_CA."
+			)
+
+	for key in REDIS_KEYS:
+		raw = str(config.get(key, "") or "").strip()
+		if not raw:
+			continue
+		match = _REDIS_URL.match(raw)
+		if not match:
+			errors.append("{} must be a redis:// or rediss:// URL, e.g. redis://10.0.0.11:6379/0.".format(key))
+			continue
+		redis_host = match.group("host").strip("[]")
+		if redis_host.lower() in _LOCAL_HOSTS:
+			errors.append("{} must not point at the container itself — this deployment has no bundled Redis.".format(key))
+		elif not _valid_host(redis_host):
+			errors.append("{} does not contain a valid hostname or IP address.".format(key))
+		elif _is_public_ip(redis_host) and match.group("scheme") != "rediss":
+			errors.append(
+				"{} is a public address without TLS — anything it carries, including a Redis "
+				"password, would cross the internet in the clear. Use rediss:// or a private "
+				"address.".format(key)
+			)
+		port = match.group("port")
+		if port and not 1 <= int(port) <= 65535:
+			errors.append("{} must use a port between 1 and 65535.".format(key))
+
+	for key in KEYS:
+		if _PLACEHOLDER.search(str(config.get(key, "") or "")):
+			errors.append("{} still holds the example placeholder — set a real value.".format(key))
 
 	site = str(config.get("SITE_NAME", "") or "").strip()
 	if site and not _HOSTNAME.match(site):
@@ -154,7 +235,6 @@ def validate(config):
 		if not raw.isdigit() or not 1 <= int(raw) <= 65535:
 			errors.append("{} must be a whole number between 1 and 65535.".format(key))
 
-	ca = str(config.get("DB_SSL_CA", "") or "").strip()
 	if ca and not ca.startswith("/"):
 		errors.append("DB_SSL_CA must be an absolute path inside the container.")
 

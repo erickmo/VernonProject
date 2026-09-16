@@ -43,9 +43,15 @@ WORKDIR ${BENCH_PATH}
 # The app comes from the build context, not a clone: the repository is private,
 # and "copy this folder to any device" has to work without git credentials.
 COPY --chown=frappe:frappe . apps/vernon_project
+# ASSET_STASH is deliberately OUTSIDE the bench: the sites volume is mounted over
+# sites/ at run time and would otherwise hide this build behind whatever the first
+# ever start left there — an upgraded image still serving the old /m and /w.
+ENV ASSET_STASH=/home/frappe/assets-image
+
 RUN bench pip install -e apps/vernon_project \
     && echo "vernon_project" >> sites/apps.txt \
-    && bench build --app frappe --app vernon_project
+    && bench build --app frappe --app vernon_project \
+    && cp -a sites/assets ${ASSET_STASH}
 
 COPY --chown=frappe:frappe deploy/wsgi.py deploy/entrypoint.sh ${BENCH_PATH}/
 RUN chmod +x ${BENCH_PATH}/entrypoint.sh

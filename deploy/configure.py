@@ -4,7 +4,7 @@
     python3 deploy/configure.py
 
 It asks whether this is a new deployment or an update, collects the remote
-MariaDB details, and writes deploy/.env (owner-readable only). It starts nothing
+MariaDB and Redis details, and writes deploy/.env (owner-readable only). It starts nothing
 and deploys nothing: run `docker compose up -d` yourself when the summary looks
 right.
 
@@ -69,7 +69,7 @@ def summarise(merged):
 		if key in shown:
 			_say("  {:<16} {}".format(key, shown[key]))
 	_say()
-	_say("  nginx and MariaDB are yours to run — this deployment starts neither.")
+	_say("  nginx, MariaDB and Redis are yours to run — this deployment starts none of them.")
 	for warning in cfg.warnings(merged):
 		_say("  ! {}".format(warning))
 

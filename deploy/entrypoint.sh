@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# r2dfiifbj5 — one entry point, one role per container.
+# 8n5c5rgaqa — one entry point, one role per container.
 #
-# Checks the database configuration before anything starts, so a missing value
-# fails immediately with a message naming the KEY that is wrong — never the value,
-# and never the password.
+# Checks the database AND Redis configuration before anything starts, so a missing
+# value fails immediately with a message naming the KEY that is wrong — never the
+# value, and never the password. Then it waits, for a bounded number of tries, for
+# both to answer on the network, so an unreachable dependency is a clear failure
+# rather than a container that looks up and serves 500s.
+#
+# Starting never changes the database's shape — deploy/migrate.sh is the separate,
+# deliberate command for that.
 set -euo pipefail
 
 BENCH=/home/frappe/frappe-bench
@@ -20,7 +25,7 @@ require() {
     exit 78   # EX_CONFIG
   fi
 }
-require SITE_NAME DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD
+require SITE_NAME DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD REDIS_CACHE REDIS_QUEUE
 
 case "${DB_HOST}" in
   localhost|127.0.0.1|0.0.0.0|::1)
@@ -28,21 +33,64 @@ case "${DB_HOST}" in
     exit 78 ;;
 esac
 
+# redis://[user:password@]host[:port][/db] -> HOST and PORT. Pure string work: the
+# password, if there is one, is never echoed and never reaches a command line.
+split_redis() {
+  local rest=${1#*//}
+  rest=${rest##*@}
+  rest=${rest%%/*}
+  HOST=${rest%%:*}
+  PORT=${rest##*:}
+  [ "$PORT" = "$HOST" ] && PORT=6379
+  case "$HOST" in
+    localhost|127.0.0.1|0.0.0.0|::1|"")
+      echo "Cannot start: $2 points at this container, which has no Redis." >&2
+      exit 78 ;;
+  esac
+}
+
+# Bounded on purpose: a dependency that never comes up must fail, and the ceiling
+# is the script's, not whatever the operator exported.
+READY_ATTEMPTS="${READY_ATTEMPTS:-30}"
+READY_SLEEP="${READY_SLEEP:-2}"
+case "$READY_ATTEMPTS" in ""|*[!0-9]*) READY_ATTEMPTS=30 ;; esac
+if [ "$READY_ATTEMPTS" -gt 120 ]; then READY_ATTEMPTS=120; fi
+
+wait_for() {
+  # $1 host  $2 port  $3 what it is  $4 the setting that names it
+  local n=0
+  until (exec 3<>"/dev/tcp/$1/$2") 2>/dev/null; do
+    n=$((n + 1))
+    if [ "$n" -ge "$READY_ATTEMPTS" ]; then
+      echo "Cannot start: $3 did not answer after ${READY_ATTEMPTS} tries." >&2
+      echo "Check the address in $4, and that this container is allowed to reach it." >&2
+      exit 69   # EX_UNAVAILABLE
+    fi
+    sleep "$READY_SLEEP"
+  done
+}
+
+wait_for "$DB_HOST" "$DB_PORT" "MariaDB" "DB_HOST and DB_PORT"
+split_redis "$REDIS_CACHE" REDIS_CACHE; wait_for "$HOST" "$PORT" "Redis (cache)" REDIS_CACHE
+split_redis "$REDIS_QUEUE" REDIS_QUEUE; wait_for "$HOST" "$PORT" "Redis (queue)" REDIS_QUEUE
+
 SITE_DIR="sites/${SITE_NAME}"
 
-# common_site_config.json holds only non-secret, per-deployment wiring.
-cat > sites/common_site_config.json <<JSON
+# Written 0600: unlike the rest of this file, a Redis URL may carry a password.
+# Rewritten on every start, so editing deploy/.env is all an address change needs.
+(umask 077; cat > sites/common_site_config.json <<JSON
 {
   "db_host": "${DB_HOST}",
   "db_port": ${DB_PORT},
-  "redis_cache": "redis://redis-cache:6379",
-  "redis_queue": "redis://redis-queue:6379",
-  "redis_socketio": "redis://redis-queue:6379",
+  "redis_cache": "${REDIS_CACHE}",
+  "redis_queue": "${REDIS_QUEUE}",
+  "redis_socketio": "${REDIS_QUEUE}",
   "socketio_port": ${SOCKETIO_PORT:-9000},
   "webserver_port": ${APP_PORT:-8000},
   "developer_mode": 0
 }
 JSON
+)
 
 if [ ! -f "${SITE_DIR}/site_config.json" ]; then
   case "${SETUP_MODE:-attach}" in
@@ -116,6 +164,12 @@ fi
 
 case "${1:-web}" in
   web)
+    # The sites volume hides the image's own sites/assets, so restore the build
+    # over it. This is what makes `docker compose build && up -d` actually ship a
+    # new /m, /w or /docs bundle. Only this role does it — it is the one that
+    # serves them, so there is exactly one writer whatever else is running.
+    mkdir -p sites/assets
+    cp -af "${ASSET_STASH:-/home/frappe/assets-image}/." sites/assets/
     exec "$BENCH/env/bin/gunicorn" \
       -b "0.0.0.0:${APP_PORT:-8000}" -w "${GUNICORN_WORKERS:-5}" \
       --max-requests 5000 --max-requests-jitter 500 \

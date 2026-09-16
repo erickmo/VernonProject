@@ -18,6 +18,7 @@ scratchpad/
 mcp_server/.venv/
 mcp_server/*.log
 *.log
-docs/
+# docs/ stays IN: www/docs.py serves /docs straight out of it, so excluding it
+# 404s the whole docs site inside the image (8n5c5rgaqa).
 .claude/
 .superpowers/

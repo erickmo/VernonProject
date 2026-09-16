@@ -5,6 +5,7 @@ site, no network. Fake credentials only; nothing here points at a real database.
 """
 
 import os
+import socket
 import stat
 import tempfile
 import unittest
@@ -22,6 +23,8 @@ GOOD = {
 	"DB_NAME": "_fakedb",
 	"DB_USER": "fakeuser",
 	"DB_PASSWORD": "s3cr3t-not-real",
+	"REDIS_CACHE": "redis://10.1.2.4:6379/0",
+	"REDIS_QUEUE": "redis://10.1.2.4:6379/1",
 	"SETUP_MODE": ATTACH,
 	"BIND_ADDRESS": "10.1.2.9",
 	"APP_PORT": "8000",
@@ -81,6 +84,8 @@ class TestValidate(unittest.TestCase):
 			"DB_PORT": "99999", "DB_NAME": "", "DB_USER": "", "DB_PASSWORD": "hunter2-not-real",
 			"SETUP_MODE": "wipe", "BIND_ADDRESS": "", "APP_PORT": "abc", "SOCKETIO_PORT": "-1",
 			"DB_SSL_CA": "relative/ca.pem",
+			"REDIS_CACHE": "memcached://cache.invalid:11211",
+			"REDIS_QUEUE": "redis://localhost:6379/1",
 		}
 		for host in ("localhost", "not a host!"):
 			with self.subTest(host=host):
@@ -175,6 +180,93 @@ class TestEnvFile(unittest.TestCase):
 	def test_load_env_on_a_fresh_machine_is_simply_empty(self):
 		with tempfile.TemporaryDirectory() as d:
 			self.assertEqual(load_env(d), {})
+
+
+class TestExternalRedis(unittest.TestCase):
+	"""8n5c5rgaqa: Redis is external, and is validated exactly as strictly as the
+	database — same rules, same "name the key, never the value" messages."""
+
+	def test_required_external_redis_config_is_accepted(self):
+		self.assertEqual(validate(GOOD), ())
+		for url in ("redis://10.1.2.4:6379/0", "redis://db.internal:6379", "rediss://8.8.8.8:6380/0"):
+			with self.subTest(url=url):
+				self.assertEqual(validate({**GOOD, "REDIS_CACHE": url}), ())
+
+	def test_missing_external_redis_config_fails_with_the_exact_expected_error(self):
+		for key in ("REDIS_CACHE", "REDIS_QUEUE"):
+			with self.subTest(key=key):
+				errs = validate({k: v for k, v in GOOD.items() if k != key})
+				self.assertIn("{} is required.".format(key), errs)
+
+	def test_required_external_mariadb_config_is_accepted(self):
+		self.assertEqual(validate(GOOD), ())
+
+	def test_missing_external_mariadb_config_fails_with_the_exact_expected_error(self):
+		for key in ("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"):
+			with self.subTest(key=key):
+				errs = validate({k: v for k, v in GOOD.items() if k != key})
+				self.assertIn("{} is required.".format(key), errs)
+
+	def test_a_redis_on_the_container_itself_is_refused(self):
+		for host in ("localhost", "127.0.0.1", "0.0.0.0", "[::1]"):
+			with self.subTest(host=host):
+				errs = validate({**GOOD, "REDIS_QUEUE": "redis://{}:6379/1".format(host)})
+				self.assertTrue(any("no bundled Redis" in e for e in errs), errs)
+
+	def test_an_address_that_is_not_a_redis_url_is_refused(self):
+		for bad in ("10.1.2.4:6379", "http://10.1.2.4:6379", "memcached://10.1.2.4:11211", "redis://"):
+			with self.subTest(value=bad):
+				errs = validate({**GOOD, "REDIS_CACHE": bad})
+				self.assertTrue(any(e.startswith("REDIS_CACHE") for e in errs), errs)
+
+	def test_a_redis_port_must_be_a_real_port(self):
+		for bad in ("0", "65536", "99999"):
+			with self.subTest(port=bad):
+				errs = validate({**GOOD, "REDIS_QUEUE": "redis://10.1.2.4:{}/1".format(bad)})
+				self.assertTrue(any(e.startswith("REDIS_QUEUE") for e in errs), errs)
+
+	def test_a_public_redis_address_without_tls_is_refused(self):
+		errs = validate({**GOOD, "REDIS_CACHE": "redis://8.8.8.8:6379/0"})
+		self.assertTrue(any("public address" in e for e in errs), errs)
+		self.assertEqual(validate({**GOOD, "REDIS_CACHE": "rediss://8.8.8.8:6379/0"}), ())
+
+	def test_a_public_database_address_without_tls_is_refused(self):
+		errs = validate({**GOOD, "DB_HOST": "8.8.8.8"})
+		self.assertTrue(any("public address" in e for e in errs), errs)
+		self.assertEqual(validate({**GOOD, "DB_HOST": "8.8.8.8", "DB_SSL_CA": "/certs/ca.pem"}), ())
+
+	def test_the_committed_placeholder_is_refused_if_it_is_left_in_place(self):
+		for key in ("DB_NAME", "DB_USER"):
+			with self.subTest(key=key):
+				errs = validate({**GOOD, key: "change_me"})
+				self.assertTrue(any(e.startswith(key) and "placeholder" in e for e in errs), errs)
+
+	def test_a_redis_password_in_the_url_is_never_printed_back(self):
+		shown = redact({**GOOD, "REDIS_QUEUE": "redis://:hunter2-not-real@10.1.2.4:6379/1"})
+		self.assertNotIn("hunter2-not-real", " ".join(str(v) for v in shown.values()))
+		self.assertIn("10.1.2.4", shown["REDIS_QUEUE"])
+
+
+class TestBoundedWork(unittest.TestCase):
+	def test_validation_never_touches_the_network(self):
+		"""The bounded-work guarantee: checking a configuration resolves nothing and
+		connects to nothing, so it costs the same whether or not the hosts exist and
+		creates no traffic to the operator's MariaDB or Redis."""
+		calls = []
+
+		def refuse(*a, **kw):
+			calls.append(a)
+			raise AssertionError("validate() reached the network")
+
+		saved = (socket.getaddrinfo, socket.create_connection, socket.socket)
+		socket.getaddrinfo, socket.create_connection, socket.socket = refuse, refuse, refuse
+		try:
+			self.assertEqual(validate(GOOD), ())
+			self.assertTrue(validate({**GOOD, "REDIS_CACHE": "redis://nope.invalid"}) == ())
+			validate({**GOOD, "DB_HOST": "8.8.8.8"})
+		finally:
+			socket.getaddrinfo, socket.create_connection, socket.socket = saved
+		self.assertEqual(calls, [])
 
 
 if __name__ == "__main__":

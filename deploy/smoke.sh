@@ -22,10 +22,10 @@ $COMPOSE build backend >/dev/null || fail "1. image does not build"
 pass "1. image builds"
 
 # 2. nothing starts a web server or a database
-for banned in nginx mariadb mysql; do
+for banned in nginx mariadb mysql redis valkey; do
   $COMPOSE config | grep -Eq "image:.*$banned" && fail "2. compose would start $banned"
 done
-pass "2. no nginx or database container"
+pass "2. no nginx, database or redis container"
 
 # 3. the app runs as a normal user, not root
 who=$($COMPOSE run --rm --entrypoint id backend -un)
@@ -42,6 +42,12 @@ pass "4. missing settings fail before startup, without leaking values"
 out=$(DB_HOST=203.0.113.1 $COMPOSE run --rm backend check 2>&1 || true)
 [ -n "${DB_PASSWORD:-}" ] && echo "$out" | grep -q "$DB_PASSWORD" && fail "5. the failure printed the password"
 pass "5. unreachable database fails without leaking the password"
+
+# 5b. a Redis it cannot reach fails clearly rather than hanging
+out=$(REDIS_CACHE=redis://203.0.113.1:6379/0 READY_ATTEMPTS=2 READY_SLEEP=1 \
+  $COMPOSE run --rm backend web 2>&1 || true)
+echo "$out" | grep -q "REDIS_CACHE" || fail "5b. unreachable Redis does not name the setting"
+pass "5b. unreachable Redis fails clearly, naming the setting"
 
 # 6. with a reachable database, the app answers its own health endpoint
 $COMPOSE up -d backend >/dev/null
@@ -63,6 +69,12 @@ fi
 before=$(date +%s); $COMPOSE build backend >/dev/null; after=$(date +%s)
 [ $((after - before)) -lt 60 ] || fail "8. the second build did not use the cache"
 pass "8. repeat build uses the cache"
+
+# 9. a restart keeps the site's own files
+$COMPOSE restart backend >/dev/null 2>&1 || true
+$COMPOSE exec -T backend test -f "sites/${SITE_NAME:?}/site_config.json" \
+  || fail "9. the site lost its configuration across a restart"
+pass "9. restart keeps the site's files"
 
 $COMPOSE down >/dev/null 2>&1 || true
 echo "all checks passed"
