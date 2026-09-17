@@ -12,8 +12,9 @@ interface Props {
   seed: ProjectItem | null
 }
 
-// /w Drawer mirror of MoveTodosSheet — move todos to another detail of the same
-// project. Shared logic (queries, selection, submit) lives in useMoveTodosController.
+// /w Drawer mirror of MoveTodosSheet — move todos to another detail, of this project
+// or of another one the user owns. Shared logic (queries, selection, submit) lives in
+// useMoveTodosController.
 export function MoveTodosDialog({ open, onClose, seed }: Props) {
   const c = useMoveTodosController(seed, open, onClose)
 
@@ -38,15 +39,32 @@ export function MoveTodosDialog({ open, onClose, seed }: Props) {
     >
       <div className="flex flex-col gap-4">
         <p className="text-sm text-muted">
-          Pindahkan ke detail lain di proyek
+          Dari proyek
           {seed ? (
             <>
               {' '}
               <span className="font-medium text-ink">{seed.project_name}</span>
             </>
           ) : null}
-          .
+          . Pilih detail lain di proyek ini, atau pindahkan ke proyek lain.
         </p>
+
+        <label className="text-sm font-medium text-muted">
+          Proyek tujuan<span className="text-red-500"> *</span>
+          <div className="mt-1">
+            <SearchableSelect
+              value={c.destProject}
+              onChange={c.setDestProject}
+              options={c.projectOptions}
+              placeholder="Pilih proyek tujuan…"
+            />
+          </div>
+          {!c.hasOtherProjects && (
+            <p className="mt-1 text-xs font-normal text-muted">
+              Hanya pemilik kedua proyek yang bisa memindahkan tugas antar proyek.
+            </p>
+          )}
+        </label>
 
         <label className="text-sm font-medium text-muted">
           Detail tujuan<span className="text-red-500"> *</span>
@@ -58,6 +76,11 @@ export function MoveTodosDialog({ open, onClose, seed }: Props) {
               placeholder={c.hasDestinations ? 'Pilih detail tujuan…' : 'Tidak ada detail lain'}
             />
           </div>
+          {c.isCrossProject && (
+            <p className="mt-1 text-xs font-normal text-amber-600">
+              Tugas pindah ke proyek lain — penerima tugas harus anggota tim proyek tujuan.
+            </p>
+          )}
         </label>
 
         <div className="text-sm font-medium text-muted">

@@ -7954,8 +7954,31 @@ def _reparent_detail(detail, destination_project, children):
 	detail.glossaries = []
 	detail.save(ignore_permissions=True)
 	for c in children:
-		frappe.db.set_value("Project Todo", c.name, "project", destination_project, update_modified=False)
-		frappe.db.set_value("Point Ledger", {"todo": c.name}, "project", destination_project)
+		_reparent_todo_project(c.name, destination_project)
+
+
+def _reparent_todo_project(todo, destination_project):
+	"""Carry ONE Project Todo across projects. `project` is a denormalization of
+	the detail's project (Project Todo.validate derives it on save, and
+	delete_project counts on it), and Point Ledger keeps its own copy because
+	scoring is reported per project — so both have to move with the task."""
+	frappe.db.set_value("Project Todo", todo, "project", destination_project, update_modified=False)
+	frappe.db.set_value("Point Ledger", {"todo": todo}, "project", destination_project)
+
+
+def _require_cross_project_move(source_project, destination_project):
+	"""Gate for moving work OUT of one project and INTO another: a System Manager,
+	or the owner of both projects. Same rule whether a whole detail moves
+	(move_project_detail) or a single task does (move_todos), and it is also the
+	rule list_move_destinations offers destinations by, so the picker and the
+	server agree."""
+	user = frappe.session.user
+	if "System Manager" in frappe.get_roles(user):
+		return
+	src_owner = frappe.db.get_value("Project", source_project, "project_owner")
+	dst_owner = frappe.db.get_value("Project", destination_project, "project_owner")
+	if user != src_owner or user != dst_owner:
+		frappe.throw("Only the owner of both projects can move this across projects.", frappe.PermissionError)
 
 
 @frappe.whitelist()
@@ -8066,12 +8089,7 @@ def move_project_detail(project_detail, destination_project):
 	if destination_project == source:
 		frappe.throw("Detail is already in that project")
 
-	user = frappe.session.user
-	if "System Manager" not in frappe.get_roles(user):
-		src_owner = frappe.db.get_value("Project", source, "project_owner")
-		dst_owner = frappe.db.get_value("Project", destination_project, "project_owner")
-		if user != src_owner or user != dst_owner:
-			frappe.throw("Only the owner of both projects can move this detail.", frappe.PermissionError)
+	_require_cross_project_move(source, destination_project)
 
 	children = frappe.get_all(
 		"Project Todo", filters={"project_detail": project_detail},
@@ -8096,12 +8114,19 @@ def move_project_detail(project_detail, destination_project):
 
 @frappe.whitelist()
 def move_todos(destination_detail, todo_ids):
-	"""Move one or more Project Todos into another Project Detail *within the same
-	project*. Same guard as update_todo (System Manager / project owner / leader /
-	the todo's assignee). Two-pass: everything is validated before any write, so a
-	single bad todo aborts the whole batch with nothing moved. Todos already in the
-	destination are skipped. Cross-project moves are refused here — that is what
-	move_project_detail (whole detail, cross-project) is for."""
+	"""Move one or more Project Todos into another Project Detail — of the same
+	project, or of a different one.
+
+	Within the project the guard is update_todo's (System Manager / project owner /
+	leader / the todo's assignee). ACROSS projects it is the stricter
+	_require_cross_project_move (System Manager or the owner of both), the
+	destination project must not be Closed, and every assignee must already be on
+	the destination's Project Team — otherwise the task would land on a project
+	whose own validate() rejects its assignee.
+
+	Two-pass: everything is validated before any write, so a single bad todo aborts
+	the whole batch with nothing moved. Todos already in the destination detail are
+	skipped, which makes a repeated identical move a no-op rather than a duplicate."""
 	ids = frappe.parse_json(todo_ids) or []
 	if not ids:
 		frappe.throw("No tasks selected.")
@@ -8112,6 +8137,10 @@ def move_todos(destination_detail, todo_ids):
 	user = frappe.session.user
 	is_sm = "System Manager" in frappe.get_roles(user)
 	owner, leader = frappe.db.get_value("Project", dest_project, ["project_owner", "project_leader"])
+	# Destination eligibility and its team are project-wide facts, so they are read
+	# once for the whole batch (lazily — a same-project batch never needs them)
+	# rather than per task.
+	dest_facts = {}
 
 	# Pass 1 — validate every id; collect the ones that actually change detail.
 	to_move = []
@@ -8124,18 +8153,38 @@ def move_todos(destination_detail, todo_ids):
 		# Compare the source detail's project (authoritative) to the destination's —
 		# not the todo's denormalized `project` field.
 		src_project = frappe.db.get_value("Project Detail", row.project_detail, "project")
-		if src_project != dest_project:
-			frappe.throw("Tasks can only be moved within the same project.")
-		if not (is_sm or user in (owner, leader, row.assigned_to)):
-			frappe.throw("You don't have permission to move one of these tasks.", frappe.PermissionError)
+		if src_project == dest_project:
+			if not (is_sm or user in (owner, leader, row.assigned_to)):
+				frappe.throw("You don't have permission to move one of these tasks.", frappe.PermissionError)
+		else:
+			_require_cross_project_move(src_project, dest_project)
+			if not dest_facts:
+				dest_facts = {
+					"status": frappe.db.get_value("Project", dest_project, "status"),
+					"team": set(frappe.get_all(
+						"Project Team",
+						filters={"parent": dest_project, "parenttype": "Project"},
+						pluck="user",
+					)),
+				}
+			if dest_facts["status"] == "Closed":
+				frappe.throw("That project is closed — pick another destination.")
+			if row.assigned_to and row.assigned_to not in dest_facts["team"]:
+				frappe.throw(
+					f"'{row.assigned_to}' is not a member of the destination project team. "
+					"Add them to that project, or reassign the task first."
+				)
 		if row.project_detail != destination_detail:
-			to_move.append(tid)
+			to_move.append((tid, src_project))
 
-	# Pass 2 — write. db.set_value skips the Project Todo controller on purpose: a
-	# same-project reparent leaves `project`, points and scoring untouched, so there
-	# is nothing to recompute and no locked-field guard to fight.
-	for tid in to_move:
+	# Pass 2 — write. db.set_value skips the Project Todo controller on purpose: the
+	# reparent leaves points and scoring untouched, so there is nothing to recompute
+	# and no locked-field guard to fight. A same-project move leaves `project` alone;
+	# a cross-project one carries it and the point history over.
+	for tid, src_project in to_move:
 		frappe.db.set_value("Project Todo", tid, "project_detail", destination_detail)
+		if src_project != dest_project:
+			_reparent_todo_project(tid, dest_project)
 	frappe.db.commit()
 	return {"ok": True, "moved": len(to_move)}
 

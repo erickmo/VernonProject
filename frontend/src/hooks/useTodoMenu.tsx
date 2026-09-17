@@ -161,8 +161,9 @@ export function useTodoMenuGroups(
       // Raising an issue creates a todo, so it rides the same gate as creating one.
       ...(t.can_create ? [{ key: 't-issue', label: 'Report issue', icon: AlertTriangle, onClick: go(`/project-item/${item}?issue=1`) }] : []),
       { key: 't-duplicate', label: 'Duplicate', icon: Copy, onClick: go(`/project-item/${item}?duplicate=1`) },
-      // Move this todo (and optionally its detail-siblings) to another detail of the same project.
-      ...(t.project_detail ? [{ key: 't-move', label: 'Move to detail…', icon: FolderInput, onClick: overlays.onMove }] : []),
+      // Move this todo (and optionally its detail-siblings) to another detail — of this
+      // project, or of another project the user owns (the server gates the cross-project half).
+      ...(t.project_detail ? [{ key: 't-move', label: 'Pindahkan tugas…', icon: FolderInput, onClick: overlays.onMove }] : []),
     ],
   })
 

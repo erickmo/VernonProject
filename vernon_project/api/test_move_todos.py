@@ -1,9 +1,11 @@
 # Copyright (c) 2026, Vernon and Contributors
 # See license.txt
 #
-# move_todos = reparent one or more Project Todos into another Project Detail of
-# the SAME project. Guard mirrors update_todo (SM / owner / leader / assignee).
-# Two-pass: a single bad todo aborts the batch with nothing moved.
+# move_todos = reparent one or more Project Todos into another Project Detail.
+# Within the project the guard mirrors update_todo (SM / owner / leader /
+# assignee). Two-pass: a single bad todo aborts the batch with nothing moved.
+# The cross-project half of the contract (stricter gate, `project` + point
+# history carried over) lives in test_move_todos_cross_project.py.
 
 import frappe
 import unittest
@@ -97,11 +99,19 @@ class TestMoveTodos(unittest.TestCase):
 		self.assertEqual(res["moved"], 0)
 		self.assertEqual(self._detail_of(self.t1), self.a.name)
 
-	def test_cross_project_refused_and_atomic(self):
+	def test_cross_project_batch_allowed_for_the_owner_of_both(self):
 		frappe.set_user(OWNER)
-		# t1 is valid, foreign is in another project -> whole batch aborts.
+		# t1 is already in this project, foreign comes from another one OWNER also
+		# owns -- both land in B, and the crosser brings its `project` along.
+		res = move_todos(self.b.name, frappe.as_json([self.t1, self.foreign]))
+		self.assertEqual(res["moved"], 2)
+		self.assertEqual(self._detail_of(self.foreign), self.b.name)
+		self.assertEqual(frappe.db.get_value("Project Todo", self.foreign, "project"), self.proj.name)
+
+	def test_one_bad_member_aborts_the_whole_batch(self):
+		frappe.set_user(OWNER)
 		with self.assertRaises(frappe.ValidationError):
-			move_todos(self.b.name, frappe.as_json([self.t1, self.foreign]))
+			move_todos(self.b.name, frappe.as_json([self.t1, "no-such-todo"]))
 		self.assertEqual(self._detail_of(self.t1), self.a.name)  # nothing moved
 
 	def test_stranger_denied(self):

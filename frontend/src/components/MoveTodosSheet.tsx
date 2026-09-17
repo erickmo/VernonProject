@@ -10,9 +10,10 @@ interface Props {
   seed: ProjectItem | null
 }
 
-// /m bottom-sheet to move todos to another detail of the same project. Opened from
-// the todo context menu, seeded with the long-pressed todo (pre-checked); the user
-// can batch more todos from the same source detail before moving.
+// /m bottom-sheet to move todos to another detail — of this project or of another
+// one the user owns. Opened from the todo context menu, seeded with the long-pressed
+// todo (pre-checked); the user can batch more todos from the same source detail
+// before moving. Mirror of /w MoveTodosDialog.
 export function MoveTodosSheet({ open, onClose, seed }: Props) {
   const c = useMoveTodosController(seed, open, onClose)
   if (!open || !seed) return null
@@ -27,11 +28,29 @@ export function MoveTodosSheet({ open, onClose, seed }: Props) {
           </button>
         </div>
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Pindahkan ke detail lain di proyek{' '}
-          <span className="font-medium text-slate-700 dark:text-slate-200">{seed.project_name}</span>.
+          Dari proyek{' '}
+          <span className="font-medium text-slate-700 dark:text-slate-200">{seed.project_name}</span>. Pilih
+          detail lain di proyek ini, atau pindahkan ke proyek lain.
         </p>
 
         <div className="flex flex-col gap-3">
+          <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Proyek tujuan
+            <div className="mt-1">
+              <SearchableSelect
+                value={c.destProject}
+                onChange={c.setDestProject}
+                options={c.projectOptions}
+                placeholder="Pilih proyek…"
+              />
+            </div>
+            {!c.hasOtherProjects && (
+              <p className="mt-1 text-xs font-normal text-slate-400 dark:text-slate-500">
+                Hanya pemilik kedua proyek yang bisa memindahkan tugas antar proyek.
+              </p>
+            )}
+          </div>
+
           <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
             Detail tujuan
             <div className="mt-1">
@@ -42,6 +61,11 @@ export function MoveTodosSheet({ open, onClose, seed }: Props) {
                 placeholder={c.hasDestinations ? 'Pilih detail…' : 'Tidak ada detail lain'}
               />
             </div>
+            {c.isCrossProject && (
+              <p className="mt-1 text-xs font-normal text-amber-600 dark:text-amber-400">
+                Tugas pindah ke proyek lain — penerima tugas harus anggota tim proyek tujuan.
+              </p>
+            )}
           </div>
 
           <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
