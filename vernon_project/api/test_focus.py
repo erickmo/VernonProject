@@ -68,6 +68,36 @@ class _FocusFixture(NoLeakMixin, unittest.TestCase):
 		frappe.set_user(user)
 		save_timer(task=task, task_title=task, estimated_ms=0, status="running", started_at_ms=1, elapsed_before_ms=0)
 
+	@staticmethod
+	def _capture_queries(fn):
+		"""The SQL `fn` issues, in order. frappe.get_all runs through frappe.db.sql
+		(the query builder's run() calls it), so patching there sees it.
+
+		Returns the statements, not just a count, so a caller can assert on the KIND
+		of query (one UPDATE, not one UPDATE per row) and not only on the total."""
+		seen = []
+		original = frappe.db.sql
+
+		def capturing(query, *args, **kwargs):
+			seen.append(str(query))
+			return original(query, *args, **kwargs)
+
+		frappe.db.sql = capturing
+		try:
+			fn()
+		finally:
+			frappe.db.sql = original
+		return seen
+
+	@staticmethod
+	def _warm_doctype_cache(doctype):
+		"""Frappe asks `SELECT is_virtual FROM tabDocType` the FIRST time a process
+		touches a doctype, then caches it. That one-off makes a cold call cost one
+		query more than every later call — nothing to do with how many rows exist.
+		Measuring a cold call against a warm one therefore compares two different
+		things; call this first so both measurements are warm."""
+		frappe.get_all(doctype, limit=1)
+
 
 class TestReorderFocus(_FocusFixture):
 	"""reorder_focus is the security boundary for drag-to-reorder: a payload must be
@@ -140,31 +170,38 @@ class TestReorderFocus(_FocusFixture):
 		)
 		self.assertEqual(other_sort_order, 0, "other user's row untouched")
 
+	def test_a_reorder_costs_one_update_whatever_the_list_length(self):
+		"""The performance gate for writes. A drag that ends must persist the new
+		order in ONE statement — the CASE..WHEN update — not one write per row, which
+		is what a naive save-each-row loop would do and what would make a long focus
+		list slow to reorder. Counts UPDATEs specifically, so an added read cannot
+		mask a per-row write."""
+		a, b, c = self.tasks
+		for t in (a, b, c):
+			self._start("focus_owner@example.com", t)
+		frappe.set_user("focus_owner@example.com")
+		self._warm_doctype_cache("Focus Timer")
+
+		three = [q for q in self._capture_queries(lambda: reorder_focus(json.dumps([c, a, b])))
+			if q.lstrip().upper().startswith("UPDATE")]
+		self.assertEqual(len(three), 1, f"a 3-row reorder must be one UPDATE, got {len(three)}: {three}")
+
+		stop_timer(c)
+		two = [q for q in self._capture_queries(lambda: reorder_focus(json.dumps([b, a])))
+			if q.lstrip().upper().startswith("UPDATE")]
+		self.assertEqual(len(two), 1, "a 2-row reorder is also one UPDATE — the count must not track row count")
+
+		self.assertEqual(
+			[r["taskId"] for r in list_focus() if r["status"] in ("running", "paused")], [b, a],
+			"the single UPDATE must actually have applied the requested order",
+		)
+
 
 class TestFocusPersistence(_FocusFixture):
 	"""Focus state lives in the `Focus Timer` table, not in the browser. These cover
 	the parts nothing else did: that a timer really reaches the database, that it
 	reads back on a fresh request, that it never crosses between users, and that the
 	owner lookup is indexed."""
-
-	@staticmethod
-	def _count_queries(fn):
-		"""How many queries `fn` issues. frappe.get_all runs through frappe.db.sql
-		(the query builder's run() calls it), so counting there sees it."""
-		count = 0
-		original = frappe.db.sql
-
-		def counting(*args, **kwargs):
-			nonlocal count
-			count += 1
-			return original(*args, **kwargs)
-
-		frappe.db.sql = counting
-		try:
-			fn()
-		finally:
-			frappe.db.sql = original
-		return count
 
 	def _db(self, user, task, field):
 		"""Read straight from the table — proves the value reached the database, not
@@ -281,12 +318,13 @@ class TestFocusPersistence(_FocusFixture):
 		number of queries as one."""
 		self._start("focus_owner@example.com", self.tasks[0])
 		frappe.set_user("focus_owner@example.com")
-		one = self._count_queries(list_focus)
+		self._warm_doctype_cache("Focus Timer")
+		one = len(self._capture_queries(list_focus))
 		self.assertGreater(one, 0, "the query counter is not observing anything — the test would be vacuous")
 		for task in self.tasks[1:]:
 			self._start("focus_owner@example.com", task)
 		frappe.set_user("focus_owner@example.com")
-		three = self._count_queries(list_focus)
+		three = len(self._capture_queries(list_focus))
 		self.assertEqual(one, three, "list_focus must cost the same whatever the number of timers")
 
 
