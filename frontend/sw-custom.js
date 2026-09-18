@@ -25,7 +25,11 @@
 //      share_target and starts appearing in the OS share sheet. The manifest
 //      is NOT content-hashed, so cache-first would otherwise serve the old one
 //      to every existing install forever.
-const ASSET_CACHE = 'vernon-assets-v43'
+// v44: stop needing v43's trick. The manifest is excluded from cache-first below,
+//      and it moved to manifest.json — nginx has no media type for `.webmanifest`
+//      and served it as application/octet-stream, which is not the JSON media type
+//      the manifest spec asks for.
+const ASSET_CACHE = 'vernon-assets-v44'
 const ASSET_PREFIX = '/assets/vernon_project/frontend/'
 
 self.addEventListener('install', () => {
@@ -54,6 +58,12 @@ self.addEventListener('fetch', (event) => {
 
   // version.json is the update-detection probe — never cache it, always hit network.
   if (url.pathname.endsWith('version.json')) return
+
+  // The manifest is the one asset under the prefix that is NOT content-hashed, so
+  // cache-first would pin whatever copy an install first saw — which is exactly how
+  // every existing install kept a manifest with no share_target in it and Vernon
+  // stayed out of the OS share sheet. Always network.
+  if (url.pathname.endsWith('manifest.json')) return
 
   // Built app assets (JS/CSS/icons): cache-first — they are content-hashed.
   if (url.pathname.startsWith(ASSET_PREFIX)) {
