@@ -8,6 +8,7 @@
 # query child tables directly or replicate the status-workflow permission rules.
 
 import json
+from types import SimpleNamespace
 
 import frappe
 from frappe.utils import getdate, nowdate, pretty_date, get_datetime, date_diff, now_datetime, add_days, cint
@@ -5669,11 +5670,17 @@ def _parse_users(users):
 	return [u for u in (users or []) if u]
 
 
-def _shape_note(doc, user):
+def _shape_note(doc, user, name_map=None):
 	"""Build the Note JSON for the session user. `shares` is populated only for the
-	owner; shared viewers see [] and read-only (`can_edit == is_owner`)."""
+	owner; shared viewers see [] and read-only (`can_edit == is_owner`).
+
+	`name_map` is the same lookup `_user_name_map` returns, resolved once for a whole
+	list of notes. Omitting it resolves just this note's users, which is what the
+	single-note callers want; passing it stops a list paying that twice per note.
+	"""
 	is_owner = doc.user == user
-	name_map = _user_name_map({doc.user} | {r.shared_user for r in (doc.shares or [])})
+	if name_map is None:
+		name_map = _user_name_map({doc.user} | {r.shared_user for r in (doc.shares or [])})
 	owner_row = name_map.get(doc.user) or {}
 	shares = []
 	if is_owner:
@@ -5726,18 +5733,59 @@ def get_personal_notes():
 		"Personal Note Share", filters={"shared_user": user}, pluck="parent",
 		limit_page_length=0,
 	)
-	owned, shared = [], []
-	for n in owned_names:
-		owned.append(_shape_note(frappe.get_doc("Personal Note", n), user))
+	# One read per TABLE rather than per note. frappe.get_doc would fetch the parent
+	# and both child tables separately for every note, and _shape_note would then
+	# resolve user names again for each one — so a person's own note list cost five
+	# queries per note they had ever written.
+	wanted = list(dict.fromkeys([*owned_names, *shared_names]))
+	docs = _personal_notes_by_name(wanted)
+
+	owned = [docs[n] for n in owned_names if n in docs]
 	# Shared list ordered newest-first by note modified; exclude any the user owns.
-	shared_docs = [
-		frappe.get_doc("Personal Note", n) for n in shared_names
-	]
-	shared_docs = [d for d in shared_docs if d.user != user]
+	shared_docs = [docs[n] for n in dict.fromkeys(shared_names) if n in docs and docs[n].user != user]
 	shared_docs.sort(key=lambda d: str(d.modified), reverse=True)
-	for d in shared_docs:
-		shared.append(_shape_note(d, user))
-	return {"owned": owned, "shared": shared}
+
+	name_map = _user_name_map(
+		{d.user for d in [*owned, *shared_docs]}
+		| {r.shared_user for d in [*owned, *shared_docs] for r in (d.shares or [])}
+	)
+	return {
+		"owned": [_shape_note(d, user, name_map) for d in owned],
+		"shared": [_shape_note(d, user, name_map) for d in shared_docs],
+	}
+
+
+def _personal_notes_by_name(names):
+	"""{name: note} for many Personal Notes, three queries whatever the count.
+
+	Shaped like the Documents _shape_note expects — attribute access, `items` ordered
+	by idx and `shares` alongside — so the rendering stays one definition rather than
+	growing a second copy for the list screen.
+	"""
+	if not names:
+		return {}
+	docs = {
+		r["name"]: SimpleNamespace(**r, items=[], shares=[])
+		for r in frappe.get_all(
+			"Personal Note", filters={"name": ["in", names]},
+			fields=["name", "user", "title", "body", "modified"], limit_page_length=0,
+		)
+	}
+	for row in frappe.get_all(
+		"Personal Note Item", filters={"parent": ["in", names], "parenttype": "Personal Note"},
+		fields=["parent", "label", "checked", "idx"], order_by="parent asc, idx asc",
+		limit_page_length=0,
+	):
+		if row["parent"] in docs:
+			docs[row["parent"]].items.append(SimpleNamespace(**row))
+	for row in frappe.get_all(
+		"Personal Note Share", filters={"parent": ["in", names], "parenttype": "Personal Note"},
+		fields=["parent", "shared_user", "idx"], order_by="parent asc, idx asc",
+		limit_page_length=0,
+	):
+		if row["parent"] in docs:
+			docs[row["parent"]].shares.append(SimpleNamespace(**row))
+	return docs
 
 
 @frappe.whitelist()
