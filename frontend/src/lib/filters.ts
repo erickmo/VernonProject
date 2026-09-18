@@ -327,6 +327,24 @@ export function canMoveDeadlineToday(t: ProjectItem, today: string): boolean {
 }
 
 /**
+ * Whether the hover `c` shortcut confirms this todo's AI prompt (phase 2 -> 3)
+ * instead of toggling the To Check flag, which is what `c` does on every other card.
+ *
+ * Phase 2 only: phase 1 has no prompt to confirm, and un-confirming a phase-3 todo
+ * stays a deliberate click on the phase banner rather than a hover keypress. Past
+ * Planned the prompt is frozen (ProjectTodo.validate_done_todo_fields), so the key
+ * goes quiet there too.
+ *
+ * Permission is NOT decided here: list payloads carry no `can_confirm_prompt` (only
+ * the detail shaper sets it), so the server's own gate in `confirm_ai_prompt` — SM,
+ * project owner, leader or assignee — is the one that answers, and its refusal
+ * surfaces through the usual error toast.
+ */
+export function canConfirmAiPromptFromCard(t: ProjectItem): boolean {
+  return t.status_key === 'planned' && aiPhaseOf(t) === 2
+}
+
+/**
  * Todo "tags" — the icon flags shown on a TodoCard. `focus` = has a live focus
  * timer (transient, membership from `useFocusedTaskIds`), `ai1`/`ai2`/`ai3` = the AI
  * phase, `to_check` = the To Check flag, `untagged` = none of them. Drives the

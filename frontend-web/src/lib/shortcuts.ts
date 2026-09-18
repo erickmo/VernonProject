@@ -66,6 +66,18 @@ export const SHORTCUTS: ShortcutGroup[] = [
     ],
   },
   {
+    // The hover family lives on the shared TodoCard, not in resolveGlobalKey — it is
+    // listed here because the `?` sheet is the only place a user can discover it.
+    title: 'When hovering a task card',
+    rows: [
+      { keys: 'c', label: 'Confirm AI prompt (phase 2 → 3), else toggle "To Check"' },
+      { keys: 'a', label: 'Toggle AI task flag' },
+      { keys: 'f', label: 'Start / stop focus' },
+      { keys: 't', label: 'Deadline → today' },
+      { keys: '1 … 9', label: 'Plan it for today … today + 8 days' },
+    ],
+  },
+  {
     title: 'When a task is open',
     rows: [
       { keys: 'e', label: 'Edit task' },

@@ -12,10 +12,12 @@ import { useAdvance } from '@/components/AdvanceProvider'
 import { useReject } from '@/components/RejectProvider'
 import { useUndo } from '@/components/UndoProvider'
 import { useFocusPill } from '@/hooks/useFocusPill'
-import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useMoveTodoDeadline, useBoot, canUseAi } from '@/hooks/useData'
+import { useSetTodoAllocations, useSetTodoCheck, useSetTodoWorkMode, useMoveTodoDeadline, useConfirmAiPrompt, useBoot, canUseAi } from '@/hooks/useData'
 import { buildNext, planOnlyOn } from '@/lib/planDay'
 import { useTodoContextMenu } from '@/hooks/useTodoMenu'
-import { AI_PHASES, aiPhaseOf, canMoveDeadlineToday, isAiWorking } from '@/lib/filters'
+import { AI_PHASES, aiPhaseOf, canConfirmAiPromptFromCard, canMoveDeadlineToday, isAiWorking } from '@/lib/filters'
+import { anyModalOpen } from '@/lib/modalStack'
+import { useConfirm } from '@/components/Confirm'
 import { AiWorkingBackdrop } from '@/components/AiWorkingBackdrop'
 import type { ProjectItem } from '@/lib/types'
 
@@ -47,28 +49,56 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
   const [flash, setFlash] = useState(false)
   const [notesExpanded, setNotesExpanded] = useState(false)
 
-  // Desktop-only convenience: while the pointer hovers a card, `c` toggles the
-  // assignee's To Check flag, `a` toggles the AI flag and `t` pulls the deadline to
-  // today — same keys as the open-task shortcuts on /w. Inert on /m (no hover, no
-  // keyboard). Same gates as the useTodoMenu items / open-task actions so a card
-  // never does something its menu or detail screen wouldn't.
+  // Desktop-only convenience: while the pointer hovers a card, `c` confirms a phase-2
+  // AI prompt or else toggles the assignee's To Check flag, `a` toggles the AI flag and
+  // `t` pulls the deadline to today — same keys as the open-task shortcuts on /w. Inert
+  // on /m (no hover, no keyboard). Same gates as the useTodoMenu items / open-task
+  // actions so a card never does something its menu or detail screen wouldn't.
   const setCheckFlag = useSetTodoCheck()
   const setWorkModeFlag = useSetTodoWorkMode()
   const setAlloc = useSetTodoAllocations(todo.name)
   const moveDeadline = useMoveTodoDeadline()
+  const confirmAi = useConfirmAiPrompt()
+  const confirmDialog = useConfirm()
   const { data: boot } = useBoot()
   const aiAllowed = canUseAi(boot)
   // Mirrors the Today chip's gate: only the assignee plans their own day, and only
   // while the task is still open. The backend enforces it too (set_todo_allocations).
   const canPlan = todo.is_mine && todo.status_key !== 'completed'
   const [hovered, setHovered] = useState(false)
+
+  // rdm3adja48: `c` on a phase-2 AI card never confirms by itself — it opens the app's
+  // confirm dialog naming the todo and the phase move, so the approval stays a
+  // deliberate click (or Enter) there. Cancel, Escape and click-away change nothing,
+  // and the server re-checks both the permission and the phase before it writes.
+  const askConfirmAiPrompt = async () => {
+    if (confirmAi.isPending) return
+    const ok = await confirmDialog({
+      title: 'Konfirmasi prompt AI?',
+      message: `“${todo.to_do}” naik dari Fase 2 (${AI_PHASES[2].label}) ke Fase 3 (${AI_PHASES[3].label}). Setelah itu AI Agent boleh mengerjakannya.`,
+      confirmLabel: 'Konfirmasi',
+      cancelLabel: 'Batal',
+    })
+    if (!ok) return
+    confirmAi.mutate({ todoName: todo.name, confirmed: true })
+  }
+
   useEffect(() => {
     if (!hovered) return
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
+      // A dialog or the todo drawer on top owns the keyboard. The card underneath is
+      // still "hovered" but is not what the user is looking at, so acting on it would
+      // mutate a todo off to the side of the open one. It is also what stops a second
+      // `c` stacking another confirm dialog — the dialog registers here while open.
+      if (anyModalOpen()) return
       const el = e.target as (HTMLElement & { tagName?: string }) | null
       if (el && el.tagName && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return
-      if (e.key === 'c' && todo.is_mine) {
+      if (e.key === 'c' && canConfirmAiPromptFromCard(todo)) {
+        // Phase 2 -> 3 takes the key on an AI card; every other card keeps To Check.
+        e.preventDefault()
+        void askConfirmAiPrompt()
+      } else if (e.key === 'c' && todo.is_mine) {
         e.preventDefault()
         setCheckFlag.mutate({ todoName: todo.name, toCheck: !todo.to_check })
       } else if (e.key === 'a' && (todo.is_mine || todo.can_prioritize) && (aiAllowed || todo.work_mode === 'AI')) {
@@ -96,7 +126,7 @@ export function TodoCard({ todo, showAssignee, showProject = true, doneAt }: Pro
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hovered, todo.name, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, aiAllowed, canPlan, todo.estimated, todo.allocations, todo.deadline])
+  }, [hovered, todo.name, todo.to_do, todo.is_mine, todo.can_prioritize, todo.to_check, todo.work_mode, todo.status_key, todo.ai_phase, aiAllowed, canPlan, todo.estimated, todo.allocations, todo.deadline])
 
   // A quick bounce whenever the context menu is summoned (long-press on touch,
   // right-click on desktop) so the trigger feels tactile. `pressing` gives live
