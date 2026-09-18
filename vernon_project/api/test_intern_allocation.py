@@ -195,7 +195,8 @@ import frappe  # noqa: E402
 from frappe.utils import add_days, nowdate  # noqa: E402
 
 from vernon_project.api.report import (  # noqa: E402
-	_intern_scope, _intern_users, intern_allocation, intern_allocation_access,
+	INTERN_MEMBER_TYPE, _intern_scope, _intern_users, intern_allocation,
+	intern_allocation_access,
 )
 
 ROW_KEYS = (
@@ -302,3 +303,21 @@ class TestInternUsers(unittest.TestCase):
 			self.skipTest("no interns on this site")
 		first = everyone[0]["name"]
 		self.assertEqual([r["name"] for r in _intern_users([first])], [first])
+
+	def test_includes_marked_interns_that_lack_desk_access(self):
+		"""`User.user_type` is Frappe's desk-access derivation — recomputed on every
+		User save from whether any of the user's roles has `desk_access` — not this
+		app's intern marking. The team works in /m and /w, where a Website User
+		account is normal, so filtering on it silently drops real interns. Every
+		enabled, marked intern must be in the report."""
+		frappe.set_user("Administrator")
+		expected = set(frappe.get_all("User", filters={
+			"enabled": 1, "custom_member_type": INTERN_MEMBER_TYPE,
+			"name": ["not in", ("Guest", "Administrator")]}, pluck="name"))
+		profiled = [u for u in frappe.get_all("Employee Profile",
+			filters={"employment_status": INTERN_MEMBER_TYPE}, pluck="user")
+			if u and u not in ("Guest", "Administrator")]
+		if profiled:
+			expected |= set(frappe.get_all("User", filters={
+				"enabled": 1, "name": ["in", profiled]}, pluck="name"))
+		self.assertEqual({r["name"] for r in _intern_users()}, expected)

@@ -1201,7 +1201,10 @@ def _intern_users(name_filter=None):
 		allowed = {n for n in name_filter if n not in excluded}
 		if not allowed:
 			return []
-	base = {"enabled": 1, "user_type": "System User",
+	# Deliberately NOT filtered on `user_type`: Frappe recomputes that on every User save
+	# from whether a role has desk_access, so it says who can open /app — not who is an
+	# intern. The team works in /m and /w, where a Website User account is normal.
+	base = {"enabled": 1,
 		"name": ["in", sorted(allowed)] if allowed is not None else ["not in", sorted(excluded)]}
 
 	by_type = frappe.get_all("User", filters={**base, "custom_member_type": INTERN_MEMBER_TYPE},
