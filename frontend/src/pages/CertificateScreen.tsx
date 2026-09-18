@@ -162,7 +162,7 @@ function StepsCard({ steps }: { steps: CertStep[] }) {
   )
 }
 
-export default function CertificateScreen() {
+export default function CertificateScreen({ headerPortalTarget }: { headerPortalTarget?: HTMLElement | null } = {}) {
   const { name } = useParams<{ name: string }>()
   const isNew = !name || name === 'new'
   const navigate = useNavigate()
@@ -277,11 +277,11 @@ export default function CertificateScreen() {
   }
 
   if (!isNew && detail.isLoading) {
-    return <DetailScreen title="Sertifikat"><div className="flex justify-center py-12"><Spinner /></div></DetailScreen>
+    return <DetailScreen title="Sertifikat" headerPortalTarget={headerPortalTarget}><div className="flex justify-center py-12"><Spinner /></div></DetailScreen>
   }
   if (!isNew && !doc) {
     return (
-      <DetailScreen title="Sertifikat">
+      <DetailScreen title="Sertifikat" headerPortalTarget={headerPortalTarget}>
         <EmptyState icon={AlertTriangle} title="Tidak ditemukan" subtitle="Sertifikat ini tidak ada atau bukan milikmu." />
       </DetailScreen>
     )
@@ -308,6 +308,7 @@ export default function CertificateScreen() {
     <DetailScreen
       title={isNew ? 'Sertifikat Baru' : (doc?.intern_name ?? 'Sertifikat')}
       right={<InfoDot term="dua-nilai" onOpen={setHelp} label="Kenapa nilainya ada dua" />}
+      headerPortalTarget={headerPortalTarget}
     >
       {doc && (
         <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-stone-500 dark:text-slate-400">

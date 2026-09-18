@@ -145,7 +145,9 @@ import Superpowers from '@web/pages/Superpowers'
 import SuperpowersAdmin from '@web/pages/SuperpowersAdmin'
 import WhatsNew from '@web/pages/WhatsNew'
 import { isTodoPath } from '@/lib/todoDrawer'
+import { isCertificatePath } from '@/lib/certDrawer'
 import TodoDrawer from '@web/components/TodoDrawer'
+import CertificateDrawer from '@web/components/CertificateDrawer'
 import { TodoContextMenuProvider } from '@web/components/TodoContextMenuProvider'
 
 const ONBOARDED_KEY = 'vernon-onboarded-v1'
@@ -183,10 +185,11 @@ export default function App() {
   const navigate = useNavigate()
   useRootBackGuard()
   const bgRef = useRef<Location | null>(null)
-  const onTodo = isTodoPath(location.pathname)
-  // Freeze the last non-todo page; it stays mounted behind the drawer.
-  if (!onTodo) bgRef.current = location
-  const showDrawer = onTodo && bgRef.current !== null
+  // Two overlay routes now, one rule each — the todo detail and the certificate form.
+  const onOverlay = isTodoPath(location.pathname) || isCertificatePath(location.pathname)
+  // Freeze the last non-overlay page; it stays mounted behind the drawer.
+  if (!onOverlay) bgRef.current = location
+  const showDrawer = onOverlay && bgRef.current !== null
   const background = showDrawer ? bgRef.current! : location
   const closeDrawer = () => navigate((bgRef.current?.pathname ?? '/') + (bgRef.current?.search ?? ''))
 
@@ -460,6 +463,7 @@ export default function App() {
       {showDrawer && (
         <Routes location={location}>
           <Route path="/project-item/:name" element={<TodoDrawer onClose={closeDrawer} />} />
+          <Route path="/certificates/:name" element={<CertificateDrawer onClose={closeDrawer} />} />
         </Routes>
       )}
     </TodoContextMenuProvider>

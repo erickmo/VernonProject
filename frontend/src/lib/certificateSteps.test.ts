@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { CERT_SECTIONS, certSections, certificateSteps } from './certificate'
+import { isCertificatePath } from './certDrawer'
 
 const line = (score: number | null) => ({ key: 'k', label: 'l', weight: 1, score, comment: '' })
 const doc = (status: 'Draft' | 'Pending HR' | 'Published' | 'Revoked', scores: (number | null)[] = [null]) =>
@@ -43,6 +44,8 @@ describe('certificateSteps', () => {
 const MOBILE = readFileSync(resolve(__dirname, '../pages/CertificateScreen.tsx'), 'utf8')
 const WEB = readFileSync(resolve(__dirname, '../../../frontend-web/src/pages/Certificate.tsx'), 'utf8')
 const WEB_LIST = readFileSync(resolve(__dirname, '../../../frontend-web/src/pages/Certificates.tsx'), 'utf8')
+const WEB_APP = readFileSync(resolve(__dirname, '../../../frontend-web/src/App.tsx'), 'utf8')
+const MOBILE_APP = readFileSync(resolve(__dirname, '../App.tsx'), 'utf8')
 const numbered = (s: ReturnType<typeof certSections>) => s.map((x) => `${x.n}:${x.key}`)
 
 describe('certSections — the form follows the steps', () => {
@@ -73,6 +76,27 @@ describe('certSections — the form follows the steps', () => {
       expect(at.every((i) => i >= 0)).toBe(true)
       expect([...at].sort((a, b) => a - b)).toEqual(at)
     }
+  })
+
+  it('opens the certificate form over the list it was opened from, on both frontends', () => {
+    // The owner asked for a drawer on /w and a slide-up sheet on /m. Both already
+    // exist for the todo detail (TodoDrawer / TodoOverlay), so the certificate form
+    // reuses that mechanism rather than inventing a second one: one shared path rule,
+    // the list frozen behind, the URL unchanged so a direct link still opens the page.
+    expect(WEB_APP).toMatch(/CertificateDrawer/)
+    expect(MOBILE_APP).toMatch(/CertificateOverlay/)
+    for (const src of [WEB_APP, MOBILE_APP]) expect(src).toMatch(/isCertificatePath/)
+  })
+
+  it('treats one segment under /certificates as the overlay route, and nothing else', () => {
+    expect(isCertificatePath('/certificates/CERT-0001')).toBe(true)
+    // "New" is the same form, so it opens the same way.
+    expect(isCertificatePath('/certificates/new')).toBe(true)
+    // The list itself is the thing the overlay sits on top of.
+    expect(isCertificatePath('/certificates')).toBe(false)
+    expect(isCertificatePath('/certificates/')).toBe(false)
+    expect(isCertificatePath('/certificates/CERT-0001/verify')).toBe(false)
+    expect(isCertificatePath('/')).toBe(false)
   })
 
   it('keeps step and field text readable instead of squeezing it into narrow equal columns', () => {
