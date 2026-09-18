@@ -153,7 +153,11 @@ class TestCodingBriefTodo(FrappeTestCase):
 			"levels": [{"type_name": f"T{i}", "level_name": "L1", "difficulty_percent": 100,
 			            "is_coding": i % 2} for i in range(6)],
 		}).insert(ignore_permissions=True)
-		frappe.clear_cache(doctype="Group")
+		# Deliberately NOT clear_cache(doctype="Group") here. get_group_levels reads the
+		# tables with get_all, so the new rows are visible without it — but clearing the
+		# doctype cache makes the NEXT call reload the doctype's meta, which cost ~19
+		# extra queries and reads exactly like the N+1 this test is looking for. That
+		# false red already sent one reader hunting a per-row query that does not exist.
 
 		after = len(self._capture_queries(get_group_levels))
 		self.assertEqual(before, after,
