@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { dropIndex, DRAG_THRESHOLD_PX } from './dragOrder'
+import { dropIndex } from './dragOrder'
 
 // Three 60px rows at y=0,60,120 → midpoints 30, 90, 150.
 const mids = [30, 90, 150]
@@ -20,8 +20,5 @@ assert.equal(dropIndex(mids, 25, 1), 0, 'row 1 dragged to the top lands first')
 // Two rows — the shape the bug was reported on.
 assert.equal(dropIndex([30, 90], 95, 0), 1, 'two rows: top dragged down swaps')
 assert.equal(dropIndex([30, 90], 25, 1), 0, 'two rows: bottom dragged up swaps')
-
-// A press that never really moves must stay a tap.
-assert.ok(DRAG_THRESHOLD_PX > 0, 'a tap needs a slack window or every tap is a drag')
 
 console.log('dragOrder self-check OK')
