@@ -144,8 +144,16 @@ def event_roster(event):
 		"Vernon Event Registration", filters={"event": event},
 		fields=ROSTER_FIELDS, order_by="registered_on desc",
 	)
+	# One name lookup for the whole roster rather than one per attendee.
+	names = {
+		u["name"]: u["full_name"]
+		for u in frappe.get_all(
+			"User", filters={"name": ["in", list({r["user"] for r in rows if r["user"]})]},
+			fields=["name", "full_name"],
+		)
+	} if rows else {}
 	for r in rows:
-		r["full_name"] = frappe.db.get_value("User", r["user"], "full_name") or r["user"]
+		r["full_name"] = names.get(r["user"]) or r["user"]
 	return rows
 
 

@@ -131,9 +131,20 @@ def my_registrations():
 		fields=["name", "event", "registered_on", "status", "method", "amount"],
 		order_by="registered_on desc",
 	)
+	# One read for every event on the list. This asked the SAME event twice per row —
+	# once for the title, once for the start — so a person with ten registrations paid
+	# twenty queries to decorate ten.
+	events = {
+		e["name"]: e
+		for e in frappe.get_all(
+			"Vernon Event", filters={"name": ["in", list({r["event"] for r in rows if r["event"]})]},
+			fields=["name", "title", "start_datetime"],
+		)
+	} if rows else {}
 	for r in rows:
-		r["event_title"] = frappe.db.get_value("Vernon Event", r["event"], "title")
-		r["start_datetime"] = frappe.db.get_value("Vernon Event", r["event"], "start_datetime")
+		ev = events.get(r["event"]) or {}
+		r["event_title"] = ev.get("title")
+		r["start_datetime"] = ev.get("start_datetime")
 	return rows
 
 

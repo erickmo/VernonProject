@@ -269,12 +269,20 @@ def my_learning():
 		fields=["name", "course", "assigned", "due_date", "status", "progress_pct", "completed_on"],
 		order_by="modified desc",
 	)
+	# One read for every course on the list rather than one per enrollment.
+	titles = {
+		c["name"]: c["title"]
+		for c in frappe.get_all(
+			"Course", filters={"name": ["in", list({r.course for r in rows if r.course})]},
+			fields=["name", "title"],
+		)
+	} if rows else {}
 	out = []
 	for r in rows:
 		overdue = bool(r.status != "Completed" and r.assigned and r.due_date and str(r.due_date) < ref_today)
 		out.append({
 			**r,
-			"course_title": frappe.db.get_value("Course", r.course, "title"),
+			"course_title": titles.get(r.course),
 			"overdue": overdue,
 		})
 	return {"enrollments": out}
@@ -300,11 +308,33 @@ def manage_courses():
 		fields=["name", "title", "category", "status", "points_reward"],
 		order_by="modified desc",
 	)
+	# Three grouped counts for the whole table instead of three per course. `completed`
+	# stays a SUBSET of `enrolled` — same as counting the Completed rows separately,
+	# just derived from one pass.
+	course_names = [c["name"] for c in rows]
+	lessons = _count_by(
+		"Course Lesson", {"course": ["in", course_names]}, "course") if course_names else {}
+	enrolled = _count_by(
+		"Course Enrollment", {"course": ["in", course_names]}, "course") if course_names else {}
+	completed = _count_by(
+		"Course Enrollment", {"course": ["in", course_names], "status": "Completed"},
+		"course") if course_names else {}
 	for c in rows:
-		c["lesson_count"] = _lesson_count(c["name"])
-		c["enrolled"] = frappe.db.count("Course Enrollment", {"course": c["name"]})
-		c["completed"] = frappe.db.count("Course Enrollment", {"course": c["name"], "status": "Completed"})
+		c["lesson_count"] = lessons.get(c["name"], 0)
+		c["enrolled"] = enrolled.get(c["name"], 0)
+		c["completed"] = completed.get(c["name"], 0)
 	return {"courses": rows}
+
+
+def _count_by(doctype, filters, field):
+	"""{value: how many rows have it} in one grouped query."""
+	return {
+		r[field]: r["n"]
+		for r in frappe.get_all(
+			doctype, filters=filters, fields=[field, "count(name) as n"],
+			group_by=field, limit_page_length=0,
+		)
+	}
 
 
 @frappe.whitelist()
@@ -449,8 +479,16 @@ def course_report(course):
 		fields=["user", "assigned", "due_date", "status", "progress_pct", "completed_on"],
 		order_by="status asc, user asc",
 	)
+	# One name lookup for every learner on the report rather than one per row.
+	names = {
+		u["name"]: u["full_name"]
+		for u in frappe.get_all(
+			"User", filters={"name": ["in", list({r.user for r in rows if r.user})]},
+			fields=["name", "full_name"],
+		)
+	} if rows else {}
 	for r in rows:
-		r["user_name"] = frappe.db.get_value("User", r.user, "full_name")
+		r["user_name"] = names.get(r.user)
 		r["overdue"] = bool(r.status != "Completed" and r.assigned and r.due_date and str(r.due_date) < ref_today)
 	return {"course_title": frappe.db.get_value("Course", course, "title"), "rows": rows}
 
