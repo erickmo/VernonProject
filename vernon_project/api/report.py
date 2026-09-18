@@ -203,12 +203,15 @@ def daily_estimated_time_access():
 
 
 def _active_users():
-	"""Enabled System Users, excluding Guest/Administrator. [{name, full_name}]."""
+	"""Enabled users, excluding Guest/Administrator. [{name, full_name}].
+
+	Deliberately NOT filtered on `user_type`: Frappe recomputes that on every User save
+	from whether a role has desk_access, so it says who can open /app — not who is on
+	the team. This team works in /m and /w, where a Website User account is normal."""
 	return frappe.get_all(
 		"User",
 		filters={
 			"enabled": 1,
-			"user_type": "System User",
 			"name": ["not in", ("Guest", "Administrator")],
 		},
 		fields=["name", "full_name"],
@@ -987,8 +990,10 @@ def _users_on_projects(project_names):
 
 def _last_seen_rows(name_filter):
 	"""User rows for the last-seen report, stalest-first. name_filter: None = all
-	(minus Guest/Administrator), else an iterable of user-ids to restrict to."""
-	filters = {"user_type": "System User"}
+	(minus Guest/Administrator), else an iterable of user-ids to restrict to.
+	Disabled users stay in — going quiet is exactly what this report is looking for —
+	and `user_type` is not consulted: it tracks desk access, not team membership."""
+	filters = {}
 	if name_filter is None:
 		filters["name"] = ["not in", ("Guest", "Administrator")]
 	else:

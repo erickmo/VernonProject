@@ -4,7 +4,7 @@ import unittest
 import frappe
 from frappe.utils import add_days, nowdate
 from vernon_project.api.report import (
-	_date_list, _build_daily_matrix, _assigned_minutes,
+	_active_users, _date_list, _build_daily_matrix, _assigned_minutes,
 	_build_under_occupied, daily_estimated_time, daily_estimated_time_access, under_occupied,
 	_build_over_occupied, over_occupied,
 	_previous_shift_shortfall,
@@ -100,6 +100,21 @@ class TestDailyEstimatedTimeEndpoint(NoLeakMixin, unittest.TestCase):
 		self.assertIn("threshold", out)
 		self.assertEqual(out["dates"], ["2026-06-22", "2026-06-23"])
 		self.assertIsInstance(out["rows"], list)
+
+
+class TestActiveUsers(NoLeakMixin, unittest.TestCase):
+	def test_includes_team_members_that_lack_desk_access(self):
+		"""`User.user_type` is Frappe's desk-access derivation — recomputed on every
+		User save from whether any role carries `desk_access` — so it says who can open
+		/app, not who is on the team. Everyone here works in /m and /w, where a Website
+		User account is normal, so the four reports that pivot on `_active_users()`
+		(Daily Estimated Time, Under-Occupied, Over-Occupied, Team Daily Report) must
+		not filter on it. Regression: it hid 29 of 106 enabled people, including 17
+		interns and 12 Internal Team members with up to 760 todos each."""
+		frappe.set_user("Administrator")
+		expected = set(frappe.get_all("User", filters={
+			"enabled": 1, "name": ["not in", ("Guest", "Administrator")]}, pluck="name"))
+		self.assertEqual({u["name"] for u in _active_users()}, expected)
 
 
 class TestDailyEstimatedTimeAccess(NoLeakMixin, unittest.TestCase):
