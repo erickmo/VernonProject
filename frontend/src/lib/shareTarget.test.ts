@@ -8,7 +8,7 @@ import { renderNoteMarkdown } from './markdown'
 const read = (p: string) => readFileSync(resolve(__dirname, p), 'utf8')
 
 describe('the PWA is registered as a share target', () => {
-  const manifest = JSON.parse(read('../../public/manifest.webmanifest'))
+  const manifest = JSON.parse(read('../../public/manifest.json'))
 
   it('declares a GET share target inside its own scope', () => {
     const st = manifest.share_target
@@ -115,5 +115,45 @@ describe('the receiving screen opens the form instead of creating anything', () 
 
   it('mounts the form only once a project detail is chosen', () => {
     expect(screen).toMatch(/dialogOpen && [a-zA-Z]+\.detailData/)
+  })
+})
+
+describe('the manifest Android reads before it offers Vernon in the share sheet', () => {
+  // The document Frappe actually serves at /m is www/m.html — the built index.html is
+  // only the offline fallback — so BOTH have to point at the manifest, or the installed
+  // app reads one that is not there.
+  const DOCS = {
+    'www/m.html': readFileSync(resolve(__dirname, '../../../vernon_project/www/m.html'), 'utf8'),
+    'frontend/index.html': readFileSync(resolve(__dirname, '../../index.html'), 'utf8'),
+  }
+  const SW = readFileSync(resolve(__dirname, '../../sw-custom.js'), 'utf8')
+  const hrefOf = (html: string) => /<link rel="manifest" href="([^"]+)"/.exec(html)?.[1] ?? ''
+
+  it('is served under a media type the manifest spec accepts', () => {
+    // Android registers the share target from the installed app's MANIFEST, so a
+    // manifest the browser will not parse is a share sheet with no Vernon in it. The
+    // spec wants a JSON media type; this site's nginx has no mapping for
+    // `.webmanifest` and returns `application/octet-stream`, while `.json` it returns
+    // as `application/json` (both checked live on project.vernon.id). Naming the file
+    // `.json` is the entire fix — no server change, nothing to reload. Changing the
+    // manifest URL is safe because the manifest carries an explicit `id`, which is
+    // what an installed app is keyed on.
+    for (const [where, html] of Object.entries(DOCS)) {
+      expect(hrefOf(html), where).toMatch(/\.json$/)
+    }
+  })
+
+  it('is the same manifest from both documents', () => {
+    expect(hrefOf(DOCS['www/m.html'])).toBe(hrefOf(DOCS['frontend/index.html']))
+  })
+
+  it('is never served from the service worker cache', () => {
+    // Everything under the asset prefix is cache-first because it is content-hashed.
+    // The manifest is not: cache-first pinned the pre-share_target copy on every
+    // install until v43 renamed the whole cache to flush it. Excluding it by name is
+    // what stops the next manifest edit needing the same trick.
+    const guard = /url\.pathname\.endsWith\('manifest\.json'\)/
+    expect(SW).toMatch(guard)
+    expect(SW.indexOf('manifest.json')).toBeLessThan(SW.indexOf('cacheFirst(req, ASSET_CACHE)'))
   })
 })
