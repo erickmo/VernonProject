@@ -21,7 +21,9 @@ import ProjectScreen from './pages/ProjectScreen'
 import ProjectDetailScreen from './pages/ProjectDetailScreen'
 import ProjectItemScreen from './pages/ProjectItemScreen'
 import TodoOverlay from './components/TodoOverlay'
+import CertificateOverlay from './components/CertificateOverlay'
 import { isTodoPath } from './lib/todoDrawer'
+import { isCertificatePath } from './lib/certDrawer'
 import Profile from './pages/Profile'
 import HrHubScreen from './pages/HrHubScreen'
 import CultureHubScreen from './pages/CultureHubScreen'
@@ -162,10 +164,11 @@ export default function App() {
   const navigate = useNavigate()
   useRootBackGuard()
   const bgRef = useRef<Location | null>(null)
-  const onTodo = isTodoPath(location.pathname)
-  // Freeze the last non-todo screen; it stays mounted (scroll intact) behind the overlay.
-  if (!onTodo) bgRef.current = location
-  const showTodoOverlay = onTodo && bgRef.current !== null
+  // Two overlay routes now, one rule each — the todo detail and the certificate form.
+  const onOverlay = isTodoPath(location.pathname) || isCertificatePath(location.pathname)
+  // Freeze the last non-overlay screen; it stays mounted (scroll intact) behind it.
+  if (!onOverlay) bgRef.current = location
+  const showTodoOverlay = onOverlay && bgRef.current !== null
   const background = showTodoOverlay ? bgRef.current! : location
   const sp = boot?.settings
   // Blocking superpower gate: forced on + user has none, everywhere but /superpowers.
@@ -437,6 +440,7 @@ export default function App() {
       {showTodoOverlay && (
         <Routes location={location}>
           <Route path="/project-item/:name" element={<TodoOverlay />} />
+          <Route path="/certificates/:name" element={<CertificateOverlay />} />
         </Routes>
       )}
     </TodoContextMenuProvider>
