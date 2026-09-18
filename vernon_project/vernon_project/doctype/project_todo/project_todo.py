@@ -1473,13 +1473,36 @@ def reassign_planned_todo(name, to_user):
 	return dropped
 
 
-def latest_occurrence(root):
+def latest_occurrences(roots):
+    """{series root: its newest occurrence} for MANY roots, in ONE query.
+
+    The screen judges every recurring series a lead owns and discards the healthy
+    ones, so asking per root cost one query per routine that exists rather than per
+    routine that is stuck. Same ordering rule as a single lookup — `latest_occurrence`
+    below delegates here, so the two cannot drift apart.
+    """
+    roots = [r for r in dict.fromkeys(roots) if r]
+    if not roots:
+        return {}
     rows = frappe.db.sql(
-        f"SELECT {_ROLL} FROM `tabProject Todo` WHERE name=%(r)s OR original_todo=%(r)s "
-        "ORDER BY deadline DESC, creation DESC LIMIT 1",
-        {"r": root}, as_dict=True,
+        f"""SELECT * FROM (
+                SELECT {_ROLL}, COALESCE(NULLIF(original_todo,''), name) AS _root,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY COALESCE(NULLIF(original_todo,''), name)
+                           ORDER BY deadline DESC, creation DESC
+                       ) AS _rn
+                FROM `tabProject Todo`
+                WHERE COALESCE(NULLIF(original_todo,''), name) IN %(roots)s
+            ) ranked WHERE _rn = 1""",
+        {"roots": tuple(roots)}, as_dict=True,
     )
-    return rows[0] if rows else None
+    for r in rows:
+        r.pop("_rn", None)
+    return {r.pop("_root"): r for r in rows}
+
+
+def latest_occurrence(root):
+    return latest_occurrences([root]).get(root)
 
 
 def occurrence_exists(root, deadline):
@@ -1551,7 +1574,81 @@ ASSIGNEE_OFF_TEAM = "assignee_off_team"
 STALLED_SERIES_REF = "Stalled Recurring Series"
 
 
-def series_assignee_problem(anchor):
+class SeriesLookups:
+    """Pre-fetched answers to the three questions judging a series asks, for many
+    series at once: is the assignee enabled, which project is this detail on, and
+    who is on that project's team.
+
+    Exists so `series_assignee_problem` can stay the ONE definition both the nightly
+    run and the leader's screen read, while the screen stops paying a query per
+    routine. Passing no lookups keeps the original per-call behaviour exactly, which
+    is what the scheduler does.
+    """
+
+    def __init__(self, anchors):
+        anchors = [a for a in anchors if a]
+        users = {a.get("assigned_to") for a in anchors if a.get("assigned_to")}
+        details = {a.get("project_detail") for a in anchors if a.get("project_detail")}
+        rows = frappe.get_all(
+            "User", filters={"name": ["in", list(users)]}, fields=["name", "enabled", "full_name"]
+        ) if users else []
+        self.enabled = {u["name"]: u["enabled"] for u in rows}
+        self.full_name = {u["name"]: u["full_name"] for u in rows}
+        self.project_of = {
+            d["name"]: d["project"]
+            for d in frappe.get_all("Project Detail", filters={"name": ["in", list(details) or [""]]},
+                                    fields=["name", "project"])
+        } if details else {}
+        projects = {p for p in self.project_of.values() if p}
+        self.team_of = {}
+        if projects:
+            for row in frappe.get_all(
+                "Project Team", filters={"parent": ["in", list(projects)], "parenttype": "Project"},
+                fields=["parent", "user"], limit_page_length=0,
+            ):
+                self.team_of.setdefault(row["parent"], []).append(row["user"])
+        self.leads_of = {
+            p["name"]: (p["project_leader"], p["project_owner"])
+            for p in frappe.get_all("Project", filters={"name": ["in", list(projects) or [""]]},
+                                    fields=["name", "project_leader", "project_owner"])
+        } if projects else {}
+
+    # Each accessor answers from the batch when it can, else falls back to the single
+    # lookup — so a lead/owner outside the pre-fetched set is still resolved correctly
+    # rather than silently read as missing.
+    def user_enabled(self, user):
+        if user in self.enabled:
+            return self.enabled[user]
+        return frappe.db.get_value("User", user, "enabled")
+
+    def user_full_name(self, user):
+        if user in self.full_name:
+            return self.full_name[user]
+        return frappe.db.get_value("User", user, "full_name")
+
+    def project(self, detail):
+        if detail in self.project_of:
+            return self.project_of[detail]
+        return frappe.get_value("Project Detail", detail, "project")
+
+    def team(self, project):
+        if project in self.team_of:
+            return self.team_of[project]
+        return frappe.get_all("Project Team", filters={"parent": project, "parenttype": "Project"}, pluck="user")
+
+    def leads(self, project):
+        if project in self.leads_of:
+            return self.leads_of[project]
+        return frappe.get_value("Project", project, ["project_leader", "project_owner"]) or (None, None)
+
+
+def _lookups(lookups):
+    """No pre-fetch given -> an empty batch, so every accessor falls through to the
+    original single-row query. That is the scheduler's path, unchanged."""
+    return lookups if lookups is not None else SeriesLookups([])
+
+
+def series_assignee_problem(anchor, lookups=None):
     """Why this series' assignee cannot receive the NEXT occurrence, or None.
 
     ONE definition, read by generate_next (which acts on it) and by
@@ -1559,36 +1656,38 @@ def series_assignee_problem(anchor):
     nightly run and the leader's screen can never disagree about what is stuck.
     Deliberately says nothing about history: the anchor itself is never judged
     or rewritten, only who the next occurrence can go to.
+
+    `lookups` is an optional SeriesLookups holding the same answers pre-fetched in
+    bulk. It changes only WHERE the values come from, never the rule.
     """
+    lk = _lookups(lookups)
     user = anchor.assigned_to
     if not user:
         return None
-    if not cint(frappe.db.get_value("User", user, "enabled")):
+    if not cint(lk.user_enabled(user)):
         return ASSIGNEE_DISABLED
-    project = frappe.get_value("Project Detail", anchor.project_detail, "project")
+    project = lk.project(anchor.project_detail)
     if not project:
         return None
-    team = frappe.get_all(
-        "Project Team", filters={"parent": project, "parenttype": "Project"}, pluck="user"
-    )
-    return ASSIGNEE_OFF_TEAM if user not in team else None
+    return ASSIGNEE_OFF_TEAM if user not in lk.team(project) else None
 
 
-def series_stand_in(anchor):
+def series_stand_in(anchor, lookups=None):
     """An enabled lead who can carry the series on: leader, else owner, else None.
 
     Same rule and same fallback order as user_offboarding._resolve_target, which
     is what offboarding already uses to rehome a leaver's open tasks — so a
     routine lands on the same desk its sibling tasks did.
+
+    `lookups`: see series_assignee_problem. Source of the values only, not the rule.
     """
-    project = frappe.get_value("Project Detail", anchor.project_detail, "project")
+    lk = _lookups(lookups)
+    project = lk.project(anchor.project_detail)
     if not project:
         return None
-    leader, owner = frappe.get_value(
-        "Project", project, ["project_leader", "project_owner"]
-    ) or (None, None)
+    leader, owner = lk.leads(project)
     for cand in (leader, owner):
-        if cand and cand != anchor.assigned_to and cint(frappe.db.get_value("User", cand, "enabled")):
+        if cand and cand != anchor.assigned_to and cint(lk.user_enabled(cand)):
             return cand
     return None
 

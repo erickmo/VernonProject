@@ -259,3 +259,67 @@ class TestStalledRecurringSeries(NoLeakMixin, unittest.TestCase):
         self._disable(WORKER)
         _rehome_recurring_series(WORKER)
         self.assertEqual(frappe.db.count("Project Todo", {"original_todo": s.name}), 0)
+
+
+class TestStalledSeriesQueryCost(TestStalledRecurringSeries):
+    """The screen loops over every recurring series the lead owns, and throws most of
+    them away — a healthy series is judged and discarded. So its cost must not track
+    how many routines exist, only how many are actually stuck."""
+
+    @staticmethod
+    def _capture(fn):
+        seen = []
+        original = frappe.db.sql
+
+        def capturing(query, *args, **kwargs):
+            seen.append(str(query))
+            return original(query, *args, **kwargs)
+
+        frappe.db.sql = capturing
+        try:
+            result = fn()
+        finally:
+            frappe.db.sql = original
+        return seen, result
+
+    def _healthy(self, n):
+        for _ in range(n):
+            self._series()
+
+    def test_the_cost_does_not_grow_with_the_number_of_healthy_series(self):
+        frappe.set_user(LEADER)
+        self._healthy(8)
+        # Warm both doctype caches: the first touch of a doctype in a process costs an
+        # extra `SELECT is_virtual`, which has nothing to do with how many rows exist
+        # and would otherwise read as scaling.
+        frappe.get_all("Project Todo", limit=1)
+        frappe.get_all("Project Team", limit=1)
+        stalled_series()
+
+        few, rows_few = self._capture(stalled_series)
+        self._healthy(8)
+        many, rows_many = self._capture(stalled_series)
+
+        self.assertGreater(len(few), 0, "the counter is not observing anything — the test would be vacuous")
+        self.assertEqual(
+            rows_few["rows"], rows_many["rows"],
+            "sixteen healthy series must produce the same (empty) result as eight",
+        )
+        self.assertEqual(
+            len(few), len(many),
+            f"stalled_series must not query per series: 8 healthy cost {len(few)}, 16 cost {len(many)}",
+        )
+
+    def test_a_stalled_series_is_still_reported_identically(self):
+        """The batching must not change what the screen says. Same rows, same order."""
+        frappe.set_user(LEADER)
+        self._healthy(4)
+        stuck = self._series()
+        self._disable(WORKER)
+        frappe.set_user(LEADER)
+        rows = stalled_series()["rows"]
+        self.assertTrue(any(r["series"] == stuck.name for r in rows), "the stalled series must be listed")
+        for r in rows:
+            self.assertEqual(r["reason"], ASSIGNEE_DISABLED)
+            self.assertEqual(r["reason_label"], "Akun dinonaktifkan")
+            self.assertIn("candidates", r)

@@ -1615,7 +1615,8 @@ def stalled_series():
 	if frappe.session.user == "Guest":
 		frappe.throw("Not logged in", frappe.AuthenticationError)
 	from vernon_project.vernon_project.doctype.project_todo.project_todo import (
-		ASSIGNEE_DISABLED, latest_occurrence, series_assignee_problem, series_stand_in,
+		ASSIGNEE_DISABLED, SeriesLookups, latest_occurrences, series_assignee_problem,
+		series_stand_in,
 	)
 
 	projects = _lead_projects()
@@ -1652,15 +1653,30 @@ def stalled_series():
 			] if members else []
 		return team_cache[project]
 
+	# Every routine the lead owns is judged here and most are then discarded — a
+	# healthy series is the normal case. Asking per root cost one query per routine
+	# that EXISTS rather than per routine that is stuck, so the newest occurrence and
+	# the three facts the verdict needs are fetched for all of them up front. The
+	# verdict itself is still series_assignee_problem, unchanged.
+	anchors = latest_occurrences([r.root for r in roots])
+	lookups = SeriesLookups(list(anchors.values()))
+	paused_by_root = {
+		t["name"]: t["recurring_paused"]
+		for t in frappe.get_all(
+			"Project Todo", filters={"name": ["in", [r.root for r in roots] or [""]]},
+			fields=["name", "recurring_paused"], limit_page_length=0,
+		)
+	}
+
 	rows = []
 	for r in roots:
-		anchor = latest_occurrence(r.root)
+		anchor = anchors.get(r.root)
 		if not anchor:
 			continue
-		problem = series_assignee_problem(anchor)
+		problem = series_assignee_problem(anchor, lookups)
 		if not problem:
 			continue
-		project = frappe.get_value("Project Detail", anchor.project_detail, "project")
+		project = lookups.project(anchor.project_detail)
 		rows.append({
 			"series": r.root,
 			"latest": anchor.name,
@@ -1668,14 +1684,13 @@ def stalled_series():
 			"frequency": anchor.recurring_frequency,
 			"last_deadline": str(anchor.deadline) if anchor.deadline else None,
 			"assigned_to": anchor.assigned_to,
-			"assigned_to_name": frappe.db.get_value("User", anchor.assigned_to, "full_name")
-				or anchor.assigned_to,
+			"assigned_to_name": lookups.user_full_name(anchor.assigned_to) or anchor.assigned_to,
 			"reason": problem,
 			"reason_label": "Akun dinonaktifkan" if problem == ASSIGNEE_DISABLED
 				else "Tidak lagi di tim proyek",
-			"suggested": series_stand_in(anchor),
+			"suggested": series_stand_in(anchor, lookups),
 			"candidates": candidates(project),
-			"paused": cint(frappe.db.get_value("Project Todo", r.root, "recurring_paused")),
+			"paused": cint(paused_by_root.get(r.root)),
 		})
 	rows.sort(key=lambda x: (x["last_deadline"] or "", x["to_do"]))
 	return {"rows": rows}
