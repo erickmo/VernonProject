@@ -15,7 +15,7 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
 
 from vernon_project import coding_brief
-from vernon_project.api.project_todo import get_coding_brief_schema
+from vernon_project.api.project_todo import get_coding_brief_schema, get_group_levels
 
 CODING_GROUP = "Test Coding Group"
 PLAIN_GROUP = "Test Plain Group"
@@ -112,6 +112,52 @@ class TestCodingBriefTodo(FrappeTestCase):
 	def _insert_as_person(self, group, level_id, **over):
 		"""The real create path the app uses — generic, permission-checked."""
 		return frappe.client.insert(json.dumps(self._payload(group, level_id, **over)))
+
+	# --- the picker's metadata cost ------------------------------------------
+
+	@staticmethod
+	def _capture_queries(fn):
+		"""The SQL `fn` issues. frappe.get_all runs through frappe.db.sql, so
+		patching there sees it."""
+		seen = []
+		original = frappe.db.sql
+
+		def capturing(query, *args, **kwargs):
+			seen.append(str(query))
+			return original(query, *args, **kwargs)
+
+		frappe.db.sql = capturing
+		try:
+			fn()
+		finally:
+			frappe.db.sql = original
+		return seen
+
+	def test_the_group_catalog_costs_the_same_however_many_levels_exist(self):
+		"""The performance gate. Every todo form loads this catalog to know which
+		types and levels are coding work, so it must be a fixed number of queries,
+		not one per group or per level.
+
+		Frappe asks `SELECT is_virtual FROM tabDocType` the first time a process
+		touches a doctype and then caches it, so warm both doctypes first — otherwise
+		the first measurement carries a one-off that has nothing to do with row count.
+		"""
+		frappe.get_all("Group", limit=1)
+		frappe.get_all("Group Level", limit=1)
+		before = len(self._capture_queries(get_group_levels))
+		self.assertGreater(before, 0, "the counter is not observing anything — the test would be vacuous")
+
+		frappe.get_doc({
+			"doctype": "Group", "group_name": f"Test Catalog Cost {frappe.generate_hash(length=6)}",
+			"base_rate_per_minute": 1, "group_type": "",
+			"levels": [{"type_name": f"T{i}", "level_name": "L1", "difficulty_percent": 100,
+			            "is_coding": i % 2} for i in range(6)],
+		}).insert(ignore_permissions=True)
+		frappe.clear_cache(doctype="Group")
+
+		after = len(self._capture_queries(get_group_levels))
+		self.assertEqual(before, after,
+			"get_group_levels must not issue more queries just because more levels exist")
 
 	# --- the tag on each type and level --------------------------------------
 

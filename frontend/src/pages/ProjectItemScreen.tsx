@@ -45,6 +45,7 @@ import {
   Sparkles,
   ChevronRight,
   Reply,
+  Code2,
 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { CancelledNote } from '@/components/CancelledNote'
@@ -136,6 +137,7 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
   const [recurrence, setRecurrence] = useState<Recurrence>(() => recurrenceFromDetail(data.recurring))
   const [group, setGroup] = useState(data.group ?? '')
   const [level, setLevel] = useState(data.level_id ?? '')
+  const isCodingSelection = useIsCodingWork(group, level)
   const [blockedBy, setBlockedBy] = useState<string[]>(data.blocked_by ?? [])
   const [blocking, setBlocking] = useState<string[]>(data.blocking ?? [])
 
@@ -311,6 +313,15 @@ function EditForm({ data, onClose }: { data: ProjectItemDetail; onClose: () => v
           onChange={(v) => { setGroup(v.group); setLevel(v.levelId) }}
           estimated={estimated}
         />
+        {isCodingSelection && (
+          // The brief itself is edited in the Notes block on this same screen, which
+          // owns `coding_brief`. Pointing at it beats a second editor for one field:
+          // two inputs bound to the same value is where they drift apart.
+          <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-800 dark:bg-brand-500/10 dark:text-brand-200">
+            <Code2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>Coding work — after saving, fill the coding brief in Notes below. It becomes this todo's note.</span>
+          </p>
+        )}
       </div>
 
       {data.detail_todos.length > 0 && (
