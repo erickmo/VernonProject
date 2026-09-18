@@ -50,3 +50,40 @@ export function missingBrief(brief: Brief, fields: BriefField[]): BriefField[] {
 /** True once any question has an answer — the form uses this to know whether a
  *  half-filled brief is worth keeping when the group changes. */
 export const hasAnyAnswer = (brief: Brief) => Object.values(brief).some((v) => (v ?? '').trim() !== '')
+
+/** One row of the group/type/level catalog, narrowed to what this decision needs.
+ *  Structural so both the API type and a test fixture satisfy it. */
+export type CodingLevelRow = {
+  group: string
+  level_id: string
+  group_type?: string
+  is_coding?: number
+}
+
+/** Whether the chosen group + type/level is coding work, and so takes the
+ *  structured brief instead of a free-form note (k9b82d4lkh).
+ *
+ *  The tag lives at two grains and either one is enough:
+ *    - the chosen LEVEL's own `is_coding` — per type and level, so one group can
+ *      hold both coding and non-coding work. Preferred, and authoritative when a
+ *      level is chosen: an untagged level in a Coding group is still not coding.
+ *    - the group-wide `group_type === 'Coding'` — what shipped first, and what
+ *      answers while no level is chosen yet.
+ *
+ *  Reads the catalog the picker already holds, so it costs no extra request, and
+ *  mirrors `Project Todo.is_coding_work()` so the form and the server agree. */
+export function isCodingWork(
+  rows: CodingLevelRow[] | undefined,
+  group: string | null | undefined,
+  levelId?: string | null,
+): boolean {
+  if (!group) return false
+  const all = rows ?? []
+  if (levelId) {
+    const row = all.find((r) => r.level_id === levelId)
+    // An unknown level_id falls through to the group flag rather than reading as
+    // "not coding": the catalog may simply not have loaded yet.
+    if (row) return !!row.is_coding || row.group_type === 'Coding'
+  }
+  return all.some((r) => r.group === group && r.group_type === 'Coding')
+}

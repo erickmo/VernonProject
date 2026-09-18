@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus, Layers } from 'lucide-react'
+import { Trash2, Check, ListChecks, ChevronRight, Info, Plus, Minus, Layers, Code2 } from 'lucide-react'
 import { DetailScreen } from '@/components/Layout'
 import { Spinner } from '@/components/ui'
 import { useToast } from '@/components/Toast'
@@ -31,13 +31,13 @@ const WEIGHTS: { key: keyof ScoringGroupPayload; label: string; group: 'Assignee
   { key: 'leader_late_weight', label: 'Leader late weight % (late)', group: 'Leader' },
 ]
 
-type LevelRow = { _key: string; name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number }
+type LevelRow = { _key: string; name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number; is_coding: number }
 
 let _tmp = 0
 const tmpKey = () => `new-${_tmp++}`
 const rowKey = (l: { level_id?: string; name?: string }) => l.level_id || l.name || tmpKey()
 
-const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), type_name: 'New Type', level_name: 'Standard', difficulty_percent: 100 }]
+const defaultLevels = (): LevelRow[] => [{ _key: tmpKey(), type_name: 'New Type', level_name: 'Standard', difficulty_percent: 100, is_coding: 0 }]
 
 type TypeGroup = { type_name: string; rows: LevelRow[]; _groupKey: string }
 
@@ -105,6 +105,7 @@ export default function GroupFormScreen() {
             type_name: l.type_name,
             level_name: l.level_name,
             difficulty_percent: l.difficulty_percent,
+            is_coding: l.is_coding ?? 0,
           })),
       })
     }
@@ -140,6 +141,9 @@ export default function GroupFormScreen() {
 
   const setLevelName = (key: string, level_name: string) => patchByKey(key, { level_name })
   const setLevelDifficulty = (key: string, difficulty_percent: number) => patchByKey(key, { difficulty_percent })
+  // The coding tag, per type and level: its todos swap the free-form note for the
+  // structured coding brief (k9b82d4lkh).
+  const toggleLevelCoding = (key: string, is_coding: number) => patchByKey(key, { is_coding })
   const bumpLevelDifficulty = (key: string, delta: number) =>
     setForm((f) => ({
       ...f,
@@ -160,7 +164,7 @@ export default function GroupFormScreen() {
     setForm((f) => {
       // insert after the last row of this type
       const lastIdx = f.levels.reduce((acc, l, i) => (l.type_name === type_name ? i : acc), -1)
-      const newRow: LevelRow = { _key: tmpKey(), type_name, level_name: 'Standard', difficulty_percent: 100 }
+      const newRow: LevelRow = { _key: tmpKey(), type_name, level_name: 'Standard', difficulty_percent: 100, is_coding: 0 }
       const next = f.levels.slice()
       next.splice(lastIdx + 1, 0, newRow)
       return { ...f, levels: next }
@@ -182,7 +186,7 @@ export default function GroupFormScreen() {
     while (existingTypes.has(candidate)) candidate = `New Type ${n++}`
     setForm((f) => ({
       ...f,
-      levels: [...f.levels, { _key: tmpKey(), type_name: candidate, level_name: 'Standard', difficulty_percent: 100 }],
+      levels: [...f.levels, { _key: tmpKey(), type_name: candidate, level_name: 'Standard', difficulty_percent: 100, is_coding: 0 }],
     }))
   }
 
@@ -221,6 +225,7 @@ export default function GroupFormScreen() {
         type_name: l.type_name.trim(),
         level_name: l.level_name.trim(),
         difficulty_percent: Number(l.difficulty_percent),
+        is_coding: l.is_coding ? 1 : 0,
       })),
     }
     const opts = {
@@ -435,6 +440,21 @@ export default function GroupFormScreen() {
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 active:scale-95 dark:border-slate-700 dark:text-slate-300"
                       >
                         <Plus className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Coding work"
+                        title="Coding work: this type and level uses the structured coding brief instead of a free-form note"
+                        aria-pressed={!!l.is_coding}
+                        onClick={() => toggleLevelCoding(l._key, l.is_coding ? 0 : 1)}
+                        className={
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border active:scale-95 ' +
+                          (l.is_coding
+                            ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                            : 'border-slate-200 text-slate-400 dark:border-slate-700 dark:text-slate-500')
+                        }
+                      >
+                        <Code2 className="h-4 w-4" />
                       </button>
                       <button
                         type="button"

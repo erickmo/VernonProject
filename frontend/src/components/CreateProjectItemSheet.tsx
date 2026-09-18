@@ -8,7 +8,7 @@ import { MultiSelectSearch } from '@/components/MultiSelectSearch'
 import { AssignmentOverloadBanner } from '@/components/AssignmentOverloadBanner'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { CodingBrief, briefIsComplete } from '@/components/CodingBrief'
-import { useCodingBriefSchema, useIsCodingGroup } from '@/hooks/useData'
+import { useCodingBriefSchema, useIsCodingWork } from '@/hooks/useData'
 import type { CreateTodoInitial } from '@/lib/duplicateTodo'
 import { todoCreateDateError } from '@/lib/todoDates'
 import { todayISO } from '@/lib/format'
@@ -55,8 +55,8 @@ export function CreateProjectItemSheet({ open, onClose, projectDetail, team, def
   const [group, setGroup] = useState(initial?.group ?? defaultGroup ?? '')
   // Must follow `group`'s declaration: reading it above would hit the const's
   // temporal dead zone (crashed the create form as a minified-'ae' TDZ). k9b82d4lkh
-  const isCoding = useIsCodingGroup(group)
   const [levelId, setLevelId] = useState(initial?.levelId ?? '')
+  const isCoding = useIsCodingWork(group, levelId)
   const [blockedBy, setBlockedBy] = useState<string[]>(initial?.blockedBy ?? [])
   const [blocking, setBlocking] = useState<string[]>(initial?.blocking ?? [])
 

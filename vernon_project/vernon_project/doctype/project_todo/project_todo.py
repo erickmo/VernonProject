@@ -239,9 +239,39 @@ class ProjectTodo(Document):
 		self._ensure_today_allocation()
 		self.validate_priority_slot()
 
+	def is_coding_work(self):
+		"""Whether this todo's group/type/level is tagged as coding work.
+
+		Two places carry the tag, and either is enough:
+
+		* ``Group Level.is_coding`` — per type and level, so one group can hold both
+		  coding and non-coding work. This is the finer grain and the one to prefer.
+		* ``Group.group_type == "Coding"`` — the original whole-group flag. Kept
+		  working because groups already rely on it; a group tagged this way behaves
+		  as before whatever its levels say.
+
+		Both reads are cached: Group is small, rarely edited, and this runs on every
+		todo save. The level lookup uses ``level_id``, the stable per-row id, rather
+		than the display names, which are only cached copies and can be renamed.
+		"""
+		group = self.get("group")
+		if not group:
+			return False
+		if frappe.get_cached_value("Group", group, "group_type") == "Coding":
+			return True
+		level_id = self.get("level_id")
+		if not level_id:
+			return False
+		for row in frappe.get_cached_doc("Group", group).get("levels") or []:
+			if row.get("level_id") == level_id:
+				return bool(row.get("is_coding"))
+		return False
+
 	def apply_coding_brief(self):
-		"""k9b82d4lkh — a todo in a Coding group carries a structured brief instead of a
-		free-form note, and its `notes` is RENDERED from that brief here, on every save.
+		"""k9b82d4lkh — a todo tagged as coding work carries a structured brief instead
+		of a free-form note, and its `notes` is RENDERED from that brief here, on every
+		save. What counts as coding work is `is_coding_work()` above: the group-wide
+		flag, or the per-type-and-level one.
 
 		Enforcement has to live in the controller: the app creates todos through
 		frappe.client.insert (frontend/src/lib/api.ts `createTask`), the generic path,
@@ -255,16 +285,12 @@ class ProjectTodo(Document):
 		The brief is required only when a PERSON creates the todo. Engine paths insert
 		with ignore_permissions (follow_up_check's check todo, the recurring generator),
 		and those must not be blocked by a form's requirement — they carry no brief and
-		keep their own note. A group with any other type is left completely alone.
+		keep their own note. Anything not tagged as coding work is left completely alone.
 
 		Both fields are new, so everything is read with .get(): a doc loaded before the
 		schema reloads has no attribute at all.
 		"""
-		group = self.get("group")
-		if not group:
-			return
-		# Cached: Group is small and rarely edited, and this runs on every todo save.
-		if frappe.get_cached_value("Group", group, "group_type") != "Coding":
+		if not self.is_coding_work():
 			return
 
 		brief = coding_brief.parse(self.get("coding_brief"))

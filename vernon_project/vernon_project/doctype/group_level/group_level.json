@@ -5,7 +5,13 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": ["type_name", "level_name", "level_id", "difficulty_percent"],
+ "field_order": [
+  "type_name",
+  "level_name",
+  "is_coding",
+  "level_id",
+  "difficulty_percent"
+ ],
  "fields": [
   {
    "fieldname": "type_name",
@@ -22,6 +28,15 @@
    "label": "Level",
    "reqd": 1,
    "columns": 3
+  },
+  {
+   "fieldname": "is_coding",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Coding",
+   "default": "0",
+   "columns": 1,
+   "description": "Tag this type and level as coding work: its todos swap the free-form note for the structured coding brief."
   },
   {
    "fieldname": "level_id",
@@ -46,7 +61,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-26 00:00:00.000000",
+ "modified": "2026-09-18 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Vernon Project",
  "name": "Group Level",

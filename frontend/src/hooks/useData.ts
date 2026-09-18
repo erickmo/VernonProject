@@ -7,6 +7,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { api, mobileApi, resource, renameDoc, passkeyApi, apiTokenApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
+import { isCodingWork } from '@/lib/codingBrief'
 import { useToast } from '@/components/Toast'
 import { stopTimer } from '@/hooks/useFocusTimer'
 import { enrollPasskey } from '@/lib/webauthn'
@@ -1498,13 +1499,13 @@ export function useGroupLevels() {
   })
 }
 
-/** Whether a work type uses the structured coding brief instead of a free-form
- *  note. Read off the group catalog the todo form already loads, so this costs
- *  no extra request (k9b82d4lkh). */
-export function useIsCodingGroup(group: string | null | undefined) {
+/** Whether the chosen group + type/level uses the structured coding brief instead
+ *  of a free-form note. Read off the group catalog the todo form already loads, so
+ *  this costs no extra request and no refetch when the picker changes (k9b82d4lkh).
+ *  The rule itself is pure and tested — see lib/codingBrief's isCodingWork. */
+export function useIsCodingWork(group: string | null | undefined, levelId?: string | null) {
   const { data: rows } = useGroupLevels()
-  if (!group) return false
-  return (rows ?? []).some((r) => r.group === group && r.group_type === 'Coding')
+  return isCodingWork(rows, group, levelId)
 }
 
 /** The Coding brief's questions. Static on the server, so it is cached like the

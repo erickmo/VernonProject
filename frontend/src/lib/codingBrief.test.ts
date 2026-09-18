@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasAnyAnswer, missingBrief, parseBrief, serializeBrief, type BriefField } from './codingBrief'
+import { hasAnyAnswer, isCodingWork, missingBrief, parseBrief, serializeBrief, type BriefField, type CodingLevelRow } from './codingBrief'
 
 // Shaped like what get_coding_brief_schema returns; the real list lives on the server.
 const FIELDS: BriefField[] = [
@@ -65,5 +65,49 @@ describe('hasAnyAnswer', () => {
   it('is false for an untouched brief and true once something is typed', () => {
     expect(hasAnyAnswer(parseBrief('', FIELDS))).toBe(false)
     expect(hasAnyAnswer(parseBrief(JSON.stringify({ goal: 'g' }), FIELDS))).toBe(true)
+  })
+})
+
+// One group tagged coding as a whole, and one ordinary group whose levels are
+// tagged individually — the shape the owner asked for.
+const ROWS: CodingLevelRow[] = [
+  { group: 'Whole', level_id: 'W1', group_type: 'Coding', is_coding: 1 },
+  { group: 'Mixed', level_id: 'M-build', group_type: '', is_coding: 1 },
+  { group: 'Mixed', level_id: 'M-admin', group_type: '', is_coding: 0 },
+  { group: 'Plain', level_id: 'P1', group_type: '', is_coding: 0 },
+]
+
+describe('isCodingWork', () => {
+  it('treats a level tagged coding as coding even when its group is not', () => {
+    expect(isCodingWork(ROWS, 'Mixed', 'M-build')).toBe(true)
+  })
+
+  it('leaves an untagged level in the same group alone', () => {
+    expect(isCodingWork(ROWS, 'Mixed', 'M-admin')).toBe(false)
+  })
+
+  it('still honours a whole group tagged Coding', () => {
+    expect(isCodingWork(ROWS, 'Whole', 'W1')).toBe(true)
+    expect(isCodingWork(ROWS, 'Whole', null)).toBe(true)
+  })
+
+  it('says no for an ordinary group', () => {
+    expect(isCodingWork(ROWS, 'Plain', 'P1')).toBe(false)
+    expect(isCodingWork(ROWS, 'Plain', null)).toBe(false)
+  })
+
+  it('answers from the group while no level is chosen yet', () => {
+    expect(isCodingWork(ROWS, 'Mixed', null)).toBe(false)
+    expect(isCodingWork(ROWS, 'Whole', undefined)).toBe(true)
+  })
+
+  it('falls back to the group when the catalog has not loaded or the level is unknown', () => {
+    expect(isCodingWork(undefined, 'Whole', 'W1')).toBe(false)
+    expect(isCodingWork(ROWS, 'Whole', 'not-a-level')).toBe(true)
+  })
+
+  it('is false with no group chosen', () => {
+    expect(isCodingWork(ROWS, '', 'M-build')).toBe(false)
+    expect(isCodingWork(ROWS, null, null)).toBe(false)
   })
 })

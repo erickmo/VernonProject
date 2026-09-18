@@ -19,6 +19,12 @@ from vernon_project.api.project_todo import get_coding_brief_schema
 
 CODING_GROUP = "Test Coding Group"
 PLAIN_GROUP = "Test Plain Group"
+# A group that is NOT wholly a Coding group, but whose levels are tagged one by one.
+# This is the shape the owner asked for: the tag sits on each type and level, so one
+# group can hold both coding and non-coding work.
+MIXED_GROUP = "Test Mixed Level Group"
+MIXED_CODING_LEVEL = "TESTMIXCODE1"
+MIXED_PLAIN_LEVEL = "TESTMIXPLAIN1"
 FULL_BRIEF = {
 	"goal": "Inline images in the composer",
 	"surface": "frontend/src/components/MarkdownEditor.tsx",
@@ -42,11 +48,35 @@ def _ensure_group(name, group_type, level_id):
 	return name, level_id
 
 
+def _ensure_mixed_group():
+	"""A plain group holding one coding-tagged level and one ordinary level, so the
+	two can be told apart inside a single group."""
+	levels = [
+		{"type_name": "Build", "level_name": "L1", "level_id": MIXED_CODING_LEVEL,
+		 "difficulty_percent": 100, "is_coding": 1},
+		{"type_name": "Admin", "level_name": "L1", "level_id": MIXED_PLAIN_LEVEL,
+		 "difficulty_percent": 100, "is_coding": 0},
+	]
+	if not frappe.db.exists("Group", MIXED_GROUP):
+		frappe.get_doc({"doctype": "Group", "group_name": MIXED_GROUP,
+		                "base_rate_per_minute": 1, "group_type": "", "levels": levels}).insert(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc("Group", MIXED_GROUP)
+		doc.group_type = ""
+		doc.set("levels", [])
+		for row in levels:
+			doc.append("levels", row)
+		doc.save(ignore_permissions=True)
+	frappe.clear_cache(doctype="Group")
+	return MIXED_GROUP
+
+
 class TestCodingBriefTodo(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		self.coding_group, self.coding_level = _ensure_group(CODING_GROUP, "Coding", "TESTCODE1")
 		self.plain_group, self.plain_level = _ensure_group(PLAIN_GROUP, "", "TESTPLAIN1")
+		self.mixed_group = _ensure_mixed_group()
 		suffix = frappe.generate_hash(length=8)
 		if not frappe.db.exists("Brand", "Test Coding Brief Brand"):
 			frappe.get_doc({"doctype": "Brand", "brand_name": "Test Coding Brief Brand",
@@ -82,6 +112,34 @@ class TestCodingBriefTodo(FrappeTestCase):
 	def _insert_as_person(self, group, level_id, **over):
 		"""The real create path the app uses — generic, permission-checked."""
 		return frappe.client.insert(json.dumps(self._payload(group, level_id, **over)))
+
+	# --- the tag on each type and level --------------------------------------
+
+	def test_a_level_tagged_coding_needs_the_brief_even_when_its_group_is_not(self):
+		"""The owner's ask: the tag lives on each type and level, not only on the whole
+		group. A todo on a tagged level behaves exactly like one in a Coding group."""
+		with self.assertRaises(frappe.MandatoryError):
+			self._insert_as_person(self.mixed_group, MIXED_CODING_LEVEL)
+
+		res = self._insert_as_person(self.mixed_group, MIXED_CODING_LEVEL,
+		                             coding_brief=json.dumps(FULL_BRIEF))
+		doc = frappe.get_doc("Project Todo", res["name"])
+		self.assertEqual(doc.notes, coding_brief.render_note(coding_brief.parse(json.dumps(FULL_BRIEF))))
+
+	def test_an_untagged_level_in_the_same_group_is_left_alone(self):
+		"""Criterion 4, at the grain that matters: two levels of ONE group must not
+		behave the same. The untagged one takes a free-form note and no brief."""
+		res = self._insert_as_person(self.mixed_group, MIXED_PLAIN_LEVEL, notes="just a plain note")
+		doc = frappe.get_doc("Project Todo", res["name"])
+		self.assertEqual(doc.notes, "just a plain note", "an untagged level keeps the note as typed")
+		self.assertFalse(coding_brief.parse(doc.get("coding_brief")).get("goal"))
+
+	def test_a_coding_group_still_applies_when_no_level_is_tagged(self):
+		"""Backward compatibility. The group-wide flag is what ships today and some
+		groups may only ever use it, so widening to levels must not retire it."""
+		res = self._insert_as_person(self.coding_group, self.coding_level,
+		                             coding_brief=json.dumps(FULL_BRIEF))
+		self.assertIn(FULL_BRIEF["goal"], frappe.get_doc("Project Todo", res["name"]).notes)
 
 	# --- creation ------------------------------------------------------------
 

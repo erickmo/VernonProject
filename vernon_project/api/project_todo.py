@@ -36,7 +36,7 @@ def get_group_levels():
 	rows = frappe.get_all(
 		'Group Level',
 		filters={'parenttype': 'Group'},
-		fields=['level_id', 'type_name', 'level_name', 'difficulty_percent', 'parent'],
+		fields=['level_id', 'type_name', 'level_name', 'difficulty_percent', 'parent', 'is_coding'],
 		order_by='parent asc, type_name asc, difficulty_percent asc',
 	)
 	out = []
@@ -56,6 +56,10 @@ def get_group_levels():
 				# k9b82d4lkh: the picker already holds this row, so the todo form knows
 				# whether to show the coding brief without a second request.
 				'group_type': g.group_type or '',
+				# The same tag at the finer grain: this type and level specifically.
+				# Either this or the group-wide flag makes it coding work, matching
+				# Project Todo.is_coding_work() on the server.
+				'is_coding': 1 if (r.is_coding or g.group_type == 'Coding') else 0,
 			}
 		)
 	return out

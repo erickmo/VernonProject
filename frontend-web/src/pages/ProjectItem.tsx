@@ -64,7 +64,7 @@ import {
   useBoot,
   useFocusMode,
   canUseAi,
-  useIsCodingGroup,
+  useIsCodingWork,
 } from '@/hooks/useData'
 import { useFocusTimer } from '@/hooks/useFocusTimer'
 import { AiPhaseBanner } from '@/components/AiPhaseBanner'
@@ -423,11 +423,11 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
   )
 }
 
-function Notes({ todoId, initial, canEdit, group, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string | null; brief?: string }) {
+function Notes({ todoId, initial, canEdit, group, levelId, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string | null; levelId?: string | null; brief?: string }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
   const { mentions, onImage } = useMarkdownAttachments('Project Todo', todoId)
-  const isCoding = useIsCodingGroup(group)
+  const isCoding = useIsCodingWork(group, levelId)
   // The RAW stored value, not stripHtml(initial): editing must show and save
   // exactly what's in the database, byte-identical on a no-op edit. Legacy
   // rows with real HTML (this field predates markdown rendering) still get
@@ -2062,7 +2062,7 @@ const [followOpen, setFollowOpen] = useState(false)
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
                 <FileText className="h-3.5 w-3.5" /> Notes
               </p>
-              <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} group={data.group} brief={data.coding_brief} />
+              <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} group={data.group} levelId={data.level_id} brief={data.coding_brief} />
             </div>
 
             {/* Checklist */}

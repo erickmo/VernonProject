@@ -60,7 +60,7 @@ import { NoteMarkdown } from '@/lib/markdown'
 import { MarkdownEditor } from '@/components/MarkdownEditor'
 import { useMarkdownAttachments } from '@/hooks/useMarkdownAttachments'
 import { CodingBrief } from '@/components/CodingBrief'
-import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode, useIsCodingGroup } from '@/hooks/useData'
+import { useProjectItem, useSaveNotes, useSaveAiPrompt, useSaveChecklist, useUpdateTodo, useSetTodoAllocations, useSetAssignedAllocation, useCancelTodo, useRestoreTodo, useDeleteTodo, useUploadTodoFile, useDeleteTodoFile, useSetAutoApprove, useBoot, useFocusMode, useIsCodingWork } from '@/hooks/useData'
 import type { ChecklistItem, AiPrompt } from '@/lib/types'
 import { GroupLevelPicker } from '@/components/GroupLevelPicker'
 import { useToast } from '@/components/Toast'
@@ -601,11 +601,11 @@ function AiPromptList({ todoId, initial, canEdit }: { todoId: string; initial: A
   )
 }
 
-function Notes({ todoId, initial, canEdit, group, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string | null; brief?: string }) {
+function Notes({ todoId, initial, canEdit, group, levelId, brief }: { todoId: string; initial: string; canEdit: boolean; group?: string | null; levelId?: string | null; brief?: string }) {
   const save = useSaveNotes(todoId)
   const toast = useToast()
   const { mentions, onImage } = useMarkdownAttachments('Project Todo', todoId)
-  const isCoding = useIsCodingGroup(group)
+  const isCoding = useIsCodingWork(group, levelId)
   // The RAW stored value, not stripHtml(initial): editing must show and save
   // exactly what's in the database, byte-identical on a no-op edit. Legacy
   // rows with real HTML (this field predates markdown rendering) still get
@@ -1992,7 +1992,7 @@ const [followOpen, setFollowOpen] = useState(false)
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <FileText className="h-3.5 w-3.5" /> Notes
         </p>
-        <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} group={data.group} brief={data.coding_brief} />
+        <Notes todoId={data.name} initial={data.notes} canEdit={data.can_edit_notes} group={data.group} levelId={data.level_id} brief={data.coding_brief} />
       </div>
 
       {/* Checklist */}

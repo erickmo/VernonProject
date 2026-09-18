@@ -593,6 +593,9 @@ export interface GroupLevel {
   type_name: string
   level_name: string
   difficulty_percent: number
+  /** 1 = this type and level is coding work, so its todos take the structured
+   *  coding brief instead of a free-form note (k9b82d4lkh). */
+  is_coding?: number
   idx?: number
 }
 
@@ -623,6 +626,9 @@ export interface GroupLevelOption {
   base_rate: number
   /** "Coding" swaps the free-form note for the structured brief (k9b82d4lkh); "" otherwise. */
   group_type: string
+  /** 1 when THIS type and level is coding work. The server already OR-s in the
+   *  group-wide flag above, so this alone answers "show the brief?". */
+  is_coding: number
 }
 
 export interface GroupTodo {
@@ -644,7 +650,7 @@ export interface ScoringGroupPayload {
   leader_weight: number
   leader_late_weight: number
   base_rate_per_minute: number
-  levels: { name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number }[]
+  levels: { name?: string; level_id?: string; type_name: string; level_name: string; difficulty_percent: number; is_coding?: number }[]
 }
 
 export interface Brand {
