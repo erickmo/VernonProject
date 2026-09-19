@@ -71,3 +71,65 @@ class TestCutiLedgerPerm(NoLeakMixin, unittest.TestCase):
 			self.assertTrue(frappe.has_permission("Cuti Ledger", "read", self.row))
 		finally:
 			frappe.set_user("Administrator")
+
+
+class TestCutiAdjustmentEndpointGate(NoLeakMixin, unittest.TestCase):
+	"""The class above pins the DOCTYPE permissions — HR Manager cannot touch a Cuti
+	Ledger row directly. `post_cuti_adjustment` is the sanctioned way in, and its own
+	`_is_hr` gate had no test: delete it and anyone could mint leave days for anyone.
+
+	Every refusal here asserts the LEDGER as well as the exception, because a guard
+	that throws after writing would satisfy assertRaises on its own.
+	"""
+
+	HR = "cage_hr@example.com"
+	STAFF = "cage_staff@example.com"
+	SUBJECT = "cage_subject@example.com"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		for email, roles in ((self.HR, ("HR Manager",)), (self.STAFF, ()), (self.SUBJECT, ())):
+			if not frappe.db.exists("User", email):
+				frappe.get_doc({"doctype": "User", "email": email, "first_name": email[:6],
+				                "send_welcome_email": 0}).insert(ignore_permissions=True)
+			u = frappe.get_doc("User", email)
+			for role in roles:
+				if not any(r.role == role for r in u.roles):
+					u.append("roles", {"role": role})
+			u.save(ignore_permissions=True)
+		self.year = frappe.utils.now_datetime().year
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		for row in frappe.get_all("Cuti Ledger", filters={"employee": self.SUBJECT}, pluck="name"):
+			frappe.delete_doc("Cuti Ledger", row, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def _rows(self):
+		return frappe.get_all("Cuti Ledger", filters={"employee": self.SUBJECT}, pluck="name")
+
+	def test_a_normal_user_cannot_post_an_adjustment(self):
+		from vernon_project.api.cuti_ledger import post_cuti_adjustment
+		frappe.set_user(self.STAFF)
+		with self.assertRaises(frappe.PermissionError):
+			post_cuti_adjustment(self.SUBJECT, "Bonus", 5, self.year, "self-granted")
+		frappe.set_user("Administrator")
+		self.assertEqual(self._rows(), [], "a refused adjustment must not have written a ledger row")
+
+	def test_a_normal_user_cannot_remint_someone_elses_grant(self):
+		from vernon_project.api.cuti_ledger import remint_grant
+		frappe.set_user(self.STAFF)
+		with self.assertRaises(frappe.PermissionError):
+			remint_grant(self.SUBJECT, self.year)
+		frappe.set_user("Administrator")
+		self.assertEqual(self._rows(), [], "a refused re-mint must not have written a ledger row")
+
+	def test_hr_can_post_an_adjustment(self):
+		"""The positive side, so the gate cannot be 'fixed' by refusing everyone."""
+		from vernon_project.api.cuti_ledger import post_cuti_adjustment
+		frappe.set_user(self.HR)
+		result = post_cuti_adjustment(self.SUBJECT, "Bonus", 3, self.year, "extra for the sprint")
+		self.assertEqual(result["status"], "ok")
+		frappe.set_user("Administrator")
+		self.assertEqual(len(self._rows()), 1, "HR's adjustment must reach the ledger")
