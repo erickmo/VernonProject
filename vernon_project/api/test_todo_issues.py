@@ -168,8 +168,12 @@ class TestIssueLinkValidation(TodoIssueFixture):
 		self.assertEqual(frappe.db.get_value("Project Todo", b.name, "issue_of"), a.name)
 
 	def test_missing_host_is_rejected(self):
-		with self.assertRaises(Exception):
+		"""Pinned to the link failure specifically. A bare `assertRaises(Exception)`
+		passed if the fixture fell over for any reason at all — a missing required
+		field, a renamed group — and so proved nothing about the host check."""
+		with self.assertRaises(frappe.LinkValidationError) as caught:
 			self._todo("orphan", issue_of="Project Todo-does-not-exist")
+		self.assertIn("does-not-exist", str(caught.exception))
 
 	def test_deleting_the_host_detaches_its_issues(self):
 		host = self._todo("disposable host")

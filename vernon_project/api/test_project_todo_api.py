@@ -7,9 +7,10 @@ from contextlib import contextmanager
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
-from frappe.utils import add_days, nowdate
+from frappe.utils import add_days, cint, nowdate
 
 from vernon_project.api.project_todo import (
+	confirm_ai_prompt,
 	get_ai_todos_needing_prompt,
 	get_notes,
 	list_todo_files,
@@ -331,6 +332,12 @@ class TestGetAiTodosNeedingPromptPayload(NoLeakMixin, FrappeTestCase):
 		for i in range(5):
 			self._make_todo(to_do=f"Small batch {i}", notes=f"note {i}")
 		frappe.set_user(self.ASSIGNEE)
+		# Prime the path before measuring. Frappe asks `SELECT is_virtual FROM tabDocType`
+		# the first time a process touches a doctype and then caches it, so a COLD first
+		# sample carries an extra query that has nothing to do with row count. Measured
+		# cold-vs-warm that made 5 rows cost MORE than 50 (4 vs 3) and failed this test —
+		# a count that falls as rows rise is the tell, and it is never an N+1.
+		get_ai_todos_needing_prompt(include_context=1)
 		try:
 			with _count_queries() as small:
 				get_ai_todos_needing_prompt(include_context=1)
@@ -477,3 +484,108 @@ class TestSaveAiPromptReturnPrompts(NoLeakMixin, FrappeTestCase):
 			frappe.set_user("Administrator")
 		self.assertEqual(refused_full["status"], "error")
 		self.assertEqual(refused_lean["status"], "error")
+
+
+class TestConfirmAiPromptGate(NoLeakMixin, FrappeTestCase):
+	"""confirm_ai_prompt is the human sign-off that lets an AI agent act on a prompt
+	— phase 2 -> 3 of the AI ladder. It had no test at all.
+
+	It refuses SOFTLY, returning {"status": "error"} rather than raising, so every
+	test here asserts the STORED flag too: a refusal that still wrote would be
+	invisible to a check on the return value alone.
+	"""
+
+	ASSIGNEE = "cap_assignee@example.com"
+	OUTSIDER = "cap_outsider@example.com"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		ensure_brand("CAP Brand")
+		ensure_user(self.ASSIGNEE, roles=("Project Team",))
+		ensure_user(self.OUTSIDER, roles=("Project Team",))
+		self.group = ensure_group("CAP Group", "CAPLVL1")
+		self.project = frappe.get_doc({
+			"doctype": "Project", "project_name": "CAP Project", "brand": "CAP Brand",
+			"project_owner": "Administrator", "project_leader": "Administrator",
+			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
+			"team_members": [{"user": self.ASSIGNEE}, {"user": self.OUTSIDER}],
+		}).insert(ignore_permissions=True)
+		self.grouping = frappe.get_doc({
+			"doctype": "Glossary", "glossary": "CAP Grouping", "project": self.project.name,
+		}).insert(ignore_permissions=True)
+		self.detail = frappe.get_doc({
+			"doctype": "Project Detail", "project": self.project.name, "title": "CAP Detail",
+			"grouping": self.grouping.name, "project_deadline": add_days(nowdate(), 20),
+		}).insert(ignore_permissions=True)
+		self.todo = frappe.get_doc({
+			"doctype": "Project Todo", "project_detail": self.detail.name, "to_do": "CAP todo",
+			"assigned_to": self.ASSIGNEE, "start_date": nowdate(), "deadline": add_days(nowdate(), 5),
+			"status": "⚪️ Planned", "work_mode": "AI", "group": self.group, "level_id": "CAPLVL1",
+			"estimated": 30,
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.delete_doc("Project Todo", self.todo.name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project Detail", self.detail.name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Glossary", self.grouping.name, force=True, ignore_permissions=True)
+		frappe.delete_doc("Project", self.project.name, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def _stored(self):
+		return cint(frappe.db.get_value("Project Todo", self.todo.name, "ai_prompt_confirmed"))
+
+	def _with_prompt(self):
+		frappe.set_user(self.ASSIGNEE)
+		save_ai_prompt(self.todo.name, json.dumps([{"name": "step1", "prompt": "Do X"}]))
+
+	def test_someone_outside_the_gate_cannot_confirm(self):
+		self._with_prompt()
+		frappe.set_user(self.OUTSIDER)
+		result = confirm_ai_prompt(self.todo.name)
+		self.assertEqual(result["status"], "error")
+		self.assertEqual(self._stored(), 0, "a refused confirm must not have written the flag")
+
+	def test_the_assignee_can_confirm(self):
+		self._with_prompt()
+		frappe.set_user(self.ASSIGNEE)
+		result = confirm_ai_prompt(self.todo.name)
+		self.assertEqual(result["status"], "ok")
+		self.assertEqual(result["ai_prompt_confirmed"], 1)
+		self.assertEqual(self._stored(), 1, "the confirmation must reach the database")
+
+	def test_phase_two_cannot_be_skipped(self):
+		"""No saved prompt means there is nothing for a human to have reviewed, so
+		confirming would hand an agent a green light over an empty brief."""
+		frappe.set_user(self.ASSIGNEE)
+		result = confirm_ai_prompt(self.todo.name)
+		self.assertEqual(result["status"], "error")
+		self.assertEqual(self._stored(), 0)
+
+	def test_a_todo_not_tagged_for_ai_cannot_be_confirmed(self):
+		self._with_prompt()
+		frappe.set_user("Administrator")
+		frappe.db.set_value("Project Todo", self.todo.name, "work_mode", "Human")
+		frappe.set_user(self.ASSIGNEE)
+		result = confirm_ai_prompt(self.todo.name)
+		self.assertEqual(result["status"], "error")
+		self.assertEqual(self._stored(), 0)
+
+	def test_confirmation_can_be_pulled_back_to_phase_two(self):
+		self._with_prompt()
+		frappe.set_user(self.ASSIGNEE)
+		confirm_ai_prompt(self.todo.name)
+		self.assertEqual(self._stored(), 1)
+		result = confirm_ai_prompt(self.todo.name, confirmed=0)
+		self.assertEqual(result["status"], "ok")
+		self.assertEqual(self._stored(), 0, "pulling back must clear the stored flag too")
+
+	def test_an_outsider_cannot_pull_back_someone_elses_confirmation(self):
+		self._with_prompt()
+		frappe.set_user(self.ASSIGNEE)
+		confirm_ai_prompt(self.todo.name)
+		frappe.set_user(self.OUTSIDER)
+		result = confirm_ai_prompt(self.todo.name, confirmed=0)
+		self.assertEqual(result["status"], "error")
+		self.assertEqual(self._stored(), 1, "the confirmation must survive an unauthorised pull-back")

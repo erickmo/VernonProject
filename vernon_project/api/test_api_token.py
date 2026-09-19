@@ -17,8 +17,10 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils.password import get_decrypted_password
 
 from vernon_project.api.api_token import (
+	_mcp_connector_url,
 	generate_api_token,
 	get_api_token_status,
+	reveal_mcp_connector_url,
 	revoke_api_token,
 )
 from vernon_project.tests.no_leak import NoLeakMixin
@@ -194,3 +196,59 @@ class TestApiTokenPermissionBoundary(NoLeakMixin, FrappeTestCase):
 				generate_api_token()
 		finally:
 			frappe.set_user("Administrator")
+
+
+class TestMcpConnectorUrlIsSystemManagerOnly(NoLeakMixin, FrappeTestCase):
+	"""The MCP connector URL is admin-equivalent access: the remote server runs every
+	call as its OWN API key, not the caller's. Until now the only thing saying so was
+	the docstring — the guard had no test, so deleting it broke nothing visibly.
+
+	TWO guards refuse this, and each gets its own test on purpose: `reveal_...`
+	throws, and `_mcp_connector_url` independently returns None. A single test that
+	only checked "no URL came back" would stay green if the OUTER one were deleted,
+	because the inner one would quietly answer instead.
+	"""
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		_ensure_user(OTHER)
+		frappe.db.commit()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def test_a_normal_user_is_refused_by_the_endpoints_own_guard(self):
+		frappe.set_user(OTHER)
+		self.assertNotIn("System Manager", frappe.get_roles(), "fixture: this user must not be an admin")
+		with self.assertRaises(frappe.PermissionError):
+			reveal_mcp_connector_url()
+
+	def test_the_inner_helper_refuses_a_normal_user_on_its_own(self):
+		"""Checked separately from the endpoint so the two layers cannot cover for
+		each other: this one must hold even if the endpoint's throw were removed."""
+		frappe.set_user(OTHER)
+		self.assertIsNone(_mcp_connector_url())
+
+	def test_a_system_manager_gets_the_payload(self):
+		"""The positive side, so the guard cannot be 'fixed' by refusing everyone.
+
+		Asserts the SHAPE, not the value: the URL is read from the running server's
+		.env.http, which a test host may not have, and `{"url": None}` is the correct
+		answer there. What matters is that an admin is not refused.
+		"""
+		frappe.set_user("Administrator")
+		self.assertIn("System Manager", frappe.get_roles())
+		result = reveal_mcp_connector_url()
+		self.assertIsInstance(result, dict)
+		self.assertIn("url", result)
+
+	def test_the_refusal_never_leaks_the_url_in_its_message(self):
+		"""A guard that names what it is protecting is not a guard."""
+		frappe.set_user("Administrator")
+		admin_url = reveal_mcp_connector_url().get("url")
+		frappe.set_user(OTHER)
+		with self.assertRaises(frappe.PermissionError) as ctx:
+			reveal_mcp_connector_url()
+		if admin_url:
+			self.assertNotIn(admin_url, str(ctx.exception))
+			self.assertNotIn("token", str(ctx.exception).lower())

@@ -93,3 +93,52 @@ class TestTeguranImmutable(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestTeguranGuardRunsOnSave(unittest.TestCase):
+	"""The freeze must not become a blanket lock.
+
+	The guard's WIRING is already pinned by `api/test_teguran.py`'s
+	`test_content_immutable_after_issue`, which edits a real saved Teguran and
+	expects the refusal — so that is deliberately not repeated here. What was
+	missing is the other direction: proof that an ALLOWED edit still gets through
+	the same save path.
+
+	The header above explains the mocking as "the DocType doesn't exist in the live
+	schema until migrate runs". That is no longer true — Teguran is registered and
+	has a table — so real documents are usable here now.
+	"""
+
+	EMPLOYEE = "teguran-save-path@test.local"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		if not frappe.db.exists("User", self.EMPLOYEE):
+			frappe.get_doc({"doctype": "User", "email": self.EMPLOYEE, "first_name": "Teguran",
+			                "send_welcome_email": 0}).insert(ignore_permissions=True)
+		self.doc = frappe.get_doc({
+			"doctype": "Teguran", "karyawan": self.EMPLOYEE, "tanggal": frappe.utils.nowdate(),
+			"kategori_pelanggaran": "Keterlambatan", "deskripsi": "Terlambat tiga kali",
+		}).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		if self.doc and frappe.db.exists("Teguran", self.doc.name):
+			frappe.delete_doc("Teguran", self.doc.name, ignore_permissions=True, force=True)
+		frappe.db.commit()
+
+	def test_an_unprotected_field_still_saves_through_the_same_path(self):
+		"""The freeze is scoped to the content fields. If this fails, the guard has
+		stopped being an immutability rule and become a blanket lock.
+
+		Re-reads the row first, deliberately. The guard compares the in-memory value
+		against the stored one with `!=`, so a doc still holding the values as they
+		were POSTED — a date as the string "2026-09-19" rather than a date object —
+		is reported as having changed the Tanggal when it changed nothing. That is a
+		real defect in the guard, not a quirk of this test, so it is raised
+		separately rather than pinned here as if it were intended.
+		"""
+		fresh = frappe.get_doc("Teguran", self.doc.name)
+		fresh.status = "Diakui"
+		fresh.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("Teguran", self.doc.name, "status"), "Diakui")
