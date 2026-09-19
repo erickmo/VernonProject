@@ -142,3 +142,55 @@ class TestTeguranGuardRunsOnSave(unittest.TestCase):
 		fresh.status = "Diakui"
 		fresh.save(ignore_permissions=True)
 		self.assertEqual(frappe.db.get_value("Teguran", self.doc.name, "status"), "Diakui")
+
+	def test_re_sending_the_same_date_as_a_string_is_not_an_edit(self):
+		"""The guard compared in-memory values against stored ones with `!=`, so a
+		type difference read as tampering. A JSON payload carries a Date as the
+		string "2026-09-19" while the stored value is a date object — identical day,
+		different type — and the save was refused for changing the Tanggal when it
+		changed nothing.
+
+		This is the shape any `/api/resource` PUT or `frappe.client.save` sends.
+		"""
+		fresh = frappe.get_doc("Teguran", self.doc.name)
+		fresh.tanggal = str(fresh.tanggal)  # exactly what came out of the database
+		fresh.status = "Diakui"
+		fresh.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("Teguran", self.doc.name, "status"), "Diakui")
+
+	def test_an_empty_optional_field_sent_back_as_blank_is_not_an_edit(self):
+		"""Same defect, other half: a JSON client sends "" where the column holds
+		NULL. Nothing changed, so nothing should be refused."""
+		fresh = frappe.get_doc("Teguran", self.doc.name)
+		self.assertIsNone(frappe.db.get_value("Teguran", self.doc.name, "bukti"))
+		fresh.bukti = ""
+		fresh.diberikan_oleh = ""
+		fresh.status = "Dibatalkan"
+		fresh.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("Teguran", self.doc.name, "status"), "Dibatalkan")
+
+	def test_a_real_date_change_is_still_refused(self):
+		"""The point of the guard. Normalising types must not soften what it blocks."""
+		fresh = frappe.get_doc("Teguran", self.doc.name)
+		fresh.tanggal = frappe.utils.add_days(frappe.utils.nowdate(), -3)
+		with self.assertRaises(frappe.ValidationError) as caught:
+			fresh.save(ignore_permissions=True)
+		self.assertIn("Tanggal", str(caught.exception))
+
+	def test_a_real_date_change_sent_as_a_string_is_still_refused(self):
+		"""A different day supplied as a string must NOT slip through the same
+		normalising that lets an unchanged one pass."""
+		fresh = frappe.get_doc("Teguran", self.doc.name)
+		fresh.tanggal = str(frappe.utils.add_days(frappe.utils.nowdate(), -3))
+		with self.assertRaises(frappe.ValidationError) as caught:
+			fresh.save(ignore_permissions=True)
+		self.assertIn("Tanggal", str(caught.exception))
+
+	def test_filling_in_a_previously_empty_protected_field_is_still_refused(self):
+		"""Blank-to-a-real-value is a genuine change, even though blank-to-blank is
+		not — this is the line the None/"" normalising must not cross."""
+		fresh = frappe.get_doc("Teguran", self.doc.name)
+		fresh.bukti = "/files/backdated-evidence.pdf"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			fresh.save(ignore_permissions=True)
+		self.assertIn("Bukti", str(caught.exception))
