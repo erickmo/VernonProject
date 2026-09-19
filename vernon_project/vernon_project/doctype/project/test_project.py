@@ -23,6 +23,9 @@ class TestProjectGuards(unittest.TestCase):
 		ensure_user("owner_u@example.com", roles=("Project Owner",))
 		ensure_user("leader_u@example.com", roles=("Project Leader",))
 		ensure_user("other_u@example.com", roles=("Project Leader",))
+		# A second holder of the Project Owner role, so a reassignment probe can name
+		# someone who passes the role check — see test_leader_cannot_reassign.
+		ensure_user("owner2_u@example.com", roles=("Project Owner",))
 
 		self.project = frappe.get_doc({
 			"doctype": "Project", "project_name": "Guard Test Project",
@@ -30,7 +33,16 @@ class TestProjectGuards(unittest.TestCase):
 			"project_owner": "owner_u@example.com", "project_leader": "leader_u@example.com",
 			"status": "Ongoing", "start_date": nowdate(), "deadline": add_days(nowdate(), 30),
 		})
-		self.project.insert(ignore_permissions=True)
+		# Created BY its owner, which is how 141 of the 159 live projects look. The
+		# Project Owner role's write permission is `if_owner`, meaning Frappe's own
+		# `owner` (the creator) — NOT this doctype's `project_owner` field, despite the
+		# name. Inserting as Administrator left owner_u unable to write the very
+		# project it owns, a state no real project is in.
+		frappe.set_user("owner_u@example.com")
+		try:
+			self.project.insert()
+		finally:
+			frappe.set_user("Administrator")
 		frappe.db.commit()
 
 	def tearDown(self):
@@ -68,19 +80,36 @@ class TestProjectGuards(unittest.TestCase):
 		self.assertEqual(frappe.db.get_value("Project", self.project.name, "goal"), "leader edit ok")
 
 	def test_leader_cannot_reassign(self):
+		"""The leader is refused for NOT BEING THE OWNER, which is the rule under test.
+
+		The new owner named here must itself hold the Project Owner role. Naming
+		someone without it made the role validation answer first, with a
+		ValidationError about the missing role — so the test passed through a guard it
+		was not written to check, and said nothing about who may reassign.
+		"""
 		frappe.set_user("leader_u@example.com")
-		p = frappe.get_doc("Project", self.project.name)
-		p.project_owner = "leader_u@example.com"
-		with self.assertRaises(frappe.PermissionError):
-			p.save()
-		frappe.set_user("Administrator")
+		try:
+			p = frappe.get_doc("Project", self.project.name)
+			p.project_owner = "owner2_u@example.com"
+			with self.assertRaises(frappe.PermissionError) as caught:
+				p.save()
+			self.assertIn("Only the Project Owner", str(caught.exception))
+		finally:
+			frappe.set_user("Administrator")
+		self.assertEqual(
+			frappe.db.get_value("Project", self.project.name, "project_owner"),
+			"owner_u@example.com",
+			"a refused reassignment must not have changed the owner",
+		)
 
 	def test_owner_can_reassign(self):
 		frappe.set_user("owner_u@example.com")
-		p = frappe.get_doc("Project", self.project.name)
-		p.project_leader = "other_u@example.com"
-		p.save()
-		frappe.set_user("Administrator")
+		try:
+			p = frappe.get_doc("Project", self.project.name)
+			p.project_leader = "other_u@example.com"
+			p.save()
+		finally:
+			frappe.set_user("Administrator")
 		self.assertEqual(
 			frappe.db.get_value("Project", self.project.name, "project_leader"), "other_u@example.com")
 

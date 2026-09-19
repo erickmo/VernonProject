@@ -69,10 +69,15 @@ class TestProjectAIManagement(unittest.TestCase):
 	def test_tagging_without_a_device_or_session_is_refused(self):
 		doc = frappe.get_doc("Project", self.project.name)
 		doc.is_ai_managed = 1
+		frappe.db.savepoint("ai_tag_probe")
 		with self.assertRaises(frappe.MandatoryError):
 			doc.save(ignore_permissions=True)
 
-		frappe.db.rollback()
+		# Scoped to a savepoint, not a bare rollback. The point is to discard the
+		# REFUSED SAVE; a bare rollback also discards the fixture this test just
+		# built, and the next line then fails with "Project ... not found". Same trap
+		# test_validate_done_todo.py documents for the done-field probes.
+		frappe.db.rollback(save_point="ai_tag_probe")
 		doc = frappe.get_doc("Project", self.project.name)
 		doc.is_ai_managed = 1
 		doc.ai_device = "box-1"
