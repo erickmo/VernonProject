@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   useInfiniteQuery,
   useMutation,
@@ -6,8 +6,9 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query'
-import { api, mobileApi, resource, renameDoc, passkeyApi, apiTokenApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
+import { api, mcpApi, mobileApi, resource, renameDoc, passkeyApi, apiTokenApi, eventsApi, eventsAdminApi, checkAvailability, papanApi, lmsApi, uploadTodoFile, habitApi, certificateApi } from '@/lib/api'
 import { isCodingWork } from '@/lib/codingBrief'
+import { pollInterval } from '@/lib/mcpStatus'
 import { useToast } from '@/components/Toast'
 import { stopTimer } from '@/hooks/useFocusTimer'
 import { enrollPasskey } from '@/lib/webauthn'
@@ -3525,5 +3526,44 @@ export function useReassignSeries() {
       qc.invalidateQueries({ queryKey: keys.projects })
       qc.invalidateQueries({ queryKey: ['project-detail'] })
     },
+  })
+}
+
+
+/** Is the page hidden right now? Tracked as state so the query below re-evaluates
+ *  its poll interval when the user switches tabs, rather than reading
+ *  `document.hidden` once at mount and never noticing again. */
+function useDocumentHidden(): boolean {
+  const [hidden, setHidden] = useState(() =>
+    typeof document === 'undefined' ? false : document.hidden,
+  )
+  useEffect(() => {
+    const onChange = () => setHidden(document.hidden)
+    document.addEventListener('visibilitychange', onChange)
+    return () => document.removeEventListener('visibilitychange', onChange)
+  }, [])
+  return hidden
+}
+
+/** Whether the MCP connector is reachable, for the navbar indicator.
+ *
+ *  ONE query for the whole app: both navbars call this hook, react-query dedupes on
+ *  the key, and the server caches the probe on top of that — so a screen with both
+ *  mounted still costs one request, and ten users in a minute still cost the server
+ *  one outbound probe.
+ *
+ *  Polling STOPS while the tab is hidden (interval `false`, not zero) and resumes on
+ *  focus, so a backgrounded tab is not quietly pinging all day. The last known state
+ *  is kept while hidden rather than torn down, so coming back does not flash
+ *  "unknown" before the next answer. */
+export function useMcpStatus(everyMs = 60_000) {
+  const hidden = useDocumentHidden()
+  return useQuery({
+    queryKey: ['mcp-status'],
+    queryFn: () => mcpApi.status(),
+    refetchInterval: pollInterval(hidden, everyMs),
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    retry: false,
   })
 }

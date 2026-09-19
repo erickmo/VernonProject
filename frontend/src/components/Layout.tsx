@@ -5,6 +5,7 @@ import { ChevronLeft, Search } from 'lucide-react'
 import clsx from 'clsx'
 import { BottomNav } from './BottomNav'
 import { TodoSearchOverlay } from './TodoSearchOverlay'
+import { McpStatusIndicator } from '@/components/McpStatusIndicator'
 
 // Page shell with bottom navigation (top-level tabs).
 export function TabScreen({
@@ -50,6 +51,9 @@ export function TabScreen({
             >
               <Search className="h-[22px] w-[22px]" />
             </button>
+            {/* Dot only here: the header is tight, and the accessible name plus the
+                tap-for-detail toast carry the meaning without a word taking space. */}
+            <McpStatusIndicator labelled={false} />
             {right}
           </div>
         </div>

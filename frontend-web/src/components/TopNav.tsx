@@ -9,6 +9,7 @@ import { getStoredTheme, setTheme, type Theme } from '@/lib/theme'
 import { formatNumber } from '@/lib/format'
 import type { AvatarConfig, FocusMode } from '@/lib/types'
 import { useModalA11y } from '@web/lib/useModalA11y'
+import { McpStatusIndicator } from '@/components/McpStatusIndicator'
 import { NotificationBell } from '@web/components/NotificationBell'
 import { NAV_PRIMARY } from '@web/lib/nav'
 
@@ -109,6 +110,9 @@ export function TopBar({
           className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 active:scale-[0.97]">
           <Plus className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" /> <span className="hidden sm:inline">New</span>
         </button>
+        {/* Connector health sits with the other status affordances, not in the
+            primary nav — it reports on the system, it does not navigate. */}
+        <McpStatusIndicator />
         <NotificationBell className="text-muted hover:bg-hover/[0.05]" />
         <NavLink to="/wallet"
           className="group hidden items-center gap-1.5 rounded-xl border border-line bg-canvas px-3 py-2 text-sm font-bold text-ink transition hover:bg-hover/[0.05] sm:flex">

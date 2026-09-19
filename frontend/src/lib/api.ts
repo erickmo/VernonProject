@@ -1,6 +1,7 @@
 // Thin client over Frappe's whitelisted-method endpoints.
 // Reads -> GET; mutations -> POST with CSRF header.
 
+import type { McpStatusPayload } from './mcpStatus'
 import type { EventItem, EventRegistration, PayConfig, RegisterResult, ManagedEvent, RosterEntry, EventFormPayload, Conflict, AdListItem, AdDetail, AdPayload, AdBan, LmsCourseCard, LmsCourseDetail, LmsMyEnrollment, LmsManagedCourse, LmsReportRow, LmsCompleteResult, LmsAssignableUser, TodoFile, AppRelease, LeaderNote, UserNotesView, SuperpowerCatalogItem, MySuperpower, UserSuperpowersView, SuperpowerSettings, SuperpowerLevel, VotableUser, RecognitionGate, DiscReminder, DiscQuestions, DiscSubmitResult, PhotoGate, HabitsResponse } from './types'
 
 const METHOD = '/api/method/'
@@ -1485,6 +1486,16 @@ export const resource = {
     resourceRequest<T>(`${enc(doctype)}/${enc(name)}`, { method: 'PUT', body: doc }),
   remove: (doctype: string, name: string) =>
     resourceRequest<{ name?: string }>(`${enc(doctype)}/${enc(name)}`, { method: 'DELETE' }),
+}
+
+// --- MCP connector reachability (for the navbar indicator) -----------------
+// The probe itself runs server-side and carries no token; this just asks for the
+// verdict. `detail` arrives populated only for a System Manager — the server
+// decides that, not the UI.
+const MCP = 'vernon_project.api.mcp_status.'
+
+export const mcpApi = {
+  status: () => api.get<McpStatusPayload>(MCP + 'get_mcp_status'),
 }
 
 // --- Focus timer sync (backend-persisted, cross-device) -------------------
