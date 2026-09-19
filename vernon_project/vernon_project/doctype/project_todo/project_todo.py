@@ -11,6 +11,7 @@ from frappe.utils import add_days, add_months, cint, cstr, getdate, nowdate, now
 from datetime import datetime
 from vernon_project.vernon_project.doctype.project.project import get_project_admins
 from vernon_project import coding_brief
+from vernon_project.field_compare import field_changed
 
 
 # The one Planned status string, shared by the controller. `api/mobile.py` keeps
@@ -698,13 +699,12 @@ class ProjectTodo(Document):
 			return False
 		df = self.meta.get_field(field)
 		fieldtype = df.fieldtype if df else None
-		if fieldtype == "Date":
-			return (getdate(new) if new else None) != (getdate(old) if old else None)
-		if fieldtype in ("Datetime", "Date and Time"):
-			return (get_datetime(new) if new else None) != (get_datetime(old) if old else None)
 		if fieldtype in ("Table", "Table MultiSelect"):
-			return _rows_key(new) != _rows_key(old)  # row objects differ on every load
-		return True
+			# Row objects differ on every load, and which columns count is this
+			# doctype's own business — so this one stays here rather than moving into
+			# the shared comparison.
+			return _rows_key(new) != _rows_key(old)
+		return field_changed(new, old, fieldtype)
 
 	def validate_done_todo_fields(self):
 		"""Prevent editing assigned_to, estimated, deadline, and the AI tag/prompt once

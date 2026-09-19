@@ -1,10 +1,10 @@
 # Copyright (c) 2026, Vernon and contributors
 # For license information, please see license.txt
 
-import datetime
-
 import frappe
 from frappe.model.document import Document
+
+from vernon_project.field_compare import field_changed
 
 # Content fields are immutable once issued (see validate_content_immutable) — only
 # api.teguran.akui_teguran / batalkan_teguran may move `status` afterward, and
@@ -18,34 +18,6 @@ PROTECTED_FIELDS = {
 	"bukti": "Bukti",
 	"diberikan_oleh": "Diberikan Oleh",
 }
-
-
-def _comparable(value):
-	"""One shape for a value however it arrived, so only a REAL change is refused.
-
-	The two sides of this comparison reach it differently. The stored row gives a
-	Date as a `datetime.date` and an empty optional field as NULL; a JSON payload —
-	an `/api/resource` PUT, `frappe.client.save`, anything posting the doc back —
-	gives the same day as the string "2026-09-19" and the same emptiness as "".
-	Comparing those raw made a save that changed NOTHING read as tampering with the
-	Tanggal, and refused it.
-
-	Only the representation is normalised. A different day, or filling in a field
-	that was blank, still differs here and is still refused.
-
-	Project Todo hit this exact bug first and solved it in `ProjectTodo._field_changed`,
-	whose docstring describes the same "2026-09-14" != date(2026, 9, 14) failure. That
-	version is meta-driven because its protected list includes Datetime and Table
-	fields; this one is deliberately value-driven so the guard stays testable without a
-	registered meta, which is what the mocked tests in this folder rely on. If a third
-	doctype needs it, promote one of the two into a shared helper rather than writing a
-	third.
-	"""
-	if value is None or value == "":
-		return ""
-	if isinstance(value, (datetime.date, datetime.datetime)):
-		return str(value)
-	return str(value).strip()
 
 
 class Teguran(Document):
@@ -77,7 +49,7 @@ class Teguran(Document):
 			return
 		changed = [
 			label for field, label in PROTECTED_FIELDS.items()
-			if _comparable(self.get(field)) != _comparable(old_doc.get(field))
+			if field_changed(self.get(field), old_doc.get(field))
 		]
 		if changed:
 			frappe.throw(

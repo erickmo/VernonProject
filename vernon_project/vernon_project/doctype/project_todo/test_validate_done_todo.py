@@ -212,6 +212,35 @@ class TestDoneTodoFieldsLockedOnSave(NoLeakMixin, unittest.TestCase):
         with self.assertRaises(frappe.ValidationError):
             todo.save(ignore_permissions=True)
 
+    # --------------------------------------------- blank is not the same as cleared
+
+    def test_re_sending_an_empty_protected_field_as_blank_is_not_an_edit(self):
+        """A protected field that is already empty, posted back as "", has not been
+        edited. The column holds NULL and a JSON body sends "" — same absence, two
+        spellings — and refusing that was the same false-refusal Teguran was fixed
+        for. Only pinned now because the shared comparison made the two agree.
+        """
+        todo = self._done_todo()
+        self.assertIsNone(
+            frappe.db.get_value("Project Todo", todo.name, "ai_prompt"),
+            "fixture: this field must start empty, or the test proves nothing",
+        )
+        todo.ai_prompt = ""
+        todo.save(ignore_permissions=True)  # must not raise
+        self.assertFalse(frappe.db.get_value("Project Todo", todo.name, "ai_prompt"))
+
+    def test_clearing_a_protected_field_that_had_a_value_is_still_refused(self):
+        """The line the blank handling must not cross: only one side blank IS a
+        change, and the lock must still refuse it."""
+        todo = self._done_todo()
+        frappe.db.set_value("Project Todo", todo.name, "ai_prompt", '[{"name": "p", "prompt": "x"}]')
+        todo.reload()
+
+        frappe.db.savepoint("cleared_field_probe")
+        todo.ai_prompt = ""
+        with self.assertRaises(frappe.ValidationError):
+            todo.save(ignore_permissions=True)
+        frappe.db.rollback(save_point="cleared_field_probe")
 
 if __name__ == "__main__":
     unittest.main()
